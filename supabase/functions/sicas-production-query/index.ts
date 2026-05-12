@@ -1,6 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2";
-import { SicasRestClient, createSicasRestClientWithDbAuth } from "../_shared/sicasRestClient.ts";
+import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,18 +9,6 @@ const corsHeaders = {
 };
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-
-interface ProductionConfig {
-  report_filter_mode: string;
-  report_filter_field: string;
-  report_keycode_all: string;
-  report_keycode_policies: string;
-  report_keycode_bonds: string;
-  detail_keycode: string;
-  detail_identity_field: string;
-  fields_requested_list: string;
-  default_page_size: number;
-}
 
 interface DocumentsRequest {
   page?: number;
@@ -51,23 +38,6 @@ interface DashboardFilters {
   search?: string;
 }
 
-// ─── Error Normalizer ────────────────────────────────────────────────────────
-
-function normalizeError(
-  error: unknown
-): { code: string; message: string; userMessage: string } {
-  const msg = error instanceof Error ? error.message : String(error);
-  if (msg.includes("Token Inactivo") || msg.includes("401"))
-    return { code: "TOKEN_EXPIRED", message: msg, userMessage: "La sesion con SICAS expiro. Intenta de nuevo." };
-  if (msg.includes("Codigo de reporte"))
-    return { code: "KEYCODE_NOT_FOUND", message: msg, userMessage: "El reporte solicitado no esta disponible en SICAS." };
-  if (msg.includes("credentials") || msg.includes("Authentication"))
-    return { code: "AUTH_FAILED", message: msg, userMessage: "No fue posible autenticarse con SICAS." };
-  if (msg.includes("fetch") || msg.includes("network") || msg.includes("ECONNREFUSED"))
-    return { code: "CONNECTION_ERROR", message: msg, userMessage: "No fue posible conectar con SICAS en este momento." };
-  return { code: "UNKNOWN", message: msg, userMessage: "Ocurrio un error al consultar SICAS. Intenta de nuevo." };
-}
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -77,34 +47,8 @@ function jsonResponse(status: number, body: unknown): Response {
   });
 }
 
-async function getConfig(
-  supabase: ReturnType<typeof createClient>
-): Promise<ProductionConfig> {
-  const { data, error } = await supabase
-    .from("sicas_production_config")
-    .select("*")
-    .eq("activo", true)
-    .limit(1)
-    .maybeSingle();
-
-  if (error || !data) {
-    return {
-      report_filter_mode: "vendor",
-      report_filter_field: "DatDocumentos.VendId",
-      report_keycode_all: "HWS_DOCTOS",
-      report_keycode_policies: "HWSDOC",
-      report_keycode_bonds: "HWSInventario",
-      detail_keycode: "HWCAPTURE",
-      detail_identity_field: "H02",
-      fields_requested_list: "",
-      default_page_size: 25,
-    };
-  }
-  return data as ProductionConfig;
-}
-
 async function getUserRole(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   userId: string
 ): Promise<{ rol: string; oficina_id: string | null }> {
   const { data } = await supabase
@@ -113,14 +57,6 @@ async function getUserRole(
     .eq("id", userId)
     .maybeSingle();
   return { rol: data?.rol || "", oficina_id: data?.oficina_id || null };
-}
-
-function selectKeyCode(config: ProductionConfig, type: string): string {
-  switch (type) {
-    case "policies": return config.report_keycode_policies;
-    case "bonds": return config.report_keycode_bonds;
-    default: return config.report_keycode_all;
-  }
 }
 
 // ─── SICAS Identity Resolution ──────────────────────────────────────────────
@@ -133,7 +69,7 @@ interface SicasIdentity {
 }
 
 async function resolveMoviUserToSicasIdentity(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   moviUserId: string
 ): Promise<SicasIdentity | null> {
   const { data: usuario } = await supabase
@@ -170,7 +106,7 @@ async function resolveMoviUserToSicasIdentity(
 }
 
 async function resolveVendorIdToSicasIdentity(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   vendorId: string
 ): Promise<SicasIdentity | null> {
   const { data: usuario } = await supabase
@@ -209,264 +145,211 @@ async function resolveVendorIdToSicasIdentity(
   return null;
 }
 
-// ─── Record Normalizer ──────────────────────────────────────────────────────
+// ─── Record Normalizer (from sicas_documents row) ───────────────────────────
 
-function normalizeRecord(raw: Record<string, unknown>): Record<string, unknown> {
-  const get = (keys: string[]): unknown => {
-    for (const k of keys) {
-      const val = raw[k] ?? raw[k.toLowerCase()] ?? raw[k.toUpperCase()];
-      if (val !== undefined && val !== null && val !== "") return val;
-    }
-    return null;
-  };
-  const num = (keys: string[]): number => {
-    const v = get(keys);
-    if (v === null) return 0;
-    const n = Number(v);
-    return isNaN(n) ? 0 : n;
-  };
-  const str = (keys: string[]): string => {
-    const v = get(keys);
-    return v !== null ? String(v) : "";
-  };
-
-  const statusTxt = str(["Status_TXT", "Estatus_TXT"]);
-  const statusRaw = str(["Status", "Estatus", "StatusDoc"]);
+function normalizeDbRecord(row: Record<string, unknown>): Record<string, unknown> {
+  const statusText = String(row.status_texto || "");
+  const statusCode = String(row.status_codigo || "");
   const statusLetterMap: Record<string, string> = { V: "Vigente", C: "Cancelada", X: "Vencida", N: "No Vigente", P: "Pendiente" };
   const statusNumMap: Record<string, string> = { "1": "Vigente", "2": "Renovada", "3": "Cancelada", "4": "No Vigente", "5": "Pendiente" };
-  const resolvedStatus = statusTxt || statusLetterMap[statusRaw] || statusNumMap[statusRaw] || statusRaw || "Desconocido";
+  const resolvedStatus = statusText || statusLetterMap[statusCode] || statusNumMap[statusCode] || statusCode || "Desconocido";
 
   return {
-    idDocto: get(["IDDocto", "IdDocto", "Id_Docto", "iddocto"]),
-    documento: str(["Documento", "NoDocumento", "No_Documento", "DAnterior", "DPosterior"]),
-    tipo: str(["TipoDocto_TXT", "TipoDocto", "Tipo"]),
-    subtipo: str(["SubTipoDocto_TXT", "SubTipoDocto"]),
-    ramo: str(["RamosNombre", "Ramo", "Ramo_TXT", "NombreRamo", "RamosAbreviacion"]),
-    subramo: str(["SRamoNombre", "SubRamo", "SubRamo_TXT", "NombreSubRamo", "SRamoAbreviacion"]),
-    aseguradora: str(["CiaAbreviacion", "CiaNombre", "Abreviacion", "Cia", "Aseguradora", "Compania"]),
-    cliente: str(["NombreCompleto", "Nombre_Completo", "Cliente", "Contratante"]),
-    fechaDesde: str(["FDesde", "Fdesde", "FechaDesde", "Vigencia_Desde"]),
-    fechaHasta: str(["FHasta", "Fhasta", "FechaHasta", "Vigencia_Hasta"]),
-    primaNeta: num(["PrimaNeta", "Prima_Neta", "Primaneta"]),
-    primaTotal: num(["PrimaTotal", "Prima_Total", "Primatotal", "ImporteTotal"]),
-    moneda: str(["Moneda", "MonedaTXT", "Moneda_TXT"]) || "MXN",
+    idDocto: row.id_docto,
+    documento: row.poliza || "",
+    tipo: row.tipo_documento || "",
+    subtipo: row.subtipo_documento || "",
+    ramo: row.ramo || "",
+    subramo: row.subramo || "",
+    aseguradora: row.aseguradora_nombre || row.compania || "",
+    cliente: row.cliente || "",
+    fechaDesde: row.vigencia_desde || "",
+    fechaHasta: row.vigencia_hasta || "",
+    primaNeta: Number(row.prima_neta) || 0,
+    primaTotal: Number(row.prima_total) || Number(row.importe) || 0,
+    moneda: row.moneda || "MXN",
     status: resolvedStatus,
-    statusRaw,
-    statusCobro: str(["StatusCobro", "Status_Cobro", "EstatusCobro"]),
-    vendedor: str(["VendNombre", "Vendedor", "Vend_Nombre", "VendAbreviacion"]),
-    vendedorId: str(["IDVend", "VendId", "Vend_Id"]),
-    agente: str(["AgenteNombre", "Agente", "NombreAgente"]),
-    agenteId: str(["IDAgente", "AgenteId", "CAgente"]),
-    raw,
+    statusRaw: statusCode,
+    statusCobro: row.status_cobro || "",
+    vendedor: row.vend_nombre || "",
+    vendedorId: row.vend_id || "",
+    agente: row.agente_nombre || "",
+    agenteId: row.sicas_id_agente || "",
   };
 }
 
-function normalizeDetailValues(values: Record<string, unknown>): Record<string, unknown> {
-  const get = (keys: string[]): unknown => {
-    for (const k of keys) {
-      const val = values[k] ?? values[k.toLowerCase()] ?? values[k.toUpperCase()];
-      if (val !== undefined && val !== null && val !== "") return val;
-    }
-    return null;
-  };
-  const str = (keys: string[]): string => { const v = get(keys); return v !== null ? String(v) : ""; };
-  const num = (keys: string[]): number => { const v = get(keys); if (v === null) return 0; const n = Number(v); return isNaN(n) ? 0 : n; };
+// ════════════════════════════════════════════════════════════════════════════
+// LOCAL DB QUERY FUNCTIONS (replaces REST API calls)
+// All data comes from sicas_documents table, populated by SOAP bulk-sync
+// ════════════════════════════════════════════════════════════════════════════
 
-  return {
-    cliente: { nombre: str(["NombreCompleto", "Contratante", "Cliente"]), rfc: str(["RFC", "Rfc"]), direccion: str(["Direccion", "DireccionCompleta"]), telefono: str(["Telefono", "Tel"]), email: str(["Email", "eMail", "Correo"]) },
-    agente: { id: str(["IDAgente", "AgenteId"]), nombre: str(["Agente", "AgenteNombre"]) },
-    vendedor: { id: str(["IDVend", "VendId"]), nombre: str(["Vendedor", "VendNombre"]) },
-    fechas: { desde: str(["FDesde", "FechaDesde"]), hasta: str(["FHasta", "FechaHasta"]), emision: str(["FEmision", "FechaEmision"]), captura: str(["FCaptura", "FechaCaptura"]) },
-    importes: { primaNeta: num(["PrimaNeta", "Prima_Neta"]), primaTotal: num(["PrimaTotal", "ImporteTotal"]), derechoPoliza: num(["DerechoPoliza", "Derecho"]), iva: num(["IVA", "Iva"]), recargos: num(["Recargos"]), descuento: num(["Descuento"]) },
-    estatus: { documento: str(["Estatus", "StatusDoc"]), cobro: str(["StatusCobro", "EstatusCobro"]), usuario: str(["StatusUsuario"]) },
-  };
-}
-
-// ─── Pagination Helper ──────────────────────────────────────────────────────
-
-async function fetchAllPages(
-  client: SicasRestClient,
+async function queryDocumentsFromDb(
+  supabase: SupabaseClient,
   opts: {
-    keyCode: string;
-    conditions?: string;
-    conditionsDirect?: string;
-    sortFields?: string;
-    fieldsRequested?: string;
-    pageSize?: number;
-    maxPages?: number;
+    vendorIds?: string[];
+    page: number;
+    pageSize: number;
+    type?: string;
+    search?: string;
+    sortField?: string;
+    sortDirection?: string;
+    status?: string;
+    ramo?: string;
+    aseguradora?: string;
+    fechaDesde?: string;
+    fechaHasta?: string;
   }
-): Promise<{ records: Record<string, unknown>[]; totalInSicas: number; pagesFetched: number }> {
-  const pageSize = opts.pageSize || 500;
-  const maxPages = opts.maxPages || 100;
-  const allRecords: Record<string, unknown>[] = [];
-  let page = 1;
-  let totalInSicas = 0;
-  let totalPages = 1;
+): Promise<{ items: Record<string, unknown>[]; total: number; page: number; pageSize: number; pages: number }> {
+  const { page, pageSize } = opts;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
 
-  while (page <= maxPages) {
-    const response = await client.readReport({
-      keyCode: opts.keyCode,
-      pageRequested: page,
-      itemsForPage: pageSize,
-      conditions: opts.conditions || undefined,
-      conditionsDirect: opts.conditionsDirect || undefined,
-      sortFields: opts.sortFields || undefined,
-      fieldsRequested: opts.fieldsRequested || undefined,
-    });
+  let query = supabase.from("sicas_documents").select("*", { count: "exact" });
 
-    const records = response.Response?.[0]?.TableInfo || [];
-    const control = response.Response?.[0]?.TableControl?.[0];
-
-    if (page === 1) {
-      totalInSicas = control?.MaxRecords || records.length;
-      totalPages = control?.Pages || 1;
-      console.log(`[SICASProd] fetchAllPages: MaxRecords=${totalInSicas} Pages=${totalPages} ItemForPage=${control?.ItemForPage || pageSize}`);
-    }
-
-    allRecords.push(...records);
-    if (records.length === 0 || page >= totalPages) break;
-    page++;
+  if (opts.vendorIds && opts.vendorIds.length > 0) {
+    query = query.in("vend_id", opts.vendorIds);
+  }
+  if (opts.type === "policies") query = query.eq("is_poliza", true);
+  else if (opts.type === "bonds") query = query.eq("is_fianza", true);
+  if (opts.status) {
+    const statusMap: Record<string, string> = { vigente: "1", renovada: "2", cancelada: "3", "no vigente": "4", pendiente: "5" };
+    const val = statusMap[opts.status.toLowerCase()] || opts.status;
+    query = query.eq("status_codigo", val);
+  }
+  if (opts.ramo) query = query.ilike("ramo", `%${opts.ramo}%`);
+  if (opts.aseguradora) query = query.or(`compania.ilike.%${opts.aseguradora}%,aseguradora_nombre.ilike.%${opts.aseguradora}%`);
+  if (opts.fechaDesde) query = query.gte("vigencia_desde", opts.fechaDesde);
+  if (opts.fechaHasta) query = query.lte("vigencia_hasta", opts.fechaHasta);
+  if (opts.search) {
+    query = query.or(`poliza.ilike.%${opts.search}%,cliente.ilike.%${opts.search}%`);
   }
 
-  console.log(`[SICASProd] fetchAllPages: fetched ${allRecords.length} records across ${page} pages (totalInSicas=${totalInSicas})`);
-  return { records: allRecords, totalInSicas, pagesFetched: page };
+  const sortCol = mapSortField(opts.sortField);
+  const ascending = (opts.sortDirection || "desc") === "asc";
+  query = query.order(sortCol, { ascending }).range(from, to);
+
+  const { data, count, error } = await query;
+  if (error) {
+    console.error("[SICASProd] DB query error:", error.message);
+    return { items: [], total: 0, page, pageSize, pages: 0 };
+  }
+
+  const total = count || 0;
+  const items = (data || []).map(normalizeDbRecord);
+  return { items, total, page, pageSize, pages: Math.ceil(total / pageSize) };
+}
+
+function mapSortField(field?: string): string {
+  if (!field) return "vigencia_desde";
+  const map: Record<string, string> = {
+    "DatDocumentos.FDesde": "vigencia_desde",
+    "DatDocumentos.FHasta": "vigencia_hasta",
+    "DatDocumentos.PrimaTotal": "prima_total",
+    "DatDocumentos.PrimaNeta": "prima_neta",
+    "DatDocumentos.NombreCompleto": "cliente",
+    "DatDocumentos.Documento": "poliza",
+    "vigencia_desde": "vigencia_desde",
+    "vigencia_hasta": "vigencia_hasta",
+    "prima_total": "prima_total",
+    "prima_neta": "prima_neta",
+    "cliente": "cliente",
+    "poliza": "poliza",
+  };
+  return map[field] || "vigencia_desde";
+}
+
+async function queryAllForDashboard(
+  supabase: SupabaseClient,
+  opts: {
+    vendorIds?: string[];
+    filters: DashboardFilters;
+  }
+): Promise<Record<string, unknown>[]> {
+  let query = supabase.from("sicas_documents").select("*");
+
+  if (opts.vendorIds && opts.vendorIds.length > 0) {
+    query = query.in("vend_id", opts.vendorIds);
+  }
+  if (opts.filters.type === "policies") query = query.eq("is_poliza", true);
+  else if (opts.filters.type === "bonds") query = query.eq("is_fianza", true);
+  if (opts.filters.status) {
+    const statusMap: Record<string, string> = { vigente: "1", renovada: "2", cancelada: "3", "no vigente": "4", pendiente: "5" };
+    const val = statusMap[opts.filters.status.toLowerCase()] || opts.filters.status;
+    query = query.eq("status_codigo", val);
+  }
+  if (opts.filters.ramo) query = query.ilike("ramo", `%${opts.filters.ramo}%`);
+  if (opts.filters.aseguradora) query = query.or(`compania.ilike.%${opts.filters.aseguradora}%,aseguradora_nombre.ilike.%${opts.filters.aseguradora}%`);
+  if (opts.filters.search) {
+    query = query.or(`poliza.ilike.%${opts.filters.search}%,cliente.ilike.%${opts.filters.search}%`);
+  }
+
+  query = query.order("vigencia_desde", { ascending: false }).limit(5000);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("[SICASProd] Dashboard DB query error:", error.message);
+    return [];
+  }
+  return (data || []).map(normalizeDbRecord);
 }
 
 // ════════════════════════════════════════════════════════════════════════════
 // FLOW A: Global Documents (no vendor filter)
-// Used by: Admin with no vendor selected, or Gerente with no vendor selected
 // ════════════════════════════════════════════════════════════════════════════
 
-function buildGlobalConditions(
-  config: ProductionConfig,
-  params: DocumentsRequest,
-  officeVendorIds?: string[]
-): { conditions: string; conditionsDirect: string } {
-  const condParts: string[] = [];
-  const cdParts: string[] = [];
-
-  // Gerente: restrict to office vendors
-  if (officeVendorIds && officeVendorIds.length > 0) {
-    const inClause = `${config.report_filter_field} IN (${officeVendorIds.join(",")})`;
-    condParts.push(inClause);
-    cdParts.push(inClause);
-  }
-
-  if (params.status) {
-    const statusMap: Record<string, string> = { vigente: "1", renovada: "2", cancelada: "3", "no vigente": "4", pendiente: "5" };
-    const val = statusMap[params.status.toLowerCase()] || params.status;
-    condParts.push(`DatDocumentos.Status=${val}`);
-  }
-  if (params.search) {
-    const s = params.search.replace(/'/g, "");
-    condParts.push(`(DatDocumentos.Documento LIKE '%${s}%' OR DatDocumentos.NombreCompleto LIKE '%${s}%')`);
-  }
-  if (params.fechaDesde) condParts.push(`DatDocumentos.FDesde>=${params.fechaDesde}`);
-  if (params.fechaHasta) condParts.push(`DatDocumentos.FHasta<=${params.fechaHasta}`);
-  if (params.ramo) condParts.push(`DatDocumentos.Ramo LIKE '%${params.ramo.replace(/'/g, "")}%'`);
-  if (params.aseguradora) condParts.push(`DatDocumentos.Abreviacion LIKE '%${params.aseguradora.replace(/'/g, "")}%'`);
-
-  return {
-    conditions: condParts.join(" AND "),
-    conditionsDirect: cdParts.join(" AND "),
-  };
-}
-
 async function handleGlobalDocuments(
-  client: SicasRestClient,
-  config: ProductionConfig,
+  supabase: SupabaseClient,
   params: DocumentsRequest,
   officeVendorIds?: string[]
 ): Promise<Response> {
   const startTime = Date.now();
-  const pageSize = Math.min(params.pageSize || config.default_page_size, 500);
+  const pageSize = Math.min(params.pageSize || 25, 500);
   const page = params.page || 1;
-  const keyCode = selectKeyCode(config, params.type || "all");
-  const { conditions, conditionsDirect } = buildGlobalConditions(config, params, officeVendorIds);
 
-  const sortField = params.sortField || "DatDocumentos.FDesde";
-  const sortDir = (params.sortDirection || "desc").toUpperCase();
+  console.log(`[SICASProd][FlowA] global-documents: page=${page} pageSize=${pageSize} vendorScope=${officeVendorIds ? "office" : "all"}`);
 
-  console.log(`[SICASProd][FlowA] global-documents: keyCode=${keyCode} page=${page} pageSize=${pageSize}`);
-  console.log(`[SICASProd][FlowA] conditions="${conditions || "(none)"}"`);
-  console.log(`[SICASProd][FlowA] conditionsDirect="${conditionsDirect || "(none)"}"`);
-
-  const response = await client.readReport({
-    keyCode,
-    pageRequested: page,
-    itemsForPage: pageSize,
-    sortFields: `${sortField} ${sortDir}`,
-    conditions: conditions || undefined,
-    conditionsDirect: conditionsDirect || undefined,
-    fieldsRequested: config.fields_requested_list || undefined,
+  const result = await queryDocumentsFromDb(supabase, {
+    vendorIds: officeVendorIds,
+    page,
+    pageSize,
+    type: params.type,
+    search: params.search,
+    sortField: params.sortField,
+    sortDirection: params.sortDirection,
+    status: params.status,
+    ramo: params.ramo,
+    aseguradora: params.aseguradora,
+    fechaDesde: params.fechaDesde,
+    fechaHasta: params.fechaHasta,
   });
-
-  const records = response.Response?.[0]?.TableInfo || [];
-  const control = response.Response?.[0]?.TableControl?.[0];
-  console.log(`[SICASProd][FlowA] SICAS returned ${records.length} records, MaxRecords=${control?.MaxRecords || "?"}, Pages=${control?.Pages || "?"}`);
-
-  const items = records.map(normalizeRecord);
-  const duration = Date.now() - startTime;
 
   return jsonResponse(200, {
     ok: true,
     flow: "global",
-    items,
+    items: result.items,
     pagination: {
-      page: control?.Page || page,
-      pageSize: control?.ItemForPage || pageSize,
-      pages: control?.Pages || 1,
-      maxRecords: control?.MaxRecords || items.length,
+      page: result.page,
+      pageSize: result.pageSize,
+      pages: result.pages,
+      maxRecords: result.total,
     },
-    meta: { keyCode, duration, filtersApplied: conditions, vendorScope: officeVendorIds ? "office" : "all" },
+    meta: { source: "local_db", duration: Date.now() - startTime, vendorScope: officeVendorIds ? "office" : "all" },
   });
 }
 
 async function handleGlobalDashboard(
-  client: SicasRestClient,
-  config: ProductionConfig,
+  supabase: SupabaseClient,
   filters: DashboardFilters,
   officeVendorIds?: string[]
 ): Promise<Response> {
   const startTime = Date.now();
 
-  const apiCondParts: string[] = [];
-  const apiCdParts: string[] = [];
+  console.log(`[SICASProd][FlowA] global-dashboard: vendorScope=${officeVendorIds ? "office" : "all"}`);
 
-  if (officeVendorIds && officeVendorIds.length > 0) {
-    const inClause = `${config.report_filter_field} IN (${officeVendorIds.join(",")})`;
-    apiCondParts.push(inClause);
-    apiCdParts.push(inClause);
-  }
-
-  if (filters.status) {
-    const statusMap: Record<string, string> = { vigente: "1", renovada: "2", cancelada: "3", "no vigente": "4", pendiente: "5" };
-    apiCondParts.push(`DatDocumentos.Status=${statusMap[filters.status.toLowerCase()] || filters.status}`);
-  }
-  if (filters.search) {
-    const s = filters.search.replace(/'/g, "");
-    apiCondParts.push(`(DatDocumentos.Documento LIKE '%${s}%' OR DatDocumentos.NombreCompleto LIKE '%${s}%')`);
-  }
-  if (filters.ramo) apiCondParts.push(`DatDocumentos.Ramo LIKE '%${filters.ramo.replace(/'/g, "")}%'`);
-  if (filters.aseguradora) apiCondParts.push(`DatDocumentos.Abreviacion LIKE '%${filters.aseguradora.replace(/'/g, "")}%'`);
-
-  const conditions = apiCondParts.length > 0 ? apiCondParts.join(" AND ") : undefined;
-  const conditionsDirect = apiCdParts.length > 0 ? apiCdParts.join(" AND ") : undefined;
-
-  console.log(`[SICASProd][FlowA] global-dashboard: conditions="${conditions || "(none)"}"`);
-
-  const { records: allRecords, totalInSicas, pagesFetched } = await fetchAllPages(client, {
-    keyCode: config.report_keycode_all,
-    conditions,
-    conditionsDirect,
-    sortFields: "DatDocumentos.FDesde DESC",
-    pageSize: 500,
-    maxPages: 10,
-  });
-
-  const docs = allRecords.map(normalizeRecord);
-  const result = computeKPIs(docs, filters, totalInSicas, pagesFetched);
+  const docs = await queryAllForDashboard(supabase, { vendorIds: officeVendorIds, filters });
+  const result = computeKPIs(docs, filters, docs.length, 1);
   result.meta.flow = "global";
+  result.meta.source = "local_db";
   result.meta.vendorScope = officeVendorIds ? "office" : "all";
   result.meta.duration = Date.now() - startTime;
 
@@ -474,192 +357,76 @@ async function handleGlobalDashboard(
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// FLOW B: User-Scoped Documents (fresh query to SICAS filtered by vendor)
-// Used by: When a specific MOVI user is selected via the vendor dropdown
+// FLOW B: User-Scoped Documents (filtered by vendor)
 // ════════════════════════════════════════════════════════════════════════════
 
-function buildScopedConditions(
-  config: ProductionConfig,
-  vendorId: string,
-  params: DocumentsRequest
-): { conditions: string; conditionsDirect: string } {
-  const vendorFilter = `${config.report_filter_field}=${vendorId}`;
-  const condParts: string[] = [vendorFilter];
-  const cdParts: string[] = [vendorFilter];
-
-  if (params.status) {
-    const statusMap: Record<string, string> = { vigente: "1", renovada: "2", cancelada: "3", "no vigente": "4", pendiente: "5" };
-    const val = statusMap[params.status.toLowerCase()] || params.status;
-    condParts.push(`DatDocumentos.Status=${val}`);
-  }
-  if (params.search) {
-    const s = params.search.replace(/'/g, "");
-    condParts.push(`(DatDocumentos.Documento LIKE '%${s}%' OR DatDocumentos.NombreCompleto LIKE '%${s}%')`);
-  }
-  if (params.fechaDesde) condParts.push(`DatDocumentos.FDesde>=${params.fechaDesde}`);
-  if (params.fechaHasta) condParts.push(`DatDocumentos.FHasta<=${params.fechaHasta}`);
-  if (params.ramo) condParts.push(`DatDocumentos.Ramo LIKE '%${params.ramo.replace(/'/g, "")}%'`);
-  if (params.aseguradora) condParts.push(`DatDocumentos.Abreviacion LIKE '%${params.aseguradora.replace(/'/g, "")}%'`);
-
-  return {
-    conditions: condParts.join(" AND "),
-    conditionsDirect: cdParts.join(" AND "),
-  };
-}
-
 async function handleScopedDocuments(
-  client: SicasRestClient,
-  config: ProductionConfig,
+  supabase: SupabaseClient,
   identity: SicasIdentity,
   params: DocumentsRequest
 ): Promise<Response> {
   const startTime = Date.now();
-  const pageSize = Math.min(params.pageSize || config.default_page_size, 500);
+  const pageSize = Math.min(params.pageSize || 25, 500);
   const page = params.page || 1;
-  const keyCode = selectKeyCode(config, params.type || "all");
-  const { conditions, conditionsDirect } = buildScopedConditions(config, identity.vendorId, params);
 
-  const sortField = params.sortField || "DatDocumentos.FDesde";
-  const sortDir = (params.sortDirection || "desc").toUpperCase();
+  console.log(`[SICASProd][FlowB] scoped-documents: vendorId=${identity.vendorId} vendorName="${identity.vendorName}"`);
 
-  console.log(`[SICASProd][FlowB] scoped-documents: vendorId=${identity.vendorId} vendorName="${identity.vendorName}" source=${identity.source}`);
-  console.log(`[SICASProd][FlowB] keyCode=${keyCode} page=${page} pageSize=${pageSize}`);
-  console.log(`[SICASProd][FlowB] conditions="${conditions}"`);
-  console.log(`[SICASProd][FlowB] conditionsDirect="${conditionsDirect}"`);
-
-  const response = await client.readReport({
-    keyCode,
-    pageRequested: page,
-    itemsForPage: pageSize,
-    sortFields: `${sortField} ${sortDir}`,
-    conditions,
-    conditionsDirect,
-    fieldsRequested: config.fields_requested_list || undefined,
+  const result = await queryDocumentsFromDb(supabase, {
+    vendorIds: [identity.vendorId],
+    page,
+    pageSize,
+    type: params.type,
+    search: params.search,
+    sortField: params.sortField,
+    sortDirection: params.sortDirection,
+    status: params.status,
+    ramo: params.ramo,
+    aseguradora: params.aseguradora,
+    fechaDesde: params.fechaDesde,
+    fechaHasta: params.fechaHasta,
   });
 
-  const records = response.Response?.[0]?.TableInfo || [];
-  const control = response.Response?.[0]?.TableControl?.[0];
-  console.log(`[SICASProd][FlowB] SICAS returned ${records.length} records, MaxRecords=${control?.MaxRecords || "?"}, Pages=${control?.Pages || "?"}`);
-
-  const items = records.map(normalizeRecord);
-
-  // Post-fetch validation: verify records belong to the requested vendor
-  if (items.length > 0) {
-    const sampleVendorId = String(items[0].vendedorId || "");
-    const expectedVendorId = identity.vendorId;
-    if (sampleVendorId && sampleVendorId !== expectedVendorId) {
-      console.warn(`[SICASProd][FlowB] VALIDATION WARNING: Expected vendorId=${expectedVendorId} but got vendorId=${sampleVendorId}. Filter may not be applied by SICAS API.`);
-      console.warn(`[SICASProd][FlowB] Falling back to client-side filtering for vendorId=${expectedVendorId}`);
-      const filtered = items.filter(item => String(item.vendedorId) === expectedVendorId);
-      console.log(`[SICASProd][FlowB] Client-side filter: ${items.length} -> ${filtered.length} records`);
-
-      const duration = Date.now() - startTime;
-      return jsonResponse(200, {
-        ok: true,
-        flow: "scoped",
-        items: filtered,
-        pagination: {
-          page: 1,
-          pageSize: filtered.length,
-          pages: 1,
-          maxRecords: filtered.length,
-        },
-        meta: {
-          keyCode, duration, vendorId: expectedVendorId, vendorName: identity.vendorName,
-          filterValidation: "client-side-fallback",
-          sicasReturnedUnfiltered: items.length,
-          afterClientFilter: filtered.length,
-        },
-      });
-    }
-    console.log(`[SICASProd][FlowB] Validation OK: sample vendorId="${sampleVendorId}" matches expected="${expectedVendorId}"`);
-  }
-
-  const duration = Date.now() - startTime;
   return jsonResponse(200, {
     ok: true,
     flow: "scoped",
-    items,
+    items: result.items,
     pagination: {
-      page: control?.Page || page,
-      pageSize: control?.ItemForPage || pageSize,
-      pages: control?.Pages || 1,
-      maxRecords: control?.MaxRecords || items.length,
+      page: result.page,
+      pageSize: result.pageSize,
+      pages: result.pages,
+      maxRecords: result.total,
     },
     meta: {
-      keyCode, duration, vendorId: identity.vendorId, vendorName: identity.vendorName,
-      filterValidation: items.length > 0 ? "server-side-ok" : "no-records",
+      source: "local_db", duration: Date.now() - startTime,
+      vendorId: identity.vendorId, vendorName: identity.vendorName,
     },
   });
 }
 
 async function handleScopedDashboard(
-  client: SicasRestClient,
-  config: ProductionConfig,
+  supabase: SupabaseClient,
   identity: SicasIdentity,
   filters: DashboardFilters
 ): Promise<Response> {
   const startTime = Date.now();
-  const vendorFilter = `${config.report_filter_field}=${identity.vendorId}`;
 
-  const apiCondParts: string[] = [vendorFilter];
-  const apiCdParts: string[] = [vendorFilter];
+  console.log(`[SICASProd][FlowB] scoped-dashboard: vendorId=${identity.vendorId} vendorName="${identity.vendorName}"`);
 
-  if (filters.status) {
-    const statusMap: Record<string, string> = { vigente: "1", renovada: "2", cancelada: "3", "no vigente": "4", pendiente: "5" };
-    apiCondParts.push(`DatDocumentos.Status=${statusMap[filters.status.toLowerCase()] || filters.status}`);
-  }
-  if (filters.search) {
-    const s = filters.search.replace(/'/g, "");
-    apiCondParts.push(`(DatDocumentos.Documento LIKE '%${s}%' OR DatDocumentos.NombreCompleto LIKE '%${s}%')`);
-  }
-  if (filters.ramo) apiCondParts.push(`DatDocumentos.Ramo LIKE '%${filters.ramo.replace(/'/g, "")}%'`);
-  if (filters.aseguradora) apiCondParts.push(`DatDocumentos.Abreviacion LIKE '%${filters.aseguradora.replace(/'/g, "")}%'`);
+  const docs = await queryAllForDashboard(supabase, { vendorIds: [identity.vendorId], filters });
 
-  const conditions = apiCondParts.join(" AND ");
-  const conditionsDirect = apiCdParts.join(" AND ");
-
-  console.log(`[SICASProd][FlowB] scoped-dashboard: vendorId=${identity.vendorId} vendorName="${identity.vendorName}" source=${identity.source}`);
-  console.log(`[SICASProd][FlowB] conditions="${conditions}"`);
-  console.log(`[SICASProd][FlowB] conditionsDirect="${conditionsDirect}"`);
-
-  const { records: allRecords, totalInSicas, pagesFetched } = await fetchAllPages(client, {
-    keyCode: config.report_keycode_all,
-    conditions,
-    conditionsDirect,
-    sortFields: "DatDocumentos.FDesde DESC",
-    pageSize: 500,
-    maxPages: 50,
-  });
-
-  let docs = allRecords.map(normalizeRecord);
-
-  // Post-fetch validation
-  if (docs.length > 0) {
-    const sampleVendorId = String(docs[0].vendedorId || "");
-    if (sampleVendorId && sampleVendorId !== identity.vendorId) {
-      console.warn(`[SICASProd][FlowB] DASHBOARD VALIDATION WARNING: Expected vendorId=${identity.vendorId} but got vendorId=${sampleVendorId}`);
-      console.warn(`[SICASProd][FlowB] Applying client-side filter for dashboard data`);
-      const beforeCount = docs.length;
-      docs = docs.filter(d => String(d.vendedorId) === identity.vendorId);
-      console.log(`[SICASProd][FlowB] Client-side filter: ${beforeCount} -> ${docs.length} records`);
-    }
-  }
-
-  const result = computeKPIs(docs, filters, docs.length, pagesFetched);
+  const result = computeKPIs(docs, filters, docs.length, 1);
   result.meta.flow = "scoped";
+  result.meta.source = "local_db";
   result.meta.vendorId = identity.vendorId;
   result.meta.vendorName = identity.vendorName;
   result.meta.duration = Date.now() - startTime;
-  result.meta.totalInSicas = totalInSicas;
-  result.meta.totalAfterValidation = docs.length;
 
   return jsonResponse(200, result);
 }
 
-// ─── KPI Computation (shared by both flows) ─────────────────────────────────
+// ─── KPI Computation ────────────────────────────────────────────────────────
 
-function parseDate(s: string): Date | null {
+function parseDateStr(s: string): Date | null {
   if (!s) return null;
   const d = new Date(s);
   return isNaN(d.getTime()) ? null : d;
@@ -672,8 +439,8 @@ function daysBetween(a: Date, b: Date): number {
 function computeKPIs(
   docs: Record<string, unknown>[],
   filters: DashboardFilters,
-  totalInSicas: number,
-  pagesFetched: number
+  totalInDb: number,
+  _pagesFetched: number
 ): Record<string, any> {
   const now = new Date();
   let rangeStart: Date;
@@ -693,10 +460,7 @@ function computeKPIs(
 
   const periodoLabel = `${rangeStart.getFullYear()}-${String(rangeStart.getMonth() + 1).padStart(2, "0")}-${String(rangeStart.getDate()).padStart(2, "0")} a ${rangeEnd.getFullYear()}-${String(rangeEnd.getMonth() + 1).padStart(2, "0")}-${String(rangeEnd.getDate()).padStart(2, "0")}`;
 
-  // Apply client-side filters
   let filtered = docs;
-  if (filters.type === "policies") filtered = filtered.filter(d => !String(d.tipo).toLowerCase().includes("fianza"));
-  else if (filters.type === "bonds") filtered = filtered.filter(d => String(d.tipo).toLowerCase().includes("fianza"));
   if (filters.cliente) {
     const cl = String(filters.cliente).toLowerCase();
     filtered = filtered.filter(d => String(d.cliente).toLowerCase().includes(cl));
@@ -757,8 +521,8 @@ function computeKPIs(
     const ramo = String(doc.ramo || "Otros");
     const subramo = String(doc.subramo || "Otros");
     const aseg = String(doc.aseguradora || "Otros");
-    const fDesde = parseDate(String(doc.fechaDesde || ""));
-    const fHasta = parseDate(String(doc.fechaHasta || ""));
+    const fDesde = parseDateStr(String(doc.fechaDesde || ""));
+    const fHasta = parseDateStr(String(doc.fechaHasta || ""));
 
     totalPrimaNeta += pn;
     totalPrimaTotal += pt;
@@ -839,7 +603,7 @@ function computeKPIs(
   ];
 
   const renewals = filtered.filter(d => {
-    const fH = parseDate(String(d.fechaHasta || ""));
+    const fH = parseDateStr(String(d.fechaHasta || ""));
     if (!fH) return false;
     const stLocal = String(d.status || "").toLowerCase();
     const isV = stLocal === "vigente" || stLocal === "renovada";
@@ -854,10 +618,10 @@ function computeKPIs(
   return {
     ok: true,
     periodo: periodoLabel,
-    totalRecords: totalInSicas,
+    totalRecords: totalInDb,
     recordsAnalyzed: filtered.length,
     recordsFetched: docs.length,
-    pagesFetched,
+    pagesFetched: _pagesFetched,
     kpis: {
       polizasEmitidas, fianzasEmitidas, totalDocumentos: filtered.length,
       primaNetaEmitida: Math.round(totalPrimaNeta * 100) / 100,
@@ -887,136 +651,77 @@ function computeKPIs(
   };
 }
 
-// ─── Action: detail ──────────────────────────────────────────────────────────
+// ─── Action: detail (from local DB) ────────────────────────────────────────
 
 async function handleDetail(
-  client: SicasRestClient,
-  config: ProductionConfig,
+  supabase: SupabaseClient,
   identity: SicasIdentity | null,
   isAdmin: boolean,
   params: { idDocto: string | number }
 ): Promise<Response> {
   const startTime = Date.now();
   const idDocto = String(params.idDocto);
-  const vendorFilter = identity ? `${config.report_filter_field}=${identity.vendorId}` : "";
 
   console.log(`[SICASProd] detail: idDocto=${idDocto} vendorId=${identity?.vendorId || "ALL"} isAdmin=${isAdmin}`);
 
-  const ownershipConditions = vendorFilter
-    ? `DatDocumentos.IDDocto=${idDocto} AND ${vendorFilter}`
-    : `DatDocumentos.IDDocto=${idDocto}`;
+  let query = supabase.from("sicas_documents").select("*").eq("id_docto", idDocto);
 
-  const checkResponse = await client.readReport({
-    keyCode: config.report_keycode_all,
-    pageRequested: 1,
-    itemsForPage: 1,
-    conditions: ownershipConditions,
-    conditionsDirect: vendorFilter || undefined,
-  });
+  if (identity && !isAdmin) {
+    query = query.eq("vend_id", identity.vendorId);
+  }
 
-  const checkRecords = checkResponse.Response?.[0]?.TableInfo || [];
-  if (checkRecords.length === 0) {
+  const { data, error } = await query.maybeSingle();
+
+  if (error) {
+    console.error("[SICASProd] detail DB error:", error.message);
+    return jsonResponse(500, { ok: false, error: "Error al consultar documento.", code: "DB_ERROR" });
+  }
+
+  if (!data) {
     if (isAdmin || !identity) {
-      const fallbackResponse = await client.readReport({
-        keyCode: config.report_keycode_all,
-        pageRequested: 1,
-        itemsForPage: 1,
-        conditions: `DatDocumentos.IDDocto=${idDocto}`,
-      });
-      const fallbackRecords = fallbackResponse.Response?.[0]?.TableInfo || [];
-      if (fallbackRecords.length === 0) {
-        return jsonResponse(404, { ok: false, error: "Documento no encontrado en SICAS.", code: "DOCUMENT_NOT_FOUND" });
+      const { data: fallback } = await supabase.from("sicas_documents").select("*").eq("id_docto", idDocto).maybeSingle();
+      if (!fallback) {
+        return jsonResponse(404, { ok: false, error: "Documento no encontrado.", code: "DOCUMENT_NOT_FOUND" });
       }
-      checkRecords.push(...fallbackRecords);
-    } else {
-      return jsonResponse(403, { ok: false, error: "No tienes permiso para consultar este documento.", code: "DOCUMENT_NOT_OWNED" });
+      const document = normalizeDbRecord(fallback);
+      return jsonResponse(200, { ok: true, document, meta: { source: "local_db", duration: Date.now() - startTime } });
     }
+    return jsonResponse(403, { ok: false, error: "No tienes permiso para consultar este documento.", code: "DOCUMENT_NOT_OWNED" });
   }
 
-  let document: Record<string, unknown> = normalizeRecord(checkRecords[0]);
-
-  try {
-    const detailResponse = await client.request<{
-      Response: Array<{ Values?: Record<string, unknown> }>;
-      Sucess: boolean;
-      Error?: string;
-    }>("/Data/ReadData", {
-      method: "POST",
-      headers: { Prop_KeyCode: config.detail_keycode },
-      body: { "DatDocumentos.IDDocto": idDocto },
-      maxRetries: 2,
-    });
-
-    if (detailResponse.Sucess && detailResponse.Response?.[0]?.Values) {
-      const detailValues = detailResponse.Response[0].Values;
-      document = { ...document, ...normalizeDetailValues(detailValues), raw: { listRecord: checkRecords[0], detailValues } };
-    } else {
-      document.raw = { listRecord: checkRecords[0], detailError: detailResponse.Error };
-    }
-  } catch (detailError) {
-    console.warn(`[SICASProd] detail: /Data/ReadData failed: ${detailError}`);
-    document.raw = { listRecord: checkRecords[0], detailError: String(detailError) };
-  }
-
-  return jsonResponse(200, { ok: true, document, meta: { duration: Date.now() - startTime } });
+  const document = normalizeDbRecord(data);
+  return jsonResponse(200, { ok: true, document, meta: { source: "local_db", duration: Date.now() - startTime } });
 }
 
-// ─── Action: diagnose ────────────────────────────────────────────────────────
+// ─── Action: diagnose (local DB stats) ─────────────────────────────────────
 
 async function handleDiagnose(
-  client: SicasRestClient,
-  config: ProductionConfig,
+  supabase: SupabaseClient,
   vendorId: string
 ): Promise<Response> {
-  const field = config.report_filter_field;
-  const results: Record<string, unknown> = { vendorId, filterField: field, keyCode: config.report_keycode_all };
+  const results: Record<string, unknown> = { vendorId, source: "local_db" };
 
-  // Test 1: No filter
-  try {
-    const r1 = await client.readReport({ keyCode: config.report_keycode_all, pageRequested: 1, itemsForPage: 3 });
-    const recs = r1.Response?.[0]?.TableInfo || [];
-    const ctrl = r1.Response?.[0]?.TableControl?.[0];
-    results.test1_no_filter = { records: recs.length, maxRecords: ctrl?.MaxRecords || 0, pages: ctrl?.Pages || 0, fieldNames: recs[0] ? Object.keys(recs[0]) : [], sampleRecord: recs[0] || null };
-  } catch (e) { results.test1_no_filter = { error: String(e) }; }
+  const { count: totalDocs } = await supabase.from("sicas_documents").select("*", { count: "exact", head: true });
+  results.total_documents_in_db = totalDocs || 0;
 
-  // Test 2: Conditions with field=id
-  try {
-    const r2 = await client.readReport({ keyCode: config.report_keycode_all, pageRequested: 1, itemsForPage: 5, conditions: `${field}=${vendorId}` });
-    const recs = r2.Response?.[0]?.TableInfo || [];
-    const ctrl = r2.Response?.[0]?.TableControl?.[0];
-    results.test2_conditions_eq = { filter: `${field}=${vendorId}`, records: recs.length, maxRecords: ctrl?.MaxRecords || 0, error: r2.Error || null, sampleVendorId: recs[0] ? (recs[0] as Record<string, unknown>).VendId ?? (recs[0] as Record<string, unknown>).IDVend : null };
-  } catch (e) { results.test2_conditions_eq = { error: String(e) }; }
+  const { count: vendorDocs } = await supabase.from("sicas_documents").select("*", { count: "exact", head: true }).eq("vend_id", vendorId);
+  results.vendor_documents = vendorDocs || 0;
 
-  // Test 3: ConditionsDirect with field=id
-  try {
-    const r3 = await client.readReport({ keyCode: config.report_keycode_all, pageRequested: 1, itemsForPage: 5, conditionsDirect: `${field}=${vendorId}` });
-    const recs = r3.Response?.[0]?.TableInfo || [];
-    const ctrl = r3.Response?.[0]?.TableControl?.[0];
-    results.test3_conditionsDirect_eq = { filter: `${field}=${vendorId}`, records: recs.length, maxRecords: ctrl?.MaxRecords || 0, error: r3.Error || null };
-  } catch (e) { results.test3_conditionsDirect_eq = { error: String(e) }; }
+  const { data: lastSync } = await supabase.from("sicas_sync_runs").select("started_at, status, records_upserted").order("started_at", { ascending: false }).limit(1).maybeSingle();
+  results.last_sync = lastSync || null;
 
-  // Test 4: Both Conditions AND ConditionsDirect
-  try {
-    const r4 = await client.readReport({ keyCode: config.report_keycode_all, pageRequested: 1, itemsForPage: 5, conditions: `${field}=${vendorId}`, conditionsDirect: `${field}=${vendorId}` });
-    const recs = r4.Response?.[0]?.TableInfo || [];
-    const ctrl = r4.Response?.[0]?.TableControl?.[0];
-    results.test4_both = { filter: `${field}=${vendorId}`, records: recs.length, maxRecords: ctrl?.MaxRecords || 0, error: r4.Error || null };
-  } catch (e) { results.test4_both = { error: String(e) }; }
+  const { data: sample } = await supabase.from("sicas_documents").select("*").eq("vend_id", vendorId).limit(3);
+  results.sample_records = (sample || []).map(normalizeDbRecord);
 
-  // Test 5: Page 2 no filter
-  try {
-    const r5 = await client.readReport({ keyCode: config.report_keycode_all, pageRequested: 2, itemsForPage: 100 });
-    const recs = r5.Response?.[0]?.TableInfo || [];
-    const ctrl = r5.Response?.[0]?.TableControl?.[0];
-    results.test5_page2 = { records: recs.length, maxRecords: ctrl?.MaxRecords || 0, pages: ctrl?.Pages || 0, currentPage: ctrl?.Page || 0 };
-  } catch (e) { results.test5_page2 = { error: String(e) }; }
+  const { data: vendorList } = await supabase.from("sicas_documents").select("vend_id, vend_nombre").eq("vend_id", vendorId).limit(1).maybeSingle();
+  results.vendor_info = vendorList || null;
 
   return jsonResponse(200, { ok: true, diagnostics: results });
 }
 
 // ─── Admin Actions ──────────────────────────────────────────────────────────
 
-async function handleListUsers(supabase: ReturnType<typeof createClient>): Promise<Response> {
+async function handleListUsers(supabase: SupabaseClient): Promise<Response> {
   const { data: usuarios, error } = await supabase
     .from("usuarios")
     .select("id, nombre, apellidos, email_laboral, rol, oficina_id, id_sicas, nombre_sicas, activo")
@@ -1055,7 +760,7 @@ async function handleListUsers(supabase: ReturnType<typeof createClient>): Promi
 }
 
 async function handleListMappedVendors(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   filterOficinaId?: string | null
 ): Promise<Response> {
   let query = supabase
@@ -1082,7 +787,7 @@ async function handleListMappedVendors(
   return jsonResponse(200, { ok: true, vendors });
 }
 
-async function handleListVendors(supabase: ReturnType<typeof createClient>, search?: string): Promise<Response> {
+async function handleListVendors(supabase: SupabaseClient, search?: string): Promise<Response> {
   let query = supabase.from("sicas_catalogos").select("id_sicas, nombre").eq("catalog_type_id", 32).order("nombre");
   if (search) query = query.or(`nombre.ilike.%${search}%,id_sicas.ilike.%${search}%`);
   query = query.limit(50);
@@ -1092,7 +797,7 @@ async function handleListVendors(supabase: ReturnType<typeof createClient>, sear
 }
 
 async function handleMapUser(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   adminUserId: string,
   targetUserId: string,
   sicasVendorId: string
@@ -1125,7 +830,7 @@ async function handleMapUser(
 }
 
 async function handleUnmapUser(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   targetUserId: string,
   removeVendorMappings: boolean = false
 ): Promise<Response> {
@@ -1194,27 +899,9 @@ Deno.serve(async (req: Request) => {
       return await handleListMappedVendors(supabase, isGerente ? callerOficinaId : null);
     }
 
-    // ── Create SICAS client ──
-    let client: SicasRestClient;
-    try {
-      client = await createSicasRestClientWithDbAuth();
-    } catch (_e) {
-      return jsonResponse(503, { ok: false, error: "SICAS no esta configurado en el servidor.", code: "SICAS_NOT_CONFIGURED" });
-    }
-
-    const config = await getConfig(supabase);
-
     // ════════════════════════════════════════════════════════════════════
-    // ROUTING DECISION: Is this a scoped query (Flow B) or global (Flow A)?
-    //
-    // Flow B (scoped): body.vendorId is set → resolve identity, query SICAS
-    //   with vendor filter, validate results
-    //
-    // Flow A (global): no vendorId → query SICAS without vendor filter
-    //   (admin sees all, gerente sees office vendors)
-    //
-    // For regular users (not admin/gerente) with no vendorId:
-    //   Resolve their own SICAS identity → use Flow B
+    // ROUTING: Scoped (Flow B) vs Global (Flow A)
+    // All data comes from local sicas_documents table (synced via SOAP)
     // ════════════════════════════════════════════════════════════════════
 
     const hasVendorId = !!body.vendorId;
@@ -1226,14 +913,13 @@ Deno.serve(async (req: Request) => {
         const identity = await resolveMoviUserToSicasIdentity(supabase, user.id);
         vendorId = identity?.vendorId || "1";
       }
-      return await handleDiagnose(client, config, vendorId);
+      return await handleDiagnose(supabase, vendorId);
     }
 
     // ── FLOW B: Scoped query (specific vendor selected) ──
     if (hasVendorId) {
       console.log(`[SICASProd] FLOW B (scoped): vendorId=${body.vendorId}`);
 
-      // Resolve vendorId to identity
       const identity = await resolveVendorIdToSicasIdentity(supabase, body.vendorId);
       if (!identity) {
         return jsonResponse(200, {
@@ -1242,7 +928,6 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      // Gerente office check
       if (isGerente && callerOficinaId) {
         const { data: targetUser } = await supabase.from("usuarios").select("oficina_id").eq("id", identity.moviUserId).maybeSingle();
         if (targetUser && targetUser.oficina_id !== callerOficinaId) {
@@ -1252,7 +937,7 @@ Deno.serve(async (req: Request) => {
 
       switch (action) {
         case "dashboard":
-          return await handleScopedDashboard(client, config, identity, {
+          return await handleScopedDashboard(supabase, identity, {
             fechaDesde: body.fechaDesde, fechaHasta: body.fechaHasta,
             type: body.type, status: body.status, ramo: body.ramo,
             subramo: body.subramo, aseguradora: body.aseguradora,
@@ -1260,7 +945,7 @@ Deno.serve(async (req: Request) => {
             search: body.search,
           });
         case "documents":
-          return await handleScopedDocuments(client, config, identity, {
+          return await handleScopedDocuments(supabase, identity, {
             page: body.page, pageSize: body.pageSize, type: body.type,
             search: body.search, sortField: body.sortField, sortDirection: body.sortDirection,
             status: body.status, ramo: body.ramo, aseguradora: body.aseguradora,
@@ -1268,7 +953,7 @@ Deno.serve(async (req: Request) => {
           });
         case "detail":
           if (!body.idDocto) return jsonResponse(400, { ok: false, error: "Se requiere idDocto.", code: "MISSING_ID" });
-          return await handleDetail(client, config, identity, isAdmin, { idDocto: body.idDocto });
+          return await handleDetail(supabase, identity, isAdmin, { idDocto: body.idDocto });
         default:
           return jsonResponse(400, { ok: false, error: `Accion no valida: ${action}`, code: "INVALID_ACTION" });
       }
@@ -1276,12 +961,11 @@ Deno.serve(async (req: Request) => {
 
     // ── FLOW A or FLOW B for self ──
     if (isAdmin) {
-      // Admin with no vendorId → Flow A global (all vendors)
       console.log(`[SICASProd] FLOW A (global): admin, all vendors`);
 
       switch (action) {
         case "dashboard":
-          return await handleGlobalDashboard(client, config, {
+          return await handleGlobalDashboard(supabase, {
             fechaDesde: body.fechaDesde, fechaHasta: body.fechaHasta,
             type: body.type, status: body.status, ramo: body.ramo,
             subramo: body.subramo, aseguradora: body.aseguradora,
@@ -1289,7 +973,7 @@ Deno.serve(async (req: Request) => {
             search: body.search,
           });
         case "documents":
-          return await handleGlobalDocuments(client, config, {
+          return await handleGlobalDocuments(supabase, {
             page: body.page, pageSize: body.pageSize, type: body.type,
             search: body.search, sortField: body.sortField, sortDirection: body.sortDirection,
             status: body.status, ramo: body.ramo, aseguradora: body.aseguradora,
@@ -1297,14 +981,13 @@ Deno.serve(async (req: Request) => {
           });
         case "detail":
           if (!body.idDocto) return jsonResponse(400, { ok: false, error: "Se requiere idDocto.", code: "MISSING_ID" });
-          return await handleDetail(client, config, null, true, { idDocto: body.idDocto });
+          return await handleDetail(supabase, null, true, { idDocto: body.idDocto });
         default:
           return jsonResponse(400, { ok: false, error: `Accion no valida: ${action}`, code: "INVALID_ACTION" });
       }
     }
 
     if (isGerente) {
-      // Gerente with no vendorId → Flow A with office vendor IDs
       console.log(`[SICASProd] FLOW A (global): gerente, office=${callerOficinaId}`);
 
       const { data: officeVendors } = await supabase
@@ -1314,7 +997,7 @@ Deno.serve(async (req: Request) => {
         .eq("activo", true)
         .not("id_sicas", "is", null);
 
-      const officeVendorIds = (officeVendors || []).map(v => v.id_sicas).filter(Boolean);
+      const officeVendorIds = (officeVendors || []).map((v: any) => v.id_sicas).filter(Boolean);
       if (officeVendorIds.length === 0) {
         return jsonResponse(200, {
           ok: false, error: "No hay usuarios con vinculo SICAS en tu oficina.",
@@ -1326,7 +1009,7 @@ Deno.serve(async (req: Request) => {
 
       switch (action) {
         case "dashboard":
-          return await handleGlobalDashboard(client, config, {
+          return await handleGlobalDashboard(supabase, {
             fechaDesde: body.fechaDesde, fechaHasta: body.fechaHasta,
             type: body.type, status: body.status, ramo: body.ramo,
             subramo: body.subramo, aseguradora: body.aseguradora,
@@ -1334,7 +1017,7 @@ Deno.serve(async (req: Request) => {
             search: body.search,
           }, officeVendorIds);
         case "documents":
-          return await handleGlobalDocuments(client, config, {
+          return await handleGlobalDocuments(supabase, {
             page: body.page, pageSize: body.pageSize, type: body.type,
             search: body.search, sortField: body.sortField, sortDirection: body.sortDirection,
             status: body.status, ramo: body.ramo, aseguradora: body.aseguradora,
@@ -1342,7 +1025,7 @@ Deno.serve(async (req: Request) => {
           }, officeVendorIds);
         case "detail":
           if (!body.idDocto) return jsonResponse(400, { ok: false, error: "Se requiere idDocto.", code: "MISSING_ID" });
-          return await handleDetail(client, config, null, false, { idDocto: body.idDocto });
+          return await handleDetail(supabase, null, false, { idDocto: body.idDocto });
         default:
           return jsonResponse(400, { ok: false, error: `Accion no valida: ${action}`, code: "INVALID_ACTION" });
       }
@@ -1363,7 +1046,7 @@ Deno.serve(async (req: Request) => {
 
     switch (action) {
       case "dashboard":
-        return await handleScopedDashboard(client, config, selfIdentity, {
+        return await handleScopedDashboard(supabase, selfIdentity, {
           fechaDesde: body.fechaDesde, fechaHasta: body.fechaHasta,
           type: body.type, status: body.status, ramo: body.ramo,
           subramo: body.subramo, aseguradora: body.aseguradora,
@@ -1371,7 +1054,7 @@ Deno.serve(async (req: Request) => {
           search: body.search,
         });
       case "documents":
-        return await handleScopedDocuments(client, config, selfIdentity, {
+        return await handleScopedDocuments(supabase, selfIdentity, {
           page: body.page, pageSize: body.pageSize, type: body.type,
           search: body.search, sortField: body.sortField, sortDirection: body.sortDirection,
           status: body.status, ramo: body.ramo, aseguradora: body.aseguradora,
@@ -1379,13 +1062,13 @@ Deno.serve(async (req: Request) => {
         });
       case "detail":
         if (!body.idDocto) return jsonResponse(400, { ok: false, error: "Se requiere idDocto.", code: "MISSING_ID" });
-        return await handleDetail(client, config, selfIdentity, false, { idDocto: body.idDocto });
+        return await handleDetail(supabase, selfIdentity, false, { idDocto: body.idDocto });
       default:
         return jsonResponse(400, { ok: false, error: `Accion no valida: ${action}`, code: "INVALID_ACTION" });
     }
   } catch (error) {
-    const normalized = normalizeError(error);
-    console.error(`[SICASProd] ERROR: ${normalized.code} - ${normalized.message}`);
-    return jsonResponse(500, { ok: false, error: normalized.userMessage, code: normalized.code });
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error(`[SICASProd] ERROR: ${msg}`);
+    return jsonResponse(500, { ok: false, error: "Ocurrio un error al consultar produccion. Intenta de nuevo.", code: "UNKNOWN" });
   }
 });

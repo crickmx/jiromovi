@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { createSicasRestClientWithDbAuth } from '../_shared/sicasRestClient.ts';
+import { SicasSoapReportClient, FilterCondition } from '../_shared/sicasSoapReportClient.ts';
 import {
   getCursor,
   updateCursor,
@@ -20,8 +20,9 @@ const corsHeaders = {
 interface SyncReceivablesRequest {
   keyCode?: string;
   itemsPerPage?: number;
-  fieldsRequested?: string;
 }
+
+const ITEMS_PER_PAGE = 100;
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -40,23 +41,27 @@ Deno.serve(async (req: Request) => {
       : {};
 
     const keyCode = body.keyCode || 'HAPPDATAL_D004';
-    const itemsPerPage = body.itemsPerPage || 100;
+    const itemsPerPage = body.itemsPerPage || ITEMS_PER_PAGE;
 
-    const fieldsRequested = body.fieldsRequested || [
-      'IDDocto',
-      'Poliza',
-      'VendNombre',
-      'Cliente',
-      'ImportePendiente',
-      'ImporteOriginal',
-      'FechaLimite',
-      'FechaVencimiento',
-      'DiasVencido',
-      'Estatus',
-    ].join(',');
-
-    console.log('[Sync Receivables] Iniciando sincronización...');
+    console.log('[Sync Receivables] Iniciando sincronizacion SOAP...');
     console.log('[Sync Receivables] KeyCode:', keyCode);
+
+    // Get SOAP credentials from sicas_config
+    const { data: config, error: configError } = await supabase
+      .from('sicas_config')
+      .select('soap_endpoint, soap_username, soap_password')
+      .limit(1)
+      .maybeSingle();
+
+    if (configError || !config) {
+      throw new Error('No se encontro configuracion SICAS. Configure las credenciales SOAP en sicas_config.');
+    }
+
+    const soapClient = new SicasSoapReportClient({
+      endpoint: config.soap_endpoint || 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx',
+      username: config.soap_username,
+      password: config.soap_password,
+    });
 
     const cursor = await getCursor(supabase, 'receivables', keyCode);
     console.log('[Sync Receivables] Cursor actual:', cursor);
@@ -76,8 +81,6 @@ Deno.serve(async (req: Request) => {
 
     console.log('[Sync Receivables] Run ID:', runId);
 
-    const client = await createSicasRestClientWithDbAuth();
-
     let currentPage = 1;
     let totalFetched = 0;
     let totalUpserted = 0;
@@ -85,42 +88,37 @@ Deno.serve(async (req: Request) => {
     let hasMorePages = true;
 
     while (hasMorePages) {
-      console.log(`[Sync Receivables] Procesando página ${currentPage}...`);
+      console.log(`[Sync Receivables] Procesando pagina ${currentPage}...`);
 
-      const response = await client.readReport({
+      const response = await soapClient.executeReport({
         keyCode,
-        pageRequested: currentPage,
-        itemsForPage: itemsPerPage,
-        fieldsRequested,
-        formatResponse: 2,
-        sortFields: 'FechaLimite ASC',
+        page: currentPage,
+        itemsPerPage,
+        sortField: 'DatDocumentos.FCaptura',
       });
 
-      if (!response.Sucess) {
-        throw new Error(`Error en SICAS: ${response.Error || 'Error desconocido'}`);
+      if (!response.success) {
+        throw new Error(`Error en SICAS SOAP: ${response.message || 'Error desconocido'}`);
       }
 
-      const tableInfo = response.Response?.[0]?.TableInfo || [];
-      const tableControl = response.Response?.[0]?.TableControl?.[0];
+      const records = response.records || [];
+      console.log(`[Sync Receivables] Registros en pagina: ${records.length}`);
 
-      console.log(`[Sync Receivables] Registros en página: ${tableInfo.length}`);
-      console.log(`[Sync Receivables] Control:`, tableControl);
-
-      if (tableInfo.length === 0) {
+      if (records.length === 0) {
         hasMorePages = false;
         break;
       }
 
-      totalFetched += tableInfo.length;
+      totalFetched += records.length;
 
-      for (const record of tableInfo) {
+      for (const record of records) {
         try {
-          const idDocto = record.IDDocto || record.iddocto;
-          const poliza = record.Poliza || record.poliza;
+          const idDocto = record.IDDocto || record.iddocto || '';
+          const poliza = record.Poliza || record.poliza || '';
           const vendNombre = record.VendNombre || record.vendnombre || '';
 
           if (!idDocto && !poliza) {
-            console.warn('[Sync Receivables] Registro sin IDDocto ni Poliza, omitiendo:', record);
+            console.warn('[Sync Receivables] Registro sin IDDocto ni Poliza, omitiendo');
             totalFailed++;
             continue;
           }
@@ -133,13 +131,13 @@ Deno.serve(async (req: Request) => {
           const diasVencido = parseInt(record.DiasVencido || record.diasvencido || '0', 10);
 
           const receivableData = {
-            vend_id: record.VendID || record.vendid,
+            vend_id: record.VendID || record.vendid || record.IDVend || '',
             vend_nombre: vendNombre,
             usuario_id,
             oficina_id,
             id_docto: idDocto,
             poliza,
-            cliente: record.Cliente || record.cliente,
+            cliente: record.Cliente || record.cliente || '',
             importe_pendiente: importePendiente,
             importe_original: parseFloat(record.ImporteOriginal || record.importeoriginal),
             fecha_limite: parseDate(record.FechaLimite || record.fechalimite),
@@ -169,7 +167,8 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      if (!tableControl || currentPage >= tableControl.Pages) {
+      // End-of-data detection
+      if (records.length < itemsPerPage) {
         hasMorePages = false;
       } else {
         currentPage++;
@@ -206,7 +205,7 @@ Deno.serve(async (req: Request) => {
       last_run_id: runId,
     });
 
-    console.log('[Sync Receivables] ✅ Sincronización completada');
+    console.log('[Sync Receivables] Sincronizacion completada');
     console.log('[Sync Receivables] Total fetched:', totalFetched);
     console.log('[Sync Receivables] Total upserted:', totalUpserted);
     console.log('[Sync Receivables] Total failed:', totalFailed);
@@ -214,6 +213,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: true,
+        transport: 'soap',
         run_id: runId,
         summary: {
           pages_processed: currentPage,
@@ -229,7 +229,7 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error) {
-    console.error('[Sync Receivables] ❌ Error:', error);
+    console.error('[Sync Receivables] Error:', error);
 
     if (runId) {
       const finishedAt = new Date();
@@ -252,8 +252,8 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: false,
+        transport: 'soap',
         error: (error as Error).message,
-        stack: (error as Error).stack,
         run_id: runId,
       }),
       {

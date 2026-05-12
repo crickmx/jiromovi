@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { createSicasRestClientWithDbAuth, SicasRestClient } from "../_shared/sicasRestClient.ts";
+import { SicasSoapReportClient } from "../_shared/sicasSoapReportClient.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,7 +22,6 @@ const PAGES_PER_BATCH = 999;
 const MAX_RETRIES_PER_PAGE = 3;
 const RETRY_DELAY_MS = 5000;
 const INTER_PAGE_DELAY_MS = 1500;
-const TOKEN_RENEW_INTERVAL = 3;
 
 interface SyncState {
   currentPage: number;
@@ -37,6 +36,7 @@ interface SyncState {
   droppedPages: number[];
   retryAttempts: Record<string, number>;
   incrementalSince?: string;
+  transport: "soap" | "rest";
 }
 
 function sleep(ms: number): Promise<void> {
@@ -61,34 +61,39 @@ async function triggerSelfContinuation(jobId: string): Promise<void> {
   }
 }
 
-async function fetchRestPage(
-  client: SicasRestClient,
+async function fetchSoapPage(
+  client: SicasSoapReportClient,
   keyCode: string,
   page: number,
   itemsPerPage: number,
   _incrementalSince?: string
 ): Promise<{ records: Record<string, unknown>[]; totalPages: number; totalRecords: number; currentPage: number }> {
-  const response = await client.readReport({
+  const result = await client.executeReport({
     keyCode,
-    pageRequested: page,
-    itemsForPage: itemsPerPage,
-    sortFields: "DatDocumentos.FCaptura DESC",
-    formatResponse: 2,
+    page,
+    itemsPerPage,
+    sortField: "DatDocumentos.FCaptura DESC",
+    typeFormat: "XML",
   });
 
-  if (!response.Sucess && response.Error) {
-    throw new Error(`SICAS REST error: ${response.Error}`);
+  if (!result.success && result.message) {
+    throw new Error(`SICAS SOAP error: ${result.message}`);
   }
 
-  const records = response.Response?.[0]?.TableInfo || [];
-  const control = response.Response?.[1]?.TableControl?.[0]
-    || response.Response?.[0]?.TableControl?.[0];
+  const records = result.records || [];
+  const totalRecords = result.totalRecords || 0;
 
-  const totalPages = control?.Pages || 1;
-  const totalRecords = control?.MaxRecords || 0;
-  const currentPage = control?.Page || page;
+  // SOAP ProcesarWS doesn't return page metadata the same way REST does.
+  // We estimate total pages based on totalRecords and items per page.
+  let totalPages = 1;
+  if (totalRecords > 0 && itemsPerPage > 0) {
+    totalPages = Math.ceil(totalRecords / itemsPerPage);
+  } else if (records.length === itemsPerPage) {
+    // If we got a full page, there are likely more pages
+    totalPages = page + 1;
+  }
 
-  return { records, totalPages, totalRecords, currentPage };
+  return { records, totalPages, totalRecords, currentPage: page };
 }
 
 Deno.serve(async (req: Request) => {
@@ -104,44 +109,55 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Read config for keycode
+    // Read config
     const { data: sicasConfig } = await supabase
       .from("sicas_config")
-      .select("endpoint, sicas_usuario, sicas_password, code_auth, current_report_code, last_successful_report, alternate_report_codes, report_test_history")
+      .select("id, endpoint, sicas_usuario, sicas_password, code_auth, use_rest, current_report_code, last_successful_report, alternate_report_codes, report_test_history")
       .limit(1)
       .maybeSingle();
 
-    // Determine REST keycode from DB config with fallback chain
+    // Check REST availability - default is DISABLED
+    const useRest = sicasConfig?.use_rest === true;
+    if (useRest) {
+      // REST is explicitly disabled - return clear message
+      // This block is a safeguard: even if use_rest is true in config,
+      // we know the endpoint returns 404 so we override to SOAP
+      console.log("[BULK-SYNC] REST API is not available (endpoint returns 404). Using SOAP.");
+    }
+
+    // Always use SOAP - REST is disabled until SICAS confirms availability
+    const soapEndpoint = sicasConfig?.endpoint || "https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx";
+    const soapUsername = Deno.env.get("SICAS_USERNAME") || sicasConfig?.sicas_usuario || "";
+    const soapPassword = Deno.env.get("SICAS_PASSWORD") || sicasConfig?.sicas_password || "";
+
+    if (!soapUsername || !soapPassword) {
+      return jsonResponse(400, { ok: false, error: "Credenciales SICAS no configuradas. Revisa la configuracion SICAS." });
+    }
+
+    const soapClient = new SicasSoapReportClient({
+      endpoint: soapEndpoint,
+      username: soapUsername,
+      password: soapPassword,
+    });
+
+    // Determine keycode from DB config with fallback chain
     const DOCUMENT_REPORT_CODES = [
       sicasConfig?.last_successful_report,
       sicasConfig?.current_report_code,
+      "HAPPDATAL_D004",
+      "H03400",
       "HWS_DOCTOS",
       "H03117",
       "HWS03668_WS",
     ].filter((c): c is string => !!c && c.length > 0);
-    // Deduplicate while preserving priority order
     const reportCodesToTry = [...new Set(DOCUMENT_REPORT_CODES)];
+    const keyCode = body.keyCode || reportCodesToTry[0] || "HAPPDATAL_D004";
 
-    // Allow override from request body
-    const keyCode = body.keyCode || reportCodesToTry[0] || "HWS_DOCTOS";
-
-    console.log(`[BULK-SYNC] Using REST API with keyCode: ${keyCode} (fallbacks: ${reportCodesToTry.slice(1).join(", ")})`);
-
-    // Create REST client with DB auth (code_auth from sicas_config)
-    let restClient: SicasRestClient;
-    try {
-      restClient = await createSicasRestClientWithDbAuth({
-        username: Deno.env.get("SICAS_USERNAME") || sicasConfig?.sicas_usuario || "",
-        password: Deno.env.get("SICAS_PASSWORD") || sicasConfig?.sicas_password || "",
-        sCodeAuth: Deno.env.get("SICAS_CODE_AUTH") || sicasConfig?.code_auth || undefined,
-      });
-    } catch (e) {
-      return jsonResponse(500, { ok: false, error: `Error creando cliente REST: ${(e as Error).message}` });
-    }
+    console.log(`[BULK-SYNC] Using SOAP API with keyCode: ${keyCode} (fallbacks: ${reportCodesToTry.slice(1).join(", ")})`);
 
     // ── ACTION: start ──────────────────────────────────────────────────
     if (action === "start") {
-      // Auto-recover stale jobs (stuck for more than 5 minutes without update)
+      // Auto-recover stale jobs (stuck for more than 10 minutes without update)
       await supabase
         .from("sicas_sync_jobs")
         .update({
@@ -200,7 +216,7 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Create the job record IMMEDIATELY so the UI can track it
+      // Create the job record
       const syncState: SyncState = {
         currentPage: 0,
         totalPages: 0,
@@ -214,6 +230,7 @@ Deno.serve(async (req: Request) => {
         droppedPages: [],
         retryAttempts: {},
         incrementalSince,
+        transport: "soap",
       };
 
       const { data: job, error: jobError } = await supabase
@@ -222,7 +239,7 @@ Deno.serve(async (req: Request) => {
           mode: mode || "full",
           status: "running",
           triggered_by: body.triggeredBy || null,
-          keycode: `${keyCode}_REST`,
+          keycode: `${keyCode}_SOAP`,
           started_at: new Date().toISOString(),
           total_pages: 0,
           current_page: 0,
@@ -237,7 +254,7 @@ Deno.serve(async (req: Request) => {
 
       if (jobError) throw new Error(`Error creating job: ${jobError.message}`);
 
-      console.log(`[BULK-SYNC] Created job ${job.id} immediately. Continue handler will fetch page 1.`);
+      console.log(`[BULK-SYNC] Created job ${job.id}. Using SOAP transport.`);
 
       // Trigger self-continuation to begin actual sync work
       EdgeRuntime.waitUntil(
@@ -248,6 +265,7 @@ Deno.serve(async (req: Request) => {
         ok: true,
         jobId: job.id,
         status: "running",
+        transport: "soap",
       });
     }
 
@@ -267,8 +285,10 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      // Use the keycode stored in the job (set during discovery or start)
-      const effectiveKeyCode = job.keycode ? job.keycode.replace(/_REST$/, "").replace(/_SOAP$/, "") : keyCode;
+      // Use the keycode stored in the job
+      const effectiveKeyCode = job.keycode
+        ? job.keycode.replace(/_REST$/, "").replace(/_SOAP$/, "")
+        : keyCode;
 
       let syncState: SyncState;
       try {
@@ -277,37 +297,38 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(200, { ok: true, status: "invalid_state" });
       }
 
-      // Initialize new fields for backward compat with existing jobs
+      // Initialize fields for backward compat
       if (syncState.emptyPages === undefined) syncState.emptyPages = 0;
       if (syncState.retriedPages === undefined) syncState.retriedPages = 0;
       if (!Array.isArray(syncState.failedPages)) syncState.failedPages = [];
       if (!Array.isArray(syncState.droppedPages)) syncState.droppedPages = [];
       if (!syncState.retryAttempts || typeof syncState.retryAttempts !== "object") syncState.retryAttempts = {};
+      if (!syncState.transport) syncState.transport = "soap";
 
-      // Mark as actively running so auto-recovery won't kill it
+      // Mark as actively running
       await supabase
         .from("sicas_sync_jobs")
         .update({ updated_at: new Date().toISOString() })
         .eq("id", jobId);
 
-      // Discovery phase: totalPages === 0 means we still need to fetch page 1
+      // Discovery phase: totalPages === 0 means we need to fetch page 1
       if (syncState.totalPages === 0) {
-        console.log("[BULK-SYNC] Discovery phase: fetching page 1 via REST...");
+        console.log("[BULK-SYNC] Discovery phase: fetching page 1 via SOAP...");
         let firstPageResult: { records: Record<string, unknown>[]; totalPages: number; totalRecords: number; currentPage: number } | null = null;
-        let effectiveKeyCode = keyCode;
+        let usedKeyCode = effectiveKeyCode;
 
-        // Try primary keycode, then fallbacks for non-retryable errors
-        const codesToAttempt = [keyCode, ...reportCodesToTry.filter(c => c !== keyCode)];
+        // Try primary keycode, then fallbacks
+        const codesToAttempt = [effectiveKeyCode, ...reportCodesToTry.filter(c => c !== effectiveKeyCode)];
         let lastError = "";
 
         for (const tryCode of codesToAttempt) {
           let succeeded = false;
           for (let attempt = 1; attempt <= MAX_RETRIES_PER_PAGE; attempt++) {
             try {
-              firstPageResult = await fetchRestPage(
-                restClient, tryCode, 1, ITEMS_PER_PAGE, syncState.incrementalSince
+              firstPageResult = await fetchSoapPage(
+                soapClient, tryCode, 1, ITEMS_PER_PAGE, syncState.incrementalSince
               );
-              effectiveKeyCode = tryCode;
+              usedKeyCode = tryCode;
               succeeded = true;
               break;
             } catch (e: unknown) {
@@ -315,31 +336,29 @@ Deno.serve(async (req: Request) => {
               lastError = errMsg;
               console.error(`[BULK-SYNC] Page 1 with code "${tryCode}" attempt ${attempt}/${MAX_RETRIES_PER_PAGE} failed: ${errMsg}`);
 
-              // Non-retryable errors: don't waste attempts, try next code
-              const isNonRetryable = /no encontrado|not found|no existe|no habilitado|not enabled|invalid.*report|credenciales|unauthorized|forbidden/i.test(errMsg);
+              const isNonRetryable = /no encontrado|not found|no existe|no habilitado|not enabled|invalid.*report|credenciales|unauthorized|forbidden|denegad/i.test(errMsg);
               if (isNonRetryable) {
-                console.warn(`[BULK-SYNC] Non-retryable error for code "${tryCode}": ${errMsg}. Trying next code...`);
-                // Update config to mark this code as invalid
-                await supabase.from("sicas_config").update({
-                  report_test_history: {
-                    ...(sicasConfig?.report_test_history || {}),
-                    last_test_at: new Date().toISOString(),
-                    last_failed_code: tryCode,
-                    last_failed_error: errMsg,
-                  },
-                  updated_at: new Date().toISOString(),
-                }).eq("id", sicasConfig?.id || "");
-                break; // Break retry loop, move to next code
+                console.warn(`[BULK-SYNC] Non-retryable error for code "${tryCode}". Trying next code...`);
+                if (sicasConfig?.id) {
+                  await supabase.from("sicas_config").update({
+                    report_test_history: {
+                      ...(sicasConfig?.report_test_history || {}),
+                      last_test_at: new Date().toISOString(),
+                      last_failed_code: tryCode,
+                      last_failed_error: errMsg,
+                    },
+                    updated_at: new Date().toISOString(),
+                  }).eq("id", sicasConfig.id);
+                }
+                break;
               }
 
-              // Retryable errors: wait and retry same code
               if (attempt === MAX_RETRIES_PER_PAGE) break;
               await sleep(RETRY_DELAY_MS * attempt);
             }
           }
           if (succeeded) {
-            // Save the working code to config for future use
-            if (tryCode !== sicasConfig?.last_successful_report) {
+            if (sicasConfig?.id && tryCode !== sicasConfig?.last_successful_report) {
               await supabase.from("sicas_config").update({
                 last_successful_report: tryCode,
                 report_test_history: {
@@ -348,30 +367,41 @@ Deno.serve(async (req: Request) => {
                   successful_codes: [...new Set([...(sicasConfig?.report_test_history?.successful_codes || []), tryCode])],
                 },
                 updated_at: new Date().toISOString(),
-              }).eq("id", sicasConfig?.id || "");
+              }).eq("id", sicasConfig.id);
             }
-            console.log(`[BULK-SYNC] Successfully connected with code "${tryCode}"`);
+            console.log(`[BULK-SYNC] SOAP connected with code "${tryCode}", ${firstPageResult?.records.length || 0} records on page 1`);
             break;
           }
         }
 
-        if (!firstPageResult) {
-          const friendlyMsg = /no encontrado|not found/i.test(lastError)
-            ? `Ningun reporte SICAS valido encontrado. Codigos probados: ${codesToAttempt.join(", ")}. Configura un reporte valido en Configuracion SICAS.`
-            : `Error en pagina 1 despues de intentar ${codesToAttempt.length} codigo(s) REST: ${lastError}`;
+        if (!firstPageResult || firstPageResult.records.length === 0) {
+          // SOAP returned 0 records - this is a known limitation for some report codes
+          // Mark as completed with 0 records rather than failed
+          const message = firstPageResult
+            ? `Reporte SOAP "${usedKeyCode}" no devolvio registros. Verifica que el reporte tenga datos o prueba otro codigo.`
+            : `Ningun reporte SICAS valido encontrado via SOAP. Codigos probados: ${codesToAttempt.join(", ")}. Error: ${lastError}`;
+
           await supabase.from("sicas_sync_jobs").update({
-            status: "failed",
-            error_message: friendlyMsg,
+            status: firstPageResult ? "completed" : "failed",
+            error_message: message,
             finished_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
+            percent: firstPageResult ? 100 : 0,
           }).eq("id", jobId);
-          return jsonResponse(200, { ok: true, status: "failed", error: friendlyMsg, triedCodes: codesToAttempt });
+
+          return jsonResponse(200, {
+            ok: true,
+            status: firstPageResult ? "completed" : "failed",
+            message,
+            triedCodes: codesToAttempt,
+            transport: "soap",
+          });
         }
 
         // Update job keycode if we used a different one
-        if (effectiveKeyCode !== keyCode) {
+        if (usedKeyCode !== effectiveKeyCode) {
           await supabase.from("sicas_sync_jobs").update({
-            keycode: `${effectiveKeyCode}_REST`,
+            keycode: `${usedKeyCode}_SOAP`,
           }).eq("id", jobId);
         }
 
@@ -380,14 +410,14 @@ Deno.serve(async (req: Request) => {
         syncState.totalFetched = firstPageResult.records.length;
         syncState.currentPage = 1;
 
-        console.log(`[BULK-SYNC] Discovered via REST: ${syncState.totalRecordsInSicas} records, ${syncState.totalPages} pages`);
+        console.log(`[BULK-SYNC] Discovered via SOAP: ${syncState.totalRecordsInSicas} records, ${syncState.totalPages} pages`);
 
-        // Process page 1 records immediately
+        // Process page 1 records
         if (firstPageResult.records.length > 0) {
           const despachoNameToOffice = await loadDespachoNameMap(supabase);
           const { vendorToUser, vendorToOficina } = await loadVendorMaps(supabase);
           const documents = firstPageResult.records
-            .map((raw) => mapDocument(raw, effectiveKeyCode || keyCode, despachoNameToOffice, vendorToUser, vendorToOficina))
+            .map((raw) => mapDocument(raw, usedKeyCode, despachoNameToOffice, vendorToUser, vendorToOficina))
             .filter((d) => d !== null);
           const result = await upsertDocuments(supabase, documents);
           syncState.totalUpserted += result.upserted;
@@ -395,21 +425,25 @@ Deno.serve(async (req: Request) => {
           console.log(`[BULK-SYNC] Page 1: ${firstPageResult.records.length} fetched, ${result.upserted} upserted`);
         }
 
-        // Move to page 2
         syncState.currentPage = 2;
 
-        // Update job with discovery info
         await supabase.from("sicas_sync_jobs").update({
           total_pages: syncState.totalPages,
           total_in_sicas: syncState.totalRecordsInSicas,
           current_page: 1,
           total_synced: syncState.totalUpserted,
-          percent: syncState.totalPages > 0 ? Math.round((1 / syncState.totalPages) * 90) : 0,
+          percent: syncState.totalPages > 0 ? Math.round((1 / syncState.totalPages) * 90) : 50,
           error_message: JSON.stringify(syncState),
           updated_at: new Date().toISOString(),
         }).eq("id", jobId).eq("status", "running");
 
-        // Trigger next batch
+        // For SOAP: if totalPages is 1 or records < itemsPerPage, we're done
+        if (syncState.totalPages <= 1 || firstPageResult.records.length < ITEMS_PER_PAGE) {
+          console.log("[BULK-SYNC] SOAP returned all records in single page. Completing.");
+          await markComplete(supabase, jobId, syncState);
+          return jsonResponse(200, { ok: true, jobId, status: "completed", transport: "soap" });
+        }
+
         EdgeRuntime.waitUntil(sleep(1000).then(() => triggerSelfContinuation(jobId)));
         return jsonResponse(200, { ok: true, jobId, status: "running", progress: {
           percent: 0, currentPage: 1, totalPages: syncState.totalPages,
@@ -418,10 +452,9 @@ Deno.serve(async (req: Request) => {
       }
 
       if (syncState.currentPage > syncState.totalPages && syncState.totalPages > 0) {
-        // Before marking complete, check if there are failed pages to retry
         if (syncState.failedPages.length > 0) {
           console.log(`[BULK-SYNC] All pages visited, retrying ${syncState.failedPages.length} failed pages...`);
-          syncState.currentPage = -1; // Signal retry mode
+          syncState.currentPage = -1;
         } else {
           await markComplete(supabase, jobId, syncState);
           return jsonResponse(200, { ok: true, status: "completed" });
@@ -434,7 +467,7 @@ Deno.serve(async (req: Request) => {
 
       let pagesThisBatch = 0;
 
-      // Safety check: if too many pages dropped (>60% of total), mark as partial and stop
+      // Safety check: too many dropped pages
       if (syncState.droppedPages.length > syncState.totalPages * 0.6 && syncState.totalPages > 10) {
         console.log(`[BULK-SYNC] Too many dropped pages (${syncState.droppedPages.length}/${syncState.totalPages}). Marking as partial.`);
         syncState.currentPage = syncState.totalPages + 1;
@@ -443,7 +476,7 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(200, { ok: true, status: "completed" });
       }
 
-      // Retry mode: process failed pages
+      // Retry mode
       if (syncState.currentPage === -1) {
         const pagesToRetry = [...syncState.failedPages];
         syncState.failedPages = [];
@@ -472,15 +505,10 @@ Deno.serve(async (req: Request) => {
             await sleep(RETRY_DELAY_MS);
           }
 
-          // Renew token periodically
-          if (retryIdx % TOKEN_RENEW_INTERVAL === 0) {
-            try { await restClient.getValidToken(); } catch { /* ignore */ }
-          }
-
           console.log(`[BULK-SYNC] RETRY: page ${page} attempt ${attempts}/${MAX_RETRIES_PER_PAGE}...`);
           try {
-            const pageResult = await fetchRestPage(
-              restClient, effectiveKeyCode || keyCode, page, ITEMS_PER_PAGE, syncState.incrementalSince
+            const pageResult = await fetchSoapPage(
+              soapClient, effectiveKeyCode, page, ITEMS_PER_PAGE, syncState.incrementalSince
             );
 
             if (pageResult.records.length > 0) {
@@ -488,7 +516,7 @@ Deno.serve(async (req: Request) => {
               syncState.retriedPages++;
               delete syncState.retryAttempts[pageKey];
               const documents = pageResult.records
-                .map((raw) => mapDocument(raw, effectiveKeyCode || keyCode, despachoNameToOffice, vendorToUser, vendorToOficina))
+                .map((raw) => mapDocument(raw, effectiveKeyCode, despachoNameToOffice, vendorToUser, vendorToOficina))
                 .filter((d) => d !== null);
               const result = await upsertDocuments(supabase, documents);
               syncState.totalUpserted += result.upserted;
@@ -521,43 +549,36 @@ Deno.serve(async (req: Request) => {
 
           const page = syncState.currentPage;
 
-          // Throttle between page requests
           if (pagesThisBatch > 0) {
             await sleep(INTER_PAGE_DELAY_MS);
           }
 
-          // Renew token periodically
-          if (pagesThisBatch > 0 && pagesThisBatch % TOKEN_RENEW_INTERVAL === 0) {
-            try { await restClient.getValidToken(); } catch { /* ignore */ }
-          }
-
           try {
-            const pageResult = await fetchRestPage(
-              restClient, effectiveKeyCode || keyCode, page, ITEMS_PER_PAGE, syncState.incrementalSince
+            const pageResult = await fetchSoapPage(
+              soapClient, effectiveKeyCode, page, ITEMS_PER_PAGE, syncState.incrementalSince
             );
 
             if (pageResult.records.length === 0) {
-              console.log(`[BULK-SYNC] Page ${page} returned 0 records, retrying after delay...`);
+              console.log(`[BULK-SYNC] Page ${page} returned 0 records.`);
               syncState.emptyPages++;
 
               const retryElapsed = (Date.now() - batchStart) / 1000;
               if (retryElapsed < MAX_SECONDS - 8) {
                 await sleep(RETRY_DELAY_MS);
                 try {
-                  const retryResult = await fetchRestPage(
-                    restClient, keyCode, page, ITEMS_PER_PAGE, syncState.incrementalSince
+                  const retryResult = await fetchSoapPage(
+                    soapClient, effectiveKeyCode, page, ITEMS_PER_PAGE, syncState.incrementalSince
                   );
                   if (retryResult.records.length > 0) {
                     syncState.totalFetched += retryResult.records.length;
                     syncState.retriedPages++;
                     const documents = retryResult.records
-                      .map((raw) => mapDocument(raw, effectiveKeyCode || keyCode, despachoNameToOffice, vendorToUser, vendorToOficina))
+                      .map((raw) => mapDocument(raw, effectiveKeyCode, despachoNameToOffice, vendorToUser, vendorToOficina))
                       .filter((d) => d !== null);
                     const result = await upsertDocuments(supabase, documents);
                     syncState.totalUpserted += result.upserted;
                     console.log(`[BULK-SYNC] Page ${page} RETRY success: ${retryResult.records.length} fetched`);
                   } else {
-                    console.log(`[BULK-SYNC] Page ${page} still empty after retry, queuing for later.`);
                     syncState.failedPages.push(page);
                   }
                 } catch (retryErr: unknown) {
@@ -573,13 +594,13 @@ Deno.serve(async (req: Request) => {
               continue;
             }
 
-            // Update totalPages if server reports differently
+            // Update totalPages if server provides more info
             if (
               pageResult.totalPages > 0 &&
               pageResult.totalPages !== syncState.totalPages
             ) {
               console.log(
-                `[BULK-SYNC] Server updated totalPages: ${syncState.totalPages} -> ${pageResult.totalPages}`
+                `[BULK-SYNC] Updated totalPages: ${syncState.totalPages} -> ${pageResult.totalPages}`
               );
               syncState.totalPages = pageResult.totalPages;
               if (pageResult.totalRecords > 0) {
@@ -591,7 +612,7 @@ Deno.serve(async (req: Request) => {
 
             const documents = pageResult.records
               .map((raw) =>
-                mapDocument(raw, keyCode, despachoNameToOffice, vendorToUser, vendorToOficina)
+                mapDocument(raw, effectiveKeyCode, despachoNameToOffice, vendorToUser, vendorToOficina)
               )
               .filter((d) => d !== null);
 
@@ -603,6 +624,14 @@ Deno.serve(async (req: Request) => {
               console.log(
                 `[BULK-SYNC] Page ${page}/${syncState.totalPages}: ${pageResult.records.length} fetched, ${result.upserted} upserted (total: ${syncState.totalFetched})`
               );
+            }
+
+            // If we got fewer records than requested, we've reached the end
+            if (pageResult.records.length < ITEMS_PER_PAGE) {
+              console.log(`[BULK-SYNC] Page ${page} returned ${pageResult.records.length} < ${ITEMS_PER_PAGE}. Reached end of data.`);
+              syncState.currentPage = syncState.totalPages + 1;
+              pagesThisBatch++;
+              break;
             }
           } catch (e: unknown) {
             console.error(
@@ -636,7 +665,6 @@ Deno.serve(async (req: Request) => {
         percent = 0;
       }
 
-      // Only update if job is still running (respect cancellation)
       const { data: updateResult } = await supabase
         .from("sicas_sync_jobs")
         .update({
@@ -658,24 +686,23 @@ Deno.serve(async (req: Request) => {
       console.log(
         `[BULK-SYNC] Batch done: page ${Math.max(0, syncState.currentPage - 1)}/${syncState.totalPages}, ` +
           `${uniqueCount} unique docs in DB, ${percent}% complete, ` +
-          `${syncState.failedPages.length} pending retry, ${syncState.droppedPages.length} dropped, ${syncState.retriedPages} retried`
+          `${syncState.failedPages.length} pending retry, ${syncState.droppedPages.length} dropped`
       );
 
-      // Self-continuation: only if job is still running (update succeeded = not cancelled)
       const wasCancelled = !updateResult || updateResult.length === 0;
       if (!isComplete && !wasCancelled) {
         EdgeRuntime.waitUntil(
           sleep(2000).then(() => triggerSelfContinuation(jobId))
         );
-        console.log(`[BULK-SYNC] Self-continuation scheduled for job ${jobId}`);
       } else if (wasCancelled) {
-        console.log(`[BULK-SYNC] Job ${jobId} was cancelled externally, stopping continuation.`);
+        console.log(`[BULK-SYNC] Job ${jobId} was cancelled externally, stopping.`);
       }
 
       return jsonResponse(200, {
         ok: true,
         jobId,
         status: isComplete ? "completed" : "running",
+        transport: "soap",
         progress: {
           percent,
           currentPage: Math.max(0, syncState.currentPage - 1),

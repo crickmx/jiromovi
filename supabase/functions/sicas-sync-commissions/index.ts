@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { createSicasRestClientWithDbAuth } from '../_shared/sicasRestClient.ts';
+import { SicasSoapReportClient, FilterCondition } from '../_shared/sicasSoapReportClient.ts';
 import {
   getCursor,
   updateCursor,
@@ -25,8 +25,9 @@ interface SyncCommissionsRequest {
   fromDate?: string;
   toDate?: string;
   itemsPerPage?: number;
-  fieldsRequested?: string;
 }
+
+const ITEMS_PER_PAGE = 100;
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -46,28 +47,28 @@ Deno.serve(async (req: Request) => {
 
     const source = body.source || 'pendiente';
     const keyCode = body.keyCode || (source === 'pendiente' ? 'H03492_ALL' : 'H03797');
-    const itemsPerPage = body.itemsPerPage || 100;
+    const itemsPerPage = body.itemsPerPage || ITEMS_PER_PAGE;
 
-    const fieldsRequested = body.fieldsRequested || [
-      'IDDocto',
-      'VendNombre',
-      'Documento',
-      'Poliza',
-      'Importe',
-      'BaseComision',
-      'Comision',
-      'ISR',
-      'IVA',
-      'Retenciones',
-      'NetoPagar',
-      'FechaPago',
-      'FechaCorte',
-      'Periodo',
-    ].join(',');
-
-    console.log('[Sync Commissions] Iniciando sincronización...');
+    console.log('[Sync Commissions] Iniciando sincronizacion SOAP...');
     console.log('[Sync Commissions] Source:', source);
     console.log('[Sync Commissions] KeyCode:', keyCode);
+
+    // Get SOAP credentials from sicas_config
+    const { data: config, error: configError } = await supabase
+      .from('sicas_config')
+      .select('soap_endpoint, soap_username, soap_password')
+      .limit(1)
+      .maybeSingle();
+
+    if (configError || !config) {
+      throw new Error('No se encontro configuracion SICAS. Configure las credenciales SOAP en sicas_config.');
+    }
+
+    const soapClient = new SicasSoapReportClient({
+      endpoint: config.soap_endpoint || 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx',
+      username: config.soap_username,
+      password: config.soap_password,
+    });
 
     const cursor = await getCursor(supabase, 'commissions', keyCode);
     console.log('[Sync Commissions] Cursor actual:', cursor);
@@ -111,7 +112,23 @@ Deno.serve(async (req: Request) => {
 
     console.log('[Sync Commissions] Run ID:', runId);
 
-    const client = await createSicasRestClientWithDbAuth();
+    // Build date filter for SOAP
+    const dateField = source === 'pendiente' ? 'DatDocumentos.FCaptura' : 'DatDocumentos.FCaptura';
+    const fromFormatted = `${String(fromDate.getDate()).padStart(2, '0')}/${String(fromDate.getMonth() + 1).padStart(2, '0')}/${fromDate.getFullYear()} 00:00`;
+    const toFormatted = `${String(toDate.getDate()).padStart(2, '0')}/${String(toDate.getMonth() + 1).padStart(2, '0')}/${toDate.getFullYear()} 23:59`;
+
+    const filters: FilterCondition[] = [
+      {
+        name: 'Desde|Hasta|Captura',
+        type: 3,
+        subtype: 1,
+        values: [fromFormatted, toFormatted],
+        texts: [fromFormatted, toFormatted],
+        flag1: 0,
+        flag2: -1,
+        fieldDb: dateField,
+      },
+    ];
 
     let currentPage = 1;
     let totalFetched = 0;
@@ -120,45 +137,37 @@ Deno.serve(async (req: Request) => {
     let hasMorePages = true;
 
     while (hasMorePages) {
-      console.log(`[Sync Commissions] Procesando página ${currentPage}...`);
+      console.log(`[Sync Commissions] Procesando pagina ${currentPage}...`);
 
-      const dateField = source === 'pendiente' ? 'FechaCorte' : 'FechaPago';
-      const conditionsDirect = `${dateField} >= '${fromDateStr}' AND ${dateField} <= '${toDateStr}'`;
-
-      const response = await client.readReport({
+      const response = await soapClient.executeReport({
         keyCode,
-        pageRequested: currentPage,
-        itemsForPage: itemsPerPage,
-        fieldsRequested,
-        formatResponse: 2,
-        conditionsDirect,
-        sortFields: `${dateField} DESC`,
+        page: currentPage,
+        itemsPerPage,
+        sortField: 'DatDocumentos.FCaptura',
+        filters,
       });
 
-      if (!response.Sucess) {
-        throw new Error(`Error en SICAS: ${response.Error || 'Error desconocido'}`);
+      if (!response.success) {
+        throw new Error(`Error en SICAS SOAP: ${response.message || 'Error desconocido'}`);
       }
 
-      const tableInfo = response.Response?.[0]?.TableInfo || [];
-      const tableControl = response.Response?.[0]?.TableControl?.[0];
+      const records = response.records || [];
+      console.log(`[Sync Commissions] Registros en pagina: ${records.length}`);
 
-      console.log(`[Sync Commissions] Registros en página: ${tableInfo.length}`);
-      console.log(`[Sync Commissions] Control:`, tableControl);
-
-      if (tableInfo.length === 0) {
+      if (records.length === 0) {
         hasMorePages = false;
         break;
       }
 
-      totalFetched += tableInfo.length;
+      totalFetched += records.length;
 
-      for (const record of tableInfo) {
+      for (const record of records) {
         try {
           const vendNombre = record.VendNombre || record.vendnombre || '';
           const documentoPoliza = record.Documento || record.Poliza || record.documento || record.poliza || '';
 
           if (!vendNombre || !documentoPoliza) {
-            console.warn('[Sync Commissions] Registro sin VendNombre o Documento, omitiendo:', record);
+            console.warn('[Sync Commissions] Registro sin VendNombre o Documento, omitiendo');
             totalFailed++;
             continue;
           }
@@ -177,11 +186,11 @@ Deno.serve(async (req: Request) => {
           const commissionData = {
             source,
             period_key: periodKey,
-            vend_id: record.VendID || record.vendid,
+            vend_id: record.VendID || record.vendid || record.IDVend || '',
             vend_nombre: vendNombre,
             usuario_id,
             oficina_id,
-            id_docto: record.IDDocto || record.iddocto,
+            id_docto: record.IDDocto || record.iddocto || '',
             documento_poliza: documentoPoliza,
             importe: parseFloat(record.Importe || record.importe),
             base_comision: parseFloat(record.BaseComision || record.basecomision),
@@ -215,7 +224,8 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      if (!tableControl || currentPage >= tableControl.Pages) {
+      // End-of-data detection: if fewer records than page size, no more pages
+      if (records.length < itemsPerPage) {
         hasMorePages = false;
       } else {
         currentPage++;
@@ -252,7 +262,7 @@ Deno.serve(async (req: Request) => {
       last_run_id: runId,
     });
 
-    console.log('[Sync Commissions] ✅ Sincronización completada');
+    console.log('[Sync Commissions] Sincronizacion completada');
     console.log('[Sync Commissions] Total fetched:', totalFetched);
     console.log('[Sync Commissions] Total upserted:', totalUpserted);
     console.log('[Sync Commissions] Total failed:', totalFailed);
@@ -260,6 +270,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: true,
+        transport: 'soap',
         run_id: runId,
         summary: {
           source,
@@ -278,7 +289,7 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error) {
-    console.error('[Sync Commissions] ❌ Error:', error);
+    console.error('[Sync Commissions] Error:', error);
 
     if (runId) {
       const finishedAt = new Date();
@@ -301,8 +312,8 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: false,
+        transport: 'soap',
         error: (error as Error).message,
-        stack: (error as Error).stack,
         run_id: runId,
       }),
       {

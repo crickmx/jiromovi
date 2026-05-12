@@ -1,3 +1,15 @@
+/**
+ * SICAS REST Client
+ *
+ * IMPORTANT: REST API (security-services.sicasonline.info) returns HTTP 404.
+ * REST is NOT available for this SICAS license until confirmed by SICAS support.
+ * All production flows must use SOAP (ProcesarWS) instead.
+ *
+ * This client is preserved for future use if/when REST becomes available.
+ * All functions that import this will get a clear "REST disabled" error
+ * unless use_rest=true is set in sicas_config.
+ */
+
 const SICAS_REST_BASE = "https://security-services.sicasonline.info/api";
 const TOKEN_LIFETIME_MS = 3 * 60 * 1000; // 3 minutes
 
@@ -55,6 +67,13 @@ export class SicasRestClient {
 
     if (!response.ok) {
       const text = await response.text();
+      if (response.status === 404) {
+        throw new Error(
+          "REST API no disponible: el endpoint retorna 404. " +
+          "Esta licencia SICAS no tiene habilitado el acceso REST. " +
+          "Usa SOAP (ProcesarWS) en su lugar."
+        );
+      }
       throw new Error(`GetToken failed (HTTP ${response.status}): ${text.substring(0, 300)}`);
     }
 
@@ -64,7 +83,6 @@ export class SicasRestClient {
       throw new Error(`GetToken error: ${data.Error}`);
     }
 
-    // Token is in data.Response or data.Token or similar
     const token = data.Response || data.Token || data.token || "";
     if (!token) {
       throw new Error(`GetToken returned no token: ${JSON.stringify(data).substring(0, 300)}`);
@@ -106,7 +124,6 @@ export class SicasRestClient {
 
     if (!response.ok) {
       const text = await response.text();
-      // Check for specific known error patterns
       if (text.includes("no encontrado") || text.includes("not found")) {
         throw new Error(`Codigo de reporte no encontrado: ${params.keyCode}`);
       }
@@ -115,7 +132,6 @@ export class SicasRestClient {
 
     const data: SicasRestResponse = await response.json();
 
-    // Check for application-level errors in response
     if (data.Sucess === false && data.Error) {
       if (/no encontrado|not found|no existe/i.test(data.Error)) {
         throw new Error(`Codigo de reporte no encontrado: ${params.keyCode}`);
@@ -127,11 +143,17 @@ export class SicasRestClient {
   }
 }
 
+/**
+ * Creates a REST client and validates credentials.
+ *
+ * IMPORTANT: This will FAIL with a clear error message because the REST
+ * endpoint returns 404. Callers should check sicas_config.use_rest first
+ * and use SOAP (SicasSoapReportClient) instead.
+ */
 export async function createSicasRestClientWithDbAuth(
   options: SicasRestClientOptions
 ): Promise<SicasRestClient> {
   const client = new SicasRestClient(options);
-  // Validate credentials by getting initial token
   await client.getValidToken();
   return client;
 }

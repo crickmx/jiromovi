@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { createSicasRestClientWithDbAuth } from "../_shared/sicasRestClient.ts";
+import { SicasSoapReportClient } from "../_shared/sicasSoapReportClient.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,7 +18,6 @@ function jsonResponse(status: number, body: unknown): Response {
 
 const PAGES_PER_BATCH = 5;
 const ITEMS_PER_PAGE = 100;
-const TOKEN_RENEW_INTERVAL = 2;
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -59,11 +58,9 @@ Deno.serve(async (req: Request) => {
     let knownTotalPages: number | null = null;
 
     if (mode === "full") {
-      // Reset: start from page 1
       startPage = 1;
       console.log(`[SYNC] Modo FULL: reiniciando desde pagina 1`);
     } else {
-      // Continue from last cursor
       if (cursor && !cursor.is_complete && cursor.last_page) {
         startPage = cursor.last_page + 1;
         knownTotalPages = cursor.total_pages || null;
@@ -81,7 +78,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    console.log(`[SYNC] ========== BATCH SYNC ==========`);
+    console.log(`[SYNC] ========== BATCH SYNC (SOAP) ==========`);
     console.log(`[SYNC] Keycode: ${keycode}, StartPage: ${startPage}, PagesPerBatch: ${PAGES_PER_BATCH}`);
 
     // Create sync run
@@ -90,7 +87,7 @@ Deno.serve(async (req: Request) => {
       .insert({
         module: "documents",
         keycode,
-        report_name: `Batch sync pages ${startPage}-${startPage + PAGES_PER_BATCH - 1}`,
+        report_name: `Batch sync pages ${startPage}-${startPage + PAGES_PER_BATCH - 1} (SOAP)`,
         items_per_page: ITEMS_PER_PAGE,
         status: "running",
         started_at: new Date().toISOString(),
@@ -109,7 +106,22 @@ Deno.serve(async (req: Request) => {
     const { vendorToUser, vendorToOficina } = await loadVendorMaps(supabase);
     console.log(`[SYNC] Vendor mappings: ${vendorToUser.size} vendor->user, ${vendorToOficina.size} vendor->oficina`);
 
-    const client = await createSicasRestClientWithDbAuth();
+    // Get SICAS SOAP credentials
+    const { data: sicasConfig } = await supabase
+      .from("sicas_config")
+      .select("endpoint, username, password")
+      .limit(1)
+      .maybeSingle();
+
+    if (!sicasConfig?.endpoint || !sicasConfig?.username || !sicasConfig?.password) {
+      throw new Error("SICAS no configurado: faltan credenciales SOAP en sicas_config");
+    }
+
+    const soapClient = new SicasSoapReportClient({
+      endpoint: sicasConfig.endpoint,
+      username: sicasConfig.username,
+      password: sicasConfig.password,
+    });
 
     let totalPages = knownTotalPages || 1;
     let totalInSicas = 0;
@@ -121,26 +133,23 @@ Deno.serve(async (req: Request) => {
     const endPage = startPage + PAGES_PER_BATCH - 1;
 
     while (page <= endPage) {
-      // Don't go beyond totalPages once known
       if (totalPages > 0 && page > totalPages) break;
 
-      // Renew token every TOKEN_RENEW_INTERVAL pages
-      if ((page - startPage) > 0 && (page - startPage) % TOKEN_RENEW_INTERVAL === 0) {
-        try {
-          await client.getValidToken();
-        } catch (e) {
-          console.warn(`[SYNC] Token renewal warning: ${(e as Error).message}`);
-        }
-      }
-
-      let response;
+      let records: Record<string, unknown>[] = [];
       try {
-        response = await client.readReport({
+        const result = await soapClient.executeReport({
           keyCode: keycode,
-          pageRequested: page,
-          itemsForPage: ITEMS_PER_PAGE,
+          page,
+          itemsPerPage: ITEMS_PER_PAGE,
           sortFields: "Documento",
         });
+        records = result.records || [];
+
+        if (page === startPage && result.totalRecords) {
+          totalInSicas = result.totalRecords;
+          totalPages = Math.ceil(totalInSicas / ITEMS_PER_PAGE);
+          console.log(`[SYNC] SICAS SOAP reports: totalRecords=${totalInSicas}, estimatedPages=${totalPages}`);
+        }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error(`[SYNC] ERROR page ${page}: ${msg}`);
@@ -153,17 +162,6 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      // TableControl is now in Response[1] thanks to FIX 1
-      const records = response.Response?.[0]?.TableInfo || [];
-      const control = response.Response?.[1]?.TableControl?.[0]
-        || response.Response?.[0]?.TableControl?.[0];
-
-      if (page === startPage && control) {
-        totalInSicas = control.MaxRecords || 0;
-        totalPages = control.Pages || 1;
-        console.log(`[SYNC] SICAS reports: MaxRecords=${totalInSicas}, TotalPages=${totalPages}`);
-      }
-
       if (records.length === 0) {
         console.log(`[SYNC] Page ${page}: 0 records, end of data`);
         break;
@@ -171,10 +169,11 @@ Deno.serve(async (req: Request) => {
 
       totalFetched += records.length;
 
-      // Map and upsert this page's documents
-      const documents = records.map((raw: Record<string, unknown>) =>
-        mapDocument(raw, keycode, despachoNameToOffice, vendorToUser, vendorToOficina)
-      );
+      const documents = records
+        .map((raw: Record<string, unknown>) =>
+          mapDocument(raw, keycode, despachoNameToOffice, vendorToUser, vendorToOficina)
+        )
+        .filter(Boolean);
 
       const { upserted, errors } = await upsertDocuments(supabase, documents);
       totalUpserted += upserted;
@@ -183,15 +182,19 @@ Deno.serve(async (req: Request) => {
       lastPageProcessed = page;
       console.log(`[SYNC] Page ${page}/${totalPages}: ${records.length} fetched, ${upserted} upserted (total: ${totalFetched}/${totalInSicas})`);
 
+      // End-of-data detection
+      if (records.length < ITEMS_PER_PAGE) {
+        console.log(`[SYNC] Page ${page}: records (${records.length}) < ITEMS_PER_PAGE (${ITEMS_PER_PAGE}), marking complete`);
+        break;
+      }
+
       page++;
     }
 
-    // Determine if sync is complete
-    const isComplete = lastPageProcessed >= totalPages;
+    const isComplete = lastPageProcessed >= totalPages || (totalFetched > 0 && totalFetched < ITEMS_PER_PAGE);
     const previousSynced = (mode !== "full" && cursor?.total_synced) ? cursor.total_synced : 0;
     const accumulatedSynced = previousSynced + totalUpserted;
 
-    // Update cursor
     await supabase.from("sicas_sync_cursors").upsert(
       {
         module: "documents",
@@ -207,7 +210,6 @@ Deno.serve(async (req: Request) => {
       { onConflict: "module,keycode" }
     );
 
-    // Update sync run
     const durationMs = Date.now() - startTime;
     await supabase
       .from("sicas_sync_runs")
@@ -235,6 +237,7 @@ Deno.serve(async (req: Request) => {
       ok: true,
       isComplete,
       nextPage: isComplete ? null : lastPageProcessed + 1,
+      transport: "soap",
       progress: {
         currentPage: lastPageProcessed,
         totalPages,
@@ -271,10 +274,6 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-// ===== DespNombre-based office resolution =====
-// Documents don't have IDDesp — only DespNombre as text.
-// Strategy: sicas_catalogos (type 11) maps despacho name -> id_sicas,
-// then sicas_mapeo_despacho_oficina maps id_sicas -> movi_oficina_id.
 async function loadDespachoNameMap(
   supabase: ReturnType<typeof createClient>
 ): Promise<Map<string, { oficina_id: string; desp_id: string }>> {
@@ -301,7 +300,6 @@ async function loadDespachoNameMap(
   for (const cat of catalogs) {
     const oficinaId = despIdToOficina.get(String(cat.id_sicas));
     if (oficinaId) {
-      // Normalize: uppercase, trim
       const normalizedName = String(cat.nombre).toUpperCase().trim();
       map.set(normalizedName, { oficina_id: oficinaId, desp_id: String(cat.id_sicas) });
     }
@@ -340,7 +338,6 @@ async function loadVendorMaps(
     }
   }
 
-  // Also load user oficina for vendor-mapped users
   const userIds = [...new Set(vendorToUser.values())];
   if (userIds.length > 0) {
     const { data: usuarios } = await supabase
@@ -367,7 +364,7 @@ function mapDocument(
   despachoNameToOffice: Map<string, { oficina_id: string; desp_id: string }>,
   vendorToUser: Map<string, string>,
   vendorToOficina: Map<string, string>,
-): Record<string, unknown> {
+): Record<string, unknown> | null {
   const get = (keys: string[]): string => {
     for (const k of keys) {
       const val = raw[k] ?? raw[k?.toLowerCase()] ?? raw[k?.toUpperCase()];
@@ -383,12 +380,11 @@ function mapDocument(
   };
 
   const idDocto = get(["IDDocto", "IdDocto", "Id_Docto", "iddocto"]);
-  if (!idDocto) return null as any; // will be filtered
+  if (!idDocto) return null;
 
   const vendId = get(["IDVend", "VendId", "Vend_Id"]);
   const despNombre = get(["DespNombre", "Despacho"]);
 
-  // Resolve office via DespNombre -> catalog -> mapping
   let oficina_id: string | null = null;
   let desp_id: string | null = null;
   let oficina_nombre: string | null = null;
@@ -403,7 +399,6 @@ function mapDocument(
     }
   }
 
-  // Resolve user via vendor mapping
   let usuario_id: string | null = null;
   if (vendId && vendorToUser.has(vendId)) {
     usuario_id = vendorToUser.get(vendId)!;
@@ -481,6 +476,7 @@ function mapDocument(
     is_renewable: isRenewable,
     renewal_days_remaining: renewalDays,
     source_keycode: keycode,
+    source_api: "soap",
     raw_data: raw,
     raw_hash: JSON.stringify(raw),
     synced_at: new Date().toISOString(),
@@ -489,10 +485,9 @@ function mapDocument(
 
 async function upsertDocuments(
   supabase: ReturnType<typeof createClient>,
-  documents: Record<string, unknown>[],
+  documents: (Record<string, unknown> | null)[],
 ): Promise<{ upserted: number; errors: number }> {
-  // Filter out null entries (records without IDDocto)
-  const validDocs = documents.filter((d) => d !== null && d.id_docto);
+  const validDocs = documents.filter((d): d is Record<string, unknown> => d !== null && !!d.id_docto);
   if (validDocs.length === 0) return { upserted: 0, errors: 0 };
 
   let totalUpserted = 0;
@@ -514,7 +509,6 @@ async function upsertDocuments(
     }
   }
 
-  // Also upsert into sicas_polizas_vigentes for backward compat
   const polizasVigentes = validDocs.map((d) => ({
     id_documento: d.id_docto as string,
     no_poliza: d.poliza || null,
