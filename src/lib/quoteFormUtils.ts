@@ -98,6 +98,7 @@ export async function submitQuoteForm(id: string, userId: string): Promise<{ quo
   const prioridad = form.priority === 'urgente' ? 'Alta' : form.priority === 'alta' ? 'Alta' : form.priority === 'baja' ? 'Baja' : 'Media';
 
   // Create linked ticket
+  const agentId = form.agent_id || userId;
   const { data: ticket, error: ticketErr } = await supabase
     .from('tickets')
     .insert({
@@ -108,7 +109,8 @@ export async function submitQuoteForm(id: string, userId: string): Promise<{ quo
       instrucciones,
       creado_por: userId,
       modificado_por: userId,
-      agente_usuario_id: form.agent_id,
+      agente_id: agentId,
+      agente_usuario_id: agentId,
       assigned_to_user_id: userId,
       quote_form_id: id,
     })
