@@ -115,8 +115,9 @@ export default function QuoteFormStepAttachments({ formData, quoteFormId, update
       </div>
 
       {!quoteFormId && (
-        <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-700 dark:text-amber-300 text-sm">
-          <p>Guarda el formulario como borrador primero (haciendo clic en "Guardar borrador") para habilitar la carga de archivos.</p>
+        <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-600 dark:text-gray-300 text-sm">
+          <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+          <p>Preparando almacenamiento de archivos...</p>
         </div>
       )}
 

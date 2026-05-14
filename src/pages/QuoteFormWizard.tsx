@@ -39,7 +39,7 @@ export default function QuoteFormWizard() {
   const [template, setTemplate] = useState<QuoteFormTemplate | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<Record<string, any>>({});
-  const [quoteFormId, setQuoteFormId] = useState<string | null>(formId || null);
+  const [quoteFormId, setQuoteFormIdState] = useState<string | null>(formId || null);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -47,6 +47,12 @@ export default function QuoteFormWizard() {
   const [submitResult, setSubmitResult] = useState<{ ok: boolean; folio?: string; ticketId?: string } | null>(null);
 
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const quoteFormIdRef = useRef<string | null>(formId || null);
+
+  const setQuoteFormId = (id: string | null) => {
+    quoteFormIdRef.current = id;
+    setQuoteFormIdState(id);
+  };
 
   // Load template and existing form
   useEffect(() => {
@@ -112,17 +118,17 @@ export default function QuoteFormWizard() {
   };
 
   const saveAsDraft = async (): Promise<string | null> => {
-    if (!user || !template) return quoteFormId;
+    if (!user || !template) return quoteFormIdRef.current;
     setSaving(true);
     try {
       const payload = buildPayload();
-      if (quoteFormId) {
+      const currentId = quoteFormIdRef.current;
+      if (currentId) {
         try {
-          await updateQuoteForm(quoteFormId, payload);
+          await updateQuoteForm(currentId, payload);
           setLastSaved(new Date());
-          return quoteFormId;
+          return currentId;
         } catch {
-          // Form no longer exists - create a new one
           setQuoteFormId(null);
         }
       }
