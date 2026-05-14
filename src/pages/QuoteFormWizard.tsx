@@ -137,7 +137,8 @@ export default function QuoteFormWizard() {
           setLastSaved(new Date());
           return currentId;
         } catch {
-          setQuoteFormId(null);
+          // Update failed (RLS or form no longer exists) - keep current ID
+          return currentId;
         }
       }
       const created = await createQuoteForm({
@@ -150,7 +151,7 @@ export default function QuoteFormWizard() {
       await addQuoteFormHistory(created.id, user.id, 'borrador_creado', 'Formulario creado como borrador');
       setLastSaved(new Date());
       return created.id;
-    } catch { return null; }
+    } catch { return quoteFormIdRef.current; }
     finally { setSaving(false); }
   };
 
