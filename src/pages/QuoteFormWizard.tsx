@@ -62,6 +62,14 @@ export default function QuoteFormWizard() {
       if (formId) {
         const existing = await fetchQuoteFormById(formId);
         if (existing) {
+          if (existing.status === 'enviado' || existing.status === 'cotizado' || existing.status === 'cerrado') {
+            if (existing.ticket_id) {
+              navigate(`/tramites/${existing.ticket_id}`, { replace: true });
+            } else {
+              navigate('/tramites/formularios', { replace: true });
+            }
+            return;
+          }
           setQuoteFormId(existing.id);
           setFormData({
             client_name: existing.client_name || '',
