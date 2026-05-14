@@ -167,9 +167,6 @@ export default function QuoteFormWizard() {
 
     if (stepId === 'client') {
       if (!formData.client_name?.trim()) newErrors.client_name = 'Nombre del cliente es obligatorio';
-      if (!formData.client_phone?.trim() && !formData.client_email?.trim() && !formData.client_whatsapp?.trim()) {
-        newErrors.client_contact = 'Se requiere al menos un medio de contacto (telefono, email o WhatsApp)';
-      }
     }
 
     if (stepId === 'risk' && template?.requires_risk_location) {

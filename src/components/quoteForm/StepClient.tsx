@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, Phone, Mail, MessageCircle, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { User, Phone, Mail, MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { CLIENT_TYPE_OPTIONS } from '../../lib/quoteFormTypes';
 
 interface Props {
@@ -34,13 +34,11 @@ export default function QuoteFormStepClient({ formData, errors, updateField }: P
         {errors.client_name && <p className="mt-1 text-xs text-red-600">{errors.client_name}</p>}
       </div>
 
-      {/* Contact Methods - At least one required */}
+      {/* Contact Methods */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-          Medios de contacto <span className="text-red-500">*</span>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+          Medios de contacto <span className="text-gray-400 text-xs font-normal">opcional</span>
         </label>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Se requiere al menos uno: telefono, correo o WhatsApp.</p>
-        {errors.client_contact && <p className="mb-2 text-xs text-red-600 flex items-center gap-1"><Info className="w-3.5 h-3.5" />{errors.client_contact}</p>}
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="relative">
