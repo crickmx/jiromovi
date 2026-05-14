@@ -155,7 +155,7 @@ Deno.serve(async (req: Request) => {
     const soapEndpoint = sicasConfig?.endpoint || "https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx";
     const wsUsername = Deno.env.get("SICAS_USERNAME") || sicasConfig?.sicas_usuario || "";
     const wsPassword = Deno.env.get("SICAS_PASSWORD") || sicasConfig?.sicas_password || "";
-    const sicasUser = Deno.env.get("SICAS_USUARIO") || "";
+    const sicasUser = Deno.env.get("SICAS_USUARIO") || sicasConfig?.sicas_usuario || "";
     const sicasUserPassword = sicasConfig?.sicas_password || Deno.env.get("SICAS_PASSWORD") || "";
 
     if (!wsUsername || !wsPassword) {
@@ -793,6 +793,7 @@ Deno.serve(async (req: Request) => {
       const codesToTest = body.testAll !== false ? reportCodesToTry : [body.keyCode || keyCode];
 
       console.log(`[BULK-SYNC] DIAGNOSTIC: Testing ${codesToTest.length} keyCodes with ${testItems} items, multiple variants...`);
+      console.log(`[BULK-SYNC] DIAGNOSTIC CREDS: wsUsername=${wsUsername ? wsUsername.substring(0, 4) + "***" : "(empty)"}, sicasUser=${sicasUser ? sicasUser.substring(0, 4) + "***" : "(empty)"}, codeAuth=${(Deno.env.get("SICAS_CODE_AUTH") || sicasConfig?.code_auth || "").length > 0 ? "present" : "empty"}, endpoint=${soapEndpoint}`);
 
       interface DiagVariant {
         variant: string;
@@ -836,6 +837,11 @@ Deno.serve(async (req: Request) => {
       // ConditionsAdd for FEmision range
       const condFEmision = `Desde|Hasta|Emision;3;1;${dateFrom}|${dateTo};${dateFromText}|${dateToText};0;-1;DatDocumentos.FEmision`;
 
+      // Determine CredentialsUserSICAS for diagnostic
+      const diagSicasUser = sicasUser || sicasConfig?.sicas_usuario || "";
+      const diagSicasUserPassword = sicasUserPassword || sicasConfig?.sicas_password || "";
+      const codeAuth = Deno.env.get("SICAS_CODE_AUTH") || sicasConfig?.code_auth || "";
+
       for (const code of codesToTest) {
         const variants: DiagVariant[] = [];
 
@@ -845,16 +851,26 @@ Deno.serve(async (req: Request) => {
           { variant: "B_fcaptura_xml", description: "FCaptura 365 dias (XML)", conditionsAdd: condFCaptura, typeFormat: "XML" },
           { variant: "C_fdesde_xml", description: "FDesde 365 dias (XML)", conditionsAdd: condFDesde, typeFormat: "XML" },
           { variant: "D_no_conditions_json", description: "Sin ConditionsAdd (JSON)", conditionsAdd: "", typeFormat: "JSON" },
+          { variant: "E_codeauth_xml", description: "CodeAuth como CredUserSICAS (XML)", conditionsAdd: "", typeFormat: "XML" },
+          { variant: "F_no_credsicas_xml", description: "Sin CredentialsUserSICAS (XML)", conditionsAdd: "", typeFormat: "XML" },
         ];
 
         for (const tv of testVariants) {
           const startMs = Date.now();
           try {
             // Build SOAP envelope manually for full control
-            const encodedPassword = wsPassword.replace(/ /g, "%20");
-            const credentialsUserSicasXml = sicasUser
-              ? `<tem:CredentialsUserSICAS><tem:UserName>${sicasUser}</tem:UserName><tem:Password>${encodedPassword}</tem:Password></tem:CredentialsUserSICAS>`
-              : "";
+            const encodedWsPassword = wsPassword.replace(/ /g, "%20");
+            const encodedSicasUserPassword = diagSicasUserPassword.replace(/ /g, "%20");
+
+            // Build CredentialsUserSICAS based on variant
+            let credentialsUserSicasXml = "";
+            if (tv.variant === "F_no_credsicas_xml") {
+              // Intentionally omit CredentialsUserSICAS
+            } else if (tv.variant === "E_codeauth_xml" && codeAuth) {
+              credentialsUserSicasXml = `<tem:CredentialsUserSICAS><tem:UserName>${codeAuth}</tem:UserName><tem:Password>${encodedSicasUserPassword}</tem:Password></tem:CredentialsUserSICAS>`;
+            } else if (diagSicasUser) {
+              credentialsUserSicasXml = `<tem:CredentialsUserSICAS><tem:UserName>${diagSicasUser}</tem:UserName><tem:Password>${encodedSicasUserPassword}</tem:Password></tem:CredentialsUserSICAS>`;
+            }
             const condXml = tv.conditionsAdd ? `<tem:ConditionsAdd>${tv.conditionsAdd}</tem:ConditionsAdd>` : "";
 
             const soapBody = `<?xml version="1.0" encoding="utf-8"?>
@@ -865,7 +881,7 @@ Deno.serve(async (req: Request) => {
       <tem:oDataWS>
         <tem:Credentials>
           <tem:UserName>${wsUsername}</tem:UserName>
-          <tem:Password>${encodedPassword}</tem:Password>
+          <tem:Password>${encodedWsPassword}</tem:Password>
         </tem:Credentials>
         ${credentialsUserSicasXml}
         <tem:TypeFormat>${tv.typeFormat}</tem:TypeFormat>
