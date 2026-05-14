@@ -423,6 +423,3 @@ export default function QuoteFormWizard() {
     </div>
   );
 }
-
-
-export default QuoteFormWizard
