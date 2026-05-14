@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, XCircle, RefreshCw, Save, ChevronDown, AlertCircle } from 'lucide-react';
+import { ArrowLeft, XCircle, RefreshCw, Save, ChevronDown, AlertCircle, FileText } from 'lucide-react';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
 import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
@@ -39,6 +39,8 @@ interface TramiteData {
   creado_por_usuario: Usuario | null;
   modificado_por_usuario: Usuario | null;
   cerrado_por_usuario: Usuario | null;
+  // Campos de Formulario de Cotizacion
+  quote_form_id?: string | null;
   // Campos de Registro de Actividades
   activity_subtype_id?: string;
   agente_usuario_id?: string;
@@ -251,6 +253,7 @@ export function TramiteDetalle() {
     renovaciones: 'general',
     cobranza: 'general',
     otros_comercial: 'general',
+    formulario_cotizacion: 'general',
   };
 
   const loadEstatus = async (tipoTramite?: string) => {
@@ -527,6 +530,18 @@ export function TramiteDetalle() {
             )}
           </div>
         </div>
+
+        {tramite.tipo_tramite === 'formulario_cotizacion' && tramite.quote_form_id && (
+          <div className="mt-4">
+            <button
+              onClick={() => navigate(`/tramites/formularios/${tramite.quote_form_id}`)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-sm font-medium hover:bg-blue-100 transition-colors"
+            >
+              <FileText className="w-4 h-4" />
+              Ver formulario de cotizacion
+            </button>
+          </div>
+        )}
 
         {isCommercialViewerOnly && (
           <div className="mt-4 flex items-center gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
