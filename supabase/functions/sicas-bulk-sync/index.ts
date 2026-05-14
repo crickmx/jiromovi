@@ -358,17 +358,37 @@ Deno.serve(async (req: Request) => {
 
       // Discovery phase: totalPages === 0 means we need to fetch page 1
       if (syncState.totalPages === 0) {
-        console.log("[BULK-SYNC] Discovery phase: fetching page 1 via SOAP ProcesarWS...");
+        // Track discovery attempts to prevent infinite loops
+        const discoveryAttempts = ((syncState as any).discoveryAttempts || 0) + 1;
+        (syncState as any).discoveryAttempts = discoveryAttempts;
+
+        // Persist attempt counter immediately so it survives edge function timeouts
+        await supabase.from("sicas_sync_jobs").update({
+          error_message: JSON.stringify(syncState),
+          updated_at: new Date().toISOString(),
+        }).eq("id", jobId);
+
+        if (discoveryAttempts > 5) {
+          await supabase.from("sicas_sync_jobs").update({
+            status: "failed",
+            error_message: "SICAS no responde despues de multiples intentos. El servidor SOAP puede estar fuera de linea o lento. Intenta mas tarde.",
+            finished_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }).eq("id", jobId);
+          return jsonResponse(200, { ok: false, status: "failed", error: "SICAS no responde despues de multiples intentos." });
+        }
+
+        console.log(`[BULK-SYNC] Discovery phase (attempt ${discoveryAttempts}/5): fetching page 1 via SOAP ProcesarWS...`);
         let firstPageResult: { records: Record<string, unknown>[]; totalPages: number; totalRecords: number; currentPage: number } | null = null;
         let usedKeyCode = effectiveKeyCode;
 
-        // Try primary keycode, then fallbacks
+        // Try primary keycode, then fallbacks (limit to 1 code per invocation to stay within edge function time limit)
         const codesToAttempt = [effectiveKeyCode, ...reportCodesToTry.filter(c => c !== effectiveKeyCode)];
         let lastError = "";
 
         for (const tryCode of codesToAttempt) {
           let succeeded = false;
-          for (let attempt = 1; attempt <= MAX_RETRIES_PER_PAGE; attempt++) {
+          for (let attempt = 1; attempt <= 1; attempt++) {
             try {
               const result = await fetchSoapPage(soapClient, tryCode, 1, ITEMS_PER_PAGE, syncState.incrementalSince);
               if (result.records.length > 0 || result.totalRecords > 0) {
@@ -384,7 +404,7 @@ Deno.serve(async (req: Request) => {
               lastError = errMsg;
               console.error(`[BULK-SYNC] Page 1 with code "${tryCode}" attempt ${attempt}/${MAX_RETRIES_PER_PAGE} failed: ${errMsg}`);
 
-              const isNonRetryable = /no encontrado|not found|no existe|no habilitado|not enabled|invalid.*report|credenciales|unauthorized|forbidden|denegad/i.test(errMsg);
+              const isNonRetryable = /no encontrado|not found|no existe|no habilitado|not enabled|invalid.*report|credenciales|unauthorized|forbidden|denegad|timeout|SICAS no respondio/i.test(errMsg);
               if (isNonRetryable) {
                 console.warn(`[BULK-SYNC] Non-retryable error for code "${tryCode}". Trying next code...`);
                 if (sicasConfig?.id) {
