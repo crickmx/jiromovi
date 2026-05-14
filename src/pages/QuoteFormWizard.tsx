@@ -111,13 +111,15 @@ export default function QuoteFormWizard() {
     autoSaveTimer.current = setTimeout(() => saveAsDraft(), 5000);
   };
 
-  const saveAsDraft = async () => {
-    if (!user || !template) return;
+  const saveAsDraft = async (): Promise<string | null> => {
+    if (!user || !template) return quoteFormId;
     setSaving(true);
     try {
       const payload = buildPayload();
       if (quoteFormId) {
         await updateQuoteForm(quoteFormId, payload);
+        setLastSaved(new Date());
+        return quoteFormId;
       } else {
         const created = await createQuoteForm({
           ...payload,
@@ -127,9 +129,10 @@ export default function QuoteFormWizard() {
         });
         setQuoteFormId(created.id);
         await addQuoteFormHistory(created.id, user.id, 'borrador_creado', 'Formulario creado como borrador');
+        setLastSaved(new Date());
+        return created.id;
       }
-      setLastSaved(new Date());
-    } catch { /* silent autosave */ }
+    } catch { return quoteFormId; }
     finally { setSaving(false); }
   };
 
@@ -200,12 +203,10 @@ export default function QuoteFormWizard() {
 
     setSubmitting(true);
     try {
-      // Ensure draft is saved first (creates quoteFormId if needed)
-      await saveAsDraft();
-      const finalId = quoteFormId;
-      if (!finalId) throw new Error('No se pudo guardar el formulario');
+      const savedId = await saveAsDraft();
+      if (!savedId) throw new Error('No se pudo guardar el formulario');
 
-      const { quoteForm, ticketId } = await submitQuoteForm(finalId, user.id);
+      const { quoteForm, ticketId } = await submitQuoteForm(savedId, user.id);
       setSubmitResult({ ok: true, folio: quoteForm.folio, ticketId: ticketId || undefined });
     } catch (err: any) {
       console.error('Error submitting quote form:', err);
@@ -367,6 +368,12 @@ export default function QuoteFormWizard() {
           <div>
             {Object.values(errors).map((err, i) => <p key={i}>{err}</p>)}
           </div>
+        </div>
+      )}
+
+      {errors.submit && (
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-300">
+          {errors.submit}
         </div>
       )}
 
