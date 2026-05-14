@@ -117,22 +117,26 @@ export default function QuoteFormWizard() {
     try {
       const payload = buildPayload();
       if (quoteFormId) {
-        await updateQuoteForm(quoteFormId, payload);
-        setLastSaved(new Date());
-        return quoteFormId;
-      } else {
-        const created = await createQuoteForm({
-          ...payload,
-          created_by: user.id,
-          agent_id: user.id,
-          office_id: (user as any).oficina_id || null,
-        });
-        setQuoteFormId(created.id);
-        await addQuoteFormHistory(created.id, user.id, 'borrador_creado', 'Formulario creado como borrador');
-        setLastSaved(new Date());
-        return created.id;
+        try {
+          await updateQuoteForm(quoteFormId, payload);
+          setLastSaved(new Date());
+          return quoteFormId;
+        } catch {
+          // Form no longer exists - create a new one
+          setQuoteFormId(null);
+        }
       }
-    } catch { return quoteFormId; }
+      const created = await createQuoteForm({
+        ...payload,
+        created_by: user.id,
+        agent_id: user.id,
+        office_id: (user as any).oficina_id || null,
+      });
+      setQuoteFormId(created.id);
+      await addQuoteFormHistory(created.id, user.id, 'borrador_creado', 'Formulario creado como borrador');
+      setLastSaved(new Date());
+      return created.id;
+    } catch { return null; }
     finally { setSaving(false); }
   };
 
@@ -419,3 +423,6 @@ export default function QuoteFormWizard() {
     </div>
   );
 }
+
+
+export default QuoteFormWizard

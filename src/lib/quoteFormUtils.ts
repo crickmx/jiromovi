@@ -65,8 +65,9 @@ export async function updateQuoteForm(id: string, updates: Partial<QuoteForm>): 
     .update(updates)
     .eq('id', id)
     .select()
-    .single();
+    .maybeSingle();
   if (error) throw error;
+  if (!data) throw new Error('Formulario no encontrado. Es posible que haya sido eliminado.');
   return data;
 }
 
