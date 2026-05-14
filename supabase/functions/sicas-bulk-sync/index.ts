@@ -116,9 +116,29 @@ Deno.serve(async (req: Request) => {
     // Read config
     const { data: sicasConfig } = await supabase
       .from("sicas_config")
-      .select("id, endpoint, sicas_usuario, sicas_password, code_auth, use_rest, current_report_code, last_successful_report, alternate_report_codes, report_test_history")
+      .select("id, endpoint, sicas_usuario, sicas_password, code_auth, use_rest, current_report_code, last_successful_report, alternate_report_codes, report_test_history, local_first_mode, auto_sync_enabled, soap_diagnostic_enabled")
       .limit(1)
       .maybeSingle();
+
+    // LOCAL_FIRST_SAFE_MODE: block massive sync unless explicitly allowed
+    if (sicasConfig?.local_first_mode && action === "start") {
+      const hasValidatedReport = !!sicasConfig.current_report_code || !!sicasConfig.report_test_history?.recommended_code;
+      if (!hasValidatedReport) {
+        return jsonResponse(403, {
+          ok: false,
+          error: "Modo Local First activo. La sincronizacion masiva esta deshabilitada hasta que un KeyCode SOAP sea validado via diagnostico.",
+          local_first_mode: true,
+        });
+      }
+    }
+
+    // Block diagnostic if explicitly disabled
+    if (action === "diagnostic" && sicasConfig?.soap_diagnostic_enabled === false) {
+      return jsonResponse(403, {
+        ok: false,
+        error: "El diagnostico SOAP esta deshabilitado en la configuracion.",
+      });
+    }
 
     // Check circuit breaker before proceeding
     const { data: cbData } = await supabase.rpc('check_sicas_circuit_breaker');
@@ -769,54 +789,298 @@ Deno.serve(async (req: Request) => {
 
     // ── ACTION: diagnostic ──────────────────────────────────────────────
     if (action === "diagnostic") {
-      const testKeyCode = body.keyCode || keyCode;
-      const testItems = Math.min(body.items || 5, 10);
+      const testItems = Math.min(body.items || 3, 5);
+      const codesToTest = body.testAll !== false ? reportCodesToTry : [body.keyCode || keyCode];
 
-      console.log(`[BULK-SYNC] DIAGNOSTIC: Testing keyCode "${testKeyCode}" with ${testItems} items...`);
+      console.log(`[BULK-SYNC] DIAGNOSTIC: Testing ${codesToTest.length} keyCodes with ${testItems} items, multiple variants...`);
 
-      const results: { code: string; success: boolean; records: number; totalRecords: number; error?: string; sampleFields?: string[] }[] = [];
-      const codesToTest = body.testAll ? reportCodesToTry : [testKeyCode];
+      interface DiagVariant {
+        variant: string;
+        description: string;
+        conditionsAdd: string;
+        typeFormat: "XML" | "JSON";
+        records: number;
+        totalRecords: number;
+        responseLength: number;
+        durationMs: number;
+        parseStatus: "parsed" | "no_data" | "parse_failed" | "soap_error";
+        error?: string;
+        sampleFields?: string[];
+        responsePreview?: string;
+        responseTxt?: string;
+        responseNbr?: string;
+      }
+
+      interface DiagResult {
+        code: string;
+        variants: DiagVariant[];
+        bestVariant: string | null;
+        hasData: boolean;
+      }
+
+      const results: DiagResult[] = [];
+
+      // Build date range for last 365 days
+      const now = new Date();
+      const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+      const formatDDMMYYYY = (d: Date) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+      const dateFrom = `${formatDDMMYYYY(oneYearAgo)} 00:00`;
+      const dateTo = `${formatDDMMYYYY(now)} 23:59:59`;
+      const dateFromText = formatDDMMYYYY(oneYearAgo);
+      const dateToText = formatDDMMYYYY(now);
+
+      // ConditionsAdd for FCaptura range
+      const condFCaptura = `Desde|Hasta|Captura;3;1;${dateFrom}|${dateTo};${dateFromText}|${dateToText};0;-1;DatDocumentos.FCaptura`;
+      // ConditionsAdd for FDesde range
+      const condFDesde = `Desde|Hasta|Desde;3;1;${dateFrom}|${dateTo};${dateFromText}|${dateToText};0;-1;DatDocumentos.FDesde`;
+      // ConditionsAdd for FEmision range
+      const condFEmision = `Desde|Hasta|Emision;3;1;${dateFrom}|${dateTo};${dateFromText}|${dateToText};0;-1;DatDocumentos.FEmision`;
 
       for (const code of codesToTest) {
-        try {
-          const result = await fetchSoapPage(soapClient, code, 1, testItems);
-          results.push({
-            code,
-            success: result.records.length > 0 || result.totalRecords > 0,
-            records: result.records.length,
-            totalRecords: result.totalRecords,
-            sampleFields: result.records.length > 0 ? Object.keys(result.records[0]) : [],
-          });
-          console.log(`[BULK-SYNC] DIAGNOSTIC: "${code}" -> ${result.records.length} records, ${result.totalRecords} total`);
-        } catch (e: unknown) {
-          const errMsg = (e as Error).message || "Unknown error";
-          results.push({ code, success: false, records: 0, totalRecords: 0, error: errMsg });
-          console.log(`[BULK-SYNC] DIAGNOSTIC: "${code}" -> ERROR: ${errMsg}`);
+        const variants: DiagVariant[] = [];
+
+        // Define test variants for this keycode
+        const testVariants: { variant: string; description: string; conditionsAdd: string; typeFormat: "XML" | "JSON" }[] = [
+          { variant: "A_no_conditions_xml", description: "Sin ConditionsAdd (XML)", conditionsAdd: "", typeFormat: "XML" },
+          { variant: "B_fcaptura_xml", description: "FCaptura 365 dias (XML)", conditionsAdd: condFCaptura, typeFormat: "XML" },
+          { variant: "C_fdesde_xml", description: "FDesde 365 dias (XML)", conditionsAdd: condFDesde, typeFormat: "XML" },
+          { variant: "D_no_conditions_json", description: "Sin ConditionsAdd (JSON)", conditionsAdd: "", typeFormat: "JSON" },
+        ];
+
+        for (const tv of testVariants) {
+          const startMs = Date.now();
+          try {
+            // Build SOAP envelope manually for full control
+            const encodedPassword = wsPassword.replace(/ /g, "%20");
+            const credentialsUserSicasXml = sicasUser
+              ? `<tem:CredentialsUserSICAS><tem:UserName>${sicasUser}</tem:UserName><tem:Password>${encodedPassword}</tem:Password></tem:CredentialsUserSICAS>`
+              : "";
+            const condXml = tv.conditionsAdd ? `<tem:ConditionsAdd>${tv.conditionsAdd}</tem:ConditionsAdd>` : "";
+
+            const soapBody = `<?xml version="1.0" encoding="utf-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <tem:ProcesarWS>
+      <tem:oDataWS>
+        <tem:Credentials>
+          <tem:UserName>${wsUsername}</tem:UserName>
+          <tem:Password>${encodedPassword}</tem:Password>
+        </tem:Credentials>
+        ${credentialsUserSicasXml}
+        <tem:TypeFormat>${tv.typeFormat}</tem:TypeFormat>
+        <tem:KeyProcess>REPORT</tem:KeyProcess>
+        <tem:KeyCode>${code}</tem:KeyCode>
+        <tem:Page>1</tem:Page>
+        <tem:ItemForPage>${testItems}</tem:ItemForPage>
+        ${condXml}
+      </tem:oDataWS>
+    </tem:ProcesarWS>
+  </soapenv:Body>
+</soapenv:Envelope>`;
+
+            const response = await fetch(soapEndpoint, {
+              method: "POST",
+              headers: {
+                "Content-Type": "text/xml; charset=utf-8",
+                "SOAPAction": "http://tempuri.org/ProcesarWS",
+              },
+              body: soapBody,
+            });
+
+            const durationMs = Date.now() - startMs;
+
+            if (!response.ok) {
+              variants.push({
+                ...tv,
+                records: 0,
+                totalRecords: 0,
+                responseLength: 0,
+                durationMs,
+                parseStatus: "soap_error",
+                error: `HTTP ${response.status} ${response.statusText}`,
+              });
+              continue;
+            }
+
+            const responseText = await response.text();
+            const responseLength = responseText.length;
+
+            // Decode XML entities
+            const decoded = responseText
+              .replace(/&lt;/g, "<")
+              .replace(/&gt;/g, ">")
+              .replace(/&amp;/g, "&")
+              .replace(/&quot;/g, '"')
+              .replace(/&apos;/g, "'");
+
+            // Extract RESPONSENBR and RESPONSETXT
+            const responseTxt = decoded.match(/<RESPONSETXT>([\s\S]*?)<\/RESPONSETXT>/i)?.[1]?.trim() || "";
+            const responseNbr = decoded.match(/<RESPONSENBR>([\s\S]*?)<\/RESPONSENBR>/i)?.[1]?.trim() || "";
+            const message = decoded.match(/<MESSAGE>([\s\S]*?)<\/MESSAGE>/i)?.[1]?.trim() || "";
+
+            // Check for errors in MESSAGE
+            const hasError = message && /error|denied|denegad|variable de objeto|no se puede|failed|no encontrado|not found|no existe|no habilitado/i.test(message);
+
+            if (hasError) {
+              variants.push({
+                ...tv,
+                records: 0,
+                totalRecords: 0,
+                responseLength,
+                durationMs,
+                parseStatus: "soap_error",
+                error: message,
+                responseTxt,
+                responseNbr,
+                responsePreview: decoded.substring(0, 300),
+              });
+              continue;
+            }
+
+            // Try to detect rows using multiple patterns
+            let rowsDetected = 0;
+            let sampleFields: string[] = [];
+
+            // Pattern 1: DATAINFO/RECORD
+            const recordMatches = decoded.match(/<RECORD>/gi);
+            if (recordMatches) rowsDetected = recordMatches.length;
+
+            // Pattern 2: NewDataSet/Table
+            if (rowsDetected === 0) {
+              const tableMatches = decoded.match(/<Table[^>]*>/gi);
+              if (tableMatches) rowsDetected = tableMatches.length;
+            }
+
+            // Pattern 3: DatDocumentos
+            if (rowsDetected === 0) {
+              const datDocMatches = decoded.match(/<DatDocumentos[^>]*>/gi);
+              if (datDocMatches) rowsDetected = datDocMatches.length;
+            }
+
+            // Pattern 4: Any repeated element with document fields
+            if (rowsDetected === 0) {
+              const docFieldPatterns = ["IDDocto", "Documento", "Poliza", "IDCli", "IDVend", "FDesde", "PrimaNeta", "NombreCompleto"];
+              for (const field of docFieldPatterns) {
+                const fieldMatches = decoded.match(new RegExp(`<${field}>`, "gi"));
+                if (fieldMatches && fieldMatches.length > 0) {
+                  rowsDetected = fieldMatches.length;
+                  break;
+                }
+              }
+            }
+
+            // Extract sample fields from first record
+            if (rowsDetected > 0) {
+              const firstRecordMatch = decoded.match(/<RECORD>([\s\S]*?)<\/RECORD>/i)
+                || decoded.match(/<Table[^>]*>([\s\S]*?)<\/Table>/i)
+                || decoded.match(/<DatDocumentos[^>]*>([\s\S]*?)<\/DatDocumentos>/i);
+              if (firstRecordMatch) {
+                const fieldTagMatches = firstRecordMatch[1].matchAll(/<([A-Za-z_][A-Za-z0-9_]*)>[^<]*<\/\1>/g);
+                sampleFields = [...fieldTagMatches].map(m => m[1]).slice(0, 20);
+              }
+            }
+
+            // Determine parse status
+            let parseStatus: DiagVariant["parseStatus"] = "no_data";
+            if (rowsDetected > 0) {
+              parseStatus = "parsed";
+            } else if (responseLength > 500 && responseTxt.toUpperCase() === "SUCESS") {
+              parseStatus = "parse_failed";
+            }
+
+            variants.push({
+              ...tv,
+              records: rowsDetected,
+              totalRecords: rowsDetected,
+              responseLength,
+              durationMs,
+              parseStatus,
+              sampleFields: sampleFields.length > 0 ? sampleFields : undefined,
+              responseTxt,
+              responseNbr,
+              responsePreview: decoded.substring(0, 300),
+              error: parseStatus === "parse_failed" ? "Respuesta recibida pero no parseada como documentos" : undefined,
+            });
+          } catch (e: unknown) {
+            const durationMs = Date.now() - startMs;
+            variants.push({
+              ...tv,
+              records: 0,
+              totalRecords: 0,
+              responseLength: 0,
+              durationMs,
+              parseStatus: "soap_error",
+              error: (e as Error).message || "Unknown error",
+            });
+          }
+
+          // Small delay between variants to not overwhelm SICAS
+          await sleep(800);
         }
+
+        const bestVariant = variants.find(v => v.parseStatus === "parsed");
+        results.push({
+          code,
+          variants,
+          bestVariant: bestVariant?.variant || null,
+          hasData: variants.some(v => v.parseStatus === "parsed"),
+        });
+
+        // Delay between keycodes
+        await sleep(1000);
       }
+
+      // Determine recommendation
+      const validResult = results.find(r => r.hasData);
+      const recommendedKeyCode = validResult?.code || null;
+      const recommendedVariant = validResult?.bestVariant || null;
+      const recommendedFormat = validResult?.variants.find(v => v.variant === validResult.bestVariant)?.typeFormat || null;
 
       // Log diagnostic run in sync_jobs for history
       await supabase.from("sicas_sync_jobs").insert({
         mode: "diagnostic",
-        status: results.some(r => r.success) ? "completed" : "empty",
+        status: results.some(r => r.hasData) ? "completed" : "empty",
         triggered_by: body.triggeredBy || null,
-        keycode: `${testKeyCode}_DIAGNOSTIC`,
+        keycode: `DIAGNOSTIC_${codesToTest.length}_CODES`,
         started_at: new Date().toISOString(),
         finished_at: new Date().toISOString(),
         total_pages: 0,
         current_page: 0,
         total_synced: 0,
-        total_in_sicas: results.reduce((sum, r) => sum + r.totalRecords, 0),
-        total_errors: results.filter(r => !r.success).length,
+        total_in_sicas: results.reduce((sum, r) => r.variants.reduce((s, v) => s + v.totalRecords, 0) + sum, 0),
+        total_errors: results.filter(r => !r.hasData).length,
         percent: 100,
-        error_message: JSON.stringify({ diagnostic: true, results }),
+        error_message: JSON.stringify({ diagnostic: true, codesToTest, recommendedKeyCode, recommendedVariant }),
       });
+
+      // Update config with recommendation if found
+      if (recommendedKeyCode && sicasConfig?.id) {
+        await supabase.from("sicas_config").update({
+          report_test_history: {
+            ...(sicasConfig?.report_test_history || {}),
+            last_diagnostic_at: new Date().toISOString(),
+            recommended_code: recommendedKeyCode,
+            recommended_variant: recommendedVariant,
+            recommended_format: recommendedFormat,
+            all_results_summary: results.map(r => ({
+              code: r.code,
+              hasData: r.hasData,
+              bestVariant: r.bestVariant,
+              variantCount: r.variants.length,
+            })),
+          },
+          updated_at: new Date().toISOString(),
+        }).eq("id", sicasConfig.id);
+      }
 
       return jsonResponse(200, {
         ok: true,
         status: "diagnostic_complete",
         results,
-        recommendedKeyCode: results.find(r => r.success)?.code || null,
+        recommendedKeyCode,
+        recommendedVariant,
+        recommendedFormat,
       });
     }
 

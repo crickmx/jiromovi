@@ -94,15 +94,36 @@ function looksLikeMoviFolio(value: string): boolean {
 }
 
 function getDeliveryFieldValue(r: any, ...fieldNames: string[]): string | null {
+  const isValid = (v: unknown): v is string | number =>
+    v != null && String(v).trim() !== '' && v !== 'null' && v !== 'undefined' && v !== 'N/A';
+
+  // 1. Direct fields on the delivery record
   for (const name of fieldNames) {
-    const val = r[name];
-    if (val && String(val).trim() !== '' && val !== 'null' && val !== 'undefined') return String(val).trim();
+    if (isValid(r[name])) return String(r[name]).trim();
   }
+  // 2. sicas_resolved_fields (historical resolution data)
+  const resolved = r.sicas_resolved_fields as Record<string, any> | null;
+  if (resolved) {
+    for (const name of fieldNames) {
+      const entry = resolved[name];
+      if (entry) {
+        const v = typeof entry === 'object' ? entry.value : entry;
+        if (isValid(v) && !String(v).startsWith('__')) return String(v).trim();
+      }
+    }
+  }
+  // 3. extracted_data
   const ext = r.extracted_data as Record<string, any> | null;
   if (ext) {
     for (const name of fieldNames) {
-      const val = ext[name];
-      if (val && String(val).trim() !== '' && val !== 'null' && val !== 'undefined') return String(val).trim();
+      if (isValid(ext[name])) return String(ext[name]).trim();
+    }
+  }
+  // 4. sicas_client_create_response_raw (client creation result)
+  const clientResp = r.sicas_client_create_response_raw as Record<string, any> | null;
+  if (clientResp) {
+    for (const name of fieldNames) {
+      if (isValid(clientResp[name])) return String(clientResp[name]).trim();
     }
   }
   return null;
@@ -122,40 +143,46 @@ function getMissingFieldsForRegistration(r: DeliveryRecord): string[] {
 function getDeliveryValidationDetails(r: DeliveryRecord): { field: string; value: string | null; source: string }[] {
   const rec = r as any;
   const details: { field: string; value: string | null; source: string }[] = [];
+  const resolved = rec.sicas_resolved_fields as Record<string, any> | null;
+  const ext = rec.extracted_data as Record<string, any> | null;
+  const clientResp = rec.sicas_client_create_response_raw as Record<string, any> | null;
+
+  const isValid = (v: unknown): boolean =>
+    v != null && String(v).trim() !== '' && v !== 'null' && v !== 'undefined' && v !== 'N/A';
 
   const findSource = (fieldNames: string[]): { value: string | null; source: string } => {
     for (const name of fieldNames) {
-      if (rec[name] && String(rec[name]).trim()) return { value: String(rec[name]).trim(), source: `delivery.${name}` };
+      if (isValid(rec[name])) return { value: String(rec[name]).trim(), source: `delivery.${name}` };
     }
-    const ext = rec.extracted_data as Record<string, any> | null;
+    if (resolved) {
+      for (const name of fieldNames) {
+        const entry = resolved[name];
+        if (entry) {
+          const v = typeof entry === 'object' ? entry.value : entry;
+          if (isValid(v) && !String(v).startsWith('__')) return { value: String(v).trim(), source: `resolved_fields.${name}` };
+        }
+      }
+    }
     if (ext) {
       for (const name of fieldNames) {
-        if (ext[name] && String(ext[name]).trim()) return { value: String(ext[name]).trim(), source: `extracted_data.${name}` };
+        if (isValid(ext[name])) return { value: String(ext[name]).trim(), source: `extracted_data.${name}` };
+      }
+    }
+    if (clientResp) {
+      for (const name of fieldNames) {
+        if (isValid(clientResp[name])) return { value: String(clientResp[name]).trim(), source: `sicas_client_response.${name}` };
       }
     }
     return { value: null, source: 'no encontrado' };
   };
 
-  const poliza = findSource(['policy_number', 'manual_policy_number', 'poliza', 'numero_poliza', 'document_number', 'Documento']);
-  details.push({ field: 'Poliza', ...poliza });
-
-  const asegurado = findSource(['insured_name', 'asegurado', 'contratante', 'client_name', 'nombre_asegurado']);
-  details.push({ field: 'Asegurado', ...asegurado });
-
-  const prima = findSource(['total_premium', 'premium', 'prima', 'prima_neta', 'PrimaNeta']);
-  details.push({ field: 'Prima', ...prima });
-
-  const inicio = findSource(['start_date', 'fecha_inicio', 'vigencia_inicio', 'FDesde']);
-  details.push({ field: 'Fecha inicio', ...inicio });
-
-  const fin = findSource(['end_date', 'fecha_fin', 'vigencia_fin', 'FHasta']);
-  details.push({ field: 'Fecha fin', ...fin });
-
-  const clientId = findSource(['sicas_client_id']);
-  details.push({ field: 'IDCli', ...clientId });
-
-  const vendorId = findSource(['vendor_sicas_id']);
-  details.push({ field: 'IDVend', ...vendorId });
+  details.push({ field: 'Poliza', ...findSource(['policy_number', 'manual_policy_number', 'poliza', 'numero_poliza', 'document_number', 'Documento']) });
+  details.push({ field: 'Asegurado', ...findSource(['insured_name', 'asegurado', 'contratante', 'client_name', 'nombre_asegurado']) });
+  details.push({ field: 'Prima', ...findSource(['total_premium', 'premium', 'prima', 'prima_neta', 'PrimaNeta', 'net_premium']) });
+  details.push({ field: 'Fecha inicio', ...findSource(['start_date', 'fecha_inicio', 'vigencia_inicio', 'FDesde']) });
+  details.push({ field: 'Fecha fin', ...findSource(['end_date', 'fecha_fin', 'vigencia_fin', 'FHasta']) });
+  details.push({ field: 'IDCli', ...findSource(['sicas_client_id', 'IDCli', 'client_id']) });
+  details.push({ field: 'IDVend', ...findSource(['vendor_sicas_id', 'IDVend', 'vendor_id']) });
 
   return details;
 }
