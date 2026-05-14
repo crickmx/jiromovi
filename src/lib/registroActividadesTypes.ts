@@ -21,6 +21,7 @@ export const TIPO_TRAMITE_OPTIONS: TipoTramiteConfig[] = [
   { value: 'renovaciones',                    label: 'Renovaciones',             area: 'Comercial',    tipoAplicable: 'general' },
   { value: 'cobranza',                        label: 'Cobranza',                 area: 'Comercial',    tipoAplicable: 'general' },
   { value: 'otros_comercial',                 label: 'Otros',                    area: 'Comercial',    tipoAplicable: 'general' },
+  { value: 'formulario_cotizacion',           label: 'Formulario de cotización', area: 'Comercial',    tipoAplicable: 'general' },
 ];
 
 export const COMMERCIAL_TICKET_TYPES = ['renovaciones', 'cobranza', 'otros_comercial'] as const;

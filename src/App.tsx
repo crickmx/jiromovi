@@ -96,6 +96,8 @@ import CentroContacto from './pages/CentroContacto';
 import CentroContactoHub from './pages/CentroContactoHub';
 import LectorQualitas from './pages/LectorQualitas';
 import EntregaPolizas from './pages/EntregaPolizas';
+import FormulariosCotizacion from './pages/FormulariosCotizacion';
+import QuoteFormWizard from './pages/QuoteFormWizard';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -793,6 +795,9 @@ function App() {
               <Route path="/centro-notificaciones" element={<Navigate to="/centro-contacto" replace />} />
               <Route path="/tramites" element={<ProtectedRoute><Layout><Tramites /></Layout></ProtectedRoute>} />
               <Route path="/tramites/reportes" element={<ProtectedRoute><Layout><TramitesReportes /></Layout></ProtectedRoute>} />
+              <Route path="/tramites/formularios" element={<ProtectedRoute><Layout><FormulariosCotizacion /></Layout></ProtectedRoute>} />
+              <Route path="/tramites/formularios/nuevo/:formType" element={<ProtectedRoute><Layout><QuoteFormWizard /></Layout></ProtectedRoute>} />
+              <Route path="/tramites/formularios/:formId" element={<ProtectedRoute><Layout><QuoteFormWizard /></Layout></ProtectedRoute>} />
               <Route path="/tramites/:id" element={<ProtectedRoute><Layout><TramiteDetalle /></Layout></ProtectedRoute>} />
               <Route path="/configuracion/catalogos" element={<ProtectedRoute requireAdmin><Layout><ConfiguracionCatalogos /></Layout></ProtectedRoute>} />
               <Route path="/mi-crm" element={<ProtectedRoute><Layout><MiCRM /></Layout></ProtectedRoute>} />

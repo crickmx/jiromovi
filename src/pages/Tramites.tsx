@@ -301,6 +301,13 @@ export function Tramites() {
               </button>
             )}
             <button
+              onClick={() => navigate('/tramites/formularios')}
+              className="flex items-center space-x-2 bg-neutral-100 text-neutral-700 px-4 py-3 rounded-xl hover:bg-neutral-200 transition-all duration-200 font-semibold"
+            >
+              <FileText className="w-5 h-5" />
+              <span>Formularios</span>
+            </button>
+            <button
               onClick={() => setShowNuevoModal(true)}
               className="flex items-center space-x-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-5 py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold"
             >
