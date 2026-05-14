@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  FileText, Search, Filter, Plus, Clock, ArrowRight, Loader2,
+  FileText, Search, Plus, Clock, ArrowRight, Loader2, ArrowLeft,
   Home, Building2, Factory, Shield, Truck, Wrench, Heart,
   GraduationCap, Car, Store, Flame, Fuel, Briefcase, BadgeCheck,
   Baby, Leaf, Bus, Plane, Ship, HardHat, Cog, Settings, Thermometer, Monitor,
@@ -68,20 +68,33 @@ export default function FormulariosCotizacion() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Formularios de Cotizacion</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Solicita cotizaciones de seguros con formularios rapidos e inteligentes</p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/tramites')}
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            title="Volver a Tramites"
+          >
+            <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          </button>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Formularios de Cotizacion</h1>
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Solicita cotizaciones de seguros con formularios rapidos e inteligentes</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setView('catalog')}
             className={`p-2 rounded-lg transition-colors ${view === 'catalog' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+            title="Vista catalogo"
           >
             <LayoutGrid className="w-5 h-5" />
           </button>
           <button
             onClick={() => setView('list')}
             className={`p-2 rounded-lg transition-colors ${view === 'list' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+            title="Mis formularios"
           >
             <List className="w-5 h-5" />
           </button>
