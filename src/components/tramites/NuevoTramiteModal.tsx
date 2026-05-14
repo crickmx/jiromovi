@@ -842,7 +842,7 @@ export function NuevoTramiteModal({
                 <option value="cotizacion_emision">Cotización / Emisión</option>
               )}
               {getTipoTramitesByArea('Comercial')
-                .filter(t => t.value !== 'cotizacion_emision')
+                .filter(t => t.value !== 'cotizacion_emision' && t.value !== 'formulario_cotizacion')
                 .filter(t => !isAgent || !isCommercialTicketType(t.value))
                 .map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </optgroup>

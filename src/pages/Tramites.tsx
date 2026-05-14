@@ -45,7 +45,7 @@ interface TramiteItem {
 }
 
 const TRAMITE_OPTIONS_FOR_FILTER = TIPO_TRAMITE_OPTIONS.filter(
-  t => t.value !== 'cambio_bancario'
+  t => t.value !== 'cambio_bancario' && t.value !== 'formulario_cotizacion'
 );
 
 const PRIORIDADES = ['Alta', 'Media', 'Baja'] as const;
