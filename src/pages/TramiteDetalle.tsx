@@ -531,17 +531,6 @@ export function TramiteDetalle() {
           </div>
         </div>
 
-        {tramite.tipo_tramite === 'formulario_cotizacion' && tramite.quote_form_id && (
-          <div className="mt-4">
-            <button
-              onClick={() => navigate(`/tramites/formularios/${tramite.quote_form_id}`)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-sm font-medium hover:bg-blue-100 transition-colors"
-            >
-              <FileText className="w-4 h-4" />
-              Ver formulario de cotizacion
-            </button>
-          </div>
-        )}
 
         {isCommercialViewerOnly && (
           <div className="mt-4 flex items-center gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
