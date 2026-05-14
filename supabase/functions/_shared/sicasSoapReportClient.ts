@@ -172,14 +172,29 @@ export class SicasSoapReportClient {
     console.log('[SICAS SOAP] 📤 REQUEST XML:');
     console.log(requestForLog);
 
-    const response = await fetch(this.endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/xml; charset=utf-8',
-        'SOAPAction': 'http://tempuri.org/ProcesarWS',
-      },
-      body: soapEnvelope,
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+    let response: Response;
+    try {
+      response = await fetch(this.endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/xml; charset=utf-8',
+          'SOAPAction': 'http://tempuri.org/ProcesarWS',
+        },
+        body: soapEnvelope,
+        signal: controller.signal,
+      });
+    } catch (e: unknown) {
+      clearTimeout(timeoutId);
+      if ((e as Error).name === 'AbortError') {
+        throw new Error('Timeout: SICAS no respondio en 45 segundos');
+      }
+      throw e;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     console.log('[SICAS SOAP] 📥 HTTP Response Status:', response.status, response.statusText);
 
