@@ -39,6 +39,9 @@ export default function QuoteFormStepAttachments({ formData, quoteFormId, update
     setError('');
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setError('Sesion expirada'); return; }
+
       for (const file of Array.from(files)) {
         if (file.size > 10 * 1024 * 1024) {
           setError(`${file.name} excede el limite de 10 MB`);
@@ -61,14 +64,19 @@ export default function QuoteFormStepAttachments({ formData, quoteFormId, update
           .from('ticket-archivos')
           .getPublicUrl(path);
 
-        await supabase.from('quote_form_attachments').insert({
+        const { error: insertErr } = await supabase.from('quote_form_attachments').insert({
           quote_form_id: quoteFormId,
           file_name: file.name,
           file_url: urlData.publicUrl,
           file_type: ext.toLowerCase(),
           file_size: file.size,
           category: selectedCategory,
+          uploaded_by: user.id,
         });
+
+        if (insertErr) {
+          setError(`Error al registrar ${file.name}: ${insertErr.message}`);
+        }
       }
 
       await loadAttachments();
