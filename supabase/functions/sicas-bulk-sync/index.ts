@@ -162,12 +162,15 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(400, { ok: false, error: "Credenciales SICAS no configuradas. Revisa la configuracion SICAS." });
     }
 
+    // Diagnostic validated that variant F (no CredentialsUserSICAS) works for this account
+    const skipCredSicas = sicasConfig?.report_test_history?.recommended_variant === "F_no_credsicas_xml";
     const soapClient = new SicasSoapReportClient({
       endpoint: soapEndpoint,
       username: wsUsername,
       password: wsPassword,
       sicasUser: sicasUser || undefined,
       sicasPassword: sicasUser ? sicasUserPassword : undefined,
+      skipCredentialsUserSICAS: skipCredSicas,
     });
 
     // Determine keycode from DB config with fallback chain (SOAP ProcesarWS)
@@ -1073,6 +1076,8 @@ Deno.serve(async (req: Request) => {
       // Update config with recommendation if found
       if (recommendedKeyCode && sicasConfig?.id) {
         await supabase.from("sicas_config").update({
+          last_successful_report: recommendedKeyCode,
+          current_report_code: recommendedKeyCode,
           report_test_history: {
             ...(sicasConfig?.report_test_history || {}),
             last_diagnostic_at: new Date().toISOString(),

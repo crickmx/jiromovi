@@ -48,6 +48,7 @@ export class SicasSoapReportClient {
   private password: string;
   private sicasUser?: string;
   private sicasPassword?: string;
+  private skipCredentialsUserSICAS: boolean;
 
   constructor(config: {
     endpoint: string;
@@ -55,12 +56,14 @@ export class SicasSoapReportClient {
     password: string;
     sicasUser?: string;
     sicasPassword?: string;
+    skipCredentialsUserSICAS?: boolean;
   }) {
     this.endpoint = config.endpoint;
     this.username = config.username;
     this.password = config.password;
     this.sicasUser = config.sicasUser;
     this.sicasPassword = config.sicasPassword;
+    this.skipCredentialsUserSICAS = config.skipCredentialsUserSICAS ?? false;
   }
 
   /**
@@ -106,8 +109,8 @@ export class SicasSoapReportClient {
     const sortFieldXml = sortField ? `<tem:InfoSort>${sortField}</tem:InfoSort>` : '';
     const conditionsXml = conditionsAdd ? `<tem:ConditionsAdd>${conditionsAdd}</tem:ConditionsAdd>` : '';
 
-    // CredentialsUserSICAS is required when WS credentials differ from SICAS user credentials
-    const credentialsUserSicasXml = this.sicasUser && this.sicasPassword
+    // CredentialsUserSICAS: skip if diagnostic validated variant F (no_credsicas)
+    const credentialsUserSicasXml = (!this.skipCredentialsUserSICAS && this.sicasUser && this.sicasPassword)
       ? `<tem:CredentialsUserSICAS>
           <tem:UserName>${this.sicasUser}</tem:UserName>
           <tem:Password>${this.encodePassword(this.sicasPassword)}</tem:Password>
