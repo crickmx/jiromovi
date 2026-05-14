@@ -263,6 +263,13 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
           recommendedVariant: result.recommendedVariant,
           recommendedFormat: result.recommendedFormat,
         });
+        // Auto-trigger full sync if diagnostic validated a keycode
+        if (result.recommendedKeyCode) {
+          await loadSyncInfo();
+          // Small delay to let config propagate then auto-start sync
+          setTimeout(() => runSync('full'), 1500);
+          return;
+        }
       }
       loadSyncInfo();
     } catch (err: any) {
@@ -373,10 +380,10 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
             )}
 
             <div className="flex flex-wrap gap-3">
-              <button onClick={() => runSync('full')} disabled={syncing || (sicasConfig?.local_first_mode && !hasValidatedReport)} className="flex items-center gap-2 px-4 py-2.5 text-white rounded-lg disabled:opacity-50 text-sm font-medium" style={{ backgroundColor: accentColor }}>
+              <button onClick={() => runSync('full')} disabled={syncing || diagRunning || (!!sicasConfig?.local_first_mode && !hasValidatedReport)} className="flex items-center gap-2 px-4 py-2.5 text-white rounded-lg disabled:opacity-50 text-sm font-medium" style={{ backgroundColor: accentColor }}>
                 {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Sincronizacion Completa
               </button>
-              <button onClick={() => runSync('incremental')} disabled={syncing || (sicasConfig?.local_first_mode && !hasValidatedReport)} className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 text-sm font-medium">
+              <button onClick={() => runSync('incremental')} disabled={syncing || diagRunning || (!!sicasConfig?.local_first_mode && !hasValidatedReport)} className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 text-sm font-medium">
                 {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Incremental (30 dias)
               </button>
               {syncing && activeJobId && (

@@ -132,6 +132,18 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Block cron-triggered syncs when auto_sync is disabled
+    if (action === "start" && sicasConfig?.auto_sync_enabled === false) {
+      const triggeredBy: string = body.triggeredBy || "";
+      if (triggeredBy.startsWith("cron")) {
+        return jsonResponse(200, {
+          ok: false,
+          error: "Sincronizacion automatica pausada (auto_sync_enabled=false).",
+          auto_sync_paused: true,
+        });
+      }
+    }
+
     // Block diagnostic if explicitly disabled
     if (action === "diagnostic" && sicasConfig?.soap_diagnostic_enabled === false) {
       return jsonResponse(403, {
@@ -1073,11 +1085,13 @@ Deno.serve(async (req: Request) => {
         error_message: JSON.stringify({ diagnostic: true, codesToTest, recommendedKeyCode, recommendedVariant }),
       });
 
-      // Update config with recommendation if found
+      // Update config with recommendation if found - also re-enable sync automatically
       if (recommendedKeyCode && sicasConfig?.id) {
         await supabase.from("sicas_config").update({
           last_successful_report: recommendedKeyCode,
           current_report_code: recommendedKeyCode,
+          local_first_mode: false,
+          auto_sync_enabled: true,
           report_test_history: {
             ...(sicasConfig?.report_test_history || {}),
             last_diagnostic_at: new Date().toISOString(),
@@ -1093,6 +1107,7 @@ Deno.serve(async (req: Request) => {
           },
           updated_at: new Date().toISOString(),
         }).eq("id", sicasConfig.id);
+        console.log(`[BULK-SYNC] DIAGNOSTIC: Validated ${recommendedKeyCode} (${recommendedVariant}). Auto-enabled sync, disabled local_first_mode.`);
       }
 
       return jsonResponse(200, {
