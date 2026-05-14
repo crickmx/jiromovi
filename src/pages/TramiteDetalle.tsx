@@ -253,7 +253,7 @@ export function TramiteDetalle() {
     renovaciones: 'general',
     cobranza: 'general',
     otros_comercial: 'general',
-    formulario_cotizacion: 'general',
+    formulario_cotizacion: 'cotizacion_emision',
   };
 
   const loadEstatus = async (tipoTramite?: string) => {

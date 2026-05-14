@@ -195,16 +195,22 @@ export default function QuoteFormWizard() {
   };
 
   const handleSubmit = async () => {
-    if (!quoteFormId || !user) return;
+    if (!user) return;
     if (!validateStep('client')) { setCurrentStep(0); return; }
 
     setSubmitting(true);
     try {
+      // Ensure draft is saved first (creates quoteFormId if needed)
       await saveAsDraft();
-      const { quoteForm, ticketId } = await submitQuoteForm(quoteFormId, user.id);
+      const finalId = quoteFormId;
+      if (!finalId) throw new Error('No se pudo guardar el formulario');
+
+      const { quoteForm, ticketId } = await submitQuoteForm(finalId, user.id);
       setSubmitResult({ ok: true, folio: quoteForm.folio, ticketId: ticketId || undefined });
     } catch (err: any) {
-      setSubmitResult({ ok: false });
+      console.error('Error submitting quote form:', err);
+      setErrors({ submit: err?.message || 'Error al enviar la solicitud. Intenta de nuevo.' });
+      setSubmitResult(null);
     } finally { setSubmitting(false); }
   };
 

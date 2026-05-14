@@ -80,31 +80,99 @@ export async function submitQuoteForm(id: string, userId: string): Promise<{ quo
     submitted_at: new Date().toISOString(),
   });
 
-  // Create linked ticket (tramite comercial)
+  // Look up "Iniciado" estatus
+  const { data: estatusIniciado } = await supabase
+    .from('ticket_estatus')
+    .select('id')
+    .eq('nombre', 'Iniciado')
+    .eq('activo', true)
+    .maybeSingle();
+
+  if (!estatusIniciado) throw new Error('No se encontro el estatus Iniciado');
+
+  // Build rich instructions from form data
+  const instrucciones = buildQuoteFormInstrucciones(form);
+
+  // Map priority
+  const prioridad = form.priority === 'urgente' ? 'Alta' : form.priority === 'alta' ? 'Alta' : form.priority === 'baja' ? 'Baja' : 'Media';
+
+  // Create linked ticket
   const { data: ticket, error: ticketErr } = await supabase
     .from('tickets')
     .insert({
-      titulo: `[COT] ${form.form_title} - ${form.client_name}`,
-      descripcion: `Solicitud de cotizacion ${form.folio} - ${form.form_title}`,
+      folio: '',
       tipo_tramite: 'formulario_cotizacion',
-      prioridad: form.priority === 'urgente' ? 'Alta' : form.priority === 'alta' ? 'Media' : 'Baja',
+      estatus_id: estatusIniciado.id,
+      prioridad,
+      instrucciones,
       creado_por: userId,
+      modificado_por: userId,
       agente_usuario_id: form.agent_id,
+      assigned_to_user_id: userId,
       quote_form_id: id,
     })
     .select('id')
     .single();
 
-  let ticketId: string | null = null;
-  if (!ticketErr && ticket) {
-    ticketId = ticket.id;
-    await updateQuoteForm(id, { ticket_id: ticketId });
+  if (ticketErr) throw ticketErr;
+
+  const ticketId = ticket.id;
+  await updateQuoteForm(id, { ticket_id: ticketId });
+
+  // Copy attachments from quote form to the ticket
+  const attachments = await fetchQuoteFormAttachments(id);
+  if (attachments.length > 0) {
+    const ticketArchivos = attachments.map(att => ({
+      ticket_id: ticketId,
+      nombre: att.file_name,
+      url: att.file_url,
+      tipo: att.file_type || 'application/octet-stream',
+      tamano: att.file_size || 0,
+      usuario_id: userId,
+    }));
+    await supabase.from('ticket_archivos').insert(ticketArchivos);
   }
 
   // Record in history
   await addQuoteFormHistory(id, userId, 'formulario_enviado', 'Formulario de cotizacion enviado', 'borrador', 'enviado', ticketId);
 
   return { quoteForm: updated, ticketId };
+}
+
+function buildQuoteFormInstrucciones(form: QuoteForm): string {
+  const parts: string[] = [];
+  parts.push(`[COT] ${form.form_title} - ${form.client_name}`);
+  parts.push('');
+
+  if (form.client_name) parts.push(`Cliente: ${form.client_name}`);
+  if (form.client_type && form.client_type !== 'no_especificado') parts.push(`Tipo: ${form.client_type}`);
+  if (form.client_phone) parts.push(`Telefono: ${form.client_phone}`);
+  if (form.client_email) parts.push(`Email: ${form.client_email}`);
+  if (form.client_whatsapp) parts.push(`WhatsApp: ${form.client_whatsapp}`);
+  if (form.client_rfc) parts.push(`RFC: ${form.client_rfc}`);
+  if (form.client_address_compact) parts.push(`Domicilio: ${form.client_address_compact}`);
+  if (form.risk_location_compact) parts.push(`Ubicacion riesgo: ${form.risk_location_compact}`);
+  if (form.currency) parts.push(`Moneda: ${form.currency}`);
+  if (form.payment_frequency) parts.push(`Frecuencia pago: ${form.payment_frequency}`);
+  if (form.start_date) parts.push(`Vigencia desde: ${form.start_date}`);
+  if (form.end_date) parts.push(`Vigencia hasta: ${form.end_date}`);
+  if (form.notes) parts.push(`Notas: ${form.notes}`);
+
+  // Include any extra data from data_json
+  if (form.data_json && typeof form.data_json === 'object') {
+    const extras = Object.entries(form.data_json).filter(
+      ([k, v]) => v && typeof v === 'string' && v.trim() !== '' && !k.startsWith('client_')
+    );
+    if (extras.length > 0) {
+      parts.push('');
+      parts.push('--- Datos adicionales ---');
+      for (const [key, val] of extras) {
+        parts.push(`${key.replace(/_/g, ' ')}: ${val}`);
+      }
+    }
+  }
+
+  return parts.join('\n');
 }
 
 export async function addQuoteFormHistory(
