@@ -17,8 +17,7 @@
 import { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { SicasSoapReportClient, SicasReportOptions, SicasReportResponse, FilterCondition } from './sicasSoapReportClient.ts';
 
-// Re-export for convenience
-export { FilterCondition } from './sicasSoapReportClient.ts';
+export type { FilterCondition };
 
 export interface RateConfig {
   maxRetriesRead: number;
