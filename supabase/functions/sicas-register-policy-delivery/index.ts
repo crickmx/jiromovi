@@ -2017,6 +2017,32 @@ Deno.serve(async (req: Request) => {
     if (action === "register" || action === "auto") {
       const steps: Array<{ step: string; status: string; detail?: string }> = [];
 
+      // Pre-step: Auto-resolve core data fields (policy_number, insured_name, premium, dates, IDCli)
+      try {
+        const autoResolveUrl = `${supabaseUrl}/functions/v1/sicas-auto-resolve-delivery-data`;
+        const arResp = await fetch(autoResolveUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseServiceKey}` },
+          body: JSON.stringify({ delivery_id, save: true, include_local_sicas: true }),
+        });
+        if (arResp.ok) {
+          const arData = await arResp.json();
+          if (arData.ok && arData.resolved_values?.sicas_client_id) {
+            // Update delivery with resolved client_id if found
+            await supabase.from("policy_deliveries").update({
+              sicas_client_id: arData.resolved_values.sicas_client_id,
+            }).eq("id", delivery_id).is("sicas_client_id", null);
+          }
+          // Reload delivery with updated data
+          const { data: refreshed } = await supabase.from("policy_deliveries").select("*").eq("id", delivery_id).maybeSingle();
+          if (refreshed) Object.assign(delivery, refreshed);
+          steps.push({ step: "auto_resolve_data", status: "completed", detail: `${arData.missing_fields?.length || 0} campos faltantes` });
+        }
+      } catch (arErr) {
+        console.warn("[SICAS] Auto-resolve pre-step failed (non-blocking):", (arErr as Error).message);
+        steps.push({ step: "auto_resolve_data", status: "warning", detail: (arErr as Error).message });
+      }
+
       // Step: resolve_required_fields
       currentStep = "resolve_required_fields";
       steps.push({ step: currentStep, status: "in_progress" });

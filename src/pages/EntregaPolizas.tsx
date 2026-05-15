@@ -140,6 +140,61 @@ function getMissingFieldsForRegistration(r: DeliveryRecord): string[] {
   return missing;
 }
 
+function buildTableSnapshot(r: DeliveryRecord): Record<string, string | number | null> {
+  const rec = r as any;
+  return {
+    policy_number: getDeliveryFieldValue(rec, 'policy_number', 'manual_policy_number', 'poliza', 'numero_poliza', 'document_number', 'Documento'),
+    insured_name: getDeliveryFieldValue(rec, 'insured_name', 'asegurado', 'contratante', 'client_name', 'nombre_asegurado'),
+    premium: getDeliveryFieldValue(rec, 'total_premium', 'premium', 'prima', 'prima_neta', 'PrimaNeta', 'net_premium'),
+    start_date: getDeliveryFieldValue(rec, 'start_date', 'fecha_inicio', 'vigencia_inicio', 'FDesde'),
+    end_date: getDeliveryFieldValue(rec, 'end_date', 'fecha_fin', 'vigencia_fin', 'FHasta'),
+    folio_movi: rec.ticket_folio || null,
+    vendor_sicas_id: rec.vendor_sicas_id || null,
+    file_name: rec.cover_file_name || null,
+    document_url: rec.cover_file_path || null,
+    sicas_client_id: rec.sicas_client_id || (rec.sicas_resolved_fields as any)?.sicas_client_id?.value || null,
+  };
+}
+
+async function autoResolveDelivery(deliveryId: string, record: DeliveryRecord): Promise<{
+  ok: boolean;
+  status: string;
+  resolved_values: Record<string, string | number | null>;
+  resolved_details: Record<string, { value: string | number | null; source: string; confidence: string }>;
+  missing_fields: string[];
+  sources: Record<string, string>;
+  core_complete: boolean;
+  has_client_id: boolean;
+  has_vendor_id: boolean;
+  error?: string;
+}> {
+  try {
+    const { data, error } = await supabase.functions.invoke('sicas-auto-resolve-delivery-data', {
+      body: {
+        delivery_id: deliveryId,
+        save: true,
+        table_snapshot: buildTableSnapshot(record),
+        include_local_sicas: true,
+      },
+    });
+    if (error) throw new Error(error.message || 'Error en auto-resolve');
+    return data;
+  } catch (err) {
+    return {
+      ok: false,
+      status: 'error',
+      resolved_values: {},
+      resolved_details: {},
+      missing_fields: ['policy_number', 'insured_name', 'premium', 'start_date', 'end_date'],
+      sources: {},
+      core_complete: false,
+      has_client_id: false,
+      has_vendor_id: false,
+      error: err instanceof Error ? err.message : 'Error desconocido',
+    };
+  }
+}
+
 function getDeliveryValidationDetails(r: DeliveryRecord): { field: string; value: string | null; source: string }[] {
   const rec = r as any;
   const details: { field: string; value: string | null; source: string }[] = [];
@@ -1107,6 +1162,25 @@ function HistorialTab({ usuario }: { usuario: any }) {
     setResolving(record.id);
     setRegisterResult(null);
 
+    // Run auto-resolve first to fill any missing data
+    const resolveResult = await autoResolveDelivery(record.id, record);
+    if (resolveResult.ok && resolveResult.status === 'needs_data') {
+      // Auto-resolve couldn't complete core fields - open resolver pre-filled
+      await loadRecords();
+      const { data: freshRecord } = await supabase
+        .from('policy_deliveries')
+        .select('*')
+        .eq('id', record.id)
+        .maybeSingle();
+      if (freshRecord) {
+        setCompletarDatosRecord(freshRecord as unknown as DeliveryRecord);
+      }
+      setRegisterResult({ id: record.id, success: false, message: `Auto-resolucion parcial. Faltan: ${resolveResult.missing_fields.join(', ')}.` });
+      setResolving(null);
+      releaseClientLock(`sicas-resolve-${record.id}`);
+      return;
+    }
+
     try {
       console.log('[EntregaPolizas][SICAS] Calling sicas-register-policy-delivery (auto)', { delivery_id: record.id, action: 'auto' });
 
@@ -1156,12 +1230,31 @@ function HistorialTab({ usuario }: { usuario: any }) {
   };
 
   const handleRegisterDocument = async (record: DeliveryRecord) => {
+    // Run auto-resolve before checking missing fields
+    setResolving(record.id);
+    setRegisterResult(null);
+    const resolveResult = await autoResolveDelivery(record.id, record);
+    if (resolveResult.ok && resolveResult.core_complete) {
+      // Reload the record with resolved data before proceeding
+      const { data: freshRecord } = await supabase
+        .from('policy_deliveries')
+        .select('*')
+        .eq('id', record.id)
+        .maybeSingle();
+      if (freshRecord) {
+        record = freshRecord as unknown as DeliveryRecord;
+      }
+    }
+    setResolving(null);
+
     const missingFields = getMissingFieldsForRegistration(record);
     if (missingFields.length > 0) {
+      // Auto-resolve didn't complete all fields - open resolver pre-filled
+      setCompletarDatosRecord(record);
       setRegisterResult({
         id: record.id,
         success: false,
-        message: `No se puede registrar en SICAS porque faltan datos obligatorios: ${missingFields.join(', ')}.`
+        message: `Auto-resolucion encontro datos parciales. Faltan: ${missingFields.join(', ')}.`
       });
       return;
     }
@@ -1859,7 +1952,41 @@ function HistorialTab({ usuario }: { usuario: any }) {
 // DIAGNOSTIC MODAL
 // ========================
 
-function DiagnosticModal({ record, onClose }: { record: DeliveryRecord; onClose: () => void }) {
+function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryRecord; onClose: () => void }) {
+  const [record, setRecord] = useState(initialRecord);
+  const [autoResolveStatus, setAutoResolveStatus] = useState<'loading' | 'done' | 'error'>('loading');
+  const [resolveDetails, setResolveDetails] = useState<Record<string, { value: string | number | null; source: string; confidence: string }> | null>(null);
+  const [resolveError, setResolveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await autoResolveDelivery(record.id, record);
+        if (cancelled) return;
+        if (result.ok) {
+          setResolveDetails(result.resolved_details);
+          // Reload record with updated data
+          const { data: freshRecord } = await supabase
+            .from('policy_deliveries')
+            .select('*')
+            .eq('id', record.id)
+            .maybeSingle();
+          if (freshRecord && !cancelled) {
+            setRecord(freshRecord as unknown as DeliveryRecord);
+          }
+        } else {
+          setResolveError(result.error || 'Error en auto-resolucion');
+        }
+      } catch (e) {
+        if (!cancelled) setResolveError(e instanceof Error ? e.message : 'Error');
+      } finally {
+        if (!cancelled) setAutoResolveStatus('done');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [initialRecord.id]);
+
   const lookupData = (record as any).sicas_document_lookup_response as Record<string, any> | null;
   const debugData = (record as any).sicas_request_debug as Record<string, any> | null;
 
@@ -1938,6 +2065,26 @@ function DiagnosticModal({ record, onClose }: { record: DeliveryRecord; onClose:
         </div>
 
         <div className="space-y-3">
+          {/* Auto-resolve status indicator */}
+          {autoResolveStatus === 'loading' && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <Loader2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 animate-spin" />
+              <span className="text-[11px] text-blue-700 dark:text-blue-300 font-medium">Buscando datos automaticamente...</span>
+            </div>
+          )}
+          {autoResolveStatus === 'done' && resolveError && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span className="text-[11px] text-amber-700 dark:text-amber-300">Auto-resolucion: {resolveError}</span>
+            </div>
+          )}
+          {autoResolveStatus === 'done' && !resolveError && resolveDetails && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-medium">Datos encontrados automaticamente</span>
+            </div>
+          )}
+
           {/* === STAGE 0: DATA VALIDATION === */}
           {(() => {
             const validationDetails = getDeliveryValidationDetails(record);
@@ -1950,22 +2097,41 @@ function DiagnosticModal({ record, onClose }: { record: DeliveryRecord; onClose:
                   <div className="flex items-center gap-2">
                     <span className="text-[9px] text-neutral-500">Estado:</span>
                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${allPresent ? 'text-emerald-700 bg-emerald-100 dark:bg-emerald-900/30' : 'text-red-700 bg-red-100 dark:bg-red-900/30'}`}>
-                      {allPresent ? 'Datos completos' : `Faltan ${missingFields.length} campo(s)`}
+                      {allPresent ? 'Datos completos para HWCAPTURE' : `Faltan ${missingFields.length} campo(s)`}
                     </span>
                   </div>
                   <div className="grid grid-cols-1 gap-1 text-[10px]">
-                    {validationDetails.map((d) => (
-                      <div key={d.field} className="flex items-start gap-2">
-                        <span className={`w-2 h-2 rounded-full mt-0.5 flex-shrink-0 ${d.value ? 'bg-emerald-500' : 'bg-red-400'}`} />
-                        <div className="min-w-0">
-                          <span className="font-medium text-neutral-700 dark:text-neutral-300">{d.field}:</span>{' '}
-                          <span className={`font-mono ${d.value ? 'text-neutral-800 dark:text-white' : 'text-red-500 italic'}`}>
-                            {d.value || 'N/A'}
-                          </span>
-                          <span className="text-[9px] text-neutral-400 ml-1">({d.source})</span>
+                    {resolveDetails ? (
+                      Object.entries(resolveDetails).filter(([k]) => ['policy_number', 'insured_name', 'premium', 'start_date', 'end_date', 'sicas_client_id', 'sicas_vendor_id'].includes(k)).map(([key, detail]) => {
+                        const fieldLabels: Record<string, string> = { policy_number: 'Poliza', insured_name: 'Asegurado', premium: 'Prima', start_date: 'Fecha inicio', end_date: 'Fecha fin', sicas_client_id: 'IDCli', sicas_vendor_id: 'IDVend' };
+                        return (
+                          <div key={key} className="flex items-start gap-2">
+                            <span className={`w-2 h-2 rounded-full mt-0.5 flex-shrink-0 ${detail.value != null ? 'bg-emerald-500' : 'bg-red-400'}`} />
+                            <div className="min-w-0">
+                              <span className="font-medium text-neutral-700 dark:text-neutral-300">{fieldLabels[key] || key}:</span>{' '}
+                              <span className={`font-mono ${detail.value != null ? 'text-neutral-800 dark:text-white' : 'text-red-500 italic'}`}>
+                                {detail.value != null ? String(detail.value) : 'N/A'}
+                              </span>
+                              <span className="text-[9px] text-neutral-400 ml-1">({detail.source})</span>
+                              {detail.confidence && <span className={`text-[8px] ml-1 px-1 py-0.5 rounded ${detail.confidence === 'high' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : detail.confidence === 'medium' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-700 dark:text-neutral-400'}`}>{detail.confidence}</span>}
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      validationDetails.map((d) => (
+                        <div key={d.field} className="flex items-start gap-2">
+                          <span className={`w-2 h-2 rounded-full mt-0.5 flex-shrink-0 ${d.value ? 'bg-emerald-500' : 'bg-red-400'}`} />
+                          <div className="min-w-0">
+                            <span className="font-medium text-neutral-700 dark:text-neutral-300">{d.field}:</span>{' '}
+                            <span className={`font-mono ${d.value ? 'text-neutral-800 dark:text-white' : 'text-red-500 italic'}`}>
+                              {d.value || 'N/A'}
+                            </span>
+                            <span className="text-[9px] text-neutral-400 ml-1">({d.source})</span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                   {!allPresent && (
                     <p className="text-[9px] text-red-600 dark:text-red-400 font-medium pt-1 border-t border-red-100 dark:border-red-800">

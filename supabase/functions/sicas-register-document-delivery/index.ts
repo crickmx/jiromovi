@@ -750,6 +750,30 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[HWCAPTURE] Delivery loaded: policy=${delivery.policy_number || delivery.manual_policy_number}, client_id=${delivery.sicas_client_id}, vendor_id=${delivery.vendor_sicas_id}`);
 
+    // Pre-step: Auto-resolve core data fields from multiple sources
+    try {
+      const autoResolveUrl = `${supabaseUrl}/functions/v1/sicas-auto-resolve-delivery-data`;
+      const arResp = await fetch(autoResolveUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseServiceKey}` },
+        body: JSON.stringify({ delivery_id, save: true, include_local_sicas: true }),
+      });
+      if (arResp.ok) {
+        const arData = await arResp.json();
+        if (arData.ok && arData.resolved_values?.sicas_client_id) {
+          await supabase.from("policy_deliveries").update({
+            sicas_client_id: arData.resolved_values.sicas_client_id,
+          }).eq("id", delivery_id).is("sicas_client_id", null);
+        }
+        // Reload delivery with resolved data
+        const { data: refreshed } = await supabase.from("policy_deliveries").select("*").eq("id", delivery_id).maybeSingle();
+        if (refreshed) Object.assign(delivery, refreshed);
+        console.log(`[HWCAPTURE] Auto-resolve completed: ${arData.ok ? 'success' : 'partial'}, missing=${arData.missing_fields?.length || 0}`);
+      }
+    } catch (arErr) {
+      console.warn(`[HWCAPTURE] Auto-resolve non-blocking error: ${(arErr as Error).message}`);
+    }
+
     // Early validation: check core fields exist before any SICAS call
     const coreValidationMissing: string[] = [];
     if (!delivery.policy_number && !delivery.manual_policy_number) coreValidationMissing.push("policy_number");
