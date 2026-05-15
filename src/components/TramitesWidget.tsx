@@ -76,7 +76,7 @@ export function TramitesWidget() {
             prioridad,
             instrucciones,
             estatus:estatus_id(nombre, color),
-            solicitante:agente_solicitante_id(
+            solicitante:creado_por(
               nombre_completo,
               oficina:oficina_id(nombre)
             )
