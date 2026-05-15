@@ -31,7 +31,15 @@ async function loadSupabaseClient() {
 async function loadCryptoJS() {
   if (!_CryptoJS) {
     const mod = await import("npm:crypto-js@4.2.0");
-    _CryptoJS = mod.default;
+    _CryptoJS = mod.default || mod;
+    if (!_CryptoJS?.TripleDES || !_CryptoJS?.enc?.Latin1) {
+      throw new Error(
+        `CryptoJS loaded but missing required methods. ` +
+        `TripleDES=${!!_CryptoJS?.TripleDES}, enc.Latin1=${!!_CryptoJS?.enc?.Latin1}, ` +
+        `mode.CBC=${!!_CryptoJS?.mode?.CBC}, pad.ZeroPadding=${!!_CryptoJS?.pad?.ZeroPadding}. ` +
+        `Keys: ${Object.keys(_CryptoJS || {}).join(",")}`
+      );
+    }
   }
   return _CryptoJS;
 }
@@ -1672,6 +1680,13 @@ function buildHwcaptureDataXml(sanitizedPayload: Record<string, string>): string
 
 // TripleDES encryption using crypto-js (pure JS, works in Deno/Edge Functions)
 function encryptDataXmlFallback(plainXml: string, username: string): string {
+  if (!CryptoJS?.TripleDES?.encrypt) {
+    throw new Error("CryptoJS.TripleDES.encrypt is not available");
+  }
+  if (!CryptoJS?.enc?.Latin1?.parse) {
+    throw new Error("CryptoJS.enc.Latin1.parse is not available");
+  }
+
   // URL-encode the XML before encrypting (per SICAS docs)
   const urlEncodedXml = encodeURIComponent(plainXml);
 
@@ -1689,7 +1704,17 @@ function encryptDataXmlFallback(plainXml: string, username: string): string {
     { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.ZeroPadding }
   );
 
-  return encrypted.toString();
+  const result = encrypted.toString();
+
+  // Verify encryption actually produced base64 output different from input
+  if (!result || result.length < 10 || result.includes("<InfoData>") || result.includes("<DatDocumentos>")) {
+    throw new Error(
+      `Encryption produced invalid output (plain XML detected in result). ` +
+      `Result length: ${result?.length}, starts with: ${result?.substring(0, 30)}`
+    );
+  }
+
+  return result;
 }
 
 interface DocumentRegistrationDiagnostic {
