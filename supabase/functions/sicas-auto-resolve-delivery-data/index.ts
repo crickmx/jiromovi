@@ -1,5 +1,4 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,11 +6,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+const FUNCTION_VERSION = "2.2.0";
+
 function jsonResp(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+let _createClient: any = null;
+async function loadSupabaseClient() {
+  if (!_createClient) {
+    const mod = await import("npm:@supabase/supabase-js@2");
+    _createClient = mod.createClient;
+  }
+  return _createClient;
 }
 
 // Field name variants for each core field
@@ -115,17 +125,41 @@ function searchInObject(obj: Record<string, unknown> | null | undefined, fieldNa
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response("ok", { status: 200, headers: corsHeaders });
   }
 
   try {
     const body = await req.json().catch(() => ({}));
+
+    // health_check: responds without loading any modules
+    if (body.health_check === true) {
+      return jsonResp(200, {
+        success: true,
+        function: "sicas-auto-resolve-delivery-data",
+        status: "ok",
+        version: FUNCTION_VERSION,
+        imports_loaded: false,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // test_imports
+    if (body.test_imports === true) {
+      try {
+        const createClientFn = await loadSupabaseClient();
+        return jsonResp(200, { success: true, stage: "test_imports", imports_loaded: true, available: { supabase_client: typeof createClientFn === "function" } });
+      } catch (importErr: any) {
+        return jsonResp(200, { success: false, stage: "test_imports", imports_loaded: false, message: importErr.message });
+      }
+    }
+
     const { delivery_id, save = true, table_snapshot, include_local_sicas = true } = body;
 
     if (!delivery_id) {
       return jsonResp(400, { ok: false, error: "delivery_id es requerido" });
     }
 
+    const createClient = await loadSupabaseClient();
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);

@@ -1958,6 +1958,71 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
   const [resolveDetails, setResolveDetails] = useState<Record<string, { value: string | number | null; source: string; confidence: string }> | null>(null);
   const [resolveError, setResolveError] = useState<string | null>(null);
 
+  // Edge Function connectivity checks
+  const [connectivityStatus, setConnectivityStatus] = useState<{
+    edge_function: 'pending' | 'ok' | 'error';
+    imports: 'pending' | 'ok' | 'error' | 'skipped';
+    sicas_soap: 'pending' | 'ok' | 'error' | 'skipped';
+    edge_error?: string;
+    imports_error?: string;
+    sicas_error?: string;
+    version?: string;
+  }>({ edge_function: 'pending', imports: 'pending', sicas_soap: 'pending' });
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      // Step 1: health_check
+      try {
+        const { data, error } = await supabase.functions.invoke('sicas-register-policy-delivery', {
+          body: { health_check: true },
+        });
+        if (cancelled) return;
+        if (error || !data?.success) {
+          setConnectivityStatus(s => ({ ...s, edge_function: 'error', edge_error: error?.message || data?.message || 'No responde', imports: 'skipped', sicas_soap: 'skipped' }));
+          return;
+        }
+        setConnectivityStatus(s => ({ ...s, edge_function: 'ok', version: data.version }));
+      } catch (e) {
+        if (cancelled) return;
+        setConnectivityStatus(s => ({ ...s, edge_function: 'error', edge_error: e instanceof Error ? e.message : 'Error', imports: 'skipped', sicas_soap: 'skipped' }));
+        return;
+      }
+      // Step 2: test_imports
+      try {
+        const { data, error } = await supabase.functions.invoke('sicas-register-policy-delivery', {
+          body: { test_imports: true },
+        });
+        if (cancelled) return;
+        if (error || !data?.success) {
+          setConnectivityStatus(s => ({ ...s, imports: 'error', imports_error: error?.message || data?.message || 'Imports fallidos', sicas_soap: 'skipped' }));
+          return;
+        }
+        setConnectivityStatus(s => ({ ...s, imports: 'ok' }));
+      } catch (e) {
+        if (cancelled) return;
+        setConnectivityStatus(s => ({ ...s, imports: 'error', imports_error: e instanceof Error ? e.message : 'Error', sicas_soap: 'skipped' }));
+        return;
+      }
+      // Step 3: ping_sicas
+      try {
+        const { data, error } = await supabase.functions.invoke('sicas-register-policy-delivery', {
+          body: { ping_sicas: true },
+        });
+        if (cancelled) return;
+        if (error || !data?.success) {
+          setConnectivityStatus(s => ({ ...s, sicas_soap: 'error', sicas_error: error?.message || data?.message || 'SICAS no alcanzable' }));
+        } else {
+          setConnectivityStatus(s => ({ ...s, sicas_soap: 'ok' }));
+        }
+      } catch (e) {
+        if (cancelled) return;
+        setConnectivityStatus(s => ({ ...s, sicas_soap: 'error', sicas_error: e instanceof Error ? e.message : 'Error' }));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -1966,7 +2031,6 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
         if (cancelled) return;
         if (result.ok) {
           setResolveDetails(result.resolved_details);
-          // Reload record with updated data
           const { data: freshRecord } = await supabase
             .from('policy_deliveries')
             .select('*')
@@ -2065,6 +2129,44 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
         </div>
 
         <div className="space-y-3">
+          {/* Connectivity checks */}
+          <div className="space-y-1">
+            <p className="text-[10px] font-semibold text-neutral-600 dark:text-neutral-300 uppercase tracking-wider">Conectividad Edge Functions</p>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { key: 'edge_function' as const, label: 'Edge Function', error: connectivityStatus.edge_error },
+                { key: 'imports' as const, label: 'Modulos', error: connectivityStatus.imports_error },
+                { key: 'sicas_soap' as const, label: 'SICAS SOAP', error: connectivityStatus.sicas_error },
+              ]).map(({ key, label, error }) => {
+                const st = connectivityStatus[key];
+                const colors = st === 'ok' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                  : st === 'error' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800'
+                  : st === 'skipped' ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-600'
+                  : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800';
+                return (
+                  <div key={key} className={`border rounded-lg px-2 py-1.5 text-center ${colors}`} title={error || ''}>
+                    <div className="text-[9px] font-medium">{label}</div>
+                    <div className="text-[10px] font-bold">
+                      {st === 'pending' ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : st === 'ok' ? 'OK' : st === 'skipped' ? '-' : 'Error'}
+                    </div>
+                    {connectivityStatus.version && key === 'edge_function' && st === 'ok' && (
+                      <div className="text-[8px] opacity-70">v{connectivityStatus.version}</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {connectivityStatus.edge_function === 'error' && (
+              <p className="text-[9px] text-red-600 dark:text-red-400">{connectivityStatus.edge_error}</p>
+            )}
+            {connectivityStatus.imports === 'error' && (
+              <p className="text-[9px] text-red-600 dark:text-red-400">Modulos: {connectivityStatus.imports_error}</p>
+            )}
+            {connectivityStatus.sicas_soap === 'error' && (
+              <p className="text-[9px] text-red-600 dark:text-red-400">SICAS: {connectivityStatus.sicas_error}</p>
+            )}
+          </div>
+
           {/* Auto-resolve status indicator */}
           {autoResolveStatus === 'loading' && (
             <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">

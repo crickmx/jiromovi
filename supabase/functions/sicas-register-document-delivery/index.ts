@@ -1,12 +1,41 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2";
-import CryptoJS from "npm:crypto-js@4.2.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
+
+const FUNCTION_VERSION = "2.2.0";
+
+function jsonResponse(data: Record<string, any>, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+let _createClient: any = null;
+let _CryptoJS: any = null;
+
+async function loadSupabaseClient() {
+  if (!_createClient) {
+    const mod = await import("npm:@supabase/supabase-js@2");
+    _createClient = mod.createClient;
+  }
+  return _createClient;
+}
+
+async function loadCryptoJS() {
+  if (!_CryptoJS) {
+    const mod = await import("npm:crypto-js@4.2.0");
+    _CryptoJS = mod.default;
+  }
+  return _CryptoJS;
+}
+
+let CryptoJS: any = null;
+let createClient: any = null;
 
 // ============================================================
 // DEDICATED HWCAPTURE DOCUMENT REGISTRATION
@@ -686,10 +715,73 @@ async function executeHwcapture(
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response("ok", { status: 200, headers: corsHeaders });
   }
 
   try {
+    let body: Record<string, any> = {};
+    try {
+      body = await req.json();
+    } catch (_) {
+      body = {};
+    }
+
+    // health_check: responds without loading ANY modules
+    if (body.health_check === true) {
+      return jsonResponse({
+        success: true,
+        function: "sicas-register-document-delivery",
+        status: "ok",
+        version: FUNCTION_VERSION,
+        imports_loaded: false,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // test_imports: explicitly test if modules can load
+    if (body.test_imports === true) {
+      try {
+        const [createClientFn, cryptoMod] = await Promise.all([
+          loadSupabaseClient(),
+          loadCryptoJS(),
+        ]);
+        return jsonResponse({
+          success: true,
+          stage: "test_imports",
+          imports_loaded: true,
+          available: {
+            supabase_client: typeof createClientFn === "function",
+            crypto_js: typeof cryptoMod === "object" || typeof cryptoMod === "function",
+          },
+        });
+      } catch (importErr: any) {
+        return jsonResponse({
+          success: false,
+          stage: "test_imports",
+          imports_loaded: false,
+          message: importErr.message,
+        });
+      }
+    }
+
+    // ping_sicas: lightweight endpoint check
+    if (body.ping_sicas === true) {
+      const endpoint = Deno.env.get("SICAS_SOAP_ENDPOINT") || Deno.env.get("SICAS_ENDPOINT") || SICAS_DEFAULT_ENDPOINT;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const pingResp = await fetch(endpoint, { method: "GET", signal: controller.signal });
+        clearTimeout(timeoutId);
+        return jsonResponse({ success: true, stage: "ping_sicas", endpoint, http_status: pingResp.status, reachable: true });
+      } catch (pingErr: any) {
+        return jsonResponse({ success: false, stage: "ping_sicas", endpoint, reachable: false, message: pingErr.name === "AbortError" ? "Timeout (10s)" : pingErr.message });
+      }
+    }
+
+    // === REAL FLOW: Load heavy modules ===
+    createClient = await loadSupabaseClient();
+    CryptoJS = await loadCryptoJS();
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -701,26 +793,7 @@ Deno.serve(async (req: Request) => {
     console.log(`[HWCAPTURE] Config: username=${sicasUsername ? 'SET' : 'MISSING'}, password=${sicasPassword ? 'SET' : 'MISSING'}, endpoint=${sicasEndpoint}`);
 
     if (!sicasUsername || !sicasPassword) {
-      return new Response(
-        JSON.stringify({ success: false, error: "SICAS credentials not configured (SICAS_USERNAME/SICAS_PASSWORD)" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const body = await req.json();
-
-    if (body.health_check === true) {
-      return new Response(
-        JSON.stringify({
-          success: true,
-          function: "sicas-register-document-delivery",
-          status: "ok",
-          timestamp: new Date().toISOString(),
-          credentials_configured: !!(sicasUsername && sicasPassword),
-          endpoint: sicasEndpoint,
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: false, error: "SICAS credentials not configured (SICAS_USERNAME/SICAS_PASSWORD)" }, 500);
     }
 
     const delivery_id = body.delivery_id || body.policy_delivery_id || body.id;
@@ -1008,9 +1081,8 @@ Deno.serve(async (req: Request) => {
 
     // Try to update the delivery status so it doesn't stay stuck
     try {
-      const body = await req.clone().json().catch(() => ({}));
       const delivery_id = body.delivery_id || body.policy_delivery_id || body.id;
-      if (delivery_id) {
+      if (delivery_id && createClient) {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -1022,9 +1094,10 @@ Deno.serve(async (req: Request) => {
       }
     } catch (_) { /* ignore cleanup errors */ }
 
-    return new Response(
-      JSON.stringify({ success: false, error: error.message || "Error interno" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({
+      success: false,
+      stage: "unhandled_edge_function_error",
+      message: error.message || "Error interno",
+    });
   }
 });

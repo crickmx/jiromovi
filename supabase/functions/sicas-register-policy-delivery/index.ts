@@ -1,13 +1,52 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2";
-import CryptoJS from "npm:crypto-js@4.2.0";
-import { createSicasRequestManager } from "../_shared/sicasRequestManager.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
+
+const FUNCTION_VERSION = "2.2.0";
+
+function jsonResponse(data: Record<string, any>, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+// Lazy-loaded modules (populated on first real request)
+let _createClient: any = null;
+let _CryptoJS: any = null;
+let _createSicasRequestManager: any = null;
+
+async function loadSupabaseClient() {
+  if (!_createClient) {
+    const mod = await import("npm:@supabase/supabase-js@2");
+    _createClient = mod.createClient;
+  }
+  return _createClient;
+}
+
+async function loadCryptoJS() {
+  if (!_CryptoJS) {
+    const mod = await import("npm:crypto-js@4.2.0");
+    _CryptoJS = mod.default;
+  }
+  return _CryptoJS;
+}
+
+async function loadSicasRequestManager() {
+  if (!_createSicasRequestManager) {
+    const mod = await import("../_shared/sicasRequestManager.ts");
+    _createSicasRequestManager = mod.createSicasRequestManager;
+  }
+  return _createSicasRequestManager;
+}
+
+// Shorthand used by existing code after lazy load
+let CryptoJS: any = null;
+let createClient: any = null;
 
 // ============================================================
 // SICAS SOAP Contract Definitions
@@ -1909,13 +1948,113 @@ async function registerDocument(
 // ============================================================
 
 Deno.serve(async (req: Request) => {
+  // OPTIONS must respond IMMEDIATELY - no imports, no logic
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response("ok", { status: 200, headers: corsHeaders });
   }
 
-  let currentStep: RegistrationStep = "start";
-
   try {
+    // Parse body safely - never crash on bad JSON
+    let body: Record<string, any> = {};
+    try {
+      body = await req.json();
+    } catch (_) {
+      body = {};
+    }
+
+    // health_check: responds without loading ANY shared modules
+    if (body.health_check === true) {
+      return jsonResponse({
+        success: true,
+        function: "sicas-register-policy-delivery",
+        status: "ok",
+        version: FUNCTION_VERSION,
+        imports_loaded: false,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // test_imports: explicitly test if shared modules can load
+    if (body.test_imports === true) {
+      try {
+        const [createClientFn, cryptoMod, managerFn] = await Promise.all([
+          loadSupabaseClient(),
+          loadCryptoJS(),
+          loadSicasRequestManager(),
+        ]);
+        return jsonResponse({
+          success: true,
+          stage: "test_imports",
+          imports_loaded: true,
+          available: {
+            supabase_client: typeof createClientFn === "function",
+            crypto_js: typeof cryptoMod === "object" || typeof cryptoMod === "function",
+            sicas_request_manager: typeof managerFn === "function",
+          },
+        });
+      } catch (importErr: any) {
+        return jsonResponse({
+          success: false,
+          stage: "test_imports",
+          imports_loaded: false,
+          message: importErr.message,
+          stack: Deno.env.get("DEBUG_EDGE") === "true" ? importErr.stack : undefined,
+        });
+      }
+    }
+
+    // ping_sicas: lightweight check of SICAS endpoint availability (no HWCAPTURE)
+    if (body.ping_sicas === true) {
+      const sicasEndpoint = Deno.env.get("SICAS_SOAP_ENDPOINT") || Deno.env.get("SICAS_ENDPOINT") || "";
+      const sicasUsername = Deno.env.get("SICAS_USERNAME") || "";
+      const sicasPassword = Deno.env.get("SICAS_PASSWORD") || "";
+
+      if (!sicasUsername || !sicasPassword || !sicasEndpoint) {
+        return jsonResponse({
+          success: false,
+          stage: "ping_sicas",
+          message: "Credenciales SICAS no configuradas",
+          env_status: {
+            username: sicasUsername ? "SET" : "MISSING",
+            password: sicasPassword ? "SET" : "MISSING",
+            endpoint: sicasEndpoint || "MISSING",
+          },
+        });
+      }
+
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const pingResp = await fetch(sicasEndpoint, {
+          method: "GET",
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        return jsonResponse({
+          success: true,
+          stage: "ping_sicas",
+          endpoint: sicasEndpoint,
+          http_status: pingResp.status,
+          reachable: true,
+        });
+      } catch (pingErr: any) {
+        return jsonResponse({
+          success: false,
+          stage: "ping_sicas",
+          endpoint: sicasEndpoint,
+          reachable: false,
+          message: pingErr.name === "AbortError" ? "Timeout (10s)" : pingErr.message,
+        });
+      }
+    }
+
+    // === REAL FLOW: Load all heavy modules ===
+    createClient = await loadSupabaseClient();
+    CryptoJS = await loadCryptoJS();
+    const createSicasRequestManager = await loadSicasRequestManager();
+
+    let currentStep: RegistrationStep = "start";
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -1924,15 +2063,12 @@ Deno.serve(async (req: Request) => {
     const requestManager = createSicasRequestManager(supabase);
     const cbState = await requestManager.checkCircuitBreaker();
     if (cbState.is_open) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          step: "start",
-          error: "SICAS esta respondiendo con errores o lentitud. Proceso pausado temporalmente.",
-          circuit_breaker: cbState,
-        }),
-        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({
+        success: false,
+        step: "start",
+        error: "SICAS esta respondiendo con errores o lentitud. Proceso pausado temporalmente.",
+        circuit_breaker: cbState,
+      }, 503);
     }
 
     const sicasUsername = Deno.env.get("SICAS_USERNAME") || "";
@@ -1947,8 +2083,6 @@ Deno.serve(async (req: Request) => {
     if (!sicasEndpoint) {
       throw new Error("SICAS endpoint not configured (SICAS_SOAP_ENDPOINT or SICAS_ENDPOINT)");
     }
-
-    const body = await req.json();
     const { action = "resolve" } = body;
     const debugOptions = body.debug_options || {};
     const skipAutoCreateClient = debugOptions.skip_auto_create_client === true;
@@ -2980,15 +3114,13 @@ Deno.serve(async (req: Request) => {
 
     throw new Error(`Unknown action: ${action}. Use "resolve", "register", "auto", "retry_document", "retry_lookup", or "manual_capture".`);
   } catch (error: any) {
-    console.error(`[SICAS] Fatal error at step "${currentStep}":`, error.message);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        status: "sicas_error",
-        step: currentStep,
-        message: error.message,
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    console.error(`[SICAS] Fatal error:`, error.message);
+    return jsonResponse({
+      success: false,
+      status: "sicas_error",
+      stage: "unhandled_edge_function_error",
+      message: error.message,
+      stack: Deno.env.get("DEBUG_EDGE") === "true" ? error.stack : undefined,
+    });
   }
 });
