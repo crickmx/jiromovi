@@ -6,7 +6,7 @@ import { cargarPermisosAdicionales } from '../lib/permisosUtils';
 import { applyTheme } from '../lib/themeUtils';
 import { setActivityUserId, trackLogin, trackLogout } from '../lib/activityLogger';
 
-type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
+export type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   permisosAdicionales?: string[]; // Códigos de módulos con permisos admin
 };
 
@@ -17,6 +17,10 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
   refreshUsuario: () => Promise<void>;
+  // Máscara de usuario (solo dev)
+  isMasked: boolean;
+  maskAs: (u: Usuario) => void;
+  unmask: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,6 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [loading, setLoading] = useState(true);
+  const [maskedUsuario, setMaskedUsuario] = useState<Usuario | null>(null);
   const lastFetchedUserIdRef = useRef<string | null>(null);
   const isFetchingRef = useRef(false);
 
@@ -367,13 +372,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       user,
-      usuario,
+      usuario: maskedUsuario ?? usuario,
       loading,
       signIn,
       signOut,
       refreshUsuario,
+      isMasked: !!maskedUsuario,
+      maskAs: (u: Usuario) => setMaskedUsuario(u),
+      unmask: () => setMaskedUsuario(null),
     }),
-    [user, usuario, loading]
+    [user, usuario, maskedUsuario, loading]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

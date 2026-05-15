@@ -98,6 +98,7 @@ import LectorQualitas from './pages/LectorQualitas';
 import EntregaPolizas from './pages/EntregaPolizas';
 import FormulariosCotizacion from './pages/FormulariosCotizacion';
 import QuoteFormWizard from './pages/QuoteFormWizard';
+import { BonosPage } from './pages/BonosPage';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -849,6 +850,9 @@ function App() {
               <Route path="/actividad-usuarios" element={<ProtectedRoute requireAdmin><Layout><ActividadUsuarios /></Layout></ProtectedRoute>} />
               <Route path="/comisiones/regimen-fiscal" element={<ProtectedRoute requireAdmin><Layout><RegimenFiscalAdmin /></Layout></ProtectedRoute>} />
               <Route path="/comisiones/regimen-fiscal/:id" element={<ProtectedRoute requireAdmin><Layout><RegimenFiscalEditor /></Layout></ProtectedRoute>} />
+
+              {/* Plataforma de Bonos */}
+              <Route path="/bonos" element={<ProtectedRoute><Layout><BonosPage /></Layout></ProtectedRoute>} />
 
               {/* Redirect raíz */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />

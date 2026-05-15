@@ -1,13 +1,14 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, LayoutDashboard, Calendar, MapPin, Menu, Palette, Key, GraduationCap, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, Car, FolderOpen, Trophy, X, Headphones, Send } from 'lucide-react';
+import { LogOut, User, Users, Settings, LayoutDashboard, Calendar, MapPin, Menu, Palette, Key, GraduationCap, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, Car, FolderOpen, Trophy, X, Headphones, Send, BarChart2 } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
 import { FloatingAssistantButton } from './FloatingAssistantButton';
 import { AssistantModal } from './AssistantModal';
 import InstallAppButton from './InstallAppButton';
 import InstallBanner from './InstallBanner';
+import { DevMask } from './DevMask';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from './ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -20,7 +21,7 @@ interface LayoutProps {
 const SIDEBAR_STORAGE_KEY = 'movi-sidebar-collapsed';
 
 export function Layout({ children, hideHeader = false }: LayoutProps) {
-  const { usuario, signOut } = useAuth();
+  const { usuario, signOut, isMasked, unmask } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -79,6 +80,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, show: true },
     { path: '/tramites', label: 'Tramites', icon: ClipboardList, show: true },
+    { path: '/bonos', label: 'PRODUCCIÓN Y ALCANCE DE METAS', icon: BarChart2, show: true },
     { path: '/centro-contacto', label: 'Centro de Contacto', icon: Headphones, show: isNotAgent },
     { path: '/entrega-polizas', label: 'Entrega Polizas', icon: Send, show: isAdmin || isGerente || isEmpleado },
     { path: isAdmin ? '/comisiones' : '/mis-comisiones', label: 'Comisiones', icon: DollarSign, show: !isEmpleado && !isAgente },
@@ -102,6 +104,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     { path: '/directorio', label: 'Usuarios', icon: Users, show: isAdminOrGerente },
     { path: '/actividad-usuarios', label: 'Actividad Usuarios', icon: Activity, show: isAdmin },
     { path: '/configuracion', label: 'Configuracion', icon: Settings, show: isAdmin },
+    { path: '/bonos', label: 'Bonos JIRO', icon: BarChart2, show: false },
   ];
 
   const getInitials = () => {
@@ -314,7 +317,16 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
             </header>
 
             {/* Desktop header */}
-            <header className="hidden lg:flex sticky top-0 z-30 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-b border-neutral-200/60 dark:border-white/8">
+            <header className="hidden lg:flex sticky top-0 z-30 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-b border-neutral-200/60 dark:border-white/8 flex-col">
+              {isMasked && import.meta.env.DEV && (
+                <div style={{ background: '#854d0e', color: '#fef9c3', fontSize: '12px', padding: '5px 24px', display: 'flex', alignItems: 'center', gap: '10px', fontFamily: 'ui-monospace, monospace' }}>
+                  <span style={{ background: '#f59e0b', color: '#1c1917', fontSize: '10px', fontWeight: 800, padding: '1px 6px', borderRadius: '4px' }}>DEV</span>
+                  <span style={{ opacity: 0.9 }}>Vista como: <strong>{usuario?.nombre} {usuario?.apellidos}</strong> ({usuario?.rol})</span>
+                  <button onClick={unmask} style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid rgba(253,224,71,0.4)', borderRadius: '5px', color: '#fde047', padding: '2px 10px', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}>
+                    Salir
+                  </button>
+                </div>
+              )}
               <div className="w-full px-6 lg:px-8 flex items-center justify-end gap-2 h-14">
                 <InstallAppButton variant="outline" size="sm" />
                 <ThemeToggle />
@@ -325,12 +337,16 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
         )}
 
         <main className={cn(
-          location.pathname === '/multicotizador-digital'
-            ? 'h-screen'
-            : 'w-full py-5 lg:py-8',
-          ['/espacio-jiro'].includes(location.pathname)
-            ? 'px-4 sm:px-6 lg:px-8'
-            : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'
+          location.pathname === '/bonos'
+            ? 'w-full p-0 overflow-hidden'
+            : location.pathname === '/multicotizador-digital'
+              ? 'h-screen'
+              : 'w-full py-5 lg:py-8',
+          location.pathname !== '/bonos' && (
+            ['/espacio-jiro'].includes(location.pathname)
+              ? 'px-4 sm:px-6 lg:px-8'
+              : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'
+          )
         )}>
           {children}
         </main>
@@ -338,6 +354,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
         {isAdmin && <FloatingAssistantButton />}
         {isAdmin && <AssistantModal />}
         <InstallBanner />
+        <DevMask />
       </div>
     </div>
   );
