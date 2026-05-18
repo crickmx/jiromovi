@@ -78,17 +78,33 @@ export default function ManualViewer() {
 
   function handleChapterClick(chapter: Chapter) {
     setActiveChapter(chapter.id);
-    // Try to scroll within iframe if anchor is set
-    if (chapter.anchor && iframeRef.current?.contentDocument) {
-      const el = iframeRef.current.contentDocument.querySelector(`#${chapter.anchor}`);
+
+    if (!iframeRef.current?.contentWindow) {
+      if (window.innerWidth < 1024) setSidebarOpen(false);
+      return;
+    }
+
+    const iframeWin = iframeRef.current.contentWindow;
+    const iframeDoc = iframeRef.current.contentDocument;
+
+    // Try anchor-based navigation first
+    if (chapter.anchor && iframeDoc) {
+      const el = iframeDoc.getElementById(chapter.anchor) || iframeDoc.querySelector(`[data-page="${chapter.page_number}"]`);
       if (el) {
-        el.scrollIntoView({ behavior: 'smooth' });
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (window.innerWidth < 1024) setSidebarOpen(false);
+        return;
       }
     }
-    // On mobile, close sidebar after selection
-    if (window.innerWidth < 1024) {
-      setSidebarOpen(false);
+
+    // Fallback: scroll based on page number proportion
+    if (iframeDoc?.documentElement && manual?.total_pages && manual.total_pages > 0) {
+      const totalScrollHeight = iframeDoc.documentElement.scrollHeight;
+      const pagePosition = ((chapter.page_number - 1) / manual.total_pages) * totalScrollHeight;
+      iframeWin.scrollTo({ top: pagePosition, behavior: 'smooth' });
     }
+
+    if (window.innerWidth < 1024) setSidebarOpen(false);
   }
 
   const handleZoomIn = useCallback(() => {
