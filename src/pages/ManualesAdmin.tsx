@@ -19,7 +19,20 @@ interface Manual {
   created_at: string;
 }
 
-const EMPTY_FORM: Omit<Manual, 'id' | 'created_at'> = {
+interface ManualForm {
+  title: string;
+  slug: string;
+  description: string;
+  category: string;
+  html_path: string;
+  pdf_path: string;
+  cover_image: string;
+  status: string;
+  visibility: string;
+  sort_order: number;
+}
+
+const EMPTY_FORM: ManualForm = {
   title: '',
   slug: '',
   description: '',

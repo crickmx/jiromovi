@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { ArrowLeft, Maximize2, Minimize2, Download, Printer, Loader2 } from 'lucide-react';
+import { ArrowLeft, Maximize2, Minimize2, Download, Loader2 } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 interface Manual {
   id: string;
@@ -21,6 +23,7 @@ export default function ManualViewer() {
   const [loading, setLoading] = useState(true);
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,17 +45,65 @@ export default function ManualViewer() {
     setLoading(false);
   }
 
-  function handlePrint() {
-    if (iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.print();
-    }
-  }
+  async function handleDownloadPdf() {
+    if (!iframeRef.current?.contentDocument?.body || !manual) return;
 
-  function handleDownload() {
-    if (manual?.pdf_path) {
-      window.open(manual.pdf_path, '_blank');
-    } else if (manual?.html_path) {
-      handlePrint();
+    setGeneratingPdf(true);
+    try {
+      const iframeDoc = iframeRef.current.contentDocument;
+      const body = iframeDoc.body;
+
+      const originalOverflow = body.style.overflow;
+      const originalHeight = body.style.height;
+      const originalWidth = body.style.width;
+      body.style.overflow = 'visible';
+      body.style.height = 'auto';
+      body.style.width = '900px';
+
+      const canvas = await html2canvas(body, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        windowWidth: 900,
+        scrollY: 0,
+        scrollX: 0,
+      });
+
+      body.style.overflow = originalOverflow;
+      body.style.height = originalHeight;
+      body.style.width = originalWidth;
+
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position -= pageHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      const filename = `${manual.slug || 'manual'}.pdf`;
+      pdf.save(filename);
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+      // Fallback: use browser print
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.print();
+      }
+    } finally {
+      setGeneratingPdf(false);
     }
   }
 
@@ -125,11 +176,22 @@ export default function ManualViewer() {
 
         <div className="flex items-center gap-1.5">
           <button
-            onClick={handleDownload}
-            title={manual.pdf_path ? 'Descargar PDF' : 'Imprimir'}
-            className="p-2 rounded-lg text-neutral-500 dark:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors"
+            onClick={handleDownloadPdf}
+            disabled={generatingPdf || !iframeLoaded}
+            title="Descargar PDF"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-neutral-600 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {manual.pdf_path ? <Download className="w-4 h-4" /> : <Printer className="w-4 h-4" />}
+            {generatingPdf ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="hidden sm:inline">Generando...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">Descargar PDF</span>
+              </>
+            )}
           </button>
           <button
             onClick={toggleFullscreen}
@@ -140,6 +202,17 @@ export default function ManualViewer() {
           </button>
         </div>
       </div>
+
+      {/* Generating PDF overlay */}
+      {generatingPdf && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-xl text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-accent mx-auto mb-3" />
+            <p className="text-sm font-medium text-neutral-700 dark:text-white">Generando PDF...</p>
+            <p className="text-xs text-neutral-400 dark:text-white/40 mt-1">Esto puede tomar unos segundos</p>
+          </div>
+        </div>
+      )}
 
       {/* Iframe viewer */}
       <div className="flex-1 relative">
