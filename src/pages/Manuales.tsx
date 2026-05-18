@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { BookOpen, Search, Filter, Plus, ChevronRight } from 'lucide-react';
-import { PageHeader } from '../components/ui/page-header';
+import { BookOpen, Search, Settings, ChevronRight, FileText, Layers } from 'lucide-react';
 
 interface Manual {
   id: string;
@@ -59,12 +58,16 @@ export default function Manuales() {
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 w-48 bg-neutral-200 dark:bg-white/10 rounded-lg" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="p-4 md:p-6 max-w-7xl mx-auto">
+        <div className="animate-pulse space-y-8">
+          <div className="space-y-2">
+            <div className="h-7 w-40 bg-neutral-200 dark:bg-white/10 rounded-lg" />
+            <div className="h-4 w-72 bg-neutral-100 dark:bg-white/5 rounded-lg" />
+          </div>
+          <div className="h-11 w-full max-w-md bg-neutral-200 dark:bg-white/10 rounded-xl" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-56 bg-neutral-200 dark:bg-white/10 rounded-2xl" />
+              <div key={i} className="h-64 bg-neutral-200 dark:bg-white/10 rounded-2xl" />
             ))}
           </div>
         </div>
@@ -74,65 +77,112 @@ export default function Manuales() {
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
-      <PageHeader
-        title="Manuales"
-        description="Consulta los manuales operativos y de referencia"
-        icon={BookOpen}
-        actions={isAdmin ? (
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+              <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Manuales</h1>
+          </div>
+          <p className="text-sm text-neutral-500 dark:text-white/50 ml-12">
+            Consulta los manuales operativos y de referencia disponibles
+          </p>
+        </div>
+        {isAdmin && (
           <button
             onClick={() => navigate('/manuales/admin')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-accent text-accent-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
+            className="self-start sm:self-center flex items-center gap-2 px-4 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl text-sm font-medium hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
-            <Plus className="w-4 h-4" />
+            <Settings className="w-4 h-4" />
             Administrar
           </button>
-        ) : undefined}
-      />
+        )}
+      </div>
 
-      {/* Filters */}
+      {/* Search & Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
           <input
             type="text"
-            placeholder="Buscar manual..."
+            placeholder="Buscar por titulo o descripcion..."
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 dark:focus:border-blue-500/40 transition-all"
           />
         </div>
         {categories.length > 1 && (
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-            <select
-              value={categoriaFiltro}
-              onChange={e => setCategoriaFiltro(e.target.value)}
-              className="pl-10 pr-8 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 appearance-none transition-all"
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+            <button
+              onClick={() => setCategoriaFiltro('all')}
+              className={`flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                categoriaFiltro === 'all'
+                  ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 shadow-sm'
+                  : 'bg-neutral-100 dark:bg-white/5 text-neutral-600 dark:text-white/60 hover:bg-neutral-200 dark:hover:bg-white/10'
+              }`}
             >
-              <option value="all">Todas las categorias</option>
-              {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
+              <Layers className="w-3.5 h-3.5" />
+              Todos
+            </button>
+            {categories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setCategoriaFiltro(cat)}
+                className={`flex-shrink-0 px-3.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                  categoriaFiltro === cat
+                    ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 shadow-sm'
+                    : 'bg-neutral-100 dark:bg-white/5 text-neutral-600 dark:text-white/60 hover:bg-neutral-200 dark:hover:bg-white/10'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
           </div>
         )}
       </div>
 
+      {/* Results count */}
+      {busqueda && (
+        <p className="text-xs text-neutral-400 dark:text-white/40">
+          {filteredManuals.length} {filteredManuals.length === 1 ? 'resultado' : 'resultados'}
+          {busqueda && <> para "<span className="text-neutral-600 dark:text-white/60">{busqueda}</span>"</>}
+        </p>
+      )}
+
       {/* Manual Cards Grid */}
       {filteredManuals.length === 0 ? (
-        <div className="text-center py-16">
-          <BookOpen className="w-12 h-12 text-neutral-300 dark:text-white/20 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-neutral-600 dark:text-white/60">
-            {busqueda ? 'No se encontraron manuales' : 'No hay manuales disponibles'}
+        <div className="flex flex-col items-center justify-center py-20 px-4">
+          <div className="w-16 h-16 rounded-2xl bg-neutral-100 dark:bg-white/5 flex items-center justify-center mb-4">
+            <BookOpen className="w-8 h-8 text-neutral-300 dark:text-white/20" />
+          </div>
+          <h3 className="text-base font-semibold text-neutral-700 dark:text-white/70 mb-1">
+            {busqueda ? 'Sin resultados' : 'No hay manuales disponibles'}
           </h3>
-          <p className="text-sm text-neutral-400 dark:text-white/40 mt-1">
-            {busqueda ? 'Intenta con otro termino de busqueda' : 'Los manuales apareceran aqui cuando esten disponibles'}
+          <p className="text-sm text-neutral-400 dark:text-white/40 text-center max-w-xs">
+            {busqueda
+              ? 'Intenta con otro termino de busqueda o cambia el filtro de categoria'
+              : 'Los manuales apareceran aqui cuando esten disponibles'}
           </p>
+          {busqueda && (
+            <button
+              onClick={() => { setBusqueda(''); setCategoriaFiltro('all'); }}
+              className="mt-4 px-4 py-2 text-sm text-accent hover:underline"
+            >
+              Limpiar filtros
+            </button>
+          )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredManuals.map(manual => (
-            <ManualCard key={manual.id} manual={manual} onClick={() => navigate(`/manuales/${manual.slug}`)} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+          {filteredManuals.map((manual, index) => (
+            <ManualCard
+              key={manual.id}
+              manual={manual}
+              index={index}
+              onClick={() => navigate(`/manuales/${manual.slug}`)}
+            />
           ))}
         </div>
       )}
@@ -140,40 +190,71 @@ export default function Manuales() {
   );
 }
 
-function ManualCard({ manual, onClick }: { manual: Manual; onClick: () => void }) {
+const CARD_GRADIENTS = [
+  'from-blue-50 to-sky-50 dark:from-blue-950/30 dark:to-sky-950/30',
+  'from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30',
+  'from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30',
+  'from-rose-50 to-pink-50 dark:from-rose-950/30 dark:to-pink-950/30',
+  'from-cyan-50 to-blue-50 dark:from-cyan-950/30 dark:to-blue-950/30',
+  'from-slate-50 to-zinc-100 dark:from-slate-950/30 dark:to-zinc-950/30',
+];
+
+const ICON_COLORS = [
+  'text-blue-500 dark:text-blue-400',
+  'text-emerald-500 dark:text-emerald-400',
+  'text-amber-500 dark:text-amber-400',
+  'text-rose-500 dark:text-rose-400',
+  'text-cyan-500 dark:text-cyan-400',
+  'text-slate-500 dark:text-slate-400',
+];
+
+function ManualCard({ manual, index, onClick }: { manual: Manual; index: number; onClick: () => void }) {
+  const gradient = CARD_GRADIENTS[index % CARD_GRADIENTS.length];
+  const iconColor = ICON_COLORS[index % ICON_COLORS.length];
+
   return (
     <button
       onClick={onClick}
-      className="group text-left w-full bg-white dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-2xl p-5 hover:shadow-lg hover:border-accent/30 dark:hover:border-accent/40 transition-all duration-300 hover:-translate-y-0.5"
+      className="group text-left w-full bg-white dark:bg-white/[0.03] border border-neutral-200/80 dark:border-white/8 rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-neutral-200/50 dark:hover:shadow-black/20 hover:border-neutral-300 dark:hover:border-white/15 transition-all duration-300 hover:-translate-y-1 active:translate-y-0 active:shadow-md"
     >
-      {/* Cover or Icon */}
-      <div className="w-full h-32 rounded-xl bg-gradient-to-br from-blue-50 to-sky-100 dark:from-blue-900/20 dark:to-sky-900/20 flex items-center justify-center mb-4 overflow-hidden">
+      {/* Cover area */}
+      <div className={`relative h-36 sm:h-40 bg-gradient-to-br ${gradient} flex items-center justify-center overflow-hidden`}>
         {manual.cover_image ? (
-          <img src={manual.cover_image} alt={manual.title} className="w-full h-full object-cover" />
+          <img src={manual.cover_image} alt="" className="w-full h-full object-cover" />
         ) : (
-          <BookOpen className="w-10 h-10 text-blue-400 dark:text-blue-300 group-hover:scale-110 transition-transform duration-300" />
+          <div className="relative">
+            {/* Decorative elements */}
+            <div className="absolute -top-8 -left-8 w-24 h-24 bg-white/30 dark:bg-white/5 rounded-full blur-xl" />
+            <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-white/20 dark:bg-white/5 rounded-full blur-lg" />
+            <div className="relative w-14 h-14 rounded-xl bg-white/80 dark:bg-white/10 backdrop-blur-sm shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+              <FileText className={`w-7 h-7 ${iconColor}`} />
+            </div>
+          </div>
         )}
+
+        {/* Category badge */}
+        <span className="absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wider text-neutral-700 dark:text-white/70 bg-white/80 dark:bg-black/30 backdrop-blur-sm px-2.5 py-1 rounded-full">
+          {manual.category}
+        </span>
       </div>
 
-      {/* Category badge */}
-      <span className="inline-block text-[11px] font-semibold uppercase tracking-wider text-accent bg-accent/10 px-2.5 py-1 rounded-full mb-2">
-        {manual.category}
-      </span>
+      {/* Content */}
+      <div className="p-4 sm:p-5 space-y-2">
+        <h3 className="text-sm sm:text-base font-semibold text-neutral-900 dark:text-white line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200">
+          {manual.title}
+        </h3>
 
-      {/* Title */}
-      <h3 className="text-base font-semibold text-neutral-900 dark:text-white mb-1.5 line-clamp-2 group-hover:text-accent transition-colors">
-        {manual.title}
-      </h3>
+        {manual.description && (
+          <p className="text-xs sm:text-sm text-neutral-500 dark:text-white/45 line-clamp-2 leading-relaxed">
+            {manual.description}
+          </p>
+        )}
 
-      {/* Description */}
-      <p className="text-sm text-neutral-500 dark:text-white/50 line-clamp-2 mb-3">
-        {manual.description}
-      </p>
-
-      {/* CTA */}
-      <div className="flex items-center gap-1 text-xs font-medium text-accent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-        Abrir manual
-        <ChevronRight className="w-3.5 h-3.5" />
+        {/* CTA */}
+        <div className="flex items-center gap-1.5 pt-2 text-xs font-medium text-blue-600 dark:text-blue-400 opacity-0 group-hover:opacity-100 translate-x-0 group-hover:translate-x-1 transition-all duration-200">
+          Consultar manual
+          <ChevronRight className="w-3.5 h-3.5" />
+        </div>
       </div>
     </button>
   );
