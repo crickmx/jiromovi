@@ -98,6 +98,9 @@ import LectorQualitas from './pages/LectorQualitas';
 import EntregaPolizas from './pages/EntregaPolizas';
 import FormulariosCotizacion from './pages/FormulariosCotizacion';
 import QuoteFormWizard from './pages/QuoteFormWizard';
+import Manuales from './pages/Manuales';
+import ManualViewer from './pages/ManualViewer';
+import ManualesAdmin from './pages/ManualesAdmin';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -852,6 +855,11 @@ function App() {
 
               {/* Redirect raíz */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+              {/* Manuales */}
+              <Route path="/manuales" element={<ProtectedRoute><Layout><Manuales /></Layout></ProtectedRoute>} />
+              <Route path="/manuales/admin" element={<ProtectedRoute requireAdmin><Layout><ManualesAdmin /></Layout></ProtectedRoute>} />
+              <Route path="/manuales/:slug" element={<ProtectedRoute><ManualViewer /></ProtectedRoute>} />
 
               {/* Ruta pública - Registro de Personal */}
               <Route path="/registro-personal" element={<RegistroPersonal />} />
