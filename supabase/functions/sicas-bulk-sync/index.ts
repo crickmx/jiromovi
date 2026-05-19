@@ -42,6 +42,11 @@ interface SyncState {
   retryAttempts: Record<string, number>;
   incrementalSince?: string;
   transport: "soap";
+  // Probe-based pagination: true while last page was full (hasMore=true from fetchSoapPage).
+  // SICAS does not return a grand total — we keep going until a page returns fewer
+  // records than itemsPerPage.
+  probeMode?: boolean;
+  lastPageWasFull?: boolean;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -76,8 +81,7 @@ async function fetchSoapPage(
   page: number,
   itemsPerPage: number,
   _incrementalSince?: string
-): Promise<{ records: Record<string, unknown>[]; totalPages: number; totalRecords: number; currentPage: number }> {
-  const startMs = Date.now();
+): Promise<{ records: Record<string, unknown>[]; totalPages: number; totalRecords: number; currentPage: number; hasMore: boolean }> {
   const result = await client.executeReport({
     keyCode,
     page,
@@ -91,18 +95,22 @@ async function fetchSoapPage(
   }
 
   const records = result.records || [];
-  const totalRecords = result.totalRecords || 0;
 
-  // Estimate total pages based on totalRecords and items per page.
-  let totalPages = 1;
-  if (totalRecords > 0 && itemsPerPage > 0) {
-    totalPages = Math.ceil(totalRecords / itemsPerPage);
-  } else if (records.length === itemsPerPage) {
-    // If we got a full page, there are likely more pages
-    totalPages = page + 1;
-  }
+  // SICAS SOAP does NOT return a grand total — the response only contains
+  // the records for the requested page. We use probe-based pagination:
+  // if the page is "full" (returned exactly itemsPerPage records), there
+  // are likely more pages. Only stop when a page returns fewer records.
+  const hasMore = records.length >= itemsPerPage;
 
-  return { records, totalPages, totalRecords, currentPage: page };
+  // Use a very large sentinel for totalPages when we don't know the real
+  // count. The sync loop will terminate naturally when hasMore = false.
+  const UNKNOWN_TOTAL_SENTINEL = 999999;
+  const totalPages = hasMore ? UNKNOWN_TOTAL_SENTINEL : page;
+  const totalRecords = hasMore ? UNKNOWN_TOTAL_SENTINEL : (page - 1) * itemsPerPage + records.length;
+
+  console.log(`[BULK-SYNC] Page ${page}: ${records.length} records fetched (itemsPerPage=${itemsPerPage}, hasMore=${hasMore})`);
+
+  return { records, totalPages, totalRecords, currentPage: page, hasMore };
 }
 
 Deno.serve(async (req: Request) => {
@@ -534,8 +542,12 @@ Deno.serve(async (req: Request) => {
           updated_at: new Date().toISOString(),
         }).eq("id", jobId).eq("status", "running");
 
-        // If totalPages is 1 or records < itemsPerPage, we're done
-        if (syncState.totalPages <= 1 || firstPageResult.records.length < ITEMS_PER_PAGE) {
+        // Update probe-mode tracking after first page
+        syncState.probeMode = true;
+        syncState.lastPageWasFull = firstPageResult.hasMore;
+
+        // If first page wasn't full, all data was on page 1 — done
+        if (!firstPageResult.hasMore) {
           console.log("[BULK-SYNC] SOAP returned all records in single page. Completing.");
           await markComplete(supabase, jobId, syncState);
           return jsonResponse(200, { ok: true, jobId, status: "completed", transport: "soap" });
@@ -548,7 +560,11 @@ Deno.serve(async (req: Request) => {
         }});
       }
 
-      if (syncState.currentPage > syncState.totalPages && syncState.totalPages > 0) {
+      // Probe mode: done when last page was not full (hasMore=false)
+      const probeComplete = syncState.probeMode && syncState.lastPageWasFull === false;
+      const pageCountComplete = syncState.currentPage > syncState.totalPages && syncState.totalPages > 0 && syncState.totalPages < 999999;
+
+      if (probeComplete || pageCountComplete) {
         if (syncState.failedPages.length > 0) {
           console.log(`[BULK-SYNC] All pages visited, retrying ${syncState.failedPages.length} failed pages...`);
           syncState.currentPage = -1;
@@ -635,8 +651,9 @@ Deno.serve(async (req: Request) => {
         }
       } else {
         // Normal sequential page processing
+        // In probe mode totalPages=999999 (sentinel), so we loop until lastPageWasFull=false
         while (
-          syncState.currentPage <= syncState.totalPages &&
+          (syncState.probeMode ? syncState.lastPageWasFull !== false : syncState.currentPage <= syncState.totalPages) &&
           pagesThisBatch < PAGES_PER_BATCH
         ) {
           const elapsed = (Date.now() - batchStart) / 1000;
@@ -710,6 +727,9 @@ Deno.serve(async (req: Request) => {
 
             syncState.totalFetched += pageResult.records.length;
 
+            // Track probe-mode pagination state
+            syncState.lastPageWasFull = pageResult.hasMore;
+
             const documents = pageResult.records
               .map((raw) =>
                 mapDocument(raw, effectiveKeyCode, despachoNameToOffice, vendorToUser, vendorToOficina)
@@ -720,16 +740,19 @@ Deno.serve(async (req: Request) => {
             syncState.totalUpserted += result.upserted;
             syncState.totalErrors += result.errors;
 
-            if (pagesThisBatch % 5 === 0 || pageResult.records.length < ITEMS_PER_PAGE) {
+            if (pagesThisBatch % 5 === 0 || !pageResult.hasMore) {
               console.log(
-                `[BULK-SYNC] Page ${page}/${syncState.totalPages}: ${pageResult.records.length} fetched, ${result.upserted} upserted (total: ${syncState.totalFetched})`
+                `[BULK-SYNC] Page ${page}: ${pageResult.records.length} fetched, ${result.upserted} upserted (total: ${syncState.totalFetched}, hasMore=${pageResult.hasMore})`
               );
             }
 
-            // If we got fewer records than requested, we've reached the end
-            if (pageResult.records.length < ITEMS_PER_PAGE) {
-              console.log(`[BULK-SYNC] Page ${page} returned ${pageResult.records.length} < ${ITEMS_PER_PAGE}. Reached end of data.`);
-              syncState.currentPage = syncState.totalPages + 1;
+            // If page wasn't full, we've reached the end of SICAS data
+            if (!pageResult.hasMore) {
+              console.log(`[BULK-SYNC] Page ${page} returned ${pageResult.records.length} records (not full). Reached end of data.`);
+              // Update totalRecordsInSicas with the real count now that we know it
+              syncState.totalRecordsInSicas = pageResult.totalRecords;
+              syncState.totalPages = page;
+              syncState.currentPage = page + 1;
               pagesThisBatch++;
               break;
             }
@@ -765,7 +788,8 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      const isComplete = (syncState.currentPage > syncState.totalPages || syncState.currentPage === -1) && syncState.failedPages.length === 0;
+      const probeFinished = syncState.probeMode && syncState.lastPageWasFull === false;
+      const isComplete = (probeFinished || syncState.currentPage > syncState.totalPages || syncState.currentPage === -1) && syncState.failedPages.length === 0;
 
       const { count: uniqueCount } = await supabase
         .from("sicas_documents")
@@ -778,6 +802,12 @@ Deno.serve(async (req: Request) => {
         const totalFailedOriginal = syncState.failedPages.length + syncState.droppedPages.length + syncState.retriedPages;
         const processed = syncState.droppedPages.length + syncState.retriedPages;
         percent = Math.min(99, Math.round(90 + (processed / Math.max(1, totalFailedOriginal)) * 10));
+      } else if (syncState.probeMode) {
+        // In probe mode we don't know the total — show progress based on docs fetched
+        // Use a logarithmic scale: 10k docs=30%, 50k=60%, 100k=75%, 200k=90%
+        const fetched = syncState.totalFetched;
+        if (fetched === 0) percent = 5;
+        else percent = Math.min(89, Math.round(Math.log10(fetched + 1) / Math.log10(300000) * 90));
       } else if (syncState.totalPages > 0) {
         percent = Math.min(89, Math.round((Math.max(0, syncState.currentPage - 1) / syncState.totalPages) * 90));
       } else {
