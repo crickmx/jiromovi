@@ -28,11 +28,36 @@ const MAX_RETRIES_PER_PAGE = 3;
 const RETRY_DELAY_MS = 5000;
 const INTER_PAGE_DELAY_MS = 1500;
 
+// Valid terminal reasons for a sync job
+type FinalReason =
+  | "completed_last_page_short"   // normal: last page < itemsPerPage
+  | "completed_single_page"       // all data fit in one page
+  | "failed_timeout"              // SICAS didn't respond
+  | "failed_sicas_error"          // SICAS returned error
+  | "cancelled"                   // user cancelled
+  | "stuck_job_detected"          // auto-recovery: job was stuck
+  | "partial_no_data"             // SICAS responded but no records
+  | "unknown";
+
+interface PageLogEntry {
+  page: number;
+  itemsPerPage: number;
+  recordsReceived: number;
+  hasMore: boolean;
+  durationMs: number;
+  totalFetchedSoFar: number;
+  inserted: number;
+  updated: number;
+  errors: number;
+}
+
 interface SyncState {
   currentPage: number;
   totalPages: number;
   totalRecordsInSicas: number;
   totalFetched: number;
+  totalInserted: number;
+  totalUpdated: number;
   totalUpserted: number;
   totalErrors: number;
   emptyPages: number;
@@ -42,11 +67,13 @@ interface SyncState {
   retryAttempts: Record<string, number>;
   incrementalSince?: string;
   transport: "soap";
-  // Probe-based pagination: true while last page was full (hasMore=true from fetchSoapPage).
-  // SICAS does not return a grand total — we keep going until a page returns fewer
-  // records than itemsPerPage.
   probeMode?: boolean;
   lastPageWasFull?: boolean;
+  finalReason?: FinalReason;
+  // Rolling log: last 20 pages only (to avoid bloating error_message column)
+  recentPages?: PageLogEntry[];
+  pagesProcessed?: number;
+  docsBeforeSync?: number;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -55,6 +82,21 @@ function sleep(ms: number): Promise<void> {
 
 function formatNumber(n: number): string {
   return n.toLocaleString("es-MX");
+}
+
+function maskSecret(s: string): string {
+  if (!s || s.length < 3) return "***";
+  return s.substring(0, 3) + "*".repeat(Math.min(s.length - 3, 6));
+}
+
+function appendPageLog(syncState: SyncState, entry: PageLogEntry): void {
+  if (!syncState.recentPages) syncState.recentPages = [];
+  syncState.recentPages.push(entry);
+  // Keep only last 20 pages to avoid bloating the state column
+  if (syncState.recentPages.length > 20) {
+    syncState.recentPages = syncState.recentPages.slice(-20);
+  }
+  syncState.pagesProcessed = (syncState.pagesProcessed || 0) + 1;
 }
 
 async function triggerSelfContinuation(jobId: string): Promise<void> {
@@ -81,7 +123,8 @@ async function fetchSoapPage(
   page: number,
   itemsPerPage: number,
   _incrementalSince?: string
-): Promise<{ records: Record<string, unknown>[]; totalPages: number; totalRecords: number; currentPage: number; hasMore: boolean }> {
+): Promise<{ records: Record<string, unknown>[]; totalPages: number; totalRecords: number; currentPage: number; hasMore: boolean; durationMs: number }> {
+  const t0 = Date.now();
   const result = await client.executeReport({
     keyCode,
     page,
@@ -89,6 +132,7 @@ async function fetchSoapPage(
     sortField: "DatDocumentos.FCaptura DESC",
     typeFormat: "XML",
   });
+  const durationMs = Date.now() - t0;
 
   if (!result.success && result.message) {
     throw new Error(`SICAS SOAP error: ${result.message}`);
@@ -96,21 +140,16 @@ async function fetchSoapPage(
 
   const records = result.records || [];
 
-  // SICAS SOAP does NOT return a grand total — the response only contains
-  // the records for the requested page. We use probe-based pagination:
-  // if the page is "full" (returned exactly itemsPerPage records), there
-  // are likely more pages. Only stop when a page returns fewer records.
+  // SICAS SOAP does NOT return a grand total — probe-based pagination:
+  // keep fetching while page is full; stop when page is short.
   const hasMore = records.length >= itemsPerPage;
-
-  // Use a very large sentinel for totalPages when we don't know the real
-  // count. The sync loop will terminate naturally when hasMore = false.
   const UNKNOWN_TOTAL_SENTINEL = 999999;
   const totalPages = hasMore ? UNKNOWN_TOTAL_SENTINEL : page;
   const totalRecords = hasMore ? UNKNOWN_TOTAL_SENTINEL : (page - 1) * itemsPerPage + records.length;
 
-  console.log(`[BULK-SYNC] Page ${page}: ${records.length} records fetched (itemsPerPage=${itemsPerPage}, hasMore=${hasMore})`);
+  console.log(`[BULK-SYNC] Page ${page}: ${records.length}/${itemsPerPage} records | hasMore=${hasMore} | ${durationMs}ms`);
 
-  return { records, totalPages, totalRecords, currentPage: page, hasMore };
+  return { records, totalPages, totalRecords, currentPage: page, hasMore, durationMs };
 }
 
 Deno.serve(async (req: Request) => {
@@ -190,6 +229,8 @@ Deno.serve(async (req: Request) => {
 
     // Diagnostic validated that variant F (no CredentialsUserSICAS) works for this account
     const skipCredSicas = sicasConfig?.report_test_history?.recommended_variant === "F_no_credsicas_xml";
+    // Security: never log full credentials
+    console.log(`[BULK-SYNC] SOAP client: user=${maskSecret(wsUsername)}, endpoint=${soapEndpoint}, skipCredSicas=${skipCredSicas}`);
     const soapClient = new SicasSoapReportClient({
       endpoint: soapEndpoint,
       username: wsUsername,
@@ -275,12 +316,19 @@ Deno.serve(async (req: Request) => {
         }
       }
 
+      // Snapshot doc count before sync for the final report
+      const { count: docsBeforeSync } = await supabase
+        .from("sicas_documents")
+        .select("*", { count: "exact", head: true });
+
       // Create the job record
       const syncState: SyncState = {
         currentPage: 0,
         totalPages: 0,
         totalRecordsInSicas: 0,
         totalFetched: 0,
+        totalInserted: 0,
+        totalUpdated: 0,
         totalUpserted: 0,
         totalErrors: 0,
         emptyPages: 0,
@@ -290,6 +338,11 @@ Deno.serve(async (req: Request) => {
         retryAttempts: {},
         incrementalSince,
         transport: "soap",
+        probeMode: true,
+        lastPageWasFull: undefined,
+        pagesProcessed: 0,
+        recentPages: [],
+        docsBeforeSync: docsBeforeSync || 0,
       };
 
       const { data: job, error: jobError } = await supabase
@@ -510,14 +563,17 @@ Deno.serve(async (req: Request) => {
           }).eq("id", jobId);
         }
 
+        syncState.probeMode = true;
         syncState.totalPages = firstPageResult.totalPages;
         syncState.totalRecordsInSicas = firstPageResult.totalRecords;
         syncState.totalFetched = firstPageResult.records.length;
+        syncState.lastPageWasFull = firstPageResult.hasMore;
         syncState.currentPage = 1;
 
-        console.log(`[BULK-SYNC] Discovered via SOAP: ${syncState.totalRecordsInSicas} records, ${syncState.totalPages} pages`);
+        console.log(`[BULK-SYNC] Discovery: page 1 returned ${firstPageResult.records.length}/${DISCOVERY_ITEMS_PER_PAGE} records | hasMore=${firstPageResult.hasMore} | ${firstPageResult.durationMs}ms`);
 
         // Process page 1 records
+        let p1Inserted = 0, p1Updated = 0;
         if (firstPageResult.records.length > 0) {
           const despachoNameToOffice = await loadDespachoNameMap(supabase);
           const { vendorToUser, vendorToOficina } = await loadVendorMaps(supabase);
@@ -526,37 +582,55 @@ Deno.serve(async (req: Request) => {
             .filter((d) => d !== null);
           const result = await upsertDocuments(supabase, documents);
           syncState.totalUpserted += result.upserted;
+          syncState.totalInserted = (syncState.totalInserted || 0) + result.inserted;
+          syncState.totalUpdated = (syncState.totalUpdated || 0) + result.updated;
           syncState.totalErrors += result.errors;
-          console.log(`[BULK-SYNC] Page 1: ${firstPageResult.records.length} fetched, ${result.upserted} upserted`);
+          p1Inserted = result.inserted;
+          p1Updated = result.updated;
+          console.log(`[BULK-SYNC] Page 1 upsert: +${result.inserted} inserted, ~${result.updated} updated, ${result.errors} errors`);
         }
 
+        appendPageLog(syncState, {
+          page: 1,
+          itemsPerPage: DISCOVERY_ITEMS_PER_PAGE,
+          recordsReceived: firstPageResult.records.length,
+          hasMore: firstPageResult.hasMore,
+          durationMs: firstPageResult.durationMs,
+          totalFetchedSoFar: syncState.totalFetched,
+          inserted: p1Inserted,
+          updated: p1Updated,
+          errors: 0,
+        });
+
         syncState.currentPage = 2;
+
+        // percent: show 5% after page 1 (we don't know total yet)
+        const p1Percent = firstPageResult.hasMore ? 5 : 100;
 
         await supabase.from("sicas_sync_jobs").update({
           total_pages: syncState.totalPages,
           total_in_sicas: syncState.totalRecordsInSicas,
           current_page: 1,
           total_synced: syncState.totalUpserted,
-          percent: syncState.totalPages > 0 ? Math.round((1 / syncState.totalPages) * 90) : 50,
+          percent: p1Percent,
           error_message: JSON.stringify(syncState),
           updated_at: new Date().toISOString(),
         }).eq("id", jobId).eq("status", "running");
 
-        // Update probe-mode tracking after first page
-        syncState.probeMode = true;
-        syncState.lastPageWasFull = firstPageResult.hasMore;
-
         // If first page wasn't full, all data was on page 1 — done
         if (!firstPageResult.hasMore) {
           console.log("[BULK-SYNC] SOAP returned all records in single page. Completing.");
+          syncState.finalReason = "completed_single_page";
           await markComplete(supabase, jobId, syncState);
           return jsonResponse(200, { ok: true, jobId, status: "completed", transport: "soap" });
         }
 
         EdgeRuntime.waitUntil(sleep(1000).then(() => triggerSelfContinuation(jobId)));
         return jsonResponse(200, { ok: true, jobId, status: "running", progress: {
-          percent: 0, currentPage: 1, totalPages: syncState.totalPages,
+          percent: p1Percent, currentPage: 1, totalPages: syncState.totalPages,
           totalRecordsInSicas: syncState.totalRecordsInSicas,
+          totalFetched: syncState.totalFetched,
+          probeMode: true,
         }});
       }
 
@@ -569,6 +643,7 @@ Deno.serve(async (req: Request) => {
           console.log(`[BULK-SYNC] All pages visited, retrying ${syncState.failedPages.length} failed pages...`);
           syncState.currentPage = -1;
         } else {
+          if (!syncState.finalReason) syncState.finalReason = probeComplete ? "completed_last_page_short" : "completed_last_page_short";
           await markComplete(supabase, jobId, syncState);
           return jsonResponse(200, { ok: true, status: "completed" });
         }
@@ -646,6 +721,7 @@ Deno.serve(async (req: Request) => {
 
         if (syncState.failedPages.length === 0) {
           syncState.currentPage = syncState.totalPages + 1;
+          if (!syncState.finalReason) syncState.finalReason = "completed_last_page_short";
           await markComplete(supabase, jobId, syncState);
           return jsonResponse(200, { ok: true, status: "completed" });
         }
@@ -738,17 +814,33 @@ Deno.serve(async (req: Request) => {
 
             const result = await upsertDocuments(supabase, documents);
             syncState.totalUpserted += result.upserted;
+            syncState.totalInserted = (syncState.totalInserted || 0) + result.inserted;
+            syncState.totalUpdated = (syncState.totalUpdated || 0) + result.updated;
             syncState.totalErrors += result.errors;
 
-            if (pagesThisBatch % 5 === 0 || !pageResult.hasMore) {
+            // Log every page for audit trail
+            appendPageLog(syncState, {
+              page,
+              itemsPerPage: ITEMS_PER_PAGE,
+              recordsReceived: pageResult.records.length,
+              hasMore: pageResult.hasMore,
+              durationMs: pageResult.durationMs,
+              totalFetchedSoFar: syncState.totalFetched,
+              inserted: result.inserted,
+              updated: result.updated,
+              errors: result.errors,
+            });
+
+            if (pagesThisBatch % 10 === 0 || !pageResult.hasMore) {
               console.log(
-                `[BULK-SYNC] Page ${page}: ${pageResult.records.length} fetched, ${result.upserted} upserted (total: ${syncState.totalFetched}, hasMore=${pageResult.hasMore})`
+                `[BULK-SYNC] Page ${page}: ${pageResult.records.length}/${ITEMS_PER_PAGE} | hasMore=${pageResult.hasMore} | +${result.inserted}ins ~${result.updated}upd | total=${syncState.totalFetched} | ${pageResult.durationMs}ms`
               );
             }
 
             // If page wasn't full, we've reached the end of SICAS data
             if (!pageResult.hasMore) {
-              console.log(`[BULK-SYNC] Page ${page} returned ${pageResult.records.length} records (not full). Reached end of data.`);
+              console.log(`[BULK-SYNC] END OF DATA: page ${page} returned ${pageResult.records.length}/${ITEMS_PER_PAGE} (short page). totalFetched=${syncState.totalFetched}`);
+              syncState.finalReason = "completed_last_page_short";
               // Update totalRecordsInSicas with the real count now that we know it
               syncState.totalRecordsInSicas = pageResult.totalRecords;
               syncState.totalPages = page;
@@ -791,6 +883,10 @@ Deno.serve(async (req: Request) => {
       const probeFinished = syncState.probeMode && syncState.lastPageWasFull === false;
       const isComplete = (probeFinished || syncState.currentPage > syncState.totalPages || syncState.currentPage === -1) && syncState.failedPages.length === 0;
 
+      if (isComplete && !syncState.finalReason) {
+        syncState.finalReason = probeFinished ? "completed_last_page_short" : "completed_last_page_short";
+      }
+
       const { count: uniqueCount } = await supabase
         .from("sicas_documents")
         .select("*", { count: "exact", head: true });
@@ -803,8 +899,8 @@ Deno.serve(async (req: Request) => {
         const processed = syncState.droppedPages.length + syncState.retriedPages;
         percent = Math.min(99, Math.round(90 + (processed / Math.max(1, totalFailedOriginal)) * 10));
       } else if (syncState.probeMode) {
-        // In probe mode we don't know the total — show progress based on docs fetched
-        // Use a logarithmic scale: 10k docs=30%, 50k=60%, 100k=75%, 200k=90%
+        // Probe mode: logarithmic scale since total is unknown
+        // 10k=30%, 50k=60%, 100k=75%, 200k=89%
         const fetched = syncState.totalFetched;
         if (fetched === 0) percent = 5;
         else percent = Math.min(89, Math.round(Math.log10(fetched + 1) / Math.log10(300000) * 90));
@@ -814,15 +910,20 @@ Deno.serve(async (req: Request) => {
         percent = 0;
       }
 
+      // Sanitize sentinel values for DB storage
+      const dbTotalPages = syncState.totalPages < 999999 ? syncState.totalPages : (syncState.pagesProcessed || 0);
+      const dbTotalInSicas = syncState.totalRecordsInSicas < 999999 ? syncState.totalRecordsInSicas : syncState.totalFetched;
+      const dbCurrentPage = syncState.currentPage === -1 ? dbTotalPages : Math.max(0, syncState.currentPage - 1);
+
       const { data: updateResult } = await supabase
         .from("sicas_sync_jobs")
         .update({
           status: isComplete ? "completed" : "running",
           total_synced: uniqueCount || 0,
-          total_in_sicas: syncState.totalRecordsInSicas,
+          total_in_sicas: dbTotalInSicas,
           total_errors: syncState.totalErrors,
-          current_page: syncState.currentPage === -1 ? syncState.totalPages : Math.max(0, syncState.currentPage - 1),
-          total_pages: syncState.totalPages,
+          current_page: dbCurrentPage,
+          total_pages: dbTotalPages,
           percent,
           error_message: JSON.stringify(syncState),
           updated_at: new Date().toISOString(),
@@ -832,13 +933,23 @@ Deno.serve(async (req: Request) => {
         .eq("status", "running")
         .select("id");
 
-      console.log(
-        `[BULK-SYNC] Batch done: page ${Math.max(0, syncState.currentPage - 1)}/${syncState.totalPages}, ` +
-          `${uniqueCount} unique docs in DB, ${percent}% complete, ` +
-          `${syncState.failedPages.length} pending retry, ${syncState.droppedPages.length} dropped`
-      );
-
       const wasCancelled = !updateResult || updateResult.length === 0;
+
+      if (isComplete) {
+        console.log(
+          `[BULK-SYNC] Batch COMPLETE: finalReason=${syncState.finalReason} | page=${dbCurrentPage} | ` +
+          `fetched=${syncState.totalFetched} | +${syncState.totalInserted || 0}ins ~${syncState.totalUpdated || 0}upd | ` +
+          `errors=${syncState.totalErrors} | docs_in_db=${uniqueCount} | ${percent}%`
+        );
+      } else {
+        console.log(
+          `[BULK-SYNC] Batch: page=${dbCurrentPage} | fetched=${syncState.totalFetched} | ` +
+          `+${syncState.totalInserted || 0}ins ~${syncState.totalUpdated || 0}upd | ` +
+          `docs_in_db=${uniqueCount} | ${percent}% | retry=${syncState.failedPages.length} | dropped=${syncState.droppedPages.length}` +
+          (wasCancelled ? " | CANCELLED" : "")
+        );
+      }
+
       if (!isComplete && !wasCancelled) {
         EdgeRuntime.waitUntil(
           sleep(2000).then(() => triggerSelfContinuation(jobId))
@@ -854,11 +965,13 @@ Deno.serve(async (req: Request) => {
         transport: "soap",
         progress: {
           percent,
-          currentPage: Math.max(0, syncState.currentPage - 1),
-          totalPages: syncState.totalPages,
-          totalRecordsInSicas: syncState.totalRecordsInSicas,
+          currentPage: dbCurrentPage,
+          totalPages: dbTotalPages,
+          totalRecordsInSicas: dbTotalInSicas,
           uniqueDocs: uniqueCount,
           totalFetched: syncState.totalFetched,
+          totalInserted: syncState.totalInserted || 0,
+          totalUpdated: syncState.totalUpdated || 0,
           totalErrors: syncState.totalErrors,
           emptyPages: syncState.emptyPages,
           retriedPages: syncState.retriedPages,
@@ -874,7 +987,7 @@ Deno.serve(async (req: Request) => {
       const codesToTest = body.testAll !== false ? reportCodesToTry : [body.keyCode || keyCode];
 
       console.log(`[BULK-SYNC] DIAGNOSTIC: Testing ${codesToTest.length} keyCodes with ${testItems} items, multiple variants...`);
-      console.log(`[BULK-SYNC] DIAGNOSTIC CREDS: wsUsername=${wsUsername ? wsUsername.substring(0, 4) + "***" : "(empty)"}, sicasUser=${sicasUser ? sicasUser.substring(0, 4) + "***" : "(empty)"}, codeAuth=${(Deno.env.get("SICAS_CODE_AUTH") || sicasConfig?.code_auth || "").length > 0 ? "present" : "empty"}, endpoint=${soapEndpoint}`);
+      console.log(`[BULK-SYNC] DIAGNOSTIC CREDS: wsUsername=${maskSecret(wsUsername)}, sicasUser=${maskSecret(sicasUser)}, codeAuth=${(Deno.env.get("SICAS_CODE_AUTH") || sicasConfig?.code_auth || "").length > 0 ? "present" : "empty"}, endpoint=${soapEndpoint}`);
 
       interface DiagVariant {
         variant: string;
@@ -1265,18 +1378,29 @@ async function markComplete(
   jobId: string,
   syncState: SyncState
 ) {
-  const { count } = await supabase
+  const { count: docsAfter } = await supabase
     .from("sicas_documents")
     .select("*", { count: "exact", head: true });
+
+  const finalReason: FinalReason = syncState.finalReason || "unknown";
+  const docsNet = (docsAfter || 0) - (syncState.docsBeforeSync || 0);
+
+  console.log(
+    `[BULK-SYNC] COMPLETE: finalReason=${finalReason} | pages=${syncState.pagesProcessed || syncState.totalPages} | ` +
+    `fetched=${syncState.totalFetched} | inserted=${syncState.totalInserted || 0} | updated=${syncState.totalUpdated || 0} | ` +
+    `errors=${syncState.totalErrors} | docsBefore=${syncState.docsBeforeSync || 0} | docsAfter=${docsAfter || 0} | net=${docsNet}`
+  );
+
   await supabase
     .from("sicas_sync_jobs")
     .update({
       status: "completed",
       percent: 100,
-      total_synced: count || 0,
-      total_in_sicas: syncState.totalRecordsInSicas,
-      current_page: syncState.totalPages,
-      error_message: JSON.stringify(syncState),
+      total_synced: docsAfter || 0,
+      total_in_sicas: syncState.totalRecordsInSicas < 999999 ? syncState.totalRecordsInSicas : syncState.totalFetched,
+      current_page: syncState.totalPages < 999999 ? syncState.totalPages : (syncState.pagesProcessed || 0),
+      total_pages: syncState.totalPages < 999999 ? syncState.totalPages : (syncState.pagesProcessed || 0),
+      error_message: JSON.stringify({ ...syncState, finalReason }),
       finished_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
@@ -1529,12 +1653,24 @@ function mapDocument(
 async function upsertDocuments(
   supabase: ReturnType<typeof createClient>,
   documents: Record<string, unknown>[]
-): Promise<{ upserted: number; errors: number }> {
+): Promise<{ upserted: number; inserted: number; updated: number; errors: number }> {
   const validDocs = documents.filter((d) => d !== null && d.id_docto);
-  if (validDocs.length === 0) return { upserted: 0, errors: 0 };
+  if (validDocs.length === 0) return { upserted: 0, inserted: 0, updated: 0, errors: 0 };
+
+  // Check which id_docto already exist to calculate inserted vs updated
+  const ids = validDocs.map((d) => d.id_docto as string);
+  const { data: existing } = await supabase
+    .from("sicas_documents")
+    .select("id_docto")
+    .in("id_docto", ids);
+  const existingSet = new Set((existing || []).map((r: { id_docto: string }) => r.id_docto));
+
   let totalUpserted = 0;
+  let totalInserted = 0;
+  let totalUpdated = 0;
   let totalErrors = 0;
   const batchSize = 100;
+
   for (let i = 0; i < validDocs.length; i += batchSize) {
     const batch = validDocs.slice(i, i + batchSize);
     const { error: upsertError } = await supabase
@@ -1544,8 +1680,12 @@ async function upsertDocuments(
       console.error(`[BULK-SYNC] Upsert error: ${upsertError.message}`);
       totalErrors += batch.length;
     } else {
+      for (const doc of batch) {
+        if (existingSet.has(doc.id_docto as string)) totalUpdated++;
+        else totalInserted++;
+      }
       totalUpserted += batch.length;
     }
   }
-  return { upserted: totalUpserted, errors: totalErrors };
+  return { upserted: totalUpserted, inserted: totalInserted, updated: totalUpdated, errors: totalErrors };
 }
