@@ -830,6 +830,7 @@ function App() {
               <Route path="/store/admin" element={<ProtectedRoute requireAdmin><StoreAdmin /></ProtectedRoute>} />
               <Route path="/store/pedido/:pedidoId" element={<ProtectedRoute><StorePedidoDetalle /></ProtectedRoute>} />
               <Route path="/store/pedidos" element={<ProtectedRoute requireAdmin><StorePedidos /></ProtectedRoute>} />
+              <Route path="/store/reporte" element={<ProtectedRoute requireAdmin><StorePedidosReporte /></ProtectedRoute>} />
               <Route path="/comisiones" element={<ProtectedRoute requireAdmin><Layout><Comisiones /></Layout></ProtectedRoute>} />
               <Route path="/comisiones/lote/:id" element={<ProtectedRoute requireAdmin><Layout><ComisionesLote /></Layout></ProtectedRoute>} />
               <Route path="/comisiones/upload" element={<ProtectedRoute requireAdmin><Layout><ComisionesUpload /></Layout></ProtectedRoute>} />
