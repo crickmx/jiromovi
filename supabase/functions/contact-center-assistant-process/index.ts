@@ -123,13 +123,13 @@ Deno.serve(async (req: Request) => {
         message: `Sesión iniciada con asistente: ${assistant.nombre}`,
       });
 
-      // Update assistant session counter
-      await supabase.rpc("increment_assistant_counter", {
-        p_assistant_id: assistant_id,
-        p_field: "total_sessions",
-      }).catch(() => {
-        // Non-critical if RPC doesn't exist yet
-      });
+      // Update assistant session counter (non-critical)
+      try {
+        await supabase.rpc("increment_assistant_counter", {
+          p_assistant_id: assistant_id,
+          p_field: "total_sessions",
+        });
+      } catch { /* RPC may not exist */ }
 
       // Build welcome message
       let welcomeMsg = assistant.welcome_message ||

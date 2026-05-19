@@ -462,9 +462,9 @@ export default function CentroContactoAsistentes() {
   };
 
   // ─── Sync single assistant with its form ──────────────────────────────────
-  const handleSyncWithForm = async (assistant: CcAssistant) => {
+  const handleSyncWithForm = async (assistant: CcAssistant, silent = false) => {
     if (!assistant.quote_form_template_id) return;
-    setSyncingOne(true);
+    if (!silent) setSyncingOne(true);
 
     try {
       const { data: form } = await supabase
@@ -558,12 +558,14 @@ export default function CentroContactoAsistentes() {
         } : null);
       }
 
-      alert(`Sincronización completada. ${fieldsAdded} campos nuevos añadidos, ${fieldsSkipped} personalizados preservados.`);
+      if (!silent) {
+        alert(`Sincronización completada. ${fieldsAdded} campos nuevos añadidos, ${fieldsSkipped} personalizados preservados.`);
+      }
     } catch (err) {
-      alert(`Error al sincronizar: ${String(err)}`);
+      if (!silent) alert(`Error al sincronizar: ${String(err)}`);
     }
 
-    setSyncingOne(false);
+    if (!silent) setSyncingOne(false);
   };
 
   // ─── Sync all form-linked assistants ──────────────────────────────────────
@@ -573,7 +575,7 @@ export default function CentroContactoAsistentes() {
     setSyncingAll(true);
     const formLinked = assistants.filter(a => a.source === 'form' && a.quote_form_template_id);
     for (const a of formLinked) {
-      await handleSyncWithForm(a);
+      await handleSyncWithForm(a, true);
     }
     setSyncingAll(false);
     alert(`Sincronización completada para ${formLinked.length} asistente(s).`);
