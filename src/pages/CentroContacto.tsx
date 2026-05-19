@@ -865,6 +865,7 @@ export default function CentroContacto() {
         <PlantillasModal
           channel={composerChannel}
           agentName={selectedAgent.agent_name}
+          contactName={selectedAgent.agent_name}
           onInsert={(text) => { setComposerMessage(text); setShowPlantillasModal(false); }}
           onClose={() => setShowPlantillasModal(false)}
         />
@@ -1563,9 +1564,27 @@ function EmojiPickerPanel({ onSelect }: { onSelect: (emoji: string) => void }) {
 // Plantillas Modal
 // ============================================================
 
-function PlantillasModal({ channel, agentName, onInsert, onClose }: {
+// Variables that are filled automatically — never shown as manual inputs
+const AUTO_VARS = new Set(['nombre_agente', 'nombre_contacto', 'fecha']);
+
+// All known variable tokens with descriptions
+const VARIABLE_TOKENS = [
+  { token: '{{nombre_contacto}}', label: 'Nombre del contacto', auto: true },
+  { token: '{{nombre_agente}}',   label: 'Tu nombre',           auto: true },
+  { token: '{{fecha}}',           label: 'Fecha de hoy',        auto: true },
+  { token: '{{link_formulario}}', label: 'Link de formulario',  auto: false },
+  { token: '{{nombre_formulario}}', label: 'Nombre formulario', auto: false },
+  { token: '{{numero_poliza}}',   label: 'No. de póliza',       auto: false },
+  { token: '{{aseguradora}}',     label: 'Aseguradora',         auto: false },
+  { token: '{{monto}}',           label: 'Monto',               auto: false },
+];
+
+const PRESET_CATEGORIES = ['General', 'Bienvenida', 'Seguimiento', 'Documentos', 'Renovacion', 'Formularios', 'Cobranza', 'Siniestros'];
+
+function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }: {
   channel: 'whatsapp' | 'email';
   agentName: string;
+  contactName?: string;
   onInsert: (text: string) => void;
   onClose: () => void;
 }) {
@@ -1579,8 +1598,7 @@ function PlantillasModal({ channel, agentName, onInsert, onClose }: {
   const [previewText, setPreviewText] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<MessageTemplate | null>(null);
-
-  const isAdminOrGerente = usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente';
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
   const loadTemplates = useCallback(async () => {
     setLoading(true);
@@ -1605,28 +1623,42 @@ function PlantillasModal({ channel, agentName, onInsert, onClose }: {
     return matchesChannel && matchesCategory && matchesSearch;
   });
 
-  const applyVariables = (content: string, vars: Record<string, string>) => {
+  // Build auto-variable values from context
+  const autoValues = useCallback((): Record<string, string> => {
+    const today = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
+    return {
+      nombre_contacto: contactName || agentName || '',
+      nombre_agente: usuario ? `${usuario.nombre} ${usuario.apellidos}`.trim() : agentName,
+      fecha: today,
+    };
+  }, [contactName, agentName, usuario]);
+
+  const applyVariables = useCallback((content: string, manualVars: Record<string, string>) => {
+    const autos = autoValues();
     let result = content;
-    result = result.replace(/\{\{nombre_agente\}\}/g, agentName || '');
-    result = result.replace(/\{\{nombre_contacto\}\}/g, vars['nombre_contacto'] || '[Nombre]');
-    for (const [key, val] of Object.entries(vars)) {
+    // Apply auto vars first
+    for (const [key, val] of Object.entries(autos)) {
       result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), val);
     }
+    // Then manual vars
+    for (const [key, val] of Object.entries(manualVars)) {
+      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), val || `[${key}]`);
+    }
     return result;
-  };
+  }, [autoValues]);
 
   useEffect(() => {
     if (selectedTemplate) {
       setPreviewText(applyVariables(selectedTemplate.content, variableValues));
     }
-  }, [selectedTemplate, variableValues]);
+  }, [selectedTemplate, variableValues, applyVariables]);
 
   const handleSelectTemplate = (tpl: MessageTemplate) => {
     setSelectedTemplate(tpl);
     const vars: Record<string, string> = {};
     if (tpl.variables && Array.isArray(tpl.variables)) {
       for (const v of tpl.variables) {
-        vars[v.name] = '';
+        if (!AUTO_VARS.has(v.name)) vars[v.name] = '';
       }
     }
     setVariableValues(vars);
@@ -1638,30 +1670,40 @@ function PlantillasModal({ channel, agentName, onInsert, onClose }: {
     onInsert(previewText);
   };
 
-  const handleToggleActive = async (tpl: MessageTemplate) => {
-    await supabase.from('message_templates').update({ is_active: !tpl.is_active }).eq('id', tpl.id);
-    loadTemplates();
-  };
-
-  const handleDelete = async (tpl: MessageTemplate) => {
+  const handleDelete = async (tpl: MessageTemplate, e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!confirm(`Eliminar la plantilla "${tpl.name}"?`)) return;
     await supabase.from('message_templates').delete().eq('id', tpl.id);
     if (selectedTemplate?.id === tpl.id) setSelectedTemplate(null);
     loadTemplates();
   };
 
+  const handleEdit = (tpl: MessageTemplate, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingTemplate(tpl);
+  };
+
   if (showCreateForm || editingTemplate) {
     return (
       <TemplateFormModal
         template={editingTemplate}
+        existingCategories={Array.from(new Set(templates.map(t => t.category)))}
         onSave={() => { setShowCreateForm(false); setEditingTemplate(null); loadTemplates(); }}
         onClose={() => { setShowCreateForm(false); setEditingTemplate(null); }}
       />
     );
   }
 
+  const manualVarsForTemplate = selectedTemplate?.variables?.filter(
+    (v: { name: string; label: string }) => !AUTO_VARS.has(v.name)
+  ) || [];
+
+  const autoVarsInTemplate = selectedTemplate?.variables?.filter(
+    (v: { name: string; label: string }) => AUTO_VARS.has(v.name)
+  ) || [];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
@@ -1671,14 +1713,12 @@ function PlantillasModal({ channel, agentName, onInsert, onClose }: {
             <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full capitalize">{channel}</span>
           </div>
           <div className="flex items-center gap-2">
-            {isAdminOrGerente && (
-              <button
-                onClick={() => setShowCreateForm(true)}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-teal-600 text-white text-xs font-medium hover:bg-teal-700 transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" /> Nueva
-              </button>
-            )}
+            <button
+              onClick={() => setShowCreateForm(true)}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-teal-600 text-white text-xs font-medium hover:bg-teal-700 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" /> Nueva
+            </button>
             <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
               <X className="w-5 h-5" />
             </button>
@@ -1699,25 +1739,38 @@ function PlantillasModal({ channel, agentName, onInsert, onClose }: {
                   className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-1 focus:ring-teal-500"
                 />
               </div>
-              <div className="flex gap-1 overflow-x-auto pb-0.5">
-                {categories.map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setActiveCategory(cat)}
-                    className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${activeCategory === cat ? 'bg-teal-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
-                  >
-                    {cat === 'all' ? 'Todas' : cat}
-                  </button>
-                ))}
+              {/* Category dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowCategoryDropdown(p => !p)}
+                  className="w-full flex items-center justify-between px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-teal-400 transition-colors"
+                >
+                  <span>{activeCategory === 'all' ? 'Todas las categorias' : activeCategory}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
+                </button>
+                {showCategoryDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 overflow-hidden">
+                    {categories.map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => { setActiveCategory(cat); setShowCategoryDropdown(false); }}
+                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${activeCategory === cat ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                      >
+                        {cat === 'all' ? 'Todas las categorias' : cat}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto" onClick={() => setShowCategoryDropdown(false)}>
               {loading ? (
                 <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-teal-500" /></div>
               ) : filtered.length === 0 ? (
                 <div className="p-6 text-center text-sm text-gray-400">
                   <BookTemplate className="w-8 h-8 mx-auto mb-2 opacity-30" />
                   <p>Sin plantillas</p>
+                  <button onClick={() => setShowCreateForm(true)} className="mt-2 text-xs text-teal-600 hover:underline">Crear primera plantilla</button>
                 </div>
               ) : (
                 filtered.map(tpl => (
@@ -1725,41 +1778,34 @@ function PlantillasModal({ channel, agentName, onInsert, onClose }: {
                     key={tpl.id}
                     className={`group border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${selectedTemplate?.id === tpl.id ? 'bg-teal-50 dark:bg-teal-900/20' : ''}`}
                   >
-                    <button
-                      className="w-full text-left p-3"
-                      onClick={() => handleSelectTemplate(tpl)}
-                    >
+                    <button className="w-full text-left p-3" onClick={() => handleSelectTemplate(tpl)}>
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 mb-0.5">
-                            {tpl.is_global ? (
-                              <Globe className="w-3 h-3 text-teal-500 shrink-0" />
-                            ) : (
-                              <Lock className="w-3 h-3 text-gray-400 shrink-0" />
-                            )}
+                            {tpl.is_global
+                              ? <Globe className="w-3 h-3 text-teal-500 shrink-0" />
+                              : <Lock className="w-3 h-3 text-gray-400 shrink-0" />}
                             <p className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">{tpl.name}</p>
                           </div>
-                          <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{tpl.content.substring(0, 60)}...</p>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-2">{tpl.content.substring(0, 80)}</p>
                           <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500">{tpl.category}</span>
                         </div>
-                        {selectedTemplate?.id === tpl.id && (
-                          <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
-                        )}
+                        {selectedTemplate?.id === tpl.id && <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />}
                       </div>
                     </button>
-                    {isAdminOrGerente && (
-                      <div className="flex items-center gap-1 px-3 pb-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setEditingTemplate(tpl)} className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600">
-                          <Pencil className="w-3 h-3" />
-                        </button>
-                        <button onClick={() => handleToggleActive(tpl)} className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400">
-                          {tpl.is_active ? <ToggleRight className="w-3.5 h-3.5 text-teal-500" /> : <ToggleLeft className="w-3.5 h-3.5" />}
-                        </button>
-                        <button onClick={() => handleDelete(tpl)} className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500">
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    )}
+                    {/* Actions — visible on hover for owner or admin/gerente */}
+                    <div className="flex items-center gap-1 px-3 pb-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {(usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente' || tpl.created_by === usuario?.id) && (
+                        <>
+                          <button onClick={e => handleEdit(tpl, e)} className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600" title="Editar">
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                          <button onClick={e => handleDelete(tpl, e)} className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500" title="Eliminar">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 ))
               )}
@@ -1767,7 +1813,7 @@ function PlantillasModal({ channel, agentName, onInsert, onClose }: {
           </div>
 
           {/* Right: preview / variable input */}
-          <div className="w-1/2 flex flex-col">
+          <div className="w-1/2 flex flex-col" onClick={() => setShowCategoryDropdown(false)}>
             {!selectedTemplate ? (
               <div className="flex-1 flex items-center justify-center text-gray-400">
                 <div className="text-center p-6">
@@ -1778,34 +1824,54 @@ function PlantillasModal({ channel, agentName, onInsert, onClose }: {
             ) : (
               <>
                 <div className="p-4 border-b border-gray-100 dark:border-gray-800">
-                  <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">{selectedTemplate.name}</h3>
-                  <p className="text-[11px] text-gray-500">{selectedTemplate.category}</p>
+                  <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-0.5">{selectedTemplate.name}</h3>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500">{selectedTemplate.category}</span>
                 </div>
 
-                {/* Variables */}
-                {selectedTemplate.variables && Array.isArray(selectedTemplate.variables) && selectedTemplate.variables.length > 0 && (
-                  <div className="p-4 border-b border-gray-100 dark:border-gray-800 space-y-2">
-                    <p className="text-[11px] font-medium text-gray-600 dark:text-gray-400 uppercase">Completar variables</p>
-                    {selectedTemplate.variables.map((v: { name: string; label: string }) => (
-                      v.name !== 'nombre_agente' && v.name !== 'nombre_contacto_auto' ? (
-                        <div key={v.name}>
-                          <label className="text-[11px] text-gray-500 block mb-0.5">{v.label || v.name}</label>
-                          <input
-                            type="text"
-                            value={variableValues[v.name] || ''}
-                            onChange={e => setVariableValues(prev => ({ ...prev, [v.name]: e.target.value }))}
-                            placeholder={`Valor para {{${v.name}}}`}
-                            className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-1 focus:ring-teal-500"
-                          />
-                        </div>
-                      ) : null
+                {/* Auto-filled variables info */}
+                {autoVarsInTemplate.length > 0 && (
+                  <div className="px-4 pt-3 pb-2">
+                    <p className="text-[10px] font-semibold text-teal-600 dark:text-teal-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                      <Zap className="w-3 h-3" /> Relleno automatico
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {autoVarsInTemplate.map((v: { name: string; label: string }) => {
+                        const autos = autoValues();
+                        const val = autos[v.name] || '';
+                        return (
+                          <div key={v.name} className="flex items-center gap-1 bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-md px-2 py-0.5">
+                            <span className="text-[10px] font-mono text-teal-600 dark:text-teal-400">{`{{${v.name}}}`}</span>
+                            <span className="text-[10px] text-gray-400">→</span>
+                            <span className="text-[10px] font-medium text-gray-700 dark:text-gray-300 max-w-[80px] truncate" title={val}>{val || '(vacío)'}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Manual variables */}
+                {manualVarsForTemplate.length > 0 && (
+                  <div className="px-4 pb-3 border-b border-gray-100 dark:border-gray-800 space-y-2">
+                    <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-2">Completar</p>
+                    {manualVarsForTemplate.map((v: { name: string; label: string }) => (
+                      <div key={v.name}>
+                        <label className="text-[11px] text-gray-500 block mb-0.5 capitalize">{v.label || v.name.replace(/_/g, ' ')}</label>
+                        <input
+                          type="text"
+                          value={variableValues[v.name] || ''}
+                          onChange={e => setVariableValues(prev => ({ ...prev, [v.name]: e.target.value }))}
+                          placeholder={`Escribe ${v.label || v.name.replace(/_/g, ' ')}...`}
+                          className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-1 focus:ring-teal-500"
+                        />
+                      </div>
                     ))}
                   </div>
                 )}
 
                 {/* Preview */}
                 <div className="flex-1 p-4 overflow-y-auto">
-                  <p className="text-[11px] font-medium text-gray-600 dark:text-gray-400 uppercase mb-2">Vista previa</p>
+                  <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Vista previa</p>
                   <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
                     <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">{previewText}</p>
                   </div>
@@ -1832,27 +1898,51 @@ function PlantillasModal({ channel, agentName, onInsert, onClose }: {
 // Template Form Modal (Create / Edit)
 // ============================================================
 
-function TemplateFormModal({ template, onSave, onClose }: {
+function TemplateFormModal({ template, existingCategories, onSave, onClose }: {
   template: MessageTemplate | null;
+  existingCategories?: string[];
   onSave: () => void;
   onClose: () => void;
 }) {
   const { usuario } = useAuth();
   const [name, setName] = useState(template?.name || '');
   const [category, setCategory] = useState(template?.category || 'General');
+  const [customCategory, setCustomCategory] = useState('');
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [content, setContent] = useState(template?.content || '');
   const [channel, setChannel] = useState(template?.channel || 'whatsapp');
   const [isGlobal, setIsGlobal] = useState(template?.is_global ?? false);
   const [saving, setSaving] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const VARIABLE_TOKENS = ['{{nombre_agente}}', '{{nombre_contacto}}', '{{link_formulario}}', '{{nombre_formulario}}', '{{fecha}}'];
+  const allCategories = Array.from(new Set([...PRESET_CATEGORIES, ...(existingCategories || [])])).sort();
   const detectedVars = Array.from(new Set((content.match(/\{\{(\w+)\}\}/g) || []).map(v => v.replace(/[{}]/g, ''))));
+
+  const insertToken = (token: string) => {
+    const ta = textareaRef.current;
+    if (!ta) { setContent(prev => prev + token); return; }
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const next = content.slice(0, start) + token + content.slice(end);
+    setContent(next);
+    setTimeout(() => {
+      ta.focus();
+      ta.setSelectionRange(start + token.length, start + token.length);
+    }, 0);
+  };
+
+  const selectCategory = (cat: string) => {
+    setCategory(cat);
+    setCustomCategory('');
+    setShowCategoryDropdown(false);
+  };
 
   const handleSave = async () => {
     if (!name.trim() || !content.trim()) return;
+    const finalCategory = customCategory.trim() || category;
     setSaving(true);
     const variables = detectedVars.map(v => ({ name: v, label: v.replace(/_/g, ' ') }));
-    const payload = { name: name.trim(), category, content: content.trim(), channel, is_global: isGlobal, variables, updated_at: new Date().toISOString() };
+    const payload = { name: name.trim(), category: finalCategory, content: content.trim(), channel, is_global: isGlobal, variables, updated_at: new Date().toISOString() };
     if (template) {
       await supabase.from('message_templates').update(payload).eq('id', template.id);
     } else {
@@ -1873,15 +1963,60 @@ function TemplateFormModal({ template, onSave, onClose }: {
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Nombre</label>
-              <input type="text" value={name} onChange={e => setName(e.target.value)} className="mt-1 w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800" placeholder="Nombre de la plantilla" />
+              <input type="text" value={name} onChange={e => setName(e.target.value)} className="mt-1 w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="Nombre de la plantilla" />
             </div>
-            <div>
+
+            {/* Category dropdown */}
+            <div className="relative">
               <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Categoria</label>
-              <input type="text" value={category} onChange={e => setCategory(e.target.value)} className="mt-1 w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800" placeholder="General" />
+              <button
+                type="button"
+                onClick={() => setShowCategoryDropdown(p => !p)}
+                className="mt-1 w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-teal-400 transition-colors focus:ring-2 focus:ring-teal-500 focus:outline-none"
+              >
+                <span>{customCategory.trim() || category}</span>
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
+              </button>
+              {showCategoryDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-20 overflow-hidden">
+                  <div className="p-2 border-b border-gray-100 dark:border-gray-800">
+                    <input
+                      type="text"
+                      value={customCategory}
+                      onChange={e => setCustomCategory(e.target.value)}
+                      placeholder="Nueva categoria..."
+                      className="w-full px-2.5 py-1.5 text-xs rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-1 focus:ring-teal-500 focus:outline-none"
+                      onClick={e => e.stopPropagation()}
+                    />
+                    {customCategory.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => selectCategory(customCategory.trim())}
+                        className="mt-1.5 w-full text-left px-2.5 py-1.5 text-xs rounded-md bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 hover:bg-teal-100 transition-colors"
+                      >
+                        + Crear "{customCategory.trim()}"
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-36 overflow-y-auto">
+                    {allCategories.map(cat => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => selectCategory(cat)}
+                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${category === cat && !customCategory.trim() ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
+
             <div>
               <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Canal</label>
-              <select value={channel} onChange={e => setChannel(e.target.value)} className="mt-1 w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+              <select value={channel} onChange={e => setChannel(e.target.value)} className="mt-1 w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-teal-500 focus:outline-none">
                 <option value="whatsapp">WhatsApp</option>
                 <option value="email">Email</option>
                 <option value="both">Ambos</option>
@@ -1889,35 +2024,60 @@ function TemplateFormModal({ template, onSave, onClose }: {
             </div>
           </div>
 
-          <div>
+          <div onClick={() => setShowCategoryDropdown(false)}>
             <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">Contenido</label>
-            <p className="text-[11px] text-gray-400 mb-1.5">Variables disponibles: click para insertar</p>
-            <div className="flex flex-wrap gap-1 mb-2">
-              {VARIABLE_TOKENS.map(token => (
-                <button
-                  key={token}
-                  type="button"
-                  onClick={() => setContent(prev => prev + token)}
-                  className="px-2 py-0.5 rounded bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400 text-[11px] font-mono border border-teal-200 dark:border-teal-800 hover:bg-teal-100 dark:hover:bg-teal-900/40 transition-colors"
-                >
-                  {token}
-                </button>
-              ))}
+            {/* Variable tokens grouped */}
+            <div className="mb-2 space-y-1.5">
+              <p className="text-[11px] text-gray-400">Automaticas (se rellenan al usar):</p>
+              <div className="flex flex-wrap gap-1">
+                {VARIABLE_TOKENS.filter(v => v.auto).map(v => (
+                  <button
+                    key={v.token}
+                    type="button"
+                    title={v.label}
+                    onClick={() => insertToken(v.token)}
+                    className="px-2 py-0.5 rounded bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400 text-[11px] font-mono border border-teal-200 dark:border-teal-800 hover:bg-teal-100 transition-colors"
+                  >
+                    {v.token}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-gray-400">Manuales (el agente las completa):</p>
+              <div className="flex flex-wrap gap-1">
+                {VARIABLE_TOKENS.filter(v => !v.auto).map(v => (
+                  <button
+                    key={v.token}
+                    type="button"
+                    title={v.label}
+                    onClick={() => insertToken(v.token)}
+                    className="px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-[11px] font-mono border border-amber-200 dark:border-amber-800 hover:bg-amber-100 transition-colors"
+                  >
+                    {v.token}
+                  </button>
+                ))}
+              </div>
             </div>
             <textarea
+              ref={textareaRef}
               value={content}
               onChange={e => setContent(e.target.value)}
               rows={6}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 resize-none focus:ring-2 focus:ring-teal-500"
-              placeholder="Contenido de la plantilla..."
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 resize-none focus:ring-2 focus:ring-teal-500 focus:outline-none"
+              placeholder="Escribe el contenido de la plantilla..."
             />
             {detectedVars.length > 0 && (
-              <p className="text-[11px] text-gray-500 mt-1">Variables detectadas: {detectedVars.map(v => `{{${v}}}`).join(', ')}</p>
+              <div className="flex flex-wrap gap-1.5 mt-1.5">
+                {detectedVars.map(v => (
+                  <span key={v} className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${AUTO_VARS.has(v) ? 'bg-teal-50 text-teal-600 border border-teal-200' : 'bg-amber-50 text-amber-600 border border-amber-200'}`}>
+                    {`{{${v}}}`} {AUTO_VARS.has(v) ? '· auto' : '· manual'}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
 
           {usuario?.rol === 'Administrador' && (
-            <label className="flex items-center gap-2 cursor-pointer">
+            <label className="flex items-center gap-2 cursor-pointer" onClick={() => setShowCategoryDropdown(false)}>
               <div
                 onClick={() => setIsGlobal(p => !p)}
                 className={`w-10 h-5 rounded-full relative transition-colors ${isGlobal ? 'bg-teal-500' : 'bg-gray-300 dark:bg-gray-600'}`}
@@ -1930,8 +2090,8 @@ function TemplateFormModal({ template, onSave, onClose }: {
         </div>
         <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-200 dark:border-gray-700">
           <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Cancelar</button>
-          <button onClick={handleSave} disabled={saving || !name.trim() || !content.trim()} className="px-4 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 font-medium">
-            {saving ? 'Guardando...' : 'Guardar'}
+          <button onClick={handleSave} disabled={saving || !name.trim() || !content.trim()} className="px-4 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 font-medium transition-colors">
+            {saving ? 'Guardando...' : 'Guardar plantilla'}
           </button>
         </div>
       </div>
