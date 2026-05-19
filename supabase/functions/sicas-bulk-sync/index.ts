@@ -1251,6 +1251,23 @@ async function markComplete(
       updated_at: new Date().toISOString(),
     })
     .eq("id", jobId);
+
+  // Run post-sync mapping: assign usuario_id from vendor mappings and update vendor stats
+  EdgeRuntime.waitUntil(
+    (async () => {
+      try {
+        const { data, error } = await supabase.rpc("run_post_sync_mapping", { p_job_id: jobId });
+        if (error) {
+          console.error("[BULK-SYNC] Post-sync mapping error:", error.message);
+        } else {
+          const r = data as any;
+          console.log(`[BULK-SYNC] Post-sync mapping: ${r?.docs_mapped ?? 0} docs assigned, ${r?.vendors_updated ?? 0} vendors updated`);
+        }
+      } catch (e) {
+        console.error("[BULK-SYNC] Post-sync mapping exception:", (e as Error).message);
+      }
+    })()
+  );
 }
 
 // ===== Helper functions =====
