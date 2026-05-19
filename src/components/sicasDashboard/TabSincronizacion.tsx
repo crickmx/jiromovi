@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Cloud, Database, Clock, Loader2, Download, RefreshCw,
   CheckCircle2, XCircle, Info, StopCircle, Users, ShieldAlert,
-  Stethoscope, Settings2,
+  Stethoscope, Settings2, AlertTriangle,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { callEdgeFunction } from '../../pages/ProduccionSICASLive';
@@ -327,6 +327,37 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
         <MapeoUsuariosSICAS callApi={(body) => callEdgeFunction('sicas-production-query', body)} />
       ) : (
         <>
+          {/* 48h stale sync alert */}
+          {(() => {
+            const lastSuccessfulJob = syncHistory.find(j => j.status === 'completed' || j.status === 'success');
+            if (!lastSuccessfulJob) return null;
+            const hoursAgo = (Date.now() - new Date(lastSuccessfulJob.started_at).getTime()) / (1000 * 60 * 60);
+            if (hoursAgo < 48) return null;
+            const daysAgo = Math.floor(hoursAgo / 24);
+            const label = daysAgo >= 2 ? `${daysAgo} dias` : `${Math.round(hoursAgo)} horas`;
+            return (
+              <div className="flex items-start gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+                <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-red-800 dark:text-red-200">
+                    Sincronizacion desactualizada — {label} sin sync exitoso
+                  </p>
+                  <p className="text-xs text-red-700 dark:text-red-300 mt-1">
+                    Los datos mostrados en produccion, cartera y renovaciones pueden estar desactualizados.
+                    Ejecuta un diagnostico o sincronizacion manual para restaurar la conexion con SICAS.
+                  </p>
+                </div>
+                <button
+                  onClick={() => runSync('incremental')}
+                  disabled={syncing}
+                  className="shrink-0 text-xs px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                >
+                  Sincronizar ahora
+                </button>
+              </div>
+            );
+          })()}
+
           {/* Status cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatusCard icon={Database} label="Documentos Locales" value={totalDocs !== null ? formatNumber(totalDocs) : '-'} color={accentColor} subtitle={sicasConfig?.last_successful_historic_report ? `Via ${sicasConfig.last_successful_historic_report}` : undefined} />

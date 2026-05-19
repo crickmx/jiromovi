@@ -114,13 +114,21 @@ Deno.serve(async (req: Request) => {
     }
 
     // Get auth token
-    // IMPORTANT: Do NOT use URLSearchParams for sicasUsername because it may contain
-    // literal '%' characters (e.g. j1r0%25$). URLSearchParams would double-encode
-    // the '%' to '%25', turning j1r0%25$ into j1r0%2525$. We pass the username as-is
-    // and only encode the password which does not contain reserved characters.
-    const tokenQuery = `sUserName=${sicasUsername}&sPassword=${encodeURIComponent(sicasPassword)}${sicasCodeAuth ? `&sCodeAuth=${encodeURIComponent(sicasCodeAuth)}` : ""}`;
+    // IMPORTANT: Use URLSearchParams (or encodeURIComponent) so that literal '%' in the
+    // stored username (e.g. j1r0%25$) becomes %25 in the URL → j1r0%2525%24.
+    // SICAS decodes once and receives the original value j1r0%25$.
+    // DO NOT pass username as-is: j1r0%25$ in the URL would be decoded by SICAS to j1r0%$
+    // which fails authentication.
+    const tokenParams = new URLSearchParams({
+      sUserName: sicasUsername,
+      sPassword: sicasPassword,
+    });
+    if (sicasCodeAuth) tokenParams.append("sCodeAuth", sicasCodeAuth);
 
-    const tokenResponse = await fetch(`${sicasRestUrl}/Security/GetToken?${tokenQuery}`, {
+    const maskedUrl = `${sicasRestUrl}/Security/GetToken?sUserName=${encodeURIComponent(sicasUsername)}&sPassword=***`;
+    console.log("[Digital Files] GetToken URL (masked):", maskedUrl);
+
+    const tokenResponse = await fetch(`${sicasRestUrl}/Security/GetToken?${tokenParams.toString()}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
     });
