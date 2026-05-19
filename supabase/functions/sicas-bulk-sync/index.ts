@@ -164,7 +164,8 @@ Deno.serve(async (req: Request) => {
     }
 
     // SOAP-only transport (REST not available for this SICAS license)
-    const soapEndpoint = sicasConfig?.endpoint || "https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx";
+    // Fallback uses .com (HTTPS valid cert). .com.mx has invalid TLS (UnknownIssuer).
+    const soapEndpoint = sicasConfig?.endpoint || "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx";
     const wsUsername = Deno.env.get("SICAS_USERNAME") || sicasConfig?.sicas_usuario || "";
     const wsPassword = Deno.env.get("SICAS_PASSWORD") || sicasConfig?.sicas_password || "";
     const sicasUser = Deno.env.get("SICAS_USUARIO") || sicasConfig?.sicas_usuario || "";

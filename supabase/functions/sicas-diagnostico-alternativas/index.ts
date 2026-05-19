@@ -48,7 +48,8 @@ Deno.serve(async (req: Request) => {
 
   try {
     const soapEndpoint =
-      "https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx";
+      // Fallback uses .com (HTTPS valid cert). .com.mx has invalid TLS (UnknownIssuer).
+      "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx";
     const soapUser = Deno.env.get("SICAS_USERNAME") || "";
     const soapPass = Deno.env.get("SICAS_PASSWORD") || "";
 

@@ -676,7 +676,7 @@ export const SICAS_REPORT_KEYCODES = {
  * Ejemplo de uso:
  *
  * const client = new SicasSoapReportClient({
- *   endpoint: 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx',
+ *   endpoint: 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx',
  *   username: 'W4sP3r',
  *   password: 'wA5P3R 2020',
  * });

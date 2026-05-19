@@ -74,7 +74,8 @@ Deno.serve(async (req: Request) => {
     }
 
     const soapClient = new SicasSoapReportClient({
-      endpoint: config.soap_endpoint || 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx',
+      // Fallback uses .com (HTTPS valid cert). .com.mx has invalid TLS (UnknownIssuer).
+      endpoint: config.soap_endpoint || 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx',
       username: config.soap_username,
       password: config.soap_password,
     });

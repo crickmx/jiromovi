@@ -95,7 +95,8 @@ function validateNoWsPrefix(fieldName: string, value: string): void {
 // ============================================================
 
 const SICAS_3DES_KEY = "%SOnlineBOGO2001-2015WS#";
-const SICAS_DEFAULT_ENDPOINT = "https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx";
+// Fallback uses .com (HTTPS valid cert). .com.mx has invalid TLS (UnknownIssuer).
+const SICAS_DEFAULT_ENDPOINT = "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx";
 
 // Map of standard field names to SICAS HWCAPTURE field names
 const HWCAPTURE_FIELD_MAP: Record<string, string> = {

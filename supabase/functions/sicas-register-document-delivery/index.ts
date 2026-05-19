@@ -59,7 +59,8 @@ let createClient: any = null;
 // ============================================================
 
 const SICAS_3DES_KEY = "%SOnlineBOGO2001-2015WS#";
-const SICAS_DEFAULT_ENDPOINT = "https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx";
+// Fallback uses .com (HTTPS valid cert). .com.mx has invalid TLS (UnknownIssuer).
+const SICAS_DEFAULT_ENDPOINT = "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx";
 
 const HWCAPTURE_FIELD_MAP: Record<string, string> = {
   FechaInicio: "FDesde",

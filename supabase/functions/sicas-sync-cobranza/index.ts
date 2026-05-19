@@ -36,7 +36,8 @@ Deno.serve(async (req: Request) => {
 
     const sicasUsername = Deno.env.get('SICAS_USERNAME');
     const sicasPassword = Deno.env.get('SICAS_PASSWORD');
-    const sicasEndpoint = Deno.env.get('SICAS_ENDPOINT') || 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx';
+    // Fallback uses .com (HTTPS valid cert). .com.mx has invalid TLS (UnknownIssuer).
+    const sicasEndpoint = Deno.env.get('SICAS_ENDPOINT') || 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx';
 
     if (!sicasUsername || !sicasPassword) {
       throw new Error('Credenciales SICAS no configuradas');

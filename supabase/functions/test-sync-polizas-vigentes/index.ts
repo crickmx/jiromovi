@@ -42,7 +42,8 @@ Deno.serve(async (req: Request) => {
       throw new Error(`Error obteniendo config: ${configError?.message || 'Config no encontrada'}`);
     }
 
-    const sicasUrl = config.endpoint || 'http://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx';
+    // Fallback uses .com (HTTPS valid cert). .com.mx has invalid TLS (UnknownIssuer).
+    const sicasUrl = config.endpoint || 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx';
     const sicasUsuario = config.sicas_usuario;
     const sicasPassword = config.sicas_password;
 

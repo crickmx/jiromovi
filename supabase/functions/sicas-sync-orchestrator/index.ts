@@ -388,7 +388,8 @@ async function processBatch(
     .limit(1)
     .maybeSingle();
 
-  const soapEndpoint = sicasConfig?.endpoint || "https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx";
+  // Fallback uses .com (HTTPS valid cert). .com.mx has invalid TLS (UnknownIssuer).
+  const soapEndpoint = sicasConfig?.endpoint || "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx";
   const soapUsername = Deno.env.get("SICAS_USERNAME") || sicasConfig?.sicas_usuario || "";
   const soapPassword = Deno.env.get("SICAS_PASSWORD") || sicasConfig?.sicas_password || "";
 
