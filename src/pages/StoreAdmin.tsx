@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Package, Plus, CreditCard as Edit, Trash2, Eye, EyeOff, Upload, X, FolderOpen, ArrowLeft } from 'lucide-react';
+import { Package, Plus, CreditCard as Edit, Trash2, Eye, EyeOff, Upload, X, FolderOpen, ArrowLeft, DollarSign } from 'lucide-react';
 import {
   obtenerTodosProductos,
   obtenerTodasCategorias,
@@ -14,7 +14,9 @@ import {
   actualizarCategoria,
   eliminarCategoria
 } from '../lib/storeUtils';
-import type { StoreProducto, StoreCategoria } from '../lib/storeTypes';
+import { supabase } from '../lib/supabase';
+import type { StoreProducto, StoreCategoria, StoreProductoCostoExtra } from '../lib/storeTypes';
+import { TIPO_GASTO_OPTIONS } from '../lib/storeTypes';
 import { BaseModal } from '../components/BaseModal';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
 
@@ -205,7 +207,9 @@ export default function StoreAdmin() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Imagen</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Costo</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Precio</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Margen</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acciones</th>
                     </tr>
@@ -232,9 +236,26 @@ export default function StoreAdmin() {
                           <span className="text-sm text-gray-900">{producto.categoria?.nombre}</span>
                         </td>
                         <td className="px-6 py-4">
+                          <span className="text-sm text-gray-600">
+                            ${(producto.costo_base || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
                           <span className="text-sm font-semibold text-gray-900">
                             ${producto.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                           </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          {producto.costo_base > 0 ? (
+                            <span className={`text-sm font-medium ${
+                              ((producto.precio - producto.costo_base) / producto.precio * 100) > 30
+                                ? 'text-green-600' : 'text-amber-600'
+                            }`}>
+                              {((producto.precio - producto.costo_base) / producto.precio * 100).toFixed(0)}%
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400">--</span>
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           <button
@@ -377,11 +398,66 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
   const [titulo, setTitulo] = useState(producto?.titulo || '');
   const [descripcion, setDescripcion] = useState(producto?.descripcion || '');
   const [precio, setPrecio] = useState(producto?.precio.toString() || '');
+  const [costoBase, setCostoBase] = useState(producto?.costo_base?.toString() || '0');
   const [categoriaId, setCategoriaId] = useState(producto?.categoria_id || '');
   const [imagenUrl, setImagenUrl] = useState(producto?.imagen_url || '');
   const [imagenFile, setImagenFile] = useState<File | null>(null);
   const [activo, setActivo] = useState(producto?.activo ?? true);
   const [guardando, setGuardando] = useState(false);
+
+  // Costos extras
+  const [costosExtras, setCostosExtras] = useState<StoreProductoCostoExtra[]>([]);
+  const [newCostoConcepto, setNewCostoConcepto] = useState('');
+  const [newCostoTipo, setNewCostoTipo] = useState('otro');
+  const [newCostoDescripcion, setNewCostoDescripcion] = useState('');
+  const [newCostoMonto, setNewCostoMonto] = useState('');
+
+  useEffect(() => {
+    if (producto?.id) loadCostosExtras();
+  }, [producto?.id]);
+
+  async function loadCostosExtras() {
+    if (!producto) return;
+    const { data } = await supabase
+      .from('store_producto_costos_extras')
+      .select('*')
+      .eq('producto_id', producto.id)
+      .order('created_at');
+    if (data) setCostosExtras(data);
+  }
+
+  async function addCostoExtra() {
+    if (!producto?.id || !newCostoConcepto || !newCostoMonto) return;
+    const { data, error } = await supabase
+      .from('store_producto_costos_extras')
+      .insert({
+        producto_id: producto.id,
+        concepto: newCostoConcepto,
+        tipo: newCostoTipo,
+        descripcion: newCostoDescripcion || null,
+        monto: parseFloat(newCostoMonto),
+      })
+      .select()
+      .single();
+    if (!error && data) {
+      setCostosExtras(prev => [...prev, data]);
+      setNewCostoConcepto('');
+      setNewCostoTipo('otro');
+      setNewCostoDescripcion('');
+      setNewCostoMonto('');
+    }
+  }
+
+  async function removeCostoExtra(id: string) {
+    await supabase.from('store_producto_costos_extras').delete().eq('id', id);
+    setCostosExtras(prev => prev.filter(c => c.id !== id));
+  }
+
+  const totalCostosExtras = costosExtras.reduce((sum, c) => sum + c.monto, 0);
+  const costoReal = (parseFloat(costoBase) || 0) + totalCostosExtras;
+  const precioNum = parseFloat(precio) || 0;
+  const gananciaUnidad = precioNum - costoReal;
+  const margenPct = precioNum > 0 ? (gananciaUnidad / precioNum) * 100 : 0;
 
   const handleImagenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -419,6 +495,7 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
         titulo,
         descripcion,
         precio: parseFloat(precio),
+        costo_base: parseFloat(costoBase) || 0,
         categoria_id: categoriaId,
         imagen_url: finalImagenUrl,
         activo
@@ -448,10 +525,10 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
       onClose={onClose}
       title={producto ? 'Editar Producto' : 'Nuevo Producto'}
     >
-      <div className="space-y-4">
+      <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Título *
+            Titulo *
           </label>
           <input
             type="text"
@@ -464,21 +541,21 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Descripción *
+            Descripcion *
           </label>
           <textarea
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            rows={4}
-            placeholder="Descripción detallada del producto"
+            rows={3}
+            placeholder="Descripcion detallada del producto"
           />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Precio *
+              Precio de venta *
             </label>
             <input
               type="number"
@@ -493,21 +570,36 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Categoría *
+              Costo base (adquisicion)
             </label>
-            <select
-              value={categoriaId}
-              onChange={(e) => setCategoriaId(e.target.value)}
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={costoBase}
+              onChange={(e) => setCostoBase(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Selecciona una categoría</option>
-              {categorias.filter(c => c.activo).map(categoria => (
-                <option key={categoria.id} value={categoria.id}>
-                  {categoria.nombre}
-                </option>
-              ))}
-            </select>
+              placeholder="0.00"
+            />
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Categoria *
+          </label>
+          <select
+            value={categoriaId}
+            onChange={(e) => setCategoriaId(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Selecciona una categoria</option>
+            {categorias.filter(c => c.activo).map(categoria => (
+              <option key={categoria.id} value={categoria.id}>
+                {categoria.nombre}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>
@@ -525,11 +617,107 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
               <img
                 src={imagenUrl}
                 alt="Preview"
-                className="w-full h-48 object-cover rounded-lg"
+                className="w-full h-32 object-cover rounded-lg"
               />
             </div>
           )}
         </div>
+
+        {/* Costos extras section - only for existing products */}
+        {producto && (
+          <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+            <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+              <DollarSign className="w-4 h-4" />
+              Costos extras fijos
+            </h4>
+            <p className="text-xs text-gray-500">Costos que siempre aplican: empaque, comision, etc.</p>
+
+            {costosExtras.length > 0 && (
+              <ul className="space-y-1.5">
+                {costosExtras.map(c => (
+                  <li key={c.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium text-gray-800">{c.concepto}</span>
+                      <span className="text-xs text-gray-400 ml-2">({TIPO_GASTO_OPTIONS.find(t => t.value === c.tipo)?.label || c.tipo})</span>
+                      {c.descripcion && <p className="text-xs text-gray-400 truncate">{c.descripcion}</p>}
+                    </div>
+                    <div className="flex items-center gap-2 ml-2">
+                      <span className="text-sm font-semibold text-gray-700">${c.monto.toFixed(2)}</span>
+                      <button onClick={() => removeCostoExtra(c.id)} className="text-red-400 hover:text-red-600">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="grid grid-cols-12 gap-2 items-end">
+              <div className="col-span-4">
+                <input
+                  type="text"
+                  value={newCostoConcepto}
+                  onChange={e => setNewCostoConcepto(e.target.value)}
+                  placeholder="Concepto"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div className="col-span-3">
+                <select
+                  value={newCostoTipo}
+                  onChange={e => setNewCostoTipo(e.target.value)}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
+                >
+                  {TIPO_GASTO_OPTIONS.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-span-3">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={newCostoMonto}
+                  onChange={e => setNewCostoMonto(e.target.value)}
+                  placeholder="$0.00"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div className="col-span-2">
+                <button
+                  onClick={addCostoExtra}
+                  disabled={!newCostoConcepto || !newCostoMonto}
+                  className="w-full px-2 py-1.5 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-40"
+                >
+                  <Plus className="w-4 h-4 mx-auto" />
+                </button>
+              </div>
+            </div>
+
+            {/* Live cost summary */}
+            <div className="bg-blue-50 rounded-lg p-3 space-y-1 text-sm">
+              <div className="flex justify-between text-gray-600">
+                <span>Costo base:</span>
+                <span>${(parseFloat(costoBase) || 0).toFixed(2)}</span>
+              </div>
+              {totalCostosExtras > 0 && (
+                <div className="flex justify-between text-gray-600">
+                  <span>+ Costos extras:</span>
+                  <span>${totalCostosExtras.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-semibold text-gray-800 border-t border-blue-200 pt-1">
+                <span>= Costo real:</span>
+                <span>${costoReal.toFixed(2)}</span>
+              </div>
+              <div className={`flex justify-between font-semibold ${gananciaUnidad >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                <span>Ganancia/unidad:</span>
+                <span>${gananciaUnidad.toFixed(2)} ({margenPct.toFixed(1)}%)</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center gap-2">
           <input
@@ -540,7 +728,7 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
             className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-blue-500"
           />
           <label htmlFor="activo" className="text-sm font-medium text-gray-700">
-            Producto activo (visible en el catálogo)
+            Producto activo (visible en el catalogo)
           </label>
         </div>
 

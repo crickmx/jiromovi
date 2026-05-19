@@ -51,6 +51,7 @@ import StoreCarrito from './pages/StoreCarrito';
 import StoreMisPedidos from './pages/StoreMisPedidos';
 import StorePedidoDetalle from './pages/StorePedidoDetalle';
 import StorePedidos from './pages/StorePedidos';
+import StorePedidosReporte from './pages/StorePedidosReporte';
 import StoreAdmin from './pages/StoreAdmin';
 import Comisiones from './pages/Comisiones';
 import ComisionesLote from './pages/ComisionesLote';
@@ -527,6 +528,15 @@ function AppRoutes() {
         element={
           <ProtectedRoute requireAdmin>
             <StorePedidos />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/store/reporte"
+        element={
+          <ProtectedRoute requireAdmin>
+            <StorePedidosReporte />
           </ProtectedRoute>
         }
       />

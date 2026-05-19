@@ -12,11 +12,25 @@ export interface StoreProducto {
   titulo: string;
   descripcion: string;
   precio: number;
+  costo_base: number;
   imagen_url: string;
   activo: boolean;
   created_at: string;
   categoria?: StoreCategoria;
+  costos_extras?: StoreProductoCostoExtra[];
 }
+
+export interface StoreProductoCostoExtra {
+  id: string;
+  producto_id: string;
+  concepto: string;
+  tipo: string;
+  descripcion?: string;
+  monto: number;
+  created_at: string;
+}
+
+export type TipoGasto = 'proveedor' | 'envio' | 'empaque' | 'comision' | 'logistica' | 'otro';
 
 export interface StoreCarritoItem {
   id: string;
@@ -63,6 +77,11 @@ export interface StorePedido {
   observaciones_oc?: string;
   oc_generada_por?: string;
   oc_generada_en?: string;
+  // Campos de revision y cobro
+  revisado_por?: string;
+  cobrado?: boolean;
+  cobrado_en?: string;
+  cobrado_por?: string;
   // Relaciones
   estatus?: StoreEstatusPedido;
   usuario?: {
@@ -105,7 +124,54 @@ export interface StorePedidoDetalle {
   producto_id: string;
   cantidad: number;
   precio_unitario: number;
+  costo_unitario_override?: number;
   producto?: StoreProducto;
+  gastos?: StorePedidoDetalleGasto[];
+}
+
+export interface StorePedidoGasto {
+  id: string;
+  pedido_id: string;
+  concepto: string;
+  tipo: string;
+  descripcion?: string;
+  monto: number;
+  creado_por?: string;
+  created_at: string;
+}
+
+export interface StorePedidoDetalleGasto {
+  id: string;
+  detalle_id: string;
+  concepto: string;
+  tipo: string;
+  descripcion?: string;
+  monto: number;
+  creado_por?: string;
+  created_at: string;
+}
+
+export interface StoreGastoGeneral {
+  id: string;
+  concepto: string;
+  tipo: string;
+  descripcion?: string;
+  monto: number;
+  fecha: string;
+  creado_por?: string;
+  created_at: string;
+}
+
+export interface StoreMetaUtilidad {
+  id: string;
+  nombre: string;
+  descripcion?: string;
+  monto_objetivo: number;
+  fecha_inicio: string;
+  fecha_fin: string;
+  activa: boolean;
+  creado_por?: string;
+  created_at: string;
 }
 
 export interface StorePedidoNota {
@@ -135,4 +201,14 @@ export interface StorePedidoCompleto extends StorePedido {
   detalle: StorePedidoDetalle[];
   notas: StorePedidoNota[];
   historial: StorePedidoHistorial[];
+  gastos?: StorePedidoGasto[];
 }
+
+export const TIPO_GASTO_OPTIONS: { value: string; label: string }[] = [
+  { value: 'proveedor', label: 'Proveedor' },
+  { value: 'envio', label: 'Envio' },
+  { value: 'empaque', label: 'Empaque' },
+  { value: 'comision', label: 'Comision' },
+  { value: 'logistica', label: 'Logistica' },
+  { value: 'otro', label: 'Otro' },
+];

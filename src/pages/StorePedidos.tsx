@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Package, Eye, Filter, Download, Search, Calendar, ArrowLeft, Trash2 } from 'lucide-react';
+import { Package, Eye, Filter, Download, Search, Calendar, ArrowLeft, Trash2, BarChart3 } from 'lucide-react';
 import { obtenerTodosPedidos, eliminarPedido } from '../lib/storeUtils';
 import type { StorePedido } from '../lib/storeTypes';
 import { format } from 'date-fns';
@@ -272,7 +272,7 @@ export default function StorePedidos() {
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-accent">Gestión de Pedidos</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-accent">Gestion de Pedidos</h1>
             <p className="text-gray-600 mt-1">
               Administra todos los pedidos de MOVI Store
               {pedidos.length > 0 && (
@@ -282,6 +282,13 @@ export default function StorePedidos() {
               )}
             </p>
           </div>
+          <button
+            onClick={() => navigate('/store/reporte')}
+            className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-primary-800 transition-colors shadow-sm"
+          >
+            <BarChart3 className="w-4 h-4" />
+            Reporte Ganancias
+          </button>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
