@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { MessageCircle, Mail, Search, Filter, Send, Phone, Building2, User, Clock, CheckCircle2, XCircle, AlertCircle, Loader2, ChevronLeft, RefreshCw, X, MessageSquare, Zap, Check, ListTodo, Plus, Link2, FileText, Image, Music, Video, Paperclip, UserX, UserPlus, Eye, Download, ExternalLink, Smile, LayoutTemplate as BookTemplate, ClipboardList, Star, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, Globe, Lock, ChevronDown } from 'lucide-react';
+import { MessageCircle, Mail, Search, Filter, Send, Phone, Building2, User, Clock, CheckCircle2, XCircle, AlertCircle, Loader2, ChevronLeft, RefreshCw, X, MessageSquare, Zap, Check, ListTodo, Plus, Link2, FileText, Image, Music, Video, Paperclip, UserX, UserPlus, Eye, Download, ExternalLink, Smile, LayoutTemplate as BookTemplate, ClipboardList, Star, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, Globe, Lock, ChevronDown, Bot, Play, Pause, ArrowRightLeft, StopCircle, ChevronUp, Settings, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -100,6 +100,37 @@ interface TramiteOption {
   fecha_creacion: string;
 }
 
+interface CcAssistant {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  source: 'manual' | 'form';
+  is_active: boolean;
+  is_global: boolean;
+  office_id: string | null;
+  welcome_message: string;
+  consent_message: string;
+  completion_message: string;
+  transfer_message: string;
+  auto_create_tramite: boolean;
+  total_sessions: number;
+  completed_sessions: number;
+}
+
+interface CcSessionState {
+  session_id: string;
+  status: string;
+  current_stage: string;
+  consent_given: boolean;
+  started_at: string;
+  messages_received: number;
+  assistant_name: string;
+  captured_count: number;
+  total_fields: number;
+}
+
+type ConversationMode = 'normal' | 'automatic';
+
 async function callApi(slug: string, body: Record<string, unknown>) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) return { success: false, error: 'Sesion no disponible' };
@@ -167,6 +198,13 @@ export default function CentroContacto() {
 
   // Formularios modal
   const [showFormulariosModal, setShowFormulariosModal] = useState(false);
+
+  // Automatic mode state
+  const [conversationMode, setConversationMode] = useState<ConversationMode>('normal');
+  const [activeSession, setActiveSession] = useState<CcSessionState | null>(null);
+  const [showStartAutoModal, setShowStartAutoModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [autoModeLoading, setAutoModeLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAdmin = usuario?.rol === 'Administrador';
@@ -416,6 +454,115 @@ export default function CentroContacto() {
     setComposerSubject('');
     setSelectionMode(false);
     setSelectedMessageIds(new Set());
+    // Load conversation mode for this agent
+    loadConversationMode(conv.agent_user_id);
+  };
+
+  const loadConversationMode = useCallback(async (agentUserId: string) => {
+    try {
+      const result = await callApi('contact-center-assistant-process', {
+        action: 'get_session_state',
+        agent_user_id: agentUserId,
+      });
+      if (result.mode === 'automatic' && result.active_session) {
+        setConversationMode('automatic');
+        const s = result.active_session;
+        setActiveSession({
+          session_id: s.id,
+          status: s.status,
+          current_stage: s.current_stage,
+          consent_given: s.consent_given,
+          started_at: s.started_at,
+          messages_received: s.messages_received,
+          assistant_name: s.contact_center_assistants?.nombre || 'Asistente',
+          captured_count: (s.contact_center_assistant_session_data || []).length,
+          total_fields: 0,
+        });
+      } else {
+        setConversationMode('normal');
+        setActiveSession(null);
+      }
+    } catch { /* silent */ }
+  }, []);
+
+  const handleActivateAutoMode = async (assistantId: string) => {
+    if (!selectedAgent) return;
+    setAutoModeLoading(true);
+    try {
+      const result = await callApi('contact-center-assistant-process', {
+        action: 'start_session',
+        agent_user_id: selectedAgent.agent_user_id,
+        assistant_id: assistantId,
+      });
+      if (result.ok) {
+        setConversationMode('automatic');
+        setActiveSession({
+          session_id: result.session_id,
+          status: 'active',
+          current_stage: result.stage || 'welcome',
+          consent_given: false,
+          started_at: new Date().toISOString(),
+          messages_received: 0,
+          assistant_name: result.assistant_name || 'Asistente',
+          captured_count: 0,
+          total_fields: result.total_fields || 0,
+        });
+        setShowStartAutoModal(false);
+        // Send welcome message via WhatsApp
+        if (result.welcome_message) {
+          await callApi('send-contact-whatsapp', {
+            agentUserId: selectedAgent.agent_user_id,
+            message: result.welcome_message,
+          });
+          loadMessages(selectedAgent.agent_user_id);
+        }
+      } else {
+        alert(result.error || 'No se pudo iniciar el modo automático');
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al activar modo automático');
+    }
+    setAutoModeLoading(false);
+  };
+
+  const handleDeactivateAutoMode = async () => {
+    if (!activeSession) return;
+    setAutoModeLoading(true);
+    try {
+      await callApi('contact-center-assistant-process', {
+        action: 'cancel_session',
+        session_id: activeSession.session_id,
+      });
+      setConversationMode('normal');
+      setActiveSession(null);
+    } catch { /* silent */ }
+    setAutoModeLoading(false);
+  };
+
+  const handleTransferSession = async (transferToId?: string, reason?: string) => {
+    if (!activeSession) return;
+    setAutoModeLoading(true);
+    try {
+      const result = await callApi('contact-center-assistant-process', {
+        action: 'transfer',
+        session_id: activeSession.session_id,
+        transfer_to: transferToId,
+        transfer_reason: reason || 'Transferido por operador',
+      });
+      if (result.ok) {
+        setConversationMode('normal');
+        setActiveSession(null);
+        setShowTransferModal(false);
+        if (result.transfer_message && selectedAgent) {
+          await callApi('send-contact-whatsapp', {
+            agentUserId: selectedAgent.agent_user_id,
+            message: result.transfer_message,
+          });
+          loadMessages(selectedAgent.agent_user_id);
+        }
+      }
+    } catch { /* silent */ }
+    setAutoModeLoading(false);
   };
 
   const handleSend = async () => {
@@ -633,6 +780,39 @@ export default function CentroContacto() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {/* Mode toggle badge */}
+                  {conversationMode === 'automatic' && activeSession ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                        <Bot className="w-3 h-3" />
+                        <span className="hidden sm:inline">{activeSession.assistant_name}</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      </span>
+                      <button
+                        onClick={() => setShowTransferModal(true)}
+                        title="Transferir a humano"
+                        className="p-1.5 rounded text-[11px] text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                      >
+                        <ArrowRightLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={handleDeactivateAutoMode}
+                        title="Desactivar modo automático"
+                        disabled={autoModeLoading}
+                        className="p-1.5 rounded text-[11px] text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
+                      >
+                        <StopCircle className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowStartAutoModal(true)}
+                      title="Activar Modo Automático"
+                      className="flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-700 dark:hover:text-emerald-400 border border-gray-200 dark:border-gray-700 transition-colors"
+                    >
+                      <Bot className="w-3 h-3" /> Auto
+                    </button>
+                  )}
                   {isUnassigned && (isAdmin || isGerente) && (
                     <button onClick={() => setShowAssignModal(true)} className="flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400">
                       <UserPlus className="w-3 h-3" /> Asignar
@@ -679,6 +859,47 @@ export default function CentroContacto() {
                       <X className="w-4 h-4" />
                     </button>
                   </div>
+                </div>
+              )}
+
+              {/* Automatic mode progress bar */}
+              {conversationMode === 'automatic' && activeSession && (
+                <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-900/10 border-b border-emerald-200 dark:border-emerald-800">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <Bot className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                        Modo Automático — {activeSession.assistant_name}
+                      </span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                        activeSession.current_stage === 'welcome' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
+                        activeSession.current_stage === 'consent' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' :
+                        activeSession.current_stage === 'capturing' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300' :
+                        activeSession.current_stage === 'summary' ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300' :
+                        'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                      }`}>
+                        {activeSession.current_stage === 'welcome' ? 'Bienvenida' :
+                         activeSession.current_stage === 'consent' ? 'Consentimiento' :
+                         activeSession.current_stage === 'capturing' ? 'Capturando datos' :
+                         activeSession.current_stage === 'summary' ? 'Confirmando' :
+                         activeSession.current_stage === 'completion' ? 'Completado' :
+                         activeSession.current_stage}
+                      </span>
+                    </div>
+                    {activeSession.total_fields > 0 && (
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                        {activeSession.captured_count}/{activeSession.total_fields} campos
+                      </span>
+                    )}
+                  </div>
+                  {activeSession.total_fields > 0 && (
+                    <div className="w-full h-1 bg-emerald-200 dark:bg-emerald-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.round((activeSession.captured_count / activeSession.total_fields) * 100)}%` }}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -876,6 +1097,27 @@ export default function CentroContacto() {
           agentName={selectedAgent.agent_name}
           onInsert={(text) => { setComposerMessage(text); setShowFormulariosModal(false); }}
           onClose={() => setShowFormulariosModal(false)}
+        />
+      )}
+
+      {/* Start Auto Mode Modal */}
+      {showStartAutoModal && selectedAgent && (
+        <StartAutoModeModal
+          agentName={selectedAgent.agent_name}
+          officeId={selectedAgent.agent_office_id}
+          onStart={handleActivateAutoMode}
+          onClose={() => setShowStartAutoModal(false)}
+          loading={autoModeLoading}
+        />
+      )}
+
+      {/* Transfer Modal */}
+      {showTransferModal && activeSession && (
+        <TransferSessionModal
+          sessionId={activeSession.session_id}
+          onTransfer={handleTransferSession}
+          onClose={() => setShowTransferModal(false)}
+          loading={autoModeLoading}
         />
       )}
     </div>
@@ -1464,6 +1706,241 @@ function AssignConversationModal({ currentAgentId, onClose, onSuccess }: {
           <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Cancelar</button>
           <button onClick={handleAssign} disabled={saving || !selectedUserId} className="px-4 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 font-medium">
             {saving ? 'Asignando...' : 'Asignar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Start Auto Mode Modal
+// ============================================================
+
+function StartAutoModeModal({ agentName, officeId, onStart, onClose, loading }: {
+  agentName: string;
+  officeId: string | null;
+  onStart: (assistantId: string) => void;
+  onClose: () => void;
+  loading: boolean;
+}) {
+  const [assistants, setAssistants] = useState<CcAssistant[]>([]);
+  const [loadingAssistants, setLoadingAssistants] = useState(true);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      setLoadingAssistants(true);
+      const { data } = await supabase
+        .from('contact_center_assistants')
+        .select('*')
+        .eq('is_active', true)
+        .or(`is_global.eq.true${officeId ? `,office_id.eq.${officeId}` : ''}`)
+        .order('nombre');
+      setAssistants((data || []) as CcAssistant[]);
+      setLoadingAssistants(false);
+    })();
+  }, [officeId]);
+
+  const filtered = assistants.filter(a =>
+    !search || a.nombre.toLowerCase().includes(search.toLowerCase()) || a.descripcion?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+              <Bot className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Modo Automático</h2>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">Selecciona un asistente para {agentName}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar asistente..."
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+            />
+          </div>
+
+          <div className="max-h-72 overflow-y-auto space-y-2">
+            {loadingAssistants ? (
+              <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-emerald-500" /></div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-8">
+                <Bot className="w-10 h-10 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {assistants.length === 0
+                    ? 'No hay asistentes configurados. Crea uno en Configuración.'
+                    : 'Sin resultados para tu búsqueda'}
+                </p>
+              </div>
+            ) : (
+              filtered.map(a => (
+                <button
+                  key={a.id}
+                  onClick={() => setSelectedId(a.id)}
+                  className={`w-full text-left p-3.5 rounded-xl border-2 transition-all ${
+                    selectedId === a.id
+                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${a.is_active ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">{a.nombre}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {a.source === 'form' && (
+                        <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full">Formulario</span>
+                      )}
+                      {a.is_global && (
+                        <Globe className="w-3 h-3 text-gray-400" />
+                      )}
+                    </div>
+                  </div>
+                  {a.descripcion && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 pl-4">{a.descripcion}</p>
+                  )}
+                  <div className="flex items-center gap-3 mt-2 pl-4">
+                    <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                      <MessageCircle className="w-3 h-3" /> {a.total_sessions || 0} sesiones
+                    </span>
+                    {a.auto_create_tramite && (
+                      <span className="text-[10px] text-teal-600 dark:text-teal-400 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Crea trámite
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            Cancelar
+          </button>
+          <button
+            onClick={() => selectedId && onStart(selectedId)}
+            disabled={!selectedId || loading}
+            className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            Iniciar modo automático
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Transfer Session Modal
+// ============================================================
+
+function TransferSessionModal({ sessionId: _sessionId, onTransfer, onClose, loading }: {
+  sessionId: string;
+  onTransfer: (transferToId?: string, reason?: string) => void;
+  onClose: () => void;
+  loading: boolean;
+}) {
+  const [reason, setReason] = useState('');
+  const [users, setUsers] = useState<{ id: string; nombre_completo: string; rol: string }[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from('usuarios')
+      .select('id, nombre_completo, rol')
+      .eq('activo', true)
+      .in('rol', ['Administrador', 'Gerente', 'Empleado', 'Ejecutivo'])
+      .order('nombre_completo')
+      .then(({ data }) => {
+        if (data) setUsers(data);
+      });
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+              <ArrowRightLeft className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Transferir a agente</h2>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">El asistente dejará de gestionar la conversación</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Motivo de transferencia</label>
+            <textarea
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              placeholder="Ej: El cliente requiere atención personalizada..."
+              rows={3}
+              className="w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-white resize-none focus:ring-2 focus:ring-amber-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Asignar a (opcional)</label>
+            <div className="max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg divide-y divide-gray-100 dark:divide-gray-800">
+              <button
+                onClick={() => setSelectedUserId(null)}
+                className={`w-full text-left px-3 py-2 text-sm transition-colors ${!selectedUserId ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400' : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'}`}
+              >
+                Sin asignación específica
+              </button>
+              {users.map(u => (
+                <button
+                  key={u.id}
+                  onClick={() => setSelectedUserId(u.id)}
+                  className={`w-full text-left px-3 py-2 text-sm transition-colors ${selectedUserId === u.id ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400' : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'}`}
+                >
+                  {u.nombre_completo}
+                  <span className="text-[10px] text-gray-400 ml-1.5">{u.rol}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            Cancelar
+          </button>
+          <button
+            onClick={() => onTransfer(selectedUserId || undefined, reason || undefined)}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium disabled:opacity-50 transition-colors"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
+            Transferir
           </button>
         </div>
       </div>
