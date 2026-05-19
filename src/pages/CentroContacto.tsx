@@ -1,11 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  MessageCircle, Mail, Search, Filter, Send, Phone, Building2,
-  User, Clock, CheckCircle2, XCircle, AlertCircle, Loader2,
-  ChevronLeft, RefreshCw, X, MessageSquare, Zap, Check,
-  ListTodo, Plus, Link2, FileText, Image, Music, Video,
-  Paperclip, UserX, UserPlus, Eye, Download, ExternalLink,
-} from 'lucide-react';
+import { MessageCircle, Mail, Search, Filter, Send, Phone, Building2, User, Clock, CheckCircle2, XCircle, AlertCircle, Loader2, ChevronLeft, RefreshCw, X, MessageSquare, Zap, Check, ListTodo, Plus, Link2, FileText, Image, Music, Video, Paperclip, UserX, UserPlus, Eye, Download, ExternalLink, Smile, LayoutTemplate as BookTemplate, ClipboardList, Star, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, Globe, Lock, ChevronDown } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -67,6 +61,32 @@ interface Attachment {
 interface Oficina {
   id: string;
   nombre: string;
+}
+
+interface MessageTemplate {
+  id: string;
+  name: string;
+  category: string;
+  content: string;
+  channel: string;
+  is_active: boolean;
+  is_global: boolean;
+  created_by: string | null;
+  office_id: string | null;
+  variables: Array<{ name: string; label: string }>;
+  created_at: string;
+}
+
+interface QuoteFormTemplate {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  form_type: string;
+  slug: string | null;
+  allowed_roles: string[] | null;
+  is_global: boolean;
+  is_active: boolean;
 }
 
 interface TramiteOption {
@@ -137,6 +157,16 @@ export default function CentroContacto() {
 
   // Attachment preview
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
+
+  // Emoji picker
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
+  // Templates modal
+  const [showPlantillasModal, setShowPlantillasModal] = useState(false);
+
+  // Formularios modal
+  const [showFormulariosModal, setShowFormulariosModal] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAdmin = usuario?.rol === 'Administrador';
@@ -362,6 +392,23 @@ export default function CentroContacto() {
 
     return () => { supabase.removeChannel(channel); };
   }, [selectedAgent, usuario, loadConversations]);
+
+  // Close emoji picker on outside click
+  useEffect(() => {
+    if (!showEmojiPicker) return;
+    const handler = (e: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showEmojiPicker]);
+
+  const insertEmoji = (emoji: string) => {
+    setComposerMessage(prev => prev + emoji);
+    setShowEmojiPicker(false);
+  };
 
   const handleSelectAgent = (conv: ConversationSummary) => {
     setSelectedAgent(conv);
@@ -675,6 +722,22 @@ export default function CentroContacto() {
                   >
                     <Mail className="w-3.5 h-3.5" /> Correo
                   </button>
+                  <div className="ml-auto flex items-center gap-1">
+                    <button
+                      onClick={() => { setShowPlantillasModal(true); setShowEmojiPicker(false); }}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700"
+                      title="Plantillas de mensaje"
+                    >
+                      <BookTemplate className="w-3.5 h-3.5" /> Plantillas
+                    </button>
+                    <button
+                      onClick={() => { setShowFormulariosModal(true); setShowEmojiPicker(false); }}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700"
+                      title="Compartir formulario de cotizacion"
+                    >
+                      <ClipboardList className="w-3.5 h-3.5" /> Formularios
+                    </button>
+                  </div>
                 </div>
 
                 {composerChannel === 'email' && (
@@ -688,6 +751,18 @@ export default function CentroContacto() {
                 )}
 
                 <div className="flex items-end gap-2">
+                  {composerChannel === 'whatsapp' && (
+                    <div className="relative" ref={emojiPickerRef}>
+                      <button
+                        onClick={() => setShowEmojiPicker(p => !p)}
+                        className={`p-2 rounded-lg border transition-colors ${showEmojiPicker ? 'border-teal-400 text-teal-600 bg-teal-50 dark:bg-teal-900/20' : 'border-gray-200 dark:border-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                        title="Emojis"
+                      >
+                        <Smile className="w-4 h-4" />
+                      </button>
+                      {showEmojiPicker && <EmojiPickerPanel onSelect={insertEmoji} />}
+                    </div>
+                  )}
                   <textarea
                     value={composerMessage}
                     onChange={e => setComposerMessage(e.target.value)}
@@ -704,7 +779,12 @@ export default function CentroContacto() {
                     {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   </button>
                 </div>
-                {composerChannel === 'whatsapp' && <p className="text-[10px] text-gray-400 mt-1">Max 550 caracteres. Enter para enviar.</p>}
+                {composerChannel === 'whatsapp' && (
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-[10px] text-gray-400">Enter para enviar, Shift+Enter para nueva linea.</p>
+                    <p className={`text-[10px] ${composerMessage.length > 500 ? 'text-red-500' : 'text-gray-400'}`}>{composerMessage.length}/550</p>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -778,6 +858,23 @@ export default function CentroContacto() {
         <AttachmentPreviewModal
           attachment={previewAttachment}
           onClose={() => setPreviewAttachment(null)}
+        />
+      )}
+
+      {showPlantillasModal && selectedAgent && (
+        <PlantillasModal
+          channel={composerChannel}
+          agentName={selectedAgent.agent_name}
+          onInsert={(text) => { setComposerMessage(text); setShowPlantillasModal(false); }}
+          onClose={() => setShowPlantillasModal(false)}
+        />
+      )}
+
+      {showFormulariosModal && selectedAgent && (
+        <FormulariosModal
+          agentName={selectedAgent.agent_name}
+          onInsert={(text) => { setComposerMessage(text); setShowFormulariosModal(false); }}
+          onClose={() => setShowFormulariosModal(false)}
         />
       )}
     </div>
@@ -1405,6 +1502,660 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label:
       <div>
         <p className="text-[10px] text-gray-400 uppercase">{label}</p>
         <p className="text-xs text-gray-700 dark:text-gray-300 break-all">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Emoji Picker Panel
+// ============================================================
+
+const EMOJI_CATEGORIES = [
+  {
+    label: 'Caras', emojis: [
+      '😊', '😄', '😃', '😁', '🙂', '😉', '😍', '🥰', '😘', '😎',
+      '🤗', '🤔', '😮', '😯', '🥳', '🎉', '👍', '🙌', '💪', '🤝',
+      '❤️', '💙', '💚', '💛', '🧡', '🔥', '⭐', '✅', '✔️', '💯',
+    ],
+  },
+  {
+    label: 'Seguros', emojis: [
+      '🛡️', '📋', '📄', '📝', '🖊️', '💼', '🏠', '🚗', '✈️', '🏥',
+      '💊', '💰', '💵', '📊', '📈', '🔒', '🗓️', '📅', '⏰', '🕐',
+      '📞', '📱', '💬', '📧', '🔔', '📣', '🎯', '🤓', '👔', '🏢',
+    ],
+  },
+];
+
+function EmojiPickerPanel({ onSelect }: { onSelect: (emoji: string) => void }) {
+  const [activeCategory, setActiveCategory] = useState(0);
+
+  return (
+    <div className="absolute bottom-full left-0 mb-2 w-72 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden">
+      <div className="flex border-b border-gray-100 dark:border-gray-800">
+        {EMOJI_CATEGORIES.map((cat, i) => (
+          <button
+            key={cat.label}
+            onClick={() => setActiveCategory(i)}
+            className={`flex-1 py-2 text-xs font-medium transition-colors ${activeCategory === i ? 'text-teal-600 border-b-2 border-teal-500' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+          >
+            {cat.label}
+          </button>
+        ))}
+      </div>
+      <div className="p-2 grid grid-cols-10 gap-0.5 max-h-32 overflow-y-auto">
+        {EMOJI_CATEGORIES[activeCategory].emojis.map(emoji => (
+          <button
+            key={emoji}
+            onClick={() => onSelect(emoji)}
+            className="text-lg p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors leading-none"
+          >
+            {emoji}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Plantillas Modal
+// ============================================================
+
+function PlantillasModal({ channel, agentName, onInsert, onClose }: {
+  channel: 'whatsapp' | 'email';
+  agentName: string;
+  onInsert: (text: string) => void;
+  onClose: () => void;
+}) {
+  const { usuario } = useAuth();
+  const [templates, setTemplates] = useState<MessageTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null);
+  const [variableValues, setVariableValues] = useState<Record<string, string>>({});
+  const [previewText, setPreviewText] = useState('');
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<MessageTemplate | null>(null);
+
+  const isAdminOrGerente = usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente';
+
+  const loadTemplates = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('message_templates')
+      .select('*')
+      .eq('is_active', true)
+      .order('category')
+      .order('name');
+    if (data) setTemplates(data as MessageTemplate[]);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadTemplates(); }, [loadTemplates]);
+
+  const categories = ['all', ...Array.from(new Set(templates.map(t => t.category)))];
+
+  const filtered = templates.filter(t => {
+    const matchesChannel = channel === 'whatsapp' ? t.channel !== 'email' : t.channel !== 'whatsapp';
+    const matchesCategory = activeCategory === 'all' || t.category === activeCategory;
+    const matchesSearch = !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.content.toLowerCase().includes(search.toLowerCase());
+    return matchesChannel && matchesCategory && matchesSearch;
+  });
+
+  const applyVariables = (content: string, vars: Record<string, string>) => {
+    let result = content;
+    result = result.replace(/\{\{nombre_agente\}\}/g, agentName || '');
+    result = result.replace(/\{\{nombre_contacto\}\}/g, vars['nombre_contacto'] || '[Nombre]');
+    for (const [key, val] of Object.entries(vars)) {
+      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), val);
+    }
+    return result;
+  };
+
+  useEffect(() => {
+    if (selectedTemplate) {
+      setPreviewText(applyVariables(selectedTemplate.content, variableValues));
+    }
+  }, [selectedTemplate, variableValues]);
+
+  const handleSelectTemplate = (tpl: MessageTemplate) => {
+    setSelectedTemplate(tpl);
+    const vars: Record<string, string> = {};
+    if (tpl.variables && Array.isArray(tpl.variables)) {
+      for (const v of tpl.variables) {
+        vars[v.name] = '';
+      }
+    }
+    setVariableValues(vars);
+    setPreviewText(applyVariables(tpl.content, vars));
+  };
+
+  const handleInsert = () => {
+    if (!selectedTemplate) return;
+    onInsert(previewText);
+  };
+
+  const handleToggleActive = async (tpl: MessageTemplate) => {
+    await supabase.from('message_templates').update({ is_active: !tpl.is_active }).eq('id', tpl.id);
+    loadTemplates();
+  };
+
+  const handleDelete = async (tpl: MessageTemplate) => {
+    if (!confirm(`Eliminar la plantilla "${tpl.name}"?`)) return;
+    await supabase.from('message_templates').delete().eq('id', tpl.id);
+    if (selectedTemplate?.id === tpl.id) setSelectedTemplate(null);
+    loadTemplates();
+  };
+
+  if (showCreateForm || editingTemplate) {
+    return (
+      <TemplateFormModal
+        template={editingTemplate}
+        onSave={() => { setShowCreateForm(false); setEditingTemplate(null); loadTemplates(); }}
+        onClose={() => { setShowCreateForm(false); setEditingTemplate(null); }}
+      />
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2">
+            <BookTemplate className="w-5 h-5 text-teal-600" />
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Plantillas de Mensaje</h2>
+            <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full capitalize">{channel}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {isAdminOrGerente && (
+              <button
+                onClick={() => setShowCreateForm(true)}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-teal-600 text-white text-xs font-medium hover:bg-teal-700 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" /> Nueva
+              </button>
+            )}
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left: list */}
+          <div className="w-1/2 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+            <div className="p-3 border-b border-gray-100 dark:border-gray-800 space-y-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Buscar plantilla..."
+                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-1 focus:ring-teal-500"
+                />
+              </div>
+              <div className="flex gap-1 overflow-x-auto pb-0.5">
+                {categories.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveCategory(cat)}
+                    className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${activeCategory === cat ? 'bg-teal-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                  >
+                    {cat === 'all' ? 'Todas' : cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {loading ? (
+                <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-teal-500" /></div>
+              ) : filtered.length === 0 ? (
+                <div className="p-6 text-center text-sm text-gray-400">
+                  <BookTemplate className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  <p>Sin plantillas</p>
+                </div>
+              ) : (
+                filtered.map(tpl => (
+                  <div
+                    key={tpl.id}
+                    className={`group border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${selectedTemplate?.id === tpl.id ? 'bg-teal-50 dark:bg-teal-900/20' : ''}`}
+                  >
+                    <button
+                      className="w-full text-left p-3"
+                      onClick={() => handleSelectTemplate(tpl)}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            {tpl.is_global ? (
+                              <Globe className="w-3 h-3 text-teal-500 shrink-0" />
+                            ) : (
+                              <Lock className="w-3 h-3 text-gray-400 shrink-0" />
+                            )}
+                            <p className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">{tpl.name}</p>
+                          </div>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{tpl.content.substring(0, 60)}...</p>
+                          <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500">{tpl.category}</span>
+                        </div>
+                        {selectedTemplate?.id === tpl.id && (
+                          <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
+                        )}
+                      </div>
+                    </button>
+                    {isAdminOrGerente && (
+                      <div className="flex items-center gap-1 px-3 pb-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => setEditingTemplate(tpl)} className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600">
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                        <button onClick={() => handleToggleActive(tpl)} className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400">
+                          {tpl.is_active ? <ToggleRight className="w-3.5 h-3.5 text-teal-500" /> : <ToggleLeft className="w-3.5 h-3.5" />}
+                        </button>
+                        <button onClick={() => handleDelete(tpl)} className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Right: preview / variable input */}
+          <div className="w-1/2 flex flex-col">
+            {!selectedTemplate ? (
+              <div className="flex-1 flex items-center justify-center text-gray-400">
+                <div className="text-center p-6">
+                  <Star className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                  <p className="text-sm">Selecciona una plantilla para previsualizar</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+                  <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">{selectedTemplate.name}</h3>
+                  <p className="text-[11px] text-gray-500">{selectedTemplate.category}</p>
+                </div>
+
+                {/* Variables */}
+                {selectedTemplate.variables && Array.isArray(selectedTemplate.variables) && selectedTemplate.variables.length > 0 && (
+                  <div className="p-4 border-b border-gray-100 dark:border-gray-800 space-y-2">
+                    <p className="text-[11px] font-medium text-gray-600 dark:text-gray-400 uppercase">Completar variables</p>
+                    {selectedTemplate.variables.map((v: { name: string; label: string }) => (
+                      v.name !== 'nombre_agente' && v.name !== 'nombre_contacto_auto' ? (
+                        <div key={v.name}>
+                          <label className="text-[11px] text-gray-500 block mb-0.5">{v.label || v.name}</label>
+                          <input
+                            type="text"
+                            value={variableValues[v.name] || ''}
+                            onChange={e => setVariableValues(prev => ({ ...prev, [v.name]: e.target.value }))}
+                            placeholder={`Valor para {{${v.name}}}`}
+                            className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-1 focus:ring-teal-500"
+                          />
+                        </div>
+                      ) : null
+                    ))}
+                  </div>
+                )}
+
+                {/* Preview */}
+                <div className="flex-1 p-4 overflow-y-auto">
+                  <p className="text-[11px] font-medium text-gray-600 dark:text-gray-400 uppercase mb-2">Vista previa</p>
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                    <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">{previewText}</p>
+                  </div>
+                </div>
+
+                <div className="p-4 border-t border-gray-100 dark:border-gray-800">
+                  <button
+                    onClick={handleInsert}
+                    className="w-full py-2.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                  >
+                    <ChevronRight className="w-4 h-4" /> Usar esta plantilla
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Template Form Modal (Create / Edit)
+// ============================================================
+
+function TemplateFormModal({ template, onSave, onClose }: {
+  template: MessageTemplate | null;
+  onSave: () => void;
+  onClose: () => void;
+}) {
+  const { usuario } = useAuth();
+  const [name, setName] = useState(template?.name || '');
+  const [category, setCategory] = useState(template?.category || 'General');
+  const [content, setContent] = useState(template?.content || '');
+  const [channel, setChannel] = useState(template?.channel || 'whatsapp');
+  const [isGlobal, setIsGlobal] = useState(template?.is_global ?? false);
+  const [saving, setSaving] = useState(false);
+
+  const VARIABLE_TOKENS = ['{{nombre_agente}}', '{{nombre_contacto}}', '{{link_formulario}}', '{{nombre_formulario}}', '{{fecha}}'];
+  const detectedVars = Array.from(new Set((content.match(/\{\{(\w+)\}\}/g) || []).map(v => v.replace(/[{}]/g, ''))));
+
+  const handleSave = async () => {
+    if (!name.trim() || !content.trim()) return;
+    setSaving(true);
+    const variables = detectedVars.map(v => ({ name: v, label: v.replace(/_/g, ' ') }));
+    const payload = { name: name.trim(), category, content: content.trim(), channel, is_global: isGlobal, variables, updated_at: new Date().toISOString() };
+    if (template) {
+      await supabase.from('message_templates').update(payload).eq('id', template.id);
+    } else {
+      await supabase.from('message_templates').insert({ ...payload, created_by: usuario?.id, is_active: true });
+    }
+    setSaving(false);
+    onSave();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">{template ? 'Editar plantilla' : 'Nueva plantilla'}</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Nombre</label>
+              <input type="text" value={name} onChange={e => setName(e.target.value)} className="mt-1 w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800" placeholder="Nombre de la plantilla" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Categoria</label>
+              <input type="text" value={category} onChange={e => setCategory(e.target.value)} className="mt-1 w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800" placeholder="General" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Canal</label>
+              <select value={channel} onChange={e => setChannel(e.target.value)} className="mt-1 w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                <option value="whatsapp">WhatsApp</option>
+                <option value="email">Email</option>
+                <option value="both">Ambos</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">Contenido</label>
+            <p className="text-[11px] text-gray-400 mb-1.5">Variables disponibles: click para insertar</p>
+            <div className="flex flex-wrap gap-1 mb-2">
+              {VARIABLE_TOKENS.map(token => (
+                <button
+                  key={token}
+                  type="button"
+                  onClick={() => setContent(prev => prev + token)}
+                  className="px-2 py-0.5 rounded bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400 text-[11px] font-mono border border-teal-200 dark:border-teal-800 hover:bg-teal-100 dark:hover:bg-teal-900/40 transition-colors"
+                >
+                  {token}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={content}
+              onChange={e => setContent(e.target.value)}
+              rows={6}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 resize-none focus:ring-2 focus:ring-teal-500"
+              placeholder="Contenido de la plantilla..."
+            />
+            {detectedVars.length > 0 && (
+              <p className="text-[11px] text-gray-500 mt-1">Variables detectadas: {detectedVars.map(v => `{{${v}}}`).join(', ')}</p>
+            )}
+          </div>
+
+          {usuario?.rol === 'Administrador' && (
+            <label className="flex items-center gap-2 cursor-pointer">
+              <div
+                onClick={() => setIsGlobal(p => !p)}
+                className={`w-10 h-5 rounded-full relative transition-colors ${isGlobal ? 'bg-teal-500' : 'bg-gray-300 dark:bg-gray-600'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${isGlobal ? 'translate-x-5' : ''}`} />
+              </div>
+              <span className="text-xs text-gray-700 dark:text-gray-300">Disponible para todos (global)</span>
+            </label>
+          )}
+        </div>
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-200 dark:border-gray-700">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Cancelar</button>
+          <button onClick={handleSave} disabled={saving || !name.trim() || !content.trim()} className="px-4 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 font-medium">
+            {saving ? 'Guardando...' : 'Guardar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Formularios Modal
+// ============================================================
+
+const APP_BASE_URL = 'https://app.movidigital.com.mx';
+
+function FormulariosModal({ agentName, onInsert, onClose }: {
+  agentName: string;
+  onInsert: (text: string) => void;
+  onClose: () => void;
+}) {
+  const { usuario } = useAuth();
+  const [forms, setForms] = useState<QuoteFormTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [selectedForm, setSelectedForm] = useState<QuoteFormTemplate | null>(null);
+  const [messageTemplate, setMessageTemplate] = useState('');
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from('quote_form_templates')
+        .select('id, title, description, category, form_type, slug, allowed_roles, is_global, is_active')
+        .eq('is_active', true)
+        .order('category')
+        .order('title');
+      if (data) {
+        const userRole = usuario?.rol;
+        const filtered = (data as QuoteFormTemplate[]).filter(f => {
+          if (!f.allowed_roles || f.allowed_roles.length === 0) return true;
+          if (f.is_global) return true;
+          return userRole ? f.allowed_roles.includes(userRole) : false;
+        });
+        setForms(filtered);
+      }
+      setLoading(false);
+    })();
+  }, [usuario]);
+
+  const categories = ['all', ...Array.from(new Set(forms.map(f => f.category)))];
+
+  const filtered = forms.filter(f => {
+    const matchesCategory = activeCategory === 'all' || f.category === activeCategory;
+    const matchesSearch = !search || f.title.toLowerCase().includes(search.toLowerCase()) || f.category.toLowerCase().includes(search.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  const grouped = filtered.reduce<Record<string, QuoteFormTemplate[]>>((acc, f) => {
+    (acc[f.category] = acc[f.category] || []).push(f);
+    return acc;
+  }, {});
+
+  const toggleCategory = (cat: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
+  };
+
+  const handleSelectForm = (form: QuoteFormTemplate) => {
+    setSelectedForm(form);
+    const slug = form.slug || form.form_type;
+    const link = `${APP_BASE_URL}/tramites/formularios/nuevo/${slug}`;
+    const defaultMessage = `Hola ${agentName}! Para continuar con tu cotizacion, por favor completa el siguiente formulario:\n\n*${form.title}*\n${link}\n\nSi tienes dudas estoy a tus ordenes.`;
+    setMessageTemplate(defaultMessage);
+  };
+
+  const handleInsert = () => {
+    if (!selectedForm) return;
+    onInsert(messageTemplate);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="w-5 h-5 text-teal-600" />
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Compartir Formulario de Cotizacion</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left: form list */}
+          <div className="w-1/2 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+            <div className="p-3 border-b border-gray-100 dark:border-gray-800 space-y-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Buscar formulario..."
+                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-1 focus:ring-teal-500"
+                />
+              </div>
+              <div className="flex gap-1 overflow-x-auto pb-0.5">
+                {categories.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveCategory(cat)}
+                    className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${activeCategory === cat ? 'bg-teal-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                  >
+                    {cat === 'all' ? 'Todos' : cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {loading ? (
+                <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-teal-500" /></div>
+              ) : activeCategory !== 'all' ? (
+                // Flat list for filtered category
+                filtered.map(form => (
+                  <button
+                    key={form.id}
+                    onClick={() => handleSelectForm(form)}
+                    className={`w-full text-left px-4 py-2.5 border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${selectedForm?.id === form.id ? 'bg-teal-50 dark:bg-teal-900/20' : ''}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-medium text-gray-800 dark:text-gray-200">{form.title}</p>
+                      {selectedForm?.id === form.id && <Check className="w-3.5 h-3.5 text-teal-500 shrink-0" />}
+                    </div>
+                    {form.description && <p className="text-[11px] text-gray-500 truncate mt-0.5">{form.description}</p>}
+                  </button>
+                ))
+              ) : (
+                // Grouped accordion
+                Object.entries(grouped).map(([cat, catForms]) => {
+                  const isExpanded = expandedCategories.has(cat) || (search.length > 0);
+                  return (
+                    <div key={cat}>
+                      <button
+                        onClick={() => toggleCategory(cat)}
+                        className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                      >
+                        <span className="text-[11px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{cat}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-gray-400">{catForms.length}</span>
+                          <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                        </div>
+                      </button>
+                      {isExpanded && catForms.map(form => (
+                        <button
+                          key={form.id}
+                          onClick={() => handleSelectForm(form)}
+                          className={`w-full text-left px-5 py-2.5 border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${selectedForm?.id === form.id ? 'bg-teal-50 dark:bg-teal-900/20' : ''}`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs font-medium text-gray-800 dark:text-gray-200">{form.title}</p>
+                            {selectedForm?.id === form.id && <Check className="w-3.5 h-3.5 text-teal-500 shrink-0" />}
+                          </div>
+                          {form.description && <p className="text-[11px] text-gray-500 truncate mt-0.5">{form.description}</p>}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Right: message preview & edit */}
+          <div className="w-1/2 flex flex-col">
+            {!selectedForm ? (
+              <div className="flex-1 flex items-center justify-center text-gray-400">
+                <div className="text-center p-6">
+                  <ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                  <p className="text-sm">Selecciona un formulario</p>
+                  <p className="text-xs mt-1 text-gray-300">El link se incluira automaticamente en el mensaje</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">{selectedForm.title}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">{selectedForm.category}</p>
+                  <div className="flex items-center gap-1.5 mt-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                    <Link2 className="w-3.5 h-3.5 text-teal-500 shrink-0" />
+                    <span className="text-[11px] text-gray-500 dark:text-gray-400 truncate font-mono">
+                      {APP_BASE_URL}/tramites/formularios/nuevo/{selectedForm.slug || selectedForm.form_type}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex-1 p-4 overflow-y-auto flex flex-col">
+                  <p className="text-[11px] font-medium text-gray-600 dark:text-gray-400 uppercase mb-2">Mensaje a enviar</p>
+                  <textarea
+                    value={messageTemplate}
+                    onChange={e => setMessageTemplate(e.target.value)}
+                    rows={8}
+                    className="flex-1 w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 resize-none focus:ring-2 focus:ring-teal-500"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1.5">Puedes editar el mensaje antes de enviarlo.</p>
+                </div>
+
+                <div className="p-4 border-t border-gray-100 dark:border-gray-800">
+                  <button
+                    onClick={handleInsert}
+                    className="w-full py-2.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Send className="w-4 h-4" /> Insertar en mensaje
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
