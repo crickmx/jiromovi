@@ -114,10 +114,13 @@ Deno.serve(async (req: Request) => {
     }
 
     // Get auth token
-    const tokenParams = new URLSearchParams({ sUserName: sicasUsername, sPassword: sicasPassword });
-    if (sicasCodeAuth) tokenParams.append("sCodeAuth", sicasCodeAuth);
+    // IMPORTANT: Do NOT use URLSearchParams for sicasUsername because it may contain
+    // literal '%' characters (e.g. j1r0%25$). URLSearchParams would double-encode
+    // the '%' to '%25', turning j1r0%25$ into j1r0%2525$. We pass the username as-is
+    // and only encode the password which does not contain reserved characters.
+    const tokenQuery = `sUserName=${sicasUsername}&sPassword=${encodeURIComponent(sicasPassword)}${sicasCodeAuth ? `&sCodeAuth=${encodeURIComponent(sicasCodeAuth)}` : ""}`;
 
-    const tokenResponse = await fetch(`${sicasRestUrl}/Security/GetToken?${tokenParams.toString()}`, {
+    const tokenResponse = await fetch(`${sicasRestUrl}/Security/GetToken?${tokenQuery}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
     });
