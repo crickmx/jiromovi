@@ -79,6 +79,7 @@ import SicasTestCatalogs from './pages/SicasTestCatalogs';
 import SicasDiagnostico from './pages/SicasDiagnostico';
 import SicasRestTest from './pages/SicasRestTest';
 import SicasVigentesTest from './pages/SicasVigentesTest';
+import SicasSaludAdmin from './pages/SicasSaludAdmin';
 import CentroDigital from './pages/CentroDigital';
 import CursoCedulaA from './pages/CursoCedulaA';
 import ModuloViewer from './pages/ModuloViewer';
@@ -857,6 +858,7 @@ function App() {
               <Route path="/sicas/diagnostico" element={<ProtectedRoute requireAdmin><SicasDiagnostico /></ProtectedRoute>} />
               <Route path="/sicas/rest-test" element={<ProtectedRoute requireAdminOrGerente><Layout><SicasRestTest /></Layout></ProtectedRoute>} />
               <Route path="/sicas/vigentes-test" element={<ProtectedRoute requireAdmin><Layout><SicasVigentesTest /></Layout></ProtectedRoute>} />
+              <Route path="/sicas/salud" element={<ProtectedRoute requireAdmin><Layout><SicasSaludAdmin /></Layout></ProtectedRoute>} />
               <Route path="/mi-pagina-web" element={<Navigate to="/mercadotecnia/mi-pagina-web" replace />} />
               <Route path="/chatgpt-test" element={<ProtectedRoute><Layout><ChatGPTTest /></Layout></ProtectedRoute>} />
               <Route path="/carga-masiva-usuarios" element={<ProtectedRoute requireAdmin><Layout><CargaMasivaUsuarios /></Layout></ProtectedRoute>} />
