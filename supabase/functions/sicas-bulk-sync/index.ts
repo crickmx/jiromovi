@@ -16,7 +16,12 @@ function jsonResponse(status: number, body: unknown): Response {
   });
 }
 
-const ITEMS_PER_PAGE = 100;
+// DISCOVERY_ITEMS_PER_PAGE=10 evita timeouts en la fase de descubrimiento.
+// Una vez confirmada la conexión, cada página subsecuente usa SYNC_ITEMS_PER_PAGE.
+// Incrementar SYNC_ITEMS_PER_PAGE gradualmente (10→25→50→100) tras validar estabilidad.
+const DISCOVERY_ITEMS_PER_PAGE = 10;
+const SYNC_ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = SYNC_ITEMS_PER_PAGE; // alias para compatibilidad interna
 const MAX_SECONDS = 45;
 const PAGES_PER_BATCH = 999;
 const MAX_RETRIES_PER_PAGE = 3;
@@ -372,14 +377,14 @@ Deno.serve(async (req: Request) => {
         if (discoveryAttempts > 5) {
           await supabase.from("sicas_sync_jobs").update({
             status: "failed",
-            error_message: "SICAS no responde despues de multiples intentos. El servidor SOAP puede estar fuera de linea o lento. Intenta mas tarde.",
+            error_message: "Conexion SICAS correcta, autenticacion correcta, pero el reporte HWS_DOCTOS no devolvio registros utiles de poliza tras multiples intentos. Verificar formato o acceso del reporte con SICAS.",
             finished_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           }).eq("id", jobId);
-          return jsonResponse(200, { ok: false, status: "failed", error: "SICAS no responde despues de multiples intentos." });
+          return jsonResponse(200, { ok: false, status: "failed", error: "Conexion SICAS correcta pero el reporte no devolvio polizas utiles tras multiples intentos." });
         }
 
-        console.log(`[BULK-SYNC] Discovery phase (attempt ${discoveryAttempts}/5): fetching page 1 via SOAP ProcesarWS...`);
+        console.log(`[BULK-SYNC] Discovery phase (attempt ${discoveryAttempts}/5): fetching page 1 via SOAP — itemsPerPage=${DISCOVERY_ITEMS_PER_PAGE}...`);
         let firstPageResult: { records: Record<string, unknown>[]; totalPages: number; totalRecords: number; currentPage: number } | null = null;
         let usedKeyCode = effectiveKeyCode;
 
@@ -391,7 +396,8 @@ Deno.serve(async (req: Request) => {
           let succeeded = false;
           for (let attempt = 1; attempt <= 1; attempt++) {
             try {
-              const result = await fetchSoapPage(soapClient, tryCode, 1, ITEMS_PER_PAGE, syncState.incrementalSince);
+              // Use DISCOVERY_ITEMS_PER_PAGE (10) to avoid timeouts on first contact
+              const result = await fetchSoapPage(soapClient, tryCode, 1, DISCOVERY_ITEMS_PER_PAGE, syncState.incrementalSince);
               if (result.records.length > 0 || result.totalRecords > 0) {
                 firstPageResult = result;
                 usedKeyCode = tryCode;
@@ -444,25 +450,34 @@ Deno.serve(async (req: Request) => {
         }
 
         if (!firstPageResult || firstPageResult.records.length === 0) {
-          // Check if local documents exist before marking as failed
           const { count: localDocsCount } = await supabase
             .from("sicas_documents")
             .select("*", { count: "exact", head: true });
 
           const hasLocalData = (localDocsCount || 0) > 0;
 
-          const message = lastError
-            ? `SOAP no devolvio documentos. Codigos probados: ${codesToAttempt.join(", ")}. Error: ${lastError}`
-            : `Ningun reporte SOAP devolvio registros. Codigos probados: ${codesToAttempt.join(", ")}. Verifica KeyCode, permisos o condiciones en la configuracion SICAS.`;
+          // Distinguish between timeout (server unreachable) and metadata-only response (server responds but no useful records)
+          const isTimeout = /timeout|no respondio|no responde/i.test(lastError);
+          let message: string;
+          let syncStatus: string;
 
-          // If we have local data, mark as 'empty' (not 'failed') - local data is still usable
-          const finalStatus = hasLocalData ? "empty" : "failed";
+          if (isTimeout) {
+            message = `Conexion SICAS: timeout. El servidor SOAP no respondio en el tiempo esperado. Codigos probados: ${codesToAttempt.join(", ")}.`;
+            syncStatus = hasLocalData ? "empty" : "failed";
+          } else if (lastError) {
+            message = `Conexion SICAS correcta pero el reporte no devolvio polizas utiles. Codigos probados: ${codesToAttempt.join(", ")}. Detalle: ${lastError}`;
+            syncStatus = "partial_response";
+          } else {
+            message = `Conexion SICAS correcta, autenticacion correcta, pero el reporte ${codesToAttempt[0]} no devolvio registros de poliza. Verificar formato o acceso del reporte con SICAS.`;
+            syncStatus = "partial_response";
+          }
+
           const finalMessage = hasLocalData
             ? `${message} (${formatNumber(localDocsCount || 0)} documentos locales disponibles de sincronizaciones anteriores)`
             : message;
 
           await supabase.from("sicas_sync_jobs").update({
-            status: finalStatus,
+            status: syncStatus,
             error_message: finalMessage,
             finished_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -472,7 +487,7 @@ Deno.serve(async (req: Request) => {
 
           return jsonResponse(200, {
             ok: hasLocalData,
-            status: finalStatus,
+            status: syncStatus,
             message: finalMessage,
             localDocsAvailable: localDocsCount || 0,
             triedCodes: codesToAttempt,

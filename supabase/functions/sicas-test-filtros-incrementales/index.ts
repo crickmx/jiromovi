@@ -1,3 +1,7 @@
+// ⚠️  FUNCIÓN DE LABORATORIO — NO USAR EN PRODUCCIÓN
+// Usa credenciales hardcodeadas de prueba (W4sP3r / wA5P3R%202020).
+// Los resultados de esta función NO son válidos para diagnosticar la cuenta de producción.
+// Para diagnóstico real usar: sicas-bulk-sync (action: diagnostic) o sicas-diagnose-datainfo.
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 const corsHeaders = {
