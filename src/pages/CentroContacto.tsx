@@ -7,9 +7,9 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 interface ConversationSummary {
-  agent_user_id: string;
+  agent_user_id: string | null;
   agent_name: string;
-  agent_email: string;
+  agent_email: string | null;
   agent_phone: string | null;
   agent_office_id: string | null;
   office_name: string | null;
@@ -21,6 +21,9 @@ interface ConversationSummary {
   last_message_status: string;
   total_messages: number;
   unread_count: number;
+  contact_phone_ext: string | null;
+  contact_name_ext: string | null;
+  is_external: boolean;
 }
 
 interface Message {
@@ -240,14 +243,19 @@ export default function CentroContacto() {
   }, [usuario, filterChannel, filterType, filterOffice, searchQuery, filterUnassigned]);
 
   // Load messages
-  const loadMessages = useCallback(async (agentId: string) => {
+  const loadMessages = useCallback(async (agentId: string, isExternal?: boolean, contactPhone?: string | null) => {
     setLoadingMessages(true);
     try {
       let query = supabase
         .from('contact_center_messages')
         .select('*')
-        .eq('agent_user_id', agentId)
         .order('created_at', { ascending: true });
+
+      if (isExternal && contactPhone) {
+        query = query.eq('contact_phone', contactPhone).is('agent_user_id', null);
+      } else {
+        query = query.eq('agent_user_id', agentId);
+      }
 
       if (threadFilterChannel) query = query.eq('channel', threadFilterChannel);
       if (threadFilterType) query = query.eq('message_type', threadFilterType);
@@ -333,17 +341,26 @@ export default function CentroContacto() {
         }));
 
         // Mark messages as read and update local unread count
-        if (usuario) {
+        if (usuario && !isExternal) {
           await supabase.rpc('mark_contact_messages_read', {
             p_agent_user_id: agentId,
             p_user_id: usuario.id,
           });
-          setConversations(prev =>
-            prev.map(c =>
-              c.agent_user_id === agentId ? { ...c, unread_count: 0 } : c
-            )
-          );
+        } else if (isExternal && contactPhone) {
+          // Mark external contact messages as read directly
+          await supabase
+            .from('contact_center_messages')
+            .update({ read_at: new Date().toISOString(), read_by_user_id: usuario?.id })
+            .eq('contact_phone', contactPhone)
+            .is('agent_user_id', null)
+            .is('read_at', null);
         }
+        setConversations(prev =>
+          prev.map(c => {
+            if (isExternal) return c.contact_phone_ext === contactPhone ? { ...c, unread_count: 0 } : c;
+            return c.agent_user_id === agentId ? { ...c, unread_count: 0 } : c;
+          })
+        );
       }
     } catch { /* silent */ }
     setLoadingMessages(false);
@@ -360,7 +377,13 @@ export default function CentroContacto() {
   }, []);
 
   useEffect(() => {
-    if (selectedAgent) loadMessages(selectedAgent.agent_user_id);
+    if (selectedAgent) {
+      loadMessages(
+        selectedAgent.agent_user_id || '',
+        selectedAgent.is_external,
+        selectedAgent.contact_phone_ext,
+      );
+    }
   }, [selectedAgent, loadMessages]);
 
   // Realtime subscription
@@ -376,7 +399,12 @@ export default function CentroContacto() {
         // Update conversation list
         loadConversations();
         // If we're viewing this agent's thread, add the message
-        if (selectedAgent && newMsg.agent_user_id === selectedAgent.agent_user_id) {
+        const msgMatchesSelected = selectedAgent && (
+          (selectedAgent.is_external
+            ? (newMsg as unknown as Record<string, unknown>).contact_phone === selectedAgent.contact_phone_ext
+            : newMsg.agent_user_id === selectedAgent.agent_user_id)
+        );
+        if (msgMatchesSelected) {
           setMessages(prev => {
             if (prev.some(m => m.id === newMsg.id)) return prev;
             let realtimeAtts: Attachment[] = [];
@@ -414,15 +442,23 @@ export default function CentroContacto() {
           setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 200);
           // Mark as read immediately
           if (usuario && newMsg.direction === 'inbound') {
-            supabase.rpc('mark_contact_messages_read', {
-              p_agent_user_id: newMsg.agent_user_id,
-              p_user_id: usuario.id,
-            });
-            setConversations(prev =>
-              prev.map(c =>
-                c.agent_user_id === newMsg.agent_user_id ? { ...c, unread_count: 0 } : c
-              )
-            );
+            const extPhone = (newMsg as unknown as Record<string, unknown>).contact_phone as string | null;
+            if (newMsg.agent_user_id) {
+              supabase.rpc('mark_contact_messages_read', {
+                p_agent_user_id: newMsg.agent_user_id,
+                p_user_id: usuario.id,
+              });
+              setConversations(prev =>
+                prev.map(c => c.agent_user_id === newMsg.agent_user_id ? { ...c, unread_count: 0 } : c)
+              );
+            } else if (extPhone) {
+              supabase.from('contact_center_messages')
+                .update({ read_at: new Date().toISOString(), read_by_user_id: usuario.id })
+                .eq('id', newMsg.id);
+              setConversations(prev =>
+                prev.map(c => c.contact_phone_ext === extPhone ? { ...c, unread_count: 0 } : c)
+              );
+            }
           }
         }
       })
@@ -454,8 +490,8 @@ export default function CentroContacto() {
     setComposerSubject('');
     setSelectionMode(false);
     setSelectedMessageIds(new Set());
-    // Load conversation mode for this agent
-    loadConversationMode(conv.agent_user_id);
+    // Load conversation mode for registered users only
+    if (!conv.is_external && conv.agent_user_id) loadConversationMode(conv.agent_user_id);
   };
 
   const loadConversationMode = useCallback(async (agentUserId: string) => {
@@ -511,10 +547,12 @@ export default function CentroContacto() {
         // Send welcome message via WhatsApp
         if (result.welcome_message) {
           await callApi('send-contact-whatsapp', {
-            agentUserId: selectedAgent.agent_user_id,
+            ...(selectedAgent.is_external
+              ? { contactPhone: selectedAgent.contact_phone_ext }
+              : { agentUserId: selectedAgent.agent_user_id }),
             message: result.welcome_message,
           });
-          loadMessages(selectedAgent.agent_user_id);
+          loadMessages(selectedAgent.agent_user_id || '', selectedAgent.is_external, selectedAgent.contact_phone_ext);
         }
       } else {
         alert(result.error || 'No se pudo iniciar el modo automático');
@@ -555,10 +593,12 @@ export default function CentroContacto() {
         setShowTransferModal(false);
         if (result.transfer_message && selectedAgent) {
           await callApi('send-contact-whatsapp', {
-            agentUserId: selectedAgent.agent_user_id,
+            ...(selectedAgent.is_external
+              ? { contactPhone: selectedAgent.contact_phone_ext }
+              : { agentUserId: selectedAgent.agent_user_id }),
             message: result.transfer_message,
           });
-          loadMessages(selectedAgent.agent_user_id);
+          loadMessages(selectedAgent.agent_user_id || '', selectedAgent.is_external, selectedAgent.contact_phone_ext);
         }
       }
     } catch { /* silent */ }
@@ -574,7 +614,9 @@ export default function CentroContacto() {
     try {
       if (composerChannel === 'whatsapp') {
         const result = await callApi('send-contact-whatsapp', {
-          agentUserId: selectedAgent.agent_user_id,
+          ...(selectedAgent.is_external
+            ? { contactPhone: selectedAgent.contact_phone_ext }
+            : { agentUserId: selectedAgent.agent_user_id }),
           message: composerMessage.trim(),
         });
         if (!result.success) alert(result.error || 'No se pudo enviar el WhatsApp.');
@@ -588,7 +630,7 @@ export default function CentroContacto() {
       }
       setComposerMessage('');
       setComposerSubject('');
-      loadMessages(selectedAgent.agent_user_id);
+      loadMessages(selectedAgent.agent_user_id || '', selectedAgent.is_external, selectedAgent.contact_phone_ext);
       loadConversations();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Error al enviar');
@@ -598,15 +640,20 @@ export default function CentroContacto() {
 
   const handleRetry = async (msgId: string) => {
     const msg = messages.find(m => m.id === msgId);
-    if (!msg || msg.status !== 'failed') return;
+    if (!msg || msg.status !== 'failed' || !selectedAgent) return;
     setSending(true);
     try {
       if (msg.channel === 'whatsapp') {
-        await callApi('send-contact-whatsapp', { agentUserId: msg.agent_user_id, message: msg.body });
+        await callApi('send-contact-whatsapp', {
+          ...(selectedAgent.is_external
+            ? { contactPhone: selectedAgent.contact_phone_ext }
+            : { agentUserId: msg.agent_user_id }),
+          message: msg.body,
+        });
       } else {
         await callApi('send-contact-email', { agentUserId: msg.agent_user_id, subject: msg.subject || 'Reenvio', body: msg.body });
       }
-      loadMessages(msg.agent_user_id);
+      loadMessages(selectedAgent.agent_user_id || '', selectedAgent.is_external, selectedAgent.contact_phone_ext);
     } catch { /* silent */ }
     setSending(false);
   };
@@ -718,14 +765,19 @@ export default function CentroContacto() {
                 <p>Sin conversaciones</p>
               </div>
             ) : (
-              conversations.map(conv => (
+              conversations.map(conv => {
+                const convKey = conv.is_external ? `ext_${conv.contact_phone_ext}` : conv.agent_user_id;
+                const isSelected = conv.is_external
+                  ? selectedAgent?.contact_phone_ext === conv.contact_phone_ext
+                  : selectedAgent?.agent_user_id === conv.agent_user_id;
+                return (
                 <button
-                  key={conv.agent_user_id}
+                  key={convKey}
                   onClick={() => handleSelectAgent(conv)}
-                  className={`w-full text-left p-3 border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${selectedAgent?.agent_user_id === conv.agent_user_id ? 'bg-teal-50 dark:bg-teal-900/20 border-l-2 border-l-teal-500' : ''}`}
+                  className={`w-full text-left p-3 border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${isSelected ? 'bg-teal-50 dark:bg-teal-900/20 border-l-2 border-l-teal-500' : ''}`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center shrink-0 relative">
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 relative ${conv.is_external ? 'bg-gradient-to-br from-amber-400 to-orange-500' : 'bg-gradient-to-br from-teal-400 to-teal-600'}`}>
                       <span className="text-white text-xs font-bold">{conv.agent_name?.charAt(0) || '?'}</span>
                       {(conv.unread_count || 0) > 0 && (
                         <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
@@ -746,13 +798,15 @@ export default function CentroContacto() {
                         <p className={`text-xs truncate ${(conv.unread_count || 0) > 0 ? 'text-gray-700 dark:text-gray-200 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>{conv.last_message_body}</p>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
+                        {conv.is_external && <span className="text-[10px] text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400 px-1.5 py-0.5 rounded">Externo</span>}
                         {conv.office_name && <span className="text-[10px] text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{conv.office_name}</span>}
                         <span className="text-[10px] text-gray-400">{conv.total_messages} msgs</span>
                       </div>
                     </div>
                   </div>
                 </button>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -771,12 +825,15 @@ export default function CentroContacto() {
               {/* Thread header */}
               <div className="flex items-center justify-between px-4 py-2.5 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${selectedAgent.is_external ? 'bg-gradient-to-br from-amber-400 to-orange-500' : 'bg-gradient-to-br from-teal-400 to-teal-600'}`}>
                     <span className="text-white text-xs font-bold">{selectedAgent.agent_name?.charAt(0)}</span>
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{selectedAgent.agent_name}</p>
-                    <p className="text-[11px] text-gray-500">{selectedAgent.agent_email || selectedAgent.agent_phone || 'Sin datos'}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{selectedAgent.agent_name}</p>
+                      {selectedAgent.is_external && <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Externo</span>}
+                    </div>
+                    <p className="text-[11px] text-gray-500">{selectedAgent.agent_email || selectedAgent.agent_phone || selectedAgent.contact_phone_ext || 'Sin datos'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

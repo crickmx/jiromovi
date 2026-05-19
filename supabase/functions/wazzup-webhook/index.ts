@@ -113,9 +113,18 @@ Deno.serve(async (req: Request) => {
           }
         }
 
+        // For external contacts (no registered user match), store with contact_phone
+        let contactPhone: string | null = null;
+        let contactNameFromMsg: string | null = msg.contact?.name || null;
         if (!agentUserId) {
-          logs.push(`skipping_no_agent`);
-          continue;
+          if (last10.length === 10) {
+            // Store as external contact conversation using full chatId digits
+            contactPhone = chatDigits || last10;
+            logs.push(`external_contact_phone=${contactPhone}`);
+          } else {
+            logs.push(`skipping_no_agent_no_phone`);
+            continue;
+          }
         }
 
         // Check duplicates
@@ -152,6 +161,8 @@ Deno.serve(async (req: Request) => {
           .from("contact_center_messages")
           .insert({
             agent_user_id: agentUserId,
+            contact_phone: contactPhone,
+            contact_name: contactNameFromMsg,
             sender_type: senderType,
             channel: "whatsapp",
             message_type: "manual",
@@ -219,27 +230,38 @@ Deno.serve(async (req: Request) => {
             }
           }
 
-          // Notify employees related to this agent's open tramites (only for inbound)
+          // Notify relevant employees for inbound messages
           if (isInbound) {
-            const displayName = agentName || "Agente";
-            const { data: asignaciones } = await supabase
-              .from("ticket_asignaciones")
-              .select("ejecutivo_id, ticket_id, tickets!inner(cerrado, agente_usuario_id)")
-              .eq("tickets.agente_usuario_id", agentUserId)
-              .eq("tickets.cerrado", false);
-
+            const displayName = agentName || contactNameFromMsg || contactPhone || "Contacto externo";
+            const preview = messageBody.length > 60 ? messageBody.slice(0, 60) + "..." : messageBody;
             const notifiedIds = new Set<string>();
 
-            if (asignaciones && asignaciones.length > 0) {
-              for (const asig of asignaciones) {
-                if (asig.ejecutivo_id && !notifiedIds.has(asig.ejecutivo_id)) {
-                  notifiedIds.add(asig.ejecutivo_id);
+            if (agentUserId) {
+              // Registered user: notify employees handling open tramites for this agent
+              const { data: asignaciones } = await supabase
+                .from("ticket_asignaciones")
+                .select("ejecutivo_id, ticket_id, tickets!inner(cerrado, agente_usuario_id)")
+                .eq("tickets.agente_usuario_id", agentUserId)
+                .eq("tickets.cerrado", false);
+
+              if (asignaciones) {
+                for (const asig of asignaciones) {
+                  if (asig.ejecutivo_id) notifiedIds.add(asig.ejecutivo_id);
                 }
+              }
+            } else {
+              // External contact: notify all Administrador and Gerente users
+              const { data: admins } = await supabase
+                .from("usuarios")
+                .select("id")
+                .in("rol", ["Administrador", "Gerente"])
+                .eq("activo", true);
+              if (admins) {
+                for (const a of admins) notifiedIds.add(a.id);
               }
             }
 
             if (notifiedIds.size > 0) {
-              const preview = messageBody.length > 60 ? messageBody.slice(0, 60) + "..." : messageBody;
               const notifications = [...notifiedIds].map(uid => ({
                 usuario_id: uid,
                 titulo: `Mensaje de WhatsApp de ${displayName}`,
@@ -250,7 +272,7 @@ Deno.serve(async (req: Request) => {
                 accion_texto: "Ver conversacion",
                 leida: false,
                 prioridad: "normal",
-                metadata: { agent_user_id: agentUserId, message_id: msg.messageId },
+                metadata: { agent_user_id: agentUserId, contact_phone: contactPhone, message_id: msg.messageId },
               }));
 
               const { error: notifErr } = await supabase

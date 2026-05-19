@@ -8,7 +8,8 @@ const corsHeaders = {
 };
 
 interface ContactWhatsAppRequest {
-  agentUserId: string;
+  agentUserId?: string;
+  contactPhone?: string; // for external contacts not in usuarios
   message: string;
 }
 
@@ -39,30 +40,40 @@ Deno.serve(async (req) => {
       throw new Error("No tienes permiso para enviar mensajes");
     }
 
-    const { agentUserId, message } = await req.json() as ContactWhatsAppRequest;
+    const { agentUserId, contactPhone, message } = await req.json() as ContactWhatsAppRequest;
 
-    if (!agentUserId || !message) {
-      throw new Error("Faltan campos requeridos: agentUserId, message");
+    if ((!agentUserId && !contactPhone) || !message) {
+      throw new Error("Faltan campos requeridos: agentUserId o contactPhone, message");
     }
 
-    const { data: agent } = await supabase
-      .from("usuarios")
-      .select("id, nombre_completo, celular_laboral, celular_personal, oficina_id, rol")
-      .eq("id", agentUserId)
-      .maybeSingle();
+    let phone: string;
+    let resolvedAgentUserId: string | null = agentUserId || null;
 
-    if (!agent) throw new Error("Agente no encontrado");
+    if (contactPhone) {
+      // External contact: use the provided phone directly
+      phone = contactPhone;
+    } else {
+      // Registered user: look up phone from usuarios
+      const { data: agent } = await supabase
+        .from("usuarios")
+        .select("id, nombre_completo, celular_laboral, celular_personal, oficina_id, rol")
+        .eq("id", agentUserId!)
+        .maybeSingle();
 
-    if (senderUser.rol !== "Administrador" && agent.oficina_id !== senderUser.oficina_id) {
-      throw new Error("No tienes permiso para contactar a este agente");
-    }
+      if (!agent) throw new Error("Agente no encontrado");
 
-    const phone = agent.celular_laboral || agent.celular_personal;
-    if (!phone) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Este agente no tiene un numero de WhatsApp registrado." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      if (senderUser.rol !== "Administrador" && agent.oficina_id !== senderUser.oficina_id) {
+        throw new Error("No tienes permiso para contactar a este agente");
+      }
+
+      const agentPhone = agent.celular_laboral || agent.celular_personal;
+      if (!agentPhone) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Este agente no tiene un numero de WhatsApp registrado." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      phone = agentPhone;
     }
 
     const { data: config } = await supabase
@@ -113,7 +124,8 @@ Deno.serve(async (req) => {
     const status = success ? "sent" : "failed";
 
     await supabase.from("contact_center_messages").insert({
-      agent_user_id: agentUserId,
+      agent_user_id: resolvedAgentUserId,
+      contact_phone: contactPhone || null,
       sender_user_id: senderUser.id,
       sender_type: "user",
       channel: "whatsapp",
