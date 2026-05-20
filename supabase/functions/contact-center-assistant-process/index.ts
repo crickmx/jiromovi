@@ -169,6 +169,106 @@ function isContactField(key: string): boolean {
   return ["nombre_cliente", "nombre", "nombre_completo", "nombre_asegurado", "telefono", "telefono_contacto", "whatsapp", "celular", "phone"].includes(key.toLowerCase());
 }
 
+// ─── BLOCK QUESTIONS ──────────────────────────────────────────────────────────
+// Groups pending fields into conversational blocks of 2-3 fields
+
+function buildBlockQuestion(fields: AssistantField[], blockSize: number): string {
+  if (fields.length === 0) return "";
+  const block = fields.slice(0, blockSize);
+  if (block.length === 1) {
+    return block[0].prompt_text || `¿${block[0].label}?`;
+  }
+  const lines = block.map((f, i) => {
+    const label = f.label;
+    const ex = f.example_value ? ` _(ej: ${f.example_value})_` : "";
+    const optional = f.priority !== "required" ? " _(puedes omitir)_" : "";
+    return `${i + 1}. ${label}${ex}${optional}`;
+  });
+  return `Para avanzar, compárteme:\n${lines.join("\n")}`;
+}
+
+function buildOptionalBlockQuestion(fields: AssistantField[], blockSize: number): string {
+  if (fields.length === 0) return "";
+  const block = fields.slice(0, Math.min(blockSize, fields.length));
+  const labels = block.map(f => f.label.toLowerCase());
+  const listStr = labels.length === 1 ? labels[0] : labels.slice(0, -1).join(", ") + " y " + labels[labels.length - 1];
+  return `Opcional: ¿${listStr}? Puedes escribir "omitir" si no lo tienes.`;
+}
+
+// ─── RESOLVE RESPONSIBLE EMPLOYEE ─────────────────────────────────────────────
+
+interface ResponsibleEmployee {
+  id: string;
+  name: string;
+  role: string;
+}
+
+async function resolveResponsibleEmployee(
+  supabase: ReturnType<typeof createClient>,
+  agentUserId: string,
+  activatedBy: string | null,
+  assistantTramiteAssignedTo: string | null,
+  officeId: string | null
+): Promise<ResponsibleEmployee | null> {
+  // Priority 1: Activated by (operator who started auto mode)
+  if (activatedBy) {
+    const { data } = await supabase.from("usuarios")
+      .select("id, nombre_publico, nombre_completo, nombre, apellido_paterno, apellido_materno, rol")
+      .eq("id", activatedBy).maybeSingle();
+    if (data) {
+      const name = (data.nombre_publico as string)?.trim() ||
+        (data.nombre_completo as string)?.trim() ||
+        [data.nombre, data.apellido_paterno, data.apellido_materno].filter(Boolean).join(" ") ||
+        "Agente";
+      return { id: data.id, name, role: data.rol || "Empleado" };
+    }
+  }
+
+  // Priority 2: Assistant's assigned user
+  if (assistantTramiteAssignedTo) {
+    const { data } = await supabase.from("usuarios")
+      .select("id, nombre_publico, nombre_completo, nombre, apellido_paterno, apellido_materno, rol")
+      .eq("id", assistantTramiteAssignedTo).maybeSingle();
+    if (data) {
+      const name = (data.nombre_publico as string)?.trim() ||
+        (data.nombre_completo as string)?.trim() ||
+        [data.nombre, data.apellido_paterno, data.apellido_materno].filter(Boolean).join(" ") ||
+        "Agente";
+      return { id: data.id, name, role: data.rol || "Empleado" };
+    }
+  }
+
+  // Priority 3: The agent user themselves
+  if (agentUserId) {
+    const { data } = await supabase.from("usuarios")
+      .select("id, nombre_publico, nombre_completo, nombre, apellido_paterno, apellido_materno, rol")
+      .eq("id", agentUserId).maybeSingle();
+    if (data) {
+      const name = (data.nombre_publico as string)?.trim() ||
+        (data.nombre_completo as string)?.trim() ||
+        [data.nombre, data.apellido_paterno, data.apellido_materno].filter(Boolean).join(" ") ||
+        "Agente";
+      return { id: data.id, name, role: data.rol || "Empleado" };
+    }
+  }
+
+  // Priority 4: Any admin/gerente in the office
+  if (officeId) {
+    const { data } = await supabase.from("usuarios")
+      .select("id, nombre_publico, nombre_completo, nombre, apellido_paterno, apellido_materno, rol")
+      .eq("oficina_id", officeId).in("rol", ["Administrador", "Gerente"]).eq("activo", true).limit(1).maybeSingle();
+    if (data) {
+      const name = (data.nombre_publico as string)?.trim() ||
+        (data.nombre_completo as string)?.trim() ||
+        [data.nombre, data.apellido_paterno, data.apellido_materno].filter(Boolean).join(" ") ||
+        "Agente";
+      return { id: data.id, name, role: data.rol || "Gerente" };
+    }
+  }
+
+  return null;
+}
+
 const BASE_APP_URL = "https://app.movi.digital";
 
 interface CreateTramiteResult {
@@ -325,7 +425,7 @@ async function sendHandoffNotification(
   supabase: ReturnType<typeof createClient>,
   ticketId: string,
   folio: string,
-  assignedToUserId: string | null,
+  responsible: ResponsibleEmployee | null,
   activatedBy: string | null,
   assistantName: string,
   capturedData: CapturedField[],
@@ -333,20 +433,28 @@ async function sendHandoffNotification(
   contactName: string | null,
   contactPhone: string | null
 ): Promise<void> {
-  const recipientId = assignedToUserId || activatedBy;
+  const recipientId = responsible?.id || activatedBy;
   if (!recipientId) return;
 
   try {
     const captured = capturedData.filter(d => d.value_text && d.status !== "skipped");
     const datosCapturados = captured.map(d => `• ${d.field_label}: ${d.value_text}`).join("\n") || "(ninguno)";
-    const datosPendientes = pendingRequired.map(f => `• ${f.label}`).join("\n") || "(ninguno)";
+    const datosPendientes = pendingRequired.length > 0
+      ? pendingRequired.map(f => `• ${f.label}`).join("\n")
+      : "(ninguno)";
     const tramiteUrl = `/tramites/${ticketId}`;
 
     await supabase.from("notificaciones").insert({
       usuario_id: recipientId,
       tipo: "tramite",
       titulo: `Nuevo trámite desde Agente Automático: #${folio}`,
-      mensaje: `Formulario: ${assistantName}\nContacto: ${contactName || "?"} (${contactPhone || "?"})\n\nDatos capturados:\n${datosCapturados}\n\nDatos pendientes:\n${datosPendientes}`,
+      mensaje: [
+        `Formulario: ${assistantName}`,
+        `Contacto: ${contactName || "?"} (${contactPhone || "?"})`,
+        `\nDatos capturados:\n${datosCapturados}`,
+        datosPendientes !== "(ninguno)" ? `\nDatos pendientes:\n${datosPendientes}` : null,
+        `\nTrámite: ${BASE_APP_URL}${tramiteUrl}`,
+      ].filter(Boolean).join("\n"),
       url: tramiteUrl,
       leida: false,
     });
@@ -390,6 +498,15 @@ Deno.serve(async (req: Request) => {
       const authHeader = req.headers.get("Authorization") || "";
       const { data: { user: authUser } } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
 
+      // Resolve responsible employee before creating session
+      const responsible = await resolveResponsibleEmployee(
+        supabase,
+        agent_user_id,
+        authUser?.id || null,
+        (assistant as any).tramite_assigned_to_user_id || null,
+        assistant.office_id || null
+      );
+
       const { data: session, error: sessionErr } = await supabase.from("contact_center_assistant_sessions")
         .insert({
           assistant_id, agent_user_id,
@@ -400,6 +517,9 @@ Deno.serve(async (req: Request) => {
           contact_phone_prefilled: contactPhone,
           contact_name_prefilled: contactName,
           conversation_context: {},
+          responsible_employee_id: responsible?.id || null,
+          responsible_employee_name: responsible?.name || null,
+          responsible_role: responsible?.role || null,
         }).select().single();
       if (sessionErr) return jsonResponse(500, { error: sessionErr.message });
 
@@ -446,8 +566,11 @@ Deno.serve(async (req: Request) => {
       const maxRetries: number = assistant.max_retries_per_field ?? 2;
       const allowIncomplete: boolean = assistant.allow_incomplete_submission ?? true;
       const skipContactFields: boolean = assistant.skip_contact_fields ?? true;
+      const blockSize: number = (assistant as any).question_block_size ?? 2;
+      const mentionResponsible: boolean = (assistant as any).mention_responsible_name !== false;
       const contactPhone: string | null = session.contact_phone_prefilled || null;
       const contactName: string | null = session.contact_name_prefilled || null;
+      const responsibleName: string | null = (session as any).responsible_employee_name || null;
 
       const { data: fieldsRaw } = await supabase.from("contact_center_assistant_fields")
         .select("*").eq("assistant_id", assistant.id).order("capture_order");
@@ -496,7 +619,7 @@ Deno.serve(async (req: Request) => {
             newStage = "summary";
             responseMessage = `Tengo esto:\n${buildSummary(capturedData)}\n\n¿Lo registro así?`;
           } else {
-            responseMessage = freshPending[0].prompt_text || `¿${freshPending[0].label}?`;
+            responseMessage = buildBlockQuestion(freshPending, blockSize);
           }
         } else if (refused) {
           await supabase.from("contact_center_assistant_sessions").update({ status: "cancelled" }).eq("id", session_id);
@@ -590,17 +713,24 @@ Deno.serve(async (req: Request) => {
         const stillPending = allAskable.filter(f => !freshKeys.has(f.field_key));
 
         if (pendingRequiredNow.length === 0) {
-          // All required done → summary (skip remaining optional)
-          newStage = "summary";
-          responseMessage = `Tengo esto:\n${buildSummary(freshCaptured || [])}\n\n¿Lo registro así?`;
-        } else {
-          const nextField = pendingRequiredNow[0] || (allowIncomplete ? null : stillPending[0]);
-          if (nextField) {
-            responseMessage = nextField.prompt_text || `¿${nextField.label}?`;
+          // All required done — ask important optional fields not yet captured, then summary
+          const freshCapturedKeys = new Set((freshCaptured || []).map((d: CapturedField) => d.field_key));
+          const pendingImportant = fields.filter(f =>
+            f.priority === "recommended" &&
+            !skipKeys.has(f.field_key) &&
+            f.field_type !== "file" &&
+            !freshCapturedKeys.has(f.field_key)
+          );
+
+          if (pendingImportant.length > 0 && !allowIncomplete) {
+            // Ask remaining recommended fields in a block (once, with skip option)
+            responseMessage = buildOptionalBlockQuestion(pendingImportant, blockSize);
           } else {
             newStage = "summary";
             responseMessage = `Tengo esto:\n${buildSummary(freshCaptured || [])}\n\n¿Lo registro así?`;
           }
+        } else {
+          responseMessage = buildBlockQuestion(pendingRequiredNow, blockSize);
         }
       }
 
@@ -663,7 +793,18 @@ Deno.serve(async (req: Request) => {
               session_id, event_type: "tramite_creation_failed", actor_type: "system",
               message: creationError || "Error desconocido",
             });
-            const errorMsg = "Estoy teniendo problema para registrar la solicitud. Un ejecutivo dará seguimiento por aquí.";
+            // Resolve responsible to give a named fallback message
+            const errResponsible = await resolveResponsibleEmployee(
+              supabase,
+              session.agent_user_id,
+              session.activated_by || null,
+              (assistant as any).tramite_assigned_to_user_id || null,
+              assistant.office_id || null
+            );
+            const errRespName = errResponsible?.name || responsibleName;
+            const errorMsg = errRespName
+              ? `Tuve un problema al registrar tu solicitud. ${errRespName} te dará seguimiento por este medio.`
+              : "Tuve un problema al registrar tu solicitud. El equipo de atención te dará seguimiento por este medio.";
             return jsonResponse(200, { ok: true, stage: "error", response_message: errorMsg, ticket_id: null, session_ended: false, error: creationError });
           }
 
@@ -678,13 +819,22 @@ Deno.serve(async (req: Request) => {
             metadata: { ticket_id: ticketId, folio },
           });
 
+          // Resolve responsible employee for reply message and handoff
+          const responsible = await resolveResponsibleEmployee(
+            supabase,
+            session.agent_user_id,
+            session.activated_by || null,
+            (assistant as any).tramite_assigned_to_user_id || null,
+            assistant.office_id || null
+          );
+          const respName = responsible?.name || responsibleName;
+
           // Send handoff notification to responsible employee
           if (ticketId && (assistant as any).handoff_after_creation !== false) {
-            const assignedTo = (assistant as any).tramite_assigned_to_user_id || session.activated_by || null;
             EdgeRuntime.waitUntil(
               sendHandoffNotification(
                 supabase, ticketId, folio || ticketId,
-                assignedTo, session.activated_by || null,
+                responsible, session.activated_by || null,
                 assistant.form_title || assistant.nombre,
                 freshData, pendingReqNow,
                 session.contact_name_prefilled || null,
@@ -693,20 +843,37 @@ Deno.serve(async (req: Request) => {
             );
           }
 
-          // Build reply message with direct link to tramite
+          // Build reply message with direct link to tramite and responsible name
           let replyMsg: string;
+          const followupLine = mentionResponsible && respName
+            ? `${respName} revisará la información y te dará seguimiento por este medio.`
+            : "El equipo de atención te dará seguimiento por este medio.";
+
           if (ticketId) {
             const tramiteLink = `${BASE_APP_URL}/tramites/${ticketId}`;
             if (assistant.completion_message && !assistant.completion_message.includes("app.movi.digital")) {
-              replyMsg = assistant.completion_message + `\n\nPuedes consultar tu trámite aquí:\n${tramiteLink}`;
+              // Replace variables in custom message
+              replyMsg = assistant.completion_message
+                .replace(/\{\{nombre_responsable\}\}/g, respName || "")
+                .replace(/\{\{responsable_nombre\}\}/g, respName || "")
+                .replace(/\{\{empleado_responsable\}\}/g, respName || "")
+                .replace(/\{\{link_tramite\}\}/g, tramiteLink);
+              if (!replyMsg.includes("tramites/")) {
+                replyMsg += `\n\nPuedes consultar tu trámite aquí:\n${tramiteLink}`;
+              }
             } else {
-              replyMsg = `Listo, tu solicitud fue registrada correctamente.\n\nPuedes consultar el trámite aquí:\n${tramiteLink}\n\nUn ejecutivo dará seguimiento por este medio.`;
+              replyMsg = `Listo, ya registré tu solicitud.\n${followupLine}\n\nPuedes consultar tu trámite aquí:\n${tramiteLink}`;
             }
           } else {
-            replyMsg = assistant.completion_message || "Listo, ya registré tu solicitud. Un ejecutivo la revisará y te dará seguimiento por aquí.";
+            const base = assistant.completion_message || "Listo, ya registré tu solicitud.";
+            replyMsg = base
+              .replace(/\{\{nombre_responsable\}\}/g, respName || "")
+              .replace(/\{\{responsable_nombre\}\}/g, respName || "")
+              .replace(/\{\{empleado_responsable\}\}/g, respName || "");
+            replyMsg += `\n${followupLine}`;
           }
 
-          return jsonResponse(200, { ok: true, stage: "completion", response_message: replyMsg, ticket_id: ticketId, folio, session_ended: true });
+          return jsonResponse(200, { ok: true, stage: "completion", response_message: replyMsg, ticket_id: ticketId, folio, responsible_name: respName, session_ended: true });
 
         } else if (extraction.is_confirmation === false) {
           await supabase.from("contact_center_assistant_session_data")
