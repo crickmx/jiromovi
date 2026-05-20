@@ -122,6 +122,16 @@ interface CcAssistant {
   completed_sessions: number;
 }
 
+interface CcSessionFieldData {
+  field_key: string;
+  field_label: string;
+  value: string | null;
+  confidence_score: number | null;
+  status: 'captured' | 'pending' | 'skipped' | 'low_confidence' | 'prefilled';
+  requires_human_review: boolean;
+  priority: 'required' | 'recommended' | 'optional';
+}
+
 interface CcSessionState {
   session_id: string;
   status: string;
@@ -132,6 +142,8 @@ interface CcSessionState {
   assistant_name: string;
   captured_count: number;
   total_fields: number;
+  session_data?: CcSessionFieldData[];
+  show_field_details?: boolean;
 }
 
 type ConversationMode = 'normal' | 'automatic';
@@ -210,6 +222,7 @@ export default function CentroContacto() {
   const [showStartAutoModal, setShowStartAutoModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [autoModeLoading, setAutoModeLoading] = useState(false);
+  const [showFieldDetails, setShowFieldDetails] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAdmin = usuario?.rol === 'Administrador';
@@ -524,6 +537,21 @@ export default function CentroContacto() {
       if (result.mode === 'automatic' && result.active_session) {
         setConversationMode('automatic');
         const s = result.active_session;
+        const rawData: Array<Record<string, unknown>> = s.contact_center_assistant_session_data || [];
+        const sessionData: CcSessionFieldData[] = rawData.map((d) => {
+          const val = d.value_text != null ? String(d.value_text) : (d.value != null ? String(d.value) : null);
+          const fieldMeta = d.contact_center_assistant_fields as Record<string, unknown> | undefined;
+          return {
+            field_key: String(d.field_key || ''),
+            field_label: String(d.field_label || fieldMeta?.label || d.field_key || ''),
+            value: val,
+            confidence_score: d.confidence_score != null ? Number(d.confidence_score) : null,
+            status: (d.status as CcSessionFieldData['status']) || (val ? 'captured' : 'pending'),
+            requires_human_review: Boolean(d.requires_human_review),
+            priority: (fieldMeta?.priority as CcSessionFieldData['priority']) || 'optional',
+          };
+        });
+        const capturedCount = sessionData.filter(d => ['captured','prefilled','low_confidence'].includes(d.status)).length;
         setActiveSession({
           session_id: s.id,
           status: s.status,
@@ -532,8 +560,9 @@ export default function CentroContacto() {
           started_at: s.started_at,
           messages_received: s.messages_received,
           assistant_name: s.contact_center_assistants?.nombre || 'Asistente',
-          captured_count: (s.contact_center_assistant_session_data || []).length,
-          total_fields: 0,
+          captured_count: capturedCount,
+          total_fields: sessionData.length || 0,
+          session_data: sessionData,
         });
       } else {
         setConversationMode('normal');
@@ -563,6 +592,7 @@ export default function CentroContacto() {
           assistant_name: result.assistant_name || 'Asistente',
           captured_count: 0,
           total_fields: result.total_fields || 0,
+          session_data: [],
         });
         setShowStartAutoModal(false);
         // Send welcome message via WhatsApp
@@ -940,42 +970,142 @@ export default function CentroContacto() {
                 </div>
               )}
 
-              {/* Automatic mode progress bar */}
+              {/* Automatic mode panel */}
               {conversationMode === 'automatic' && activeSession && (
-                <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-900/10 border-b border-emerald-200 dark:border-emerald-800">
-                  <div className="flex items-center justify-between mb-1.5">
+                <div className="border-b border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/10">
+                  {/* Header row */}
+                  <div className="flex items-center justify-between px-4 py-2">
                     <div className="flex items-center gap-2">
-                      <Bot className="w-3.5 h-3.5 text-emerald-600" />
-                      <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                        Modo Automático — {activeSession.assistant_name}
+                      <Bot className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                      <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 truncate max-w-[130px]">
+                        {activeSession.assistant_name}
                       </span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${
                         activeSession.current_stage === 'welcome' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
                         activeSession.current_stage === 'consent' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' :
                         activeSession.current_stage === 'capturing' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300' :
-                        activeSession.current_stage === 'summary' ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300' :
+                        activeSession.current_stage === 'summary' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' :
+                        activeSession.current_stage === 'completion' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' :
                         'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
                       }`}>
                         {activeSession.current_stage === 'welcome' ? 'Bienvenida' :
                          activeSession.current_stage === 'consent' ? 'Consentimiento' :
-                         activeSession.current_stage === 'capturing' ? 'Capturando datos' :
+                         activeSession.current_stage === 'capturing' ? 'Capturando' :
                          activeSession.current_stage === 'summary' ? 'Confirmando' :
                          activeSession.current_stage === 'completion' ? 'Completado' :
                          activeSession.current_stage}
                       </span>
                     </div>
-                    {activeSession.total_fields > 0 && (
-                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                        {activeSession.captured_count}/{activeSession.total_fields} campos
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {activeSession.total_fields > 0 && (
+                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                          {activeSession.captured_count}/{activeSession.total_fields}
+                        </span>
+                      )}
+                      {(activeSession.session_data?.length ?? 0) > 0 && (
+                        <button
+                          onClick={() => setShowFieldDetails(v => !v)}
+                          className="p-0.5 rounded hover:bg-emerald-100 dark:hover:bg-emerald-800 text-emerald-600 dark:text-emerald-400 transition-colors"
+                          title={showFieldDetails ? 'Ocultar campos' : 'Ver campos capturados'}
+                        >
+                          {showFieldDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        </button>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Progress bar */}
                   {activeSession.total_fields > 0 && (
-                    <div className="w-full h-1 bg-emerald-200 dark:bg-emerald-800 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                        style={{ width: `${Math.round((activeSession.captured_count / activeSession.total_fields) * 100)}%` }}
-                      />
+                    <div className="px-4 pb-2">
+                      <div className="w-full h-1.5 bg-emerald-200 dark:bg-emerald-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${Math.round((activeSession.captured_count / activeSession.total_fields) * 100)}%`,
+                            background: activeSession.session_data?.some(d => d.requires_human_review)
+                              ? '#f59e0b'
+                              : '#10b981',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Field details panel */}
+                  {showFieldDetails && (activeSession.session_data?.length ?? 0) > 0 && (
+                    <div className="px-4 pb-2.5 space-y-1 max-h-48 overflow-y-auto">
+                      {activeSession.session_data!.map((field) => (
+                        <div
+                          key={field.field_key}
+                          className={`flex items-start gap-2 py-1 px-2 rounded-md text-[11px] ${
+                            field.status === 'prefilled'
+                              ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800'
+                              : field.requires_human_review
+                              ? 'bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800'
+                              : field.status === 'captured' || field.status === 'low_confidence'
+                              ? 'bg-white dark:bg-gray-800 border border-emerald-100 dark:border-emerald-800'
+                              : field.status === 'skipped'
+                              ? 'bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700'
+                              : 'bg-gray-50 dark:bg-gray-800/50 border border-dashed border-gray-200 dark:border-gray-700'
+                          }`}
+                        >
+                          {/* Status icon */}
+                          <div className="flex-shrink-0 mt-0.5">
+                            {field.status === 'prefilled' ? (
+                              <div className="w-3.5 h-3.5 rounded-full bg-blue-500 flex items-center justify-center">
+                                <CheckCircle2 className="w-2.5 h-2.5 text-white" />
+                              </div>
+                            ) : field.requires_human_review ? (
+                              <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
+                            ) : field.status === 'captured' || field.status === 'low_confidence' ? (
+                              <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center">
+                                <Check className="w-2.5 h-2.5 text-white" />
+                              </div>
+                            ) : field.status === 'skipped' ? (
+                              <div className="w-3.5 h-3.5 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
+                                <X className="w-2 h-2 text-white" />
+                              </div>
+                            ) : (
+                              <div className="w-3.5 h-3.5 rounded-full border-2 border-dashed border-gray-300 dark:border-gray-600" />
+                            )}
+                          </div>
+
+                          {/* Label + value */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-medium text-gray-600 dark:text-gray-300 truncate">
+                                {field.field_label}
+                              </span>
+                              {field.priority === 'required' && (
+                                <span className="text-[9px] text-red-500 font-semibold uppercase">req</span>
+                              )}
+                              {field.status === 'prefilled' && (
+                                <span className="text-[9px] bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 px-1 rounded">WA</span>
+                              )}
+                              {field.confidence_score != null && field.confidence_score < 0.7 && field.value && (
+                                <span className="text-[9px] bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 px-1 rounded">
+                                  {Math.round(field.confidence_score * 100)}%
+                                </span>
+                              )}
+                            </div>
+                            {field.value ? (
+                              <span className="text-gray-800 dark:text-gray-200 truncate block">{field.value}</span>
+                            ) : field.status === 'skipped' ? (
+                              <span className="text-gray-400 italic">omitido</span>
+                            ) : (
+                              <span className="text-gray-400 italic">pendiente</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Review alert */}
+                      {activeSession.session_data!.some(d => d.requires_human_review) && (
+                        <div className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-700 dark:text-amber-400">
+                          <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                          <span>Algunos campos requieren revision manual</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
