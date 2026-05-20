@@ -232,25 +232,17 @@ Deno.serve(async (req: Request) => {
           senderType = "user";
         } else {
           // INBOUND: chatId is the SENDER (client phone)
-          // Check if the sender is a registered user first
-          const matchedUser = findUserByPhone(chatDigits);
-          if (matchedUser) {
-            agentUserId = matchedUser.id;
-            agentName = matchedUser.nombre_completo;
-            logs.push(`inbound_sender_is_registered_user=${matchedUser.id}`);
+          // Find agent who manages this client's phone (via prior outbound messages)
+          const { agentUserId: foundAgent, source } = await findAgentForChatId(msg.chatId as string);
+          if (foundAgent) {
+            agentUserId = foundAgent;
+            const agentRecord = allUsers.find(u => u.id === foundAgent);
+            agentName = agentRecord?.nombre_completo || null;
+            logs.push(`inbound_agent_found_${source}=${foundAgent}`);
           } else {
-            // Find agent who manages this client's phone
-            const { agentUserId: foundAgent, source } = await findAgentForChatId(msg.chatId as string);
-            if (foundAgent) {
-              agentUserId = foundAgent;
-              const agentRecord = allUsers.find(u => u.id === foundAgent);
-              agentName = agentRecord?.nombre_completo || null;
-              logs.push(`inbound_agent_found_${source}=${foundAgent}`);
-            } else {
-              // Store as external/unassigned contact — NEVER drop the message
-              contactPhone = chatDigits || null;
-              logs.push(`inbound_external_contact_unassigned_phone=${contactPhone}`);
-            }
+            // No agent found — store as external/unassigned contact, never drop the message
+            contactPhone = chatDigits || null;
+            logs.push(`inbound_external_unassigned_phone=${contactPhone}`);
           }
           direction = "inbound";
           status = "received";
