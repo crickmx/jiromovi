@@ -1263,7 +1263,6 @@ function MessageBubble({ message, isAdmin, onRetry, formatDate, selectionMode, i
             )}
             <div className="flex items-center justify-between mt-2">
               <span className="text-[10px] text-gray-400">{formatDate(message.created_at)}</span>
-              <StatusBadge status={message.status} />
             </div>
           </div>
         ) : (
