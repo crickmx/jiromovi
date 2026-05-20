@@ -147,6 +147,7 @@ export interface StorePedidoDetalleGasto {
   tipo: string;
   descripcion?: string;
   monto: number;
+  monto_unitario: number;
   creado_por?: string;
   created_at: string;
 }

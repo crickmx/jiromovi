@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CheckCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CheckCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus } from '../lib/storeUtils';
 import type { StorePedidoCompleto, StoreEstatusPedido, FormaPagoOC, MetodoPagoOC, StorePedidoGasto, StorePedidoDetalleGasto } from '../lib/storeTypes';
 import { TIPO_GASTO_OPTIONS } from '../lib/storeTypes';
@@ -46,6 +46,8 @@ export default function StorePedidoDetalle() {
   const [detalleGastos, setDetalleGastos] = useState<Record<string, StorePedidoDetalleGasto[]>>({});
   const [expandedLines, setExpandedLines] = useState<Record<string, boolean>>({});
   const [costoOverrides, setCostoOverrides] = useState<Record<string, string>>({});
+  const [savingCostoOverride, setSavingCostoOverride] = useState<Record<string, boolean>>({});
+  const [costoOverrideSaved, setCostoOverrideSaved] = useState<Record<string, boolean>>({});
 
   const isAdmin = usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente';
   const [savingPedidoGasto, setSavingPedidoGasto] = useState(false);
@@ -277,13 +279,21 @@ export default function StorePedidoDetalle() {
     }
   };
 
-  const handleAddDetalleGasto = async (detalleId: string, concepto: string, tipo: string, monto: string): Promise<boolean> => {
-    const parsedMonto = parseFloat(monto.replace(/[$,\s]/g, ''));
-    if (!concepto.trim() || isNaN(parsedMonto) || parsedMonto <= 0) return false;
+  const handleAddDetalleGasto = async (detalleId: string, concepto: string, tipo: string, montoUnitario: string, cantidad: number): Promise<boolean> => {
+    const parsedUnit = parseFloat(montoUnitario.replace(/[$,\s]/g, ''));
+    if (!concepto.trim() || isNaN(parsedUnit) || parsedUnit <= 0) return false;
+    const montoTotal = parsedUnit * cantidad;
     try {
       const { data, error } = await supabase
         .from('store_pedido_detalle_gastos')
-        .insert({ detalle_id: detalleId, concepto: concepto.trim(), tipo, monto: parsedMonto, creado_por: usuario?.id })
+        .insert({
+          detalle_id: detalleId,
+          concepto: concepto.trim(),
+          tipo,
+          monto_unitario: parsedUnit,
+          monto: montoTotal,
+          creado_por: usuario?.id,
+        })
         .select()
         .single();
       if (error) throw error;
@@ -311,8 +321,23 @@ export default function StorePedidoDetalle() {
 
   const handleSaveCostoOverride = async (detalleId: string) => {
     const val = costoOverrides[detalleId];
-    const numVal = val ? parseFloat(val) : null;
-    await supabase.from('store_pedidos_detalle').update({ costo_unitario_override: numVal }).eq('id', detalleId);
+    const numVal = val !== undefined && val !== '' ? parseFloat(val) : null;
+    if (numVal !== null && (isNaN(numVal) || numVal < 0)) return;
+    setSavingCostoOverride(prev => ({ ...prev, [detalleId]: true }));
+    try {
+      const { error } = await supabase
+        .from('store_pedidos_detalle')
+        .update({ costo_unitario_override: numVal })
+        .eq('id', detalleId);
+      if (error) throw error;
+      setCostoOverrideSaved(prev => ({ ...prev, [detalleId]: true }));
+      setTimeout(() => setCostoOverrideSaved(prev => ({ ...prev, [detalleId]: false })), 1500);
+    } catch (err: any) {
+      console.error('[Store] Error al guardar costo:', err);
+      alert('Error al guardar el costo: ' + (err?.message || 'error desconocido'));
+    } finally {
+      setSavingCostoOverride(prev => ({ ...prev, [detalleId]: false }));
+    }
   };
 
   // Calculations
@@ -327,7 +352,12 @@ export default function StorePedidoDetalle() {
   };
 
   const calcularGastosLineas = () => {
-    return Object.values(detalleGastos).flat().reduce((sum, g) => sum + g.monto, 0);
+    if (!pedido) return 0;
+    return pedido.detalle.reduce((sum, item) => {
+      const gastos = detalleGastos[item.id] || [];
+      const gastoLinea = gastos.reduce((s, g) => s + (g.monto_unitario * item.cantidad), 0);
+      return sum + gastoLinea;
+    }, 0);
   };
 
   const calcularGastosTotales = () => {
@@ -449,17 +479,26 @@ export default function StorePedidoDetalle() {
                           <h3 className="font-semibold text-gray-900">{item.producto?.titulo}</h3>
                           <p className="text-sm text-gray-600 mt-0.5">Cantidad: {item.cantidad} x ${item.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
                           {isAdmin && (
-                            <div className="flex items-center gap-3 mt-1.5">
+                            <div className="flex items-center gap-2 mt-1.5">
                               <label className="text-xs text-gray-500">Costo unit.:</label>
                               <input
                                 type="number"
                                 step="0.01"
                                 min="0"
                                 value={costoOverrides[item.id] ?? costoUnit.toString()}
-                                onChange={e => setCostoOverrides(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                onChange={e => {
+                                  setCostoOverrides(prev => ({ ...prev, [item.id]: e.target.value }));
+                                  setCostoOverrideSaved(prev => ({ ...prev, [item.id]: false }));
+                                }}
                                 onBlur={() => handleSaveCostoOverride(item.id)}
                                 className="w-24 px-2 py-1 text-xs border border-gray-200 rounded-md"
                               />
+                              {savingCostoOverride[item.id] && (
+                                <Loader2 className="w-3 h-3 animate-spin text-gray-400" />
+                              )}
+                              {costoOverrideSaved[item.id] && !savingCostoOverride[item.id] && (
+                                <CheckCircle className="w-3 h-3 text-green-500" />
+                              )}
                             </div>
                           )}
                         </div>
@@ -487,6 +526,7 @@ export default function StorePedidoDetalle() {
                             <LineGastosEditor
                               gastos={lineGastos}
                               detalleId={item.id}
+                              cantidad={item.cantidad}
                               onAdd={handleAddDetalleGasto}
                               onRemove={handleRemoveDetalleGasto}
                             />
@@ -807,75 +847,95 @@ export default function StorePedidoDetalle() {
   );
 }
 
-// Sub-component for line item expenses
-function LineGastosEditor({ gastos, detalleId, onAdd, onRemove }: {
+// Sub-component for line item expenses (gastos por pieza)
+function LineGastosEditor({ gastos, detalleId, cantidad, onAdd, onRemove }: {
   gastos: StorePedidoDetalleGasto[];
   detalleId: string;
-  onAdd: (detalleId: string, concepto: string, tipo: string, monto: string) => Promise<boolean>;
+  cantidad: number;
+  onAdd: (detalleId: string, concepto: string, tipo: string, montoUnitario: string, cantidad: number) => Promise<boolean>;
   onRemove: (detalleId: string, gastoId: string) => void;
 }) {
   const [concepto, setConcepto] = useState('');
   const [tipo, setTipo] = useState('otro');
-  const [monto, setMonto] = useState('');
+  const [montoUnit, setMontoUnit] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const parsedUnit = parseFloat(montoUnit) || 0;
+  const totalPreview = parsedUnit * cantidad;
+
   const handleAdd = async () => {
     if (!concepto.trim()) { setError('Ingresa un concepto.'); return; }
-    const parsed = parseFloat(monto.replace(/[$,\s]/g, ''));
-    if (isNaN(parsed) || parsed <= 0) { setError('Monto invalido.'); return; }
+    const parsed = parseFloat(montoUnit.replace(/[$,\s]/g, ''));
+    if (isNaN(parsed) || parsed <= 0) { setError('Monto por pieza invalido.'); return; }
     setError(null);
     setSaving(true);
-    const ok = await onAdd(detalleId, concepto, tipo, monto);
+    const ok = await onAdd(detalleId, concepto, tipo, montoUnit, cantidad);
     setSaving(false);
     if (ok) {
       setConcepto('');
       setTipo('otro');
-      setMonto('');
+      setMontoUnit('');
     }
   };
 
   return (
     <div className="mt-2 space-y-1.5 pl-2 border-l-2 border-gray-100">
-      {gastos.map(g => (
-        <div key={g.id} className="flex items-center justify-between text-xs bg-gray-50 rounded px-2 py-1.5">
-          <span>{g.concepto} <span className="text-gray-400">({TIPO_GASTO_OPTIONS.find(t => t.value === g.tipo)?.label})</span></span>
-          <div className="flex items-center gap-1.5">
-            <span className="font-medium">${g.monto.toFixed(2)}</span>
-            <button onClick={() => onRemove(detalleId, g.id)} className="text-red-400 hover:text-red-600"><X className="w-3 h-3" /></button>
+      {gastos.map(g => {
+        const unitCost = g.monto_unitario || g.monto;
+        const total = unitCost * cantidad;
+        return (
+          <div key={g.id} className="flex items-center justify-between text-xs bg-gray-50 rounded px-2 py-1.5">
+            <div>
+              <span>{g.concepto}</span>
+              <span className="text-gray-400 ml-1">({TIPO_GASTO_OPTIONS.find(t => t.value === g.tipo)?.label})</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-gray-400">${unitCost.toFixed(2)}/pza x {cantidad}</span>
+              <span className="font-medium text-gray-800">= ${total.toFixed(2)}</span>
+              <button onClick={() => onRemove(detalleId, g.id)} className="text-red-400 hover:text-red-600 ml-0.5"><X className="w-3 h-3" /></button>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
       {error && <p className="text-xs text-red-500">{error}</p>}
       <div className="flex gap-1.5 items-center">
         <input
           type="text"
           value={concepto}
           onChange={e => { setConcepto(e.target.value); setError(null); }}
-          placeholder="Gasto"
+          placeholder="Concepto"
           className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded"
         />
         <select value={tipo} onChange={e => setTipo(e.target.value)} className="px-1.5 py-1 text-xs border border-gray-200 rounded">
           {TIPO_GASTO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
-        <input
-          type="number"
-          step="0.01"
-          min="0.01"
-          value={monto}
-          onChange={e => { setMonto(e.target.value); setError(null); }}
-          placeholder="$"
-          className="w-16 px-2 py-1 text-xs border border-gray-200 rounded"
-          onKeyDown={e => e.key === 'Enter' && handleAdd()}
-        />
+        <div className="flex flex-col items-end gap-0.5">
+          <input
+            type="number"
+            step="0.01"
+            min="0.01"
+            value={montoUnit}
+            onChange={e => { setMontoUnit(e.target.value); setError(null); }}
+            placeholder="$/pza"
+            className="w-20 px-2 py-1 text-xs border border-gray-200 rounded"
+            onKeyDown={e => e.key === 'Enter' && handleAdd()}
+          />
+          {parsedUnit > 0 && cantidad > 1 && (
+            <span className="text-[10px] text-gray-400">= ${totalPreview.toFixed(2)}</span>
+          )}
+        </div>
         <button
           onClick={handleAdd}
-          disabled={saving || !concepto.trim() || !monto}
+          disabled={saving || !concepto.trim() || !montoUnit}
           className="px-1.5 py-1 bg-accent text-white rounded text-xs disabled:opacity-40 flex items-center justify-center min-w-[24px]"
         >
           {saving ? <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" /> : <Plus className="w-3 h-3" />}
         </button>
       </div>
+      {cantidad > 1 && (
+        <p className="text-[10px] text-gray-400 pl-0.5">Ingresa el costo por pieza — se multiplica por {cantidad} piezas</p>
+      )}
     </div>
   );
 }
