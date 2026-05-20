@@ -47,7 +47,9 @@ export default function StorePedidoDetalle() {
   const [expandedLines, setExpandedLines] = useState<Record<string, boolean>>({});
   const [costoOverrides, setCostoOverrides] = useState<Record<string, string>>({});
 
-  const isAdmin = usuario?.rol === 'Administrador';
+  const isAdmin = usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente';
+  const [savingPedidoGasto, setSavingPedidoGasto] = useState(false);
+  const [gastoError, setGastoError] = useState<string | null>(null);
 
   useEffect(() => {
     if (pedidoId) cargarDatos();
@@ -232,38 +234,79 @@ export default function StorePedidoDetalle() {
 
   // Expenses management
   const handleAddPedidoGasto = async () => {
-    if (!pedidoId || !newGastoConcepto || !newGastoMonto) return;
-    const { data } = await supabase
-      .from('store_pedido_gastos')
-      .insert({ pedido_id: pedidoId, concepto: newGastoConcepto, tipo: newGastoTipo, monto: parseFloat(newGastoMonto), creado_por: usuario?.id })
-      .select().single();
-    if (data) {
-      setPedidoGastos(prev => [...prev, data]);
-      setNewGastoConcepto('');
-      setNewGastoTipo('otro');
-      setNewGastoMonto('');
+    if (!pedidoId || !newGastoConcepto.trim()) {
+      setGastoError('El concepto es requerido.');
+      return;
+    }
+    const parsedMonto = parseFloat(newGastoMonto.replace(/[$,\s]/g, ''));
+    if (isNaN(parsedMonto) || parsedMonto <= 0) {
+      setGastoError('El monto debe ser mayor a $0.');
+      return;
+    }
+    setGastoError(null);
+    setSavingPedidoGasto(true);
+    try {
+      const { data, error } = await supabase
+        .from('store_pedido_gastos')
+        .insert({ pedido_id: pedidoId, concepto: newGastoConcepto.trim(), tipo: newGastoTipo, monto: parsedMonto, creado_por: usuario?.id })
+        .select()
+        .single();
+      if (error) throw error;
+      if (data) {
+        setPedidoGastos(prev => [...prev, data]);
+        setNewGastoConcepto('');
+        setNewGastoTipo('otro');
+        setNewGastoMonto('');
+      }
+    } catch (err: any) {
+      console.error('[Store] Error al agregar gasto del pedido:', err);
+      setGastoError(err?.message || 'Error al guardar el gasto. Verifica tus permisos.');
+    } finally {
+      setSavingPedidoGasto(false);
     }
   };
 
   const handleRemovePedidoGasto = async (id: string) => {
-    await supabase.from('store_pedido_gastos').delete().eq('id', id);
-    setPedidoGastos(prev => prev.filter(g => g.id !== id));
+    try {
+      const { error } = await supabase.from('store_pedido_gastos').delete().eq('id', id);
+      if (error) throw error;
+      setPedidoGastos(prev => prev.filter(g => g.id !== id));
+    } catch (err: any) {
+      console.error('[Store] Error al eliminar gasto:', err);
+      alert('Error al eliminar el gasto: ' + (err?.message || 'error desconocido'));
+    }
   };
 
-  const handleAddDetalleGasto = async (detalleId: string, concepto: string, tipo: string, monto: string) => {
-    if (!concepto || !monto) return;
-    const { data } = await supabase
-      .from('store_pedido_detalle_gastos')
-      .insert({ detalle_id: detalleId, concepto, tipo, monto: parseFloat(monto), creado_por: usuario?.id })
-      .select().single();
-    if (data) {
-      setDetalleGastos(prev => ({ ...prev, [detalleId]: [...(prev[detalleId] || []), data] }));
+  const handleAddDetalleGasto = async (detalleId: string, concepto: string, tipo: string, monto: string): Promise<boolean> => {
+    const parsedMonto = parseFloat(monto.replace(/[$,\s]/g, ''));
+    if (!concepto.trim() || isNaN(parsedMonto) || parsedMonto <= 0) return false;
+    try {
+      const { data, error } = await supabase
+        .from('store_pedido_detalle_gastos')
+        .insert({ detalle_id: detalleId, concepto: concepto.trim(), tipo, monto: parsedMonto, creado_por: usuario?.id })
+        .select()
+        .single();
+      if (error) throw error;
+      if (data) {
+        setDetalleGastos(prev => ({ ...prev, [detalleId]: [...(prev[detalleId] || []), data] }));
+      }
+      return true;
+    } catch (err: any) {
+      console.error('[Store] Error al agregar gasto de detalle:', err);
+      alert('Error al guardar el gasto: ' + (err?.message || 'error desconocido'));
+      return false;
     }
   };
 
   const handleRemoveDetalleGasto = async (detalleId: string, gastoId: string) => {
-    await supabase.from('store_pedido_detalle_gastos').delete().eq('id', gastoId);
-    setDetalleGastos(prev => ({ ...prev, [detalleId]: (prev[detalleId] || []).filter(g => g.id !== gastoId) }));
+    try {
+      const { error } = await supabase.from('store_pedido_detalle_gastos').delete().eq('id', gastoId);
+      if (error) throw error;
+      setDetalleGastos(prev => ({ ...prev, [detalleId]: (prev[detalleId] || []).filter(g => g.id !== gastoId) }));
+    } catch (err: any) {
+      console.error('[Store] Error al eliminar gasto de detalle:', err);
+      alert('Error al eliminar: ' + (err?.message || 'error desconocido'));
+    }
   };
 
   const handleSaveCostoOverride = async (detalleId: string) => {
@@ -487,13 +530,45 @@ export default function StorePedidoDetalle() {
                     ))}
                   </ul>
                 )}
+                {gastoError && (
+                  <p className="text-xs text-red-600 mb-2">{gastoError}</p>
+                )}
                 <div className="flex gap-2 items-end">
-                  <input type="text" value={newGastoConcepto} onChange={e => setNewGastoConcepto(e.target.value)} placeholder="Concepto" className="flex-1 px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg" />
-                  <select value={newGastoTipo} onChange={e => setNewGastoTipo(e.target.value)} className="px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg">
+                  <input
+                    type="text"
+                    value={newGastoConcepto}
+                    onChange={e => { setNewGastoConcepto(e.target.value); setGastoError(null); }}
+                    placeholder="Concepto"
+                    className="flex-1 px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg"
+                  />
+                  <select
+                    value={newGastoTipo}
+                    onChange={e => setNewGastoTipo(e.target.value)}
+                    className="px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg"
+                  >
                     {TIPO_GASTO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
-                  <input type="number" step="0.01" min="0" value={newGastoMonto} onChange={e => setNewGastoMonto(e.target.value)} placeholder="$0.00" className="w-24 px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg" />
-                  <button onClick={handleAddPedidoGasto} disabled={!newGastoConcepto || !newGastoMonto} className="px-3 py-1.5 bg-accent text-white rounded-lg text-sm disabled:opacity-40"><Plus className="w-4 h-4" /></button>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={newGastoMonto}
+                    onChange={e => { setNewGastoMonto(e.target.value); setGastoError(null); }}
+                    placeholder="$0.00"
+                    className="w-24 px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg"
+                    onKeyDown={e => e.key === 'Enter' && handleAddPedidoGasto()}
+                  />
+                  <button
+                    onClick={handleAddPedidoGasto}
+                    disabled={savingPedidoGasto || !newGastoConcepto.trim() || !newGastoMonto}
+                    className="px-3 py-1.5 bg-accent text-white rounded-lg text-sm disabled:opacity-40 flex items-center justify-center min-w-[36px]"
+                  >
+                    {savingPedidoGasto ? (
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Plus className="w-4 h-4" />
+                    )}
+                  </button>
                 </div>
               </div>
             )}
@@ -736,18 +811,28 @@ export default function StorePedidoDetalle() {
 function LineGastosEditor({ gastos, detalleId, onAdd, onRemove }: {
   gastos: StorePedidoDetalleGasto[];
   detalleId: string;
-  onAdd: (detalleId: string, concepto: string, tipo: string, monto: string) => void;
+  onAdd: (detalleId: string, concepto: string, tipo: string, monto: string) => Promise<boolean>;
   onRemove: (detalleId: string, gastoId: string) => void;
 }) {
   const [concepto, setConcepto] = useState('');
   const [tipo, setTipo] = useState('otro');
   const [monto, setMonto] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleAdd = () => {
-    onAdd(detalleId, concepto, tipo, monto);
-    setConcepto('');
-    setTipo('otro');
-    setMonto('');
+  const handleAdd = async () => {
+    if (!concepto.trim()) { setError('Ingresa un concepto.'); return; }
+    const parsed = parseFloat(monto.replace(/[$,\s]/g, ''));
+    if (isNaN(parsed) || parsed <= 0) { setError('Monto invalido.'); return; }
+    setError(null);
+    setSaving(true);
+    const ok = await onAdd(detalleId, concepto, tipo, monto);
+    setSaving(false);
+    if (ok) {
+      setConcepto('');
+      setTipo('otro');
+      setMonto('');
+    }
   };
 
   return (
@@ -761,13 +846,35 @@ function LineGastosEditor({ gastos, detalleId, onAdd, onRemove }: {
           </div>
         </div>
       ))}
+      {error && <p className="text-xs text-red-500">{error}</p>}
       <div className="flex gap-1.5 items-center">
-        <input type="text" value={concepto} onChange={e => setConcepto(e.target.value)} placeholder="Gasto" className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded" />
+        <input
+          type="text"
+          value={concepto}
+          onChange={e => { setConcepto(e.target.value); setError(null); }}
+          placeholder="Gasto"
+          className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded"
+        />
         <select value={tipo} onChange={e => setTipo(e.target.value)} className="px-1.5 py-1 text-xs border border-gray-200 rounded">
           {TIPO_GASTO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
-        <input type="number" step="0.01" value={monto} onChange={e => setMonto(e.target.value)} placeholder="$" className="w-16 px-2 py-1 text-xs border border-gray-200 rounded" />
-        <button onClick={handleAdd} disabled={!concepto || !monto} className="px-1.5 py-1 bg-accent text-white rounded text-xs disabled:opacity-40"><Plus className="w-3 h-3" /></button>
+        <input
+          type="number"
+          step="0.01"
+          min="0.01"
+          value={monto}
+          onChange={e => { setMonto(e.target.value); setError(null); }}
+          placeholder="$"
+          className="w-16 px-2 py-1 text-xs border border-gray-200 rounded"
+          onKeyDown={e => e.key === 'Enter' && handleAdd()}
+        />
+        <button
+          onClick={handleAdd}
+          disabled={saving || !concepto.trim() || !monto}
+          className="px-1.5 py-1 bg-accent text-white rounded text-xs disabled:opacity-40 flex items-center justify-center min-w-[24px]"
+        >
+          {saving ? <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" /> : <Plus className="w-3 h-3" />}
+        </button>
       </div>
     </div>
   );
