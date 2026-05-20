@@ -82,6 +82,8 @@ export function GestionGruposVisualizacion() {
   const [formArea, setFormArea] = useState<AreaCategoria>('Comercial');
   const [formActivo, setFormActivo] = useState(true);
   const [formAllOffices, setFormAllOffices] = useState(false);
+  const [formSelectedOficinas, setFormSelectedOficinas] = useState<string[]>([]);
+  const [formOficinaSearch, setFormOficinaSearch] = useState('');
   const [formSaving, setFormSaving] = useState(false);
   const [formError, setFormError] = useState('');
 
@@ -145,18 +147,24 @@ export function GestionGruposVisualizacion() {
     setFormArea('Comercial');
     setFormActivo(true);
     setFormAllOffices(false);
+    setFormSelectedOficinas([]);
+    setFormOficinaSearch('');
     setFormError('');
     setPanel('form');
   };
 
-  const openEdit = (g: Grupo) => {
+  const openEdit = async (g: Grupo) => {
     setSelectedGrupo(g);
     setFormNombre(g.nombre);
     setFormDescripcion(g.descripcion || '');
     setFormArea(g.area_categoria || 'Comercial');
     setFormActivo(g.activo);
     setFormAllOffices(g.all_offices);
+    setFormOficinaSearch('');
     setFormError('');
+    // Load current offices for this group
+    const { data } = await supabase.rpc('get_grupo_oficinas', { p_grupo_id: g.id });
+    setFormSelectedOficinas(data ? (data as GrupoOficina[]).map(o => o.oficina_id) : []);
     setPanel('form');
   };
 
@@ -176,14 +184,17 @@ export function GestionGruposVisualizacion() {
       updated_by: usuario?.id,
     };
 
+    let grupoId: string;
+
     if (selectedGrupo) {
       const { error } = await supabase
         .from('tramites_grupos_visualizacion')
         .update(payload)
         .eq('id', selectedGrupo.id);
       if (error) { setFormError('Error al guardar: ' + error.message); setFormSaving(false); return; }
+      grupoId = selectedGrupo.id;
       await supabase.from('ticket_team_audit_logs').insert({
-        team_id: selectedGrupo.id,
+        team_id: grupoId,
         action: 'team_edited',
         old_value: { nombre: selectedGrupo.nombre, area_categoria: selectedGrupo.area_categoria, activo: selectedGrupo.activo },
         new_value: payload,
@@ -196,12 +207,29 @@ export function GestionGruposVisualizacion() {
         .select('id')
         .single();
       if (error) { setFormError('Error al crear: ' + error.message); setFormSaving(false); return; }
+      grupoId = data.id;
       await supabase.from('ticket_team_audit_logs').insert({
-        team_id: data.id,
+        team_id: grupoId,
         action: 'team_created',
         new_value: payload,
         performed_by: usuario?.id,
       });
+    }
+
+    // Sync offices if not "all offices" mode
+    if (!formAllOffices) {
+      // Delete all current office assignments for this group
+      await supabase.from('tramites_grupos_oficinas').delete().eq('grupo_id', grupoId);
+      // Insert selected offices
+      if (formSelectedOficinas.length > 0) {
+        await supabase.from('tramites_grupos_oficinas').insert(
+          formSelectedOficinas.map(oficina_id => ({
+            grupo_id: grupoId,
+            oficina_id,
+            created_by: usuario?.id,
+          }))
+        );
+      }
     }
 
     await loadGrupos();
@@ -594,6 +622,7 @@ export function GestionGruposVisualizacion() {
             </div>
           </div>
 
+          {/* All offices toggle */}
           <div className={`flex items-start gap-3 p-3.5 rounded-xl border ${formAllOffices ? 'bg-teal-50 border-teal-200' : 'bg-neutral-50 border-neutral-200'}`}>
             <button
               type="button"
@@ -607,6 +636,100 @@ export function GestionGruposVisualizacion() {
               <p className="text-xs text-neutral-500 mt-0.5">El equipo tendrá acceso a trámites de todas las oficinas actuales y futuras.</p>
             </div>
           </div>
+
+          {/* Specific offices picker (shown when not all_offices) */}
+          {!formAllOffices && (
+            <div className="border border-neutral-200 rounded-xl overflow-hidden">
+              <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-100 flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                  <Building2 className="w-4 h-4" /> Oficinas asignadas
+                </h4>
+                {formSelectedOficinas.length > 0 && (
+                  <span className="text-xs bg-neutral-200 text-neutral-700 px-2 py-0.5 rounded-full font-semibold">
+                    {formSelectedOficinas.length} seleccionada{formSelectedOficinas.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+
+              {/* Selected chips */}
+              {formSelectedOficinas.length > 0 && (
+                <div className="px-3 pt-3 flex flex-wrap gap-2">
+                  {formSelectedOficinas.map(id => {
+                    const of = oficinas.find(o => o.id === id);
+                    if (!of) return null;
+                    return (
+                      <span key={id} className="inline-flex items-center gap-1.5 bg-neutral-900 text-white text-xs font-medium px-2.5 py-1 rounded-full">
+                        {of.nombre}
+                        <button
+                          type="button"
+                          onClick={() => setFormSelectedOficinas(prev => prev.filter(x => x !== id))}
+                          className="hover:text-red-300 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Search + list */}
+              <div className="p-3 space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar oficina..."
+                    value={formOficinaSearch}
+                    onChange={e => setFormOficinaSearch(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-neutral-900 outline-none"
+                  />
+                </div>
+                <div className="max-h-48 overflow-y-auto space-y-1">
+                  {oficinas
+                    .filter(o =>
+                      !formSelectedOficinas.includes(o.id) &&
+                      o.nombre.toLowerCase().includes(formOficinaSearch.toLowerCase())
+                    )
+                    .length === 0 ? (
+                    <p className="text-xs text-neutral-400 text-center py-3">
+                      {formOficinaSearch ? 'Sin resultados' : formSelectedOficinas.length === oficinas.length ? 'Todas las oficinas asignadas' : 'No hay oficinas disponibles'}
+                    </p>
+                  ) : (
+                    oficinas
+                      .filter(o =>
+                        !formSelectedOficinas.includes(o.id) &&
+                        o.nombre.toLowerCase().includes(formOficinaSearch.toLowerCase())
+                      )
+                      .map(o => (
+                        <button
+                          key={o.id}
+                          type="button"
+                          onClick={() => {
+                            setFormSelectedOficinas(prev => [...prev, o.id]);
+                            setFormOficinaSearch('');
+                          }}
+                          className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-neutral-100 hover:bg-neutral-50 text-left transition-colors group"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Building2 className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                            <span className="text-sm text-neutral-800">{o.nombre}</span>
+                          </div>
+                          <Plus className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-700 transition-colors" />
+                        </button>
+                      ))
+                  )}
+                </div>
+              </div>
+
+              {formSelectedOficinas.length === 0 && (
+                <div className="px-4 pb-3 flex items-center gap-2 text-xs text-amber-600">
+                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                  Sin oficinas asignadas — el equipo no verá ningún trámite.
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex items-center justify-between p-3.5 rounded-xl bg-neutral-50 border border-neutral-200">
             <div>
