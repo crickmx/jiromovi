@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { MessageCircle, Mail, Search, Filter, Send, Phone, Building2, User, Clock, CheckCircle2, XCircle, AlertCircle, Loader2, ChevronLeft, RefreshCw, X, MessageSquare, Zap, Check, ListTodo, Plus, Link2, FileText, Image, Music, Video, Paperclip, UserX, UserPlus, Eye, Download, ExternalLink, Smile, LayoutTemplate as BookTemplate, ClipboardList, Star, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, Globe, Lock, ChevronDown, Bot, Play, Pause, ArrowRightLeft, StopCircle, ChevronUp, Settings, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { getDisplayName } from '../lib/utils';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -1757,7 +1758,7 @@ function AddToTaskModal({ agentUserId, agentName, selectedMessages, onClose, onS
   const handleAdd = async () => {
     if (!selectedTramiteId) return;
     setSaving(true);
-    const commentText = `Informacion agregada desde Centro de Contacto:\nAgente: ${agentName}\nCanal: WhatsApp\nAgregado por: ${usuario?.nombre_completo || 'Usuario'}\nFecha: ${new Date().toLocaleString('es-MX')}\n\nMensajes seleccionados:\n` +
+    const commentText = `Informacion agregada desde Centro de Contacto:\nAgente: ${agentName}\nCanal: WhatsApp\nAgregado por: ${getDisplayName(usuario) || 'Usuario'}\nFecha: ${new Date().toLocaleString('es-MX')}\n\nMensajes seleccionados:\n` +
       selectedMessages.map((m, i) =>
         `${i + 1}. [${new Date(m.created_at).toLocaleString('es-MX')}] ${m.direction === 'inbound' ? agentName : (m.sender_name || 'Usuario')}:\n${m.body}`
       ).join('\n\n');

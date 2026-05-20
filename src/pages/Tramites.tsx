@@ -66,6 +66,8 @@ export function Tramites() {
   const [showGruposModal, setShowGruposModal] = useState(false);
   const [userArea, setUserArea] = useState<string | null>(null);
   const [userAreaLoaded, setUserAreaLoaded] = useState(false);
+  // scope: area → allowed office IDs (null = all offices for that area)
+  const [userScope, setUserScope] = useState<Array<{ area_categoria: string; office_ids: string[] | null; all_offices: boolean }>>([]);
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
@@ -104,11 +106,23 @@ export function Tramites() {
     if (!usuario?.id) return;
     if (isAdmin) {
       setUserArea(null);
+      setUserScope([]);
       setUserAreaLoaded(true);
       return;
     }
-    const { data } = await supabase.rpc('get_user_tramite_area', { p_user_id: usuario.id });
-    setUserArea(data || null);
+    // Use new scope function that returns area + office IDs
+    const { data: scopeData } = await supabase.rpc('get_user_tramite_scope', { p_user_id: usuario.id });
+    if (scopeData && scopeData.length > 0) {
+      setUserScope(scopeData);
+      // Derive primary area for display (first area found, or 'both' if multi-area)
+      const areas = [...new Set((scopeData as Array<{ area_categoria: string }>).map(s => s.area_categoria))];
+      setUserArea(areas.length === 1 ? areas[0] : 'Ambas');
+    } else {
+      // Fallback to legacy function
+      const { data } = await supabase.rpc('get_user_tramite_area', { p_user_id: usuario.id });
+      setUserArea(data || null);
+      setUserScope([]);
+    }
     setUserAreaLoaded(true);
   };
 
@@ -179,29 +193,43 @@ export function Tramites() {
 
   const getTipoTramiteLabel = (tipo: string) => centralGetLabel(tipo);
 
-  // Operational types that commercial employees can also view (read-only)
-  const OPERATIONAL_CROSS_VISIBLE = ['correccion_comisiones', 'correccion_poliza_registrada'];
-
-  // Visibility filter based on user's group area
+  // Visibility filter based on team scope (area + offices)
   const visibleTramites = tramites.filter(tramite => {
     if (isAdmin) return true;
 
-    if (userArea === 'Comercial') {
-      const tipoArea = getTipoTramiteArea(tramite.tipo_tramite);
-      const agenteOficinaId = tramite.agente?.oficina_id ?? null;
-      const sameOffice = agenteOficinaId === usuario?.oficina_id;
+    const tramiteOficinaId = tramite.agente?.oficina_id ?? null;
+    const tipoArea = getTipoTramiteArea(tramite.tipo_tramite);
 
-      if (tipoArea === 'Comercial') return sameOffice;
-      if (OPERATIONAL_CROSS_VISIBLE.includes(tramite.tipo_tramite)) return sameOffice;
+    // New scope-based visibility (team offices assigned)
+    if (userScope.length > 0) {
+      for (const scope of userScope) {
+        if (scope.area_categoria !== tipoArea) continue;
+        // all_offices: no office restriction
+        if (scope.all_offices) return true;
+        // check tramite's office is in team's allowed offices
+        const officeIds = scope.office_ids || [];
+        if (tramiteOficinaId && officeIds.includes(tramiteOficinaId)) return true;
+      }
+      // Also show tramites created by or assigned to the user regardless of team
+      if (
+        tramite.creado_por === usuario?.id ||
+        tramite.assigned_to_user_id === usuario?.id ||
+        tramite.agente_id === usuario?.id
+      ) return true;
       return false;
     }
 
+    // Legacy fallback: simple area-based visibility without office scoping
+    if (userArea === 'Comercial') {
+      const sameOffice = tramiteOficinaId === usuario?.oficina_id;
+      if (tipoArea === 'Comercial') return sameOffice;
+      return false;
+    }
     if (userArea === 'Operaciones') {
-      const tipoArea = getTipoTramiteArea(tramite.tipo_tramite);
       return tipoArea === 'Operaciones';
     }
 
-    // Users not in any group: see tramites they created or are assigned to
+    // No group: see tramites they created or are assigned to
     return (
       tramite.creado_por === usuario?.id ||
       tramite.assigned_to_user_id === usuario?.id ||

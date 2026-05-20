@@ -236,7 +236,7 @@ Deno.serve(async (req: Request) => {
           if (job.user_id && (!job.payload?.email || !job.payload?.phone)) {
             const { data: jobUser } = await supabase
               .from("usuarios")
-              .select("email_laboral, email_personal, celular_laboral, celular_personal, nombre, apellidos, nombre_completo")
+              .select("email_laboral, email_personal, celular_laboral, celular_personal, nombre, apellidos, nombre_completo, nombre_publico")
               .eq("id", job.user_id)
               .maybeSingle();
             if (jobUser) {
@@ -248,7 +248,10 @@ Deno.serve(async (req: Request) => {
                 job.payload.phone = jobUser.celular_laboral || jobUser.celular_personal || null;
               }
               if (!job.payload.nombre_usuario) {
-                job.payload.nombre_usuario = jobUser.nombre_completo || `${jobUser.nombre || ""} ${jobUser.apellidos || ""}`.trim() || "Usuario";
+                job.payload.nombre_usuario = jobUser.nombre_publico?.trim() || jobUser.nombre_completo || `${jobUser.nombre || ""} ${jobUser.apellidos || ""}`.trim() || "Usuario";
+              }
+              if (!job.payload.nombre_marca) {
+                job.payload.nombre_marca = jobUser.nombre_publico?.trim() || jobUser.nombre_completo || `${jobUser.nombre || ""} ${jobUser.apellidos || ""}`.trim() || "Usuario";
               }
             }
           }

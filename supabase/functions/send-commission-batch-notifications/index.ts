@@ -96,6 +96,7 @@ Deno.serve(async (req: Request) => {
         usuario:usuario_id(
           id,
           nombre_completo,
+          nombre_publico,
           nombre,
           email_laboral,
           email_personal,
@@ -126,7 +127,7 @@ Deno.serve(async (req: Request) => {
 
         usuarioMap.set(usuarioId, {
           usuario_id: usuarioId,
-          usuario_name: usuario?.nombre_completo || usuario?.nombre || "Usuario",
+          usuario_name: (usuario as any)?.nombre_publico?.trim() || usuario?.nombre_completo || usuario?.nombre || "Usuario",
           usuario_email: email,
           usuario_phone: phone,
           office_name: usuario?.oficina?.nombre || "Sin oficina",

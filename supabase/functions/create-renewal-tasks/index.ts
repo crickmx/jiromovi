@@ -114,11 +114,12 @@ Deno.serve(async (req: Request) => {
         try {
           const { data: usuario } = await supabase
             .from('usuarios')
-            .select('nombre_completo, email_laboral, celular_laboral')
+            .select('nombre_completo, nombre_publico, email_laboral, celular_laboral')
             .eq('id', mapeo.movi_user_id)
             .single();
 
           if (usuario) {
+            const displayName = (usuario.nombre_publico as string | null)?.trim() || usuario.nombre_completo;
             await supabase.rpc('enviar_notificacion_completa', {
               p_tipo: 'renovacion_proxima',
               p_destinatario_id: mapeo.movi_user_id,
@@ -126,7 +127,8 @@ Deno.serve(async (req: Request) => {
               p_mensaje: `La póliza ${renovacion.no_poliza} de ${renovacion.contratante} vence en ${renovacion.dias_para_vencer} días.`,
               p_url: '/mi-crm?tab=tareas',
               p_variables: {
-                nombre_usuario: usuario.nombre_completo,
+                nombre_usuario: displayName,
+                nombre_marca: displayName,
                 poliza: renovacion.no_poliza,
                 cliente: renovacion.contratante,
                 aseguradora: renovacion.aseguradora,
