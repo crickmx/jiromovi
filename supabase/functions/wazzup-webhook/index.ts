@@ -353,7 +353,7 @@ Deno.serve(async (req: Request) => {
               );
 
               const processData = await processRes.json();
-              logs.push(`auto_mode_result=stage:${processData.stage || "?"}_ended:${processData.session_ended}`);
+              logs.push(`auto_mode_result=status:${processRes.status}_stage:${processData.stage || "?"}_ended:${processData.session_ended}_err:${processData.error || "none"}`);
 
               const replyText: string | null = processData.response_message || null;
 
