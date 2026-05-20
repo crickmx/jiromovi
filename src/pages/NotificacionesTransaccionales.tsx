@@ -122,7 +122,8 @@ export function NotificacionesTransaccionales() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="h-full overflow-y-auto">
+    <div className="space-y-6 p-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-accent to-accent-dark rounded-2xl shadow-lg p-8 text-white">
         <div className="flex items-center gap-3 mb-2">
@@ -301,6 +302,7 @@ export function NotificacionesTransaccionales() {
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 }
