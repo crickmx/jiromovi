@@ -688,7 +688,7 @@ export default function CentroContacto() {
   const isUnassigned = selectedAgent && selectedAgent.last_message_status === 'received' && !selectedAgent.agent_email;
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col">
+    <div className="h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
         <div className="flex items-center gap-3">
