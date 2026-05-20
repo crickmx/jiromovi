@@ -318,6 +318,109 @@ Deno.serve(async (req: Request) => {
           });
         }
 
+        // ── Automatic mode: process inbound through assistant if session active ──
+        if (isInbound && agentUserId && insertedMsg?.id && messageBody.trim()) {
+          try {
+            const { data: convMode } = await supabase
+              .from("contact_center_conversation_modes")
+              .select("mode, active_session_id, assigned_assistant_id")
+              .eq("agent_user_id", agentUserId)
+              .eq("mode", "automatic")
+              .maybeSingle();
+
+            if (convMode?.active_session_id) {
+              logs.push(`auto_mode_session=${convMode.active_session_id}`);
+
+              const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+              const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+              // Call the assistant process function
+              const processRes = await fetch(
+                `${supabaseUrl}/functions/v1/contact-center-assistant-process`,
+                {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${serviceKey}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    action: "process_message",
+                    session_id: convMode.active_session_id,
+                    message: messageBody.trim(),
+                    message_id: insertedMsg.id,
+                  }),
+                }
+              );
+
+              const processData = await processRes.json();
+              logs.push(`auto_mode_result=stage:${processData.stage || "?"}_ended:${processData.session_ended}`);
+
+              const replyText: string | null = processData.response_message || null;
+
+              if (replyText) {
+                // Get WhatsApp config to send the reply
+                const { data: waCfg } = await supabase
+                  .from("whatsapp_configuracion")
+                  .select("api_key, channel_id_uuid, numero_remitente, activo")
+                  .eq("activo", true)
+                  .maybeSingle();
+
+                if (waCfg?.api_key && waCfg?.channel_id_uuid) {
+                  const chatId = (msg.chatId as string) || chatDigits;
+                  const wazzupRes = await fetch("https://api.wazzup24.com/v3/message", {
+                    method: "POST",
+                    headers: {
+                      Authorization: `Bearer ${waCfg.api_key}`,
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      channelId: waCfg.channel_id_uuid,
+                      chatId,
+                      chatType: "whatsapp",
+                      text: replyText,
+                    }),
+                  });
+
+                  const wazzupBody = await wazzupRes.json();
+                  const sentMessageId: string | null = wazzupBody?.messageId || null;
+                  logs.push(`auto_mode_sent=${sentMessageId || "no_id"}_status=${wazzupRes.status}`);
+
+                  // Store the reply as outbound message
+                  await supabase.from("contact_center_messages").insert({
+                    agent_user_id: agentUserId,
+                    sender_type: "user",
+                    channel: "whatsapp",
+                    message_type: "manual",
+                    direction: "outbound",
+                    body: replyText,
+                    status: sentMessageId ? "sent" : "error",
+                    provider: "wazzup",
+                    provider_message_id: sentMessageId,
+                    provider_response: wazzupBody,
+                    automation_mode: true,
+                    active_session_id: convMode.active_session_id,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    metadata: {
+                      chat_id: chatId,
+                      channel_id: waCfg.channel_id_uuid,
+                      chat_type: "whatsapp",
+                      message_type: "text",
+                      source: "auto_mode_reply",
+                      session_id: convMode.active_session_id,
+                      stage: processData.stage,
+                    },
+                  });
+                } else {
+                  logs.push("auto_mode_no_wa_config");
+                }
+              }
+            }
+          } catch (autoErr) {
+            logs.push(`auto_mode_error=${autoErr instanceof Error ? autoErr.message : String(autoErr)}`);
+          }
+        }
+
         // Notify staff for inbound messages
         if (isInbound) {
           const displayName = agentName || contactNameFromMsg || contactPhone || "Contacto externo";
