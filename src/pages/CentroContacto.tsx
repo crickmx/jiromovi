@@ -28,7 +28,9 @@ interface ConversationSummary {
 
 interface Message {
   id: string;
-  agent_user_id: string;
+  agent_user_id: string | null;
+  contact_name: string | null;
+  contact_phone: string | null;
   sender_user_id: string | null;
   sender_type: string;
   channel: string;
@@ -330,11 +332,16 @@ export default function CentroContacto() {
               direction: m.direction,
             }];
           }
+          const inboundName = m.contact_name
+            || (m.metadata as Record<string, unknown>)?.contact_name as string | null
+            || m.contact_phone
+            || (m.metadata as Record<string, unknown>)?.sender_phone as string | null
+            || 'Cliente';
           return {
             ...m,
             sender_name: m.direction === 'inbound'
-              ? ((m.metadata as Record<string, unknown>)?.sender_name as string || 'Agente')
-              : (m.sender_type === 'system' ? 'Sistema' : (m.sender_user_id ? senderMap[m.sender_user_id] || 'Usuario' : 'Sistema')),
+              ? inboundName
+              : (m.sender_type === 'system' ? 'Sistema' : (m.sender_user_id ? senderMap[m.sender_user_id] || 'Asesor' : 'Asesor')),
             attachments: atts,
             linked_task_id: taskLinkMap[m.id] || null,
           };
@@ -430,11 +437,16 @@ export default function CentroContacto() {
                 direction: newMsg.direction,
               }];
             }
+            const rtInboundName = newMsg.contact_name
+              || (newMsg.metadata as Record<string, unknown>)?.contact_name as string | null
+              || newMsg.contact_phone
+              || (newMsg.metadata as Record<string, unknown>)?.sender_phone as string | null
+              || 'Cliente';
             const enriched: Message = {
               ...newMsg,
               sender_name: newMsg.direction === 'inbound'
-                ? ((newMsg.metadata as Record<string, unknown>)?.sender_name as string || 'Agente')
-                : 'Sistema',
+                ? rtInboundName
+                : 'Asesor',
               attachments: realtimeAtts,
             };
             return [...prev, enriched];
@@ -442,7 +454,6 @@ export default function CentroContacto() {
           setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 200);
           // Mark as read immediately
           if (usuario && newMsg.direction === 'inbound') {
-            const extPhone = (newMsg as unknown as Record<string, unknown>).contact_phone as string | null;
             if (newMsg.agent_user_id) {
               supabase.rpc('mark_contact_messages_read', {
                 p_agent_user_id: newMsg.agent_user_id,
@@ -451,16 +462,26 @@ export default function CentroContacto() {
               setConversations(prev =>
                 prev.map(c => c.agent_user_id === newMsg.agent_user_id ? { ...c, unread_count: 0 } : c)
               );
-            } else if (extPhone) {
+            } else if (newMsg.contact_phone) {
               supabase.from('contact_center_messages')
                 .update({ read_at: new Date().toISOString(), read_by_user_id: usuario.id })
                 .eq('id', newMsg.id);
               setConversations(prev =>
-                prev.map(c => c.contact_phone_ext === extPhone ? { ...c, unread_count: 0 } : c)
+                prev.map(c => c.contact_phone_ext === newMsg.contact_phone ? { ...c, unread_count: 0 } : c)
               );
             }
           }
         }
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'contact_center_messages',
+      }, (payload) => {
+        const updated = payload.new as Message;
+        setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, status: updated.status } : m));
+        // Refresh conversation list on meaningful inbound status changes
+        if (updated.direction === 'inbound') loadConversations();
       })
       .subscribe();
 

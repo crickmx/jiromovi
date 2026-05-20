@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Save, Send, Eye, EyeOff, AlertCircle, CheckCircle2, MessageCircle } from 'lucide-react';
+import { Save, Send, Eye, EyeOff, AlertCircle, CheckCircle2, MessageCircle, Webhook, RefreshCw, ExternalLink } from 'lucide-react';
 
 interface ConfiguracionWhatsAppProps {
   config: any;
@@ -19,6 +19,8 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
   const [testMensaje, setTestMensaje] = useState('Hola! 👋\n\nEste es un mensaje de prueba desde MOVI Digital.\n\nSistema de notificaciones por WhatsApp funcionando correctamente. ✅');
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [configuringWebhook, setConfiguringWebhook] = useState(false);
+  const [webhookStatus, setWebhookStatus] = useState<{ url?: string; configured?: boolean; raw?: unknown } | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   useEffect(() => {
@@ -111,6 +113,31 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
       setMessage({ type: 'error', text: error.message || 'Error al enviar mensaje de prueba' });
     } finally {
       setTesting(false);
+    }
+  };
+
+  const handleConfigureWebhook = async () => {
+    setConfiguringWebhook(true);
+    setMessage(null);
+    setWebhookStatus(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('wazzup-configure-webhook', {});
+      if (error) throw error;
+      const currentUrl: string = data?.current_config?.webhooksUri || data?.current_config?.url || '';
+      const expectedUrl: string = data?.webhook_url_configured || '';
+      const isConfigured = currentUrl === expectedUrl;
+      setWebhookStatus({ url: currentUrl || expectedUrl, configured: isConfigured, raw: data });
+      setMessage({
+        type: isConfigured ? 'success' : 'error',
+        text: isConfigured
+          ? 'Webhook configurado correctamente en Wazzup. Los mensajes entrantes seran recibidos.'
+          : `Webhook actualizado. URL registrada: ${expectedUrl}`,
+      });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Error al configurar webhook';
+      setMessage({ type: 'error', text: msg });
+    } finally {
+      setConfiguringWebhook(false);
     }
   };
 
@@ -246,6 +273,48 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
           </button>
         </div>
       </form>
+
+      {/* Webhook Configuration */}
+      {config?.id && (
+        <div className="border-t border-neutral-200 pt-6">
+          <h3 className="text-lg font-semibold text-neutral-800 mb-1 flex items-center gap-2">
+            <Webhook className="w-5 h-5 text-blue-600" />
+            Webhook para mensajes entrantes
+          </h3>
+          <p className="text-sm text-neutral-600 mb-4">
+            Para recibir mensajes de WhatsApp en el Centro de Contacto, Wazzup debe estar configurado con la URL del webhook de este sistema.
+            Haz clic en el boton para registrar o actualizar la URL automaticamente.
+          </p>
+
+          {webhookStatus && (
+            <div className={`mb-4 p-3 rounded-lg border text-sm ${webhookStatus.configured ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+              <div className="flex items-center gap-2 font-medium mb-1">
+                {webhookStatus.configured
+                  ? <CheckCircle2 className="w-4 h-4" />
+                  : <AlertCircle className="w-4 h-4" />}
+                {webhookStatus.configured ? 'Webhook activo' : 'Webhook actualizado — verifica en Wazzup'}
+              </div>
+              {webhookStatus.url && (
+                <div className="flex items-center gap-1 text-xs font-mono break-all">
+                  <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                  {webhookStatus.url}
+                </div>
+              )}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleConfigureWebhook}
+            disabled={configuringWebhook}
+            className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 font-medium"
+          >
+            {configuringWebhook
+              ? <><RefreshCw className="w-5 h-5 animate-spin" /> Configurando webhook...</>
+              : <><Webhook className="w-5 h-5" /> Registrar Webhook en Wazzup</>}
+          </button>
+        </div>
+      )}
 
       {/* Prueba de Envío */}
       {config?.id && (
