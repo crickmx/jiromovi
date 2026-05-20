@@ -31,6 +31,9 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
         numero_remitente: config.numero_remitente || '5215588545516',
         activo: config.activo || false
       });
+      if (config.id && config.api_key) {
+        handleConfigureWebhookSilent();
+      }
     }
   }, [config]);
 
@@ -113,6 +116,19 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
       setMessage({ type: 'error', text: error.message || 'Error al enviar mensaje de prueba' });
     } finally {
       setTesting(false);
+    }
+  };
+
+  const handleConfigureWebhookSilent = async () => {
+    try {
+      const { data } = await supabase.functions.invoke('wazzup-configure-webhook', {});
+      if (data?.is_configured) {
+        setWebhookStatus({ url: data.webhook_url_configured, configured: true, raw: data });
+      } else if (data?.webhook_url_configured) {
+        setWebhookStatus({ url: data.webhook_url_configured, configured: false, raw: data });
+      }
+    } catch {
+      // silent — don't show error to user on auto-check
     }
   };
 
