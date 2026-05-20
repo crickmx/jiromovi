@@ -145,6 +145,9 @@ interface CcSessionState {
   total_fields: number;
   session_data?: CcSessionFieldData[];
   show_field_details?: boolean;
+  ticket_id?: string | null;
+  folio?: string | null;
+  creation_error?: string | null;
 }
 
 type ConversationMode = 'normal' | 'automatic';
@@ -497,6 +500,41 @@ export default function CentroContacto() {
         // Refresh conversation list on meaningful inbound status changes
         if (updated.direction === 'inbound') loadConversations();
       })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'contact_center_assistant_sessions',
+      }, (payload) => {
+        const updated = payload.new as Record<string, unknown>;
+        // If this session belongs to the currently viewed agent, refresh mode state
+        setActiveSession(prev => {
+          if (!prev || prev.session_id !== updated.id) return prev;
+          const newStage = (updated.current_stage as string) || prev.current_stage;
+          const ticketId = (updated.ticket_id as string | null) ?? prev.ticket_id;
+          const creationError = (updated.tramite_creation_error as string | null) ?? prev.creation_error;
+          // If tramite just created, fetch folio async then update
+          if (ticketId && !prev.folio) {
+            supabase.from('tickets').select('folio').eq('id', ticketId).maybeSingle().then(({ data }) => {
+              setActiveSession(s => s ? { ...s, folio: data?.folio || null } : s);
+            });
+          }
+          return { ...prev, current_stage: newStage, ticket_id: ticketId, creation_error: creationError };
+        });
+        // If mode changed to normal (session ended), reload mode
+        if (selectedAgent?.agent_user_id && (updated.status === 'completed' || updated.status === 'cancelled' || updated.status === 'transferred')) {
+          loadConversationMode(selectedAgent.agent_user_id);
+        }
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'contact_center_conversation_modes',
+      }, (payload) => {
+        const updated = payload.new as Record<string, unknown>;
+        if (selectedAgent?.agent_user_id && updated.agent_user_id === selectedAgent.agent_user_id) {
+          loadConversationMode(selectedAgent.agent_user_id);
+        }
+      })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -553,6 +591,12 @@ export default function CentroContacto() {
           };
         });
         const capturedCount = sessionData.filter(d => ['captured','prefilled','low_confidence'].includes(d.status)).length;
+        // Fetch folio if tramite was created
+        let tramiteFolio: string | null = null;
+        if (s.ticket_id) {
+          const { data: tkt } = await supabase.from('tickets').select('folio').eq('id', s.ticket_id).maybeSingle();
+          tramiteFolio = tkt?.folio || null;
+        }
         setActiveSession({
           session_id: s.id,
           status: s.status,
@@ -564,6 +608,9 @@ export default function CentroContacto() {
           captured_count: capturedCount,
           total_fields: sessionData.length || 0,
           session_data: sessionData,
+          ticket_id: s.ticket_id || null,
+          folio: tramiteFolio,
+          creation_error: s.tramite_creation_error || null,
         });
       } else {
         setConversationMode('normal');
@@ -973,63 +1020,116 @@ export default function CentroContacto() {
 
               {/* Automatic mode panel */}
               {conversationMode === 'automatic' && activeSession && (
-                <div className="border-b border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/10">
-                  {/* Header row */}
-                  <div className="flex items-center justify-between px-4 py-2">
-                    <div className="flex items-center gap-2">
-                      <Bot className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                      <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 truncate max-w-[130px]">
-                        {activeSession.assistant_name}
-                      </span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${
-                        activeSession.current_stage === 'welcome' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
-                        activeSession.current_stage === 'consent' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' :
-                        activeSession.current_stage === 'capturing' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300' :
-                        activeSession.current_stage === 'summary' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' :
-                        activeSession.current_stage === 'completion' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' :
-                        'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
-                      }`}>
-                        {activeSession.current_stage === 'welcome' ? 'Bienvenida' :
-                         activeSession.current_stage === 'consent' ? 'Consentimiento' :
-                         activeSession.current_stage === 'capturing' ? 'Capturando' :
-                         activeSession.current_stage === 'summary' ? 'Confirmando' :
-                         activeSession.current_stage === 'completion' ? 'Completado' :
-                         activeSession.current_stage}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {activeSession.total_fields > 0 && (
-                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                          {activeSession.captured_count}/{activeSession.total_fields}
-                        </span>
-                      )}
-                      {(activeSession.session_data?.length ?? 0) > 0 && (
-                        <button
-                          onClick={() => setShowFieldDetails(v => !v)}
-                          className="p-0.5 rounded hover:bg-emerald-100 dark:hover:bg-emerald-800 text-emerald-600 dark:text-emerald-400 transition-colors"
-                          title={showFieldDetails ? 'Ocultar campos' : 'Ver campos capturados'}
-                        >
-                          {showFieldDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                <div className={`border-b ${
+                  activeSession.current_stage === 'completion'
+                    ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20'
+                    : activeSession.creation_error
+                    ? 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/10'
+                    : 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/10'
+                }`}>
 
-                  {/* Progress bar */}
-                  {activeSession.total_fields > 0 && (
-                    <div className="px-4 pb-2">
-                      <div className="w-full h-1.5 bg-emerald-200 dark:bg-emerald-800 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{
-                            width: `${Math.round((activeSession.captured_count / activeSession.total_fields) * 100)}%`,
-                            background: activeSession.session_data?.some(d => d.requires_human_review)
-                              ? '#f59e0b'
-                              : '#10b981',
-                          }}
-                        />
+                  {/* Completion banner — tramite created */}
+                  {activeSession.current_stage === 'completion' && activeSession.ticket_id && (
+                    <div className="px-4 py-2.5 flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                        <CheckCircle2 className="w-4 h-4 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+                          Tramite creado — modo automatico desactivado
+                        </p>
+                        <a
+                          href={`/tramites/${activeSession.ticket_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-1 mt-0.5"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          {activeSession.folio ? `Tramite #${activeSession.folio}` : 'Ver tramite'}
+                        </a>
                       </div>
                     </div>
+                  )}
+
+                  {/* Completion banner — no tramite (form without auto_create) */}
+                  {activeSession.current_stage === 'completion' && !activeSession.ticket_id && !activeSession.creation_error && (
+                    <div className="px-4 py-2 flex items-center gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                      <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                        Sesion completada — modo automatico desactivado
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Error banner */}
+                  {activeSession.creation_error && (
+                    <div className="px-4 py-2 flex items-start gap-2">
+                      <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-semibold text-red-700 dark:text-red-400">Error al crear tramite</p>
+                        <p className="text-[10px] text-red-600 dark:text-red-500 mt-0.5 truncate max-w-[260px]">{activeSession.creation_error}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Active session header */}
+                  {activeSession.current_stage !== 'completion' && (
+                    <>
+                      <div className="flex items-center justify-between px-4 py-2">
+                        <div className="flex items-center gap-2">
+                          <Bot className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                          <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 truncate max-w-[130px]">
+                            {activeSession.assistant_name}
+                          </span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                            activeSession.current_stage === 'welcome'    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
+                            activeSession.current_stage === 'consent'    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' :
+                            activeSession.current_stage === 'capturing'  ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300' :
+                            activeSession.current_stage === 'summary'    ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' :
+                            activeSession.current_stage === 'error'      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
+                            'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                          }`}>
+                            {activeSession.current_stage === 'welcome'   ? 'Bienvenida' :
+                             activeSession.current_stage === 'consent'   ? 'Consentimiento' :
+                             activeSession.current_stage === 'capturing' ? 'Capturando' :
+                             activeSession.current_stage === 'summary'   ? 'Confirmando' :
+                             activeSession.current_stage === 'error'     ? 'Error' :
+                             activeSession.current_stage}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {activeSession.total_fields > 0 && (
+                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                              {activeSession.captured_count}/{activeSession.total_fields}
+                            </span>
+                          )}
+                          {(activeSession.session_data?.length ?? 0) > 0 && (
+                            <button
+                              onClick={() => setShowFieldDetails(v => !v)}
+                              className="p-0.5 rounded hover:bg-emerald-100 dark:hover:bg-emerald-800 text-emerald-600 dark:text-emerald-400 transition-colors"
+                              title={showFieldDetails ? 'Ocultar campos' : 'Ver campos capturados'}
+                            >
+                              {showFieldDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Progress bar */}
+                      {activeSession.total_fields > 0 && (
+                        <div className="px-4 pb-2">
+                          <div className="w-full h-1.5 bg-emerald-200 dark:bg-emerald-800 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: `${Math.round((activeSession.captured_count / activeSession.total_fields) * 100)}%`,
+                                background: activeSession.session_data?.some(d => d.requires_human_review) ? '#f59e0b' : '#10b981',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {/* Field details panel */}
@@ -1050,7 +1150,6 @@ export default function CentroContacto() {
                               : 'bg-gray-50 dark:bg-gray-800/50 border border-dashed border-gray-200 dark:border-gray-700'
                           }`}
                         >
-                          {/* Status icon */}
                           <div className="flex-shrink-0 mt-0.5">
                             {field.status === 'prefilled' ? (
                               <div className="w-3.5 h-3.5 rounded-full bg-blue-500 flex items-center justify-center">
@@ -1070,13 +1169,9 @@ export default function CentroContacto() {
                               <div className="w-3.5 h-3.5 rounded-full border-2 border-dashed border-gray-300 dark:border-gray-600" />
                             )}
                           </div>
-
-                          {/* Label + value */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
-                              <span className="font-medium text-gray-600 dark:text-gray-300 truncate">
-                                {field.field_label}
-                              </span>
+                              <span className="font-medium text-gray-600 dark:text-gray-300 truncate">{field.field_label}</span>
                               {field.priority === 'required' && (
                                 <span className="text-[9px] text-red-500 font-semibold uppercase">req</span>
                               )}
@@ -1099,8 +1194,6 @@ export default function CentroContacto() {
                           </div>
                         </div>
                       ))}
-
-                      {/* Review alert */}
                       {activeSession.session_data!.some(d => d.requires_human_review) && (
                         <div className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-700 dark:text-amber-400">
                           <AlertCircle className="w-3 h-3 flex-shrink-0" />

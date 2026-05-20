@@ -169,38 +169,190 @@ function isContactField(key: string): boolean {
   return ["nombre_cliente", "nombre", "nombre_completo", "nombre_asegurado", "telefono", "telefono_contacto", "whatsapp", "celular", "phone"].includes(key.toLowerCase());
 }
 
+const BASE_APP_URL = "https://app.movi.digital";
+
+interface CreateTramiteResult {
+  ticket_id: string | null;
+  error: string | null;
+  folio: string | null;
+}
+
 async function createTramite(
   supabase: ReturnType<typeof createClient>,
-  session: { agent_user_id: string; activated_by?: string | null; id: string },
-  assistant: { nombre: string; tramite_tipo?: string; tramite_prioridad?: string },
+  session: {
+    id: string;
+    agent_user_id: string;
+    activated_by?: string | null;
+    contact_phone_prefilled?: string | null;
+    contact_name_prefilled?: string | null;
+  },
+  assistant: {
+    id: string;
+    nombre: string;
+    tramite_tipo?: string | null;
+    tramite_prioridad?: string | null;
+    tramite_assigned_to_user_id?: string | null;
+    tramite_estatus_slug?: string | null;
+    office_id?: string | null;
+    form_title?: string | null;
+    handoff_after_creation?: boolean | null;
+  },
   capturedData: CapturedField[],
-  pendingRequired: AssistantField[]
-): Promise<string | null> {
+  pendingRequired: AssistantField[],
+  idempotencyKey: string,
+  messageId?: string | null
+): Promise<CreateTramiteResult> {
+  // ── Idempotency check ─────────────────────────────────────────────────────
+  const { data: existingSession } = await supabase
+    .from("contact_center_assistant_sessions")
+    .select("ticket_id, tramite_creation_error")
+    .eq("idempotency_key", idempotencyKey)
+    .maybeSingle();
+
+  if (existingSession?.ticket_id) {
+    console.log("[cc-process] Tramite already exists for idempotency key, reusing:", existingSession.ticket_id);
+    const { data: existing } = await supabase.from("tickets").select("id, folio").eq("id", existingSession.ticket_id).maybeSingle();
+    return { ticket_id: existingSession.ticket_id, error: null, folio: existing?.folio || null };
+  }
+
+  // ── Mark idempotency key to prevent race conditions ───────────────────────
+  await supabase.from("contact_center_assistant_sessions")
+    .update({ idempotency_key: idempotencyKey })
+    .eq("id", session.id);
+
   try {
     const captured = capturedData.filter(d => d.value_text && d.status !== "skipped");
     const pendingLines = pendingRequired.map(f => `• ${f.label}: PENDIENTE`);
-    const reviewLines = capturedData.filter(d => d.requires_human_review && d.value_text).map(d => `• ${d.field_label}: "${d.value_text}" (revisar)`);
+    const reviewLines = capturedData.filter(d => d.requires_human_review && d.value_text)
+      .map(d => `• ${d.field_label}: "${d.value_text}" (revisar)`);
 
-    let instrucciones = `Solicitud capturada vía Modo Automático (${assistant.nombre}):\n\nDATOS CAPTURADOS:\n`;
+    // Build instrucciones
+    let instrucciones = `Solicitud capturada vía Agente Automático (${assistant.form_title || assistant.nombre}):\n\nDATOS CAPTURADOS:\n`;
     instrucciones += captured.map(d => `• ${d.field_label}: ${d.value_text}`).join("\n") || "(ninguno)";
     if (pendingLines.length) instrucciones += `\n\nDATOS PENDIENTES:\n${pendingLines.join("\n")}`;
-    if (reviewLines.length) instrucciones += `\n\nREQUIERE REVISIÓN:\n${reviewLines.join("\n")}`;
+    if (reviewLines.length) instrucciones += `\n\nREQUIERE REVISIÓN HUMANA:\n${reviewLines.join("\n")}`;
+    instrucciones += `\n\nOrigen: Centro de Contacto / WhatsApp`;
+    if (session.contact_phone_prefilled) instrucciones += `\nTeléfono contacto: ${session.contact_phone_prefilled}`;
+    if (session.contact_name_prefilled) instrucciones += `\nNombre contacto: ${session.contact_name_prefilled}`;
+
+    // Extract some campos into ticket columns for quick search
+    const clientField = captured.find(d => ["nombre_cliente", "nombre_asegurado", "nombre_completo", "nombre"].includes(d.field_key));
+    const polizaField = captured.find(d => ["numero_poliza", "poliza", "no_poliza"].includes(d.field_key));
+    const aseguradoraField = captured.find(d => ["aseguradora", "compania", "company"].includes(d.field_key));
+
+    // Resolve estatus_id
+    const estatusSlug = pendingRequired.length > 0 ? "Iniciado" : (assistant.tramite_estatus_slug || "Iniciado");
+    const { data: estatusRow } = await supabase.from("ticket_estatus")
+      .select("id").eq("nombre", estatusSlug).maybeSingle();
+    const { data: fallbackEstatus } = await supabase.from("ticket_estatus")
+      .select("id").eq("nombre", "Iniciado").maybeSingle();
+    const estatusId = estatusRow?.id || fallbackEstatus?.id;
+    if (!estatusId) throw new Error("No se encontró estatus Iniciado");
+
+    // Resolve assigned_to_user_id: assistant default > activated_by
+    const assignedTo = assistant.tramite_assigned_to_user_id || session.activated_by || null;
+
+    // Resolve agente_id (the agent/contact this tramite is about)
+    const agentId = session.agent_user_id;
+
+    // Resolve creado_por (must be non-null per schema)
+    const creadoPor = session.activated_by || assignedTo || session.agent_user_id;
 
     const { data: folioData } = await supabase.rpc("generate_next_folio");
-    const folio = folioData || `AUTO-${Date.now()}`;
+    const folio = folioData || `CC-${Date.now()}`;
 
     const { data: ticket, error } = await supabase.from("tickets").insert({
-      folio, instrucciones,
+      folio,
+      instrucciones,
       tipo_tramite: assistant.tramite_tipo || "formulario_cotizacion",
       prioridad: assistant.tramite_prioridad || "Media",
-      agente_id: session.agent_user_id,
-      creado_por: session.activated_by || null,
-      metadata: { automation_session_id: session.id, assistant_name: assistant.nombre, source: "modo_automatico", captured_count: captured.length, requires_review: reviewLines.length > 0 },
-    }).select("id").single();
+      estatus_id: estatusId,
+      agente_id: agentId,
+      assigned_to_user_id: assignedTo,
+      creado_por: creadoPor,
+      cerrado: false,
+      registro_cliente: clientField?.value_text || session.contact_name_prefilled || null,
+      registro_numero_poliza: polizaField?.value_text || null,
+      registro_aseguradora: aseguradoraField?.value_text || null,
+      metadata: {
+        automation_session_id: session.id,
+        assistant_id: assistant.id,
+        assistant_name: assistant.nombre,
+        form_title: assistant.form_title || null,
+        source: "modo_automatico",
+        channel: "whatsapp",
+        contact_phone: session.contact_phone_prefilled || null,
+        contact_name: session.contact_name_prefilled || null,
+        captured_count: captured.length,
+        pending_count: pendingRequired.length,
+        requires_review: reviewLines.length > 0,
+        confirmation_message_id: messageId || null,
+        idempotency_key: idempotencyKey,
+      },
+    }).select("id, folio").single();
 
-    if (error) { console.error("[cc-process] tramite error:", error); return null; }
-    return ticket.id;
-  } catch (err) { console.error("[cc-process] tramite ex:", err); return null; }
+    if (error) {
+      console.error("[cc-process] tramite insert error:", error);
+      await supabase.from("contact_center_assistant_sessions")
+        .update({ tramite_creation_error: error.message }).eq("id", session.id);
+      return { ticket_id: null, error: error.message, folio: null };
+    }
+
+    // Update session with ticket_id and creation time
+    await supabase.from("contact_center_assistant_sessions")
+      .update({ ticket_id: ticket.id, tramite_created_at: new Date().toISOString(), tramite_creation_error: null })
+      .eq("id", session.id);
+
+    // Add ticket_comment linking conversation data
+    await supabase.from("ticket_comentarios").insert({
+      ticket_id: ticket.id,
+      autor_id: creadoPor,
+      contenido: `Trámite creado automáticamente desde Centro de Contacto.\nSesión: ${session.id}\nContacto: ${session.contact_name_prefilled || "?"} (${session.contact_phone_prefilled || "?"})`,
+      tipo: "sistema",
+    }).maybeSingle();
+
+    return { ticket_id: ticket.id, error: null, folio: ticket.folio };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[cc-process] tramite ex:", msg);
+    await supabase.from("contact_center_assistant_sessions")
+      .update({ tramite_creation_error: msg }).eq("id", session.id);
+    return { ticket_id: null, error: msg, folio: null };
+  }
+}
+
+async function sendHandoffNotification(
+  supabase: ReturnType<typeof createClient>,
+  ticketId: string,
+  folio: string,
+  assignedToUserId: string | null,
+  activatedBy: string | null,
+  assistantName: string,
+  capturedData: CapturedField[],
+  pendingRequired: AssistantField[],
+  contactName: string | null,
+  contactPhone: string | null
+): Promise<void> {
+  const recipientId = assignedToUserId || activatedBy;
+  if (!recipientId) return;
+
+  try {
+    const captured = capturedData.filter(d => d.value_text && d.status !== "skipped");
+    const datosCapturados = captured.map(d => `• ${d.field_label}: ${d.value_text}`).join("\n") || "(ninguno)";
+    const datosPendientes = pendingRequired.map(f => `• ${f.label}`).join("\n") || "(ninguno)";
+    const tramiteUrl = `/tramites/${ticketId}`;
+
+    await supabase.from("notificaciones").insert({
+      usuario_id: recipientId,
+      tipo: "tramite",
+      titulo: `Nuevo trámite desde Agente Automático: #${folio}`,
+      mensaje: `Formulario: ${assistantName}\nContacto: ${contactName || "?"} (${contactPhone || "?"})\n\nDatos capturados:\n${datosCapturados}\n\nDatos pendientes:\n${datosPendientes}`,
+      url: tramiteUrl,
+      leida: false,
+    });
+  } catch (err) {
+    console.error("[cc-process] handoff notification error:", err);
+  }
 }
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
@@ -465,16 +617,96 @@ Deno.serve(async (req: Request) => {
           const { data: freshCaptured } = await supabase.from("contact_center_assistant_session_data").select("*").eq("session_id", session_id);
           const freshData: CapturedField[] = freshCaptured || [];
           const pendingReqNow = requiredFields.filter(f => !freshData.find((d: CapturedField) => d.field_key === f.field_key && d.value_text));
-          const ticketId = assistant.auto_create_tramite ? await createTramite(supabase, session, assistant, freshData, pendingReqNow) : null;
 
+          let ticketId: string | null = null;
+          let folio: string | null = null;
+          let creationError: string | null = null;
+
+          if (assistant.auto_create_tramite) {
+            // Build idempotency key: session_id + assistant_id + message_id(if any)
+            const idempKey = `${session_id}:${assistant.id}:${body.message_id || "confirm"}`;
+            const result = await createTramite(
+              supabase,
+              {
+                id: session_id,
+                agent_user_id: session.agent_user_id,
+                activated_by: session.activated_by || null,
+                contact_phone_prefilled: session.contact_phone_prefilled || null,
+                contact_name_prefilled: session.contact_name_prefilled || null,
+              },
+              {
+                id: assistant.id,
+                nombre: assistant.nombre,
+                tramite_tipo: assistant.tramite_tipo || null,
+                tramite_prioridad: assistant.tramite_prioridad || null,
+                tramite_assigned_to_user_id: (assistant as any).tramite_assigned_to_user_id || null,
+                tramite_estatus_slug: (assistant as any).tramite_estatus_slug || "Iniciado",
+                office_id: assistant.office_id || null,
+                form_title: assistant.form_title || null,
+                handoff_after_creation: (assistant as any).handoff_after_creation ?? true,
+              },
+              freshData,
+              pendingReqNow,
+              idempKey,
+              body.message_id || null
+            );
+            ticketId = result.ticket_id;
+            folio = result.folio;
+            creationError = result.error;
+          }
+
+          // If tramite creation failed, do NOT deactivate auto-mode yet
+          if (assistant.auto_create_tramite && !ticketId) {
+            await supabase.from("contact_center_assistant_sessions")
+              .update({ last_message_at: new Date().toISOString() }).eq("id", session_id);
+            await supabase.from("contact_center_assistant_events").insert({
+              session_id, event_type: "tramite_creation_failed", actor_type: "system",
+              message: creationError || "Error desconocido",
+            });
+            const errorMsg = "Estoy teniendo problema para registrar la solicitud. Un ejecutivo dará seguimiento por aquí.";
+            return jsonResponse(200, { ok: true, stage: "error", response_message: errorMsg, ticket_id: null, session_ended: false, error: creationError });
+          }
+
+          // Success — deactivate auto mode and send handoff
           await supabase.from("contact_center_assistant_sessions")
             .update({ status: "completed", current_stage: "completion", ticket_id: ticketId, completed_at: new Date().toISOString() }).eq("id", session_id);
           await supabase.from("contact_center_conversation_modes")
             .upsert({ agent_user_id: session.agent_user_id, mode: "normal", active_session_id: null, assigned_assistant_id: null, updated_at: new Date().toISOString() }, { onConflict: "agent_user_id" });
-          await supabase.from("contact_center_assistant_events").insert({ session_id, event_type: "session_completed", actor_type: "system", message: ticketId ? `Trámite: ${ticketId}` : "Completado" });
+          await supabase.from("contact_center_assistant_events").insert({
+            session_id, event_type: "session_completed", actor_type: "system",
+            message: ticketId ? `Trámite: ${folio || ticketId}` : "Completado sin trámite",
+            metadata: { ticket_id: ticketId, folio },
+          });
 
-          const replyMsg = assistant.completion_message || "Listo, ya registré tu solicitud. Un ejecutivo la revisará y te dará seguimiento por aquí.";
-          return jsonResponse(200, { ok: true, stage: "completion", response_message: replyMsg, ticket_id: ticketId, session_ended: true });
+          // Send handoff notification to responsible employee
+          if (ticketId && (assistant as any).handoff_after_creation !== false) {
+            const assignedTo = (assistant as any).tramite_assigned_to_user_id || session.activated_by || null;
+            EdgeRuntime.waitUntil(
+              sendHandoffNotification(
+                supabase, ticketId, folio || ticketId,
+                assignedTo, session.activated_by || null,
+                assistant.form_title || assistant.nombre,
+                freshData, pendingReqNow,
+                session.contact_name_prefilled || null,
+                session.contact_phone_prefilled || null
+              )
+            );
+          }
+
+          // Build reply message with direct link to tramite
+          let replyMsg: string;
+          if (ticketId) {
+            const tramiteLink = `${BASE_APP_URL}/tramites/${ticketId}`;
+            if (assistant.completion_message && !assistant.completion_message.includes("app.movi.digital")) {
+              replyMsg = assistant.completion_message + `\n\nPuedes consultar tu trámite aquí:\n${tramiteLink}`;
+            } else {
+              replyMsg = `Listo, tu solicitud fue registrada correctamente.\n\nPuedes consultar el trámite aquí:\n${tramiteLink}\n\nUn ejecutivo dará seguimiento por este medio.`;
+            }
+          } else {
+            replyMsg = assistant.completion_message || "Listo, ya registré tu solicitud. Un ejecutivo la revisará y te dará seguimiento por aquí.";
+          }
+
+          return jsonResponse(200, { ok: true, stage: "completion", response_message: replyMsg, ticket_id: ticketId, folio, session_ended: true });
 
         } else if (extraction.is_confirmation === false) {
           await supabase.from("contact_center_assistant_session_data")
@@ -505,7 +737,7 @@ Deno.serve(async (req: Request) => {
       const { agent_user_id } = body;
       if (!agent_user_id) return jsonResponse(400, { error: "agent_user_id required" });
       const { data: mode } = await supabase.from("contact_center_conversation_modes")
-        .select(`*, contact_center_assistant_sessions!active_session_id(id,status,current_stage,consent_given,started_at,messages_received,contact_phone_prefilled,contact_name_prefilled,contact_center_assistants(id,nombre,model),contact_center_assistant_session_data(field_key,field_label,value_text,confidence_score,status,requires_human_review,contact_center_assistant_fields(priority,label)))`)
+        .select(`*, contact_center_assistant_sessions!active_session_id(id,status,current_stage,consent_given,started_at,messages_received,contact_phone_prefilled,contact_name_prefilled,ticket_id,tramite_creation_error,contact_center_assistants(id,nombre,model),contact_center_assistant_session_data(field_key,field_label,value_text,confidence_score,status,requires_human_review,contact_center_assistant_fields(priority,label)))`)
         .eq("agent_user_id", agent_user_id).maybeSingle();
       if (!mode) return jsonResponse(200, { mode: "normal", active_session: null });
       return jsonResponse(200, { mode: mode.mode, assigned_assistant_id: mode.assigned_assistant_id, active_session: mode.contact_center_assistant_sessions || null });
