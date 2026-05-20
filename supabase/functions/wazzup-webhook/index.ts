@@ -55,6 +55,27 @@ Deno.serve(async (req: Request) => {
       logs.push(`statuses_processed=${payload.statuses.length}`);
     }
 
+    // Load all active users once for phone matching (outbound echo only)
+    let allUsers: Array<{ id: string; nombre_completo: string; celular_laboral?: string; celular_personal?: string }> = [];
+    {
+      const { data } = await supabase
+        .from("usuarios")
+        .select("id, nombre_completo, celular_laboral, celular_personal")
+        .eq("activo", true);
+      allUsers = data || [];
+    }
+
+    const findUserByPhone = (phone: string) => {
+      const digits = phone.replace(/\D/g, "");
+      const last10 = digits.slice(-10);
+      if (last10.length < 10) return null;
+      return allUsers.find((u) => {
+        const c1 = (u.celular_laboral || "").replace(/\D/g, "").slice(-10);
+        const c2 = (u.celular_personal || "").replace(/\D/g, "").slice(-10);
+        return c1 === last10 || c2 === last10;
+      }) || null;
+    };
+
     // Handle messages
     if (payload.messages && Array.isArray(payload.messages)) {
       logs.push(`messages_count=${payload.messages.length}`);
@@ -67,67 +88,22 @@ Deno.serve(async (req: Request) => {
 
         const isInbound = msg.status === "inbound" && !msg.isEcho;
         const isOutboundEcho = msg.isEcho === true;
-        logs.push(`msg_${msg.messageId}_status=${msg.status}_echo=${msg.isEcho}_inbound=${isInbound}_outEcho=${isOutboundEcho}`);
 
+        logs.push(`msg_${msg.messageId}_status=${msg.status}_echo=${msg.isEcho}_inbound=${isInbound}`);
+
+        // Non-echo outbound status updates only
         if (!isInbound && !isOutboundEcho) {
           if (["sent", "delivered", "read"].includes(msg.status)) {
             await supabase
               .from("contact_center_messages")
               .update({ status: msg.status, updated_at: new Date().toISOString() })
               .eq("provider_message_id", msg.messageId);
-            logs.push(`updated_outbound_${msg.messageId}`);
+            logs.push(`updated_outbound_status_${msg.messageId}`);
           }
           continue;
         }
 
-        // Find user by phone - get last 10 digits
-        const chatDigits = (msg.chatId || "").replace(/\D/g, "");
-        const last10 = chatDigits.slice(-10);
-        logs.push(`chatId=${msg.chatId}_last10=${last10}`);
-
-        let agentUserId: string | null = null;
-        let agentName: string | null = null;
-
-        if (last10.length === 10) {
-          const { data: users, error: userErr } = await supabase
-            .from("usuarios")
-            .select("id, nombre_completo, celular_laboral, celular_personal")
-            .eq("activo", true);
-
-          if (userErr) {
-            logs.push(`user_query_error=${userErr.message}`);
-          } else {
-            logs.push(`users_fetched=${users?.length || 0}`);
-            const match = users?.find((u: { celular_laboral?: string; celular_personal?: string }) => {
-              const cel1 = (u.celular_laboral || "").replace(/\D/g, "");
-              const cel2 = (u.celular_personal || "").replace(/\D/g, "");
-              return cel1.slice(-10) === last10 || cel2.slice(-10) === last10;
-            });
-            if (match) {
-              agentUserId = match.id;
-              agentName = match.nombre_completo;
-              logs.push(`matched_user=${match.id}_${match.nombre_completo}`);
-            } else {
-              logs.push(`no_user_match_for_${last10}`);
-            }
-          }
-        }
-
-        // For external contacts (no registered user match), store with contact_phone
-        let contactPhone: string | null = null;
-        let contactNameFromMsg: string | null = msg.contact?.name || null;
-        if (!agentUserId) {
-          if (last10.length === 10) {
-            // Store as external contact conversation using full chatId digits
-            contactPhone = chatDigits || last10;
-            logs.push(`external_contact_phone=${contactPhone}`);
-          } else {
-            logs.push(`skipping_no_agent_no_phone`);
-            continue;
-          }
-        }
-
-        // Check duplicates
+        // Duplicate check
         const { data: existing } = await supabase
           .from("contact_center_messages")
           .select("id")
@@ -139,23 +115,100 @@ Deno.serve(async (req: Request) => {
           continue;
         }
 
+        const chatDigits = (msg.chatId || "").replace(/\D/g, "");
+        const contactNameFromMsg: string | null = msg.contact?.name || null;
+
         const hasMedia = !!msg.contentUri && msg.type !== "text";
         const mediaTypeLabels: Record<string, string> = {
-          image: "Imagen",
-          video: "Video",
-          audio: "Audio",
-          document: "Documento",
-          sticker: "Sticker",
-          voice: "Audio",
+          image: "Imagen", video: "Video", audio: "Audio",
+          document: "Documento", sticker: "Sticker", voice: "Audio",
         };
         const mediaLabel = mediaTypeLabels[msg.type] || msg.type;
         const messageBody = msg.text || (hasMedia ? `[${mediaLabel}]` : "");
+        const attachmentUrls = hasMedia
+          ? [{ url: msg.contentUri, type: msg.type, name: msg.fileName || mediaLabel }]
+          : null;
 
-        const direction = isInbound ? "inbound" : "outbound";
-        const status = isInbound ? "received" : "sent";
-        const senderType = isInbound ? "user" : "system";
+        let agentUserId: string | null = null;
+        let agentName: string | null = null;
+        let contactPhone: string | null = null;
+        let direction: string;
+        let status: string;
+        let senderType: string;
 
-        const attachmentUrls = hasMedia ? [{ url: msg.contentUri, type: msg.type, name: msg.fileName || `${mediaLabel}` }] : null;
+        if (isOutboundEcho) {
+          // Outbound echo: chatId is the RECIPIENT (agent/user phone)
+          // Match recipient to a registered user
+          const matched = findUserByPhone(chatDigits);
+          if (matched) {
+            agentUserId = matched.id;
+            agentName = matched.nombre_completo;
+            logs.push(`echo_matched_agent=${matched.id}_${matched.nombre_completo}`);
+          } else {
+            // No user match for echo — try finding by prior outbound message to same chatId
+            const { data: priorMsg } = await supabase
+              .from("contact_center_messages")
+              .select("agent_user_id, contact_phone")
+              .eq("metadata->>chat_id", msg.chatId)
+              .not("agent_user_id", "is", null)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (priorMsg?.agent_user_id) {
+              agentUserId = priorMsg.agent_user_id;
+              logs.push(`echo_matched_via_prior_msg_agent=${agentUserId}`);
+            } else {
+              // Store as external contact echo
+              contactPhone = chatDigits || null;
+              logs.push(`echo_external_contact_phone=${contactPhone}`);
+            }
+          }
+          direction = "outbound";
+          status = "sent";
+          senderType = "user";
+        } else {
+          // INBOUND: chatId is the SENDER (client/customer phone)
+          // Strategy: look for prior outbound messages TO this chatId → that's the agent
+          const { data: priorOutbound } = await supabase
+            .from("contact_center_messages")
+            .select("agent_user_id, contact_phone")
+            .eq("metadata->>chat_id", msg.chatId)
+            .eq("direction", "outbound")
+            .not("agent_user_id", "is", null)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (priorOutbound?.agent_user_id) {
+            // This client has received outbound messages for this agent → link to that agent
+            agentUserId = priorOutbound.agent_user_id;
+            const agentRecord = allUsers.find(u => u.id === agentUserId);
+            agentName = agentRecord?.nombre_completo || null;
+            logs.push(`inbound_matched_agent_via_prior_outbound=${agentUserId}`);
+          } else {
+            // Check if chatId matches a registered user (agent replying from their own phone)
+            const matchedUser = findUserByPhone(chatDigits);
+            if (matchedUser) {
+              agentUserId = matchedUser.id;
+              agentName = matchedUser.nombre_completo;
+              logs.push(`inbound_matched_registered_user=${matchedUser.id}`);
+            } else {
+              // Unknown sender → store as external contact
+              contactPhone = chatDigits || null;
+              logs.push(`inbound_external_contact_phone=${contactPhone}`);
+            }
+          }
+          direction = "inbound";
+          status = "received";
+          senderType = "user";
+        }
+
+        // Skip if no agent and no phone to store with
+        if (!agentUserId && !contactPhone) {
+          logs.push(`skip_no_agent_no_phone_${msg.messageId}`);
+          continue;
+        }
 
         const { data: insertedMsg, error: insertErr } = await supabase
           .from("contact_center_messages")
@@ -191,96 +244,93 @@ Deno.serve(async (req: Request) => {
 
         if (insertErr) {
           logs.push(`insert_error=${insertErr.message}`);
-        } else {
-          logs.push(`inserted_${msg.messageId}`);
+          continue;
+        }
 
-          // Insert attachment record for media messages
-          if (hasMedia && insertedMsg?.id) {
-            const fileTypeMap: Record<string, string> = {
-              image: "image",
-              video: "video",
-              audio: "audio",
-              voice: "audio",
-              document: "document",
-              sticker: "image",
-            };
-            const fileName = msg.fileName || `${mediaLabel}_${Date.now()}`;
-            const { error: attErr } = await supabase
-              .from("contact_center_attachments")
-              .insert({
-                message_id: insertedMsg.id,
-                agent_user_id: agentUserId,
-                provider: "wazzup",
-                provider_file_id: msg.messageId,
-                file_name: fileName,
-                file_type: fileTypeMap[msg.type] || "document",
-                mime_type: msg.mimeType || null,
-                file_url: msg.contentUri,
-                direction,
-                metadata: {
-                  content_uri: msg.contentUri,
-                  wazzup_type: msg.type,
-                  channel_id: msg.channelId,
-                },
-              });
-            if (attErr) {
-              logs.push(`att_insert_error=${attErr.message}`);
-            } else {
-              logs.push(`att_inserted_for_${msg.messageId}`);
+        logs.push(`inserted_${msg.messageId}_dir=${direction}`);
+
+        // Insert attachment record
+        if (hasMedia && insertedMsg?.id) {
+          const fileTypeMap: Record<string, string> = {
+            image: "image", video: "video", audio: "audio",
+            voice: "audio", document: "document", sticker: "image",
+          };
+          await supabase.from("contact_center_attachments").insert({
+            message_id: insertedMsg.id,
+            agent_user_id: agentUserId,
+            provider: "wazzup",
+            provider_file_id: msg.messageId,
+            file_name: msg.fileName || `${mediaLabel}_${Date.now()}`,
+            file_type: fileTypeMap[msg.type] || "document",
+            mime_type: msg.mimeType || null,
+            file_url: msg.contentUri,
+            direction,
+            metadata: {
+              content_uri: msg.contentUri,
+              wazzup_type: msg.type,
+              channel_id: msg.channelId,
+            },
+          });
+        }
+
+        // Notify employees for inbound messages
+        if (isInbound) {
+          const displayName = agentName || contactNameFromMsg || contactPhone || "Contacto externo";
+          const preview = messageBody.length > 60 ? messageBody.slice(0, 60) + "..." : messageBody;
+          const notifiedIds = new Set<string>();
+
+          if (agentUserId) {
+            // Notify employees/ejecutivos with open tramites for this agent
+            const { data: asignaciones } = await supabase
+              .from("ticket_asignaciones")
+              .select("ejecutivo_id, ticket_id, tickets!inner(cerrado, agente_usuario_id)")
+              .eq("tickets.agente_usuario_id", agentUserId)
+              .eq("tickets.cerrado", false);
+
+            if (asignaciones) {
+              for (const asig of asignaciones) {
+                if (asig.ejecutivo_id) notifiedIds.add(asig.ejecutivo_id);
+              }
+            }
+            // Also notify admins and gerentes of the agent's office
+            const agentRecord = allUsers.find(u => u.id === agentUserId);
+            if (agentRecord) {
+              const { data: officeAdmins } = await supabase
+                .from("usuarios")
+                .select("id, oficina_id")
+                .in("rol", ["Administrador", "Gerente"])
+                .eq("activo", true);
+              if (officeAdmins) {
+                for (const a of officeAdmins) notifiedIds.add(a.id);
+              }
+            }
+          } else {
+            // External contact: notify all Admins and Gerentes
+            const { data: admins } = await supabase
+              .from("usuarios")
+              .select("id")
+              .in("rol", ["Administrador", "Gerente"])
+              .eq("activo", true);
+            if (admins) {
+              for (const a of admins) notifiedIds.add(a.id);
             }
           }
 
-          // Notify relevant employees for inbound messages
-          if (isInbound) {
-            const displayName = agentName || contactNameFromMsg || contactPhone || "Contacto externo";
-            const preview = messageBody.length > 60 ? messageBody.slice(0, 60) + "..." : messageBody;
-            const notifiedIds = new Set<string>();
-
-            if (agentUserId) {
-              // Registered user: notify employees handling open tramites for this agent
-              const { data: asignaciones } = await supabase
-                .from("ticket_asignaciones")
-                .select("ejecutivo_id, ticket_id, tickets!inner(cerrado, agente_usuario_id)")
-                .eq("tickets.agente_usuario_id", agentUserId)
-                .eq("tickets.cerrado", false);
-
-              if (asignaciones) {
-                for (const asig of asignaciones) {
-                  if (asig.ejecutivo_id) notifiedIds.add(asig.ejecutivo_id);
-                }
-              }
-            } else {
-              // External contact: notify all Administrador and Gerente users
-              const { data: admins } = await supabase
-                .from("usuarios")
-                .select("id")
-                .in("rol", ["Administrador", "Gerente"])
-                .eq("activo", true);
-              if (admins) {
-                for (const a of admins) notifiedIds.add(a.id);
-              }
-            }
-
-            if (notifiedIds.size > 0) {
-              const notifications = [...notifiedIds].map(uid => ({
-                usuario_id: uid,
-                titulo: `Mensaje de WhatsApp de ${displayName}`,
-                mensaje: preview,
-                tipo: "info",
-                modulo: "Centro de Contacto",
-                accion_url: "/centro-contacto",
-                accion_texto: "Ver conversacion",
-                leida: false,
-                prioridad: "normal",
-                metadata: { agent_user_id: agentUserId, contact_phone: contactPhone, message_id: msg.messageId },
-              }));
-
-              const { error: notifErr } = await supabase
-                .from("notificaciones")
-                .insert(notifications);
-
-              logs.push(`notified_${notifiedIds.size}_users${notifErr ? `_err=${notifErr.message}` : ""}`);
-            }
+          if (notifiedIds.size > 0) {
+            const notifications = [...notifiedIds].map(uid => ({
+              usuario_id: uid,
+              titulo: `Mensaje de WhatsApp de ${displayName}`,
+              mensaje: preview,
+              tipo: "info",
+              modulo: "Centro de Contacto",
+              accion_url: "/centro-contacto",
+              accion_texto: "Ver conversacion",
+              leida: false,
+              prioridad: "normal",
+              metadata: { agent_user_id: agentUserId, contact_phone: contactPhone, message_id: msg.messageId },
+            }));
+            const { error: notifErr } = await supabase.from("notificaciones").insert(notifications);
+            logs.push(`notified_${notifiedIds.size}_users${notifErr ? `_err=${notifErr.message}` : ""}`);
           }
         }
       }
