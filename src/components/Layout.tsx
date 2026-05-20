@@ -326,11 +326,13 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
         )}
 
         <main className={cn(
-          location.pathname === '/multicotizador-digital'
-            ? 'h-screen'
+          ['/multicotizador-digital', '/centro-contacto'].includes(location.pathname)
+            ? 'h-screen overflow-hidden'
             : 'w-full py-5 lg:py-8',
           ['/espacio-jiro'].includes(location.pathname)
             ? 'px-4 sm:px-6 lg:px-8'
+            : ['/multicotizador-digital', '/centro-contacto'].includes(location.pathname)
+            ? ''
             : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'
         )}>
           {children}
