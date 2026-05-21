@@ -7,6 +7,13 @@ import './index.css';
 const PUBLIC_HOSTS = new Set(["agentedeseguros.website", "www.agentedeseguros.website"]);
 const MAIN_REDIRECT = "https://www.movi.digital";
 
+// Unregister service workers on public domain to prevent stale caching
+if (PUBLIC_HOSTS.has(window.location.host.toLowerCase()) && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(r => r.unregister());
+  });
+}
+
 function normalizeHost(h: string) {
   return h.toLowerCase();
 }
@@ -37,8 +44,9 @@ function getSlug(path: string) {
     return;
   }
 
-  // Allow /cotizar/:slug paths (public quote form links)
-  if (path.startsWith('/cotizar/')) return;
+  // Public paths that should always be allowed on agentedeseguros.website
+  if (path.startsWith('/cotizar/') || path.startsWith('/cotizar?') || path === '/cotizar') return;
+  if (path === '/registro-personal' || path.startsWith('/registro-personal')) return;
 
   if (!isSingleSlugPath(path)) {
     window.location.replace(MAIN_REDIRECT);
