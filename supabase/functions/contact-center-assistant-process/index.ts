@@ -14,6 +14,17 @@ function jsonResponse(status: number, body: unknown) {
   });
 }
 
+// ── MOVI IA Signature ─────────────────────────────────────────────────────────
+const MOVI_IA_SIGNATURE = "- 🤖 MOVI IA";
+const SIGNATURE_VARIANTS = [MOVI_IA_SIGNATURE, "🤖 MOVI IA", "- MOVI IA", "MOVI IA"];
+
+function appendMoviIaSignature(message: string): string {
+  if (!message?.trim()) return message;
+  const clean = message.trim();
+  if (SIGNATURE_VARIANTS.some(v => clean.endsWith(v))) return clean;
+  return `${clean}\n\n${MOVI_IA_SIGNATURE}`;
+}
+
 interface AssistantField {
   id: string;
   field_key: string;
@@ -579,10 +590,10 @@ Deno.serve(async (req: Request) => {
       let welcomeMsg: string;
       if (hasOnlineForm) {
         // New entry choice message — always shown first when form is available
-        welcomeMsg = `Hola, puedo ayudarte de dos formas:\n1️⃣ Llenar el formulario en línea\n2️⃣ Responder las preguntas por aquí\n¿Qué prefieres?`;
+        welcomeMsg = appendMoviIaSignature(`Hola, puedo ayudarte de dos formas:\n1️⃣ Llenar el formulario en línea\n2️⃣ Responder las preguntas por aquí\n¿Qué prefieres?`);
       } else {
-        welcomeMsg = assistant.consent_message || assistant.welcome_message ||
-          `Hola, soy el asistente de MOVI para *${assistant.nombre}*. ¿Podemos comenzar?`;
+        welcomeMsg = appendMoviIaSignature(assistant.consent_message || assistant.welcome_message ||
+          `Hola, soy el asistente de MOVI para *${assistant.nombre}*. ¿Podemos comenzar?`);
       }
 
       return jsonResponse(200, {
@@ -708,7 +719,7 @@ Deno.serve(async (req: Request) => {
             },
           ]);
 
-          const formMsg = `Perfecto, puedes llenar el formulario aquí:\n${formLink}\n\nCuando lo envíes, ${displayName} dará seguimiento a tu solicitud por este medio.`;
+          const formMsg = appendMoviIaSignature(`Perfecto, puedes llenar el formulario aquí:\n${formLink}\n\nCuando lo envíes, ${displayName} dará seguimiento a tu solicitud por este medio.`);
           return jsonResponse(200, {
             ok: true,
             stage: "completion",
@@ -738,12 +749,12 @@ Deno.serve(async (req: Request) => {
           // Send the first question or consent
           const freshAllPending = allAskable.filter(f => !capturedKeys.has(f.field_key));
           if (nextStage === "consent") {
-            responseMessage = assistant.consent_message!;
+            responseMessage = appendMoviIaSignature(assistant.consent_message!);
           } else if (freshAllPending.length === 0) {
             newStage = "summary";
-            responseMessage = `Tengo esto:\n${buildSummary(capturedData)}\n\n¿Lo registro así?`;
+            responseMessage = appendMoviIaSignature(`Tengo esto:\n${buildSummary(capturedData)}\n\n¿Lo registro así?`);
           } else {
-            responseMessage = `Perfecto, lo hacemos por aquí.\n${buildBlockQuestion(freshAllPending, blockSize)}`;
+            responseMessage = appendMoviIaSignature(`Perfecto, lo hacemos por aquí.\n${buildBlockQuestion(freshAllPending, blockSize)}`);
           }
           newStage = nextStage;
 
@@ -770,17 +781,17 @@ Deno.serve(async (req: Request) => {
 
             const freshAllPending = allAskable.filter(f => !capturedKeys.has(f.field_key));
             if (nextStage === "consent") {
-              responseMessage = assistant.consent_message!;
+              responseMessage = appendMoviIaSignature(assistant.consent_message!);
             } else if (freshAllPending.length === 0) {
               newStage = "summary";
-              responseMessage = `Tengo esto:\n${buildSummary(capturedData)}\n\n¿Lo registro así?`;
+              responseMessage = appendMoviIaSignature(`Tengo esto:\n${buildSummary(capturedData)}\n\n¿Lo registro así?`);
             } else {
-              responseMessage = `Perfecto, lo hacemos por aquí.\n${buildBlockQuestion(freshAllPending, blockSize)}`;
+              responseMessage = appendMoviIaSignature(`Perfecto, lo hacemos por aquí.\n${buildBlockQuestion(freshAllPending, blockSize)}`);
             }
             newStage = nextStage;
           } else {
             // Re-ask once
-            responseMessage = `¿Prefieres llenar el formulario en línea o responder por aquí?\n\n1️⃣ Llenar formulario\n2️⃣ Responder por WhatsApp`;
+            responseMessage = appendMoviIaSignature(`¿Prefieres llenar el formulario en línea o responder por aquí?\n\n1️⃣ Llenar formulario\n2️⃣ Responder por WhatsApp`);
             newStage = "entry_choice";
           }
         }
@@ -810,16 +821,16 @@ Deno.serve(async (req: Request) => {
           const freshPending = allAskable.filter(f => !capturedKeys.has(f.field_key));
           if (freshPending.length === 0) {
             newStage = "summary";
-            responseMessage = `Tengo esto:\n${buildSummary(capturedData)}\n\n¿Lo registro así?`;
+            responseMessage = appendMoviIaSignature(`Tengo esto:\n${buildSummary(capturedData)}\n\n¿Lo registro así?`);
           } else {
-            responseMessage = buildBlockQuestion(freshPending, blockSize);
+            responseMessage = appendMoviIaSignature(buildBlockQuestion(freshPending, blockSize));
           }
         } else if (refused) {
           await supabase.from("contact_center_assistant_sessions").update({ status: "cancelled" }).eq("id", session_id);
           await supabase.from("contact_center_conversation_modes").upsert({ agent_user_id: session.agent_user_id, mode: "normal", active_session_id: null, assigned_assistant_id: null, updated_at: new Date().toISOString() }, { onConflict: "agent_user_id" });
-          return jsonResponse(200, { ok: true, stage: "cancelled", response_message: "Entendido, cancelamos. Un agente puede asistirte.", session_ended: true });
+          return jsonResponse(200, { ok: true, stage: "cancelled", response_message: appendMoviIaSignature("Entendido, cancelamos. Un agente puede asistirte."), session_ended: true });
         } else {
-          responseMessage = assistant.consent_message || "Para continuar, ¿aceptas? (Sí / No)";
+          responseMessage = appendMoviIaSignature(assistant.consent_message || "Para continuar, ¿aceptas? (Sí / No)");
         }
       }
 
@@ -894,7 +905,7 @@ Deno.serve(async (req: Request) => {
             const question = getNextQuestion(currentField, newAttempts);
             await supabase.from("contact_center_assistant_sessions")
               .update({ last_message_at: new Date().toISOString(), messages_received: session.messages_received + 1 }).eq("id", session_id);
-            return jsonResponse(200, { ok: true, stage: "capturing", response_message: question, session_ended: false });
+            return jsonResponse(200, { ok: true, stage: "capturing", response_message: appendMoviIaSignature(question), session_ended: false });
           }
         }
 
@@ -917,13 +928,13 @@ Deno.serve(async (req: Request) => {
 
           if (pendingImportant.length > 0 && !allowIncomplete) {
             // Ask remaining recommended fields in a block (once, with skip option)
-            responseMessage = buildOptionalBlockQuestion(pendingImportant, blockSize);
+            responseMessage = appendMoviIaSignature(buildOptionalBlockQuestion(pendingImportant, blockSize));
           } else {
             newStage = "summary";
-            responseMessage = `Tengo esto:\n${buildSummary(freshCaptured || [])}\n\n¿Lo registro así?`;
+            responseMessage = appendMoviIaSignature(`Tengo esto:\n${buildSummary(freshCaptured || [])}\n\n¿Lo registro así?`);
           }
         } else {
-          responseMessage = buildBlockQuestion(pendingRequiredNow, blockSize);
+          responseMessage = appendMoviIaSignature(buildBlockQuestion(pendingRequiredNow, blockSize));
         }
       }
 
@@ -995,9 +1006,9 @@ Deno.serve(async (req: Request) => {
               assistant.office_id || null
             );
             const errRespName = errResponsible?.name || responsibleName;
-            const errorMsg = errRespName
+            const errorMsg = appendMoviIaSignature(errRespName
               ? `Tuve un problema al registrar tu solicitud. ${errRespName} te dará seguimiento por este medio.`
-              : "Tuve un problema al registrar tu solicitud. El equipo de atención te dará seguimiento por este medio.";
+              : "Tuve un problema al registrar tu solicitud. El equipo de atención te dará seguimiento por este medio.");
             return jsonResponse(200, { ok: true, stage: "error", response_message: errorMsg, ticket_id: null, session_ended: false, error: creationError });
           }
 
@@ -1067,7 +1078,7 @@ Deno.serve(async (req: Request) => {
             replyMsg += `\n${followupLine}`;
           }
 
-          return jsonResponse(200, { ok: true, stage: "completion", response_message: replyMsg, ticket_id: ticketId, folio, responsible_name: respName, session_ended: true });
+          return jsonResponse(200, { ok: true, stage: "completion", response_message: appendMoviIaSignature(replyMsg), ticket_id: ticketId, folio, responsible_name: respName, session_ended: true });
 
         } else if (extraction.is_confirmation === false) {
           await supabase.from("contact_center_assistant_session_data")
@@ -1075,9 +1086,9 @@ Deno.serve(async (req: Request) => {
             .not("source", "eq", "whatsapp_contact").not("source", "eq", "prefilled");
           newStage = "capturing";
           const first = allAskable[0];
-          responseMessage = first ? (first.prompt_text || `¿${first.label}?`) : "Dime qué quieres corregir.";
+          responseMessage = appendMoviIaSignature(first ? (first.prompt_text || `¿${first.label}?`) : "Dime qué quieres corregir.");
         } else {
-          responseMessage = `${buildSummary(capturedData)}\n\n¿Lo registro así?`;
+          responseMessage = appendMoviIaSignature(`${buildSummary(capturedData)}\n\n¿Lo registro así?`);
         }
       }
 
@@ -1127,7 +1138,7 @@ Deno.serve(async (req: Request) => {
       await supabase.from("contact_center_assistant_sessions").update({ status: "transferred", transferred_to: transfer_to || null, transfer_reason: transfer_reason || "Transferido" }).eq("id", session_id);
       await supabase.from("contact_center_assistant_events").insert({ session_id, event_type: "session_transferred", actor_type: "operator", message: transfer_reason || null, metadata: { transfer_to } });
       if (s?.agent_user_id) await supabase.from("contact_center_conversation_modes").upsert({ agent_user_id: s.agent_user_id, mode: "normal", active_session_id: null, assigned_assistant_id: null, updated_at: new Date().toISOString() }, { onConflict: "agent_user_id" });
-      const msg = (s?.contact_center_assistants as { transfer_message?: string })?.transfer_message || "Un agente continuará atendiéndote. ¡Gracias!";
+      const msg = appendMoviIaSignature((s?.contact_center_assistants as { transfer_message?: string })?.transfer_message || "Un agente continuará atendiéndote. ¡Gracias!");
       return jsonResponse(200, { ok: true, status: "transferred", transfer_message: msg });
     }
 

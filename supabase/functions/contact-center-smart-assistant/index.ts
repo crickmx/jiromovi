@@ -16,6 +16,16 @@ function jsonResponse(status: number, body: unknown) {
   });
 }
 
+const MOVI_IA_SIGNATURE = "- 🤖 MOVI IA";
+const SIGNATURE_VARIANTS = [MOVI_IA_SIGNATURE, "🤖 MOVI IA", "- MOVI IA", "MOVI IA"];
+
+function appendMoviIaSignature(message: string): string {
+  if (!message?.trim()) return message;
+  const clean = message.trim();
+  if (SIGNATURE_VARIANTS.some(v => clean.endsWith(v))) return clean;
+  return `${clean}\n\n${MOVI_IA_SIGNATURE}`;
+}
+
 // ── Intent detection ──────────────────────────────────────────────────────────
 
 interface IntentMatch {
@@ -520,7 +530,7 @@ Deno.serve(async (req: Request) => {
           });
 
           const stopMsg = result.action === "stop_assistant"
-            ? `Claro, ${responsibleName} te atenderá por este medio.`
+            ? appendMoviIaSignature(`Claro, ${responsibleName} te atenderá por este medio.`)
             : null;
 
           return jsonResponse(200, { ...result, stop_message: stopMsg, responsible_name: responsibleName });
