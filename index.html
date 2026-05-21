@@ -1,6 +1,36 @@
 <!doctype html>
 <html lang="es">
   <head>
+    <script>
+      // Domain gate: MUST be first script to prevent stale SW from redirecting public pages
+      (function() {
+        var host = window.location.host.toLowerCase();
+        if (host !== 'agentedeseguros.website' && host !== 'www.agentedeseguros.website') return;
+        // Unregister all service workers immediately on public domain
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(regs) {
+            regs.forEach(function(r) { r.unregister(); });
+          });
+        }
+        if ('caches' in window) {
+          caches.keys().then(function(names) {
+            names.forEach(function(n) { caches.delete(n); });
+          });
+        }
+        var path = window.location.pathname || '/';
+        // Allow public form pages
+        if (path.indexOf('/cotizar/') === 0 || path === '/cotizar') return;
+        if (path.indexOf('/registro-personal') === 0) return;
+        // Allow single-segment agent slugs (not reserved)
+        if (/^\/[^\/]+$/.test(path)) {
+          var slug = path.replace(/^\/+/, '').toLowerCase();
+          var reserved = ['login','dashboard','crm','comisiones','publicidad','admin','api','assets','configuracion','directorio','chat','vacaciones','tramites','store','mis-comisiones','mi-produccion','oficinas','notificaciones','comunicados','perfil','usuarios','education','espacio-jiro','movimeet','catalogos'];
+          if (slug && reserved.indexOf(slug) === -1) return;
+        }
+        // Everything else redirects to main site
+        window.location.replace('https://www.movi.digital');
+      })();
+    </script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/png" sizes="192x192" href="/pwa-icon-192.png" />
@@ -54,26 +84,6 @@
         if (shouldBeDark) {
           document.documentElement.classList.add('dark');
         }
-      })();
-    </script>
-    <script>
-      (function() {
-        var host = window.location.host.toLowerCase();
-        if (host !== 'agentedeseguros.website' && host !== 'www.agentedeseguros.website') return;
-        var path = window.location.pathname || '/';
-        if (path.indexOf('/cotizar/') === 0 || path === '/cotizar') return;
-        if (path.indexOf('/registro-personal') === 0) return;
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then(function(regs) {
-            regs.forEach(function(r) { r.unregister(); });
-          });
-        }
-        if (/^\/[^\/]+$/.test(path)) {
-          var slug = path.replace(/^\/+/, '').toLowerCase();
-          var reserved = ['login','dashboard','crm','comisiones','publicidad','admin','api','assets','configuracion','directorio','chat','vacaciones','tramites','store','mis-comisiones','mi-produccion','oficinas','notificaciones','comunicados','perfil','usuarios','education','espacio-jiro','movimeet','catalogos'];
-          if (slug && reserved.indexOf(slug) === -1) return;
-        }
-        window.location.replace('https://www.movi.digital');
       })();
     </script>
   </head>
