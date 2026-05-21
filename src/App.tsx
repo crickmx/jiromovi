@@ -105,6 +105,7 @@ import ManualViewer from './pages/ManualViewer';
 import ManualesAdmin from './pages/ManualesAdmin';
 import CentroContactoAsistentes from './pages/CentroContactoAsistentes';
 import AsistenteEntrenamiento from './pages/AsistenteEntrenamiento';
+import PublicQuoteForm from './pages/PublicQuoteForm';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -880,6 +881,9 @@ function App() {
 
               {/* Ruta pública - Registro de Personal */}
               <Route path="/registro-personal" element={<RegistroPersonal />} />
+
+              {/* Ruta pública - Formulario compartido de cotizacion */}
+              <Route path="/cotizar/:slug" element={<PublicQuoteForm />} />
 
               {/* Ruta pública - catch-all para slugs */}
               <Route path="/:slug" element={<PaginaPublicaAsesor />} />
