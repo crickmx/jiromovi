@@ -18,11 +18,16 @@ export type ClientType = 'fisica' | 'moral' | 'no_especificado';
 
 export type FormCategory =
   | 'Personas'
+  | 'Autos'
   | 'Hogar'
   | 'Empresarial'
   | 'Responsabilidad Civil'
+  | 'Fianzas y Credito'
+  | 'Agro'
+  | 'RC y Financiero'
   | 'Transportes'
-  | 'Ingenieria';
+  | 'Ingenieria'
+  | 'Especializados';
 
 export interface QuoteFormTemplate {
   id: string;
@@ -118,11 +123,16 @@ export const PRIORITY_CONFIG: Record<QuoteFormPriority, { label: string; color: 
 
 export const CATEGORY_CONFIG: Record<FormCategory, { color: string; bg: string; border: string }> = {
   Personas:               { color: 'text-rose-700',    bg: 'bg-rose-50',    border: 'border-rose-200' },
+  Autos:                  { color: 'text-blue-700',    bg: 'bg-blue-50',    border: 'border-blue-200' },
   Hogar:                  { color: 'text-sky-700',     bg: 'bg-sky-50',     border: 'border-sky-200' },
   Empresarial:            { color: 'text-teal-700',    bg: 'bg-teal-50',    border: 'border-teal-200' },
   'Responsabilidad Civil':{ color: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-200' },
+  'Fianzas y Credito':    { color: 'text-orange-700',  bg: 'bg-orange-50',  border: 'border-orange-200' },
+  Agro:                   { color: 'text-green-700',   bg: 'bg-green-50',   border: 'border-green-200' },
+  'RC y Financiero':      { color: 'text-yellow-700',  bg: 'bg-yellow-50',  border: 'border-yellow-200' },
   Transportes:            { color: 'text-cyan-700',    bg: 'bg-cyan-50',    border: 'border-cyan-200' },
   Ingenieria:             { color: 'text-slate-700',   bg: 'bg-slate-50',   border: 'border-slate-200' },
+  Especializados:         { color: 'text-pink-700',    bg: 'bg-pink-50',    border: 'border-pink-200' },
 };
 
 export const CURRENCY_OPTIONS = [

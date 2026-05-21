@@ -5,7 +5,9 @@ import {
   Home, Building2, Factory, Shield, Truck, Wrench, Heart,
   GraduationCap, Car, Store, Flame, Fuel, Briefcase, BadgeCheck,
   Baby, Leaf, Bus, Plane, Ship, HardHat, Cog, Settings, Thermometer, Monitor,
-  ChevronDown,
+  ChevronDown, Users, UserCheck, TreePine, Wheat, Tractor, ShieldCheck, Lock,
+  Banknote, Eye, Smile, CalendarDays, PawPrint, KeyRound, Building, Frame,
+  Cpu, DollarSign, Scale, AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchQuoteFormTemplates } from '../lib/quoteFormUtils';
@@ -16,9 +18,15 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Home, Building2, Factory, Shield, Truck, Wrench, Heart,
   GraduationCap, Car, Store, Flame, Fuel, Briefcase, BadgeCheck,
   Baby, Leaf, Bus, Plane, Ship, HardHat, Cog, Settings, Thermometer, Monitor, FileText,
+  Users, UserCheck, TreePine, Wheat, Tractor, ShieldCheck, Lock, Banknote,
+  Eye, Smile, CalendarDays, PawPrint, KeyRound, Building, Frame, Cpu,
+  DollarSign, Scale, AlertTriangle,
 };
 
-const CATEGORY_ORDER: FormCategory[] = ['Personas', 'Hogar', 'Empresarial', 'Responsabilidad Civil', 'Transportes', 'Ingenieria'];
+const CATEGORY_ORDER: FormCategory[] = [
+  'Personas', 'Autos', 'Hogar', 'Empresarial', 'Responsabilidad Civil',
+  'Fianzas y Credito', 'Agro', 'RC y Financiero', 'Transportes', 'Ingenieria', 'Especializados',
+];
 
 export default function FormulariosCotizacion() {
   const navigate = useNavigate();
@@ -85,6 +93,7 @@ export default function FormulariosCotizacion() {
           >
             <option value="">Todas las categorias</option>
             {CATEGORY_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
+
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
         </div>
