@@ -667,22 +667,43 @@ Deno.serve(async (req: Request) => {
         const formTypeSlug: string | null = (assistant as any).form_type_slug || null;
 
         // Detect "online form" intent
-        const wantsForm = [
+        const formKeywords = [
           "formulario", "form", "link", "enlace", "en línea", "en linea",
           "llenar", "llenarlo", "llenar formulario", "mándame", "mandame",
-          "manda", "el link", "el formato", "formato", "1", "opción 1", "opcion 1",
-        ].some(kw => lower.includes(kw));
+          "manda", "el link", "el formato", "formato", "opción 1", "opcion 1",
+        ];
+        const wantsForm = formKeywords.some(kw => lower.includes(kw)) || lower === "1";
 
         // Detect "guided questions" intent
-        const wantsQuestions = [
+        const questionKeywords = [
           "preguntas", "por aquí", "por aqui", "whatsapp", "responder",
-          "vamos por aquí", "vamos por aqui", "aquí", "aqui", "por aquí",
-          "2", "opción 2", "opcion 2", "así", "asi", "dale",
-        ].some(kw => lower.includes(kw));
+          "vamos por aquí", "vamos por aqui", "aquí", "aqui",
+          "opción 2", "opcion 2", "por aquí mismo", "por chat",
+        ];
+        const wantsQuestions = questionKeywords.some(kw => lower.includes(kw)) || lower === "2" || lower === "dale";
 
         if (wantsForm && formTypeSlug) {
           // ── PATH A: ONLINE FORM ──
-          const formLink = `${BASE_APP_URL}/tramites/formularios/${formTypeSlug}`;
+          // Look up the agent's personalized shared link for this form type
+          let formLink = "";
+          const { data: sharedLink } = await supabase
+            .from("shared_quote_form_links")
+            .select("slug, public_url")
+            .eq("agent_id", session.agent_user_id)
+            .eq("form_type", formTypeSlug)
+            .eq("status", "active")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (sharedLink?.public_url) {
+            formLink = sharedLink.public_url;
+          } else if (sharedLink?.slug) {
+            formLink = `https://agentedeseguros.website/cotizar/${sharedLink.slug}`;
+          } else {
+            // Fallback: use the internal route (better than nothing)
+            formLink = `${BASE_APP_URL}/tramites/formularios/nuevo/${formTypeSlug}`;
+          }
           const displayName = responsibleName || "nuestro equipo";
 
           // Mark session as form_link_sent and deactivate auto mode

@@ -235,9 +235,14 @@ export default function CentroContacto() {
   const smartAssistantStateRef = useRef<SmartAssistantState | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const selectedAgentRef = useRef<ConversationSummary | null>(null);
+  const messagesRef = useRef<Message[]>([]);
   const loadConversationsRef = useRef<() => void>(() => {});
+  const loadMessagesRef = useRef<(id: string, ext?: boolean, phone?: string | null) => Promise<void>>(async () => {});
   const loadSmartAssistantStateRef = useRef<(id: string) => Promise<void>>(async () => {});
+  const isNearBottomRef = useRef(true);
+  const lastMessageCountRef = useRef(0);
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
   const canFilterOffice = isAdmin || isGerente;
@@ -270,8 +275,10 @@ export default function CentroContacto() {
     setLoading(false);
   }, [usuario, filterChannel, filterType, filterOffice, searchQuery, filterUnassigned]);
 
-  // Keep ref in sync so realtime callbacks always use the latest version
+  // Keep refs in sync so realtime callbacks and polling always use the latest version
   loadConversationsRef.current = loadConversations;
+  loadMessagesRef.current = loadMessages;
+  messagesRef.current = messages;
 
   // Load messages
   const loadMessages = useCallback(async (agentId: string, isExternal?: boolean, contactPhone?: string | null) => {
@@ -335,9 +342,8 @@ export default function CentroContacto() {
           }
         }
 
-        setMessages(data.map(m => {
+        const newMessages = data.map(m => {
           let atts = attachMap[m.id] || [];
-          // Fallback: synthesize from attachment_urls JSONB if no records in attachments table
           if (atts.length === 0 && m.attachment_urls && Array.isArray(m.attachment_urls)) {
             atts = (m.attachment_urls as Array<{ url?: string; type?: string; name?: string }>).filter(a => a.url).map((a, i) => ({
               id: `${m.id}_synth_${i}`,
@@ -348,7 +354,6 @@ export default function CentroContacto() {
               direction: m.direction,
             }));
           }
-          // Fallback: use metadata.content_uri for old messages
           if (atts.length === 0 && (m.metadata as Record<string, unknown>)?.content_uri) {
             const meta = m.metadata as Record<string, unknown>;
             const mType = (meta.message_type as string) || 'document';
@@ -374,7 +379,9 @@ export default function CentroContacto() {
             attachments: atts,
             linked_task_id: taskLinkMap[m.id] || null,
           };
-        }));
+        });
+        lastMessageCountRef.current = newMessages.length;
+        setMessages(newMessages);
 
         // Mark messages as read and update local unread count
         if (usuario && !isExternal) {
@@ -400,7 +407,6 @@ export default function CentroContacto() {
       }
     } catch { /* silent */ }
     setLoadingMessages(false);
-    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
   }, [threadFilterChannel, threadFilterType, usuario]);
 
   // Initial load
@@ -418,9 +424,12 @@ export default function CentroContacto() {
         selectedAgent.agent_user_id || '',
         selectedAgent.is_external,
         selectedAgent.contact_phone_ext,
-      );
+      ).then(() => {
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }), 50);
+      });
     }
-  }, [selectedAgent, loadMessages]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAgent?.agent_user_id, selectedAgent?.contact_phone_ext]);
 
   const loadConversationMode = useCallback(async (agentUserId: string) => {
     try {
@@ -534,18 +543,13 @@ export default function CentroContacto() {
           // External contact: match by contact_phone
           (!newMsg.agent_user_id && msgPhone && msgPhone === currentAgent.contact_phone_ext)
         );
-        // Always analyze inbound agent messages with smart assistant (edge function guards itself when IA is off)
+        // Refresh smart assistant state after inbound message (webhook handles the actual analysis)
         if (newMsg.direction === 'inbound' && newMsg.agent_user_id) {
-          callApi('contact-center-smart-assistant', {
-            action: 'analyze_message',
-            agent_user_id: newMsg.agent_user_id,
-            message_id: newMsg.id,
-            message_text: newMsg.body,
-          }).then(() => {
+          setTimeout(() => {
             if (selectedAgentRef.current?.agent_user_id === newMsg.agent_user_id) {
               loadSmartAssistantStateRef.current(newMsg.agent_user_id!);
             }
-          });
+          }, 2000);
         }
 
         if (msgMatchesSelected) {
@@ -588,7 +592,10 @@ export default function CentroContacto() {
             };
             return [...prev, enriched];
           });
-          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 200);
+          // Only auto-scroll if user is near the bottom
+          if (isNearBottomRef.current) {
+            setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 200);
+          }
           // Mark as read immediately
           if (usuario && newMsg.direction === 'inbound') {
             if (newMsg.agent_user_id) {
@@ -675,24 +682,52 @@ export default function CentroContacto() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario?.id]);
 
-  // Polling fallback: refresh messages every 10s when a conversation is open
-  // This ensures IA auto-replies and any missed realtime events are always visible
+  // Lightweight polling fallback: only fetch new messages since the last known one
+  // This catches missed realtime events without replacing the full message array
   useEffect(() => {
     if (!selectedAgent) return;
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       const agent = selectedAgentRef.current;
       if (!agent) return;
-      // Only reload if tab is visible to avoid unnecessary requests
       if (document.visibilityState === 'hidden') return;
-      loadMessages(
-        agent.agent_user_id || '',
-        agent.is_external,
-        agent.contact_phone_ext,
-      );
-    }, 10000);
+
+      const currentMessages = messagesRef.current;
+      if (currentMessages.length === 0) return;
+      const lastTs = currentMessages[currentMessages.length - 1].created_at;
+
+      let query = supabase
+        .from('contact_center_messages')
+        .select('id')
+        .gt('created_at', lastTs)
+        .order('created_at', { ascending: true });
+
+      if (agent.is_external && agent.contact_phone_ext) {
+        query = query.eq('contact_phone', agent.contact_phone_ext).is('agent_user_id', null);
+      } else {
+        query = query.eq('agent_user_id', agent.agent_user_id || '');
+      }
+
+      const { data: newIds } = await query.limit(20);
+      if (newIds && newIds.length > 0) {
+        const existingIds = new Set(currentMessages.map(m => m.id));
+        const missing = newIds.filter(n => !existingIds.has(n.id));
+        if (missing.length > 0) {
+          loadMessagesRef.current(agent.agent_user_id || '', agent.is_external, agent.contact_phone_ext);
+        }
+      }
+    }, 15000);
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAgent?.agent_user_id, selectedAgent?.contact_phone_ext]);
+
+  // Periodic conversation list refresh (lightweight, only updates sidebar)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
+      loadConversationsRef.current();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Close emoji picker on outside click
   useEffect(() => {
@@ -905,7 +940,8 @@ export default function CentroContacto() {
       }
       setComposerMessage('');
       setComposerSubject('');
-      loadMessages(selectedAgent.agent_user_id || '', selectedAgent.is_external, selectedAgent.contact_phone_ext);
+      await loadMessages(selectedAgent.agent_user_id || '', selectedAgent.is_external, selectedAgent.contact_phone_ext);
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
       loadConversations();
 
       // Notify smart assistant of operator intervention (pauses it)
@@ -1428,7 +1464,16 @@ export default function CentroContacto() {
               )}
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+              <div
+                ref={messagesContainerRef}
+                onScroll={() => {
+                  const el = messagesContainerRef.current;
+                  if (el) {
+                    isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
+                  }
+                }}
+                className="flex-1 overflow-y-auto px-4 py-3 space-y-2"
+              >
                 {loadingMessages ? (
                   <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-teal-500" /></div>
                 ) : messages.length === 0 ? (

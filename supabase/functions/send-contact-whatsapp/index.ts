@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
       provider_message_id: wazzupData?.messageId ? String(wazzupData.messageId) : null,
       provider_response: wazzupData,
       error_message: success ? null : (wazzupData?.message ? String(wazzupData.message) : responseText),
-      metadata: { normalized_phone: normalizedPhone, original_phone: phone },
+      metadata: { chat_id: normalizedPhone, normalized_phone: normalizedPhone, original_phone: phone },
     });
 
     return new Response(

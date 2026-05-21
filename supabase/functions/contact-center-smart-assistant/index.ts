@@ -228,6 +228,18 @@ interface DbIntent {
   keywords: Array<{ keyword: string; weight: number }>;
 }
 
+const INTENT_TO_FORM_SLUG: Record<string, string> = {
+  cotizacion_auto: "auto_individual",
+  cotizacion_gmm: "gmm_individual",
+  cotizacion_hogar: "hogar_casa_habitacion",
+  cotizacion_empresarial: "empresa_paquete",
+  cotizacion_vida: "vida_individual",
+  cotizacion_fianzas: "fianza",
+  renovacion_poliza: "auto_individual",
+  siniestro_auto: "auto_individual",
+  siniestro_general: "auto_individual",
+};
+
 async function detectIntentFromDB(
   supabase: ReturnType<typeof createClient>,
   text: string
@@ -278,16 +290,20 @@ async function detectIntentFromDB(
       }
     }
 
-    const normalized = Math.min(score / 2.5, 1);
+    const normalized = Math.min(score / 1.5, 1);
     if (!best || normalized > best.score) best = { intent, score: normalized };
   }
 
-  if (!best || best.score < 0.1) return null;
+  if (!best || best.score < 0.08) return null;
+
+  const resolvedFormSlug = best.intent.linked_form_slug
+    || INTENT_TO_FORM_SLUG[best.intent.intent_key]
+    || best.intent.intent_key;
 
   return {
     intent: best.intent.intent_key,
     confidence: best.score,
-    form_type_slug: best.intent.linked_form_slug ?? "",
+    form_type_slug: resolvedFormSlug,
     assistant_id: best.intent.linked_assistant_id ?? undefined,
   };
 }
@@ -384,7 +400,8 @@ async function analyzeConversation(
   if (!matchedAssistant && match.form_type_slug) {
     const { data: assistants } = await supabase.from("contact_center_assistants")
       .select("id, nombre").eq("is_active", true)
-      .or(`form_type_slug.eq.${match.form_type_slug},form_slug.eq.${match.form_type_slug}`)
+      .eq("deprecated_at", null)
+      .or(`form_type_slug.eq.${match.form_type_slug},form_type_cache.eq.${match.form_type_slug}`)
       .limit(1);
     matchedAssistant = assistants?.[0] ?? null;
   }
@@ -556,8 +573,8 @@ Deno.serve(async (req: Request) => {
         const { data: globalSettings } = await supabase.from("contact_center_smart_assistant_settings")
           .select("*").is("office_id", null).maybeSingle();
         const settings = {
-          auto_activate_threshold: config.auto_activate_threshold ?? globalSettings?.auto_activate_threshold ?? 0.85,
-          suggest_threshold: config.suggest_threshold ?? globalSettings?.suggest_threshold ?? 0.55,
+          auto_activate_threshold: config.auto_activate_threshold ?? globalSettings?.auto_activate_threshold ?? 0.60,
+          suggest_threshold: config.suggest_threshold ?? globalSettings?.suggest_threshold ?? 0.30,
           pause_on_human_message: config.pause_on_human_message ?? globalSettings?.pause_on_human_message ?? true,
           human_pause_minutes: config.human_pause_minutes ?? globalSettings?.human_pause_minutes ?? 20,
         };
