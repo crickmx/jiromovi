@@ -527,12 +527,19 @@ Deno.serve(async (req: Request) => {
         assistant.office_id || null
       );
 
+      // Determine if this assistant has an online form option
+      const formTypeSlug: string | null = (assistant as any).form_type_slug || null;
+      const hasOnlineForm = !!formTypeSlug;
+
+      // Initial stage: if assistant has form_type_slug, start with entry_choice
+      const initialStage = hasOnlineForm ? "entry_choice" : (assistant.consent_message ? "consent" : "capturing");
+
       const { data: session, error: sessionErr } = await supabase.from("contact_center_assistant_sessions")
         .insert({
           assistant_id, agent_user_id,
           activated_by: authUser?.id || null,
           status: "active",
-          current_stage: assistant.consent_message ? "consent" : "capturing",
+          current_stage: initialStage,
           current_field_index: 0,
           contact_phone_prefilled: contactPhone,
           contact_name_prefilled: contactName,
@@ -540,6 +547,7 @@ Deno.serve(async (req: Request) => {
           responsible_employee_id: responsible?.id || null,
           responsible_employee_name: responsible?.name || null,
           responsible_role: responsible?.role || null,
+          ambiguous_entry_attempts: 0,
         }).select().single();
       if (sessionErr) return jsonResponse(500, { error: sessionErr.message });
 
@@ -564,12 +572,32 @@ Deno.serve(async (req: Request) => {
       await supabase.from("contact_center_assistant_events").insert({
         session_id: session.id, event_type: "session_started", actor_type: "operator",
         actor_id: authUser?.id || null, message: `Sesión: ${assistant.nombre}`,
+        metadata: { has_online_form: hasOnlineForm, form_type_slug: formTypeSlug, responsible_name: responsible?.name || null },
       });
 
-      const welcomeMsg = assistant.consent_message || assistant.welcome_message ||
-        `Hola, soy el asistente de MOVI para *${assistant.nombre}*. ¿Podemos comenzar?`;
+      // Build welcome message
+      let welcomeMsg: string;
+      if (hasOnlineForm) {
+        // New entry choice message — always shown first when form is available
+        welcomeMsg = `Hola, puedo ayudarte de dos formas:\n1️⃣ Llenar el formulario en línea\n2️⃣ Responder las preguntas por aquí\n¿Qué prefieres?`;
+      } else {
+        welcomeMsg = assistant.consent_message || assistant.welcome_message ||
+          `Hola, soy el asistente de MOVI para *${assistant.nombre}*. ¿Podemos comenzar?`;
+      }
 
-      return jsonResponse(200, { ok: true, session_id: session.id, stage: session.current_stage, welcome_message: welcomeMsg, assistant_name: assistant.nombre, total_fields: fields.length });
+      return jsonResponse(200, {
+        ok: true,
+        session_id: session.id,
+        stage: initialStage,
+        welcome_message: welcomeMsg,
+        assistant_name: assistant.nombre,
+        total_fields: fields.length,
+        has_online_form: hasOnlineForm,
+        form_type_slug: formTypeSlug,
+        responsible_name: responsible?.name || null,
+        // Quick reply buttons for WhatsApp
+        quick_replies: hasOnlineForm ? ["Llenar formulario", "Responder por aquí"] : null,
+      });
     }
 
     // ── PROCESS MESSAGE ───────────────────────────────────────────────────────
@@ -621,6 +649,151 @@ Deno.serve(async (req: Request) => {
       let responseMessage = "";
       let newStage = session.current_stage;
       let sessionEnded = false;
+
+      // ── ENTRY CHOICE ──────────────────────────────────────────────────────────
+      if (session.current_stage === "entry_choice") {
+        const lower = message.toLowerCase().trim();
+        const formTypeSlug: string | null = (assistant as any).form_type_slug || null;
+
+        // Detect "online form" intent
+        const wantsForm = [
+          "formulario", "form", "link", "enlace", "en línea", "en linea",
+          "llenar", "llenarlo", "llenar formulario", "mándame", "mandame",
+          "manda", "el link", "el formato", "formato", "1", "opción 1", "opcion 1",
+        ].some(kw => lower.includes(kw));
+
+        // Detect "guided questions" intent
+        const wantsQuestions = [
+          "preguntas", "por aquí", "por aqui", "whatsapp", "responder",
+          "vamos por aquí", "vamos por aqui", "aquí", "aqui", "por aquí",
+          "2", "opción 2", "opcion 2", "así", "asi", "dale",
+        ].some(kw => lower.includes(kw));
+
+        if (wantsForm && formTypeSlug) {
+          // ── PATH A: ONLINE FORM ──
+          const formLink = `${BASE_APP_URL}/tramites/formularios/${formTypeSlug}`;
+          const displayName = responsibleName || "nuestro equipo";
+
+          // Mark session as form_link_sent and deactivate auto mode
+          await supabase.from("contact_center_assistant_sessions").update({
+            entry_choice: "online_form",
+            form_link_sent_at: new Date().toISOString(),
+            status: "completed",
+            current_stage: "completion",
+            completed_at: new Date().toISOString(),
+          }).eq("id", session_id);
+
+          await supabase.from("contact_center_conversation_modes").upsert({
+            agent_user_id: session.agent_user_id,
+            mode: "normal",
+            active_session_id: null,
+            assigned_assistant_id: null,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: "agent_user_id" });
+
+          await supabase.from("contact_center_assistant_events").insert([
+            {
+              session_id, event_type: "entry_choice_selected", actor_type: "contact",
+              message: "Eligió formulario en línea",
+              metadata: { form_type_slug: formTypeSlug, form_link: formLink },
+            },
+            {
+              session_id, event_type: "form_link_sent", actor_type: "system",
+              message: `Link enviado: ${formLink}`,
+              metadata: { form_type_slug: formTypeSlug },
+            },
+            {
+              session_id, event_type: "session_completed", actor_type: "system",
+              message: "Modo automático desactivado — eligió formulario en línea",
+            },
+          ]);
+
+          const formMsg = `Perfecto, puedes llenar el formulario aquí:\n${formLink}\n\nCuando lo envíes, ${displayName} dará seguimiento a tu solicitud por este medio.`;
+          return jsonResponse(200, {
+            ok: true,
+            stage: "completion",
+            response_message: formMsg,
+            entry_choice: "online_form",
+            form_link: formLink,
+            responsible_name: responsibleName,
+            session_ended: true,
+            deactivate_auto_mode: true,
+          });
+
+        } else if (wantsQuestions) {
+          // ── PATH B: GUIDED QUESTIONS ──
+          const nextStage = assistant.consent_message ? "consent" : "capturing";
+
+          await supabase.from("contact_center_assistant_sessions").update({
+            entry_choice: "whatsapp_questions",
+            guided_questions_started_at: new Date().toISOString(),
+            current_stage: nextStage,
+          }).eq("id", session_id);
+
+          await supabase.from("contact_center_assistant_events").insert({
+            session_id, event_type: "entry_choice_selected", actor_type: "contact",
+            message: "Eligió responder preguntas por WhatsApp",
+          });
+
+          // Send the first question or consent
+          const freshAllPending = allAskable.filter(f => !capturedKeys.has(f.field_key));
+          if (nextStage === "consent") {
+            responseMessage = assistant.consent_message!;
+          } else if (freshAllPending.length === 0) {
+            newStage = "summary";
+            responseMessage = `Tengo esto:\n${buildSummary(capturedData)}\n\n¿Lo registro así?`;
+          } else {
+            responseMessage = `Perfecto, lo hacemos por aquí.\n${buildBlockQuestion(freshAllPending, blockSize)}`;
+          }
+          newStage = nextStage;
+
+        } else {
+          // ── AMBIGUOUS ──
+          const ambiguousCount = (session.ambiguous_entry_attempts || 0) + 1;
+          await supabase.from("contact_center_assistant_sessions").update({
+            ambiguous_entry_attempts: ambiguousCount,
+          }).eq("id", session_id);
+
+          if (ambiguousCount >= 2) {
+            // Default to guided questions after second ambiguous response
+            const nextStage = assistant.consent_message ? "consent" : "capturing";
+            await supabase.from("contact_center_assistant_sessions").update({
+              entry_choice: "whatsapp_questions_default_after_ambiguous",
+              guided_questions_started_at: new Date().toISOString(),
+              current_stage: nextStage,
+            }).eq("id", session_id);
+
+            await supabase.from("contact_center_assistant_events").insert({
+              session_id, event_type: "entry_choice_selected", actor_type: "system",
+              message: "Preguntas por defecto tras respuesta ambigua",
+            });
+
+            const freshAllPending = allAskable.filter(f => !capturedKeys.has(f.field_key));
+            if (nextStage === "consent") {
+              responseMessage = assistant.consent_message!;
+            } else if (freshAllPending.length === 0) {
+              newStage = "summary";
+              responseMessage = `Tengo esto:\n${buildSummary(capturedData)}\n\n¿Lo registro así?`;
+            } else {
+              responseMessage = `Perfecto, lo hacemos por aquí.\n${buildBlockQuestion(freshAllPending, blockSize)}`;
+            }
+            newStage = nextStage;
+          } else {
+            // Re-ask once
+            responseMessage = `¿Prefieres llenar el formulario en línea o responder por aquí?\n\n1️⃣ Llenar formulario\n2️⃣ Responder por WhatsApp`;
+            newStage = "entry_choice";
+          }
+        }
+
+        if (responseMessage) {
+          await supabase.from("contact_center_assistant_sessions")
+            .update({ current_stage: newStage, last_message_at: new Date().toISOString(), messages_received: session.messages_received + 1 }).eq("id", session_id);
+          return jsonResponse(200, {
+            ok: true, stage: newStage, response_message: responseMessage, session_ended: false,
+            quick_replies: newStage === "entry_choice" ? ["Llenar formulario", "Responder por aquí"] : null,
+          });
+        }
+      }
 
       // ── CONSENT ──
       if (session.current_stage === "consent") {
