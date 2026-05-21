@@ -6,11 +6,24 @@ import './index.css';
 
 const PUBLIC_HOSTS = new Set(["agentedeseguros.website", "www.agentedeseguros.website"]);
 const MAIN_REDIRECT = "https://www.movi.digital";
+const isPublicDomain = PUBLIC_HOSTS.has(window.location.host.toLowerCase());
 
-// Unregister service workers on public domain to prevent stale caching
-if (PUBLIC_HOSTS.has(window.location.host.toLowerCase()) && 'serviceWorker' in navigator) {
+// On public domain: unregister any stale service workers and clear caches
+if (isPublicDomain && 'serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(regs => {
     regs.forEach(r => r.unregister());
+  });
+  if ('caches' in window) {
+    caches.keys().then(names => {
+      names.forEach(name => caches.delete(name));
+    });
+  }
+}
+
+// On main domain: register PWA service worker
+if (!isPublicDomain && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' });
   });
 }
 

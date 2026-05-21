@@ -48,12 +48,32 @@
 
     <script>
       (function() {
-        const STORAGE_KEY = 'movi-theme-mode';
-        const mode = localStorage.getItem(STORAGE_KEY) || 'system';
-        const shouldBeDark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        var STORAGE_KEY = 'movi-theme-mode';
+        var mode = localStorage.getItem(STORAGE_KEY) || 'system';
+        var shouldBeDark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
         if (shouldBeDark) {
           document.documentElement.classList.add('dark');
         }
+      })();
+    </script>
+    <script>
+      (function() {
+        var host = window.location.host.toLowerCase();
+        if (host !== 'agentedeseguros.website' && host !== 'www.agentedeseguros.website') return;
+        var path = window.location.pathname || '/';
+        if (path.indexOf('/cotizar/') === 0 || path === '/cotizar') return;
+        if (path.indexOf('/registro-personal') === 0) return;
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(regs) {
+            regs.forEach(function(r) { r.unregister(); });
+          });
+        }
+        if (/^\/[^\/]+$/.test(path)) {
+          var slug = path.replace(/^\/+/, '').toLowerCase();
+          var reserved = ['login','dashboard','crm','comisiones','publicidad','admin','api','assets','configuracion','directorio','chat','vacaciones','tramites','store','mis-comisiones','mi-produccion','oficinas','notificaciones','comunicados','perfil','usuarios','education','espacio-jiro','movimeet','catalogos'];
+          if (slug && reserved.indexOf(slug) === -1) return;
+        }
+        window.location.replace('https://www.movi.digital');
       })();
     </script>
   </head>

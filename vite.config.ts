@@ -9,6 +9,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: false,
       includeAssets: ['*.png', '*.jpg', '*.svg', '*.ico'],
       manifest: {
         name: 'Movi Digital',
@@ -64,6 +65,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+        navigateFallbackDenylist: [/^\/cotizar\//],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/qhwvuuyjhcennqccgvse\.supabase\.co\/.*/i,
