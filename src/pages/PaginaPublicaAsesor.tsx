@@ -1,12 +1,64 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Phone, Mail, MessageCircle, Loader2, ChevronLeft, ChevronRight, ArrowUp, Car } from 'lucide-react';
+import { Phone, Mail, MessageCircle, Loader2, ChevronLeft, ChevronRight, ArrowUp, Car, ExternalLink } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { getPublicWebPageBySlug } from '../lib/webPagesUtils';
-import type { PublicWebPageData } from '../lib/webPagesTypes';
+import type { PublicWebPageData, SharedFormLink } from '../lib/webPagesTypes';
 import { DEFAULT_TEXT } from '../lib/webPagesTypes';
 import { useScrollReveal, useStaggeredReveal, createColorVariant } from '../lib/animationUtils';
+
+const FORM_TYPE_META: Record<string, { icon: string; description: string; priority: number }> = {
+  auto: { icon: 'Car', description: 'Protege tu vehiculo con coberturas completas contra accidentes, robo y danos a terceros.', priority: 1 },
+  vida: { icon: 'Heart', description: 'Asegura el bienestar economico de tu familia con planes de vida a tu medida.', priority: 2 },
+  gmm: { icon: 'Stethoscope', description: 'Accede a la mejor atencion medica con cobertura hospitalaria y de especialistas.', priority: 3 },
+  gastos_medicos: { icon: 'Stethoscope', description: 'Accede a la mejor atencion medica con cobertura hospitalaria y de especialistas.', priority: 3 },
+  salud: { icon: 'HeartPulse', description: 'Cuida tu salud y la de los tuyos con planes de atencion preventiva y hospitalaria.', priority: 4 },
+  hogar: { icon: 'Home', description: 'Protege tu patrimonio contra incendios, robos, desastres naturales y mas.', priority: 5 },
+  casa: { icon: 'Home', description: 'Protege tu patrimonio contra incendios, robos, desastres naturales y mas.', priority: 5 },
+  empresa: { icon: 'Building2', description: 'Seguros empresariales que protegen tus activos, empleados y operaciones.', priority: 6 },
+  negocio: { icon: 'Building2', description: 'Seguros para tu negocio que cubren responsabilidad civil, danos y mas.', priority: 6 },
+  responsabilidad_civil: { icon: 'Shield', description: 'Protegete ante reclamaciones de terceros por danos materiales o personales.', priority: 7 },
+  transporte: { icon: 'Truck', description: 'Cobertura integral para mercancia en transito nacional e internacional.', priority: 8 },
+  viaje: { icon: 'Plane', description: 'Viaja tranquilo con cobertura medica, cancelaciones y equipaje en el extranjero.', priority: 9 },
+  mascota: { icon: 'PawPrint', description: 'Protege a tu mejor amigo con cobertura veterinaria y de accidentes.', priority: 10 },
+  educacion: { icon: 'GraduationCap', description: 'Asegura el futuro educativo de tus hijos con planes de ahorro e inversion.', priority: 11 },
+  ahorro: { icon: 'PiggyBank', description: 'Haz crecer tu dinero con planes de ahorro e inversion respaldados por aseguradoras.', priority: 12 },
+  retiro: { icon: 'Landmark', description: 'Planifica tu retiro con productos de ahorro a largo plazo y rendimientos garantizados.', priority: 13 },
+  flotilla: { icon: 'Bus', description: 'Seguros para flotillas vehiculares con tarifas preferenciales y atencion prioritaria.', priority: 14 },
+  moto: { icon: 'Bike', description: 'Protege tu motocicleta con coberturas de danos, robo y responsabilidad civil.', priority: 15 },
+};
+
+function getFormLinkMeta(link: SharedFormLink): { icon: string; description: string; priority: number } {
+  const typeKey = link.form_type?.toLowerCase().replace(/[^a-z_]/g, '') || '';
+  if (FORM_TYPE_META[typeKey]) return FORM_TYPE_META[typeKey];
+
+  const title = link.form_title.toLowerCase();
+  for (const [key, meta] of Object.entries(FORM_TYPE_META)) {
+    if (title.includes(key.replace(/_/g, ' '))) return meta;
+  }
+  if (title.includes('auto') || title.includes('vehiculo') || title.includes('carro')) return FORM_TYPE_META.auto;
+  if (title.includes('vida')) return FORM_TYPE_META.vida;
+  if (title.includes('gastos medicos') || title.includes('gmm') || title.includes('medic')) return FORM_TYPE_META.gmm;
+  if (title.includes('salud')) return FORM_TYPE_META.salud;
+  if (title.includes('hogar') || title.includes('casa')) return FORM_TYPE_META.hogar;
+  if (title.includes('empresa') || title.includes('negocio') || title.includes('pyme')) return FORM_TYPE_META.empresa;
+  if (title.includes('viaje')) return FORM_TYPE_META.viaje;
+  if (title.includes('mascota')) return FORM_TYPE_META.mascota;
+  if (title.includes('transporte') || title.includes('carga')) return FORM_TYPE_META.transporte;
+
+  return { icon: 'FileText', description: 'Solicita una cotizacion personalizada con atencion profesional y sin compromiso.', priority: 99 };
+}
+
+function cleanFormTitle(title: string): string {
+  return title
+    .replace(/^formulario\s+de\s+/i, '')
+    .replace(/^cotizaci[oó]n\s+de\s+/i, '')
+    .replace(/^solicitud\s+de\s+/i, '')
+    .replace(/^seguro\s+de\s+/i, '')
+    .trim()
+    .replace(/^\w/, c => c.toUpperCase());
+}
 
 declare global {
   interface Window {
@@ -37,7 +89,7 @@ export default function PaginaPublicaAsesor() {
 
   // Hooks de animación DEBEN estar aquí, antes de cualquier early return
   const aboutReveal = useScrollReveal();
-  const servicesStagger = useStaggeredReveal(data?.categories?.length || 0, 150);
+  const servicesStagger = useStaggeredReveal(data?.form_links?.length || data?.categories?.length || 0, 150);
 
   useEffect(() => {
     if (!slug) {
@@ -180,9 +232,13 @@ export default function PaginaPublicaAsesor() {
     );
   }
 
-  const { user, config, insurers, categories } = data;
+  const { user, config, insurers, categories, form_links } = data;
   const primaryColor = config.primary_color;
   const secondaryColor = config.secondary_color;
+
+  const sortedFormLinks = (form_links || [])
+    .map(link => ({ ...link, meta: getFormLinkMeta(link), displayName: cleanFormTitle(link.form_title) }))
+    .sort((a, b) => a.meta.priority - b.meta.priority);
 
   const textToDisplay = typeof config.custom_text === 'string' && config.custom_text.trim()
     ? config.custom_text.split('\n').filter(t => t.trim())
@@ -192,8 +248,10 @@ export default function PaginaPublicaAsesor() {
   const whatsappLink = whatsappNumber ? `https://wa.me/52${whatsappNumber}` : '#';
   const multicotizadorUrl = `https://multicotizador.digital/cotiza/${slug}`;
 
-  const categoriesText = categories?.map(c => c.name.toLowerCase()).join(', ') || '';
-  const seoText = `${user.name} de ${user.office?.name || 'JIRO'} te ayuda a cotizar y contratar seguros de ${categoriesText} con atención personalizada por WhatsApp.`;
+  const categoriesText = sortedFormLinks.length > 0
+    ? sortedFormLinks.map(l => l.displayName.toLowerCase()).join(', ')
+    : categories?.map(c => c.name.toLowerCase()).join(', ') || '';
+  const seoText = `${user.name} de ${user.office?.name || 'JIRO'} te ayuda a cotizar y contratar seguros de ${categoriesText} con atencion personalizada por WhatsApp.`;
   const pageTitle = `${user.name} | Asesor de Seguros${user.office?.name ? ` | ${user.office.name}` : ''}`;
   const metaDescription = seoText.slice(0, 160);
 
@@ -379,7 +437,7 @@ export default function PaginaPublicaAsesor() {
 
                       <div>
                         <label className="block text-xs font-semibold text-gray-700 mb-1">
-                          Seguro de Interés *
+                          Seguro de Interes *
                         </label>
                         <select
                           value={formData.seguro_interes}
@@ -388,11 +446,18 @@ export default function PaginaPublicaAsesor() {
                           required
                         >
                           <option value="">Selecciona un seguro</option>
-                          {categories.map(category => (
-                            <option key={category.id} value={category.name}>
-                              {category.name}
-                            </option>
-                          ))}
+                          {sortedFormLinks.length > 0
+                            ? sortedFormLinks.map(link => (
+                                <option key={link.slug} value={link.displayName}>
+                                  {link.displayName}
+                                </option>
+                              ))
+                            : categories?.map(category => (
+                                <option key={category.id} value={category.name}>
+                                  {category.name}
+                                </option>
+                              ))
+                          }
                         </select>
                       </div>
 
@@ -515,12 +580,62 @@ export default function PaginaPublicaAsesor() {
               Seguros a tu medida
             </h2>
             <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto text-base sm:text-lg px-4">
-              Protección completa para lo que más valoras
+              Proteccion completa para lo que mas valoras
             </p>
 
-            {!categories || categories.length === 0 ? (
+            {sortedFormLinks.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 px-4">
+                {sortedFormLinks.map((link, idx) => {
+                  const IconComponent = (LucideIcons as any)[link.meta.icon];
+
+                  return (
+                    <a
+                      key={link.slug}
+                      href={`https://agentedeseguros.website/cotizar/${link.slug}`}
+                      className="group relative bg-white p-6 sm:p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 no-underline"
+                      style={{ animationDelay: `${idx * 100}ms` }}
+                    >
+                      <div
+                        className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"
+                        style={{
+                          background: `linear-gradient(135deg, ${createColorVariant(primaryColor, 0.1)} 0%, ${createColorVariant(secondaryColor, 0.1)} 100%)`
+                        }}
+                      />
+
+                      <div className="relative z-10">
+                        {IconComponent && (
+                          <div
+                            className="mb-4 sm:mb-6 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-lg"
+                            style={{
+                              background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`
+                            }}
+                          >
+                            <IconComponent className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
+                          </div>
+                        )}
+
+                        <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 group-hover:text-opacity-90 transition-all" style={{ color: primaryColor }}>
+                          {link.displayName}
+                        </h3>
+                        <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 leading-relaxed">
+                          {link.meta.description}
+                        </p>
+
+                        <span
+                          className="inline-flex items-center gap-2 text-sm sm:text-base font-bold group-hover:gap-3 transition-all duration-300"
+                          style={{ color: secondaryColor }}
+                        >
+                          Cotizar ahora
+                          <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
+                        </span>
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            ) : !categories || categories.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-gray-500">No hay ramos configurados</p>
+                <p className="text-gray-500">Proximamente mas opciones de seguros</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 px-4">
@@ -531,9 +646,7 @@ export default function PaginaPublicaAsesor() {
                     <div
                       key={category.id}
                       className="group relative bg-white p-6 sm:p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2"
-                      style={{
-                        animationDelay: `${idx * 100}ms`
-                      }}
+                      style={{ animationDelay: `${idx * 100}ms` }}
                     >
                       <div
                         className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"
@@ -561,16 +674,13 @@ export default function PaginaPublicaAsesor() {
                           {category.card_description}
                         </p>
 
-                        <a
-                          href={whatsappLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 text-sm sm:text-base font-bold hover:gap-3 transition-all duration-300 group/link"
+                        <span
+                          className="inline-flex items-center gap-2 text-sm sm:text-base font-bold hover:gap-3 transition-all duration-300"
                           style={{ color: secondaryColor }}
                         >
                           Cotizar {category.name}
-                          <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 group-hover/link:rotate-12 transition-transform" />
-                        </a>
+                          <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                        </span>
                       </div>
                     </div>
                   );

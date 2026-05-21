@@ -46,6 +46,14 @@ export interface UserWebPageCategory {
   created_at: string;
 }
 
+export interface SharedFormLink {
+  slug: string;
+  form_title: string;
+  form_type: string;
+  form_slug: string;
+  quote_form_template_id: string | null;
+}
+
 export interface PublicWebPageData {
   user: {
     id: string;
@@ -80,6 +88,7 @@ export interface PublicWebPageData {
     card_title: string;
     card_description: string;
   }> | null;
+  form_links: SharedFormLink[] | null;
 }
 
 export interface UserWebPageConfig {
