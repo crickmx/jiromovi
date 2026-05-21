@@ -236,6 +236,8 @@ export default function CentroContacto() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const selectedAgentRef = useRef<ConversationSummary | null>(null);
+  const loadConversationsRef = useRef<() => void>(() => {});
+  const loadSmartAssistantStateRef = useRef<(id: string) => Promise<void>>(async () => {});
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
   const canFilterOffice = isAdmin || isGerente;
@@ -267,6 +269,9 @@ export default function CentroContacto() {
     } catch { /* silent */ }
     setLoading(false);
   }, [usuario, filterChannel, filterType, filterOffice, searchQuery, filterUnassigned]);
+
+  // Keep ref in sync so realtime callbacks always use the latest version
+  loadConversationsRef.current = loadConversations;
 
   // Load messages
   const loadMessages = useCallback(async (agentId: string, isExternal?: boolean, contactPhone?: string | null) => {
@@ -496,6 +501,8 @@ export default function CentroContacto() {
     } catch { /* silent */ }
   }, [applySmartAssistantState]);
 
+  loadSmartAssistantStateRef.current = loadSmartAssistantState;
+
   // Realtime subscription
   useEffect(() => {
     const channel = supabase
@@ -506,15 +513,31 @@ export default function CentroContacto() {
         table: 'contact_center_messages',
       }, (payload) => {
         const newMsg = payload.new as Message;
-        // Update conversation list
-        loadConversations();
+        // Update conversation list via ref so we always use the latest filter state
+        loadConversationsRef.current();
         // If we're viewing this agent's thread, add the message
         const currentAgent = selectedAgentRef.current;
+        const msgPhone = newMsg.contact_phone;
         const msgMatchesSelected = currentAgent && (
-          (currentAgent.is_external
-            ? (newMsg as unknown as Record<string, unknown>).contact_phone === currentAgent.contact_phone_ext
-            : newMsg.agent_user_id === currentAgent.agent_user_id)
+          // Registered agent: match by agent_user_id
+          (newMsg.agent_user_id && newMsg.agent_user_id === currentAgent.agent_user_id) ||
+          // External contact: match by contact_phone
+          (!newMsg.agent_user_id && msgPhone && msgPhone === currentAgent.contact_phone_ext)
         );
+        // Always analyze inbound agent messages with smart assistant (edge function guards itself when IA is off)
+        if (newMsg.direction === 'inbound' && newMsg.agent_user_id) {
+          callApi('contact-center-smart-assistant', {
+            action: 'analyze_message',
+            agent_user_id: newMsg.agent_user_id,
+            message_id: newMsg.id,
+            message_text: newMsg.body,
+          }).then(() => {
+            if (selectedAgentRef.current?.agent_user_id === newMsg.agent_user_id) {
+              loadSmartAssistantStateRef.current(newMsg.agent_user_id!);
+            }
+          });
+        }
+
         if (msgMatchesSelected) {
           setMessages(prev => {
             if (prev.some(m => m.id === newMsg.id)) return prev;
@@ -574,20 +597,6 @@ export default function CentroContacto() {
                 prev.map(c => c.contact_phone_ext === newMsg.contact_phone ? { ...c, unread_count: 0 } : c)
               );
             }
-
-            // Analyze inbound message with smart assistant if enabled
-            if (newMsg.agent_user_id && smartAssistantStateRef.current?.smart_assistant_enabled) {
-              callApi('contact-center-smart-assistant', {
-                action: 'analyze_message',
-                agent_user_id: newMsg.agent_user_id,
-                message_id: newMsg.id,
-                message_text: newMsg.body,
-              }).then(result => {
-                if (result && result.action) {
-                  loadSmartAssistantState(newMsg.agent_user_id!);
-                }
-              });
-            }
           }
         }
       })
@@ -599,7 +608,7 @@ export default function CentroContacto() {
         const updated = payload.new as Message;
         setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, status: updated.status } : m));
         // Refresh conversation list on meaningful inbound status changes
-        if (updated.direction === 'inbound') loadConversations();
+        if (updated.direction === 'inbound') loadConversationsRef.current();
       })
       .on('postgres_changes', {
         event: 'UPDATE',
@@ -646,14 +655,15 @@ export default function CentroContacto() {
         const updated = payload.new as Record<string, unknown>;
         const currentAgentForAI = selectedAgentRef.current;
         if (currentAgentForAI?.agent_user_id && updated.agent_user_id === currentAgentForAI.agent_user_id) {
-          loadSmartAssistantState(currentAgentForAI.agent_user_id);
+          loadSmartAssistantStateRef.current(currentAgentForAI.agent_user_id);
         }
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
+  // Refs ensure callbacks always use latest state; only re-subscribe when user changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [usuario, loadConversations, loadConversationMode, loadSmartAssistantState]);
+  }, [usuario?.id]);
 
   // Close emoji picker on outside click
   useEffect(() => {
