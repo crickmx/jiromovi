@@ -51,7 +51,6 @@ interface Oficina {
 
 type Panel = 'list' | 'form' | 'members' | 'offices';
 
-const AREA_OPTIONS: AreaCategoria[] = ['Comercial', 'Operaciones'];
 const AREA_COLORS: Record<AreaCategoria, string> = {
   Comercial: '#0ea5e9',
   Operaciones: '#f59e0b',
@@ -79,7 +78,7 @@ export function GestionGruposVisualizacion() {
   // Form state
   const [formNombre, setFormNombre] = useState('');
   const [formDescripcion, setFormDescripcion] = useState('');
-  const [formArea, setFormArea] = useState<AreaCategoria>('Comercial');
+  const formArea: AreaCategoria = 'Operaciones';
   const [formActivo, setFormActivo] = useState(true);
   const [formAllOffices, setFormAllOffices] = useState(false);
   const [formSelectedOficinas, setFormSelectedOficinas] = useState<string[]>([]);
@@ -144,7 +143,6 @@ export function GestionGruposVisualizacion() {
     setSelectedGrupo(null);
     setFormNombre('');
     setFormDescripcion('');
-    setFormArea('Comercial');
     setFormActivo(true);
     setFormAllOffices(false);
     setFormSelectedOficinas([]);
@@ -157,7 +155,6 @@ export function GestionGruposVisualizacion() {
     setSelectedGrupo(g);
     setFormNombre(g.nombre);
     setFormDescripcion(g.descripcion || '');
-    setFormArea(g.area_categoria || 'Comercial');
     setFormActivo(g.activo);
     setFormAllOffices(g.all_offices);
     setFormOficinaSearch('');
@@ -257,14 +254,10 @@ export function GestionGruposVisualizacion() {
   const handleDelete = async () => {
     if (!confirmDelete) return;
     setDeleting(true);
-    if (confirmDelete.member_count > 0 || confirmDelete.office_count > 0) {
-      await supabase
-        .from('tramites_grupos_visualizacion')
-        .update({ activo: false, updated_at: new Date().toISOString(), updated_by: usuario?.id })
-        .eq('id', confirmDelete.id);
-    } else {
-      await supabase.from('tramites_grupos_visualizacion').delete().eq('id', confirmDelete.id);
-    }
+    // Always hard-delete — members and offices cascade via FK or are deleted first
+    await supabase.from('tramites_grupos_miembros').delete().eq('grupo_id', confirmDelete.id);
+    await supabase.from('tramites_grupos_oficinas').delete().eq('grupo_id', confirmDelete.id);
+    await supabase.from('tramites_grupos_visualizacion').delete().eq('id', confirmDelete.id);
     await supabase.from('ticket_team_audit_logs').insert({
       team_id: confirmDelete.id,
       action: 'team_deleted',
@@ -387,17 +380,16 @@ export function GestionGruposVisualizacion() {
   // ── LIST PANEL ────────────────────────────────────────────────────────────────
 
   if (panel === 'list') {
-    const active = grupos.filter(g => g.activo);
-    const inactive = grupos.filter(g => !g.activo);
+    const active = grupos.filter(g => g.activo && g.area_categoria === 'Operaciones');
 
     return (
       <div className="space-y-5">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="text-lg font-bold text-neutral-900">Equipos de Trabajo</h3>
+            <h3 className="text-lg font-bold text-neutral-900">Equipos de Operaciones</h3>
             <p className="text-sm text-neutral-500 mt-0.5">
-              Crea equipos, asigna miembros y oficinas para controlar la visibilidad de trámites.
+              Equipos con acceso a trámites operativos de múltiples oficinas. Los trámites comerciales son visibles por rol y oficina automaticamente.
             </p>
           </div>
           <button
@@ -462,9 +454,6 @@ export function GestionGruposVisualizacion() {
                       <button onClick={() => openEdit(g)} className="p-2 rounded-lg hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700 transition-colors" title="Editar">
                         <Pencil className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleToggleActive(g)} className="p-2 rounded-lg hover:bg-amber-50 text-amber-400 transition-colors" title="Desactivar">
-                        <ToggleRight className="w-4 h-4" />
-                      </button>
                       <button onClick={() => setConfirmDelete(g)} className="p-2 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors" title="Eliminar">
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -482,38 +471,6 @@ export function GestionGruposVisualizacion() {
           </div>
         )}
 
-        {/* Inactive teams */}
-        {inactive.length > 0 && (
-          <details className="group">
-            <summary className="cursor-pointer text-xs font-semibold text-neutral-400 hover:text-neutral-600 flex items-center gap-1 select-none">
-              <ChevronRight className="w-3 h-3 group-open:rotate-90 transition-transform" />
-              Equipos inactivos ({inactive.length})
-            </summary>
-            <div className="mt-3 space-y-2">
-              {inactive.map(g => {
-                const ac = getAC(g.area_categoria);
-                return (
-                  <div key={g.id} className="border border-dashed border-neutral-200 rounded-xl px-4 py-3 flex items-center gap-3 opacity-60">
-                    <div className={`p-2 rounded-lg ${ac.bg} flex-shrink-0`}>
-                      <span className={ac.color}><AreaIcon area={g.area_categoria} /></span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-neutral-700 text-sm line-through truncate">{g.nombre}</p>
-                      <p className="text-xs text-neutral-400">{g.area_categoria}</p>
-                    </div>
-                    <button onClick={() => handleToggleActive(g)} className="p-2 rounded-lg hover:bg-green-50 text-neutral-400 hover:text-green-600 transition-colors" title="Reactivar">
-                      <ToggleLeft className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => setConfirmDelete(g)} className="p-2 rounded-lg hover:bg-red-50 text-neutral-400 hover:text-red-500 transition-colors">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </details>
-        )}
-
         {/* Delete confirm */}
         {confirmDelete && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -525,17 +482,15 @@ export function GestionGruposVisualizacion() {
                   <p className="text-sm text-neutral-500">"{confirmDelete.nombre}"</p>
                 </div>
               </div>
-              {(confirmDelete.member_count > 0 || confirmDelete.office_count > 0) ? (
+              {(confirmDelete.member_count > 0 || confirmDelete.office_count > 0) && (
                 <div className="bg-amber-50 rounded-xl p-3 mb-4 text-sm text-amber-800 flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                   <span>
-                    Este equipo tiene {confirmDelete.member_count} miembros y {confirmDelete.office_count} oficinas.
-                    Se <strong>desactivará</strong> en lugar de eliminarse. Los usuarios perderán visibilidad de trámites asociados.
+                    Este equipo tiene {confirmDelete.member_count} miembro{confirmDelete.member_count !== 1 ? 's' : ''} y {confirmDelete.office_count} oficina{confirmDelete.office_count !== 1 ? 's' : ''} asignada{confirmDelete.office_count !== 1 ? 's' : ''}. Se eliminarán junto con el equipo.
                   </span>
                 </div>
-              ) : (
-                <p className="text-sm text-neutral-600 mb-4">¿Seguro que deseas eliminar este equipo? Esta acción no se puede deshacer.</p>
               )}
+              <p className="text-sm text-neutral-600 mb-4">¿Seguro que deseas eliminar este equipo? Esta acción no se puede deshacer.</p>
               <div className="flex gap-2 justify-end">
                 <button onClick={() => setConfirmDelete(null)} className="px-4 py-2 text-sm rounded-xl border border-neutral-200 hover:bg-neutral-50">Cancelar</button>
                 <button
@@ -544,7 +499,7 @@ export function GestionGruposVisualizacion() {
                   className="px-4 py-2 text-sm rounded-xl bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
                 >
                   {deleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  {(confirmDelete.member_count > 0 || confirmDelete.office_count > 0) ? 'Desactivar' : 'Eliminar'}
+                  Eliminar
                 </button>
               </div>
             </div>
@@ -564,9 +519,12 @@ export function GestionGruposVisualizacion() {
           <button onClick={() => setPanel('list')} className="p-2 rounded-xl hover:bg-neutral-100 text-neutral-500 transition-colors">
             <X className="w-4 h-4" />
           </button>
+          <div className={`p-2 rounded-lg ${AREA_CONFIG['Operaciones'].bg} flex-shrink-0`}>
+            <span className={AREA_CONFIG['Operaciones'].color}><Wrench className="w-4 h-4" /></span>
+          </div>
           <div>
-            <h3 className="text-lg font-bold text-neutral-900">{selectedGrupo ? 'Editar equipo' : 'Crear equipo'}</h3>
-            <p className="text-sm text-neutral-500">Configura el nombre, tipo y estado del equipo.</p>
+            <h3 className="text-lg font-bold text-neutral-900">{selectedGrupo ? 'Editar equipo' : 'Nuevo equipo de Operaciones'}</h3>
+            <p className="text-sm text-neutral-500">Correcciones, registros, solicitudes y operativos.</p>
           </div>
         </div>
 
@@ -577,7 +535,7 @@ export function GestionGruposVisualizacion() {
               type="text"
               value={formNombre}
               onChange={e => setFormNombre(e.target.value)}
-              placeholder="Ej. Equipo Comercial Norte"
+              placeholder="Ej. Operaciones CDMX Norte"
               className="w-full px-3 py-2.5 border border-neutral-300 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 focus:border-neutral-900 outline-none"
             />
           </div>
@@ -591,35 +549,6 @@ export function GestionGruposVisualizacion() {
               rows={2}
               className="w-full px-3 py-2.5 border border-neutral-300 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 focus:border-neutral-900 outline-none resize-none"
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-neutral-700 mb-1.5">Tipo de equipo *</label>
-            <div className="grid grid-cols-2 gap-3">
-              {AREA_OPTIONS.map(area => {
-                const a = AREA_CONFIG[area];
-                const sel = formArea === area;
-                return (
-                  <button
-                    key={area}
-                    type="button"
-                    onClick={() => setFormArea(area)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all text-left ${sel ? `${a.bg} ${a.border} ${a.color}` : 'border-neutral-200 hover:border-neutral-300 text-neutral-600'}`}
-                  >
-                    <span className={sel ? a.color : 'text-neutral-400'}>
-                      {area === 'Comercial' ? <Briefcase className="w-4 h-4" /> : <Wrench className="w-4 h-4" />}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm">{area}</p>
-                      <p className="text-[11px] opacity-70 truncate">
-                        {area === 'Comercial' ? 'Cotización, emisión, renovaciones' : 'Correcciones, registros, operaciones'}
-                      </p>
-                    </div>
-                    {sel && <Check className={`w-4 h-4 ml-auto flex-shrink-0 ${a.color}`} />}
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
           {/* All offices toggle */}
@@ -754,7 +683,7 @@ export function GestionGruposVisualizacion() {
             onClick={handleSaveForm}
             disabled={formSaving}
             className="px-5 py-2.5 text-sm rounded-xl font-semibold text-white transition-colors flex items-center gap-2 disabled:opacity-50"
-            style={{ backgroundColor: AREA_COLORS[formArea] }}
+            style={{ backgroundColor: AREA_COLORS['Operaciones'] }}
           >
             {formSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
             {selectedGrupo ? 'Guardar cambios' : 'Crear equipo'}

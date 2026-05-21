@@ -193,48 +193,50 @@ export function Tramites() {
 
   const getTipoTramiteLabel = (tipo: string) => centralGetLabel(tipo);
 
-  // Visibility filter based on team scope (area + offices)
+  // Visibility filter:
+  // - Comercial tramites: visible to users of the SAME office (by role, no team needed)
+  // - Operaciones tramites: visible via Operaciones team membership (team controls which offices)
+  // - Admins see everything
   const visibleTramites = tramites.filter(tramite => {
     if (isAdmin) return true;
 
     const tramiteOficinaId = tramite.agente?.oficina_id ?? null;
     const tipoArea = getTipoTramiteArea(tramite.tipo_tramite);
 
-    // New scope-based visibility (team offices assigned)
-    if (userScope.length > 0) {
-      for (const scope of userScope) {
-        if (scope.area_categoria !== tipoArea) continue;
-        // all_offices: no office restriction
+    // Always show tramites the user created or is directly assigned to
+    const isDirectlyInvolved =
+      tramite.creado_por === usuario?.id ||
+      tramite.assigned_to_user_id === usuario?.id ||
+      tramite.agente_id === usuario?.id;
+
+    // ── Comercial area: role+office based, no team required ──
+    if (tipoArea === 'Comercial') {
+      // Gerentes see their own office's commercial tramites
+      if (isGerente) return tramiteOficinaId === usuario?.oficina_id;
+      // Empleados/Agentes see commercial tramites of their office
+      return tramiteOficinaId === usuario?.oficina_id || isDirectlyInvolved;
+    }
+
+    // ── Operaciones area: team-based scope ──
+    // Gerentes also see their office's operaciones tramites without needing a team
+    if (isGerente && tramiteOficinaId === usuario?.oficina_id) return true;
+
+    // Check Operaciones team scope
+    const opsScopes = userScope.filter(s => s.area_categoria === 'Operaciones');
+    if (opsScopes.length > 0) {
+      for (const scope of opsScopes) {
         if (scope.all_offices) return true;
-        // check tramite's office is in team's allowed offices
         const officeIds = scope.office_ids || [];
         if (tramiteOficinaId && officeIds.includes(tramiteOficinaId)) return true;
       }
-      // Also show tramites created by or assigned to the user regardless of team
-      if (
-        tramite.creado_por === usuario?.id ||
-        tramite.assigned_to_user_id === usuario?.id ||
-        tramite.agente_id === usuario?.id
-      ) return true;
-      return false;
+      return isDirectlyInvolved;
     }
 
-    // Legacy fallback: simple area-based visibility without office scoping
-    if (userArea === 'Comercial') {
-      const sameOffice = tramiteOficinaId === usuario?.oficina_id;
-      if (tipoArea === 'Comercial') return sameOffice;
-      return false;
-    }
-    if (userArea === 'Operaciones') {
-      return tipoArea === 'Operaciones';
-    }
+    // Legacy fallback for users with userArea set but no scope array
+    if (userArea === 'Operaciones') return true;
 
-    // No group: see tramites they created or are assigned to
-    return (
-      tramite.creado_por === usuario?.id ||
-      tramite.assigned_to_user_id === usuario?.id ||
-      tramite.agente_id === usuario?.id
-    );
+    // No team, no special role: only see own tramites
+    return isDirectlyInvolved;
   });
 
   const filteredTramites = visibleTramites.filter(tramite => {
