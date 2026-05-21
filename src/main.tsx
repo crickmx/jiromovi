@@ -37,6 +37,9 @@ function getSlug(path: string) {
     return;
   }
 
+  // Allow /cotizar/:slug paths (public quote form links)
+  if (path.startsWith('/cotizar/')) return;
+
   if (!isSingleSlugPath(path)) {
     window.location.replace(MAIN_REDIRECT);
     return;

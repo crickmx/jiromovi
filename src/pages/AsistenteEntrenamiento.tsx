@@ -1,383 +1,1110 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowLeft, Save, Bot, Settings, MessageSquare, Sliders, Zap, VolumeX,
-  StopCircle, RefreshCw, PenLine, ShieldCheck, BookOpen, FlaskConical,
-  ChevronRight, X, Plus, Send, CheckCircle2, AlertCircle, Trash2, ChevronDown,
+  Bot, Settings, MessageSquare, Zap, Brain, FlaskConical, BookOpen, History,
+  Plus, Trash2, Save, X, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2,
+  XCircle, Loader2, Search, RefreshCw, Tag, Activity, ArrowLeft, Pencil,
+  ToggleLeft, ToggleRight, TrendingUp, Send,
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 import { cn } from '@/lib/utils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface ToneJson { formality: 'formal'|'semiformal'|'casual'; empathy_level: 'low'|'medium'|'high'; use_name: boolean; use_honorifics: boolean; custom_style_notes: string }
-interface AllowedActions { create_tramite: boolean; send_summary: boolean; transfer_to_agent: boolean; send_documents: boolean; schedule_followup: boolean }
-interface KnowledgeEntry { title: string; content: string }
-interface Rule { type: string; value?: string }
-
-interface Settings {
+interface GlobalSettings {
   id?: string;
-  is_active: boolean; auto_activate_on_new_contact: boolean; max_inactive_minutes: number; default_language: 'es'|'en';
-  base_instructions: string; tone_json: ToneJson; intervention_level: 'conservative'|'balanced'|'proactive'; confidence_threshold: number;
-  activation_rules_json: Rule[]; silence_rules_json: Rule[]; stop_phrases_json: string[]; reactivate_phrases_json: string[];
-  message_signature: string; allowed_actions_json: AllowedActions; knowledge_base_json: KnowledgeEntry[];
+  smart_assistant_global_enabled: boolean;
+  default_enabled_for_new_conversations: boolean;
+  mode: 'suggestions_only' | 'automatic' | 'mixed';
+  auto_activate_threshold: number;
+  suggest_threshold: number;
+  ignore_threshold: number;
+  pause_on_human_message: boolean;
+  human_pause_minutes: number;
+  stop_on_user_request: boolean;
+  allow_auto_activate_agents: boolean;
+  allow_internal_suggestions: boolean;
+  minimum_intervention: boolean;
+  ai_message_signature_enabled: boolean;
+  ai_message_signature_text: string;
 }
 
-const DEF: Settings = {
-  is_active: false, auto_activate_on_new_contact: false, max_inactive_minutes: 10, default_language: 'es',
-  base_instructions: '', tone_json: { formality: 'semiformal', empathy_level: 'medium', use_name: true, use_honorifics: false, custom_style_notes: '' },
-  intervention_level: 'balanced', confidence_threshold: 70,
-  activation_rules_json: [], silence_rules_json: [], stop_phrases_json: [], reactivate_phrases_json: [],
-  message_signature: '- MOVI IA', allowed_actions_json: { create_tramite: false, send_summary: true, transfer_to_agent: true, send_documents: false, schedule_followup: false },
-  knowledge_base_json: [],
+interface Intent {
+  id: string;
+  intent_key: string;
+  name: string;
+  description: string | null;
+  status: 'active' | 'inactive';
+  linked_assistant_id: string | null;
+  linked_form_slug: string | null;
+  auto_activation_allowed: boolean;
+  requires_confirmation_below_threshold: boolean;
+  priority: number;
+  created_at: string;
+  phrases?: TrainingPhrase[];
+  keywords?: Keyword[];
+}
+
+interface TrainingPhrase {
+  id: string;
+  intent_id: string;
+  phrase: string;
+  weight: number;
+  status: 'active' | 'inactive';
+}
+
+interface Keyword {
+  id: string;
+  intent_id: string;
+  keyword: string;
+  weight: number;
+  status: 'active' | 'inactive';
+}
+
+interface AnalysisLog {
+  id: string;
+  message_text: string;
+  detected_intent: string | null;
+  confidence: number | null;
+  action_taken: string | null;
+  matched_form_slug: string | null;
+  reason: string | null;
+  was_correct: boolean | null;
+  created_at: string;
+  agent_user_id: string | null;
+  agent_name?: string;
+}
+
+type Tab = 'config' | 'intents' | 'simulator' | 'logs';
+
+const DEFAULT_SETTINGS: GlobalSettings = {
+  smart_assistant_global_enabled: true,
+  default_enabled_for_new_conversations: true,
+  mode: 'mixed',
+  auto_activate_threshold: 0.85,
+  suggest_threshold: 0.55,
+  ignore_threshold: 0.54,
+  pause_on_human_message: true,
+  human_pause_minutes: 20,
+  stop_on_user_request: true,
+  allow_auto_activate_agents: true,
+  allow_internal_suggestions: true,
+  minimum_intervention: true,
+  ai_message_signature_enabled: true,
+  ai_message_signature_text: '- 🤖 MOVI IA',
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Small UI helpers ─────────────────────────────────────────────────────────
 
-const ic = 'w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm text-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white placeholder:text-neutral-400';
-const sc = 'w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm text-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white';
-
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
-    <button type="button" onClick={() => onChange(!checked)} className={cn('relative inline-flex h-5 w-9 items-center rounded-full transition-colors', checked ? 'bg-blue-600' : 'bg-neutral-300')}>
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        'relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none',
+        checked ? 'bg-blue-600' : 'bg-gray-200',
+        disabled && 'opacity-50 cursor-not-allowed',
+      )}
+    >
       <span className={cn('inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform', checked ? 'translate-x-5' : 'translate-x-1')} />
     </button>
   );
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return <div><p className="text-xs font-medium text-neutral-500 mb-1">{label}</p>{children}{hint && <p className="text-xs text-neutral-400 mt-1">{hint}</p>}</div>;
-}
-
-function Pill({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-xs font-medium text-blue-700">{label}<button onClick={onRemove}><X className="w-3 h-3" /></button></span>;
-}
-
 function ToggleRow({ label, sub, checked, onChange }: { label: string; sub?: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <div className="flex items-center justify-between py-3 border-b border-neutral-100">
-      <div><p className="text-sm font-medium text-neutral-800">{label}</p>{sub && <p className="text-xs text-neutral-400">{sub}</p>}</div>
+    <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+      <div>
+        <p className="text-sm font-medium text-gray-800">{label}</p>
+        {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
+      </div>
       <Toggle checked={checked} onChange={onChange} />
     </div>
   );
 }
 
-function RulesPanel({ rules, onAdd, onRemove, types, placeholder }: { rules: Rule[]; onAdd: (r: Rule) => void; onRemove: (i: number) => void; types: { value: string; label: string; hasValue?: boolean }[]; placeholder?: string }) {
-  const [newType, setNewType] = useState(types[0].value);
-  const [val, setVal] = useState('');
-  const def = types.find(t => t.value === newType);
-  const lbl = (r: Rule) => { const d = types.find(t => t.value === r.type); return r.value ? `${d?.label ?? r.type}: ${r.value}` : (d?.label ?? r.type); };
+function Badge({ status }: { status: 'active' | 'inactive' }) {
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-2 min-h-[32px]">
-        {rules.length === 0 ? <p className="text-xs text-neutral-400 italic">Sin reglas configuradas.</p> : rules.map((r, i) => <Pill key={i} label={lbl(r)} onRemove={() => onRemove(i)} />)}
+    <span className={cn(
+      'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium',
+      status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500',
+    )}>
+      <span className={cn('w-1.5 h-1.5 rounded-full', status === 'active' ? 'bg-emerald-500' : 'bg-gray-400')} />
+      {status === 'active' ? 'Activo' : 'Inactivo'}
+    </span>
+  );
+}
+
+function ConfidenceBar({ value }: { value: number }) {
+  const pct = Math.round(value * 100);
+  const color = pct >= 85 ? 'bg-emerald-500' : pct >= 55 ? 'bg-amber-400' : 'bg-red-400';
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${pct}%` }} />
       </div>
-      <div className="flex gap-2 flex-wrap items-end">
-        <div className="flex-1 min-w-[160px]"><p className="text-xs font-medium text-neutral-500 mb-1">Tipo</p><select value={newType} onChange={e => { setNewType(e.target.value); setVal(''); }} className={sc}>{types.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
-        {def?.hasValue && <div className="flex-1 min-w-[130px]"><p className="text-xs font-medium text-neutral-500 mb-1">Valor</p><input value={val} onChange={e => setVal(e.target.value)} placeholder={placeholder} className={ic} /></div>}
-        <button onClick={() => { if (!def?.hasValue || val.trim()) { onAdd({ type: newType, value: val.trim() || undefined }); setVal(''); } }} className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-1"><Plus className="w-4 h-4" /> Agregar</button>
-      </div>
+      <span className="text-xs font-medium text-gray-600 w-8 text-right">{pct}%</span>
     </div>
   );
 }
 
-function PhrasesPanel({ phrases, onChange, hint }: { phrases: string[]; onChange: (p: string[]) => void; hint: string }) {
-  const [draft, setDraft] = useState('');
-  const add = () => { if (draft.trim()) { onChange([...phrases, draft.trim()]); setDraft(''); } };
+// ─── Tab: Config ─────────────────────────────────────────────────────────────
+
+function TabConfig({ settings, setSettings, onSave, saving }: {
+  settings: GlobalSettings;
+  setSettings: (s: GlobalSettings) => void;
+  onSave: () => void;
+  saving: boolean;
+}) {
+  const set = (k: keyof GlobalSettings, v: unknown) => setSettings({ ...settings, [k]: v });
+
   return (
-    <div className="space-y-4">
-      <p className="text-xs text-neutral-500">{hint}</p>
-      <div className="flex flex-wrap gap-2 min-h-[32px]">
-        {phrases.length === 0 ? <p className="text-xs text-neutral-400 italic">Sin frases configuradas.</p>
-          : phrases.map((p, i) => <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-neutral-100 border border-neutral-200 text-xs text-neutral-700">&ldquo;{p}&rdquo;<button onClick={() => onChange(phrases.filter((_, j) => j !== i))}><X className="w-3 h-3 text-neutral-400 hover:text-neutral-700" /></button></span>)}
-      </div>
-      <div className="flex gap-2">
-        <input value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()} placeholder="Escribe una frase y presiona Enter..." className={cn(ic, 'flex-1')} />
-        <button onClick={add} className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /></button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Section components ────────────────────────────────────────────────────────
-
-function SEstado({ s, set }: { s: Settings; set: (p: Partial<Settings>) => void }) {
-  return <div className="space-y-4">
-    <ToggleRow label="Asistente activo" sub="Habilita o deshabilita el asistente globalmente" checked={s.is_active} onChange={v => set({ is_active: v })} />
-    <ToggleRow label="Activar automaticamente en nuevos contactos" sub="El asistente iniciara en cada nuevo contacto entrante" checked={s.auto_activate_on_new_contact} onChange={v => set({ auto_activate_on_new_contact: v })} />
-    <Field label="Minutos de inactividad antes de transferir"><input type="number" min={1} max={120} value={s.max_inactive_minutes} onChange={e => set({ max_inactive_minutes: +e.target.value })} className={ic} /></Field>
-    <Field label="Idioma predeterminado"><select value={s.default_language} onChange={e => set({ default_language: e.target.value as 'es'|'en' })} className={sc}><option value="es">Espanol (es)</option><option value="en">English (en)</option></select></Field>
-  </div>;
-}
-
-function SInstrucciones({ s, set }: { s: Settings; set: (p: Partial<Settings>) => void }) {
-  return <Field label="Instrucciones para el asistente" hint="Define el comportamiento general del asistente. Se envia en cada conversacion como contexto base.">
-    <textarea rows={10} value={s.base_instructions} onChange={e => set({ base_instructions: e.target.value })} placeholder={"Eres un asistente de MOVI Digital...\nResponde de forma clara, profesional y empatica.\n..."} className={cn(ic, 'resize-y min-h-[200px] font-mono text-xs leading-relaxed')} />
-  </Field>;
-}
-
-function STono({ s, set }: { s: Settings; set: (p: Partial<Settings>) => void }) {
-  const t = s.tone_json; const u = (p: Partial<ToneJson>) => set({ tone_json: { ...t, ...p } });
-  return <div className="space-y-4">
-    <Field label="Formalidad"><select value={t.formality} onChange={e => u({ formality: e.target.value as ToneJson['formality'] })} className={sc}><option value="formal">Formal</option><option value="semiformal">Semiformal</option><option value="casual">Casual</option></select></Field>
-    <Field label="Nivel de empatia"><select value={t.empathy_level} onChange={e => u({ empathy_level: e.target.value as ToneJson['empathy_level'] })} className={sc}><option value="low">Bajo</option><option value="medium">Medio</option><option value="high">Alto</option></select></Field>
-    <ToggleRow label="Usar nombre del cliente" checked={t.use_name} onChange={v => u({ use_name: v })} />
-    <ToggleRow label="Usar tratamiento (Sr./Sra.)" checked={t.use_honorifics} onChange={v => u({ use_honorifics: v })} />
-    <Field label="Notas de estilo adicionales"><textarea rows={3} value={t.custom_style_notes} onChange={e => u({ custom_style_notes: e.target.value })} placeholder="Ej: Evitar terminos tecnicos..." className={cn(ic, 'resize-y')} /></Field>
-  </div>;
-}
-
-function SIntervencion({ s, set }: { s: Settings; set: (p: Partial<Settings>) => void }) {
-  const levels = [
-    { value: 'conservative', title: 'Conservador', desc: 'Solo responde cuando hay intent claro' },
-    { value: 'balanced', title: 'Equilibrado', desc: 'Interviene en la mayoria de mensajes relevantes', rec: true },
-    { value: 'proactive', title: 'Proactivo', desc: 'Interviene en casi todos los mensajes entrantes' },
-  ] as const;
-  return <div className="space-y-5">
-    <div className="space-y-2">
-      {levels.map(l => (
-        <label key={l.value} className={cn('flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all', s.intervention_level === l.value ? 'border-blue-400 bg-blue-50' : 'border-neutral-200 hover:border-neutral-300 bg-white')}>
-          <input type="radio" name="ivl" value={l.value} checked={s.intervention_level === l.value} onChange={() => set({ intervention_level: l.value })} className="mt-0.5 accent-blue-600" />
-          <div className="flex-1"><div className="flex items-center gap-2"><span className="text-sm font-semibold text-neutral-800">{l.title}</span>{'rec' in l && l.rec && <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase bg-blue-600 text-white rounded">Recomendado</span>}</div><p className="text-xs text-neutral-500 mt-0.5">{l.desc}</p></div>
-        </label>
-      ))}
-    </div>
-    <Field label={`Umbral de confianza minimo: ${s.confidence_threshold}%`}>
-      <input type="range" min={0} max={100} step={5} value={s.confidence_threshold} onChange={e => set({ confidence_threshold: +e.target.value })} className="w-full accent-blue-600" />
-      <div className="flex justify-between text-xs text-neutral-400 mt-0.5"><span>0%</span><span>50%</span><span>100%</span></div>
-    </Field>
-  </div>;
-}
-
-function SFirma({ s, set }: { s: Settings; set: (p: Partial<Settings>) => void }) {
-  return <div className="space-y-5">
-    <Field label="Firma al final de mensajes automaticos"><input value={s.message_signature} onChange={e => set({ message_signature: e.target.value })} placeholder="- MOVI IA" className={ic} /></Field>
-    <div><p className="text-xs font-medium text-neutral-500 mb-2">Vista previa</p>
-      <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4"><div className="max-w-xs ml-auto">
-        <div className="bg-blue-600 text-white text-sm rounded-2xl rounded-tr-sm px-4 py-2.5 whitespace-pre-line shadow-sm">{`Hola, adjunto encontraras el resumen de tu poliza.\n${s.message_signature}`}</div>
-      </div></div>
-    </div>
-  </div>;
-}
-
-function SAcciones({ s, set }: { s: Settings; set: (p: Partial<Settings>) => void }) {
-  const acts = [
-    { k: 'create_tramite' as const, l: 'Crear tramite automaticamente', d: 'Inicia un tramite basado en la solicitud del cliente' },
-    { k: 'send_summary' as const, l: 'Enviar resumen por correo', d: 'Envia un resumen de la conversacion al finalizar' },
-    { k: 'transfer_to_agent' as const, l: 'Transferir a agente', d: 'Escala la conversacion a un agente humano' },
-    { k: 'send_documents' as const, l: 'Solicitar documentos', d: 'Pide documentos al cliente cuando sea necesario' },
-    { k: 'schedule_followup' as const, l: 'Programar seguimiento', d: 'Agrega un recordatorio de seguimiento automatico' },
-  ];
-  return <div className="space-y-3">{acts.map(a => (
-    <label key={a.k} className="flex items-start gap-3 p-4 rounded-xl border border-neutral-200 hover:border-neutral-300 cursor-pointer bg-white transition-all">
-      <input type="checkbox" checked={s.allowed_actions_json[a.k]} onChange={e => set({ allowed_actions_json: { ...s.allowed_actions_json, [a.k]: e.target.checked } })} className="mt-0.5 accent-blue-600 w-4 h-4" />
-      <div><p className="text-sm font-medium text-neutral-800">{a.l}</p><p className="text-xs text-neutral-400 mt-0.5">{a.d}</p></div>
-    </label>
-  ))}</div>;
-}
-
-function SConocimiento({ s, set }: { s: Settings; set: (p: Partial<Settings>) => void }) {
-  const [title, setTitle] = useState(''); const [content, setContent] = useState(''); const [exp, setExp] = useState<number|null>(null);
-  const entries = Array.isArray(s.knowledge_base_json) ? s.knowledge_base_json : [];
-  return <div className="space-y-5">
-    <p className="text-xs text-neutral-500">Informacion que el asistente puede consultar para responder preguntas frecuentes.</p>
-    <div className="space-y-2">
-      {entries.length === 0 && <p className="text-xs text-neutral-400 italic">Sin entradas de conocimiento.</p>}
-      {entries.map((e, i) => (
-        <div key={i} className="border border-neutral-200 rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 bg-white">
-            <button className="flex items-center gap-2 flex-1 text-left" onClick={() => setExp(exp === i ? null : i)}>
-              <BookOpen className="w-4 h-4 text-blue-500 shrink-0" /><span className="text-sm font-medium text-neutral-800">{e.title}</span><ChevronDown className={cn('w-4 h-4 text-neutral-400 ml-auto transition-transform', exp === i && 'rotate-180')} />
-            </button>
-            <button onClick={() => set({ knowledge_base_json: entries.filter((_, j) => j !== i) })} className="ml-3 p-1 text-neutral-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+    <div className="space-y-6">
+      {/* Master switch */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
+            <Settings className="w-4 h-4 text-blue-600" />
           </div>
-          {exp === i && <div className="px-4 pb-4 bg-neutral-50 border-t border-neutral-100"><p className="text-xs text-neutral-600 whitespace-pre-wrap mt-3">{e.content}</p></div>}
+          <h2 className="font-semibold text-gray-900 text-sm">Configuracion General</h2>
         </div>
-      ))}
-    </div>
-    <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 space-y-3">
-      <p className="text-xs font-semibold text-neutral-600 uppercase tracking-wide">Agregar entrada</p>
-      <Field label="Titulo"><input value={title} onChange={e => setTitle(e.target.value)} placeholder="Ej: Cobertura de seguro de auto" className={ic} /></Field>
-      <Field label="Contenido"><textarea rows={3} value={content} onChange={e => setContent(e.target.value)} placeholder="Describe la informacion..." className={cn(ic, 'resize-y')} /></Field>
-      <button onClick={() => { if (title.trim() && content.trim()) { set({ knowledge_base_json: [...entries, { title: title.trim(), content: content.trim() }] }); setTitle(''); setContent(''); } }} className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /> Agregar entrada</button>
-    </div>
-  </div>;
-}
-
-function SSimulador({ settings }: { settings: Settings }) {
-  const [msgs, setMsgs] = useState<{ role: 'user'|'assistant'; text: string }[]>([]);
-  const [input, setInput] = useState(''); const [loading, setLoading] = useState(false); const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => { ref.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs]);
-  const send = async () => {
-    const text = input.trim(); if (!text || loading) return;
-    setInput(''); setMsgs(m => [...m, { role: 'user', text }]); setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('contact-center-smart-assistant', { body: { test_mode: true, message: text, settings } });
-      if (error) throw error;
-      setMsgs(m => [...m, { role: 'assistant', text: data?.response ?? data?.message ?? JSON.stringify(data) }]);
-    } catch { setMsgs(m => [...m, { role: 'assistant', text: '[Error al conectar con el asistente]' }]); }
-    finally { setLoading(false); }
-  };
-  return <div className="flex flex-col space-y-3">
-    <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 text-xs text-amber-700"><strong>Modo de prueba.</strong> Las respuestas no generan tramites ni se guardan.</div>
-    <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 overflow-y-auto space-y-3 h-80">
-      {msgs.length === 0 && <p className="text-xs text-neutral-400 text-center mt-8">Escribe un mensaje para probar el asistente con la configuracion actual.</p>}
-      {msgs.map((m, i) => (
-        <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
-          <div className={cn('max-w-[75%] px-4 py-2.5 rounded-2xl text-sm shadow-sm whitespace-pre-wrap', m.role === 'user' ? 'bg-blue-600 text-white rounded-tr-sm' : 'bg-white border border-neutral-200 text-neutral-800 rounded-tl-sm')}>{m.text}</div>
+        <div className="px-6 py-2">
+          <ToggleRow label="Asistente Inteligente activo" sub="Habilita MOVI IA globalmente" checked={settings.smart_assistant_global_enabled} onChange={v => set('smart_assistant_global_enabled', v)} />
+          <ToggleRow label="Activo por defecto en conversaciones nuevas" checked={settings.default_enabled_for_new_conversations} onChange={v => set('default_enabled_for_new_conversations', v)} />
+          <ToggleRow label="Pausar al intervenir humano" sub={`Se pausa ${settings.human_pause_minutes} min cuando un usuario interno responde manualmente`} checked={settings.pause_on_human_message} onChange={v => set('pause_on_human_message', v)} />
+          <ToggleRow label="Detener si el contacto lo solicita" sub='Frases como "no quiero bot" detienen la IA' checked={settings.stop_on_user_request} onChange={v => set('stop_on_user_request', v)} />
+          <ToggleRow label="Permitir activar asistentes automaticos" checked={settings.allow_auto_activate_agents} onChange={v => set('allow_auto_activate_agents', v)} />
+          <ToggleRow label="Mostrar sugerencias internas" sub="Visible solo para el usuario interno" checked={settings.allow_internal_suggestions} onChange={v => set('allow_internal_suggestions', v)} />
+          <ToggleRow label="Intervencion minima" sub="No intervenir si no es necesario" checked={settings.minimum_intervention} onChange={v => set('minimum_intervention', v)} />
         </div>
-      ))}
-      {loading && <div className="flex justify-start"><div className="bg-white border border-neutral-200 rounded-2xl rounded-tl-sm px-4 py-2.5 text-xs text-neutral-400 flex items-center gap-1.5"><RefreshCw className="w-3 h-3 animate-spin" /> Procesando...</div></div>}
-      <div ref={ref} />
-    </div>
-    <div className="flex gap-2">
-      <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()} placeholder="Escribe un mensaje de prueba..." className={cn(ic, 'flex-1')} disabled={loading} />
-      <button onClick={send} disabled={loading || !input.trim()} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40"><Send className="w-4 h-4" /></button>
-    </div>
-  </div>;
-}
+      </div>
 
-// ─── Main Page ─────────────────────────────────────────────────────────────────
-
-type SectionId = 'estado'|'instrucciones'|'tono'|'intervencion'|'activacion'|'silencio'|'stop'|'reactivate'|'firma'|'acciones'|'conocimiento'|'simulador';
-
-const SECTIONS: { id: SectionId; label: string; icon: React.ElementType }[] = [
-  { id: 'estado', label: 'Estado General', icon: Settings },
-  { id: 'instrucciones', label: 'Instrucciones Base', icon: PenLine },
-  { id: 'tono', label: 'Tono y Personalidad', icon: MessageSquare },
-  { id: 'intervencion', label: 'Nivel de Intervencion', icon: Sliders },
-  { id: 'activacion', label: 'Reglas de Activacion', icon: Zap },
-  { id: 'silencio', label: 'Reglas para no Intervenir', icon: VolumeX },
-  { id: 'stop', label: 'Frases para Pausar', icon: StopCircle },
-  { id: 'reactivate', label: 'Frases para Reactivar', icon: RefreshCw },
-  { id: 'firma', label: 'Firma de Mensajes', icon: PenLine },
-  { id: 'acciones', label: 'Acciones Permitidas', icon: ShieldCheck },
-  { id: 'conocimiento', label: 'Base de Conocimiento', icon: BookOpen },
-  { id: 'simulador', label: 'Simulador de Prueba', icon: FlaskConical },
-];
-
-const ACT_TYPES = [{ value: 'always', label: 'Siempre activo' }, { value: 'no_agent_available', label: 'Sin agente disponible' }, { value: 'keyword_match', label: 'Palabra clave', hasValue: true }, { value: 'time_window', label: 'Ventana de tiempo', hasValue: true }];
-const SIL_TYPES = [{ value: 'agent_active', label: 'Agente activo' }, { value: 'keyword_match', label: 'Palabra clave', hasValue: true }, { value: 'tag_match', label: 'Etiqueta de contacto', hasValue: true }, { value: 'contact_type', label: 'Tipo de contacto', hasValue: true }];
-
-export default function AsistenteEntrenamiento() {
-  const { usuario } = useAuth();
-  const [active, setActive] = useState<SectionId>('estado');
-  const [s, setS] = useState<Settings>(DEF);
-  const [rowId, setRowId] = useState<string|undefined>(undefined);
-  const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<{ type: 'success'|'error'; msg: string }|null>(null);
-
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.from('contact_center_smart_assistant_settings').select('*').is('office_id', null).maybeSingle();
-      if (data) {
-        setRowId(data.id);
-        setS({
-          id: data.id,
-          is_active: data.is_active ?? false,
-          auto_activate_on_new_contact: data.auto_activate_on_new_contact ?? false,
-          max_inactive_minutes: data.max_inactive_minutes ?? 10,
-          default_language: data.default_language ?? 'es',
-          base_instructions: data.base_instructions ?? '',
-          tone_json: (data.tone_json as ToneJson) ?? DEF.tone_json,
-          intervention_level: (data.intervention_level as Settings['intervention_level']) ?? 'balanced',
-          confidence_threshold: data.confidence_threshold ?? 70,
-          activation_rules_json: Array.isArray(data.activation_rules_json) ? (data.activation_rules_json as Rule[]) : [],
-          silence_rules_json: Array.isArray(data.silence_rules_json) ? (data.silence_rules_json as Rule[]) : [],
-          stop_phrases_json: Array.isArray(data.stop_phrases_json) ? (data.stop_phrases_json as string[]) : [],
-          reactivate_phrases_json: Array.isArray(data.reactivate_phrases_json) ? (data.reactivate_phrases_json as string[]) : [],
-          message_signature: data.message_signature ?? '- MOVI IA',
-          allowed_actions_json: (data.allowed_actions_json as AllowedActions) ?? DEF.allowed_actions_json,
-          knowledge_base_json: Array.isArray(data.knowledge_base_json) ? (data.knowledge_base_json as KnowledgeEntry[]) : [],
-        });
-      }
-    })();
-  }, []);
-
-  const patch = (p: Partial<Settings>) => setS(prev => ({ ...prev, ...p }));
-
-  const showToast = (type: 'success'|'error', msg: string) => { setToast({ type, msg }); setTimeout(() => setToast(null), 3000); };
-
-  const save = async () => {
-    setSaving(true);
-    try {
-      const payload = { ...(rowId ? { id: rowId } : {}), office_id: null, is_active: s.is_active, auto_activate_on_new_contact: s.auto_activate_on_new_contact, max_inactive_minutes: s.max_inactive_minutes, default_language: s.default_language, base_instructions: s.base_instructions, tone_json: s.tone_json, intervention_level: s.intervention_level, confidence_threshold: s.confidence_threshold, activation_rules_json: s.activation_rules_json, silence_rules_json: s.silence_rules_json, stop_phrases_json: s.stop_phrases_json, reactivate_phrases_json: s.reactivate_phrases_json, message_signature: s.message_signature, allowed_actions_json: s.allowed_actions_json, knowledge_base_json: s.knowledge_base_json, updated_by: usuario?.id, updated_at: new Date().toISOString() };
-      const { data, error } = await supabase.from('contact_center_smart_assistant_settings').upsert(payload).select('id').maybeSingle();
-      if (error) throw error;
-      if (data?.id && !rowId) setRowId(data.id);
-      showToast('success', 'Configuracion guardada correctamente.');
-    } catch (e: unknown) { showToast('error', (e as Error)?.message ?? 'Error al guardar.'); }
-    finally { setSaving(false); }
-  };
-
-  const sec = SECTIONS.find(x => x.id === active)!;
-
-  const body = () => {
-    switch (active) {
-      case 'estado': return <SEstado s={s} set={patch} />;
-      case 'instrucciones': return <SInstrucciones s={s} set={patch} />;
-      case 'tono': return <STono s={s} set={patch} />;
-      case 'intervencion': return <SIntervencion s={s} set={patch} />;
-      case 'activacion': return <RulesPanel rules={s.activation_rules_json} onAdd={r => patch({ activation_rules_json: [...s.activation_rules_json, r] })} onRemove={i => patch({ activation_rules_json: s.activation_rules_json.filter((_, j) => j !== i) })} types={ACT_TYPES} placeholder="Ej: cotizacion, hola..." />;
-      case 'silencio': return <RulesPanel rules={s.silence_rules_json} onAdd={r => patch({ silence_rules_json: [...s.silence_rules_json, r] })} onRemove={i => patch({ silence_rules_json: s.silence_rules_json.filter((_, j) => j !== i) })} types={SIL_TYPES} placeholder="Ej: VIP, urgente..." />;
-      case 'stop': return <PhrasesPanel phrases={s.stop_phrases_json} onChange={p => patch({ stop_phrases_json: p })} hint="Si el cliente escribe alguna de estas frases, el asistente se detendra y transferira al agente." />;
-      case 'reactivate': return <PhrasesPanel phrases={s.reactivate_phrases_json} onChange={p => patch({ reactivate_phrases_json: p })} hint="Si el cliente escribe alguna de estas frases, el asistente se reactivara automaticamente." />;
-      case 'firma': return <SFirma s={s} set={patch} />;
-      case 'acciones': return <SAcciones s={s} set={patch} />;
-      case 'conocimiento': return <SConocimiento s={s} set={patch} />;
-      case 'simulador': return <SSimulador settings={s} />;
-      default: return null;
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-neutral-50 flex flex-col">
-      {toast && (
-        <div className={cn('fixed top-4 right-4 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-sm font-medium', toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white')}>
-          {toast.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />} {toast.msg}
+      {/* Mode & thresholds */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
+            <Zap className="w-4 h-4 text-amber-600" />
+          </div>
+          <h2 className="font-semibold text-gray-900 text-sm">Modo de Actuacion y Umbrales</h2>
         </div>
-      )}
-      <header className="bg-white border-b border-neutral-200 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Link to="/centro-contacto/asistentes" className="p-1.5 rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 transition-colors"><ArrowLeft className="w-4 h-4" /></Link>
-            <div className="flex items-center gap-2">
-              <Bot className="w-5 h-5 text-blue-600 shrink-0" />
-              <div><h1 className="text-sm font-bold text-neutral-900">Entrenamiento del Asistente Inteligente</h1><p className="text-xs text-neutral-400 hidden sm:block">Configura el comportamiento, personalidad y reglas del asistente automatico</p></div>
+        <div className="p-6 space-y-5">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-2">Modo</label>
+            <div className="grid grid-cols-3 gap-2">
+              {(['suggestions_only', 'automatic', 'mixed'] as const).map(m => (
+                <button
+                  key={m}
+                  onClick={() => set('mode', m)}
+                  className={cn(
+                    'py-2.5 px-3 rounded-xl border text-xs font-medium transition-all',
+                    settings.mode === m ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-200 text-gray-600 hover:border-blue-300',
+                  )}
+                >
+                  {m === 'suggestions_only' ? 'Solo sugerencias' : m === 'automatic' ? 'Automatico' : 'Mixto'}
+                </button>
+              ))}
             </div>
           </div>
-          <button onClick={save} disabled={saving} className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-            {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            <span className="hidden sm:inline">{saving ? 'Guardando...' : 'Guardar cambios'}</span>
+          <div className="grid grid-cols-3 gap-4">
+            {([
+              { key: 'auto_activate_threshold', label: 'Umbral activacion auto', color: 'text-emerald-700' },
+              { key: 'suggest_threshold', label: 'Umbral sugerencia', color: 'text-amber-700' },
+              { key: 'ignore_threshold', label: 'Umbral ignorar', color: 'text-red-600' },
+            ] as const).map(({ key, label, color }) => (
+              <div key={key}>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range" min={0} max={1} step={0.01}
+                    value={settings[key]}
+                    onChange={e => set(key, parseFloat(e.target.value))}
+                    className="flex-1 accent-blue-600"
+                  />
+                  <span className={cn('text-sm font-semibold w-10 text-right', color)}>
+                    {Math.round((settings[key] as number) * 100)}%
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Minutos de pausa por intervencion humana</label>
+            <input
+              type="number" min={1} max={120}
+              value={settings.human_pause_minutes}
+              onChange={e => set('human_pause_minutes', parseInt(e.target.value) || 20)}
+              className="w-32 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Signature */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-gray-50 flex items-center justify-center">
+            <MessageSquare className="w-4 h-4 text-gray-500" />
+          </div>
+          <h2 className="font-semibold text-gray-900 text-sm">Firma MOVI IA</h2>
+        </div>
+        <div className="p-6 space-y-4">
+          <ToggleRow label="Agregar firma a mensajes automaticos" checked={settings.ai_message_signature_enabled} onChange={v => set('ai_message_signature_enabled', v)} />
+          {settings.ai_message_signature_enabled && (
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Texto de firma</label>
+              <input
+                value={settings.ai_message_signature_text}
+                onChange={e => set('ai_message_signature_text', e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                placeholder="- 🤖 MOVI IA"
+              />
+              <p className="text-xs text-gray-400 mt-1">Se agrega al final de cada mensaje automatico visible para el contacto.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          onClick={onSave}
+          disabled={saving}
+          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          Guardar configuracion
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Intent Detail Panel ──────────────────────────────────────────────────────
+
+function IntentDetail({ intent, onClose, onRefresh }: { intent: Intent; onClose: () => void; onRefresh: () => void }) {
+  const [phrases, setPhrases] = useState<TrainingPhrase[]>([]);
+  const [keywords, setKeywords] = useState<Keyword[]>([]);
+  const [newPhrase, setNewPhrase] = useState('');
+  const [newKeyword, setNewKeyword] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    const [{ data: ph }, { data: kw }] = await Promise.all([
+      supabase.from('smart_assistant_training_phrases').select('*').eq('intent_id', intent.id).order('phrase'),
+      supabase.from('smart_assistant_keywords').select('*').eq('intent_id', intent.id).order('keyword'),
+    ]);
+    setPhrases(ph ?? []);
+    setKeywords(kw ?? []);
+    setLoading(false);
+  }, [intent.id]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  async function addPhrase() {
+    const t = newPhrase.trim();
+    if (!t) return;
+    setSaving(true);
+    await supabase.from('smart_assistant_training_phrases').insert({ intent_id: intent.id, phrase: t });
+    setNewPhrase('');
+    await loadData();
+    setSaving(false);
+  }
+
+  async function removePhrase(id: string) {
+    await supabase.from('smart_assistant_training_phrases').delete().eq('id', id);
+    setPhrases(prev => prev.filter(p => p.id !== id));
+  }
+
+  async function addKeyword() {
+    const t = newKeyword.trim().toLowerCase();
+    if (!t) return;
+    setSaving(true);
+    await supabase.from('smart_assistant_keywords').insert({ intent_id: intent.id, keyword: t });
+    setNewKeyword('');
+    await loadData();
+    setSaving(false);
+  }
+
+  async function removeKeyword(id: string) {
+    await supabase.from('smart_assistant_keywords').delete().eq('id', id);
+    setKeywords(prev => prev.filter(k => k.id !== id));
+  }
+
+  async function toggleStatus(field: 'linked_form_slug' | 'auto_activation_allowed', value: unknown) {
+    await supabase.from('smart_assistant_intents').update({ [field]: value }).eq('id', intent.id);
+    onRefresh();
+  }
+
+  return (
+    <div className="fixed inset-0 z-40 flex">
+      <div className="flex-1 bg-black/20" onClick={onClose} />
+      <div className="w-[480px] bg-white border-l border-gray-100 shadow-2xl flex flex-col h-full">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-gray-900">{intent.name}</h3>
+            <p className="text-xs text-gray-400 font-mono mt-0.5">{intent.intent_key}</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">
+            <X className="w-4 h-4 text-gray-500" />
           </button>
         </div>
-      </header>
-      <div className="flex-1 max-w-7xl mx-auto w-full flex flex-col sm:flex-row gap-6 px-4 sm:px-6 py-6">
-        <aside className="w-full sm:w-56 lg:w-60 shrink-0">
-          <nav className="bg-white border border-neutral-200 rounded-2xl overflow-hidden">
-            {SECTIONS.map((x, idx) => {
-              const Icon = x.icon; const on = active === x.id;
-              return <button key={x.id} onClick={() => setActive(x.id)} className={cn('w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-all text-left', idx !== 0 && 'border-t border-neutral-100', on ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900')}>
-                <Icon className={cn('w-4 h-4 shrink-0', on ? 'text-blue-600' : 'text-neutral-400')} /><span className="flex-1 leading-tight">{x.label}</span>{on && <ChevronRight className="w-3.5 h-3.5 text-blue-400" />}
-              </button>;
-            })}
-          </nav>
-        </aside>
-        <main className="flex-1 min-w-0 space-y-4">
-          <div className="bg-white border border-neutral-200 rounded-2xl p-6">
-            <div className="flex items-center gap-2 mb-6 pb-5 border-b border-neutral-100">
-              {(() => { const Icon = sec.icon; return <Icon className="w-5 h-5 text-blue-600 shrink-0" />; })()}
-              <h2 className="text-base font-bold text-neutral-900">{sec.label}</h2>
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Activation rule */}
+          <div className="bg-gray-50 rounded-xl p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Activacion automatica permitida</p>
+                <p className="text-xs text-gray-400 mt-0.5">Permite que MOVI IA active esta intencion sin confirmacion</p>
+              </div>
+              <Toggle checked={intent.auto_activation_allowed} onChange={v => toggleStatus('auto_activation_allowed', v)} />
             </div>
-            {body()}
           </div>
-          <div className="sm:hidden">
-            <button onClick={save} disabled={saving} className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 disabled:opacity-50">
-              {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}{saving ? 'Guardando...' : 'Guardar cambios'}
+
+          {/* Form slug */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">Slug de formulario vinculado</label>
+            <input
+              defaultValue={intent.linked_form_slug ?? ''}
+              onBlur={e => toggleStatus('linked_form_slug', e.target.value || null)}
+              placeholder="Ej: auto-individual"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+            />
+            <p className="text-xs text-gray-400 mt-1">Slug del formulario de cotizacion/tramite que se activa para esta intencion.</p>
+          </div>
+
+          {/* Phrases */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-gray-700">Frases de entrenamiento</h4>
+              <span className="text-xs text-gray-400">{phrases.filter(p => p.status === 'active').length} activas</span>
+            </div>
+            {loading ? (
+              <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-gray-300" /></div>
+            ) : (
+              <div className="space-y-2 mb-3">
+                {phrases.length === 0 && <p className="text-xs text-gray-400 italic">Sin frases registradas.</p>}
+                {phrases.map(p => (
+                  <div key={p.id} className="flex items-center gap-2 group">
+                    <span className={cn('flex-1 text-sm px-3 py-1.5 rounded-lg', p.status === 'active' ? 'bg-blue-50 text-blue-800' : 'bg-gray-100 text-gray-400 line-through')}>
+                      {p.phrase}
+                    </span>
+                    <button onClick={() => removePhrase(p.id)} className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded hover:bg-red-50 text-red-400 transition-all">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <input
+                value={newPhrase}
+                onChange={e => setNewPhrase(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addPhrase()}
+                placeholder="Nueva frase..."
+                className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+              />
+              <button
+                onClick={addPhrase}
+                disabled={saving || !newPhrase.trim()}
+                className="px-3 py-2 bg-blue-600 text-white rounded-xl text-sm hover:bg-blue-700 transition-colors disabled:opacity-40"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Keywords */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-gray-700">Palabras clave</h4>
+              <span className="text-xs text-gray-400">{keywords.length} registradas</span>
+            </div>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {keywords.length === 0 && <p className="text-xs text-gray-400 italic">Sin palabras clave.</p>}
+              {keywords.map(k => (
+                <span key={k.id} className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium group">
+                  {k.keyword}
+                  <button onClick={() => removeKeyword(k.id)} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <X className="w-3 h-3 text-gray-400 hover:text-red-500" />
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={newKeyword}
+                onChange={e => setNewKeyword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addKeyword()}
+                placeholder="Nueva palabra clave..."
+                className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+              />
+              <button
+                onClick={addKeyword}
+                disabled={!newKeyword.trim()}
+                className="px-3 py-2 bg-gray-700 text-white rounded-xl text-sm hover:bg-gray-800 transition-colors disabled:opacity-40"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab: Intents ─────────────────────────────────────────────────────────────
+
+function TabIntents() {
+  const [intents, setIntents] = useState<Intent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<Intent | null>(null);
+  const [search, setSearch] = useState('');
+  const [showAdd, setShowAdd] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newKey, setNewKey] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase.from('smart_assistant_intents').select('*').order('priority').order('name');
+    setIntents(data ?? []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function handleToggleStatus(intent: Intent) {
+    const newStatus = intent.status === 'active' ? 'inactive' : 'active';
+    await supabase.from('smart_assistant_intents').update({ status: newStatus }).eq('id', intent.id);
+    setIntents(prev => prev.map(i => i.id === intent.id ? { ...i, status: newStatus } : i));
+  }
+
+  async function handleAdd() {
+    if (!newName.trim() || !newKey.trim()) return;
+    setSaving(true);
+    const key = newKey.trim().toLowerCase().replace(/\s+/g, '_');
+    await supabase.from('smart_assistant_intents').insert({
+      intent_key: key, name: newName.trim(), description: newDesc.trim() || null,
+    });
+    setNewName(''); setNewKey(''); setNewDesc(''); setShowAdd(false);
+    await load();
+    setSaving(false);
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('¿Eliminar esta intencion y todas sus frases y palabras clave?')) return;
+    await supabase.from('smart_assistant_intents').delete().eq('id', id);
+    setIntents(prev => prev.filter(i => i.id !== id));
+    if (selected?.id === id) setSelected(null);
+  }
+
+  const filtered = intents.filter(i => {
+    const q = search.toLowerCase();
+    return !q || i.intent_key.includes(q) || i.name.toLowerCase().includes(q) || (i.description ?? '').toLowerCase().includes(q);
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar intencion..." className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+        </div>
+        <button onClick={() => setShowAdd(v => !v)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors">
+          <Plus className="w-4 h-4" /> Nueva
+        </button>
+      </div>
+
+      {showAdd && (
+        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-blue-800">Nueva intencion</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Nombre</label>
+              <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ej: Cotizacion Auto" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-300" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Clave unica</label>
+              <input value={newKey} onChange={e => setNewKey(e.target.value)} placeholder="cotizacion_auto" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-300" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Descripcion (opcional)</label>
+            <input value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Cuando el contacto quiere..." className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-300" />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button onClick={() => setShowAdd(false)} className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">Cancelar</button>
+            <button onClick={handleAdd} disabled={saving || !newName.trim() || !newKey.trim()} className="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-xl hover:bg-blue-700 disabled:opacity-40 flex items-center gap-1.5">
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} Guardar
             </button>
           </div>
-        </main>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-gray-300" /></div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(intent => (
+            <div
+              key={intent.id}
+              className="bg-white border border-gray-100 rounded-2xl px-4 py-3 flex items-center gap-3 hover:border-blue-200 transition-colors group"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-semibold text-gray-800">{intent.name}</span>
+                  <Badge status={intent.status} />
+                  {intent.linked_form_slug && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded text-xs font-mono">
+                      {intent.linked_form_slug}
+                    </span>
+                  )}
+                  {intent.auto_activation_allowed && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded text-xs">
+                      <Zap className="w-2.5 h-2.5" /> Auto
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 mt-0.5 font-mono">{intent.intent_key}</p>
+                {intent.description && <p className="text-xs text-gray-500 mt-0.5 truncate">{intent.description}</p>}
+              </div>
+              <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={() => handleToggleStatus(intent)}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors text-gray-400"
+                  title={intent.status === 'active' ? 'Desactivar' : 'Activar'}
+                >
+                  {intent.status === 'active' ? <ToggleRight className="w-4 h-4 text-emerald-500" /> : <ToggleLeft className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={() => setSelected(intent)}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-50 transition-colors text-gray-400 hover:text-blue-600"
+                  title="Editar frases y palabras clave"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => handleDelete(intent.id)}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors text-gray-400 hover:text-red-500"
+                  title="Eliminar"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <div className="text-center py-12 text-gray-400">
+              <Brain className="w-10 h-10 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">Sin intenciones{search ? ' que coincidan' : ' registradas'}.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {selected && (
+        <IntentDetail intent={selected} onClose={() => setSelected(null)} onRefresh={load} />
+      )}
+    </div>
+  );
+}
+
+// ─── Tab: Simulator ───────────────────────────────────────────────────────────
+
+interface SimResult {
+  should_act: boolean;
+  action: string;
+  intent: string | null;
+  confidence: number;
+  matched_form_slug: string | null;
+  reason: string;
+  requires_internal_confirmation: boolean;
+  suggested_actions?: Array<{ label: string; form_slug?: string }>;
+}
+
+function simulateAnalysis(text: string, intents: Intent[], settings: GlobalSettings): SimResult {
+  const lower = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  let best: { intent: Intent; score: number } | null = null;
+
+  for (const intent of intents) {
+    if (intent.status !== 'active') continue;
+    let score = 0;
+
+    // Match against keywords
+    if (intent.keywords) {
+      for (const kw of intent.keywords) {
+        if (kw.status === 'active' && lower.includes(kw.keyword.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''))) {
+          score += 0.3 * (kw.weight ?? 1);
+        }
+      }
+    }
+
+    // Match against phrases (exact or partial)
+    if (intent.phrases) {
+      for (const ph of intent.phrases) {
+        if (ph.status !== 'active') continue;
+        const phLower = ph.phrase.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (lower === phLower) {
+          score += 1.0 * (ph.weight ?? 1);
+        } else if (lower.includes(phLower) || phLower.includes(lower)) {
+          score += 0.6 * (ph.weight ?? 1);
+        } else {
+          // Word overlap scoring
+          const words = phLower.split(/\s+/);
+          const inputWords = lower.split(/\s+/);
+          const overlap = words.filter(w => w.length > 3 && inputWords.some(iw => iw.includes(w) || w.includes(iw)));
+          if (overlap.length > 0) score += 0.2 * (overlap.length / words.length) * (ph.weight ?? 1);
+        }
+      }
+    }
+
+    // Normalize score to [0,1]
+    const normalized = Math.min(score / 2, 1);
+    if (!best || normalized > best.score) best = { intent, score: normalized };
+  }
+
+  if (!best || best.score < settings.ignore_threshold) {
+    return { should_act: false, action: 'none', intent: null, confidence: best?.score ?? 0, matched_form_slug: null, reason: 'Confianza demasiado baja o sin intencion operativa', requires_internal_confirmation: false };
+  }
+
+  if (best.score >= settings.auto_activate_threshold && best.intent.auto_activation_allowed && settings.allow_auto_activate_agents) {
+    return {
+      should_act: true, action: 'activate_automatic_agent',
+      intent: best.intent.intent_key, confidence: best.score,
+      matched_form_slug: best.intent.linked_form_slug,
+      reason: `MOVI IA detecto intencion: ${best.intent.name}`,
+      requires_internal_confirmation: false,
+    };
+  }
+
+  if (best.score >= settings.suggest_threshold && settings.allow_internal_suggestions) {
+    return {
+      should_act: true, action: 'suggest_internal_actions',
+      intent: best.intent.intent_key, confidence: best.score,
+      matched_form_slug: best.intent.linked_form_slug,
+      reason: `Posible intencion detectada: ${best.intent.name} (requiere confirmacion interna)`,
+      requires_internal_confirmation: true,
+      suggested_actions: [
+        { label: `Activar ${best.intent.name}`, form_slug: best.intent.linked_form_slug ?? undefined },
+        { label: 'Crear tramite manual' },
+        { label: 'Ignorar' },
+      ],
+    };
+  }
+
+  return { should_act: false, action: 'none', intent: best.intent.intent_key, confidence: best.score, matched_form_slug: null, reason: 'Confianza insuficiente para actuar', requires_internal_confirmation: false };
+}
+
+function TabSimulator({ settings }: { settings: GlobalSettings }) {
+  const [intents, setIntents] = useState<Intent[]>([]);
+  const [input, setInput] = useState('');
+  const [result, setResult] = useState<SimResult | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      const { data: intentData } = await supabase.from('smart_assistant_intents').select('*').eq('status', 'active');
+      if (!intentData) { setLoading(false); return; }
+      const ids = intentData.map(i => i.id);
+      const [{ data: phrases }, { data: keywords }] = await Promise.all([
+        supabase.from('smart_assistant_training_phrases').select('*').in('intent_id', ids).eq('status', 'active'),
+        supabase.from('smart_assistant_keywords').select('*').in('intent_id', ids).eq('status', 'active'),
+      ]);
+      const enriched = intentData.map(i => ({
+        ...i,
+        phrases: (phrases ?? []).filter(p => p.intent_id === i.id),
+        keywords: (keywords ?? []).filter(k => k.intent_id === i.id),
+      }));
+      setIntents(enriched);
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  function handleSimulate() {
+    if (!input.trim()) return;
+    const r = simulateAnalysis(input, intents, settings);
+    setResult(r);
+  }
+
+  const actionColors: Record<string, string> = {
+    activate_automatic_agent: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+    suggest_internal_actions: 'bg-amber-50 border-amber-200 text-amber-800',
+    none: 'bg-gray-50 border-gray-200 text-gray-600',
+  };
+
+  const actionLabel: Record<string, string> = {
+    activate_automatic_agent: 'Activar asistente automatico',
+    suggest_internal_actions: 'Mostrar sugerencia interna',
+    none: 'No actuar',
+  };
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center">
+            <FlaskConical className="w-4 h-4 text-violet-600" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-900 text-sm">Simulador de entrenamiento</h2>
+            <p className="text-xs text-gray-400">Prueba como MOVI IA reaccionaria a un mensaje</p>
+          </div>
+        </div>
+        <div className="p-6 space-y-4">
+          {loading && <p className="text-xs text-gray-400">Cargando datos de entrenamiento...</p>}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">Mensaje de prueba</label>
+            <div className="flex gap-2">
+              <input
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSimulate()}
+                placeholder='Escribe un mensaje, ej: "quiero cotizar mi auto"'
+                className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+              />
+              <button
+                onClick={handleSimulate}
+                disabled={loading || !input.trim()}
+                className="px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 disabled:opacity-40 flex items-center gap-2"
+              >
+                <Send className="w-4 h-4" /> Simular
+              </button>
+            </div>
+          </div>
+
+          {/* Quick test phrases */}
+          <div>
+            <p className="text-xs text-gray-400 mb-2">Frases rapidas:</p>
+            <div className="flex flex-wrap gap-1.5">
+              {['quiero cotizar mi auto', 'necesito seguro medico', 'quiero asegurar mi negocio', 'hola buenos dias', 'no quiero bot'].map(s => (
+                <button key={s} onClick={() => setInput(s)} className="px-2.5 py-1 bg-gray-100 hover:bg-blue-50 hover:text-blue-700 text-gray-600 rounded-full text-xs transition-colors">
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {result && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-50">
+            <h3 className="font-semibold text-gray-900 text-sm">Resultado del analisis</h3>
+          </div>
+          <div className="p-6 space-y-4">
+            {/* Action */}
+            <div className={cn('px-4 py-3 rounded-xl border font-semibold text-sm', actionColors[result.action])}>
+              {actionLabel[result.action] ?? result.action}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-xs text-gray-400 mb-1">Intencion detectada</p>
+                <p className="font-mono text-gray-800">{result.intent ?? '—'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-1">Confianza</p>
+                <ConfidenceBar value={result.confidence} />
+              </div>
+              {result.matched_form_slug && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-1">Formulario</p>
+                  <p className="font-mono text-gray-700">{result.matched_form_slug}</p>
+                </div>
+              )}
+              <div className={result.matched_form_slug ? '' : 'col-span-2'}>
+                <p className="text-xs text-gray-400 mb-1">Razon</p>
+                <p className="text-gray-700">{result.reason}</p>
+              </div>
+            </div>
+
+            {result.requires_internal_confirmation && result.suggested_actions && (
+              <div>
+                <p className="text-xs text-gray-400 mb-2">Sugerencias que se mostrarian internamente:</p>
+                <div className="flex flex-wrap gap-2">
+                  {result.suggested_actions.map((a, i) => (
+                    <span key={i} className="px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-xs font-medium">
+                      {a.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* What would happen */}
+            <div className="bg-gray-50 rounded-xl p-4">
+              <p className="text-xs font-medium text-gray-600 mb-2">Que pasaria en WhatsApp:</p>
+              {result.action === 'activate_automatic_agent' && (
+                <p className="text-sm text-gray-700">MOVI IA activaria el asistente automatico vinculado a <strong>{result.intent}</strong> y enviaria el primer mensaje firmado con <em>{settings.ai_message_signature_text}</em>.</p>
+              )}
+              {result.action === 'suggest_internal_actions' && (
+                <p className="text-sm text-gray-700">MOVI IA mostraria una tarjeta de sugerencias solo visible para el usuario interno. No responderia al contacto.</p>
+              )}
+              {result.action === 'none' && (
+                <p className="text-sm text-gray-700">MOVI IA no haria nada. El mensaje seria manejado manualmente por el usuario interno.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Tab: Logs ────────────────────────────────────────────────────────────────
+
+function TabLogs() {
+  const [logs, setLogs] = useState<AnalysisLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'correct' | 'incorrect' | 'unreviewed'>('all');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('smart_assistant_analysis_logs')
+      .select('*, usuarios(nombre, apellido_paterno)')
+      .order('created_at', { ascending: false })
+      .limit(200);
+    const mapped = (data ?? []).map((r: Record<string, unknown>) => ({
+      ...r,
+      agent_name: r.usuarios ? `${(r.usuarios as { nombre: string; apellido_paterno: string }).nombre} ${(r.usuarios as { nombre: string; apellido_paterno: string }).apellido_paterno ?? ''}`.trim() : null,
+    })) as AnalysisLog[];
+    setLogs(mapped);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function markCorrect(id: string, correct: boolean) {
+    await supabase.from('smart_assistant_analysis_logs').update({ was_correct: correct, reviewed_at: new Date().toISOString() }).eq('id', id);
+    setLogs(prev => prev.map(l => l.id === id ? { ...l, was_correct: correct } : l));
+  }
+
+  const filtered = logs.filter(l => {
+    if (filter === 'correct') return l.was_correct === true;
+    if (filter === 'incorrect') return l.was_correct === false;
+    if (filter === 'unreviewed') return l.was_correct === null;
+    return true;
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 flex-wrap">
+        {(['all', 'unreviewed', 'correct', 'incorrect'] as const).map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={cn('px-3 py-1.5 rounded-xl text-xs font-medium transition-colors', filter === f ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-blue-300')}
+          >
+            {f === 'all' ? 'Todos' : f === 'unreviewed' ? 'Sin revisar' : f === 'correct' ? 'Correctos' : 'Incorrectos'}
+          </button>
+        ))}
+        <button onClick={load} className="ml-auto w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-400">
+          <RefreshCw className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-gray-300" /></div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-12 text-gray-400">
+          <History className="w-10 h-10 mx-auto mb-2 opacity-30" />
+          <p className="text-sm">Sin registros de analisis.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(log => (
+            <div key={log.id} className="bg-white border border-gray-100 rounded-2xl p-4 space-y-3 hover:border-gray-200 transition-colors">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-800 font-medium truncate">"{log.message_text}"</p>
+                  <div className="flex items-center gap-3 mt-1 flex-wrap">
+                    {log.detected_intent && (
+                      <span className="text-xs font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{log.detected_intent}</span>
+                    )}
+                    {log.confidence !== null && (
+                      <span className={cn('text-xs font-medium', (log.confidence ?? 0) >= 0.85 ? 'text-emerald-600' : (log.confidence ?? 0) >= 0.55 ? 'text-amber-600' : 'text-red-500')}>
+                        {Math.round((log.confidence ?? 0) * 100)}% confianza
+                      </span>
+                    )}
+                    {log.action_taken && <span className="text-xs text-gray-400">{log.action_taken}</span>}
+                    {log.agent_name && <span className="text-xs text-gray-400">• {log.agent_name}</span>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {log.was_correct === null ? (
+                    <>
+                      <button onClick={() => markCorrect(log.id, true)} title="Marcar como correcto" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-emerald-50 text-gray-300 hover:text-emerald-600 transition-colors">
+                        <CheckCircle2 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => markCorrect(log.id, false)} title="Marcar como incorrecto" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors">
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : log.was_correct ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  ) : (
+                    <XCircle className="w-4 h-4 text-red-500" />
+                  )}
+                </div>
+              </div>
+              {log.reason && <p className="text-xs text-gray-400 italic">{log.reason}</p>}
+              <p className="text-xs text-gray-300">{new Date(log.created_at).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+export default function AsistenteEntrenamiento() {
+  const { user } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingRole, setCheckingRole] = useState(true);
+  const [tab, setTab] = useState<Tab>('config');
+  const [settings, setSettings] = useState<GlobalSettings>(DEFAULT_SETTINGS);
+  const [loadingSettings, setLoadingSettings] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  // Role check
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('usuarios').select('rol').eq('id', user.id).maybeSingle().then(({ data }) => {
+      setIsAdmin(data?.rol === 'Administrador');
+      setCheckingRole(false);
+    });
+  }, [user]);
+
+  // Load global settings
+  useEffect(() => {
+    if (!isAdmin) return;
+    supabase.from('smart_assistant_global_settings').select('*').maybeSingle().then(({ data }) => {
+      if (data) setSettings(data as GlobalSettings);
+      setLoadingSettings(false);
+    });
+  }, [isAdmin]);
+
+  async function handleSaveSettings() {
+    setSaving(true);
+    const { id, ...rest } = settings;
+    if (id) {
+      await supabase.from('smart_assistant_global_settings').update({ ...rest, updated_by: user?.id, updated_at: new Date().toISOString() }).eq('id', id);
+    } else {
+      const { data } = await supabase.from('smart_assistant_global_settings').insert({ ...rest, updated_by: user?.id }).select('id').maybeSingle();
+      if (data) setSettings(prev => ({ ...prev, id: data.id }));
+    }
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  }
+
+  if (checkingRole) {
+    return <div className="flex items-center justify-center min-h-screen"><Loader2 className="w-6 h-6 animate-spin text-gray-300" /></div>;
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center">
+          <AlertTriangle className="w-8 h-8 text-red-400" />
+        </div>
+        <div className="text-center">
+          <h2 className="text-lg font-semibold text-gray-900">Acceso restringido</h2>
+          <p className="text-sm text-gray-500 mt-1">Solo administradores pueden acceder a este modulo.</p>
+        </div>
+        <Link to="/configuracion" className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
+          <ArrowLeft className="w-4 h-4" /> Volver
+        </Link>
+      </div>
+    );
+  }
+
+  const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
+    { key: 'config', label: 'Configuracion', icon: <Settings className="w-4 h-4" /> },
+    { key: 'intents', label: 'Intenciones', icon: <Brain className="w-4 h-4" /> },
+    { key: 'simulator', label: 'Simulador', icon: <FlaskConical className="w-4 h-4" /> },
+    { key: 'logs', label: 'Historial', icon: <History className="w-4 h-4" /> },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-3">
+              <Link to="/configuracion" className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 transition-colors">
+                <ArrowLeft className="w-4 h-4" />
+              </Link>
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
+                <Bot className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <h1 className="font-semibold text-gray-900 text-sm">Entrenamiento del Asistente Inteligente</h1>
+                <p className="text-xs text-gray-400">MOVI IA · Solo administradores</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {saved && (
+                <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Guardado
+                </span>
+              )}
+              {/* Global status indicator */}
+              <div className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium',
+                settings.smart_assistant_global_enabled ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500',
+              )}>
+                <span className={cn('w-1.5 h-1.5 rounded-full', settings.smart_assistant_global_enabled ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400')} />
+                {settings.smart_assistant_global_enabled ? 'MOVI IA activo' : 'MOVI IA inactivo'}
+              </div>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex gap-1 pb-0">
+            {tabs.map(t => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={cn(
+                  'flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors',
+                  tab === t.key ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700',
+                )}
+              >
+                {t.icon}{t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+        {loadingSettings && tab === 'config' ? (
+          <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-gray-300" /></div>
+        ) : (
+          <>
+            {tab === 'config' && <TabConfig settings={settings} setSettings={setSettings} onSave={handleSaveSettings} saving={saving} />}
+            {tab === 'intents' && <TabIntents />}
+            {tab === 'simulator' && <TabSimulator settings={settings} />}
+            {tab === 'logs' && <TabLogs />}
+          </>
+        )}
       </div>
     </div>
   );

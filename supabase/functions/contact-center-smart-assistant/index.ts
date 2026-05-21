@@ -214,6 +214,84 @@ async function resolveResponsibleEmployee(
   return null;
 }
 
+// ── DB-backed intent detection ────────────────────────────────────────────────
+
+interface DbIntent {
+  id: string;
+  intent_key: string;
+  name: string;
+  linked_form_slug: string | null;
+  linked_assistant_id: string | null;
+  auto_activation_allowed: boolean;
+  priority: number;
+  phrases: Array<{ phrase: string; weight: number }>;
+  keywords: Array<{ keyword: string; weight: number }>;
+}
+
+async function detectIntentFromDB(
+  supabase: ReturnType<typeof createClient>,
+  text: string
+): Promise<IntentMatch | null> {
+  const lower = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  const { data: intentRows } = await supabase
+    .from("smart_assistant_intents")
+    .select("id, intent_key, name, linked_form_slug, linked_assistant_id, auto_activation_allowed, priority")
+    .eq("status", "active")
+    .order("priority");
+
+  if (!intentRows || intentRows.length === 0) return detectIntent(text);
+
+  const ids = intentRows.map((i: Record<string, unknown>) => i.id);
+  const [{ data: phrases }, { data: keywords }] = await Promise.all([
+    supabase.from("smart_assistant_training_phrases").select("intent_id, phrase, weight").in("intent_id", ids).eq("status", "active"),
+    supabase.from("smart_assistant_keywords").select("intent_id, keyword, weight").in("intent_id", ids).eq("status", "active"),
+  ]);
+
+  const intents: DbIntent[] = intentRows.map((i: Record<string, unknown>) => ({
+    ...i,
+    phrases: (phrases ?? []).filter((p: Record<string, unknown>) => p.intent_id === i.id),
+    keywords: (keywords ?? []).filter((k: Record<string, unknown>) => k.intent_id === i.id),
+  })) as DbIntent[];
+
+  let best: { intent: DbIntent; score: number } | null = null;
+
+  for (const intent of intents) {
+    let score = 0;
+
+    for (const kw of intent.keywords) {
+      const kwLower = kw.keyword.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      if (lower.includes(kwLower)) score += 0.25 * (kw.weight ?? 1);
+    }
+
+    for (const ph of intent.phrases) {
+      const phLower = ph.phrase.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      if (lower === phLower) {
+        score += 1.0 * (ph.weight ?? 1);
+      } else if (lower.includes(phLower) || phLower.includes(lower)) {
+        score += 0.65 * (ph.weight ?? 1);
+      } else {
+        const words = phLower.split(/\s+/);
+        const inputWords = lower.split(/\s+/);
+        const overlap = words.filter((w: string) => w.length > 3 && inputWords.some((iw: string) => iw.includes(w) || w.includes(iw)));
+        if (overlap.length > 0) score += 0.2 * (overlap.length / words.length) * (ph.weight ?? 1);
+      }
+    }
+
+    const normalized = Math.min(score / 2.5, 1);
+    if (!best || normalized > best.score) best = { intent, score: normalized };
+  }
+
+  if (!best || best.score < 0.1) return null;
+
+  return {
+    intent: best.intent.intent_key,
+    confidence: best.score,
+    form_type_slug: best.intent.linked_form_slug ?? "",
+    assistant_id: best.intent.linked_assistant_id ?? undefined,
+  };
+}
+
 // ── Main analysis function ────────────────────────────────────────────────────
 
 async function analyzeConversation(
@@ -288,22 +366,28 @@ async function analyzeConversation(
     return { should_act: false, action: "none", confidence: 0.1, reason: "Mensaje social sin intención operativa", requires_internal_confirmation: false };
   }
 
-  // Analyze intent from the full recent contact text context
+  // Analyze intent — use DB-trained intents first, fall back to hardcoded map
   const contextText = contactMessages.map(m => m.text).join(" ");
-  const match = detectIntent(contextText);
+  const match = await detectIntentFromDB(supabase, contextText);
 
   if (!match) {
     return { should_act: false, action: "none", confidence: 0, reason: "No se detectó intención de seguro/trámite", requires_internal_confirmation: false };
   }
 
-  // Look up matching assistant
-  const { data: assistants } = await supabase.from("contact_center_assistants")
-    .select("id, nombre, form_type_slug")
-    .eq("is_active", true)
-    .eq("form_type_slug", match.form_type_slug)
-    .limit(1);
-
-  const matchedAssistant = assistants && assistants.length > 0 ? assistants[0] : null;
+  // Look up matching assistant: prefer linked_assistant_id from DB intent, then by form_type_slug
+  let matchedAssistant: { id: string; nombre: string } | null = null;
+  if (match.assistant_id) {
+    const { data } = await supabase.from("contact_center_assistants")
+      .select("id, nombre").eq("id", match.assistant_id).eq("is_active", true).maybeSingle();
+    matchedAssistant = data;
+  }
+  if (!matchedAssistant && match.form_type_slug) {
+    const { data: assistants } = await supabase.from("contact_center_assistants")
+      .select("id, nombre").eq("is_active", true)
+      .or(`form_type_slug.eq.${match.form_type_slug},form_slug.eq.${match.form_type_slug}`)
+      .limit(1);
+    matchedAssistant = assistants?.[0] ?? null;
+  }
 
   if (match.confidence >= settings.auto_activate_threshold && matchedAssistant) {
     return {
@@ -312,30 +396,36 @@ async function analyzeConversation(
       intent: match.intent,
       confidence: match.confidence,
       matched_assistant_id: matchedAssistant.id,
-      matched_form_slug: match.form_type_slug,
+      matched_form_slug: match.form_type_slug || null,
       reason: `Detecté con alta confianza: ${match.intent} (${Math.round(match.confidence * 100)}%)`,
       requires_internal_confirmation: false,
     };
   }
 
   if (match.confidence >= settings.suggest_threshold) {
-    // Build suggestions from multiple possible intents
-    const suggestions: Array<{ label: string; assistant_id?: string; form_slug?: string; action?: string }> = [];
-    for (const entry of INTENT_MAP) {
-      const entryText = contextText.toLowerCase();
-      const hasKeyword = entry.keywords.some(k => entryText.includes(k));
-      if (!hasKeyword) continue;
+    // Load all active intents with enough keyword overlap to build suggestion list
+    const { data: allIntents } = await supabase
+      .from("smart_assistant_intents")
+      .select("id, intent_key, name, linked_form_slug, linked_assistant_id")
+      .eq("status", "active")
+      .order("priority");
 
-      const { data: entryAssistants } = await supabase.from("contact_center_assistants")
-        .select("id, nombre").eq("is_active", true).eq("form_type_slug", entry.form_type_slug).limit(1);
-      const entryAssistant = entryAssistants && entryAssistants.length > 0 ? entryAssistants[0] : null;
-      if (entryAssistant) {
-        suggestions.push({ label: entryAssistant.nombre, assistant_id: entryAssistant.id, form_slug: entry.form_type_slug });
+    const suggestions: Array<{ label: string; assistant_id?: string; form_slug?: string; action?: string }> = [];
+
+    if (allIntents) {
+      for (const intent of allIntents.slice(0, 4)) {
+        if (intent.intent_key === match.intent) {
+          if (matchedAssistant) {
+            suggestions.push({ label: matchedAssistant.nombre, assistant_id: matchedAssistant.id, form_slug: intent.linked_form_slug ?? match.form_type_slug });
+          } else {
+            suggestions.push({ label: intent.name, form_slug: intent.linked_form_slug ?? match.form_type_slug });
+          }
+        }
       }
     }
 
-    if (suggestions.length === 0 && matchedAssistant) {
-      suggestions.push({ label: matchedAssistant.nombre, assistant_id: matchedAssistant.id, form_slug: match.form_type_slug });
+    if (suggestions.length === 0) {
+      suggestions.push({ label: match.intent, form_slug: match.form_type_slug });
     }
     suggestions.push({ label: "Crear trámite manual", action: "create_manual_task" });
     suggestions.push({ label: "Ignorar", action: "dismiss" });
