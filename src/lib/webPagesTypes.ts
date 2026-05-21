@@ -52,6 +52,8 @@ export interface SharedFormLink {
   form_type: string;
   form_slug: string;
   quote_form_template_id: string | null;
+  featured_on_website?: boolean;
+  featured_order?: number | null;
 }
 
 export interface PublicWebPageData {

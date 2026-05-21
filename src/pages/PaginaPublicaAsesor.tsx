@@ -1,20 +1,19 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Phone, Mail, MessageCircle, Loader2, ChevronLeft, ChevronRight, ArrowUp, Car, ExternalLink, Search, X } from 'lucide-react';
+import { Phone, Mail, MessageCircle, Loader2, ChevronLeft, ChevronRight, ArrowUp, Car, ExternalLink, Search, X, ChevronDown } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { getPublicWebPageBySlug } from '../lib/webPagesUtils';
 import type { PublicWebPageData, SharedFormLink } from '../lib/webPagesTypes';
 import { DEFAULT_TEXT } from '../lib/webPagesTypes';
 import { createColorVariant } from '../lib/animationUtils';
 
-// --- Insurance metadata: icon, description, priority, category ---
-
 interface InsuranceMeta {
   icon: string;
   description: string;
   priority: number;
   category: string;
+  keywords: string[];
 }
 
 const INSURANCE_CATEGORIES = {
@@ -28,44 +27,53 @@ const INSURANCE_CATEGORIES = {
 
 type CategoryKey = keyof typeof INSURANCE_CATEGORIES;
 
+const CATEGORY_ICONS: Record<CategoryKey, string> = {
+  personales: 'Users',
+  vehiculos: 'Car',
+  hogar: 'Home',
+  empresariales: 'Building2',
+  especializados: 'Sparkles',
+  otros: 'FileText',
+};
+
 const FORM_TYPE_META: Record<string, InsuranceMeta> = {
-  auto: { icon: 'Car', description: 'Protege tu vehiculo con coberturas completas contra accidentes, robo y danos a terceros.', priority: 1, category: 'vehiculos' },
-  vida: { icon: 'Heart', description: 'Asegura el bienestar economico de tu familia con planes de vida a tu medida.', priority: 2, category: 'personales' },
-  gmm: { icon: 'Stethoscope', description: 'Accede a la mejor atencion medica con cobertura hospitalaria y de especialistas.', priority: 3, category: 'personales' },
-  gastos_medicos: { icon: 'Stethoscope', description: 'Accede a la mejor atencion medica con cobertura hospitalaria y de especialistas.', priority: 3, category: 'personales' },
-  salud: { icon: 'HeartPulse', description: 'Cuida tu salud y la de los tuyos con planes de atencion preventiva y hospitalaria.', priority: 4, category: 'personales' },
-  hogar: { icon: 'Home', description: 'Protege tu patrimonio contra incendios, robos, desastres naturales y mas.', priority: 5, category: 'hogar' },
-  casa: { icon: 'Home', description: 'Protege tu hogar contra incendios, robos, desastres naturales y mas.', priority: 5, category: 'hogar' },
-  motocicleta: { icon: 'Bike', description: 'Protege tu motocicleta con coberturas de danos, robo y responsabilidad civil.', priority: 6, category: 'vehiculos' },
-  moto: { icon: 'Bike', description: 'Protege tu motocicleta con coberturas de danos, robo y responsabilidad civil.', priority: 6, category: 'vehiculos' },
-  accidentes_personales: { icon: 'ShieldAlert', description: 'Cobertura ante accidentes con indemnizaciones por invalidez, gastos medicos y fallecimiento.', priority: 7, category: 'personales' },
-  empresa: { icon: 'Building2', description: 'Seguros empresariales que protegen tus activos, empleados y operaciones.', priority: 8, category: 'empresariales' },
-  negocio: { icon: 'Building2', description: 'Seguros para tu negocio que cubren responsabilidad civil, danos y mas.', priority: 8, category: 'empresariales' },
-  pyme: { icon: 'Store', description: 'Proteccion integral para pequenas y medianas empresas con coberturas a la medida.', priority: 9, category: 'empresariales' },
-  responsabilidad_civil: { icon: 'Shield', description: 'Protegete ante reclamaciones de terceros por danos materiales o personales.', priority: 10, category: 'empresariales' },
-  rc: { icon: 'Shield', description: 'Protegete ante reclamaciones de terceros por danos materiales o personales.', priority: 10, category: 'empresariales' },
-  transporte: { icon: 'Truck', description: 'Cobertura integral para mercancia en transito nacional e internacional.', priority: 11, category: 'vehiculos' },
-  flotilla: { icon: 'Bus', description: 'Seguros para flotillas vehiculares con tarifas preferenciales y atencion prioritaria.', priority: 12, category: 'vehiculos' },
-  camion: { icon: 'Truck', description: 'Proteccion completa para camiones de carga con coberturas de danos y RC.', priority: 13, category: 'vehiculos' },
-  viaje: { icon: 'Plane', description: 'Viaja tranquilo con cobertura medica, cancelaciones y equipaje en el extranjero.', priority: 14, category: 'especializados' },
-  mascota: { icon: 'PawPrint', description: 'Protege a tu mejor amigo con cobertura veterinaria y de accidentes.', priority: 15, category: 'hogar' },
-  educacion: { icon: 'GraduationCap', description: 'Asegura el futuro educativo de tus hijos con planes de ahorro e inversion.', priority: 16, category: 'personales' },
-  ahorro: { icon: 'PiggyBank', description: 'Haz crecer tu dinero con planes de ahorro e inversion respaldados por aseguradoras.', priority: 17, category: 'personales' },
-  retiro: { icon: 'Landmark', description: 'Planifica tu retiro con productos de ahorro a largo plazo y rendimientos garantizados.', priority: 18, category: 'personales' },
-  dental: { icon: 'Smile', description: 'Cobertura dental completa para tratamientos preventivos, correctivos y de emergencia.', priority: 19, category: 'personales' },
-  condominio: { icon: 'Building', description: 'Proteccion para areas comunes y estructura de condominios.', priority: 20, category: 'hogar' },
-  incendio: { icon: 'Flame', description: 'Cobertura contra incendios, explosiones y fenomenos naturales para tu propiedad.', priority: 21, category: 'hogar' },
-  robo: { icon: 'Lock', description: 'Proteccion contra robos con o sin violencia para tu patrimonio.', priority: 22, category: 'hogar' },
-  equipo_electronico: { icon: 'Monitor', description: 'Cobertura para equipos electronicos contra danos, robo y fallas electricas.', priority: 23, category: 'hogar' },
-  construccion: { icon: 'HardHat', description: 'Seguros para obras en construccion que cubren danos materiales y RC.', priority: 24, category: 'empresariales' },
-  caucion: { icon: 'FileCheck', description: 'Fianzas y seguros de caucion para cumplimiento de contratos y licitaciones.', priority: 25, category: 'empresariales' },
-  credito: { icon: 'CreditCard', description: 'Proteccion ante incumplimiento de pago por parte de deudores comerciales.', priority: 26, category: 'empresariales' },
-  agricola: { icon: 'Leaf', description: 'Cobertura para cultivos y actividades agricolas ante fenomenos climaticos.', priority: 27, category: 'especializados' },
-  maritimo: { icon: 'Ship', description: 'Seguros maritimos para embarcaciones, carga y responsabilidad civil en el mar.', priority: 28, category: 'especializados' },
-  aviacion: { icon: 'PlaneTakeoff', description: 'Cobertura para aeronaves, pilotos y pasajeros en operaciones aereas.', priority: 29, category: 'especializados' },
-  taxi: { icon: 'CarTaxiFront', description: 'Seguro especializado para taxis y vehiculos de transporte publico.', priority: 30, category: 'vehiculos' },
-  uber: { icon: 'Smartphone', description: 'Seguro para conductores de plataformas digitales de transporte.', priority: 31, category: 'vehiculos' },
-  eventos: { icon: 'Calendar', description: 'Cobertura para eventos especiales contra cancelaciones e imprevistos.', priority: 32, category: 'especializados' },
+  auto: { icon: 'Car', description: 'Protege tu vehiculo con coberturas completas contra accidentes, robo y danos a terceros.', priority: 1, category: 'vehiculos', keywords: ['auto', 'carro', 'vehiculo', 'automovil'] },
+  vida: { icon: 'Heart', description: 'Asegura el bienestar economico de tu familia con planes de vida a tu medida.', priority: 2, category: 'personales', keywords: ['vida', 'fallecimiento', 'beneficiarios'] },
+  gmm: { icon: 'Stethoscope', description: 'Accede a la mejor atencion medica con cobertura hospitalaria y de especialistas.', priority: 3, category: 'personales', keywords: ['medico', 'hospital', 'gmm', 'gastos medicos'] },
+  gastos_medicos: { icon: 'Stethoscope', description: 'Accede a la mejor atencion medica con cobertura hospitalaria y de especialistas.', priority: 3, category: 'personales', keywords: ['medico', 'hospital', 'gmm', 'gastos medicos'] },
+  salud: { icon: 'HeartPulse', description: 'Cuida tu salud y la de los tuyos con planes de atencion preventiva y hospitalaria.', priority: 4, category: 'personales', keywords: ['salud', 'medico', 'preventivo'] },
+  hogar: { icon: 'Home', description: 'Protege tu patrimonio contra incendios, robos, desastres naturales y mas.', priority: 5, category: 'hogar', keywords: ['hogar', 'casa', 'domicilio'] },
+  casa: { icon: 'Home', description: 'Protege tu hogar contra incendios, robos, desastres naturales y mas.', priority: 5, category: 'hogar', keywords: ['casa', 'hogar', 'habitacion'] },
+  motocicleta: { icon: 'Bike', description: 'Protege tu motocicleta con coberturas de danos, robo y responsabilidad civil.', priority: 6, category: 'vehiculos', keywords: ['moto', 'motocicleta', 'bike'] },
+  moto: { icon: 'Bike', description: 'Protege tu motocicleta con coberturas de danos, robo y responsabilidad civil.', priority: 6, category: 'vehiculos', keywords: ['moto', 'motocicleta'] },
+  accidentes_personales: { icon: 'ShieldAlert', description: 'Cobertura ante accidentes con indemnizaciones por invalidez, gastos medicos y fallecimiento.', priority: 7, category: 'personales', keywords: ['accidente', 'personal', 'invalidez'] },
+  empresa: { icon: 'Building2', description: 'Seguros empresariales que protegen tus activos, empleados y operaciones.', priority: 8, category: 'empresariales', keywords: ['empresa', 'empresarial', 'corporativo'] },
+  negocio: { icon: 'Building2', description: 'Seguros para tu negocio que cubren responsabilidad civil, danos y mas.', priority: 8, category: 'empresariales', keywords: ['negocio', 'comercio'] },
+  pyme: { icon: 'Store', description: 'Proteccion integral para pequenas y medianas empresas con coberturas a la medida.', priority: 9, category: 'empresariales', keywords: ['pyme', 'pequena empresa', 'mediana empresa'] },
+  responsabilidad_civil: { icon: 'Shield', description: 'Protegete ante reclamaciones de terceros por danos materiales o personales.', priority: 10, category: 'empresariales', keywords: ['responsabilidad', 'civil', 'rc', 'terceros'] },
+  rc: { icon: 'Shield', description: 'Protegete ante reclamaciones de terceros por danos materiales o personales.', priority: 10, category: 'empresariales', keywords: ['rc', 'responsabilidad civil'] },
+  transporte: { icon: 'Truck', description: 'Cobertura integral para mercancia en transito nacional e internacional.', priority: 11, category: 'vehiculos', keywords: ['transporte', 'carga', 'mercancia'] },
+  flotilla: { icon: 'Bus', description: 'Seguros para flotillas vehiculares con tarifas preferenciales y atencion prioritaria.', priority: 12, category: 'vehiculos', keywords: ['flotilla', 'flota', 'vehiculos'] },
+  camion: { icon: 'Truck', description: 'Proteccion completa para camiones de carga con coberturas de danos y RC.', priority: 13, category: 'vehiculos', keywords: ['camion', 'carga', 'pesado'] },
+  viaje: { icon: 'Plane', description: 'Viaja tranquilo con cobertura medica, cancelaciones y equipaje en el extranjero.', priority: 14, category: 'especializados', keywords: ['viaje', 'viajero', 'extranjero', 'internacional'] },
+  mascota: { icon: 'PawPrint', description: 'Protege a tu mejor amigo con cobertura veterinaria y de accidentes.', priority: 15, category: 'hogar', keywords: ['mascota', 'perro', 'gato', 'veterinario'] },
+  educacion: { icon: 'GraduationCap', description: 'Asegura el futuro educativo de tus hijos con planes de ahorro e inversion.', priority: 16, category: 'personales', keywords: ['educacion', 'educativo', 'universidad', 'hijos'] },
+  ahorro: { icon: 'PiggyBank', description: 'Haz crecer tu dinero con planes de ahorro e inversion respaldados por aseguradoras.', priority: 17, category: 'personales', keywords: ['ahorro', 'inversion', 'rendimiento'] },
+  retiro: { icon: 'Landmark', description: 'Planifica tu retiro con productos de ahorro a largo plazo y rendimientos garantizados.', priority: 18, category: 'personales', keywords: ['retiro', 'pension', 'jubilacion'] },
+  dental: { icon: 'Smile', description: 'Cobertura dental completa para tratamientos preventivos, correctivos y de emergencia.', priority: 19, category: 'personales', keywords: ['dental', 'dientes', 'bucal'] },
+  condominio: { icon: 'Building', description: 'Proteccion para areas comunes y estructura de condominios.', priority: 20, category: 'hogar', keywords: ['condominio', 'departamento', 'areas comunes'] },
+  incendio: { icon: 'Flame', description: 'Cobertura contra incendios, explosiones y fenomenos naturales para tu propiedad.', priority: 21, category: 'hogar', keywords: ['incendio', 'fuego', 'explosion'] },
+  robo: { icon: 'Lock', description: 'Proteccion contra robos con o sin violencia para tu patrimonio.', priority: 22, category: 'hogar', keywords: ['robo', 'hurto', 'violencia'] },
+  equipo_electronico: { icon: 'Monitor', description: 'Cobertura para equipos electronicos contra danos, robo y fallas electricas.', priority: 23, category: 'hogar', keywords: ['equipo', 'electronico', 'computadora', 'tecnologia'] },
+  construccion: { icon: 'HardHat', description: 'Seguros para obras en construccion que cubren danos materiales y RC.', priority: 24, category: 'empresariales', keywords: ['construccion', 'obra', 'contratista'] },
+  caucion: { icon: 'FileCheck', description: 'Fianzas y seguros de caucion para cumplimiento de contratos y licitaciones.', priority: 25, category: 'empresariales', keywords: ['caucion', 'fianza', 'contrato', 'licitacion'] },
+  credito: { icon: 'CreditCard', description: 'Proteccion ante incumplimiento de pago por parte de deudores comerciales.', priority: 26, category: 'empresariales', keywords: ['credito', 'deudor', 'pago'] },
+  agricola: { icon: 'Leaf', description: 'Cobertura para cultivos y actividades agricolas ante fenomenos climaticos.', priority: 27, category: 'especializados', keywords: ['agricola', 'cultivo', 'campo', 'cosecha'] },
+  maritimo: { icon: 'Ship', description: 'Seguros maritimos para embarcaciones, carga y responsabilidad civil en el mar.', priority: 28, category: 'especializados', keywords: ['maritimo', 'barco', 'embarcacion', 'mar'] },
+  aviacion: { icon: 'PlaneTakeoff', description: 'Cobertura para aeronaves, pilotos y pasajeros en operaciones aereas.', priority: 29, category: 'especializados', keywords: ['aviacion', 'aeronave', 'piloto', 'avion'] },
+  taxi: { icon: 'CarTaxiFront', description: 'Seguro especializado para taxis y vehiculos de transporte publico.', priority: 30, category: 'vehiculos', keywords: ['taxi', 'transporte publico'] },
+  uber: { icon: 'Smartphone', description: 'Seguro para conductores de plataformas digitales de transporte.', priority: 31, category: 'vehiculos', keywords: ['uber', 'didi', 'plataforma', 'app'] },
+  eventos: { icon: 'Calendar', description: 'Cobertura para eventos especiales contra cancelaciones e imprevistos.', priority: 32, category: 'especializados', keywords: ['evento', 'fiesta', 'celebracion', 'cancelacion'] },
 };
 
 const DEFAULT_FEATURED_TYPES = ['auto', 'gastos_medicos', 'gmm', 'vida', 'hogar', 'motocicleta', 'moto', 'accidentes_personales'];
@@ -100,7 +108,7 @@ function getFormLinkMeta(link: SharedFormLink): InsuranceMeta {
   if (title.includes('agricol')) return FORM_TYPE_META.agricola;
   if (title.includes('construcci')) return FORM_TYPE_META.construccion;
 
-  return { icon: 'FileText', description: 'Solicita una cotizacion personalizada con atencion profesional y sin compromiso.', priority: 99, category: 'otros' };
+  return { icon: 'FileText', description: 'Solicita una cotizacion personalizada con atencion profesional y sin compromiso.', priority: 99, category: 'otros', keywords: [] };
 }
 
 function cleanFormTitle(title: string): string {
@@ -134,6 +142,8 @@ declare global {
   }
 }
 
+const ITEMS_PER_PAGE = 12;
+
 export default function PaginaPublicaAsesor() {
   const { slug } = useParams<{ slug: string }>();
   const [data, setData] = useState<PublicWebPageData | null>(null);
@@ -154,6 +164,7 @@ export default function PaginaPublicaAsesor() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [showAllFeatured, setShowAllFeatured] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
 
   useEffect(() => {
     if (!slug) {
@@ -177,6 +188,10 @@ export default function PaginaPublicaAsesor() {
     }, 3000);
     return () => clearInterval(interval);
   }, [data?.insurers, isAutoScrolling]);
+
+  useEffect(() => {
+    setVisibleCount(ITEMS_PER_PAGE);
+  }, [activeCategory, searchQuery]);
 
   async function loadPageData() {
     if (!slug) return;
@@ -225,17 +240,22 @@ export default function PaginaPublicaAsesor() {
     }
   }
 
-  // Process form links
   const processedLinks: ProcessedFormLink[] = useMemo(() => {
     if (!data?.form_links?.length) return [];
+    const hasManualFeatured = data.form_links.some(l => l.featured_on_website);
     const links = data.form_links.map(link => {
       const meta = getFormLinkMeta(link);
       const displayName = cleanFormTitle(link.form_title);
-      const typeKey = link.form_type?.toLowerCase().replace(/[^a-z_]/g, '') || '';
-      const titleNorm = link.form_title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const isFeatured = DEFAULT_FEATURED_TYPES.some(ft =>
-        typeKey === ft || titleNorm.includes(ft.replace(/_/g, ' '))
-      );
+      let isFeatured: boolean;
+      if (hasManualFeatured) {
+        isFeatured = !!link.featured_on_website;
+      } else {
+        const typeKey = link.form_type?.toLowerCase().replace(/[^a-z_]/g, '') || '';
+        const titleNorm = link.form_title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        isFeatured = DEFAULT_FEATURED_TYPES.some(ft =>
+          typeKey === ft || titleNorm.includes(ft.replace(/_/g, ' '))
+        );
+      }
       return {
         ...link,
         meta,
@@ -244,42 +264,46 @@ export default function PaginaPublicaAsesor() {
         publicUrl: `https://agentedeseguros.website/cotizar/${link.slug}`,
       };
     });
-    return links.sort((a, b) => a.meta.priority - b.meta.priority);
+    return links.sort((a, b) => {
+      if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
+      if (a.meta.priority !== b.meta.priority) return a.meta.priority - b.meta.priority;
+      return 0;
+    });
   }, [data?.form_links]);
 
   const featuredLinks = useMemo(() => processedLinks.filter(l => l.isFeatured).slice(0, 6), [processedLinks]);
-  const allLinks = processedLinks;
 
   const categorizedLinks = useMemo(() => {
     const groups: Record<string, ProcessedFormLink[]> = {};
-    for (const link of allLinks) {
+    for (const link of processedLinks) {
       const cat = link.meta.category;
       if (!groups[cat]) groups[cat] = [];
       groups[cat].push(link);
     }
     return groups;
-  }, [allLinks]);
+  }, [processedLinks]);
 
   const availableCategories = useMemo(() => {
     return Object.entries(INSURANCE_CATEGORIES)
       .filter(([key]) => categorizedLinks[key]?.length)
-      .map(([key, label]) => ({ key, label }));
+      .map(([key, label]) => ({ key, label, count: categorizedLinks[key]?.length || 0 }));
   }, [categorizedLinks]);
 
   const filteredLinks = useMemo(() => {
-    let links = activeCategory === 'all' ? allLinks : (categorizedLinks[activeCategory] || []);
+    let links = activeCategory === 'all' ? processedLinks : (categorizedLinks[activeCategory] || []);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      links = allLinks.filter(l =>
-        l.displayName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(q) ||
-        l.meta.category.includes(q) ||
-        l.form_type?.toLowerCase().includes(q)
-      );
+      links = processedLinks.filter(l => {
+        const nameMatch = l.displayName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(q);
+        const typeMatch = l.form_type?.toLowerCase().includes(q);
+        const categoryMatch = (INSURANCE_CATEGORIES[l.meta.category as CategoryKey] || '').toLowerCase().includes(q);
+        const keywordMatch = l.meta.keywords?.some(kw => kw.includes(q));
+        return nameMatch || typeMatch || categoryMatch || keywordMatch;
+      });
     }
     return links;
-  }, [allLinks, activeCategory, searchQuery, categorizedLinks]);
+  }, [processedLinks, activeCategory, searchQuery, categorizedLinks]);
 
-  // Grouped options for select
   const selectGroups = useMemo(() => {
     if (!processedLinks.length) return null;
     const featured = processedLinks.filter(l => l.isFeatured);
@@ -360,6 +384,8 @@ export default function PaginaPublicaAsesor() {
 
   const hasFormLinks = processedLinks.length > 0;
   const visibleFeatured = showAllFeatured ? featuredLinks : featuredLinks.slice(0, 3);
+  const paginatedLinks = filteredLinks.slice(0, visibleCount);
+  const hasMoreLinks = filteredLinks.length > visibleCount;
 
   return (
     <>
@@ -527,7 +553,7 @@ export default function PaginaPublicaAsesor() {
               <h2 className="text-3xl sm:text-4xl font-bold text-center mb-3 px-4" style={{ color: primaryColor }}>Seguros mas solicitados</h2>
               <p className="text-center text-gray-600 mb-10 max-w-2xl mx-auto text-base sm:text-lg px-4">Proteccion completa para lo que mas valoras</p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 px-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-7 px-4">
                 {visibleFeatured.map((link, idx) => {
                   const IconComponent = (LucideIcons as any)[link.meta.icon];
                   return (
@@ -540,7 +566,7 @@ export default function PaginaPublicaAsesor() {
                           </div>
                         )}
                         <h3 className="text-xl sm:text-2xl font-bold mb-3 transition-all" style={{ color: primaryColor }}>{link.displayName}</h3>
-                        <p className="text-sm sm:text-base text-gray-600 mb-5 leading-relaxed">{link.meta.description}</p>
+                        <p className="text-sm sm:text-base text-gray-600 mb-5 leading-relaxed line-clamp-3">{link.meta.description}</p>
                         <span className="inline-flex items-center gap-2 text-sm font-bold group-hover:gap-3 transition-all duration-300" style={{ color: secondaryColor }}>
                           Cotizar ahora <ExternalLink className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                         </span>
@@ -550,11 +576,10 @@ export default function PaginaPublicaAsesor() {
                 })}
               </div>
 
-              {/* Show more button on mobile */}
               {featuredLinks.length > 3 && !showAllFeatured && (
                 <div className="text-center mt-6 sm:hidden">
                   <button onClick={() => setShowAllFeatured(true)} className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold text-sm border-2 transition-all hover:scale-105" style={{ borderColor: primaryColor, color: primaryColor }}>
-                    Ver mas seguros destacados
+                    Ver mas seguros destacados <ChevronDown className="w-4 h-4" />
                   </button>
                 </div>
               )}
@@ -563,7 +588,7 @@ export default function PaginaPublicaAsesor() {
         )}
 
         {/* EXPLORE ALL INSURANCE SECTION */}
-        {hasFormLinks && allLinks.length > featuredLinks.length && (
+        {hasFormLinks && processedLinks.length > featuredLinks.length && (
           <section className="relative py-16 px-4 bg-gray-50 z-10">
             <div className="max-w-6xl mx-auto">
               <h2 className="text-2xl sm:text-3xl font-bold text-center mb-2 px-4" style={{ color: primaryColor }}>Explora todos los seguros</h2>
@@ -572,89 +597,115 @@ export default function PaginaPublicaAsesor() {
               {/* Search bar */}
               <div className="max-w-md mx-auto mb-6 px-4">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => { setSearchQuery(e.target.value); setActiveCategory('all'); }}
                     placeholder="Buscar seguro..."
-                    className="w-full pl-10 pr-10 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 transition-colors text-sm bg-white"
+                    className="w-full pl-10 pr-10 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-colors text-sm bg-white shadow-sm"
+                    style={{ borderColor: searchQuery ? primaryColor : undefined }}
                   />
                   {searchQuery && (
-                    <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
                       <X className="w-4 h-4" />
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* Category tabs */}
+              {/* Category chips */}
               {!searchQuery && availableCategories.length > 1 && (
                 <div className="mb-8 px-4">
                   <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide justify-start sm:justify-center">
                     <button
                       onClick={() => setActiveCategory('all')}
-                      className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 whitespace-nowrap"
+                      className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 whitespace-nowrap shadow-sm"
                       style={activeCategory === 'all'
                         ? { backgroundColor: primaryColor, color: 'white' }
                         : { backgroundColor: 'white', color: '#6B7280', border: '1px solid #E5E7EB' }
                       }
                     >
-                      Todos
+                      Todos ({processedLinks.length})
                     </button>
-                    {availableCategories.map(cat => (
-                      <button
-                        key={cat.key}
-                        onClick={() => setActiveCategory(cat.key)}
-                        className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 whitespace-nowrap"
-                        style={activeCategory === cat.key
-                          ? { backgroundColor: primaryColor, color: 'white' }
-                          : { backgroundColor: 'white', color: '#6B7280', border: '1px solid #E5E7EB' }
-                        }
-                      >
-                        {cat.label}
-                      </button>
-                    ))}
+                    {availableCategories.map(cat => {
+                      const CatIcon = (LucideIcons as any)[CATEGORY_ICONS[cat.key as CategoryKey]];
+                      return (
+                        <button
+                          key={cat.key}
+                          onClick={() => setActiveCategory(cat.key)}
+                          className="flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 whitespace-nowrap shadow-sm"
+                          style={activeCategory === cat.key
+                            ? { backgroundColor: primaryColor, color: 'white' }
+                            : { backgroundColor: 'white', color: '#6B7280', border: '1px solid #E5E7EB' }
+                          }
+                        >
+                          {CatIcon && <CatIcon className="w-3.5 h-3.5" />}
+                          {cat.label} ({cat.count})
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
-              {/* Compact grid of all insurance */}
-              {filteredLinks.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 px-4">
-                  {filteredLinks.slice(0, 12).map(link => {
-                    const IconComponent = (LucideIcons as any)[link.meta.icon];
-                    return (
-                      <a
-                        key={link.slug}
-                        href={link.publicUrl}
-                        className="group flex items-center gap-3 bg-white p-4 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all duration-300 no-underline"
-                      >
-                        <div className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: createColorVariant(primaryColor, 0.1) }}>
-                          {IconComponent && <IconComponent className="w-5 h-5" style={{ color: primaryColor }} />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 truncate">{link.displayName}</p>
-                          <p className="text-xs text-gray-500 capitalize">{INSURANCE_CATEGORIES[link.meta.category as CategoryKey] || 'Otros'}</p>
-                        </div>
-                        <span className="flex-shrink-0 text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: secondaryColor }}>Cotizar</span>
-                      </a>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-8 px-4">
-                  <p className="text-gray-500 mb-4">No encontre ese seguro.</p>
-                  <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-white text-sm transition-all hover:scale-105" style={{ backgroundColor: primaryColor }}>
-                    <MessageCircle className="w-4 h-4" /> Escribeme y te ayudo a cotizarlo
-                  </a>
-                </div>
-              )}
+              {/* Compact grid */}
+              {paginatedLinks.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 px-4">
+                    {paginatedLinks.map(link => {
+                      const IconComponent = (LucideIcons as any)[link.meta.icon];
+                      return (
+                        <a
+                          key={link.slug}
+                          href={link.publicUrl}
+                          className="group flex items-center gap-3 bg-white p-4 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all duration-300 no-underline"
+                        >
+                          <div className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110" style={{ backgroundColor: createColorVariant(primaryColor, 0.08) }}>
+                            {IconComponent && <IconComponent className="w-5 h-5" style={{ color: primaryColor }} />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-gray-700">{link.displayName}</p>
+                            <p className="text-xs text-gray-500 capitalize">{INSURANCE_CATEGORIES[link.meta.category as CategoryKey] || 'Otros'}</p>
+                          </div>
+                          <span className="flex-shrink-0 text-xs font-bold px-3 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200" style={{ color: secondaryColor, backgroundColor: createColorVariant(secondaryColor, 0.08) }}>
+                            Cotizar
+                          </span>
+                        </a>
+                      );
+                    })}
+                  </div>
 
-              {/* Show more if there are more than 12 */}
-              {filteredLinks.length > 12 && !searchQuery && (
-                <div className="text-center mt-6">
-                  <p className="text-sm text-gray-500">Mostrando 12 de {filteredLinks.length} seguros disponibles</p>
+                  {/* Load more button */}
+                  {hasMoreLinks && (
+                    <div className="text-center mt-8">
+                      <button
+                        onClick={() => setVisibleCount(prev => prev + ITEMS_PER_PAGE)}
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm border-2 transition-all hover:scale-105 hover:shadow-md"
+                        style={{ borderColor: primaryColor, color: primaryColor }}
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                        Ver mas seguros ({filteredLinks.length - visibleCount} restantes)
+                      </button>
+                    </div>
+                  )}
+
+                  {!hasMoreLinks && filteredLinks.length > ITEMS_PER_PAGE && (
+                    <p className="text-center mt-6 text-sm text-gray-500">
+                      Mostrando {filteredLinks.length} seguros disponibles
+                    </p>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-10 px-4">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Search className="w-7 h-7 text-gray-400" />
+                  </div>
+                  <p className="text-gray-700 font-medium mb-2">No encontre ese seguro</p>
+                  <p className="text-gray-500 text-sm mb-5">Escribeme y te ayudo a cotizarlo sin compromiso</p>
+                  <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-white text-sm transition-all hover:scale-105 shadow-md" style={{ backgroundColor: primaryColor }}>
+                    <MessageCircle className="w-4 h-4" /> Contactar por WhatsApp
+                  </a>
                 </div>
               )}
             </div>
@@ -696,7 +747,7 @@ export default function PaginaPublicaAsesor() {
         {!hasFormLinks && (!categories || categories.length === 0) && (
           <section className="relative py-16 px-4 bg-gray-50 z-10">
             <div className="max-w-md mx-auto text-center">
-              <p className="text-gray-600 mb-4">Por el momento no hay formularios de cotizacion disponibles.</p>
+              <p className="text-gray-600 mb-4">Por el momento no hay formularios de cotizacion disponibles. Contactame directamente para ayudarte.</p>
               <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-white transition-all hover:scale-105" style={{ backgroundColor: primaryColor }}>
                 <MessageCircle className="w-4 h-4" /> Contactame directamente
               </a>
@@ -754,7 +805,7 @@ export default function PaginaPublicaAsesor() {
           </div>
         </section>
 
-        {/* CTA - Not found section */}
+        {/* CTA FINAL */}
         <section className="relative py-12 sm:py-16 px-4 bg-white z-10">
           <div className="max-w-4xl mx-auto text-center">
             <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 px-4" style={{ color: primaryColor }}>
