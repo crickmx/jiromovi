@@ -415,6 +415,209 @@ Deno.serve(async (req: Request) => {
                   logs.push("auto_mode_no_wa_config");
                 }
               }
+            } else {
+              // ── Smart Assistant: analyze inbound when no automatic session active ──
+              // Check if smart assistant is enabled for this conversation
+              const { data: saConfig } = await supabase
+                .from("contact_center_smart_assistant_config")
+                .select("smart_assistant_enabled, smart_assistant_status, paused_until, last_processed_message_id, is_processing")
+                .eq("agent_user_id", agentUserId)
+                .maybeSingle();
+
+              const saEnabled = saConfig?.smart_assistant_enabled ?? false;
+              const saPaused = saConfig?.paused_until && new Date(saConfig.paused_until) > new Date();
+              const saStatus = saConfig?.smart_assistant_status || "inactive";
+
+              if (saEnabled && !saPaused && saStatus === "active" && !saConfig?.is_processing) {
+                logs.push("smart_assistant_triggering_analysis");
+
+                // Load last 5 messages for context
+                const { data: contextMsgs } = await supabase
+                  .from("contact_center_messages")
+                  .select("id, body, sender_type, created_at")
+                  .eq("agent_user_id", agentUserId)
+                  .order("created_at", { ascending: false })
+                  .limit(10);
+
+                const messagesContext = (contextMsgs || []).reverse().map((m: Record<string, unknown>) => ({
+                  id: m.id as string,
+                  text: (m.body as string) || "",
+                  sender_type: (m.sender_type as string) || "contact",
+                  created_at: (m.created_at as string) || new Date().toISOString(),
+                }));
+
+                const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+                const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+                const saRes = await fetch(
+                  `${supabaseUrl}/functions/v1/contact-center-smart-assistant`,
+                  {
+                    method: "POST",
+                    headers: {
+                      Authorization: `Bearer ${serviceKey}`,
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      action: "analyze_message",
+                      agent_user_id: agentUserId,
+                      message_text: messageBody.trim(),
+                      message_id: insertedMsg.id,
+                      messages_context: messagesContext,
+                    }),
+                  }
+                );
+
+                const saData = await saRes.json();
+                logs.push(`smart_assistant_result=action:${saData.action || "none"}_conf:${saData.confidence || 0}_intent:${saData.intent || "none"}`);
+
+                // If stop was requested, send the stop message via WhatsApp
+                if (saData.action === "stop_assistant" && saData.stop_message) {
+                  const { data: waCfg } = await supabase
+                    .from("whatsapp_configuracion")
+                    .select("api_key, channel_id_uuid, activo")
+                    .eq("activo", true)
+                    .maybeSingle();
+
+                  if (waCfg?.api_key && waCfg?.channel_id_uuid) {
+                    const chatId = (msg.chatId as string) || chatDigits;
+                    const stopRes = await fetch("https://api.wazzup24.com/v3/message", {
+                      method: "POST",
+                      headers: {
+                        Authorization: `Bearer ${waCfg.api_key}`,
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        channelId: waCfg.channel_id_uuid,
+                        chatId,
+                        chatType: "whatsapp",
+                        text: saData.stop_message,
+                      }),
+                    });
+
+                    const stopBody = await stopRes.json();
+                    logs.push(`smart_assistant_stop_sent=${stopBody?.messageId || "no_id"}`);
+
+                    await supabase.from("contact_center_messages").insert({
+                      agent_user_id: agentUserId,
+                      sender_type: "system",
+                      channel: "whatsapp",
+                      message_type: "automatic",
+                      direction: "outbound",
+                      body: saData.stop_message,
+                      status: stopBody?.messageId ? "sent" : "error",
+                      provider: "wazzup",
+                      provider_message_id: stopBody?.messageId || null,
+                      provider_response: stopBody,
+                      automation_mode: true,
+                      created_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString(),
+                      metadata: {
+                        chat_id: chatId,
+                        channel_id: waCfg.channel_id_uuid,
+                        chat_type: "whatsapp",
+                        message_type: "text",
+                        source: "smart_assistant_stop",
+                      },
+                    });
+                  }
+                }
+
+                // If auto-activate, start the automatic agent session
+                if (saData.action === "activate_automatic_agent" && saData.matched_assistant_id) {
+                  const { data: waCfg } = await supabase
+                    .from("whatsapp_configuracion")
+                    .select("api_key, channel_id_uuid, activo")
+                    .eq("activo", true)
+                    .maybeSingle();
+
+                  if (waCfg?.api_key && waCfg?.channel_id_uuid) {
+                    // Load global settings for first message template
+                    const { data: globalSettings } = await supabase
+                      .from("smart_assistant_global_settings")
+                      .select("response_first_message, ai_message_signature_enabled, ai_message_signature_text")
+                      .limit(1)
+                      .maybeSingle();
+
+                    let firstMsg = globalSettings?.response_first_message ||
+                      "Hola, puedo ayudarte de dos formas:\n1. Llenar el formulario en línea\n2. Responder las preguntas por aquí\n¿Qué prefieres?";
+
+                    // Append signature
+                    if (globalSettings?.ai_message_signature_enabled !== false) {
+                      const sig = globalSettings?.ai_message_signature_text || "- 🤖 MOVI IA";
+                      if (!firstMsg.trim().endsWith(sig)) {
+                        firstMsg = `${firstMsg.trim()}\n\n${sig}`;
+                      }
+                    }
+
+                    // Activate the automatic agent session
+                    const activateRes = await fetch(
+                      `${supabaseUrl}/functions/v1/contact-center-assistant-process`,
+                      {
+                        method: "POST",
+                        headers: {
+                          Authorization: `Bearer ${serviceKey}`,
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                          action: "start_session",
+                          agent_user_id: agentUserId,
+                          assistant_id: saData.matched_assistant_id,
+                        }),
+                      }
+                    );
+
+                    const activateData = await activateRes.json();
+                    logs.push(`smart_assistant_activated_session=${activateData.session_id || "error"}`);
+
+                    // Send first message via WhatsApp
+                    const chatId = (msg.chatId as string) || chatDigits;
+                    const firstRes = await fetch("https://api.wazzup24.com/v3/message", {
+                      method: "POST",
+                      headers: {
+                        Authorization: `Bearer ${waCfg.api_key}`,
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        channelId: waCfg.channel_id_uuid,
+                        chatId,
+                        chatType: "whatsapp",
+                        text: firstMsg,
+                      }),
+                    });
+
+                    const firstBody = await firstRes.json();
+                    logs.push(`smart_assistant_first_msg_sent=${firstBody?.messageId || "no_id"}`);
+
+                    await supabase.from("contact_center_messages").insert({
+                      agent_user_id: agentUserId,
+                      sender_type: "system",
+                      channel: "whatsapp",
+                      message_type: "automatic",
+                      direction: "outbound",
+                      body: firstMsg,
+                      status: firstBody?.messageId ? "sent" : "error",
+                      provider: "wazzup",
+                      provider_message_id: firstBody?.messageId || null,
+                      provider_response: firstBody,
+                      automation_mode: true,
+                      active_session_id: activateData.session_id || null,
+                      created_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString(),
+                      metadata: {
+                        chat_id: chatId,
+                        channel_id: waCfg.channel_id_uuid,
+                        chat_type: "whatsapp",
+                        message_type: "text",
+                        source: "smart_assistant_auto_activate",
+                        intent: saData.intent,
+                        confidence: saData.confidence,
+                      },
+                    });
+                  }
+                }
+              } else {
+                logs.push(`smart_assistant_skip_enabled=${saEnabled}_paused=${saPaused}_status=${saStatus}`);
+              }
             }
           } catch (autoErr) {
             logs.push(`auto_mode_error=${autoErr instanceof Error ? autoErr.message : String(autoErr)}`);

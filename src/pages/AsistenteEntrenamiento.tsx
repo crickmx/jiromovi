@@ -28,6 +28,10 @@ interface GlobalSettings {
   minimum_intervention: boolean;
   ai_message_signature_enabled: boolean;
   ai_message_signature_text: string;
+  response_first_message: string;
+  response_stop_message: string;
+  response_form_sent_message: string;
+  response_option_unclear: string;
 }
 
 interface Intent {
@@ -93,6 +97,10 @@ const DEFAULT_SETTINGS: GlobalSettings = {
   minimum_intervention: true,
   ai_message_signature_enabled: true,
   ai_message_signature_text: '- 🤖 MOVI IA',
+  response_first_message: 'Hola, puedo ayudarte de dos formas:\n1. Llenar el formulario en línea\n2. Responder las preguntas por aquí\n¿Qué prefieres?',
+  response_stop_message: 'Claro, {{nombre_responsable}} te atenderá por este medio.',
+  response_form_sent_message: 'Perfecto, puedes llenar el formulario aquí:\n{{link_formulario}}\nCuando lo envíes, {{nombre_responsable}} dará seguimiento a tu solicitud.',
+  response_option_unclear: '¿Prefieres llenar el formulario en línea o responder por aquí?',
 };
 
 // ─── Small UI helpers ─────────────────────────────────────────────────────────
@@ -264,6 +272,64 @@ function TabConfig({ settings, setSettings, onSave, saving }: {
               <p className="text-xs text-gray-400 mt-1">Se agrega al final de cada mensaje automatico visible para el contacto.</p>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Response Templates */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-50 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-teal-50 flex items-center justify-center">
+            <Send className="w-4 h-4 text-teal-600" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-900 text-sm">Mensajes Base</h2>
+            <p className="text-xs text-gray-400">Mensajes que MOVI IA envia automaticamente al contacto.</p>
+          </div>
+        </div>
+        <div className="p-6 space-y-5">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Primer mensaje al activar asistente</label>
+            <textarea
+              rows={3}
+              value={settings.response_first_message}
+              onChange={e => set('response_first_message', e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
+              placeholder="Hola, puedo ayudarte de dos formas..."
+            />
+            <p className="text-xs text-gray-400 mt-1">Se envia cuando MOVI IA activa un asistente automatico.</p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Mensaje al detener bot (contacto pide humano)</label>
+            <textarea
+              rows={2}
+              value={settings.response_stop_message}
+              onChange={e => set('response_stop_message', e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
+              placeholder="Claro, {{nombre_responsable}} te atenderá..."
+            />
+            <p className="text-xs text-gray-400 mt-1">Variables: <code className="text-xs bg-gray-100 px-1 rounded">{'{{nombre_responsable}}'}</code></p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Mensaje al enviar link de formulario</label>
+            <textarea
+              rows={3}
+              value={settings.response_form_sent_message}
+              onChange={e => set('response_form_sent_message', e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
+              placeholder="Perfecto, puedes llenar el formulario aquí..."
+            />
+            <p className="text-xs text-gray-400 mt-1">Variables: <code className="text-xs bg-gray-100 px-1 rounded">{'{{link_formulario}}'}</code> <code className="text-xs bg-gray-100 px-1 rounded">{'{{nombre_responsable}}'}</code></p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Mensaje cuando la opcion no es clara</label>
+            <textarea
+              rows={2}
+              value={settings.response_option_unclear}
+              onChange={e => set('response_option_unclear', e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
+              placeholder="¿Prefieres llenar el formulario o responder por aquí?"
+            />
+          </div>
         </div>
       </div>
 

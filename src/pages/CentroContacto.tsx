@@ -488,12 +488,22 @@ export default function CentroContacto() {
       // get_state returns { config, has_active_auto_session }
       if (result && result.config) {
         const config = result.config as Record<string, unknown>;
+        // pending_suggestion is stored as the full AnalysisResult; extract suggested_actions
+        let suggestions: SmartSuggestion[] | null = null;
+        if (config.pending_suggestion) {
+          const ps = config.pending_suggestion as Record<string, unknown>;
+          if (Array.isArray(ps.suggested_actions)) {
+            suggestions = ps.suggested_actions as SmartSuggestion[];
+          } else if (Array.isArray(ps)) {
+            suggestions = ps as SmartSuggestion[];
+          }
+        }
         const state: SmartAssistantState = {
           smart_assistant_enabled: Boolean(config.smart_assistant_enabled),
           smart_assistant_status: (config.smart_assistant_status as SmartAssistantState['smart_assistant_status']) || 'inactive',
-          last_detected_intent: config.last_detected_intent as string | null,
-          last_detected_confidence: config.last_detected_confidence as number | null,
-          pending_suggestion: config.pending_suggestion as SmartAssistantState['pending_suggestion'],
+          last_detected_intent: (config.pending_suggestion as Record<string, unknown>)?.intent as string | null || config.last_detected_intent as string | null,
+          last_detected_confidence: (config.pending_suggestion as Record<string, unknown>)?.confidence as number | null || config.last_detected_confidence as number | null,
+          pending_suggestion: suggestions,
           pause_reason: config.pause_reason as string | null,
         };
         applySmartAssistantState(state);
