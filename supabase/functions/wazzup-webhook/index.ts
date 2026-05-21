@@ -146,6 +146,40 @@ Deno.serve(async (req: Request) => {
         return { agentUserId: anyByPhone.agent_user_id, source: "any_norm_phone" };
       }
 
+      // Strategy 5: Try alternate phone formats (521X vs 52X vs last 10 digits)
+      const digits = chatId.replace(/\D/g, "");
+      const last10 = digits.slice(-10);
+      const alternates: string[] = [];
+      if (digits.startsWith("521") && digits.length === 13) {
+        alternates.push("52" + digits.slice(3)); // 52XXXXXXXXXX
+      } else if (digits.startsWith("52") && digits.length === 12) {
+        alternates.push("521" + digits.slice(2)); // 521XXXXXXXXXX
+      }
+      if (last10.length === 10 && !alternates.includes("521" + last10)) {
+        alternates.push("521" + last10);
+      }
+
+      for (const alt of alternates) {
+        const { data: altMatch } = await supabase
+          .from("contact_center_messages")
+          .select("agent_user_id")
+          .eq("metadata->>chat_id", alt)
+          .eq("direction", "outbound")
+          .not("agent_user_id", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (altMatch?.agent_user_id) {
+          return { agentUserId: altMatch.agent_user_id, source: "alt_phone_format" };
+        }
+      }
+
+      // Strategy 6: Match by usuarios phone directly (for first-time conversations)
+      const userByPhone = findUserByPhone(digits);
+      if (userByPhone) {
+        return { agentUserId: userByPhone.id, source: "user_phone_direct" };
+      }
+
       return { agentUserId: null, source: "no_match" };
     };
 

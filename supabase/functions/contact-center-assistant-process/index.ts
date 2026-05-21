@@ -539,7 +539,7 @@ Deno.serve(async (req: Request) => {
       );
 
       // Determine if this assistant has an online form option
-      const formTypeSlug: string | null = (assistant as any).form_type_slug || null;
+      const formTypeSlug: string | null = (assistant as any).form_type_slug || (assistant as any).form_type_cache || null;
       const hasOnlineForm = !!formTypeSlug;
 
       // Initial stage: if assistant has form_type_slug, start with entry_choice
@@ -664,23 +664,24 @@ Deno.serve(async (req: Request) => {
       // ── ENTRY CHOICE ──────────────────────────────────────────────────────────
       if (session.current_stage === "entry_choice") {
         const lower = message.toLowerCase().trim();
-        const formTypeSlug: string | null = (assistant as any).form_type_slug || null;
+        const formTypeSlug: string | null = (assistant as any).form_type_slug || (assistant as any).form_type_cache || null;
 
-        // Detect "online form" intent
+        // Detect "online form" intent (more flexible matching)
         const formKeywords = [
           "formulario", "form", "link", "enlace", "en línea", "en linea",
           "llenar", "llenarlo", "llenar formulario", "mándame", "mandame",
           "manda", "el link", "el formato", "formato", "opción 1", "opcion 1",
         ];
-        const wantsForm = formKeywords.some(kw => lower.includes(kw)) || lower === "1";
+        const cleanLower = lower.replace(/[.!)¡¿?,;]/g, "").trim();
+        const wantsForm = formKeywords.some(kw => lower.includes(kw)) || cleanLower === "1" || lower.startsWith("1");
 
-        // Detect "guided questions" intent
+        // Detect "guided questions" intent (more flexible matching)
         const questionKeywords = [
           "preguntas", "por aquí", "por aqui", "whatsapp", "responder",
           "vamos por aquí", "vamos por aqui", "aquí", "aqui",
           "opción 2", "opcion 2", "por aquí mismo", "por chat",
         ];
-        const wantsQuestions = questionKeywords.some(kw => lower.includes(kw)) || lower === "2" || lower === "dale";
+        const wantsQuestions = questionKeywords.some(kw => lower.includes(kw)) || cleanLower === "2" || lower.startsWith("2") || lower === "dale";
 
         if (wantsForm && formTypeSlug) {
           // ── PATH A: ONLINE FORM ──
@@ -752,7 +753,9 @@ Deno.serve(async (req: Request) => {
             deactivate_auto_mode: true,
           });
 
-        } else if (wantsQuestions) {
+        } else if (wantsQuestions || (wantsForm && !formTypeSlug)) {
+          // ── PATH B: GUIDED QUESTIONS ──
+          // Also enters here if user wanted form but no form_type_slug is configured (graceful fallback)
           // ── PATH B: GUIDED QUESTIONS ──
           const nextStage = assistant.consent_message ? "consent" : "capturing";
 
