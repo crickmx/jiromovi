@@ -417,6 +417,85 @@ export default function CentroContacto() {
     }
   }, [selectedAgent, loadMessages]);
 
+  const loadConversationMode = useCallback(async (agentUserId: string) => {
+    try {
+      const result = await callApi('contact-center-assistant-process', {
+        action: 'get_session_state',
+        agent_user_id: agentUserId,
+      });
+      if (result.mode === 'automatic' && result.active_session) {
+        setConversationMode('automatic');
+        const s = result.active_session;
+        const rawData: Array<Record<string, unknown>> = s.contact_center_assistant_session_data || [];
+        const sessionData: CcSessionFieldData[] = rawData.map((d) => {
+          const val = d.value_text != null ? String(d.value_text) : (d.value != null ? String(d.value) : null);
+          const fieldMeta = d.contact_center_assistant_fields as Record<string, unknown> | undefined;
+          return {
+            field_key: String(d.field_key || ''),
+            field_label: String(d.field_label || fieldMeta?.label || d.field_key || ''),
+            value: val,
+            confidence_score: d.confidence_score != null ? Number(d.confidence_score) : null,
+            status: (d.status as CcSessionFieldData['status']) || (val ? 'captured' : 'pending'),
+            requires_human_review: Boolean(d.requires_human_review),
+            priority: (fieldMeta?.priority as CcSessionFieldData['priority']) || 'optional',
+          };
+        });
+        const capturedCount = sessionData.filter(d => ['captured','prefilled','low_confidence'].includes(d.status)).length;
+        // Fetch folio if tramite was created
+        let tramiteFolio: string | null = null;
+        if (s.ticket_id) {
+          const { data: tkt } = await supabase.from('tickets').select('folio').eq('id', s.ticket_id).maybeSingle();
+          tramiteFolio = tkt?.folio || null;
+        }
+        setActiveSession({
+          session_id: s.id,
+          status: s.status,
+          current_stage: s.current_stage,
+          consent_given: s.consent_given,
+          started_at: s.started_at,
+          messages_received: s.messages_received,
+          assistant_name: s.contact_center_assistants?.nombre || 'Asistente',
+          captured_count: capturedCount,
+          total_fields: sessionData.length || 0,
+          session_data: sessionData,
+          ticket_id: s.ticket_id || null,
+          folio: tramiteFolio,
+          creation_error: s.tramite_creation_error || null,
+        });
+      } else {
+        setConversationMode('normal');
+        setActiveSession(null);
+      }
+    } catch { /* silent */ }
+  }, []);
+
+  const applySmartAssistantState = useCallback((state: SmartAssistantState | null) => {
+    smartAssistantStateRef.current = state;
+    setSmartAssistantState(state);
+  }, []);
+
+  const loadSmartAssistantState = useCallback(async (agentUserId: string) => {
+    try {
+      const result = await callApi('contact-center-smart-assistant', {
+        action: 'get_state',
+        agent_user_id: agentUserId,
+      });
+      // get_state returns { config, has_active_auto_session }
+      if (result && result.config) {
+        const config = result.config as Record<string, unknown>;
+        const state: SmartAssistantState = {
+          smart_assistant_enabled: Boolean(config.smart_assistant_enabled),
+          smart_assistant_status: (config.smart_assistant_status as SmartAssistantState['smart_assistant_status']) || 'inactive',
+          last_detected_intent: config.last_detected_intent as string | null,
+          last_detected_confidence: config.last_detected_confidence as number | null,
+          pending_suggestion: config.pending_suggestion as SmartAssistantState['pending_suggestion'],
+          pause_reason: config.pause_reason as string | null,
+        };
+        applySmartAssistantState(state);
+      }
+    } catch { /* silent */ }
+  }, [applySmartAssistantState]);
+
   // Realtime subscription
   useEffect(() => {
     const channel = supabase
@@ -607,85 +686,6 @@ export default function CentroContacto() {
       loadSmartAssistantState(conv.agent_user_id);
     }
   };
-
-  const loadConversationMode = useCallback(async (agentUserId: string) => {
-    try {
-      const result = await callApi('contact-center-assistant-process', {
-        action: 'get_session_state',
-        agent_user_id: agentUserId,
-      });
-      if (result.mode === 'automatic' && result.active_session) {
-        setConversationMode('automatic');
-        const s = result.active_session;
-        const rawData: Array<Record<string, unknown>> = s.contact_center_assistant_session_data || [];
-        const sessionData: CcSessionFieldData[] = rawData.map((d) => {
-          const val = d.value_text != null ? String(d.value_text) : (d.value != null ? String(d.value) : null);
-          const fieldMeta = d.contact_center_assistant_fields as Record<string, unknown> | undefined;
-          return {
-            field_key: String(d.field_key || ''),
-            field_label: String(d.field_label || fieldMeta?.label || d.field_key || ''),
-            value: val,
-            confidence_score: d.confidence_score != null ? Number(d.confidence_score) : null,
-            status: (d.status as CcSessionFieldData['status']) || (val ? 'captured' : 'pending'),
-            requires_human_review: Boolean(d.requires_human_review),
-            priority: (fieldMeta?.priority as CcSessionFieldData['priority']) || 'optional',
-          };
-        });
-        const capturedCount = sessionData.filter(d => ['captured','prefilled','low_confidence'].includes(d.status)).length;
-        // Fetch folio if tramite was created
-        let tramiteFolio: string | null = null;
-        if (s.ticket_id) {
-          const { data: tkt } = await supabase.from('tickets').select('folio').eq('id', s.ticket_id).maybeSingle();
-          tramiteFolio = tkt?.folio || null;
-        }
-        setActiveSession({
-          session_id: s.id,
-          status: s.status,
-          current_stage: s.current_stage,
-          consent_given: s.consent_given,
-          started_at: s.started_at,
-          messages_received: s.messages_received,
-          assistant_name: s.contact_center_assistants?.nombre || 'Asistente',
-          captured_count: capturedCount,
-          total_fields: sessionData.length || 0,
-          session_data: sessionData,
-          ticket_id: s.ticket_id || null,
-          folio: tramiteFolio,
-          creation_error: s.tramite_creation_error || null,
-        });
-      } else {
-        setConversationMode('normal');
-        setActiveSession(null);
-      }
-    } catch { /* silent */ }
-  }, []);
-
-  const applySmartAssistantState = useCallback((state: SmartAssistantState | null) => {
-    smartAssistantStateRef.current = state;
-    setSmartAssistantState(state);
-  }, []);
-
-  const loadSmartAssistantState = useCallback(async (agentUserId: string) => {
-    try {
-      const result = await callApi('contact-center-smart-assistant', {
-        action: 'get_state',
-        agent_user_id: agentUserId,
-      });
-      // get_state returns { config, has_active_auto_session }
-      if (result && result.config) {
-        const config = result.config as Record<string, unknown>;
-        const state: SmartAssistantState = {
-          smart_assistant_enabled: Boolean(config.smart_assistant_enabled),
-          smart_assistant_status: (config.smart_assistant_status as SmartAssistantState['smart_assistant_status']) || 'inactive',
-          last_detected_intent: config.last_detected_intent as string | null,
-          last_detected_confidence: config.last_detected_confidence as number | null,
-          pending_suggestion: config.pending_suggestion as SmartAssistantState['pending_suggestion'],
-          pause_reason: config.pause_reason as string | null,
-        };
-        applySmartAssistantState(state);
-      }
-    } catch { /* silent */ }
-  }, [applySmartAssistantState]);
 
   const handleToggleSmartAssistant = async () => {
     if (!selectedAgent?.agent_user_id) return;
