@@ -179,7 +179,7 @@ function SAcciones({ s, set }: { s: Settings; set: (p: Partial<Settings>) => voi
 
 function SConocimiento({ s, set }: { s: Settings; set: (p: Partial<Settings>) => void }) {
   const [title, setTitle] = useState(''); const [content, setContent] = useState(''); const [exp, setExp] = useState<number|null>(null);
-  const entries = s.knowledge_base_json;
+  const entries = Array.isArray(s.knowledge_base_json) ? s.knowledge_base_json : [];
   return <div className="space-y-5">
     <p className="text-xs text-neutral-500">Informacion que el asistente puede consultar para responder preguntas frecuentes.</p>
     <div className="space-y-2">
@@ -273,7 +273,24 @@ export default function AsistenteEntrenamiento() {
       const { data } = await supabase.from('contact_center_smart_assistant_settings').select('*').is('office_id', null).maybeSingle();
       if (data) {
         setRowId(data.id);
-        setS({ id: data.id, is_active: data.is_active ?? false, auto_activate_on_new_contact: data.auto_activate_on_new_contact ?? false, max_inactive_minutes: data.max_inactive_minutes ?? 10, default_language: data.default_language ?? 'es', base_instructions: data.base_instructions ?? '', tone_json: (data.tone_json as ToneJson) ?? DEF.tone_json, intervention_level: (data.intervention_level as Settings['intervention_level']) ?? 'balanced', confidence_threshold: data.confidence_threshold ?? 70, activation_rules_json: (data.activation_rules_json as Rule[]) ?? [], silence_rules_json: (data.silence_rules_json as Rule[]) ?? [], stop_phrases_json: (data.stop_phrases_json as string[]) ?? [], reactivate_phrases_json: (data.reactivate_phrases_json as string[]) ?? [], message_signature: data.message_signature ?? '- MOVI IA', allowed_actions_json: (data.allowed_actions_json as AllowedActions) ?? DEF.allowed_actions_json, knowledge_base_json: (data.knowledge_base_json as KnowledgeEntry[]) ?? [] });
+        setS({
+          id: data.id,
+          is_active: data.is_active ?? false,
+          auto_activate_on_new_contact: data.auto_activate_on_new_contact ?? false,
+          max_inactive_minutes: data.max_inactive_minutes ?? 10,
+          default_language: data.default_language ?? 'es',
+          base_instructions: data.base_instructions ?? '',
+          tone_json: (data.tone_json as ToneJson) ?? DEF.tone_json,
+          intervention_level: (data.intervention_level as Settings['intervention_level']) ?? 'balanced',
+          confidence_threshold: data.confidence_threshold ?? 70,
+          activation_rules_json: Array.isArray(data.activation_rules_json) ? (data.activation_rules_json as Rule[]) : [],
+          silence_rules_json: Array.isArray(data.silence_rules_json) ? (data.silence_rules_json as Rule[]) : [],
+          stop_phrases_json: Array.isArray(data.stop_phrases_json) ? (data.stop_phrases_json as string[]) : [],
+          reactivate_phrases_json: Array.isArray(data.reactivate_phrases_json) ? (data.reactivate_phrases_json as string[]) : [],
+          message_signature: data.message_signature ?? '- MOVI IA',
+          allowed_actions_json: (data.allowed_actions_json as AllowedActions) ?? DEF.allowed_actions_json,
+          knowledge_base_json: Array.isArray(data.knowledge_base_json) ? (data.knowledge_base_json as KnowledgeEntry[]) : [],
+        });
       }
     })();
   }, []);
