@@ -389,6 +389,85 @@ function DeprecateModal({
   );
 }
 
+// ─── Delete Modal ─────────────────────────────────────────────────────────────
+
+function DeleteModal({
+  assistant,
+  onClose,
+  onSuccess,
+}: {
+  assistant: CcAssistant;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [confirm, setConfirm] = useState('');
+
+  async function handleDelete() {
+    setLoading(true);
+    await supabase.from('contact_center_assistants').delete().eq('id', assistant.id);
+    setLoading(false);
+    onSuccess();
+    onClose();
+  }
+
+  const canDelete = confirm.trim().toLowerCase() === 'eliminar';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="p-6 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
+              <Trash2 className="w-5 h-5 text-red-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Eliminar asistente</h2>
+              <p className="text-xs text-gray-400">{assistant.nombre}</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="bg-red-50 border border-red-100 rounded-xl p-3 flex gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-red-700">
+              Esta accion es <strong>permanente e irreversible</strong>. Se eliminaran el asistente, sus campos, sesiones e historial completo.
+            </p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              Escribe <span className="font-mono bg-gray-100 px-1 rounded">eliminar</span> para confirmar
+            </label>
+            <input
+              value={confirm}
+              onChange={e => setConfirm(e.target.value)}
+              placeholder="eliminar"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+            />
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              disabled={loading}
+              className="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={loading || !canDelete}
+              className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              Eliminar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Assistant Card ───────────────────────────────────────────────────────────
 
 function AssistantCard({
@@ -398,6 +477,7 @@ function AssistantCard({
   onToggleActive,
   onDeprecate,
   onRestore,
+  onDelete,
   isAdmin,
 }: {
   assistant: CcAssistant;
@@ -406,6 +486,7 @@ function AssistantCard({
   onToggleActive: () => void;
   onDeprecate: () => void;
   onRestore: () => void;
+  onDelete: () => void;
   isAdmin: boolean;
 }) {
   const isDeprecated = !!assistant.deprecated_at;
@@ -506,6 +587,15 @@ function AssistantCard({
               >
                 <Archive className="w-3.5 h-3.5" />
                 Deprecar
+              </button>
+            )}
+            {(isDeprecated || !assistant.is_active) && (
+              <button
+                onClick={onDelete}
+                title="Eliminar permanentemente"
+                className="flex items-center justify-center gap-1 py-1.5 px-2 text-xs text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
@@ -886,6 +976,7 @@ export default function CentroContactoAsistentes() {
   const [selected, setSelected] = useState<CcAssistant | null>(null);
   const [showGenerate, setShowGenerate] = useState(false);
   const [deprecating, setDeprecating] = useState<CcAssistant | null>(null);
+  const [deleting, setDeleting] = useState<CcAssistant | null>(null);
 
   const loadAssistants = useCallback(async () => {
     setLoading(true);
@@ -920,6 +1011,11 @@ export default function CentroContactoAsistentes() {
       .from('contact_center_assistants')
       .update({ is_active: true, deprecated_at: null, deprecated_reason: null })
       .eq('id', assistant.id);
+    loadAssistants();
+  }
+
+  async function handleDeleteSuccess() {
+    if (selected?.id === deleting?.id) setSelected(null);
     loadAssistants();
   }
 
@@ -1068,6 +1164,7 @@ export default function CentroContactoAsistentes() {
                   onToggleActive={() => handleToggleActive(a)}
                   onDeprecate={() => setDeprecating(a)}
                   onRestore={() => handleRestore(a)}
+                  onDelete={() => setDeleting(a)}
                   isAdmin={isAdmin}
                 />
               ))}
@@ -1100,6 +1197,13 @@ export default function CentroContactoAsistentes() {
           assistant={deprecating}
           onClose={() => setDeprecating(null)}
           onSuccess={loadAssistants}
+        />
+      )}
+      {deleting && (
+        <DeleteModal
+          assistant={deleting}
+          onClose={() => setDeleting(null)}
+          onSuccess={handleDeleteSuccess}
         />
       )}
     </div>

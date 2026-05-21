@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, LayoutDashboard, Calendar, MapPin, Menu, Palette, Key, GraduationCap, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, Car, FolderOpen, Trophy, X, Headphones, Send, BookOpen } from 'lucide-react';
+import { LogOut, User, Users, Settings, LayoutDashboard, Calendar, MapPin, Menu, Palette, Key, GraduationCap, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, Car, FolderOpen, Trophy, X, Headphones, Send, BookOpen, FormInput } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
 import { FloatingAssistantButton } from './FloatingAssistantButton';
@@ -79,6 +79,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, show: true },
     { path: '/tramites', label: 'Tramites', icon: ClipboardList, show: true },
+    { path: '/tramites/formularios', label: 'Formularios Cotizacion', icon: FormInput, show: true },
     { path: '/centro-contacto', label: 'Centro de Contacto', icon: Headphones, show: isNotAgent },
     { path: '/entrega-polizas', label: 'Entrega Polizas', icon: Send, show: isAdmin || isGerente || isEmpleado },
     { path: isAdmin ? '/comisiones' : '/mis-comisiones', label: 'Comisiones', icon: DollarSign, show: !isEmpleado && !isAgente },
@@ -119,6 +120,8 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
   const NavItem = ({ item, isCollapsed = false }: { item: typeof navItems[0]; isCollapsed?: boolean }) => {
     const Icon = item.icon;
     const isActive = location.pathname === item.path ||
+      (item.label === 'Tramites' && location.pathname.startsWith('/tramites') && !location.pathname.startsWith('/tramites/formularios')) ||
+      (item.label === 'Formularios Cotizacion' && location.pathname.startsWith('/tramites/formularios')) ||
       (item.label === 'Comisiones' && (location.pathname.startsWith('/comisiones') || location.pathname.startsWith('/mis-comisiones'))) ||
       (item.label === 'Mi Produccion' && location.pathname === '/mi-produccion') ||
       (item.label === 'Mercadotecnia' && location.pathname.startsWith('/mercadotecnia')) ||

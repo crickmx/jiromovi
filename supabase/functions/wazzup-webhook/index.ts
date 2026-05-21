@@ -388,9 +388,9 @@ Deno.serve(async (req: Request) => {
                   // Store the reply as outbound message
                   await supabase.from("contact_center_messages").insert({
                     agent_user_id: agentUserId,
-                    sender_type: "user",
+                    sender_type: "system",
                     channel: "whatsapp",
-                    message_type: "manual",
+                    message_type: "automatic",
                     direction: "outbound",
                     body: replyText,
                     status: sentMessageId ? "sent" : "error",

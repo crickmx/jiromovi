@@ -665,6 +665,25 @@ export default function CentroContacto() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario?.id]);
 
+  // Polling fallback: refresh messages every 10s when a conversation is open
+  // This ensures IA auto-replies and any missed realtime events are always visible
+  useEffect(() => {
+    if (!selectedAgent) return;
+    const interval = setInterval(() => {
+      const agent = selectedAgentRef.current;
+      if (!agent) return;
+      // Only reload if tab is visible to avoid unnecessary requests
+      if (document.visibilityState === 'hidden') return;
+      loadMessages(
+        agent.agent_user_id || '',
+        agent.is_external,
+        agent.contact_phone_ext,
+      );
+    }, 10000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAgent?.agent_user_id, selectedAgent?.contact_phone_ext]);
+
   // Close emoji picker on outside click
   useEffect(() => {
     if (!showEmojiPicker) return;
