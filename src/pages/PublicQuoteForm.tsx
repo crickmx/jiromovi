@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   Loader2, Check, AlertCircle, ArrowRight, ArrowLeft,
-  User, Mail, MessageCircle, MapPin, Shield, ChevronDown,
+  User, Mail, MessageCircle, ChevronDown,
   Send, FileText, Home, Globe,
 } from 'lucide-react';
 
@@ -159,11 +159,21 @@ export default function PublicQuoteForm() {
   };
 
   const validateRisk = (): boolean => {
-    if (template?.requires_risk_location && !formData.risk_location_compact?.trim()) {
-      setFieldErrors({ risk_location_compact: 'La ubicación del riesgo es obligatoria' });
-      return false;
+    const errs: Record<string, string> = {};
+    if (template) {
+      const typeConfig = getFormTypeFields(template.form_type);
+      const fields = typeConfig?.fields || getGenericFields(template);
+      for (const field of fields) {
+        if (field.required && !formData[field.key]?.toString().trim()) {
+          errs[field.key] = `${field.label} es obligatorio`;
+        }
+      }
     }
-    return true;
+    if (template?.requires_risk_location && !formData.risk_location_compact?.trim()) {
+      errs.risk_location_compact = 'La ubicación del riesgo es obligatoria';
+    }
+    setFieldErrors(errs);
+    return Object.keys(errs).length === 0;
   };
 
   const goNext = () => {
@@ -183,8 +193,23 @@ export default function PublicQuoteForm() {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const payload = { ...formData };
-      if (payload.client_whatsapp && !payload.client_phone) payload.client_phone = payload.client_whatsapp;
+      const knownTopLevel = new Set([
+        'client_name', 'client_phone', 'client_whatsapp', 'client_email',
+        'client_type', 'client_rfc', 'client_address_compact', 'risk_location_compact',
+        'currency', 'payment_frequency', 'start_date', 'end_date', 'notes',
+      ]);
+      const payload: Record<string, any> = {};
+      const dataJson: Record<string, any> = {};
+      for (const [key, value] of Object.entries(formData)) {
+        if (!value || (typeof value === 'string' && !value.trim())) continue;
+        if (knownTopLevel.has(key)) {
+          payload[key] = value;
+        } else {
+          dataJson[key] = value;
+        }
+      }
+      if (formData.client_whatsapp && !payload.client_phone) payload.client_phone = formData.client_whatsapp;
+      payload.data_json = dataJson;
       const res = await fetch(`${SUPABASE_URL}/functions/v1/submit-shared-quote-form/${slug}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${SUPABASE_ANON}`, 'Content-Type': 'application/json' },
@@ -270,15 +295,13 @@ export default function PublicQuoteForm() {
 
           <div className="relative max-w-2xl mx-auto px-4 sm:px-6 py-5 sm:py-6">
             <div className="flex items-center gap-4">
-              {/* Logo in its own container */}
+              {/* Logo - independent element without box */}
               <div className="shrink-0">
-                <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl bg-white border border-gray-200/80 shadow-sm flex items-center justify-center p-1.5">
-                  <img
-                    src={logoUrl} alt={agentName}
-                    className="h-full w-full object-contain rounded-lg"
-                    onError={(e) => { (e.target as HTMLImageElement).src = '/logojiro.png'; }}
-                  />
-                </div>
+                <img
+                  src={logoUrl} alt={agentName}
+                  className="h-10 w-auto sm:h-12 object-contain"
+                  onError={(e) => { (e.target as HTMLImageElement).src = '/logojiro.png'; }}
+                />
               </div>
 
               {/* Profile avatar - separate from logo */}
@@ -359,7 +382,7 @@ export default function PublicQuoteForm() {
               <div className="p-5 sm:p-7">
                 {step === 'contact' && <ContactStep formData={formData} errors={fieldErrors} updateField={updateField} theme={theme} />}
                 {step === 'risk' && template && <RiskStep formData={formData} errors={fieldErrors} updateField={updateField} template={template} theme={theme} />}
-                {step === 'review' && <ReviewStep formData={formData} formTitle={link!.form_title} theme={theme} agentName={agentName} />}
+                {step === 'review' && <ReviewStep formData={formData} formTitle={link!.form_title} theme={theme} agentName={agentName} template={template} />}
               </div>
             </div>
 
@@ -485,9 +508,7 @@ function SuccessPage({ agentName, officeName, logoUrl, profileImageUrl, theme, h
       {/* Minimal header */}
       <div className="bg-white border-b border-gray-100 px-4 py-4">
         <div className="max-w-lg mx-auto flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-white border border-gray-200/80 shadow-sm flex items-center justify-center p-1">
-            <img src={logoUrl} alt="" className="h-full w-full object-contain" onError={(e) => { (e.target as HTMLImageElement).src = '/logojiro.png'; }} />
-          </div>
+          <img src={logoUrl} alt="" className="h-9 w-auto object-contain" onError={(e) => { (e.target as HTMLImageElement).src = '/logojiro.png'; }} />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-gray-900 truncate">{agentName}</p>
             {officeName && <p className="text-[11px] text-gray-400 truncate">{officeName}</p>}
@@ -665,112 +686,455 @@ function ContactStep({ formData, errors, updateField, theme }: {
 }
 
 // ──────────────────────────────────────────────────────────
-// Risk Step
+// Form-type-specific field definitions
+
+interface FormField {
+  key: string;
+  label: string;
+  type: 'text' | 'textarea' | 'select' | 'date' | 'number';
+  placeholder?: string;
+  required?: boolean;
+  options?: string[];
+  half?: boolean;
+}
+
+const FORM_TYPE_FIELDS: Record<string, { title: string; subtitle: string; fields: FormField[] }> = {
+  auto_individual: {
+    title: 'Datos del vehículo',
+    subtitle: 'Proporciona la información de tu auto para cotizar.',
+    fields: [
+      { key: 'vehicle_brand', label: 'Marca', type: 'text', placeholder: 'Ej: Nissan, Toyota, VW', half: true },
+      { key: 'vehicle_model', label: 'Modelo / Línea', type: 'text', placeholder: 'Ej: Sentra, Corolla', half: true },
+      { key: 'vehicle_year', label: 'Año', type: 'number', placeholder: 'Ej: 2024', half: true },
+      { key: 'vehicle_version', label: 'Versión', type: 'text', placeholder: 'Ej: Advance CVT', half: true },
+      { key: 'vehicle_use', label: 'Uso del vehículo', type: 'select', options: ['Particular', 'Comercial', 'Taxi / plataforma', 'Otro'] },
+      { key: 'vehicle_plates', label: 'Placas (si las tiene)', type: 'text', placeholder: 'Opcional', half: true },
+      { key: 'vehicle_serial', label: 'No. de serie (VIN)', type: 'text', placeholder: 'Opcional - 17 caracteres', half: true },
+      { key: 'coverage_type', label: 'Tipo de cobertura deseada', type: 'select', options: ['Amplia', 'Limitada', 'Básica / RC solamente', 'No estoy seguro'] },
+      { key: 'driver_age', label: 'Edad del conductor principal', type: 'number', placeholder: 'Edad en años', half: true },
+      { key: 'driver_gender', label: 'Sexo del conductor', type: 'select', options: ['Masculino', 'Femenino'], half: true },
+      { key: 'zip_code', label: 'Código postal de circulación', type: 'text', placeholder: '00000', half: true },
+      { key: 'start_date', label: 'Inicio de vigencia deseado', type: 'date', half: true },
+    ],
+  },
+  auto_residente: {
+    title: 'Auto Residente / Fronterizo',
+    subtitle: 'Información del vehículo con placas extranjeras.',
+    fields: [
+      { key: 'vehicle_brand', label: 'Marca', type: 'text', placeholder: 'Ej: Ford, Chevrolet', half: true },
+      { key: 'vehicle_model', label: 'Modelo / Línea', type: 'text', placeholder: 'Ej: F-150, Silverado', half: true },
+      { key: 'vehicle_year', label: 'Año', type: 'number', placeholder: 'Ej: 2022', half: true },
+      { key: 'vehicle_origin', label: 'País de origen / placas', type: 'select', options: ['USA', 'Canadá', 'Otro'], half: true },
+      { key: 'vehicle_plates', label: 'Placas', type: 'text', placeholder: 'Placas del vehículo' },
+      { key: 'residence_state', label: 'Estado de residencia en México', type: 'text', placeholder: 'Ej: Baja California' },
+      { key: 'coverage_type', label: 'Tipo de cobertura deseada', type: 'select', options: ['Amplia', 'Limitada', 'RC solamente'] },
+      { key: 'start_date', label: 'Inicio de vigencia deseado', type: 'date', half: true },
+      { key: 'notes', label: 'Observaciones', type: 'textarea', placeholder: 'Información adicional relevante' },
+    ],
+  },
+  auto_alta_gama: {
+    title: 'Auto de Alta Gama',
+    subtitle: 'Cotización especializada para vehículos premium.',
+    fields: [
+      { key: 'vehicle_brand', label: 'Marca', type: 'text', placeholder: 'Ej: BMW, Mercedes, Audi, Porsche', half: true },
+      { key: 'vehicle_model', label: 'Modelo / Línea', type: 'text', placeholder: 'Ej: Serie 5, Clase C', half: true },
+      { key: 'vehicle_year', label: 'Año', type: 'number', placeholder: 'Ej: 2025', half: true },
+      { key: 'vehicle_version', label: 'Versión', type: 'text', placeholder: 'Versión exacta', half: true },
+      { key: 'vehicle_value', label: 'Valor factura / estimado', type: 'text', placeholder: 'Ej: $1,200,000' },
+      { key: 'vehicle_serial', label: 'No. de serie (VIN)', type: 'text', placeholder: '17 caracteres' },
+      { key: 'coverage_type', label: 'Tipo de cobertura', type: 'select', options: ['Amplia con agencia', 'Amplia', 'Personalizada'] },
+      { key: 'driver_age', label: 'Edad del conductor principal', type: 'number', placeholder: 'Años', half: true },
+      { key: 'start_date', label: 'Inicio de vigencia', type: 'date', half: true },
+      { key: 'notes', label: 'Observaciones', type: 'textarea', placeholder: 'Equipamiento especial, blindaje, etc.' },
+    ],
+  },
+  flotilla_autos: {
+    title: 'Flotilla de Autos',
+    subtitle: 'Información para cotizar un grupo de vehículos.',
+    fields: [
+      { key: 'fleet_size', label: 'Cantidad de unidades', type: 'number', placeholder: 'Ej: 10', half: true },
+      { key: 'vehicle_types', label: 'Tipos de vehículos', type: 'text', placeholder: 'Ej: Sedanes, Pick-ups, SUVs', half: true },
+      { key: 'fleet_use', label: 'Uso de la flotilla', type: 'select', options: ['Reparto / mensajería', 'Ejecutivos / ventas', 'Carga', 'Transporte de personal', 'Mixto', 'Otro'] },
+      { key: 'coverage_type', label: 'Tipo de cobertura deseada', type: 'select', options: ['Amplia', 'Limitada', 'Mixta (según unidad)', 'No estoy seguro'] },
+      { key: 'company_name', label: 'Razón social de la empresa', type: 'text', placeholder: 'Nombre de la empresa' },
+      { key: 'company_activity', label: 'Giro / actividad', type: 'text', placeholder: 'Actividad principal de la empresa' },
+      { key: 'start_date', label: 'Inicio de vigencia', type: 'date', half: true },
+      { key: 'notes', label: 'Observaciones', type: 'textarea', placeholder: 'Marcas/modelos principales, siniestralidad previa, etc.' },
+    ],
+  },
+  gmm_individual: {
+    title: 'Gastos Médicos Mayores',
+    subtitle: 'Datos para cotizar tu seguro de salud.',
+    fields: [
+      { key: 'insured_count', label: '¿Cuántas personas deseas asegurar?', type: 'number', placeholder: 'Ej: 3', half: true },
+      { key: 'insured_ages', label: 'Edades de los asegurados', type: 'text', placeholder: 'Ej: 35, 33, 5, 2' },
+      { key: 'sum_insured', label: 'Suma asegurada deseada', type: 'select', options: ['$5,000,000', '$10,000,000', '$20,000,000', '$50,000,000', 'Ilimitada', 'No estoy seguro'] },
+      { key: 'deductible_preference', label: 'Deducible preferido', type: 'select', options: ['$5,000', '$10,000', '$15,000', '$20,000', '$30,000', '$50,000', 'No estoy seguro'] },
+      { key: 'coinsurance_preference', label: 'Coaseguro preferido', type: 'select', options: ['10%', '20%', '30%', 'No estoy seguro'] },
+      { key: 'has_previous_insurance', label: '¿Tiene seguro actual?', type: 'select', options: ['Sí, quiero renovar/cambiar', 'No, es mi primera vez', 'Se me venció reciente'] },
+      { key: 'preexisting_conditions', label: 'Padecimientos preexistentes', type: 'textarea', placeholder: 'Si algún asegurado tiene padecimientos diagnosticados, menciónelos aquí' },
+      { key: 'preferred_hospital', label: 'Red hospitalaria preferida', type: 'text', placeholder: 'Ej: Hospital Ángeles, ABC, etc.' },
+      { key: 'start_date', label: 'Inicio de vigencia', type: 'date', half: true },
+      { key: 'payment_frequency', label: 'Forma de pago', type: 'select', options: ['Anual', 'Semestral', 'Trimestral', 'Mensual'], half: true },
+    ],
+  },
+  gmm_colectivo_empresarial: {
+    title: 'GMM Colectivo / Empresarial',
+    subtitle: 'Seguro de gastos médicos para tu equipo de trabajo.',
+    fields: [
+      { key: 'company_name', label: 'Razón social', type: 'text', placeholder: 'Nombre de la empresa' },
+      { key: 'company_activity', label: 'Giro / actividad', type: 'text', placeholder: 'Actividad principal' },
+      { key: 'employee_count', label: 'Número de empleados a asegurar', type: 'number', placeholder: 'Ej: 25', half: true },
+      { key: 'dependents_included', label: '¿Incluye dependientes?', type: 'select', options: ['Solo titulares', 'Titulares + dependientes'], half: true },
+      { key: 'age_range', label: 'Rango de edades', type: 'text', placeholder: 'Ej: 22 a 55 años' },
+      { key: 'sum_insured', label: 'Suma asegurada deseada', type: 'select', options: ['$5,000,000', '$10,000,000', '$20,000,000', '$50,000,000', 'No estoy seguro'] },
+      { key: 'has_previous_insurance', label: '¿Tiene seguro colectivo actual?', type: 'select', options: ['Sí, quiero renovar/cambiar', 'No, primera vez'] },
+      { key: 'start_date', label: 'Inicio de vigencia', type: 'date', half: true },
+      { key: 'notes', label: 'Observaciones', type: 'textarea', placeholder: 'Siniestralidad, aseguradora actual, beneficios adicionales deseados' },
+    ],
+  },
+  vida_individual: {
+    title: 'Seguro de Vida Individual',
+    subtitle: 'Protege a tu familia con un seguro de vida.',
+    fields: [
+      { key: 'insured_age', label: 'Edad del asegurado', type: 'number', placeholder: 'Edad en años', half: true },
+      { key: 'insured_gender', label: 'Sexo', type: 'select', options: ['Masculino', 'Femenino'], half: true },
+      { key: 'smoker', label: '¿Fuma?', type: 'select', options: ['No', 'Sí'], half: true },
+      { key: 'occupation', label: 'Ocupación', type: 'text', placeholder: 'Ej: Contador, Ingeniero', half: true },
+      { key: 'sum_insured', label: 'Suma asegurada deseada', type: 'text', placeholder: 'Ej: $3,000,000' },
+      { key: 'coverage_type', label: 'Tipo de seguro', type: 'select', options: ['Temporal', 'Vitalicio', 'Dotado / ahorro', 'No estoy seguro'] },
+      { key: 'additional_coverages', label: 'Coberturas adicionales de interés', type: 'text', placeholder: 'Ej: Invalidez, enfermedades graves, exención de primas' },
+      { key: 'start_date', label: 'Inicio de vigencia', type: 'date', half: true },
+      { key: 'payment_frequency', label: 'Forma de pago', type: 'select', options: ['Anual', 'Semestral', 'Trimestral', 'Mensual'], half: true },
+      { key: 'notes', label: 'Observaciones', type: 'textarea', placeholder: 'Información adicional relevante' },
+    ],
+  },
+  vida_grupo_colectivo: {
+    title: 'Vida Grupo / Colectivo',
+    subtitle: 'Seguro de vida para un grupo de personas.',
+    fields: [
+      { key: 'company_name', label: 'Razón social', type: 'text', placeholder: 'Empresa / organización' },
+      { key: 'employee_count', label: 'Número de asegurados', type: 'number', placeholder: 'Ej: 50', half: true },
+      { key: 'age_range', label: 'Rango de edades', type: 'text', placeholder: 'Ej: 20 a 60 años', half: true },
+      { key: 'sum_insured', label: 'Suma asegurada por persona', type: 'text', placeholder: 'Ej: 24 meses de salario' },
+      { key: 'additional_coverages', label: 'Coberturas adicionales', type: 'text', placeholder: 'Invalidez, muerte accidental, etc.' },
+      { key: 'start_date', label: 'Inicio de vigencia', type: 'date', half: true },
+      { key: 'notes', label: 'Observaciones', type: 'textarea', placeholder: 'Siniestralidad, aseguradora actual' },
+    ],
+  },
+  hogar_casa_habitacion: {
+    title: 'Seguro de Hogar',
+    subtitle: 'Protege tu casa y sus contenidos.',
+    fields: [
+      { key: 'risk_location_compact', label: 'Dirección del inmueble', type: 'textarea', placeholder: 'Calle, número, colonia, ciudad, estado, CP', required: true },
+      { key: 'property_type', label: 'Tipo de inmueble', type: 'select', options: ['Casa', 'Departamento', 'Condominio', 'Otro'] },
+      { key: 'property_use', label: 'Uso', type: 'select', options: ['Habitación propia', 'Arrendamiento', 'Casa de descanso'], half: true },
+      { key: 'construction_type', label: 'Tipo de construcción', type: 'select', options: ['Concreto', 'Tabique / block', 'Madera', 'Mixta', 'No estoy seguro'], half: true },
+      { key: 'building_value', label: 'Valor del edificio (aprox)', type: 'text', placeholder: 'Ej: $3,000,000', half: true },
+      { key: 'contents_value', label: 'Valor de contenidos (aprox)', type: 'text', placeholder: 'Ej: $500,000', half: true },
+      { key: 'floors', label: 'Número de pisos', type: 'number', placeholder: 'Ej: 2', half: true },
+      { key: 'built_year', label: 'Año de construcción (aprox)', type: 'number', placeholder: 'Ej: 2010', half: true },
+      { key: 'coverage_type', label: 'Tipo de cobertura', type: 'select', options: ['Básica', 'Amplia', 'Integral', 'No estoy seguro'] },
+      { key: 'start_date', label: 'Inicio de vigencia', type: 'date', half: true },
+      { key: 'notes', label: 'Observaciones', type: 'textarea', placeholder: 'Equipos especiales, obras de arte, etc.' },
+    ],
+  },
+  ap_individual: {
+    title: 'Accidentes Personales',
+    subtitle: 'Protección ante accidentes para ti o tu familia.',
+    fields: [
+      { key: 'insured_age', label: 'Edad del asegurado', type: 'number', placeholder: 'Años', half: true },
+      { key: 'insured_gender', label: 'Sexo', type: 'select', options: ['Masculino', 'Femenino'], half: true },
+      { key: 'occupation', label: 'Ocupación', type: 'text', placeholder: 'Actividad principal' },
+      { key: 'sum_insured', label: 'Suma asegurada deseada', type: 'text', placeholder: 'Ej: $1,000,000' },
+      { key: 'coverage_scope', label: 'Alcance', type: 'select', options: ['24 horas', 'Solo horario laboral', 'Solo actividades específicas'] },
+      { key: 'sports_activities', label: 'Deportes o actividades de riesgo', type: 'text', placeholder: 'Ej: ciclismo, montañismo, buceo' },
+      { key: 'start_date', label: 'Inicio de vigencia', type: 'date', half: true },
+      { key: 'notes', label: 'Observaciones', type: 'textarea', placeholder: 'Información adicional' },
+    ],
+  },
+  accidentes_personales_individual: {
+    title: 'Accidentes Personales Individual',
+    subtitle: 'Protección ante accidentes para ti o tu familia.',
+    fields: [
+      { key: 'insured_age', label: 'Edad del asegurado', type: 'number', placeholder: 'Años', half: true },
+      { key: 'insured_gender', label: 'Sexo', type: 'select', options: ['Masculino', 'Femenino'], half: true },
+      { key: 'occupation', label: 'Ocupación', type: 'text', placeholder: 'Actividad principal' },
+      { key: 'sum_insured', label: 'Suma asegurada deseada', type: 'text', placeholder: 'Ej: $1,000,000' },
+      { key: 'coverage_scope', label: 'Alcance', type: 'select', options: ['24 horas', 'Solo horario laboral', 'Solo actividades específicas'] },
+      { key: 'sports_activities', label: 'Deportes o actividades de riesgo', type: 'text', placeholder: 'Ej: ciclismo, montañismo' },
+      { key: 'start_date', label: 'Inicio de vigencia', type: 'date', half: true },
+      { key: 'notes', label: 'Observaciones', type: 'textarea', placeholder: 'Información adicional' },
+    ],
+  },
+  accidentes_personales_colectivo: {
+    title: 'Accidentes Personales Colectivo',
+    subtitle: 'Protección para un grupo de personas.',
+    fields: [
+      { key: 'company_name', label: 'Empresa / organización', type: 'text', placeholder: 'Razón social' },
+      { key: 'group_size', label: 'Número de personas', type: 'number', placeholder: 'Ej: 30', half: true },
+      { key: 'group_activity', label: 'Actividad del grupo', type: 'text', placeholder: 'Ej: Construcción, oficina, ventas', half: true },
+      { key: 'sum_insured', label: 'Suma asegurada por persona', type: 'text', placeholder: 'Ej: $500,000' },
+      { key: 'coverage_scope', label: 'Alcance', type: 'select', options: ['24 horas', 'Solo horario laboral', 'Actividades específicas'] },
+      { key: 'start_date', label: 'Inicio de vigencia', type: 'date', half: true },
+      { key: 'notes', label: 'Observaciones', type: 'textarea', placeholder: 'Actividades de riesgo, siniestralidad' },
+    ],
+  },
+  empresa_paquete: {
+    title: 'Paquete Empresarial',
+    subtitle: 'Protección integral para tu negocio.',
+    fields: [
+      { key: 'company_name', label: 'Razón social', type: 'text', placeholder: 'Nombre de la empresa' },
+      { key: 'company_activity', label: 'Giro / actividad', type: 'text', placeholder: 'Actividad principal' },
+      { key: 'risk_location_compact', label: 'Dirección del inmueble', type: 'textarea', placeholder: 'Calle, número, colonia, ciudad, estado', required: true },
+      { key: 'building_value', label: 'Valor del edificio', type: 'text', placeholder: 'Ej: $5,000,000', half: true },
+      { key: 'contents_value', label: 'Valor de contenidos', type: 'text', placeholder: 'Ej: $2,000,000', half: true },
+      { key: 'construction_type', label: 'Tipo de construcción', type: 'select', options: ['Concreto', 'Metálica', 'Madera', 'Mixta'] },
+      { key: 'employee_count', label: 'Número de empleados', type: 'number', placeholder: 'Ej: 15', half: true },
+      { key: 'annual_revenue', label: 'Ingresos anuales (aprox)', type: 'text', placeholder: 'Ej: $5,000,000', half: true },
+      { key: 'start_date', label: 'Inicio de vigencia', type: 'date', half: true },
+      { key: 'notes', label: 'Observaciones', type: 'textarea', placeholder: 'Coberturas específicas requeridas, etc.' },
+    ],
+  },
+  pyme_comercio: {
+    title: 'PyME / Comercio',
+    subtitle: 'Seguro para pequeños y medianos negocios.',
+    fields: [
+      { key: 'company_name', label: 'Nombre del negocio', type: 'text', placeholder: 'Nombre comercial o razón social' },
+      { key: 'company_activity', label: 'Giro / actividad', type: 'text', placeholder: 'Ej: Restaurante, tienda, consultorio' },
+      { key: 'risk_location_compact', label: 'Dirección del local', type: 'textarea', placeholder: 'Calle, número, colonia, ciudad', required: true },
+      { key: 'property_relation', label: 'Relación con el inmueble', type: 'select', options: ['Propio', 'Arrendado', 'Comodato'] },
+      { key: 'building_value', label: 'Valor del inmueble (si es propio)', type: 'text', placeholder: 'Ej: $2,000,000', half: true },
+      { key: 'contents_value', label: 'Valor de contenidos', type: 'text', placeholder: 'Ej: $500,000', half: true },
+      { key: 'start_date', label: 'Inicio de vigencia', type: 'date', half: true },
+      { key: 'notes', label: 'Observaciones', type: 'textarea', placeholder: 'Tipo de mercancía, equipo especial, etc.' },
+    ],
+  },
+  rc_general: {
+    title: 'Responsabilidad Civil General',
+    subtitle: 'Protección ante daños a terceros.',
+    fields: [
+      { key: 'company_name', label: 'Razón social / nombre', type: 'text', placeholder: 'Empresa o persona' },
+      { key: 'company_activity', label: 'Actividad / giro', type: 'text', placeholder: 'Describe la actividad principal' },
+      { key: 'sum_insured', label: 'Límite de RC deseado', type: 'text', placeholder: 'Ej: $5,000,000' },
+      { key: 'employee_count', label: 'Número de empleados', type: 'number', placeholder: 'Ej: 20', half: true },
+      { key: 'annual_revenue', label: 'Ingresos anuales', type: 'text', placeholder: 'Ej: $10,000,000', half: true },
+      { key: 'risk_location_compact', label: 'Ubicación de operaciones', type: 'text', placeholder: 'Ciudad / estado principal' },
+      { key: 'has_claims', label: '¿Ha tenido reclamaciones previas?', type: 'select', options: ['No', 'Sí'] },
+      { key: 'start_date', label: 'Inicio de vigencia', type: 'date', half: true },
+      { key: 'notes', label: 'Observaciones', type: 'textarea', placeholder: 'Actividades de mayor riesgo, subcontratistas, etc.' },
+    ],
+  },
+  cyber_riesgos: {
+    title: 'Riesgos Cibernéticos',
+    subtitle: 'Protección contra ataques digitales y brechas de datos.',
+    fields: [
+      { key: 'company_name', label: 'Razón social', type: 'text', placeholder: 'Nombre de la empresa' },
+      { key: 'company_activity', label: 'Giro / actividad', type: 'text', placeholder: 'Actividad principal' },
+      { key: 'annual_revenue', label: 'Ingresos anuales', type: 'text', placeholder: 'Ej: $50,000,000', half: true },
+      { key: 'employee_count', label: 'Número de empleados', type: 'number', placeholder: 'Ej: 100', half: true },
+      { key: 'data_records', label: 'Registros de datos personales que maneja', type: 'select', options: ['Menos de 1,000', '1,000 a 10,000', '10,000 a 100,000', 'Más de 100,000'] },
+      { key: 'has_ecommerce', label: '¿Tiene e-commerce o procesa pagos?', type: 'select', options: ['Sí', 'No'] },
+      { key: 'sum_insured', label: 'Límite deseado', type: 'text', placeholder: 'Ej: $10,000,000' },
+      { key: 'start_date', label: 'Inicio de vigencia', type: 'date', half: true },
+      { key: 'notes', label: 'Observaciones', type: 'textarea', placeholder: 'Incidentes previos, certificaciones de seguridad' },
+    ],
+  },
+  transporte_carga: {
+    title: 'Transporte de Carga',
+    subtitle: 'Protección para mercancías en tránsito.',
+    fields: [
+      { key: 'company_name', label: 'Empresa / cliente', type: 'text', placeholder: 'Nombre del asegurado' },
+      { key: 'cargo_type', label: 'Tipo de mercancía', type: 'text', placeholder: 'Ej: Electrónicos, alimentos, maquinaria' },
+      { key: 'transport_mode', label: 'Medio de transporte', type: 'select', options: ['Terrestre', 'Marítimo', 'Aéreo', 'Multimodal'] },
+      { key: 'route', label: 'Ruta principal', type: 'text', placeholder: 'Ej: CDMX - Monterrey' },
+      { key: 'max_shipment_value', label: 'Valor máximo por embarque', type: 'text', placeholder: 'Ej: $2,000,000', half: true },
+      { key: 'annual_shipments', label: 'Embarques anuales (aprox)', type: 'number', placeholder: 'Ej: 200', half: true },
+      { key: 'start_date', label: 'Inicio de vigencia', type: 'date', half: true },
+      { key: 'notes', label: 'Observaciones', type: 'textarea', placeholder: 'Condiciones especiales, empaques, etc.' },
+    ],
+  },
+  mascotas: {
+    title: 'Seguro de Mascotas',
+    subtitle: 'Protección para tu compañero de vida.',
+    fields: [
+      { key: 'pet_type', label: 'Tipo de mascota', type: 'select', options: ['Perro', 'Gato', 'Otro'] },
+      { key: 'pet_breed', label: 'Raza', type: 'text', placeholder: 'Ej: Labrador, Mestizo, Persa' },
+      { key: 'pet_age', label: 'Edad', type: 'text', placeholder: 'Ej: 3 años', half: true },
+      { key: 'pet_name', label: 'Nombre de la mascota', type: 'text', placeholder: 'Nombre', half: true },
+      { key: 'coverage_type', label: 'Tipo de cobertura', type: 'select', options: ['Gastos veterinarios', 'RC por daños a terceros', 'Ambas', 'No estoy seguro'] },
+      { key: 'start_date', label: 'Inicio de vigencia', type: 'date', half: true },
+      { key: 'notes', label: 'Observaciones', type: 'textarea', placeholder: 'Condiciones de salud previas' },
+    ],
+  },
+  moto: {
+    title: 'Seguro de Motocicleta',
+    subtitle: 'Protección para tu moto.',
+    fields: [
+      { key: 'vehicle_brand', label: 'Marca', type: 'text', placeholder: 'Ej: Honda, Yamaha, BMW', half: true },
+      { key: 'vehicle_model', label: 'Modelo', type: 'text', placeholder: 'Ej: Navi, R15, R1200', half: true },
+      { key: 'vehicle_year', label: 'Año', type: 'number', placeholder: 'Ej: 2024', half: true },
+      { key: 'engine_cc', label: 'Cilindrada (cc)', type: 'number', placeholder: 'Ej: 150, 600, 1200', half: true },
+      { key: 'vehicle_use', label: 'Uso', type: 'select', options: ['Particular', 'Reparto', 'Deportivo', 'Otro'] },
+      { key: 'coverage_type', label: 'Tipo de cobertura', type: 'select', options: ['Amplia', 'Limitada', 'RC solamente', 'No estoy seguro'] },
+      { key: 'driver_age', label: 'Edad del conductor', type: 'number', placeholder: 'Años', half: true },
+      { key: 'start_date', label: 'Inicio de vigencia', type: 'date', half: true },
+      { key: 'notes', label: 'Observaciones', type: 'textarea', placeholder: 'Información adicional' },
+    ],
+  },
+  dental_vision: {
+    title: 'Dental / Visión',
+    subtitle: 'Cobertura para cuidado dental y visual.',
+    fields: [
+      { key: 'insured_count', label: 'Número de asegurados', type: 'number', placeholder: 'Ej: 3', half: true },
+      { key: 'insured_ages', label: 'Edades', type: 'text', placeholder: 'Ej: 30, 28, 5', half: true },
+      { key: 'coverage_type', label: 'Tipo de cobertura', type: 'select', options: ['Solo dental', 'Solo visión', 'Dental + Visión'] },
+      { key: 'is_complement', label: '¿Complemento de GMM?', type: 'select', options: ['Sí', 'No', 'No tengo GMM'] },
+      { key: 'start_date', label: 'Inicio de vigencia', type: 'date', half: true },
+      { key: 'notes', label: 'Observaciones', type: 'textarea', placeholder: 'Tratamientos en curso, ortodoncia, etc.' },
+    ],
+  },
+  fianzas: {
+    title: 'Fianzas',
+    subtitle: 'Garantía de cumplimiento de obligaciones.',
+    fields: [
+      { key: 'bond_type', label: 'Tipo de fianza', type: 'select', options: ['Cumplimiento', 'Anticipo', 'Vicios ocultos', 'Fidelidad', 'Fiscal', 'Otra'] },
+      { key: 'company_name', label: 'Empresa fiada', type: 'text', placeholder: 'Razón social' },
+      { key: 'beneficiary', label: 'Beneficiario', type: 'text', placeholder: 'A quién se otorga la fianza' },
+      { key: 'bond_amount', label: 'Monto de la fianza', type: 'text', placeholder: 'Ej: $5,000,000' },
+      { key: 'project_description', label: 'Descripción del contrato/proyecto', type: 'textarea', placeholder: 'Objeto del contrato' },
+      { key: 'start_date', label: 'Fecha de inicio', type: 'date', half: true },
+      { key: 'end_date', label: 'Fecha de vencimiento', type: 'date', half: true },
+      { key: 'notes', label: 'Observaciones', type: 'textarea', placeholder: 'Información adicional relevante' },
+    ],
+  },
+};
+
+function getFormTypeFields(formType: string): { title: string; subtitle: string; fields: FormField[] } | null {
+  if (FORM_TYPE_FIELDS[formType]) return FORM_TYPE_FIELDS[formType];
+
+  // Match by prefix patterns for types not explicitly defined
+  if (formType.startsWith('auto')) return FORM_TYPE_FIELDS['auto_individual'];
+  if (formType.startsWith('gmm')) return FORM_TYPE_FIELDS['gmm_individual'];
+  if (formType.startsWith('vida')) return FORM_TYPE_FIELDS['vida_individual'];
+  if (formType.includes('hogar') || formType.includes('condominal') || formType.includes('arrendamiento')) return FORM_TYPE_FIELDS['hogar_casa_habitacion'];
+  if (formType.includes('empresa') || formType.includes('pyme')) return FORM_TYPE_FIELDS['empresa_paquete'];
+  if (formType.includes('rc_') || formType.includes('responsabilidad')) return FORM_TYPE_FIELDS['rc_general'];
+  if (formType.includes('transporte') || formType.includes('maritimo')) return FORM_TYPE_FIELDS['transporte_carga'];
+  if (formType.includes('cyber')) return FORM_TYPE_FIELDS['cyber_riesgos'];
+  if (formType.includes('fianza') || formType.includes('caucion')) return FORM_TYPE_FIELDS['fianzas'];
+  if (formType.includes('moto')) return FORM_TYPE_FIELDS['moto'];
+  if (formType.includes('mascota')) return FORM_TYPE_FIELDS['mascotas'];
+  if (formType.includes('accidente') || formType.includes('ap_')) return FORM_TYPE_FIELDS['ap_individual'];
+
+  return null;
+}
+
+// ──────────────────────────────────────────────────────────
+// Risk Step - Dynamic based on form type
 
 function RiskStep({ formData, errors, updateField, template, theme }: {
   formData: Record<string, any>; errors: Record<string, string>;
   updateField: (f: string, v: any) => void; template: FormTemplate; theme: BrandTheme;
 }) {
+  const typeConfig = getFormTypeFields(template.form_type);
+
+  const title = typeConfig?.title || 'Información del seguro';
+  const subtitle = typeConfig?.subtitle || 'Cuéntanos más sobre lo que deseas asegurar.';
+  const fields: FormField[] = typeConfig?.fields || getGenericFields(template);
+
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-1">Información del seguro</h2>
-        <p className="text-sm text-gray-500">Cuéntanos más sobre lo que deseas asegurar.</p>
-      </div>
-
-      {template.requires_risk_location && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Ubicación del riesgo <span className="text-red-400">*</span>
-          </label>
-          <div className="relative">
-            <MapPin className="absolute left-3.5 top-3 w-4 h-4" style={{ color: hexToRgba(theme.primary, 0.5) }} />
-            <textarea
-              value={formData.risk_location_compact || ''}
-              onChange={e => updateField('risk_location_compact', e.target.value)}
-              placeholder="Calle, número, colonia, ciudad, estado"
-              rows={2}
-              className={`w-full pl-11 pr-4 py-3 rounded-xl border text-sm resize-none transition-all duration-200 outline-none ${errors.risk_location_compact ? 'border-red-300 bg-red-50/40' : 'border-gray-200 hover:border-gray-300'} focus:ring-2 focus:border-transparent`}
-              style={{ '--tw-ring-color': theme.primary } as any}
-            />
-          </div>
-          {errors.risk_location_compact && <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.risk_location_compact}</p>}
-        </div>
-      )}
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          Descripción breve <span className="text-xs text-gray-400 font-normal">opcional</span>
-        </label>
-        <div className="relative">
-          <Shield className="absolute left-3.5 top-3 w-4 h-4" style={{ color: hexToRgba(theme.primary, 0.5) }} />
-          <textarea
-            value={formData.risk_description || ''}
-            onChange={e => updateField('risk_description', e.target.value)}
-            placeholder="Descripción del bien o riesgo que deseas asegurar"
-            rows={3}
-            className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 text-sm resize-none hover:border-gray-300 transition-all duration-200 outline-none focus:ring-2 focus:border-transparent"
-            style={{ '--tw-ring-color': theme.primary } as any}
-          />
-        </div>
+        <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-1">{title}</h2>
+        <p className="text-sm text-gray-500">{subtitle}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Suma asegurada aproximada</label>
-          <input
-            type="text"
-            value={formData.sum_insured || ''}
-            onChange={e => updateField('sum_insured', e.target.value)}
-            placeholder="Ej: $500,000"
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm hover:border-gray-300 transition-all duration-200 outline-none focus:ring-2 focus:border-transparent"
-            style={{ '--tw-ring-color': theme.primary } as any}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Vigencia deseada desde</label>
-          <input
-            type="date"
-            value={formData.start_date || ''}
-            onChange={e => updateField('start_date', e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm hover:border-gray-300 transition-all duration-200 outline-none focus:ring-2 focus:border-transparent"
-            style={{ '--tw-ring-color': theme.primary } as any}
-          />
-        </div>
-      </div>
+        {fields.map(field => {
+          const isFullWidth = !field.half || field.type === 'textarea';
+          return (
+            <div key={field.key} className={isFullWidth ? 'sm:col-span-2' : ''}>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                {field.label}
+                {field.required && <span className="text-red-400 ml-0.5">*</span>}
+                {!field.required && field.type !== 'select' && <span className="text-xs text-gray-400 font-normal ml-1">opcional</span>}
+              </label>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">Observaciones adicionales</label>
-        <textarea
-          value={formData.notes || ''}
-          onChange={e => updateField('notes', e.target.value)}
-          placeholder="Información adicional que consideres relevante"
-          rows={2}
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm resize-none hover:border-gray-300 transition-all duration-200 outline-none focus:ring-2 focus:border-transparent"
-          style={{ '--tw-ring-color': theme.primary } as any}
-        />
+              {field.type === 'textarea' ? (
+                <textarea
+                  value={formData[field.key] || ''}
+                  onChange={e => updateField(field.key, e.target.value)}
+                  placeholder={field.placeholder}
+                  rows={2}
+                  className={`w-full px-4 py-3 rounded-xl border text-sm resize-none transition-all duration-200 outline-none hover:border-gray-300 focus:ring-2 focus:border-transparent ${errors[field.key] ? 'border-red-300 bg-red-50/40' : 'border-gray-200'}`}
+                  style={{ '--tw-ring-color': theme.primary } as any}
+                />
+              ) : field.type === 'select' ? (
+                <select
+                  value={formData[field.key] || ''}
+                  onChange={e => updateField(field.key, e.target.value)}
+                  className={`w-full px-4 py-3 rounded-xl border text-sm transition-all duration-200 outline-none hover:border-gray-300 focus:ring-2 focus:border-transparent appearance-none bg-white ${errors[field.key] ? 'border-red-300 bg-red-50/40' : 'border-gray-200'}`}
+                  style={{ '--tw-ring-color': theme.primary } as any}
+                >
+                  <option value="">Seleccionar...</option>
+                  {field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                </select>
+              ) : (
+                <input
+                  type={field.type === 'number' ? 'text' : field.type}
+                  inputMode={field.type === 'number' ? 'numeric' : undefined}
+                  value={formData[field.key] || ''}
+                  onChange={e => updateField(field.key, e.target.value)}
+                  placeholder={field.placeholder}
+                  className={`w-full px-4 py-3 rounded-xl border text-sm transition-all duration-200 outline-none hover:border-gray-300 focus:ring-2 focus:border-transparent ${errors[field.key] ? 'border-red-300 bg-red-50/40' : 'border-gray-200'}`}
+                  style={{ '--tw-ring-color': theme.primary } as any}
+                />
+              )}
+
+              {errors[field.key] && <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors[field.key]}</p>}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
+function getGenericFields(template: FormTemplate): FormField[] {
+  const fields: FormField[] = [];
+  if (template.requires_risk_location) {
+    fields.push({ key: 'risk_location_compact', label: 'Ubicación del riesgo', type: 'textarea', placeholder: 'Calle, número, colonia, ciudad, estado', required: true });
+  }
+  fields.push(
+    { key: 'risk_description', label: 'Descripción de lo que deseas asegurar', type: 'textarea', placeholder: 'Describe brevemente el bien o actividad a asegurar' },
+    { key: 'sum_insured', label: 'Suma asegurada aproximada', type: 'text', placeholder: 'Ej: $500,000', half: true },
+    { key: 'start_date', label: 'Vigencia deseada desde', type: 'date', half: true },
+    { key: 'notes', label: 'Observaciones adicionales', type: 'textarea', placeholder: 'Información adicional que consideres relevante' },
+  );
+  return fields;
+}
+
 // ──────────────────────────────────────────────────────────
 // Review Step
 
-function ReviewStep({ formData, formTitle, theme, agentName }: {
-  formData: Record<string, any>; formTitle: string; theme: BrandTheme; agentName: string;
+function ReviewStep({ formData, formTitle, theme, agentName, template }: {
+  formData: Record<string, any>; formTitle: string; theme: BrandTheme; agentName: string; template: FormTemplate | null;
 }) {
-  const fields: Array<{ label: string; value?: string }> = [
+  const contactFields: Array<{ label: string; value?: string }> = [
     { label: 'Nombre', value: formData.client_name },
     { label: 'WhatsApp', value: formData.client_whatsapp },
     { label: 'Correo electrónico', value: formData.client_email },
     { label: 'RFC', value: formData.client_rfc },
-    { label: 'Ubicación del riesgo', value: formData.risk_location_compact },
-    { label: 'Descripción', value: formData.risk_description },
-    { label: 'Suma asegurada', value: formData.sum_insured },
-    { label: 'Vigencia desde', value: formData.start_date },
-    { label: 'Observaciones', value: formData.notes },
   ].filter(f => f.value?.trim());
+
+  const typeConfig = template ? getFormTypeFields(template.form_type) : null;
+  const riskFieldDefs = typeConfig?.fields || (template ? getGenericFields(template) : []);
+  const riskFields: Array<{ label: string; value?: string }> = riskFieldDefs
+    .map(f => ({ label: f.label, value: formData[f.key]?.toString() }))
+    .filter(f => f.value?.trim());
+
+  const fields = [...contactFields, ...riskFields];
 
   return (
     <div className="space-y-5">
