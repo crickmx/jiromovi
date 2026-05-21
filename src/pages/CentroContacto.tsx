@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { MessageCircle, Mail, Search, Filter, Send, Phone, Building2, User, Clock, CheckCircle2, XCircle, AlertCircle, Loader2, ChevronLeft, RefreshCw, X, MessageSquare, Zap, Check, ListTodo, Plus, Link2, FileText, Image, Music, Video, Paperclip, UserX, UserPlus, Eye, Download, ExternalLink, Smile, LayoutTemplate as BookTemplate, ClipboardList, Star, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, Globe, Lock, ChevronDown, Bot, Play, Pause, ArrowRightLeft, StopCircle, ChevronUp, Settings, Sparkles } from 'lucide-react';
+import { MessageCircle, Mail, Search, Filter, Send, Phone, Building2, User, Clock, CheckCircle2, XCircle, AlertCircle, Loader2, ChevronLeft, RefreshCw, X, MessageSquare, Zap, Check, ListTodo, Plus, Link2, FileText, Image, Music, Video, Paperclip, UserX, UserPlus, Eye, Download, ExternalLink, Smile, LayoutTemplate as BookTemplate, ClipboardList, Star, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, Globe, Lock, ChevronDown, Bot, Play, Pause, ArrowRightLeft, StopCircle, ChevronUp, Settings, Sparkles, Brain } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { getDisplayName } from '../lib/utils';
+import SmartAssistantPanel, { type SmartAssistantState, type SmartSuggestion } from '../components/SmartAssistantPanel';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -227,6 +228,10 @@ export default function CentroContacto() {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [autoModeLoading, setAutoModeLoading] = useState(false);
   const [showFieldDetails, setShowFieldDetails] = useState(false);
+
+  // Smart assistant state
+  const [smartAssistantState, setSmartAssistantState] = useState<SmartAssistantState | null>(null);
+  const [smartAssistantLoading, setSmartAssistantLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAdmin = usuario?.rol === 'Administrador';
@@ -487,6 +492,21 @@ export default function CentroContacto() {
                 prev.map(c => c.contact_phone_ext === newMsg.contact_phone ? { ...c, unread_count: 0 } : c)
               );
             }
+
+            // Analyze inbound message with smart assistant if enabled
+            if (newMsg.agent_user_id && smartAssistantState?.smart_assistant_enabled) {
+              callApi('contact-center-smart-assistant', {
+                action: 'analyze_message',
+                agent_user_id: newMsg.agent_user_id,
+                message_id: newMsg.id,
+                message_body: newMsg.body,
+                direction: 'inbound',
+              }).then(result => {
+                if (result.ok && result.state) {
+                  setSmartAssistantState(result.state as SmartAssistantState);
+                }
+              });
+            }
           }
         }
       })
@@ -535,6 +555,16 @@ export default function CentroContacto() {
           loadConversationMode(selectedAgent.agent_user_id);
         }
       })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'contact_center_smart_assistant_config',
+      }, (payload) => {
+        const updated = payload.new as Record<string, unknown>;
+        if (selectedAgent?.agent_user_id && updated.agent_user_id === selectedAgent.agent_user_id) {
+          loadSmartAssistantState(selectedAgent.agent_user_id);
+        }
+      })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -563,8 +593,12 @@ export default function CentroContacto() {
     setComposerSubject('');
     setSelectionMode(false);
     setSelectedMessageIds(new Set());
+    setSmartAssistantState(null);
     // Load conversation mode for registered users only
-    if (!conv.is_external && conv.agent_user_id) loadConversationMode(conv.agent_user_id);
+    if (!conv.is_external && conv.agent_user_id) {
+      loadConversationMode(conv.agent_user_id);
+      loadSmartAssistantState(conv.agent_user_id);
+    }
   };
 
   const loadConversationMode = useCallback(async (agentUserId: string) => {
@@ -618,6 +652,76 @@ export default function CentroContacto() {
       }
     } catch { /* silent */ }
   }, []);
+
+  const loadSmartAssistantState = useCallback(async (agentUserId: string) => {
+    try {
+      const result = await callApi('contact-center-smart-assistant', {
+        action: 'get_state',
+        agent_user_id: agentUserId,
+      });
+      if (result.ok) setSmartAssistantState(result.state as SmartAssistantState);
+    } catch { /* silent */ }
+  }, []);
+
+  const handleToggleSmartAssistant = async () => {
+    if (!selectedAgent?.agent_user_id) return;
+    setSmartAssistantLoading(true);
+    try {
+      const result = await callApi('contact-center-smart-assistant', {
+        action: 'toggle',
+        agent_user_id: selectedAgent.agent_user_id,
+      });
+      if (result.ok) setSmartAssistantState(result.state as SmartAssistantState);
+    } catch { /* silent */ }
+    setSmartAssistantLoading(false);
+  };
+
+  const handleSmartAssistantAccept = async (suggestion: SmartSuggestion) => {
+    if (!selectedAgent?.agent_user_id) return;
+    setSmartAssistantLoading(true);
+    try {
+      const result = await callApi('contact-center-smart-assistant', {
+        action: 'accept_suggestion',
+        agent_user_id: selectedAgent.agent_user_id,
+        suggestion,
+      });
+      if (result.ok) {
+        setSmartAssistantState(result.state as SmartAssistantState);
+        // If accepted suggestion activates auto mode, reload session
+        if (result.activated_auto_mode) {
+          await loadConversationMode(selectedAgent.agent_user_id);
+          loadMessages(selectedAgent.agent_user_id, selectedAgent.is_external, selectedAgent.contact_phone_ext);
+        }
+      }
+    } catch { /* silent */ }
+    setSmartAssistantLoading(false);
+  };
+
+  const handleSmartAssistantDismiss = async () => {
+    if (!selectedAgent?.agent_user_id) return;
+    setSmartAssistantLoading(true);
+    try {
+      const result = await callApi('contact-center-smart-assistant', {
+        action: 'dismiss_suggestion',
+        agent_user_id: selectedAgent.agent_user_id,
+      });
+      if (result.ok) setSmartAssistantState(result.state as SmartAssistantState);
+    } catch { /* silent */ }
+    setSmartAssistantLoading(false);
+  };
+
+  const handleSmartAssistantResume = async () => {
+    if (!selectedAgent?.agent_user_id) return;
+    setSmartAssistantLoading(true);
+    try {
+      const result = await callApi('contact-center-smart-assistant', {
+        action: 'resume',
+        agent_user_id: selectedAgent.agent_user_id,
+      });
+      if (result.ok) setSmartAssistantState(result.state as SmartAssistantState);
+    } catch { /* silent */ }
+    setSmartAssistantLoading(false);
+  };
 
   const handleActivateAutoMode = async (assistantId: string) => {
     if (!selectedAgent) return;
@@ -731,6 +835,20 @@ export default function CentroContacto() {
       setComposerSubject('');
       loadMessages(selectedAgent.agent_user_id || '', selectedAgent.is_external, selectedAgent.contact_phone_ext);
       loadConversations();
+
+      // Notify smart assistant of operator intervention (pauses it)
+      if (selectedAgent.agent_user_id && smartAssistantState?.smart_assistant_enabled &&
+          smartAssistantState.smart_assistant_status === 'active') {
+        callApi('contact-center-smart-assistant', {
+          action: 'analyze_message',
+          agent_user_id: selectedAgent.agent_user_id,
+          message_body: composerMessage.trim(),
+          direction: 'outbound',
+          sender_type: 'operator',
+        }).then(result => {
+          if (result.ok && result.state) setSmartAssistantState(result.state as SmartAssistantState);
+        });
+      }
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Error al enviar');
     }
@@ -937,6 +1055,25 @@ export default function CentroContacto() {
                 </div>
                 <div className="flex items-center gap-2">
                   {/* Mode toggle badge */}
+                  {/* Smart Assistant toggle — only for registered (non-external) agents */}
+                  {!selectedAgent.is_external && selectedAgent.agent_user_id && (
+                    <button
+                      onClick={handleToggleSmartAssistant}
+                      disabled={smartAssistantLoading}
+                      title={smartAssistantState?.smart_assistant_enabled ? 'Desactivar Asistente Inteligente' : 'Activar Asistente Inteligente'}
+                      className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] border transition-colors disabled:opacity-50 ${
+                        smartAssistantState?.smart_assistant_enabled
+                          ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 border-sky-200 dark:border-sky-700'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-sky-50 dark:hover:bg-sky-900/20 hover:text-sky-600 dark:hover:text-sky-400 border-gray-200 dark:border-gray-700'
+                      }`}
+                    >
+                      <Brain className="w-3 h-3" />
+                      <span className="hidden sm:inline">IA</span>
+                      {smartAssistantState?.smart_assistant_enabled && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+                      )}
+                    </button>
+                  )}
                   {conversationMode === 'automatic' && activeSession ? (
                     <div className="flex items-center gap-1.5">
                       <span className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
@@ -1203,6 +1340,20 @@ export default function CentroContacto() {
                     </div>
                   )}
                 </div>
+              )}
+
+              {/* Smart Assistant Panel */}
+              {smartAssistantState && conversationMode !== 'automatic' && (
+                smartAssistantState.smart_assistant_status === 'awaiting_confirmation' ||
+                smartAssistantState.smart_assistant_status === 'paused'
+              ) && (
+                <SmartAssistantPanel
+                  state={smartAssistantState}
+                  onAccept={handleSmartAssistantAccept}
+                  onDismiss={handleSmartAssistantDismiss}
+                  onResume={handleSmartAssistantResume}
+                  loading={smartAssistantLoading}
+                />
               )}
 
               {/* Messages */}
