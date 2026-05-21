@@ -277,7 +277,6 @@ export default function CentroContacto() {
 
   // Keep refs in sync so realtime callbacks and polling always use the latest version
   loadConversationsRef.current = loadConversations;
-  loadMessagesRef.current = loadMessages;
   messagesRef.current = messages;
 
   // Load messages
@@ -408,6 +407,8 @@ export default function CentroContacto() {
     } catch { /* silent */ }
     setLoadingMessages(false);
   }, [threadFilterChannel, threadFilterType, usuario]);
+
+  loadMessagesRef.current = loadMessages;
 
   // Initial load
   useEffect(() => { loadConversations(); }, [loadConversations]);
