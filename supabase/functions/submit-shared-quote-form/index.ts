@@ -51,6 +51,14 @@ Deno.serve(async (req: Request) => {
         });
       }
 
+      // Resolve brand config fresh from DB function
+      if (link.agent_id) {
+        const { data: freshBrand } = await supabase.rpc("get_agent_brand_config", { p_agent_id: link.agent_id });
+        if (freshBrand) {
+          link.brand_config_json = freshBrand;
+        }
+      }
+
       // Fetch template schema
       let template = null;
       if (link.quote_form_template_id) {

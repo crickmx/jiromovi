@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   Loader2, Check, AlertCircle, ArrowRight, ArrowLeft,
-  User, Phone, Mail, MessageCircle, MapPin, Shield, ChevronDown,
+  User, Mail, MessageCircle, MapPin, Shield, ChevronDown,
   Send, FileText,
 } from 'lucide-react';
 
@@ -37,6 +37,27 @@ interface FormTemplate {
 }
 
 type Step = 'contact' | 'risk' | 'review';
+
+function hexToRgb(hex: string) {
+  const h = hex.replace('#', '');
+  return {
+    r: parseInt(h.substring(0, 2), 16),
+    g: parseInt(h.substring(2, 4), 16),
+    b: parseInt(h.substring(4, 6), 16),
+  };
+}
+
+function darkenHex(hex: string, amount: number): string {
+  const { r, g, b } = hexToRgb(hex);
+  const clamp = (v: number) => Math.max(0, Math.min(255, v));
+  return `#${[clamp(r - amount), clamp(g - amount), clamp(b - amount)].map(v => v.toString(16).padStart(2, '0')).join('')}`;
+}
+
+function lightenHex(hex: string, amount: number): string {
+  const { r, g, b } = hexToRgb(hex);
+  const clamp = (v: number) => Math.max(0, Math.min(255, v));
+  return `#${[clamp(r + amount), clamp(g + amount), clamp(b + amount)].map(v => v.toString(16).padStart(2, '0')).join('')}`;
+}
 
 export default function PublicQuoteForm() {
   const { slug } = useParams<{ slug: string }>();
@@ -77,10 +98,10 @@ export default function PublicQuoteForm() {
   }, [slug]);
 
   const brand = link?.brand_config_json || {};
-  const primaryColor = brand.primary_color || '#2563eb';
+  const primaryColor = brand.primary_color || '#0066FF';
   const agentName = brand.agent_name || 'Agente de Seguros';
   const logoUrl = brand.logo_url || '/logojiro.png';
-  const footerText = brand.footer_text || 'Formulario enviado a través de MOVI Digital.';
+  const footerText = brand.footer_text || 'Formulario enviado a traves de MOVI Digital.';
 
   const updateField = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -90,8 +111,8 @@ export default function PublicQuoteForm() {
   const validateContact = (): boolean => {
     const errs: Record<string, string> = {};
     if (!formData.client_name?.trim()) errs.client_name = 'El nombre es obligatorio';
-    if (!formData.client_phone && !formData.client_whatsapp && !formData.client_email) {
-      errs.contact = 'Proporciona al menos un medio de contacto: telefono, WhatsApp o correo';
+    if (!formData.client_whatsapp && !formData.client_email) {
+      errs.contact = 'Proporciona al menos WhatsApp o correo electronico';
     }
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
@@ -122,10 +143,14 @@ export default function PublicQuoteForm() {
     setSubmitting(true);
     setSubmitError(null);
     try {
+      const payload = { ...formData };
+      if (payload.client_whatsapp && !payload.client_phone) {
+        payload.client_phone = payload.client_whatsapp;
+      }
       const res = await fetch(`${SUPABASE_URL}/functions/v1/submit-shared-quote-form/${slug}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${SUPABASE_ANON}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -144,12 +169,14 @@ export default function PublicQuoteForm() {
     }
   };
 
-  // ──────────────────────────────────────────────────────────
   // Loading
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${primaryColor}10 0%, #f8fafc 50%, ${primaryColor}05 100%)` }}>
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin" style={{ color: primaryColor }} />
+          <p className="text-sm text-gray-500">Cargando formulario...</p>
+        </div>
       </div>
     );
   }
@@ -178,26 +205,27 @@ export default function PublicQuoteForm() {
   // Success screen
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <PublicHeader logoUrl={logoUrl} agentName={agentName} formTitle={link!.form_title} primaryColor={primaryColor} />
+      <div className="min-h-screen flex flex-col" style={{ background: `linear-gradient(180deg, ${primaryColor}08 0%, #ffffff 40%)` }}>
+        <BrandedHeader logoUrl={logoUrl} agentName={agentName} formTitle={link!.form_title} primaryColor={primaryColor} />
         <main className="flex-1 flex items-center justify-center px-4 py-12">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 max-w-md w-full text-center">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-              <Check className="w-8 h-8 text-emerald-600" />
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 max-w-md w-full text-center">
+            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5" style={{ backgroundColor: `${primaryColor}15` }}>
+              <Check className="w-8 h-8" style={{ color: primaryColor }} />
             </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Formulario enviado exitosamente</h2>
-            <p className="text-sm text-gray-500 mb-6">
-              Gracias. Tu informacion fue enviada correctamente. El agente revisara tu solicitud y se pondra en contacto contigo.
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Solicitud enviada</h2>
+            <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+              Tu informacion fue enviada correctamente a <span className="font-medium text-gray-700">{agentName}</span>. Te contactaremos a la brevedad para darte seguimiento.
             </p>
             <button
               onClick={() => { setSubmitted(false); setFormData({}); setStep('contact'); }}
-              className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+              className="text-sm font-medium transition-colors"
+              style={{ color: primaryColor }}
             >
               Enviar otra solicitud
             </button>
           </div>
         </main>
-        <PublicFooter agentName={agentName} agentSlug={link!.agent_slug} footerText={footerText} />
+        <BrandedFooter agentName={agentName} agentSlug={link!.agent_slug} footerText={footerText} primaryColor={primaryColor} />
       </div>
     );
   }
@@ -214,44 +242,54 @@ export default function PublicQuoteForm() {
         <meta name="description" content={`Solicitud de cotizacion: ${link!.form_title}`} />
       </Helmet>
 
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <PublicHeader logoUrl={logoUrl} agentName={agentName} formTitle={link!.form_title} primaryColor={primaryColor} />
+      <div className="min-h-screen flex flex-col" style={{ background: `linear-gradient(180deg, ${primaryColor}06 0%, #f9fafb 30%, #ffffff 100%)` }}>
+        <BrandedHeader logoUrl={logoUrl} agentName={agentName} formTitle={link!.form_title} primaryColor={primaryColor} />
 
-        {/* Progress bar */}
-        <div className="bg-white border-b border-gray-100 px-4 py-3">
-          <div className="max-w-2xl mx-auto">
-            <div className="flex items-center justify-between mb-2">
+        {/* Progress steps */}
+        <div className="bg-white/80 backdrop-blur-sm border-b border-gray-100 px-4 py-4">
+          <div className="max-w-xl mx-auto">
+            <div className="flex items-center justify-between relative">
+              {/* Connection line */}
+              <div className="absolute top-4 left-0 right-0 h-0.5 bg-gray-200" />
+              <div className="absolute top-4 left-0 h-0.5 transition-all duration-500" style={{ width: `${(stepIdx / (steps.length - 1)) * 100}%`, backgroundColor: primaryColor }} />
+
               {stepLabels.map((label, i) => (
-                <span key={i} className={`text-xs font-medium ${i === stepIdx ? 'text-blue-600' : i < stepIdx ? 'text-emerald-600' : 'text-gray-400'}`}>
-                  {i < stepIdx ? <Check className="w-3.5 h-3.5 inline mr-1" /> : null}{label}
-                </span>
+                <div key={i} className="relative flex flex-col items-center z-10">
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 border-2"
+                    style={{
+                      backgroundColor: i <= stepIdx ? primaryColor : '#ffffff',
+                      borderColor: i <= stepIdx ? primaryColor : '#e5e7eb',
+                      color: i <= stepIdx ? '#ffffff' : '#9ca3af',
+                    }}
+                  >
+                    {i < stepIdx ? <Check className="w-4 h-4" /> : i + 1}
+                  </div>
+                  <span className="mt-1.5 text-[10px] sm:text-xs font-medium whitespace-nowrap" style={{ color: i <= stepIdx ? primaryColor : '#9ca3af' }}>
+                    {label}
+                  </span>
+                </div>
               ))}
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-1.5">
-              <div
-                className="h-1.5 rounded-full transition-all duration-500"
-                style={{ width: `${((stepIdx + 1) / steps.length) * 100}%`, backgroundColor: primaryColor }}
-              />
             </div>
           </div>
         </div>
 
         <main className="flex-1 px-4 py-8">
-          <div className="max-w-2xl mx-auto space-y-6">
+          <div className="max-w-xl mx-auto space-y-6">
 
             {/* Form card */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-8">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-8 transition-all duration-300">
 
               {step === 'contact' && (
-                <ContactStep formData={formData} errors={fieldErrors} updateField={updateField} />
+                <ContactStep formData={formData} errors={fieldErrors} updateField={updateField} primaryColor={primaryColor} />
               )}
 
               {step === 'risk' && template && (
-                <RiskStep formData={formData} errors={fieldErrors} updateField={updateField} template={template} />
+                <RiskStep formData={formData} errors={fieldErrors} updateField={updateField} template={template} primaryColor={primaryColor} />
               )}
 
               {step === 'review' && (
-                <ReviewStep formData={formData} formTitle={link!.form_title} />
+                <ReviewStep formData={formData} formTitle={link!.form_title} primaryColor={primaryColor} />
               )}
             </div>
 
@@ -268,7 +306,7 @@ export default function PublicQuoteForm() {
               {stepIdx > 0 ? (
                 <button
                   onClick={goPrev}
-                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+                  className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 shadow-sm"
                 >
                   <ArrowLeft className="w-4 h-4" /> Anterior
                 </button>
@@ -277,8 +315,10 @@ export default function PublicQuoteForm() {
               {step !== 'review' ? (
                 <button
                   onClick={goNext}
-                  className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white rounded-xl transition-colors"
+                  className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white rounded-xl transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98]"
                   style={{ backgroundColor: primaryColor }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = darkenHex(primaryColor, 20))}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = primaryColor)}
                 >
                   Siguiente <ArrowRight className="w-4 h-4" />
                 </button>
@@ -286,7 +326,10 @@ export default function PublicQuoteForm() {
                 <button
                   onClick={handleSubmit}
                   disabled={submitting}
-                  className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white rounded-xl transition-colors disabled:opacity-60 bg-emerald-600 hover:bg-emerald-700"
+                  className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white rounded-xl transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none"
+                  style={{ backgroundColor: primaryColor }}
+                  onMouseEnter={e => { if (!submitting) e.currentTarget.style.backgroundColor = darkenHex(primaryColor, 20); }}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = primaryColor)}
                 >
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   Enviar solicitud
@@ -295,14 +338,14 @@ export default function PublicQuoteForm() {
             </div>
 
             {/* Privacy notice */}
-            <p className="text-center text-xs text-gray-400">
-              Tus datos seran utilizados unicamente para preparar tu cotizacion de seguro.
+            <p className="text-center text-xs text-gray-400 leading-relaxed">
+              Tus datos seran utilizados unicamente para preparar tu cotizacion.
               No compartimos tu informacion con terceros.
             </p>
           </div>
         </main>
 
-        <PublicFooter agentName={agentName} agentSlug={link!.agent_slug} footerText={footerText} />
+        <BrandedFooter agentName={agentName} agentSlug={link!.agent_slug} footerText={footerText} primaryColor={primaryColor} />
       </div>
     </>
   );
@@ -311,109 +354,110 @@ export default function PublicQuoteForm() {
 // ──────────────────────────────────────────────────────────
 // Sub-components
 
-function PublicHeader({ logoUrl, agentName, formTitle, primaryColor }: {
+function BrandedHeader({ logoUrl, agentName, formTitle, primaryColor }: {
   logoUrl: string; agentName: string; formTitle: string; primaryColor: string;
 }) {
   return (
     <header className="bg-white border-b border-gray-100 shadow-sm">
-      <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
-        <img
-          src={logoUrl}
-          alt={agentName}
-          className="h-10 w-auto object-contain"
-          onError={(e) => { (e.target as HTMLImageElement).src = '/logojiro.png'; }}
-        />
-        <div>
-          <p className="text-xs text-gray-500 font-medium">{agentName}</p>
-          <h1 className="text-sm sm:text-base font-bold text-gray-900 leading-tight">{formTitle}</h1>
+      <div className="max-w-xl mx-auto px-4 py-4 flex items-center gap-4">
+        <div className="h-12 w-12 rounded-xl overflow-hidden border border-gray-100 shadow-sm flex items-center justify-center bg-white shrink-0">
+          <img
+            src={logoUrl}
+            alt={agentName}
+            className="h-10 w-10 object-contain"
+            onError={(e) => { (e.target as HTMLImageElement).src = '/logojiro.png'; }}
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium text-gray-500 truncate">{agentName}</p>
+          <h1 className="text-sm sm:text-base font-bold leading-tight truncate" style={{ color: primaryColor }}>
+            {formTitle}
+          </h1>
         </div>
       </div>
     </header>
   );
 }
 
-function PublicFooter({ agentName, agentSlug, footerText }: {
-  agentName: string; agentSlug: string; footerText: string;
+function BrandedFooter({ agentName, agentSlug, footerText, primaryColor }: {
+  agentName: string; agentSlug: string; footerText: string; primaryColor: string;
 }) {
   return (
-    <footer className="bg-white border-t border-gray-100 py-6 px-4 text-center text-xs text-gray-400 space-y-1">
-      <p className="font-medium text-gray-600">{agentName}</p>
-      <p>agentedeseguros.website/{agentSlug}</p>
-      <p>{footerText}</p>
+    <footer className="border-t border-gray-100 py-6 px-4 text-center space-y-2" style={{ backgroundColor: `${primaryColor}04` }}>
+      <p className="text-sm font-semibold text-gray-700">{agentName}</p>
+      <p className="text-xs text-gray-400">agentedeseguros.website/{agentSlug}</p>
+      <p className="text-xs text-gray-400">{footerText}</p>
     </footer>
   );
 }
 
-function ContactStep({ formData, errors, updateField }: {
+function ContactStep({ formData, errors, updateField, primaryColor }: {
   formData: Record<string, any>;
   errors: Record<string, string>;
   updateField: (f: string, v: any) => void;
+  primaryColor: string;
 }) {
+  const focusRing = `focus:ring-2 focus:border-transparent`;
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div>
-        <h2 className="text-base font-semibold text-gray-900 mb-1">Tus datos de contacto</h2>
-        <p className="text-xs text-gray-500">Para que el agente pueda ponerse en contacto contigo.</p>
+        <h2 className="text-lg font-bold text-gray-900 mb-1">Tus datos de contacto</h2>
+        <p className="text-sm text-gray-500">Para que podamos ponernos en contacto contigo.</p>
       </div>
 
       {/* Name */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
           Nombre completo o razon social <span className="text-red-500">*</span>
         </label>
-        <div className="relative">
-          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <div className="relative group">
+          <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-current transition-colors" style={{ color: errors.client_name ? '#ef4444' : undefined }} />
           <input
             type="text"
             value={formData.client_name || ''}
             onChange={e => updateField('client_name', e.target.value)}
             placeholder="Tu nombre completo o empresa"
-            className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm ${errors.client_name ? 'border-red-400' : 'border-gray-200'} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+            className={`w-full pl-11 pr-4 py-3 rounded-xl border text-sm transition-all duration-200 ${errors.client_name ? 'border-red-300 bg-red-50/50' : 'border-gray-200 hover:border-gray-300'} ${focusRing}`}
+            style={{ '--tw-ring-color': primaryColor } as any}
           />
         </div>
-        {errors.client_name && <p className="mt-1 text-xs text-red-600">{errors.client_name}</p>}
+        {errors.client_name && <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.client_name}</p>}
       </div>
 
-      {/* Contact methods — at least one required */}
+      {/* Contact methods — WhatsApp and Email only */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Medios de contacto <span className="text-red-500">*</span>
           <span className="text-xs text-gray-400 font-normal ml-1">(al menos uno)</span>
         </label>
         {errors.contact && (
-          <p className="mb-2 text-xs text-red-600 flex items-center gap-1">
-            <AlertCircle className="w-3.5 h-3.5" />{errors.contact}
+          <p className="mb-3 text-xs text-red-600 flex items-center gap-1.5 bg-red-50 px-3 py-2 rounded-lg border border-red-100">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0" />{errors.contact}
           </p>
         )}
         <div className="space-y-3">
-          <div className="relative">
-            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="tel"
-              value={formData.client_phone || ''}
-              onChange={e => updateField('client_phone', e.target.value)}
-              placeholder="Telefono"
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-          <div className="relative">
-            <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <div className="relative group">
+            <MessageCircle className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-green-600 transition-colors" />
             <input
               type="tel"
               value={formData.client_whatsapp || ''}
               onChange={e => updateField('client_whatsapp', e.target.value)}
-              placeholder="WhatsApp"
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="WhatsApp (10 digitos)"
+              className={`w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 text-sm hover:border-gray-300 transition-all duration-200 ${focusRing}`}
+              style={{ '--tw-ring-color': primaryColor } as any}
             />
+            <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">Recomendado</span>
           </div>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <div className="relative group">
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-600 transition-colors" />
             <input
               type="email"
               value={formData.client_email || ''}
               onChange={e => updateField('client_email', e.target.value)}
               placeholder="Correo electronico"
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 text-sm hover:border-gray-300 transition-all duration-200 ${focusRing}`}
+              style={{ '--tw-ring-color': primaryColor } as any}
             />
           </div>
         </div>
@@ -423,14 +467,15 @@ function ContactStep({ formData, errors, updateField }: {
       <CollapsibleSection title="Datos fiscales (opcional)">
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">RFC</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">RFC</label>
             <input
               type="text"
               value={formData.client_rfc || ''}
               onChange={e => updateField('client_rfc', e.target.value.toUpperCase())}
-              placeholder="RFC"
+              placeholder="RFC (13 caracteres)"
               maxLength={13}
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-mono hover:border-gray-300 transition-all duration-200 ${focusRing}`}
+              style={{ '--tw-ring-color': primaryColor } as any}
             />
           </div>
         </div>
@@ -439,94 +484,101 @@ function ContactStep({ formData, errors, updateField }: {
   );
 }
 
-function RiskStep({ formData, errors, updateField, template }: {
+function RiskStep({ formData, errors, updateField, template, primaryColor }: {
   formData: Record<string, any>;
   errors: Record<string, string>;
   updateField: (f: string, v: any) => void;
   template: FormTemplate;
+  primaryColor: string;
 }) {
+  const focusRing = `focus:ring-2 focus:border-transparent`;
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div>
-        <h2 className="text-base font-semibold text-gray-900 mb-1">Informacion del seguro</h2>
-        <p className="text-xs text-gray-500">Cuéntanos mas sobre lo que deseas asegurar.</p>
+        <h2 className="text-lg font-bold text-gray-900 mb-1">Informacion del seguro</h2>
+        <p className="text-sm text-gray-500">Cuentanos mas sobre lo que deseas asegurar.</p>
       </div>
 
       {template.requires_risk_location && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
             Ubicacion del riesgo <span className="text-red-500">*</span>
           </label>
-          <div className="relative">
-            <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+          <div className="relative group">
+            <MapPin className="absolute left-3.5 top-3 w-4 h-4 text-gray-400 group-focus-within:text-current transition-colors" />
             <textarea
               value={formData.risk_location_compact || ''}
               onChange={e => updateField('risk_location_compact', e.target.value)}
               placeholder="Calle, numero, colonia, ciudad, estado"
               rows={2}
-              className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm resize-none ${errors.risk_location_compact ? 'border-red-400' : 'border-gray-200'} focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+              className={`w-full pl-11 pr-4 py-3 rounded-xl border text-sm resize-none transition-all duration-200 ${errors.risk_location_compact ? 'border-red-300 bg-red-50/50' : 'border-gray-200 hover:border-gray-300'} ${focusRing}`}
+              style={{ '--tw-ring-color': primaryColor } as any}
             />
           </div>
-          {errors.risk_location_compact && <p className="mt-1 text-xs text-red-600">{errors.risk_location_compact}</p>}
+          {errors.risk_location_compact && <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.risk_location_compact}</p>}
         </div>
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
           Descripcion breve <span className="text-gray-400 text-xs font-normal">opcional</span>
         </label>
-        <div className="relative">
-          <Shield className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+        <div className="relative group">
+          <Shield className="absolute left-3.5 top-3 w-4 h-4 text-gray-400 group-focus-within:text-current transition-colors" />
           <textarea
             value={formData.risk_description || ''}
             onChange={e => updateField('risk_description', e.target.value)}
             placeholder="Descripcion del bien o riesgo que deseas asegurar"
             rows={3}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className={`w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 text-sm resize-none hover:border-gray-300 transition-all duration-200 ${focusRing}`}
+            style={{ '--tw-ring-color': primaryColor } as any}
           />
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Suma asegurada aproximada</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Suma asegurada aproximada</label>
           <input
             type="text"
             value={formData.sum_insured || ''}
             onChange={e => updateField('sum_insured', e.target.value)}
-            placeholder="Ej: 500,000"
-            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Ej: $500,000"
+            className={`w-full px-4 py-3 rounded-xl border border-gray-200 text-sm hover:border-gray-300 transition-all duration-200 ${focusRing}`}
+            style={{ '--tw-ring-color': primaryColor } as any}
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Vigencia deseada desde</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Vigencia deseada desde</label>
           <input
             type="date"
             value={formData.start_date || ''}
             onChange={e => updateField('start_date', e.target.value)}
-            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className={`w-full px-4 py-3 rounded-xl border border-gray-200 text-sm hover:border-gray-300 transition-all duration-200 ${focusRing}`}
+            style={{ '--tw-ring-color': primaryColor } as any}
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">Observaciones adicionales</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Observaciones adicionales</label>
         <textarea
           value={formData.notes || ''}
           onChange={e => updateField('notes', e.target.value)}
           placeholder="Informacion adicional que consideres relevante"
           rows={2}
-          className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className={`w-full px-4 py-3 rounded-xl border border-gray-200 text-sm resize-none hover:border-gray-300 transition-all duration-200 ${focusRing}`}
+          style={{ '--tw-ring-color': primaryColor } as any}
         />
       </div>
     </div>
   );
 }
 
-function ReviewStep({ formData, formTitle }: { formData: Record<string, any>; formTitle: string }) {
+function ReviewStep({ formData, formTitle, primaryColor }: { formData: Record<string, any>; formTitle: string; primaryColor: string }) {
   const fields: Array<{ label: string; value?: string }> = [
     { label: 'Nombre', value: formData.client_name },
-    { label: 'Telefono', value: formData.client_phone },
     { label: 'WhatsApp', value: formData.client_whatsapp },
     { label: 'Correo', value: formData.client_email },
     { label: 'RFC', value: formData.client_rfc },
@@ -538,24 +590,28 @@ function ReviewStep({ formData, formTitle }: { formData: Record<string, any>; fo
   ].filter(f => f.value?.trim());
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div>
-        <h2 className="text-base font-semibold text-gray-900 mb-1">Confirma tu solicitud</h2>
-        <p className="text-xs text-gray-500">Revisa la informacion antes de enviar.</p>
+        <h2 className="text-lg font-bold text-gray-900 mb-1">Confirma tu solicitud</h2>
+        <p className="text-sm text-gray-500">Revisa la informacion antes de enviar.</p>
       </div>
 
-      <div className="bg-gray-50 rounded-xl border border-gray-100 p-4 space-y-3">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{formTitle}</p>
-        {fields.map(f => (
-          <div key={f.label} className="flex justify-between text-sm">
-            <span className="text-gray-500">{f.label}</span>
-            <span className="font-medium text-gray-800 text-right max-w-[60%] truncate">{f.value}</span>
-          </div>
-        ))}
+      <div className="rounded-xl border border-gray-100 overflow-hidden">
+        <div className="px-4 py-2.5 border-b border-gray-100" style={{ backgroundColor: `${primaryColor}08` }}>
+          <p className="text-xs font-bold uppercase tracking-wider" style={{ color: primaryColor }}>{formTitle}</p>
+        </div>
+        <div className="p-4 space-y-3">
+          {fields.map(f => (
+            <div key={f.label} className="flex justify-between text-sm py-1 border-b border-gray-50 last:border-0">
+              <span className="text-gray-500">{f.label}</span>
+              <span className="font-medium text-gray-800 text-right max-w-[60%] truncate">{f.value}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl">
-        <p className="text-sm text-emerald-700">
+      <div className="p-4 rounded-xl border" style={{ backgroundColor: `${primaryColor}06`, borderColor: `${primaryColor}20` }}>
+        <p className="text-sm" style={{ color: darkenHex(primaryColor, 40) }}>
           Al enviar, el agente recibira tu solicitud y se pondra en contacto contigo a la brevedad.
         </p>
       </div>
@@ -566,14 +622,14 @@ function ReviewStep({ formData, formTitle }: { formData: Record<string, any>; fo
 function CollapsibleSection({ title, children }: { title: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden">
+    <div className="border border-gray-200 rounded-xl overflow-hidden transition-all duration-200 hover:border-gray-300">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-600 hover:bg-gray-50/50 transition-colors"
       >
         <span>{title}</span>
-        <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
         <div className="px-4 pb-4 pt-2 border-t border-gray-100">
