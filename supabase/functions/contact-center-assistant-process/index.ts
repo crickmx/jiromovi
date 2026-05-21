@@ -252,17 +252,37 @@ async function resolveResponsibleEmployee(
     }
   }
 
-  // Priority 4: Any admin/gerente in the office
+  // Priority 4: Any admin/gerente in the office (fix: use estado='activo' not activo=true)
   if (officeId) {
     const { data } = await supabase.from("usuarios")
       .select("id, nombre_publico, nombre_completo, nombre, apellido_paterno, apellido_materno, rol")
-      .eq("oficina_id", officeId).in("rol", ["Administrador", "Gerente"]).eq("activo", true).limit(1).maybeSingle();
+      .eq("oficina_id", officeId)
+      .in("rol", ["Administrador", "Gerente"])
+      .eq("estado", "activo")
+      .order("rol") // Gerente before Administrador alphabetically — both fine
+      .limit(1).maybeSingle();
     if (data) {
       const name = (data.nombre_publico as string)?.trim() ||
         (data.nombre_completo as string)?.trim() ||
         [data.nombre, data.apellido_paterno, data.apellido_materno].filter(Boolean).join(" ") ||
         "Agente";
       return { id: data.id, name, role: data.rol || "Gerente" };
+    }
+  }
+
+  // Priority 5: Any active admin in the system (last resort)
+  {
+    const { data } = await supabase.from("usuarios")
+      .select("id, nombre_publico, nombre_completo, nombre, apellido_paterno, apellido_materno, rol")
+      .in("rol", ["Administrador", "Gerente"])
+      .eq("estado", "activo")
+      .limit(1).maybeSingle();
+    if (data) {
+      const name = (data.nombre_publico as string)?.trim() ||
+        (data.nombre_completo as string)?.trim() ||
+        [data.nombre, data.apellido_paterno, data.apellido_materno].filter(Boolean).join(" ") ||
+        "Agente";
+      return { id: data.id, name, role: data.rol || "Administrador" };
     }
   }
 
@@ -845,8 +865,9 @@ Deno.serve(async (req: Request) => {
 
           // Build reply message with direct link to tramite and responsible name
           let replyMsg: string;
-          const followupLine = mentionResponsible && respName
-            ? `${respName} revisará la información y te dará seguimiento por este medio.`
+          const displayName = respName || "nuestro equipo";
+          const followupLine = mentionResponsible
+            ? `${displayName} revisará la información y te dará seguimiento por este medio.`
             : "El equipo de atención te dará seguimiento por este medio.";
 
           if (ticketId) {
@@ -854,9 +875,9 @@ Deno.serve(async (req: Request) => {
             if (assistant.completion_message && !assistant.completion_message.includes("app.movi.digital")) {
               // Replace variables in custom message
               replyMsg = assistant.completion_message
-                .replace(/\{\{nombre_responsable\}\}/g, respName || "")
-                .replace(/\{\{responsable_nombre\}\}/g, respName || "")
-                .replace(/\{\{empleado_responsable\}\}/g, respName || "")
+                .replace(/\{\{nombre_responsable\}\}/g, displayName)
+                .replace(/\{\{responsable_nombre\}\}/g, displayName)
+                .replace(/\{\{empleado_responsable\}\}/g, displayName)
                 .replace(/\{\{link_tramite\}\}/g, tramiteLink);
               if (!replyMsg.includes("tramites/")) {
                 replyMsg += `\n\nPuedes consultar tu trámite aquí:\n${tramiteLink}`;
