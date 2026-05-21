@@ -104,6 +104,7 @@ import Manuales from './pages/Manuales';
 import ManualViewer from './pages/ManualViewer';
 import ManualesAdmin from './pages/ManualesAdmin';
 import CentroContactoAsistentes from './pages/CentroContactoAsistentes';
+import AsistenteEntrenamiento from './pages/AsistenteEntrenamiento';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -783,6 +784,7 @@ function App() {
               <Route path="/centro-correos" element={<ProtectedRoute requireAdminOrGerente><Layout><CentroCorreos /></Layout></ProtectedRoute>} />
               <Route path="/centro-contacto" element={<ProtectedRoute excludeAgente><Layout><CentroContactoHub /></Layout></ProtectedRoute>} />
               <Route path="/centro-contacto/asistentes" element={<ProtectedRoute requireAdminOrGerente><Layout><CentroContactoAsistentes /></Layout></ProtectedRoute>} />
+              <Route path="/centro-contacto/asistentes/entrenamiento" element={<ProtectedRoute requireAdminOrGerente><Layout><AsistenteEntrenamiento /></Layout></ProtectedRoute>} />
               <Route path="/vacaciones" element={<ProtectedRoute excludeAgente><Layout><Vacaciones /></Layout></ProtectedRoute>} />
               <Route path="/espacio-jiro" element={<ProtectedRoute><Layout><EspacioJiro /></Layout></ProtectedRoute>} />
               <Route path="/multicotizador-digital" element={<ProtectedRoute><Layout><MulticotizadorDigital /></Layout></ProtectedRoute>} />
