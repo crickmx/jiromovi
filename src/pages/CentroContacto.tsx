@@ -232,8 +232,10 @@ export default function CentroContacto() {
   // Smart assistant state
   const [smartAssistantState, setSmartAssistantState] = useState<SmartAssistantState | null>(null);
   const [smartAssistantLoading, setSmartAssistantLoading] = useState(false);
+  const smartAssistantStateRef = useRef<SmartAssistantState | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const selectedAgentRef = useRef<ConversationSummary | null>(null);
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
   const canFilterOffice = isAdmin || isGerente;
@@ -428,10 +430,11 @@ export default function CentroContacto() {
         // Update conversation list
         loadConversations();
         // If we're viewing this agent's thread, add the message
-        const msgMatchesSelected = selectedAgent && (
-          (selectedAgent.is_external
-            ? (newMsg as unknown as Record<string, unknown>).contact_phone === selectedAgent.contact_phone_ext
-            : newMsg.agent_user_id === selectedAgent.agent_user_id)
+        const currentAgent = selectedAgentRef.current;
+        const msgMatchesSelected = currentAgent && (
+          (currentAgent.is_external
+            ? (newMsg as unknown as Record<string, unknown>).contact_phone === currentAgent.contact_phone_ext
+            : newMsg.agent_user_id === currentAgent.agent_user_id)
         );
         if (msgMatchesSelected) {
           setMessages(prev => {
@@ -494,16 +497,15 @@ export default function CentroContacto() {
             }
 
             // Analyze inbound message with smart assistant if enabled
-            if (newMsg.agent_user_id && smartAssistantState?.smart_assistant_enabled) {
+            if (newMsg.agent_user_id && smartAssistantStateRef.current?.smart_assistant_enabled) {
               callApi('contact-center-smart-assistant', {
                 action: 'analyze_message',
                 agent_user_id: newMsg.agent_user_id,
                 message_id: newMsg.id,
-                message_body: newMsg.body,
-                direction: 'inbound',
+                message_text: newMsg.body,
               }).then(result => {
-                if (result.ok && result.state) {
-                  setSmartAssistantState(result.state as SmartAssistantState);
+                if (result && result.action) {
+                  loadSmartAssistantState(newMsg.agent_user_id!);
                 }
               });
             }
@@ -541,8 +543,9 @@ export default function CentroContacto() {
           return { ...prev, current_stage: newStage, ticket_id: ticketId, creation_error: creationError };
         });
         // If mode changed to normal (session ended), reload mode
-        if (selectedAgent?.agent_user_id && (updated.status === 'completed' || updated.status === 'cancelled' || updated.status === 'transferred')) {
-          loadConversationMode(selectedAgent.agent_user_id);
+        const currentAgentForSession = selectedAgentRef.current;
+        if (currentAgentForSession?.agent_user_id && (updated.status === 'completed' || updated.status === 'cancelled' || updated.status === 'transferred')) {
+          loadConversationMode(currentAgentForSession.agent_user_id);
         }
       })
       .on('postgres_changes', {
@@ -551,8 +554,9 @@ export default function CentroContacto() {
         table: 'contact_center_conversation_modes',
       }, (payload) => {
         const updated = payload.new as Record<string, unknown>;
-        if (selectedAgent?.agent_user_id && updated.agent_user_id === selectedAgent.agent_user_id) {
-          loadConversationMode(selectedAgent.agent_user_id);
+        const currentAgentForMode = selectedAgentRef.current;
+        if (currentAgentForMode?.agent_user_id && updated.agent_user_id === currentAgentForMode.agent_user_id) {
+          loadConversationMode(currentAgentForMode.agent_user_id);
         }
       })
       .on('postgres_changes', {
@@ -561,14 +565,16 @@ export default function CentroContacto() {
         table: 'contact_center_smart_assistant_config',
       }, (payload) => {
         const updated = payload.new as Record<string, unknown>;
-        if (selectedAgent?.agent_user_id && updated.agent_user_id === selectedAgent.agent_user_id) {
-          loadSmartAssistantState(selectedAgent.agent_user_id);
+        const currentAgentForAI = selectedAgentRef.current;
+        if (currentAgentForAI?.agent_user_id && updated.agent_user_id === currentAgentForAI.agent_user_id) {
+          loadSmartAssistantState(currentAgentForAI.agent_user_id);
         }
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [selectedAgent, usuario, loadConversations]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuario, loadConversations, loadConversationMode, loadSmartAssistantState]);
 
   // Close emoji picker on outside click
   useEffect(() => {
@@ -588,12 +594,13 @@ export default function CentroContacto() {
   };
 
   const handleSelectAgent = (conv: ConversationSummary) => {
+    selectedAgentRef.current = conv;
     setSelectedAgent(conv);
     setComposerMessage('');
     setComposerSubject('');
     setSelectionMode(false);
     setSelectedMessageIds(new Set());
-    setSmartAssistantState(null);
+    applySmartAssistantState(null);
     // Load conversation mode for registered users only
     if (!conv.is_external && conv.agent_user_id) {
       loadConversationMode(conv.agent_user_id);
@@ -653,25 +660,45 @@ export default function CentroContacto() {
     } catch { /* silent */ }
   }, []);
 
+  const applySmartAssistantState = useCallback((state: SmartAssistantState | null) => {
+    smartAssistantStateRef.current = state;
+    setSmartAssistantState(state);
+  }, []);
+
   const loadSmartAssistantState = useCallback(async (agentUserId: string) => {
     try {
       const result = await callApi('contact-center-smart-assistant', {
         action: 'get_state',
         agent_user_id: agentUserId,
       });
-      if (result.ok) setSmartAssistantState(result.state as SmartAssistantState);
+      // get_state returns { config, has_active_auto_session }
+      if (result && result.config) {
+        const config = result.config as Record<string, unknown>;
+        const state: SmartAssistantState = {
+          smart_assistant_enabled: Boolean(config.smart_assistant_enabled),
+          smart_assistant_status: (config.smart_assistant_status as SmartAssistantState['smart_assistant_status']) || 'inactive',
+          last_detected_intent: config.last_detected_intent as string | null,
+          last_detected_confidence: config.last_detected_confidence as number | null,
+          pending_suggestion: config.pending_suggestion as SmartAssistantState['pending_suggestion'],
+          pause_reason: config.pause_reason as string | null,
+        };
+        applySmartAssistantState(state);
+      }
     } catch { /* silent */ }
-  }, []);
+  }, [applySmartAssistantState]);
 
   const handleToggleSmartAssistant = async () => {
     if (!selectedAgent?.agent_user_id) return;
     setSmartAssistantLoading(true);
+    const newEnabled = !smartAssistantStateRef.current?.smart_assistant_enabled;
     try {
-      const result = await callApi('contact-center-smart-assistant', {
+      await callApi('contact-center-smart-assistant', {
         action: 'toggle',
         agent_user_id: selectedAgent.agent_user_id,
+        enabled: newEnabled,
       });
-      if (result.ok) setSmartAssistantState(result.state as SmartAssistantState);
+      // Reload state after toggle
+      await loadSmartAssistantState(selectedAgent.agent_user_id);
     } catch { /* silent */ }
     setSmartAssistantLoading(false);
   };
@@ -680,18 +707,24 @@ export default function CentroContacto() {
     if (!selectedAgent?.agent_user_id) return;
     setSmartAssistantLoading(true);
     try {
-      const result = await callApi('contact-center-smart-assistant', {
-        action: 'accept_suggestion',
-        agent_user_id: selectedAgent.agent_user_id,
-        suggestion,
-      });
-      if (result.ok) {
-        setSmartAssistantState(result.state as SmartAssistantState);
-        // If accepted suggestion activates auto mode, reload session
-        if (result.activated_auto_mode) {
-          await loadConversationMode(selectedAgent.agent_user_id);
-          loadMessages(selectedAgent.agent_user_id, selectedAgent.is_external, selectedAgent.contact_phone_ext);
-        }
+      // If suggestion has an assistant_id, mark as accepted then open the "start auto" flow
+      if (suggestion.assistant_id) {
+        await callApi('contact-center-smart-assistant', {
+          action: 'accept_suggestion',
+          agent_user_id: selectedAgent.agent_user_id,
+          assistant_id: suggestion.assistant_id,
+          intent: suggestion.form_slug,
+        });
+        await loadSmartAssistantState(selectedAgent.agent_user_id);
+        // Show the start auto modal pre-filled with this assistant
+        setShowStartAutoModal(true);
+      } else {
+        // Manual task or dismiss action
+        await callApi('contact-center-smart-assistant', {
+          action: 'dismiss_suggestion',
+          agent_user_id: selectedAgent.agent_user_id,
+        });
+        await loadSmartAssistantState(selectedAgent.agent_user_id);
       }
     } catch { /* silent */ }
     setSmartAssistantLoading(false);
@@ -701,11 +734,11 @@ export default function CentroContacto() {
     if (!selectedAgent?.agent_user_id) return;
     setSmartAssistantLoading(true);
     try {
-      const result = await callApi('contact-center-smart-assistant', {
+      await callApi('contact-center-smart-assistant', {
         action: 'dismiss_suggestion',
         agent_user_id: selectedAgent.agent_user_id,
       });
-      if (result.ok) setSmartAssistantState(result.state as SmartAssistantState);
+      await loadSmartAssistantState(selectedAgent.agent_user_id);
     } catch { /* silent */ }
     setSmartAssistantLoading(false);
   };
@@ -714,11 +747,11 @@ export default function CentroContacto() {
     if (!selectedAgent?.agent_user_id) return;
     setSmartAssistantLoading(true);
     try {
-      const result = await callApi('contact-center-smart-assistant', {
+      await callApi('contact-center-smart-assistant', {
         action: 'resume',
         agent_user_id: selectedAgent.agent_user_id,
       });
-      if (result.ok) setSmartAssistantState(result.state as SmartAssistantState);
+      await loadSmartAssistantState(selectedAgent.agent_user_id);
     } catch { /* silent */ }
     setSmartAssistantLoading(false);
   };
@@ -837,16 +870,15 @@ export default function CentroContacto() {
       loadConversations();
 
       // Notify smart assistant of operator intervention (pauses it)
-      if (selectedAgent.agent_user_id && smartAssistantState?.smart_assistant_enabled &&
-          smartAssistantState.smart_assistant_status === 'active') {
+      if (selectedAgent.agent_user_id && smartAssistantStateRef.current?.smart_assistant_enabled &&
+          smartAssistantStateRef.current?.smart_assistant_status === 'active') {
         callApi('contact-center-smart-assistant', {
           action: 'analyze_message',
           agent_user_id: selectedAgent.agent_user_id,
-          message_body: composerMessage.trim(),
-          direction: 'outbound',
-          sender_type: 'operator',
-        }).then(result => {
-          if (result.ok && result.state) setSmartAssistantState(result.state as SmartAssistantState);
+          message_text: composerMessage.trim(),
+          messages_context: [{ text: composerMessage.trim(), sender_type: 'operator', created_at: new Date().toISOString() }],
+        }).then(() => {
+          loadSmartAssistantState(selectedAgent.agent_user_id!);
         });
       }
     } catch (err: unknown) {
