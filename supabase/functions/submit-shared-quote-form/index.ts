@@ -20,8 +20,6 @@ Deno.serve(async (req: Request) => {
 
     const url = new URL(req.url);
     const pathParts = url.pathname.split("/").filter(Boolean);
-    // GET /submit-shared-quote-form/[slug]  → fetch public link info
-    // POST /submit-shared-quote-form/[slug] → submit form
 
     if (req.method === "GET") {
       const slug = pathParts[pathParts.length - 1];
@@ -51,7 +49,6 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      // Resolve brand config fresh from DB function
       if (link.agent_id) {
         const { data: freshBrand } = await supabase.rpc("get_agent_brand_config", { p_agent_id: link.agent_id });
         if (freshBrand) {
@@ -59,7 +56,6 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Fetch template schema
       let template = null;
       if (link.quote_form_template_id) {
         const { data: tpl } = await supabase
@@ -99,21 +95,18 @@ Deno.serve(async (req: Request) => {
         data_json = {},
       } = body;
 
-      // Validate: at least one contact method
       if (!client_phone && !client_whatsapp && !client_email) {
         return new Response(JSON.stringify({ error: "contact_required", message: "Se requiere al menos un medio de contacto: telefono, WhatsApp o correo." }), {
           status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // Validate: client name
       if (!client_name?.trim()) {
         return new Response(JSON.stringify({ error: "client_name_required" }), {
           status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // Fetch link
       const { data: link, error: linkErr } = await supabase
         .from("shared_quote_form_links")
         .select("*")
@@ -135,7 +128,7 @@ Deno.serve(async (req: Request) => {
       const agentId = link.agent_id;
       const officeId = link.office_id;
 
-      // Create quote_form record
+      // ── Step 1: Create quote_form record ──
       const { data: qForm, error: qErr } = await supabase
         .from("quote_forms")
         .insert({
@@ -170,7 +163,7 @@ Deno.serve(async (req: Request) => {
 
       if (qErr) throw qErr;
 
-      // Create submission record
+      // ── Step 2: Create submission record ──
       const ipHash = req.headers.get("x-forwarded-for")
         ? btoa(req.headers.get("x-forwarded-for")!).substring(0, 32)
         : null;
@@ -199,13 +192,12 @@ Deno.serve(async (req: Request) => {
 
       if (subErr) throw subErr;
 
-      // Update quote_form with submission id
       await supabase
         .from("quote_forms")
         .update({ public_submission_id: submission.id })
         .eq("id", qForm.id);
 
-      // Create ticket
+      // ── Step 3: Create ticket (commercial process) ──
       const { data: estatusData } = await supabase
         .from("ticket_estatus")
         .select("id")
@@ -253,7 +245,43 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Increment submissions counter on link
+      // ── Step 4: Create CRM lead and follow-up task ──
+      let leadId: string | null = null;
+      let taskId: string | null = null;
+      let isNewLead = true;
+
+      try {
+        const { data: crmResult, error: crmErr } = await supabase.rpc(
+          "create_crm_lead_and_task_from_public_form",
+          {
+            p_agent_id: agentId,
+            p_office_id: officeId,
+            p_client_name: client_name.trim(),
+            p_client_phone: client_phone || null,
+            p_client_whatsapp: client_whatsapp || null,
+            p_client_email: client_email || null,
+            p_form_type: link.form_type,
+            p_form_title: link.form_title,
+            p_quote_form_id: qForm.id,
+            p_ticket_id: ticketId,
+            p_shared_link_id: link.id,
+            p_public_submission_id: submission.id,
+            p_notes: notes || null,
+          }
+        );
+
+        if (crmErr) {
+          console.error("CRM creation error (non-critical):", crmErr);
+        } else if (crmResult) {
+          leadId = crmResult.lead_id;
+          taskId = crmResult.task_id;
+          isNewLead = crmResult.is_new_lead;
+        }
+      } catch (crmError) {
+        console.error("CRM creation exception (non-critical):", crmError);
+      }
+
+      // ── Step 5: Increment submissions counter ──
       await supabase
         .from("shared_quote_form_links")
         .update({
@@ -262,13 +290,17 @@ Deno.serve(async (req: Request) => {
         })
         .eq("id", link.id);
 
-      // Send in-app notification to agent
+      // ── Step 6: Send in-app notification to agent ──
       try {
+        const notifMensaje = leadId
+          ? `Nueva solicitud de cotizacion de ${link.form_title} recibida desde tu formulario compartido. Cliente: ${client_name.trim()}. Se creo un lead en Mi CRM y una tarea de seguimiento.`
+          : `Nueva solicitud de cotizacion de ${link.form_title} recibida desde tu formulario compartido. Cliente: ${client_name.trim()}.`;
+
         await supabase.from("notificaciones").insert({
           usuario_id: agentId,
           tipo: "tramite",
           titulo: "Nueva solicitud de cotizacion recibida",
-          mensaje: `Nueva solicitud de cotizacion de ${link.form_title} recibida desde tu formulario compartido. Cliente: ${client_name.trim()}.`,
+          mensaje: notifMensaje,
           url: ticketId ? `/tramites/${ticketId}` : `/tramites/formularios`,
           leida: false,
         });
@@ -276,7 +308,14 @@ Deno.serve(async (req: Request) => {
         // Notification failure is non-critical
       }
 
-      return new Response(JSON.stringify({ ok: true, quote_form_id: qForm.id, ticket_id: ticketId }), {
+      return new Response(JSON.stringify({
+        ok: true,
+        quote_form_id: qForm.id,
+        ticket_id: ticketId,
+        lead_id: leadId,
+        task_id: taskId,
+        is_new_lead: isNewLead,
+      }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
