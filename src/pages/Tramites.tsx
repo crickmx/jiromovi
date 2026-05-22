@@ -2,11 +2,15 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { ClipboardList, Plus, Search, AlertCircle, Clock, CheckCircle2, FileText, Settings, Users, BarChart3 } from 'lucide-react';
+import { ClipboardList, Plus, Search, AlertCircle, Clock, CheckCircle2, FileText, Settings, Users, BarChart3, X } from 'lucide-react';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
 import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
 import { AgenteDashboard } from '../components/tramites/AgenteDashboard';
+import { PageHeader } from '@/components/ui/page-header';
+import { Button } from '@/components/ui/button';
+import { LoadingState } from '@/components/ui/loading-state';
+import { EmptyState } from '@/components/ui/empty-state';
 import {
   TIPO_TRAMITE_OPTIONS,
   getTipoTramiteLabel as centralGetLabel,
@@ -286,102 +290,79 @@ export function Tramites() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-accent mb-2">
-              Gestión de Trámites
-            </h1>
-            <p className="text-neutral-600 flex items-center gap-2">
-              Gestiona solicitudes y soporte interno
-              {userArea && !isAdmin && (
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${AREA_CONFIG[userArea as keyof typeof AREA_CONFIG]?.bg} ${AREA_CONFIG[userArea as keyof typeof AREA_CONFIG]?.color}`}>
-                  Vista: {userArea}
-                </span>
-              )}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
+    <div className="space-y-5">
+      <PageHeader
+        title="Gestion de Tramites"
+        description="Gestiona solicitudes y soporte interno"
+        icon={ClipboardList}
+        badge={userArea && !isAdmin ? (
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${AREA_CONFIG[userArea as keyof typeof AREA_CONFIG]?.bg} ${AREA_CONFIG[userArea as keyof typeof AREA_CONFIG]?.color}`}>
+            {userArea}
+          </span>
+        ) : undefined}
+        actions={
+          <div className="flex items-center gap-2 flex-wrap">
             {isAdmin && (
-              <button
-                onClick={() => setShowGruposModal(true)}
-                className="flex items-center space-x-2 bg-neutral-100 text-neutral-700 px-4 py-3 rounded-xl hover:bg-neutral-200 transition-all duration-200 font-semibold"
-              >
-                <Users className="w-5 h-5" />
-                <span>Gestionar Equipos</span>
-              </button>
+              <Button variant="outline" size="sm" onClick={() => setShowGruposModal(true)}>
+                <Users className="w-4 h-4 mr-1.5" />
+                <span className="hidden sm:inline">Equipos</span>
+              </Button>
             )}
             {canManageCatalogs && (
-              <button
-                onClick={() => setShowCatalogosModal(true)}
-                className="flex items-center space-x-2 bg-neutral-100 text-neutral-700 px-4 py-3 rounded-xl hover:bg-neutral-200 transition-all duration-200 font-semibold"
-              >
-                <Settings className="w-5 h-5" />
-                <span>Catálogos</span>
-              </button>
+              <Button variant="outline" size="sm" onClick={() => setShowCatalogosModal(true)}>
+                <Settings className="w-4 h-4 mr-1.5" />
+                <span className="hidden sm:inline">Catalogos</span>
+              </Button>
             )}
             {(isAdmin || isGerente) && (
-              <button
-                onClick={() => navigate('/tramites/reportes')}
-                className="flex items-center space-x-2 bg-neutral-100 text-neutral-700 px-4 py-3 rounded-xl hover:bg-neutral-200 transition-all duration-200 font-semibold"
-              >
-                <BarChart3 className="w-5 h-5" />
-                <span>Reportes</span>
-              </button>
+              <Button variant="outline" size="sm" onClick={() => navigate('/tramites/reportes')}>
+                <BarChart3 className="w-4 h-4 mr-1.5" />
+                <span className="hidden sm:inline">Reportes</span>
+              </Button>
             )}
-            <button
-              onClick={() => navigate('/tramites/formularios')}
-              className="flex items-center space-x-2 bg-neutral-100 text-neutral-700 px-4 py-3 rounded-xl hover:bg-neutral-200 transition-all duration-200 font-semibold"
-            >
-              <FileText className="w-5 h-5" />
-              <span>Formularios</span>
-            </button>
-            <button
-              onClick={() => setShowNuevoModal(true)}
-              className="flex items-center space-x-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-5 py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold"
-            >
-              <Plus className="w-5 h-5" />
-              <span>Nuevo Trámite</span>
-            </button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/tramites/formularios')}>
+              <FileText className="w-4 h-4 mr-1.5" />
+              <span className="hidden sm:inline">Formularios</span>
+            </Button>
+            <Button size="sm" onClick={() => setShowNuevoModal(true)}>
+              <Plus className="w-4 h-4 mr-1.5" />
+              Nuevo
+            </Button>
           </div>
-        </div>
-
-        <div className="flex space-x-2 border-b border-neutral-200">
+        }
+      >
+        {/* Tabs */}
+        <div className="flex gap-1 border-b border-neutral-200 dark:border-white/8">
           <button
             onClick={() => setActiveTab('activos')}
-            className={`px-6 py-3 font-semibold transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
               activeTab === 'activos'
-                ? 'text-accent border-b-2 border-accent'
-                : 'text-neutral-600 hover:text-neutral-900'
+                ? 'text-accent border-accent'
+                : 'text-neutral-500 dark:text-white/50 border-transparent hover:text-neutral-700 dark:hover:text-white/70'
             }`}
           >
-            <div className="flex items-center space-x-2">
-              <ClipboardList className="w-5 h-5" />
-              <span>Trámites Activos</span>
-            </div>
+            <ClipboardList className="w-4 h-4" />
+            Activos
           </button>
           <button
             onClick={() => setActiveTab('cerrados')}
-            className={`px-6 py-3 font-semibold transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
               activeTab === 'cerrados'
-                ? 'text-accent border-b-2 border-accent'
-                : 'text-neutral-600 hover:text-neutral-900'
+                ? 'text-accent border-accent'
+                : 'text-neutral-500 dark:text-white/50 border-transparent hover:text-neutral-700 dark:hover:text-white/70'
             }`}
           >
-            <div className="flex items-center space-x-2">
-              <CheckCircle2 className="w-5 h-5" />
-              <span>Trámites Concluidos</span>
-            </div>
+            <CheckCircle2 className="w-4 h-4" />
+            Concluidos
           </button>
         </div>
-      </div>
+      </PageHeader>
 
       {isAgente && <AgenteDashboard />}
 
       {/* KPI Summary for non-agent users */}
       {!isAgente && visibleTramites.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
           {(() => {
             const activos = visibleTramites.filter(t => !t.cerrado_en);
             const byType: Record<string, number> = {};
@@ -403,13 +384,13 @@ export function Tramites() {
                 <button
                   key={kpi.value}
                   onClick={() => setSelectedTipo(kpi.value)}
-                  className={`rounded-xl border p-3 text-left transition-all hover:shadow-md ${
+                  className={`rounded-xl border p-3 text-left transition-all duration-200 ${
                     selectedTipo === kpi.value
                       ? `${ac.bg} ${ac.border} ring-2 ring-offset-1 ring-current ${ac.color}`
-                      : 'bg-white border-neutral-200 hover:border-neutral-300'
+                      : 'bg-white dark:bg-neutral-800/50 border-neutral-200 dark:border-white/8 hover:border-neutral-300 dark:hover:border-white/15 hover:shadow-sm'
                   }`}
                 >
-                  <p className="text-2xl font-bold text-neutral-900">{kpi.count}</p>
+                  <p className="text-2xl font-bold text-neutral-900 dark:text-white">{kpi.count}</p>
                   <p className={`text-xs font-medium mt-0.5 ${ac.color}`}>{kpi.label}</p>
                 </button>
               );
@@ -419,31 +400,28 @@ export function Tramites() {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-4">
+      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4">
         <div className="flex flex-col gap-3">
-          {/* Search row */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 w-5 h-5" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-white/30 w-4 h-4" />
             <input
               type="text"
-              placeholder="Buscar por folio, descripción, póliza o agente..."
+              placeholder="Buscar por folio, descripcion, poliza o agente..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
+              className="w-full pl-9 pr-4 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all placeholder:text-neutral-400 dark:placeholder:text-white/30 text-neutral-900 dark:text-white"
             />
           </div>
 
-          {/* Filter row */}
-          <div className="flex flex-wrap gap-3 items-center">
-            {/* Tipo de trámite */}
-            <div className="flex flex-col gap-1 min-w-[200px] flex-1">
-              <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide px-1">
-                Tipo de trámite
+          <div className="flex flex-wrap gap-2.5 items-end">
+            <div className="flex flex-col gap-1 min-w-[180px] flex-1">
+              <label className="text-[11px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider px-0.5">
+                Tipo
               </label>
               <select
                 value={selectedTipo}
                 onChange={(e) => setSelectedTipo(e.target.value)}
-                className="px-3 py-2 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all text-sm bg-white"
+                className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/80"
               >
                 <option value="todos">Todos los tipos</option>
                 <optgroup label="Comercial">
@@ -459,68 +437,57 @@ export function Tramites() {
               </select>
             </div>
 
-            {/* Estatus — filtered by tipo */}
-            <div className="flex flex-col gap-1 min-w-[180px] flex-1">
-              <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide px-1">
+            <div className="flex flex-col gap-1 min-w-[160px] flex-1">
+              <label className="text-[11px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider px-0.5">
                 Estatus
-                {selectedTipo !== 'todos' && (
-                  <span className="ml-1 text-accent normal-case font-normal">
-                    ({filteredEstatusList.length} disponibles)
-                  </span>
-                )}
               </label>
               <select
                 value={selectedEstatus}
                 onChange={(e) => setSelectedEstatus(e.target.value)}
-                className="px-3 py-2 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all text-sm bg-white"
+                className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/80"
               >
-                <option value="todos">Todos los estatus</option>
+                <option value="todos">Todos</option>
                 {filteredEstatusList.map(estatus => (
                   <option key={estatus.id} value={estatus.id}>{estatus.nombre}</option>
                 ))}
               </select>
             </div>
 
-            {/* Prioridad */}
-            <div className="flex flex-col gap-1 min-w-[150px]">
-              <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide px-1">
+            <div className="flex flex-col gap-1 min-w-[140px]">
+              <label className="text-[11px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider px-0.5">
                 Prioridad
               </label>
               <select
                 value={selectedPrioridad}
                 onChange={(e) => setSelectedPrioridad(e.target.value)}
-                className="px-3 py-2 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all text-sm bg-white"
+                className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/80"
               >
-                <option value="todas">Todas las prioridades</option>
+                <option value="todas">Todas</option>
                 {availablePrioridades.map(p => (
                   <option key={p} value={p}>{p}</option>
                 ))}
               </select>
             </div>
 
-            {/* Clear filters */}
             {hasActiveFilters && (
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-transparent select-none">.</label>
-                <button
-                  onClick={clearFilters}
-                  className="px-3 py-2 text-sm text-neutral-500 hover:text-neutral-700 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-all whitespace-nowrap"
-                >
-                  Limpiar filtros
-                </button>
-              </div>
+              <button
+                onClick={clearFilters}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-neutral-600 dark:text-white/60 bg-neutral-100 dark:bg-white/8 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/12 transition-colors"
+              >
+                <X className="w-3 h-3" />
+                Limpiar
+              </button>
             )}
           </div>
 
-          {/* Active filter summary */}
           {selectedTipo !== 'todos' && (
-            <div className="flex items-center gap-2 text-xs text-neutral-500 pt-1 border-t border-neutral-100">
-              <span className="font-medium">Filtrando por tipo:</span>
+            <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-white/40 pt-2 border-t border-neutral-100 dark:border-white/5">
+              <span className="font-medium">Filtro:</span>
               <span className={`px-2 py-0.5 rounded-full font-semibold ${AREA_CONFIG[getTipoTramiteArea(selectedTipo)].bg} ${AREA_CONFIG[getTipoTramiteArea(selectedTipo)].color}`}>
                 {getTipoTramiteLabel(selectedTipo)}
               </span>
-              <span className="text-neutral-400">
-                ({getTipoTramiteArea(selectedTipo)}) — Mostrando {filteredEstatusList.length} estatus aplicables
+              <span className="text-neutral-400 dark:text-white/30">
+                {filteredEstatusList.length} estatus
               </span>
             </div>
           )}
@@ -528,35 +495,21 @@ export function Tramites() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-        </div>
+        <LoadingState text="Cargando tramites..." />
       ) : filteredTramites.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-12 text-center">
-          <ClipboardList className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-neutral-700 mb-2">
-            {hasActiveFilters ? 'Sin resultados para los filtros aplicados' : `No hay trámites ${activeTab === 'cerrados' ? 'concluidos' : 'activos'}`}
-          </h3>
-          <p className="text-neutral-500">
-            {hasActiveFilters
-              ? 'Intenta ajustar o limpiar los filtros de búsqueda'
-              : activeTab === 'activos' ? 'Crea tu primer trámite para comenzar' : 'No tienes trámites concluidos'}
-          </p>
-          {hasActiveFilters && (
-            <button
-              onClick={clearFilters}
-              className="mt-4 px-4 py-2 text-sm text-accent border border-accent rounded-lg hover:bg-accent/5 transition-colors"
-            >
-              Limpiar filtros
-            </button>
-          )}
-        </div>
+        <EmptyState
+          icon={ClipboardList}
+          title={hasActiveFilters ? 'Sin resultados' : `No hay tramites ${activeTab === 'cerrados' ? 'concluidos' : 'activos'}`}
+          description={hasActiveFilters
+            ? 'Intenta ajustar o limpiar los filtros'
+            : activeTab === 'activos' ? 'Crea tu primer tramite para comenzar' : 'No tienes tramites concluidos'}
+          action={hasActiveFilters ? { label: 'Limpiar filtros', onClick: clearFilters, variant: 'outline' } : undefined}
+        />
       ) : (
-        <div className="space-y-4">
-          {/* Results count */}
+        <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
-            <p className="text-sm text-neutral-500">
-              {filteredTramites.length} {filteredTramites.length === 1 ? 'trámite' : 'trámites'}
+            <p className="text-xs text-neutral-500 dark:text-white/40 font-medium">
+              {filteredTramites.length} {filteredTramites.length === 1 ? 'tramite' : 'tramites'}
               {hasActiveFilters && ' encontrados'}
             </p>
           </div>
@@ -565,81 +518,62 @@ export function Tramites() {
             <div
               key={tramite.id}
               onClick={() => navigate(`/tramites/${tramite.id}`)}
-              className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-5 hover:shadow-medium transition-all duration-200 cursor-pointer"
+              className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4 sm:p-5 hover:border-neutral-300 dark:hover:border-white/15 hover:shadow-sm transition-all duration-200 cursor-pointer group"
             >
-              <div className="space-y-3">
-                {/* Primera línea: Folio + Fecha */}
+              <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3 flex-1">
-                    <span className="text-lg font-bold text-accent">{tramite.folio}</span>
-                  </div>
-                  <div className="text-right text-sm text-neutral-500 ml-4 flex-shrink-0">
-                    <div>
-                      {new Date(tramite.fecha_creacion).toLocaleDateString('es-MX', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric'
-                      })}
-                    </div>
-                    <div className="text-xs mt-1">
-                      {new Date(tramite.fecha_creacion).toLocaleTimeString('es-MX', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </div>
-                  </div>
+                  <span className="text-sm font-bold text-accent">{tramite.folio}</span>
+                  <span className="text-xs text-neutral-400 dark:text-white/30">
+                    {new Date(tramite.fecha_creacion).toLocaleDateString('es-MX', {
+                      day: 'numeric',
+                      month: 'short',
+                    })}
+                  </span>
                 </div>
 
-                {/* Segunda línea: Badges y etiquetas */}
-                <div className="flex items-center flex-wrap gap-2">
+                <div className="flex items-center flex-wrap gap-1.5">
                   {(() => {
                     const area = getTipoTramiteArea(tramite.tipo_tramite);
                     const ac = AREA_CONFIG[area];
                     return (
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${ac.bg} ${ac.color} ${ac.border}`}>
+                      <span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold ${ac.bg} ${ac.color}`}>
                         {getTipoTramiteLabel(tramite.tipo_tramite)}
                       </span>
                     );
                   })()}
                   {tramite.estatus && (
                     <span
-                      className="px-3 py-1 rounded-full text-xs font-semibold border"
+                      className="px-2 py-0.5 rounded-md text-[11px] font-semibold"
                       style={{
-                        backgroundColor: tramite.estatus.color + '20',
+                        backgroundColor: tramite.estatus.color + '15',
                         color: tramite.estatus.color,
-                        borderColor: tramite.estatus.color,
                       }}
                     >
                       {tramite.estatus.nombre}
                     </span>
                   )}
-                  <span className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-semibold border ${getPrioridadColor(tramite.prioridad)}`}>
+                  <span className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold ${getPrioridadColor(tramite.prioridad)}`}>
                     {getPrioridadIcon(tramite.prioridad)}
                     <span>{tramite.prioridad}</span>
                   </span>
                 </div>
 
-                {/* Tercera línea: Descripción */}
-                <p className="text-neutral-900 font-medium line-clamp-2">
+                <p className="text-sm text-neutral-800 dark:text-white/80 font-medium line-clamp-2">
                   {tramite.instrucciones}
                 </p>
 
-                {/* Cuarta línea: Información adicional */}
-                <div className="flex flex-wrap gap-4 text-sm text-neutral-600">
-                  <span className="flex items-center space-x-1">
-                    <span className="font-medium">Agente:</span>
-                    <span>{tramite.agente?.nombre_completo || 'Sin asignar'}</span>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500 dark:text-white/40">
+                  <span>
+                    <span className="font-medium">Agente:</span> {tramite.agente?.nombre_completo || 'Sin asignar'}
                   </span>
                   {tramite.poliza && (
-                    <span className="flex items-center space-x-1">
-                      <FileText className="w-4 h-4" />
-                      <span className="font-medium">Póliza:</span>
-                      <span>{tramite.poliza}</span>
+                    <span className="flex items-center gap-1">
+                      <FileText className="w-3 h-3" />
+                      {tramite.poliza}
                     </span>
                   )}
-                  <span className="flex items-center space-x-1">
-                    <span className="font-medium">Responsable:</span>
-                    <span>{tramite.responsable?.nombre_completo || 'Sin asignar'}</span>
+                  <span>
+                    <span className="font-medium">Responsable:</span> {tramite.responsable?.nombre_completo || 'Sin asignar'}
                   </span>
                 </div>
               </div>
@@ -659,20 +593,18 @@ export function Tramites() {
       />
 
       {showCatalogosModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl my-8 max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between p-6 border-b border-neutral-200">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-4xl my-8 max-h-[90vh] overflow-hidden flex flex-col border border-neutral-200/60 dark:border-white/10">
+            <div className="flex items-center justify-between p-5 border-b border-neutral-100 dark:border-white/5">
               <div>
-                <h2 className="text-xl font-bold text-neutral-900">Catálogos de Trámites</h2>
-                <p className="text-sm text-neutral-500 mt-1">Gestiona los tipos de seguro disponibles en los trámites</p>
+                <h2 className="text-lg font-bold text-neutral-900 dark:text-white">Catalogos de Tramites</h2>
+                <p className="text-sm text-neutral-500 dark:text-white/50 mt-0.5">Gestiona los tipos de seguro disponibles</p>
               </div>
               <button
                 onClick={() => setShowCatalogosModal(false)}
-                className="p-2 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-500 hover:text-neutral-700"
+                className="p-2 hover:bg-neutral-100 dark:hover:bg-white/8 rounded-lg transition-colors text-neutral-400 hover:text-neutral-600 dark:text-white/40 dark:hover:text-white/70"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X className="w-5 h-5" />
               </button>
             </div>
             <div className="overflow-y-auto flex-1">
@@ -683,24 +615,21 @@ export function Tramites() {
       )}
 
       {showGruposModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl my-8 max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between p-6 border-b border-neutral-200">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-6xl my-8 max-h-[90vh] overflow-hidden flex flex-col border border-neutral-200/60 dark:border-white/10">
+            <div className="flex items-center justify-between p-5 border-b border-neutral-100 dark:border-white/5">
               <div>
-                <h2 className="text-xl font-bold text-neutral-900">Gestión de Equipos de Trabajo</h2>
-                <p className="text-sm text-neutral-500 mt-1">Asigna usuarios a los equipos para controlar la visibilidad de trámites</p>
+                <h2 className="text-lg font-bold text-neutral-900 dark:text-white">Equipos de Trabajo</h2>
+                <p className="text-sm text-neutral-500 dark:text-white/50 mt-0.5">Asigna usuarios para controlar la visibilidad de tramites</p>
               </div>
               <button
                 onClick={() => setShowGruposModal(false)}
-                className="p-2 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-500 hover:text-neutral-700"
+                className="p-2 hover:bg-neutral-100 dark:hover:bg-white/8 rounded-lg transition-colors text-neutral-400 hover:text-neutral-600 dark:text-white/40 dark:hover:text-white/70"
               >
-                <span className="sr-only">Cerrar</span>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-6 overflow-y-auto flex-1">
+            <div className="p-5 overflow-y-auto flex-1">
               <GestionGruposVisualizacion />
             </div>
           </div>

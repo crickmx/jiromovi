@@ -8,6 +8,9 @@ import { PaymentFields } from '../components/PaymentFields';
 import { ExpedienteSection } from '../components/ExpedienteSection';
 import { MiLogotipoEditor } from '../components/MiLogotipoEditor';
 import { getMiPaginaWeb } from '../lib/webUrlUtils';
+import { PageHeader } from '@/components/ui/page-header';
+import { LoadingState } from '@/components/ui/loading-state';
+import { Button } from '@/components/ui/button';
 import type { Database } from '../lib/database.types';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
@@ -183,11 +186,7 @@ export function PerfilUsuario() {
   };
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
+    return <LoadingState text="Cargando perfil de usuario..." />;
   }
 
   if (!usuario) return null;
@@ -204,7 +203,7 @@ export function PerfilUsuario() {
       <div className="mb-6 flex items-center justify-between">
         <button
           onClick={handleBackClick}
-          className="flex items-center space-x-2 text-slate-600 hover:text-slate-900 transition"
+          className="flex items-center space-x-2 text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white transition"
         >
           <ArrowLeft className="w-5 h-5" />
           <span>Volver a Usuarios</span>
@@ -217,34 +216,29 @@ export function PerfilUsuario() {
         )}
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-white">Ver / Editar Usuario</h1>
-              <p className="text-primary-100 mt-1">{usuario.nombre} {usuario.apellidos}</p>
-            </div>
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={handleBackClick}
-                className="px-4 py-2 border-2 border-white/30 text-white rounded-lg hover:bg-white/10 transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving || !hasUnsavedChanges}
-                className="flex items-center space-x-2 bg-white text-primary-700 px-6 py-2 rounded-lg font-medium hover:bg-primary-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Save className="w-5 h-5" />
-                <span>{saving ? 'Guardando...' : 'Guardar Cambios'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
+      <div className="bg-white dark:bg-white/5 rounded-2xl shadow-sm border border-neutral-200 dark:border-white/10 overflow-hidden">
+        <PageHeader
+          title="Ver / Editar Usuario"
+          description={`${usuario.nombre} ${usuario.apellidos}`}
+          icon={UserIcon}
+        >
+          <Button
+            variant="outline"
+            onClick={handleBackClick}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={saving || !hasUnsavedChanges}
+          >
+            <Save className="w-5 h-5" />
+            <span>{saving ? 'Guardando...' : 'Guardar Cambios'}</span>
+          </Button>
+        </PageHeader>
 
         <div className="flex">
-          <div className="w-80 bg-slate-50 border-r border-slate-200 p-6">
+          <div className="w-80 bg-neutral-50 dark:bg-white/3 border-r border-neutral-200 dark:border-white/10 p-6">
             <div className="flex flex-col items-center mb-6">
               <div className="relative group">
                 {formData.imagen_perfil_url ? (
@@ -268,10 +262,10 @@ export function PerfilUsuario() {
                   />
                 </label>
               </div>
-              <h3 className="text-lg font-semibold text-slate-900 mt-4">
+              <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mt-4">
                 {usuario.nombre} {usuario.apellidos}
               </h3>
-              <p className="text-sm text-slate-600">{usuario.puesto}</p>
+              <p className="text-sm text-neutral-600 dark:text-white/60">{usuario.puesto}</p>
               <span className={`mt-2 px-3 py-1 text-xs font-semibold rounded-full ${
                 usuario.rol === 'Administrador'
                   ? 'bg-red-100 text-red-800'
@@ -287,21 +281,21 @@ export function PerfilUsuario() {
 
             <div className="space-y-2 text-sm">
               <div>
-                <span className="text-slate-500">Email:</span>
-                <p className="text-slate-900 font-medium">{usuario.email_laboral || usuario.email_personal}</p>
+                <span className="text-neutral-500 dark:text-white/40">Email:</span>
+                <p className="text-neutral-900 dark:text-white font-medium">{usuario.email_laboral || usuario.email_personal}</p>
               </div>
               <div>
-                <span className="text-slate-500">Teléfono:</span>
-                <p className="text-slate-900 font-medium">{usuario.celular_laboral || usuario.celular_personal}</p>
+                <span className="text-neutral-500 dark:text-white/40">Teléfono:</span>
+                <p className="text-neutral-900 dark:text-white font-medium">{usuario.celular_laboral || usuario.celular_personal}</p>
               </div>
               <div>
-                <span className="text-slate-500">Oficina:</span>
-                <p className="text-slate-900 font-medium">{oficinas.find(o => o.id === usuario.oficina_id)?.nombre || '-'}</p>
+                <span className="text-neutral-500 dark:text-white/40">Oficina:</span>
+                <p className="text-neutral-900 dark:text-white font-medium">{oficinas.find(o => o.id === usuario.oficina_id)?.nombre || '-'}</p>
               </div>
               {usuario.fecha_nacimiento && (
                 <div>
-                  <span className="text-slate-500">Cumpleaños:</span>
-                  <p className="text-slate-900 font-medium">
+                  <span className="text-neutral-500 dark:text-white/40">Cumpleaños:</span>
+                  <p className="text-neutral-900 dark:text-white font-medium">
                     {new Date(usuario.fecha_nacimiento + 'T00:00:00').toLocaleDateString('es-MX', {
                       day: 'numeric',
                       month: 'long'
@@ -311,8 +305,8 @@ export function PerfilUsuario() {
               )}
               {usuario.fecha_ingreso && (
                 <div>
-                  <span className="text-slate-500">Aniversario Laboral:</span>
-                  <p className="text-slate-900 font-medium">
+                  <span className="text-neutral-500 dark:text-white/40">Aniversario Laboral:</span>
+                  <p className="text-neutral-900 dark:text-white font-medium">
                     {new Date(usuario.fecha_ingreso + 'T00:00:00').toLocaleDateString('es-MX', {
                       day: 'numeric',
                       month: 'long',
@@ -323,21 +317,21 @@ export function PerfilUsuario() {
               )}
               {usuario.equipo_computo && (
                 <div>
-                  <span className="text-slate-500">Equipo de Cómputo:</span>
-                  <p className="text-slate-900 font-medium">{usuario.equipo_computo}</p>
+                  <span className="text-neutral-500 dark:text-white/40">Equipo de Cómputo:</span>
+                  <p className="text-neutral-900 dark:text-white font-medium">{usuario.equipo_computo}</p>
                 </div>
               )}
               {usuario.equipo_celular && (
                 <div>
-                  <span className="text-slate-500">Equipo Celular:</span>
-                  <p className="text-slate-900 font-medium">{usuario.equipo_celular}</p>
+                  <span className="text-neutral-500 dark:text-white/40">Equipo Celular:</span>
+                  <p className="text-neutral-900 dark:text-white font-medium">{usuario.equipo_celular}</p>
                 </div>
               )}
             </div>
           </div>
 
           <div className="flex-1">
-            <div className="border-b border-slate-200">
+            <div className="border-b border-neutral-200 dark:border-white/10">
               <nav className="flex space-x-1 px-6">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
@@ -348,7 +342,7 @@ export function PerfilUsuario() {
                       className={`flex items-center space-x-2 px-4 py-4 border-b-2 font-medium text-sm transition ${
                         activeTab === tab.id
                           ? 'border-accent text-accent'
-                          : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                          : 'border-transparent text-neutral-500 dark:text-white/40 hover:text-neutral-700 dark:hover:text-white/70 hover:border-neutral-200 dark:hover:border-white/10'
                       }`}
                     >
                       <Icon className="w-4 h-4" />
@@ -374,39 +368,39 @@ export function PerfilUsuario() {
 
               {activeTab === 'general' && (
                 <div className="space-y-6">
-                  <h3 className="text-lg font-semibold text-slate-900">Información General</h3>
+                  <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Información General</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                         Nombre
                       </label>
                       <input
                         type="text"
                         value={formData.nombre || ''}
                         onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                         Apellidos
                       </label>
                       <input
                         type="text"
                         value={formData.apellidos || ''}
                         onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                         Rol
                       </label>
                       <select
                         value={formData.rol || 'Empleado'}
                         onChange={(e) => setFormData({ ...formData, rol: e.target.value as any })}
                         disabled={!canEditRole}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                        className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent disabled:bg-neutral-100 dark:disabled:bg-white/5 disabled:cursor-not-allowed"
                       >
                         <option value="Empleado">Empleado</option>
                         <option value="Agente">Agente</option>
@@ -414,7 +408,7 @@ export function PerfilUsuario() {
                         {isAdmin && <option value="Administrador">Administrador</option>}
                       </select>
                       {!canEditRole && (
-                        <p className="text-xs text-slate-500 mt-1">
+                        <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">
                           Solo los Administradores y Gerentes pueden cambiar roles
                         </p>
                       )}
@@ -425,49 +419,49 @@ export function PerfilUsuario() {
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                         Fecha de Nacimiento
                       </label>
                       <input
                         type="date"
                         value={formData.fecha_nacimiento || ''}
                         onChange={(e) => setFormData({ ...formData, fecha_nacimiento: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                         Celular Personal
                       </label>
                       <input
                         type="tel"
                         value={formData.celular_personal || ''}
                         onChange={(e) => setFormData({ ...formData, celular_personal: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                         Email Personal
                       </label>
                       <input
                         type="email"
                         value={formData.email_personal || ''}
                         onChange={(e) => setFormData({ ...formData, email_personal: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                       />
                     </div>
                   </div>
 
                   <CustomFields usuarioId={usuario.id} editable={true} />
 
-                  <div className="mt-8 pt-8 border-t border-slate-200">
+                  <div className="mt-8 pt-8 border-t border-neutral-200 dark:border-white/10">
                     <div className="mb-6">
-                      <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2 mb-2">
+                      <h3 className="text-lg font-semibold text-neutral-900 dark:text-white flex items-center gap-2 mb-2">
                         <span className="text-2xl">📸</span>
                         Mi Logotipo Personal
                       </h3>
-                      <p className="text-sm text-slate-600">
+                      <p className="text-sm text-neutral-600 dark:text-white/60">
                         Tu logotipo personal aparecerá en tus PDFs de comisiones y materiales oficiales.
                       </p>
                     </div>
@@ -484,27 +478,27 @@ export function PerfilUsuario() {
 
               {activeTab === 'laboral' && (
                 <div className="space-y-6">
-                  <h3 className="text-lg font-semibold text-slate-900">Datos Laborales</h3>
+                  <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Datos Laborales</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                         Puesto
                       </label>
                       <input
                         type="text"
                         value={formData.puesto || ''}
                         onChange={(e) => setFormData({ ...formData, puesto: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                         Oficina
                       </label>
                       <select
                         value={formData.oficina_id || ''}
                         onChange={(e) => setFormData({ ...formData, oficina_id: e.target.value || null })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                       >
                         <option value="">Seleccionar oficina</option>
                         {oficinas.map((oficina) => (
@@ -515,51 +509,51 @@ export function PerfilUsuario() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                         Fecha de Ingreso
                       </label>
                       <input
                         type="date"
                         value={formData.fecha_ingreso || ''}
                         onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                         Email Laboral
                       </label>
                       <input
                         type="email"
                         value={formData.email_laboral || ''}
                         onChange={(e) => setFormData({ ...formData, email_laboral: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                         Celular Laboral
                       </label>
                       <input
                         type="tel"
                         value={formData.celular_laboral || ''}
                         onChange={(e) => setFormData({ ...formData, celular_laboral: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                         Extensión Telefónica
                       </label>
                       <input
                         type="text"
                         value={formData.extension_telefonica || ''}
                         onChange={(e) => setFormData({ ...formData, extension_telefonica: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                         Equipo de Cómputo
                       </label>
                       <input
@@ -567,12 +561,12 @@ export function PerfilUsuario() {
                         placeholder="Ej: Dell Latitude 5420"
                         value={formData.equipo_computo || ''}
                         onChange={(e) => setFormData({ ...formData, equipo_computo: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                       />
-                      <p className="text-xs text-slate-500 mt-1">Modelo y detalles del equipo de cómputo asignado</p>
+                      <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">Modelo y detalles del equipo de cómputo asignado</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                         Equipo Celular
                       </label>
                       <input
@@ -580,12 +574,12 @@ export function PerfilUsuario() {
                         placeholder="Ej: iPhone 13 Pro"
                         value={formData.equipo_celular || ''}
                         onChange={(e) => setFormData({ ...formData, equipo_celular: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                       />
-                      <p className="text-xs text-slate-500 mt-1">Modelo y detalles del equipo celular asignado</p>
+                      <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">Modelo y detalles del equipo celular asignado</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                         Días de Vacaciones Disponibles
                       </label>
                       <input
@@ -598,9 +592,9 @@ export function PerfilUsuario() {
                           const clampedValue = Math.max(0, Math.min(50, value));
                           setFormData({ ...formData, dias_vacaciones_disponibles: clampedValue });
                         }}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                       />
-                      <p className="text-xs text-slate-500 mt-1">Días disponibles: 0 - 50</p>
+                      <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">Días disponibles: 0 - 50</p>
                     </div>
                   </div>
 
@@ -618,11 +612,11 @@ export function PerfilUsuario() {
 
               {activeTab === 'accesos' && (
                 <div className="space-y-6">
-                  <h3 className="text-lg font-semibold text-slate-900">Página Web del Agente</h3>
+                  <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Página Web del Agente</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {isAdmin && (
                       <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                        <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                           Slug
                         </label>
                         <input
@@ -633,9 +627,9 @@ export function PerfilUsuario() {
                             setHasUnsavedChanges(true);
                           }}
                           placeholder="ejemplo: juanperez"
-                          className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                         />
-                        <p className="text-xs text-slate-500 mt-1">
+                        <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">
                           Solo minúsculas, números y guiones. Sin espacios ni caracteres especiales.
                         </p>
                       </div>
@@ -643,7 +637,7 @@ export function PerfilUsuario() {
 
                     {formData.web_slug && (
                       <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                        <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                           Mi Página Web
                         </label>
                         <div className="flex items-center gap-2">
@@ -651,7 +645,7 @@ export function PerfilUsuario() {
                             type="text"
                             value={getMiPaginaWeb(formData.web_slug)}
                             readOnly
-                            className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 font-medium"
+                            className="flex-1 px-4 py-2.5 border border-neutral-200 dark:border-white/10 rounded-lg bg-neutral-50 dark:bg-white/3 text-neutral-600 dark:text-white/60 font-medium"
                           />
                           <button
                             type="button"
@@ -678,7 +672,7 @@ export function PerfilUsuario() {
                             )}
                           </button>
                         </div>
-                        <p className="text-xs text-slate-500 mt-1">
+                        <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">
                           Esta es la página web pública del agente que puede compartir con sus clientes
                         </p>
                       </div>
@@ -690,7 +684,7 @@ export function PerfilUsuario() {
               {activeTab === 'documentos' && (
                 <div className="space-y-8">
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Expediente</h3>
+                    <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Expediente</h3>
                     <ExpedienteSection usuarioId={usuario.id} canEdit={canEditExpediente} />
                   </div>
                 </div>

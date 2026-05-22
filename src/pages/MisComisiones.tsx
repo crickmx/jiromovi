@@ -10,6 +10,8 @@ import GraficaColumnas from '../components/comisiones/GraficaColumnas';
 import GraficaCircular from '../components/comisiones/GraficaCircular';
 import { normalizarRegimenFiscal } from '../lib/commissionFiscalCalculations';
 import { trackCommissionsViewed, trackCommissionsDetailOpened, trackCommissionsPdfDownloaded } from '../lib/activityLogger';
+import { PageHeader } from '@/components/ui/page-header';
+import { LoadingState } from '@/components/ui/loading-state';
 
 export default function MisComisiones() {
   const { usuario } = useAuth();
@@ -332,9 +334,7 @@ export default function MisComisiones() {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-12">
-        <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-      </div>
+      <LoadingState text="Cargando comisiones..." />
     );
   }
 
@@ -342,27 +342,19 @@ export default function MisComisiones() {
 
   return (
     <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
-      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
-        <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
-          <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-accent mb-1 sm:mb-2">
-              Mis Comisiones
-            </h1>
-            <p className="text-sm sm:text-base text-neutral-600">
-              Consulta tus comisiones pagadas y genera tus recibos
-            </p>
-          </div>
-          <DollarSign className="w-10 h-10 sm:w-12 sm:h-12 text-accent flex-shrink-0" />
-        </div>
-      </div>
+      <PageHeader
+        title="Mis Comisiones"
+        description="Consulta tus comisiones pagadas y genera tus recibos"
+        icon={DollarSign}
+      />
 
       {myBatches.length === 0 ? (
-        <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-8 sm:p-12 text-center">
-          <DollarSign className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300 mx-auto mb-3 sm:mb-4" />
-          <h3 className="text-lg sm:text-xl font-semibold text-neutral-700 mb-2">
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200/60 dark:border-white/8 p-8 sm:p-12 text-center">
+          <DollarSign className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300 dark:text-white/20 mx-auto mb-3 sm:mb-4" />
+          <h3 className="text-lg sm:text-xl font-semibold text-neutral-700 dark:text-white/70 mb-2">
             No hay comisiones disponibles
           </h3>
-          <p className="text-sm sm:text-base text-neutral-500">
+          <p className="text-sm sm:text-base text-neutral-500 dark:text-white/50">
             Tus comisiones aparecerán aquí una vez que sean procesadas y cerradas
           </p>
         </div>
@@ -375,7 +367,7 @@ export default function MisComisiones() {
             return (
               <div
                 key={batch.id}
-                className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 overflow-hidden hover:shadow-medium transition-shadow"
+                className="bg-white dark:bg-neutral-800/50 rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200/60 dark:border-white/8 overflow-hidden hover:shadow-medium transition-shadow"
               >
                 <div className="p-4 sm:p-5">
                   <div className="flex flex-col sm:flex-row sm:items-start gap-4">
@@ -392,10 +384,10 @@ export default function MisComisiones() {
                           <FileText className="w-5 h-5 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-base sm:text-lg font-bold text-neutral-900 break-words mb-1">
+                          <h3 className="text-base sm:text-lg font-bold text-neutral-900 dark:text-white break-words mb-1">
                             {batch.name}
                           </h3>
-                          <div className="flex items-center gap-2 text-xs text-neutral-500">
+                          <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-white/50">
                             <Calendar className="w-3.5 h-3.5" />
                             <span>{formatDate(batch.period_start || batch.date_from)} - {formatDate(batch.period_end || batch.date_to)}</span>
                           </div>
@@ -459,7 +451,7 @@ export default function MisComisiones() {
                 </div>
 
                 {selectedBatch === batch.id && summary && (
-                  <div className="border-t border-neutral-200 p-4 sm:p-6 bg-neutral-50">
+                  <div className="border-t border-neutral-200 dark:border-white/10 p-4 sm:p-6 bg-neutral-50 dark:bg-white/5">
                     {/* 1. GRÁFICAS */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
                       <GraficaColumnas
@@ -486,7 +478,7 @@ export default function MisComisiones() {
                     {/* 2. DESGLOSE POR RAMO */}
                     <div className="flex items-center gap-2 mb-3 sm:mb-4">
                       <TrendingUp className="w-5 h-5 text-accent" />
-                      <h4 className="text-base sm:text-lg font-bold text-neutral-900">
+                      <h4 className="text-base sm:text-lg font-bold text-neutral-900 dark:text-white">
                         Desglose por Ramo
                       </h4>
                     </div>
@@ -497,36 +489,36 @@ export default function MisComisiones() {
                         const porcentaje = summary.total_neta > 0 ? (data.neta / summary.total_neta) * 100 : 0;
 
                         return (
-                          <div key={ramo} className="bg-gradient-to-br from-white to-neutral-50 rounded-lg border border-neutral-200 p-3 hover:shadow-md transition-shadow">
+                          <div key={ramo} className="bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200/60 dark:border-white/8 p-3 hover:shadow-md transition-shadow">
                             <div className="flex items-start justify-between mb-2">
                               <div className="flex-1 min-w-0">
-                                <h5 className="text-sm font-bold text-neutral-900 truncate">{ramo}</h5>
+                                <h5 className="text-sm font-bold text-neutral-900 dark:text-white truncate">{ramo}</h5>
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 mt-1">
                                   {data.count} {data.count === 1 ? 'póliza' : 'pólizas'}
                                 </span>
                               </div>
                               <div className="flex-shrink-0 text-right ml-2">
                                 <div className="text-lg font-bold text-green-700">{formatCurrency(data.neta)}</div>
-                                <div className="text-xs text-neutral-500">{porcentaje.toFixed(1)}%</div>
+                                <div className="text-xs text-neutral-500 dark:text-white/50">{porcentaje.toFixed(1)}%</div>
                               </div>
                             </div>
 
-                            <div className="w-full bg-neutral-200 rounded-full h-1.5 mb-2">
+                            <div className="w-full bg-neutral-200 dark:bg-white/10 rounded-full h-1.5 mb-2">
                               <div
                                 className="bg-gradient-to-r from-green-500 to-green-600 h-1.5 rounded-full transition-all duration-300"
                                 style={{ width: `${Math.min(porcentaje, 100)}%` }}
                               ></div>
                             </div>
 
-                            <div className="flex items-center justify-between text-xs text-neutral-600 mb-2">
+                            <div className="flex items-center justify-between text-xs text-neutral-600 dark:text-white/60 mb-2">
                               <span>Prima Neta</span>
-                              <span className="font-semibold text-neutral-900">{formatCurrency(primaNeta)}</span>
+                              <span className="font-semibold text-neutral-900 dark:text-white">{formatCurrency(primaNeta)}</span>
                             </div>
 
-                            <div className="pt-2 border-t border-neutral-200">
+                            <div className="pt-2 border-t border-neutral-200 dark:border-white/10">
                               <div className="flex items-center gap-1 mb-1.5">
-                                <Shield className="w-3 h-3 text-neutral-500" />
-                                <span className="text-xs font-medium text-neutral-600">Aseguradoras:</span>
+                                <Shield className="w-3 h-3 text-neutral-500 dark:text-white/50" />
+                                <span className="text-xs font-medium text-neutral-600 dark:text-white/60">Aseguradoras:</span>
                               </div>
                               <div className="space-y-0.5">
                                 {Object.entries(summary.by_aseguradora)
@@ -534,14 +526,14 @@ export default function MisComisiones() {
                                   .slice(0, 3)
                                   .map(([aseg, asegData]) => (
                                     <div key={aseg} className="flex items-center justify-between text-xs gap-2">
-                                      <span className="text-neutral-700 truncate flex-1">{aseg}</span>
+                                      <span className="text-neutral-700 dark:text-white/70 truncate flex-1">{aseg}</span>
                                       <span className="font-semibold text-green-700 flex-shrink-0">{formatCurrency(asegData.neta)}</span>
                                     </div>
                                   ))}
                                 {Object.entries(summary.by_aseguradora)
                                   .filter(([aseg]) => details.some(d => d.ramo === ramo && d.aseguradora === aseg))
                                   .length > 3 && (
-                                    <div className="text-xs text-neutral-500 italic">
+                                    <div className="text-xs text-neutral-500 dark:text-white/50 italic">
                                       +{Object.entries(summary.by_aseguradora)
                                         .filter(([aseg]) => details.some(d => d.ramo === ramo && d.aseguradora === aseg))
                                         .length - 3} más
@@ -556,7 +548,7 @@ export default function MisComisiones() {
 
                     {/* 3. DETALLE DE PÓLIZAS */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-3 sm:mb-4">
-                      <h4 className="text-base sm:text-lg font-bold text-neutral-900">
+                      <h4 className="text-base sm:text-lg font-bold text-neutral-900 dark:text-white">
                         Detalle de Pólizas ({details.length})
                       </h4>
                       {details.length > 5 && (
@@ -587,7 +579,7 @@ export default function MisComisiones() {
                         const isExpanded = expandedPolicies.has(detail.id);
 
                         return (
-                          <div key={detail.id} className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
+                          <div key={detail.id} className="bg-white dark:bg-neutral-800/50 rounded-lg border border-neutral-200/60 dark:border-white/8 overflow-hidden">
                             <div
                               onClick={() => {
                                 const newExpanded = new Set(expandedPolicies);
@@ -598,7 +590,7 @@ export default function MisComisiones() {
                                 }
                                 setExpandedPolicies(newExpanded);
                               }}
-                              className="p-3 cursor-pointer hover:bg-neutral-50 transition-colors active:bg-neutral-100 min-h-[44px] flex items-center"
+                              className="p-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors active:bg-neutral-100 dark:active:bg-white/10 min-h-[44px] flex items-center"
                             >
                               <div className="flex items-start justify-between w-full gap-2">
                                 <div className="flex-1 min-w-0">
@@ -608,11 +600,11 @@ export default function MisComisiones() {
                                     ) : (
                                       <ChevronRight className="w-4 h-4 text-neutral-400 flex-shrink-0 mt-0.5" />
                                     )}
-                                    <div className="text-sm sm:text-base font-semibold text-neutral-900 break-words">{detail.poliza}</div>
+                                    <div className="text-sm sm:text-base font-semibold text-neutral-900 dark:text-white break-words">{detail.poliza}</div>
                                   </div>
-                                  <div className="ml-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-y-0.5 sm:gap-x-3 sm:gap-y-1 text-xs text-neutral-600">
+                                  <div className="ml-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-y-0.5 sm:gap-x-3 sm:gap-y-1 text-xs text-neutral-600 dark:text-white/60">
                                     <span className="truncate">{detail.nombre_asegurado || 'Cliente no especificado'}</span>
-                                    <span className="hidden sm:inline text-neutral-400">•</span>
+                                    <span className="hidden sm:inline text-neutral-400 dark:text-white/40">•</span>
                                     <span className="truncate">{detail.ramo}</span>
                                   </div>
                                 </div>
@@ -620,7 +612,7 @@ export default function MisComisiones() {
                                   <div className="font-bold text-green-700 text-sm sm:text-base whitespace-nowrap">
                                     {formatCurrency(commission || 0)}
                                   </div>
-                                  <div className="text-xs text-neutral-500">
+                                  <div className="text-xs text-neutral-500 dark:text-white/50">
                                     {detail.porcentaje_comision.toFixed(2)}%
                                   </div>
                                 </div>
@@ -628,24 +620,24 @@ export default function MisComisiones() {
                             </div>
 
                             {isExpanded && (
-                              <div className="border-t border-neutral-200 p-3 bg-neutral-50">
+                              <div className="border-t border-neutral-200 dark:border-white/10 p-3 bg-neutral-50 dark:bg-white/5">
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs sm:text-sm">
                                   <div>
-                                    <div className="text-xs text-neutral-600 mb-1">Aseguradora</div>
-                                    <div className="font-medium text-neutral-900 break-words">{detail.aseguradora}</div>
+                                    <div className="text-xs text-neutral-600 dark:text-white/60 mb-1">Aseguradora</div>
+                                    <div className="font-medium text-neutral-900 dark:text-white break-words">{detail.aseguradora}</div>
                                   </div>
                                   <div>
-                                    <div className="text-xs text-neutral-600 mb-1">Prima Neta</div>
-                                    <div className="font-medium text-neutral-900">{formatCurrency(detail.prima_neta)}</div>
+                                    <div className="text-xs text-neutral-600 dark:text-white/60 mb-1">Prima Neta</div>
+                                    <div className="font-medium text-neutral-900 dark:text-white">{formatCurrency(detail.prima_neta)}</div>
                                   </div>
                                   <div>
-                                    <div className="text-xs text-neutral-600 mb-1">Base Comisión</div>
-                                    <div className="font-medium text-neutral-900">{formatCurrency(detail.importe_base)}</div>
+                                    <div className="text-xs text-neutral-600 dark:text-white/60 mb-1">Base Comisión</div>
+                                    <div className="font-medium text-neutral-900 dark:text-white">{formatCurrency(detail.importe_base)}</div>
                                   </div>
                                   {detail.concepto && (
                                     <div className="col-span-1 sm:col-span-3">
-                                      <div className="text-xs text-neutral-600 mb-1">Concepto</div>
-                                      <div className="text-xs sm:text-sm text-neutral-700 break-words">{detail.concepto}</div>
+                                      <div className="text-xs text-neutral-600 dark:text-white/60 mb-1">Concepto</div>
+                                      <div className="text-xs sm:text-sm text-neutral-700 dark:text-white/70 break-words">{detail.concepto}</div>
                                     </div>
                                   )}
                                 </div>
@@ -665,17 +657,17 @@ export default function MisComisiones() {
                       const isHonorarios = !isAsimilados && !isResico;
 
                       return (
-                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3 sm:p-4 mt-6 border border-primary-200">
-                          <h4 className="text-sm sm:text-base font-bold text-primary-900 mb-2 flex items-center gap-2">
+                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-accent/10 dark:to-accent/5 rounded-lg p-3 sm:p-4 mt-6 border border-primary-200 dark:border-accent/20">
+                          <h4 className="text-sm sm:text-base font-bold text-primary-900 dark:text-white mb-2 flex items-center gap-2">
                             <DollarSign className="w-4 h-4" />
                             Desglose Fiscal ({regimen.toUpperCase()})
                           </h4>
 
-                          <div className="bg-white rounded-lg p-2 sm:p-3 space-y-1.5">
+                          <div className="bg-white dark:bg-neutral-800/50 rounded-lg p-2 sm:p-3 space-y-1.5">
                             {/* Comisión Base Total */}
                             {(isHonorarios || isResico) && (
-                              <div className="flex items-center justify-between text-xs sm:text-sm border-b border-neutral-100 pb-1.5">
-                                <span className="text-neutral-600">Comisión Base Total</span>
+                              <div className="flex items-center justify-between text-xs sm:text-sm border-b border-neutral-100 dark:border-white/10 pb-1.5">
+                                <span className="text-neutral-600 dark:text-white/60">Comisión Base Total</span>
                                 <span className="font-bold text-green-700">{formatCurrency(parseFloat(fiscal.total_comision))}</span>
                               </div>
                             )}
@@ -683,23 +675,23 @@ export default function MisComisiones() {
                             {/* Vida */}
                             {(isHonorarios || isResico) && parseFloat(fiscal.vida) > 0 && (
                               <div className="flex items-center justify-between text-xs sm:text-sm">
-                                <span className="text-neutral-600">Vida</span>
-                                <span className="font-semibold text-neutral-700">{formatCurrency(parseFloat(fiscal.vida))}</span>
+                                <span className="text-neutral-600 dark:text-white/60">Vida</span>
+                                <span className="font-semibold text-neutral-700 dark:text-white/70">{formatCurrency(parseFloat(fiscal.vida))}</span>
                               </div>
                             )}
 
                             {/* Sin Vida */}
                             {(isHonorarios || isResico) && (
                               <div className="flex items-center justify-between text-xs sm:text-sm">
-                                <span className="text-neutral-600">Sin Vida</span>
-                                <span className="font-semibold text-neutral-700">{formatCurrency(parseFloat(fiscal.sin_vida))}</span>
+                                <span className="text-neutral-600 dark:text-white/60">Sin Vida</span>
+                                <span className="font-semibold text-neutral-700 dark:text-white/70">{formatCurrency(parseFloat(fiscal.sin_vida))}</span>
                               </div>
                             )}
 
                             {/* Ret. Contable (ASIMILADOS) */}
                             {isAsimilados && parseFloat(fiscal.ret_contable) > 0 && (
                               <div className="flex items-center justify-between text-xs sm:text-sm">
-                                <span className="text-neutral-600">Ret. Contable</span>
+                                <span className="text-neutral-600 dark:text-white/60">Ret. Contable</span>
                                 <span className="font-semibold text-red-600">- {formatCurrency(parseFloat(fiscal.ret_contable))}</span>
                               </div>
                             )}
@@ -707,14 +699,14 @@ export default function MisComisiones() {
                             {/* Costo Dispersión (ASIMILADOS) */}
                             {isAsimilados && parseFloat(fiscal.dispersion) > 0 && (
                               <div className="flex items-center justify-between text-xs sm:text-sm">
-                                <span className="text-neutral-600">Costo Dispersión</span>
+                                <span className="text-neutral-600 dark:text-white/60">Costo Dispersión</span>
                                 <span className="font-semibold text-red-600">- {formatCurrency(parseFloat(fiscal.dispersion))}</span>
                               </div>
                             )}
 
                             {/* IVA */}
                             <div className="flex items-center justify-between text-xs sm:text-sm">
-                              <span className="text-neutral-600">
+                              <span className="text-neutral-600 dark:text-white/60">
                                 {(isHonorarios || isResico) ? 'IVA (16% Sin Vida)' : 'IVA'}
                               </span>
                               <span className="font-semibold text-green-600">
@@ -725,7 +717,7 @@ export default function MisComisiones() {
                             {/* Ret. ISR */}
                             {(isHonorarios || isResico) && parseFloat(fiscal.ret_isr) > 0 && (
                               <div className="flex items-center justify-between text-xs sm:text-sm">
-                                <span className="text-neutral-600">
+                                <span className="text-neutral-600 dark:text-white/60">
                                   {isResico ? 'Ret. ISR (1.25%)' : 'Ret. ISR (10%)'}
                                 </span>
                                 <span className="font-semibold text-red-600">- {formatCurrency(parseFloat(fiscal.ret_isr))}</span>
@@ -735,7 +727,7 @@ export default function MisComisiones() {
                             {/* Ret. IVA */}
                             {(isHonorarios || isResico) && parseFloat(fiscal.ret_iva) > 0 && (
                               <div className="flex items-center justify-between text-xs sm:text-sm">
-                                <span className="text-neutral-600">Ret. IVA (10.667%)</span>
+                                <span className="text-neutral-600 dark:text-white/60">Ret. IVA (10.667%)</span>
                                 <span className="font-semibold text-red-600">- {formatCurrency(parseFloat(fiscal.ret_iva))}</span>
                               </div>
                             )}
@@ -743,21 +735,21 @@ export default function MisComisiones() {
                             {/* ISR Total (ASIMILADOS) */}
                             {isAsimilados && parseFloat(fiscal.isr_total) > 0 && (
                               <div className="flex items-center justify-between text-xs sm:text-sm">
-                                <span className="text-neutral-600">ISR Total</span>
+                                <span className="text-neutral-600 dark:text-white/60">ISR Total</span>
                                 <span className="font-semibold text-red-600">- {formatCurrency(parseFloat(fiscal.isr_total))}</span>
                               </div>
                             )}
 
                             {/* Total a Pagar */}
-                            <div className="flex items-center justify-between text-xs sm:text-sm bg-gradient-to-r from-green-100 to-green-200 -mx-2 sm:-mx-3 px-2 sm:px-3 py-2 mt-2 rounded-lg border border-green-300">
-                              <span className="text-green-800 font-bold">Total a Pagar</span>
-                              <span className="text-base sm:text-lg font-bold text-green-900">
+                            <div className="flex items-center justify-between text-xs sm:text-sm bg-gradient-to-r from-green-100 to-green-200 dark:from-green-900/30 dark:to-green-800/20 -mx-2 sm:-mx-3 px-2 sm:px-3 py-2 mt-2 rounded-lg border border-green-300 dark:border-green-700/30">
+                              <span className="text-green-800 dark:text-green-300 font-bold">Total a Pagar</span>
+                              <span className="text-base sm:text-lg font-bold text-green-900 dark:text-green-200">
                                 {formatCurrency(parseFloat(fiscal.total_pagar))}
                               </span>
                             </div>
                           </div>
 
-                          <p className="text-[10px] sm:text-xs text-primary-700 mt-2 italic">
+                          <p className="text-[10px] sm:text-xs text-primary-700 dark:text-accent/70 mt-2 italic">
                             * Cálculo según régimen {regimen.toUpperCase()}
                           </p>
                         </div>

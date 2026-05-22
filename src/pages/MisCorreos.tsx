@@ -7,6 +7,9 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { PageHeader } from '@/components/ui/page-header';
+import { LoadingState } from '@/components/ui/loading-state';
+import { Button } from '@/components/ui/button';
 
 interface Email {
   id: string;
@@ -284,44 +287,32 @@ export function MisCorreos() {
   };
 
   if (loading && carpetas.length === 0) {
-    return (
-      <div className="flex justify-center py-12">
-        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
+    return <LoadingState text="Cargando correos..." />;
   }
 
   return (
     <>
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Mail className="w-8 h-8 text-white" />
-              <div>
-                <h1 className="text-2xl font-bold text-white">Mi Email</h1>
-                <p className="text-primary-100 mt-1">Sistema de correo completo</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={handleSync}
-                disabled={syncing}
-                className="flex items-center space-x-2 px-4 py-2 bg-white hover:bg-primary-50 text-accent rounded-lg font-medium transition disabled:opacity-50"
-              >
-                <RefreshCw className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`} />
-                <span>{syncing ? 'Sincronizando...' : 'Sincronizar'}</span>
-              </button>
-              <button
-                onClick={() => setShowCompose(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-white hover:bg-primary-50 text-accent rounded-lg font-medium transition"
-              >
-                <Send className="w-5 h-5" />
-                <span>Nuevo Correo</span>
-              </button>
-            </div>
-          </div>
-        </div>
+      <div className="bg-white dark:bg-neutral-800/50 rounded-2xl shadow-sm border border-neutral-200/60 dark:border-white/8 overflow-hidden">
+        <PageHeader
+          title="Mi Email"
+          description="Sistema de correo completo"
+          icon={Mail}
+        >
+          <Button
+            onClick={handleSync}
+            disabled={syncing}
+            variant="outline"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Sincronizando...' : 'Sincronizar'}
+          </Button>
+          <Button
+            onClick={() => setShowCompose(true)}
+          >
+            <Send className="w-4 h-4 mr-2" />
+            Nuevo Correo
+          </Button>
+        </PageHeader>
 
         {syncMessage && (
           <div
@@ -341,8 +332,8 @@ export function MisCorreos() {
         )}
 
         <div className="flex">
-          <div className="w-64 border-r border-slate-200 p-4">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase mb-3 px-2">Carpetas</h3>
+          <div className="w-64 border-r border-neutral-200 dark:border-white/10 p-4">
+            <h3 className="text-xs font-semibold text-neutral-500 dark:text-white/40 uppercase mb-3 px-2">Carpetas</h3>
             <div className="space-y-1">
               {carpetas.map((carpeta) => {
                 const IconComponent = iconMap[carpeta.icono] || Folder;
@@ -353,7 +344,7 @@ export function MisCorreos() {
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition ${
                       carpetaActiva === carpeta.tipo_carpeta
                         ? 'bg-primary-50 text-primary-700 font-medium'
-                        : 'text-slate-700 hover:bg-slate-50'
+                        : 'text-neutral-700 dark:text-white/70 hover:bg-neutral-50 dark:hover:bg-white/3'
                     }`}
                   >
                     <div className="flex items-center space-x-2">
@@ -373,13 +364,11 @@ export function MisCorreos() {
 
           <div className="flex-1 p-8">
             {loading ? (
-              <div className="flex justify-center py-12">
-                <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-              </div>
+              <LoadingState text="Cargando correos..." />
             ) : emails.length === 0 ? (
               <div className="text-center py-12">
-                <Mail className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500 text-lg mb-4">
+                <Mail className="w-16 h-16 text-neutral-300 dark:text-white/20 mx-auto mb-4" />
+                <p className="text-neutral-500 dark:text-white/40 text-lg mb-4">
                   No hay correos en esta carpeta
                 </p>
                 {carpetaActiva === 'inbox' && (
@@ -397,7 +386,7 @@ export function MisCorreos() {
                   <div
                     key={email.id}
                     onClick={() => { setSelectedEmail(email); markAsRead(email.id); }}
-                    className={`p-4 hover:bg-slate-50 border border-slate-200 rounded-lg cursor-pointer transition ${
+                    className={`p-4 hover:bg-neutral-50 dark:hover:bg-white/3 border border-neutral-200 dark:border-white/10 rounded-lg cursor-pointer transition ${
                       !email.leido ? 'bg-primary-50 border-primary-200' : ''
                     }`}
                   >
@@ -406,33 +395,33 @@ export function MisCorreos() {
                         {!email.leido && (
                           <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0"></div>
                         )}
-                        <h3 className={`${!email.leido ? 'font-bold' : 'font-semibold'} text-slate-900 flex-1`}>
+                        <h3 className={`${!email.leido ? 'font-bold' : 'font-semibold'} text-neutral-900 dark:text-white flex-1`}>
                           {email.asunto || '(Sin asunto)'}
                         </h3>
                       </div>
-                      <span className="text-xs text-slate-500 flex-shrink-0 ml-4">
+                      <span className="text-xs text-neutral-500 dark:text-white/40 flex-shrink-0 ml-4">
                         {formatDate(email.fecha)}
                       </span>
                     </div>
-                    <p className="text-sm text-slate-600 mb-2">
+                    <p className="text-sm text-neutral-600 dark:text-white/60 mb-2">
                       <User className="w-4 h-4 inline mr-1" />
                       <span className="font-medium">{email.remitente_nombre || email.remitente_email}</span>
                     </p>
                     <div
-                      className="text-sm text-slate-600 line-clamp-2"
+                      className="text-sm text-neutral-600 dark:text-white/60 line-clamp-2"
                       dangerouslySetInnerHTML={{
                         __html: (email.cuerpo_html || email.cuerpo_texto || '').substring(0, 200),
                       }}
                     />
                     <div className="mt-2 flex items-center space-x-2">
                       {email.tiene_adjuntos && (
-                        <span className="text-xs px-2 py-1 bg-slate-100 text-slate-700 rounded flex items-center space-x-1">
+                        <span className="text-xs px-2 py-1 bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-white/70 rounded flex items-center space-x-1">
                           <Paperclip className="w-3 h-3" />
                           <span>Adjuntos</span>
                         </span>
                       )}
                       {email.cc && email.cc.length > 0 && (
-                        <span className="text-xs px-2 py-1 bg-slate-100 text-slate-700 rounded">
+                        <span className="text-xs px-2 py-1 bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-white/70 rounded">
                           CC: {email.cc.length}
                         </span>
                       )}
@@ -447,35 +436,35 @@ export function MisCorreos() {
 
       {selectedEmail && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white">
-              <h2 className="text-xl font-bold text-slate-900">Detalle del Correo</h2>
+          <div className="bg-white dark:bg-neutral-800/50 rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-white/10 sticky top-0 bg-white dark:bg-neutral-800/50">
+              <h2 className="text-xl font-bold text-neutral-900 dark:text-white">Detalle del Correo</h2>
               <button
                 onClick={() => setSelectedEmail(null)}
-                className="text-slate-400 hover:text-slate-600"
+                className="text-neutral-400 hover:text-neutral-600 dark:text-white/40 dark:hover:text-white/70"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
 
             <div className="p-6">
-              <div className="mb-6 space-y-3 pb-6 border-b border-slate-200">
+              <div className="mb-6 space-y-3 pb-6 border-b border-neutral-200 dark:border-white/10">
                 <div>
-                  <p className="text-sm font-medium text-slate-500 mb-1">Asunto</p>
-                  <p className="text-xl font-bold text-slate-900">{selectedEmail.asunto || '(Sin asunto)'}</p>
+                  <p className="text-sm font-medium text-neutral-500 dark:text-white/40 mb-1">Asunto</p>
+                  <p className="text-xl font-bold text-neutral-900 dark:text-white">{selectedEmail.asunto || '(Sin asunto)'}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm font-medium text-slate-500 mb-1">De</p>
-                    <p className="text-slate-900">
+                    <p className="text-sm font-medium text-neutral-500 dark:text-white/40 mb-1">De</p>
+                    <p className="text-neutral-900 dark:text-white">
                       <span className="font-semibold">{selectedEmail.remitente_nombre}</span>
                       <br />
-                      <span className="text-sm text-slate-600">{selectedEmail.remitente_email}</span>
+                      <span className="text-sm text-neutral-600 dark:text-white/60">{selectedEmail.remitente_email}</span>
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-slate-500 mb-1">Fecha</p>
-                    <p className="text-sm text-slate-600">
+                    <p className="text-sm font-medium text-neutral-500 dark:text-white/40 mb-1">Fecha</p>
+                    <p className="text-sm text-neutral-600 dark:text-white/60">
                       <Clock className="w-4 h-4 inline mr-1" />
                       {formatDate(selectedEmail.fecha)}
                     </p>
@@ -483,14 +472,14 @@ export function MisCorreos() {
                 </div>
                 {selectedEmail.destinatarios && selectedEmail.destinatarios.length > 0 && (
                   <div>
-                    <p className="text-sm font-medium text-slate-500 mb-1">Para</p>
-                    <p className="text-sm text-slate-700">{selectedEmail.destinatarios.join(', ')}</p>
+                    <p className="text-sm font-medium text-neutral-500 dark:text-white/40 mb-1">Para</p>
+                    <p className="text-sm text-neutral-700 dark:text-white/70">{selectedEmail.destinatarios.join(', ')}</p>
                   </div>
                 )}
                 {selectedEmail.cc && selectedEmail.cc.length > 0 && (
                   <div>
-                    <p className="text-sm font-medium text-slate-500 mb-1">CC</p>
-                    <p className="text-sm text-slate-700">{selectedEmail.cc.join(', ')}</p>
+                    <p className="text-sm font-medium text-neutral-500 dark:text-white/40 mb-1">CC</p>
+                    <p className="text-sm text-neutral-700 dark:text-white/70">{selectedEmail.cc.join(', ')}</p>
                   </div>
                 )}
               </div>
@@ -507,12 +496,12 @@ export function MisCorreos() {
 
       {showCompose && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white">
-              <h2 className="text-xl font-bold text-slate-900">Nuevo Correo</h2>
+          <div className="bg-white dark:bg-neutral-800/50 rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-white/10 sticky top-0 bg-white dark:bg-neutral-800/50">
+              <h2 className="text-xl font-bold text-neutral-900 dark:text-white">Nuevo Correo</h2>
               <button
                 onClick={() => setShowCompose(false)}
-                className="text-slate-400 hover:text-slate-600"
+                className="text-neutral-400 hover:text-neutral-600 dark:text-white/40 dark:hover:text-white/70"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -520,7 +509,7 @@ export function MisCorreos() {
 
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                   Para * (separar con comas)
                 </label>
                 <input
@@ -528,7 +517,7 @@ export function MisCorreos() {
                   value={composeData.para}
                   onChange={(e) => setComposeData({ ...composeData, para: e.target.value })}
                   placeholder="destinatario@ejemplo.com, otro@ejemplo.com"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                 />
               </div>
 
@@ -539,7 +528,7 @@ export function MisCorreos() {
                 >
                   {showCC ? 'Ocultar CC' : 'Agregar CC'}
                 </button>
-                <span className="text-slate-300">|</span>
+                <span className="text-neutral-300 dark:text-white/20">|</span>
                 <button
                   onClick={() => setShowBCC(!showBCC)}
                   className="text-sm text-accent hover:text-primary-700 font-medium"
@@ -550,63 +539,63 @@ export function MisCorreos() {
 
               {showCC && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">CC</label>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">CC</label>
                   <input
                     type="text"
                     value={composeData.cc}
                     onChange={(e) => setComposeData({ ...composeData, cc: e.target.value })}
                     placeholder="cc@ejemplo.com"
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                   />
                 </div>
               )}
 
               {showBCC && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">CCO (BCC)</label>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">CCO (BCC)</label>
                   <input
                     type="text"
                     value={composeData.bcc}
                     onChange={(e) => setComposeData({ ...composeData, bcc: e.target.value })}
                     placeholder="cco@ejemplo.com"
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                   />
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Asunto *</label>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">Asunto *</label>
                 <input
                   type="text"
                   value={composeData.asunto}
                   onChange={(e) => setComposeData({ ...composeData, asunto: e.target.value })}
                   placeholder="Asunto del correo"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Mensaje *</label>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">Mensaje *</label>
                 <textarea
                   value={composeData.cuerpo}
                   onChange={(e) => setComposeData({ ...composeData, cuerpo: e.target.value })}
                   placeholder="Escribe tu mensaje aquí..."
                   rows={12}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                 />
                 {firmaUsuario && (
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">
                     Se incluirá automáticamente tu firma al final del correo
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Adjuntos</label>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">Adjuntos</label>
                 <div className="flex items-start space-x-3">
-                  <label className="flex items-center space-x-2 px-4 py-2 border border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 transition">
-                    <Paperclip className="w-5 h-5 text-slate-600" />
-                    <span className="text-sm text-slate-700">Agregar archivo</span>
+                  <label className="flex items-center space-x-2 px-4 py-2 border border-neutral-200 dark:border-white/10 rounded-lg cursor-pointer hover:bg-neutral-50 dark:hover:bg-white/3 transition">
+                    <Paperclip className="w-5 h-5 text-neutral-600 dark:text-white/60" />
+                    <span className="text-sm text-neutral-700 dark:text-white/70">Agregar archivo</span>
                     <input
                       type="file"
                       multiple
@@ -617,11 +606,11 @@ export function MisCorreos() {
                   {adjuntos.length > 0 && (
                     <div className="flex-1 space-y-2">
                       {adjuntos.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg">
+                        <div key={index} className="flex items-center justify-between px-3 py-2 bg-neutral-50 dark:bg-white/3 rounded-lg">
                           <div className="flex items-center space-x-2">
-                            <Paperclip className="w-4 h-4 text-slate-500" />
-                            <span className="text-sm text-slate-700">{file.name}</span>
-                            <span className="text-xs text-slate-500">
+                            <Paperclip className="w-4 h-4 text-neutral-500 dark:text-white/40" />
+                            <span className="text-sm text-neutral-700 dark:text-white/70">{file.name}</span>
+                            <span className="text-xs text-neutral-500 dark:text-white/40">
                               ({(file.size / 1024).toFixed(1)} KB)
                             </span>
                           </div>
@@ -639,8 +628,8 @@ export function MisCorreos() {
               </div>
             </div>
 
-            <div className="px-6 py-4 bg-slate-50 rounded-b-2xl flex justify-between items-center">
-              <div className="text-sm text-slate-600">
+            <div className="px-6 py-4 bg-neutral-50 dark:bg-white/3 rounded-b-2xl flex justify-between items-center">
+              <div className="text-sm text-neutral-600 dark:text-white/60">
                 {adjuntos.length > 0 && (
                   <span>{adjuntos.length} archivo(s) adjunto(s)</span>
                 )}
@@ -648,7 +637,7 @@ export function MisCorreos() {
               <div className="flex space-x-3">
                 <button
                   onClick={() => setShowCompose(false)}
-                  className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-100 transition"
+                  className="px-4 py-2 border border-neutral-200 dark:border-white/10 text-neutral-700 dark:text-white/70 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/5 transition"
                 >
                   Cancelar
                 </button>

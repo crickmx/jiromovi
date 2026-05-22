@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Mail, FileSignature, Users, Eye } from 'lucide-react';
+import { Mail, Ligature as FileSignature, Users, Eye } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import { PlantillasFirma } from '../components/firmas/PlantillasFirma';
 import { AsignacionesFirma } from '../components/firmas/AsignacionesFirma';
 import { VistaPreviaFirma } from '../components/firmas/VistaPreviaFirma';
@@ -17,24 +18,14 @@ export function FirmasEmail() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-white/20 rounded-xl">
-              <Mail className="w-8 h-8 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-display font-bold text-white">
-                Gestor de Firmas de E-Mail
-              </h1>
-              <p className="text-primary-100 mt-1">
-                Crea, asigna y gestiona firmas HTML profesionales para correos electrónicos
-              </p>
-            </div>
-          </div>
-        </div>
+      <PageHeader
+        title="Gestor de Firmas de E-Mail"
+        description="Crea, asigna y gestiona firmas HTML profesionales para correos electrónicos"
+        icon={Mail}
+      />
 
-        <div className="border-b border-neutral-200 bg-neutral-50">
+      <div className="bg-white dark:bg-white/5 rounded-2xl shadow-sm border border-neutral-200 dark:border-white/10 overflow-hidden">
+        <div className="border-b border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/3">
           <div className="flex space-x-1 px-8">
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -46,8 +37,8 @@ export function FirmasEmail() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center space-x-2 px-6 py-4 font-semibold transition-all border-b-2 ${
                     isActive
-                      ? 'border-accent text-accent bg-white'
-                      : 'border-transparent text-neutral-600 hover:text-accent hover:bg-white/50'
+                      ? 'border-accent text-accent bg-white dark:bg-white/5'
+                      : 'border-transparent text-neutral-600 dark:text-white/60 hover:text-accent hover:bg-white/50'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
@@ -59,7 +50,7 @@ export function FirmasEmail() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-8">
+      <div className="bg-white dark:bg-white/5 rounded-2xl shadow-sm border border-neutral-200 dark:border-white/10 p-8">
         {activeTab === 'plantillas' && <PlantillasFirma />}
         {activeTab === 'asignaciones' && <AsignacionesFirma />}
         {activeTab === 'vista-previa' && <VistaPreviaFirma />}

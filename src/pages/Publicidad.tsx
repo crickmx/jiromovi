@@ -7,6 +7,9 @@ import { PersonalizarPlantillaModal } from '../components/PersonalizarPlantillaM
 import { PlanMKTPremiumBlock } from '../components/PlanMKTPremiumBlock';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
 import { trackPublicityCreated } from '../lib/activityLogger';
+import { Button } from '@/components/ui/button';
+import { LoadingState } from '@/components/ui/loading-state';
+import { EmptyState } from '@/components/ui/empty-state';
 
 const CATEGORIAS_LIST = [
   'Redes Sociales', 'Campanas', 'Promociones', 'Eventos', 'Presentaciones',
@@ -227,72 +230,69 @@ export function Publicidad() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
-      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
+    <div className="space-y-4">
+      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4 sm:p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-accent mb-1 sm:mb-2">
+            <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
               Publicidad
-            </h1>
-            <p className="text-sm sm:text-base text-neutral-600">
+            </h2>
+            <p className="text-sm text-neutral-500 dark:text-white/50 mt-0.5">
               Crea diseños personalizados con tu logo y texto
             </p>
           </div>
           {isAdmin && (
-            <button
-              onClick={() => setShowNuevaPlantillaModal(true)}
-              className="flex items-center justify-center space-x-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-4 sm:px-5 py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold min-h-[44px] w-full sm:w-auto"
-            >
-              <Plus className="w-5 h-5" />
-              <span>Nueva Plantilla</span>
-            </button>
+            <Button size="sm" onClick={() => setShowNuevaPlantillaModal(true)}>
+              <Plus className="w-4 h-4 mr-1.5" />
+              Nueva Plantilla
+            </Button>
           )}
         </div>
 
-        <div className="flex overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 space-x-2 sm:space-x-2 border-b border-neutral-200 scrollbar-hide">
+        <div className="flex overflow-x-auto space-x-1 border-b border-neutral-200 dark:border-white/8 -mb-px scrollbar-hide">
           <button
             onClick={() => setActiveTab('biblioteca')}
-            className={`flex-shrink-0 px-4 sm:px-6 py-3 font-semibold transition-all min-h-[44px] ${
+            className={`flex-shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-all ${
               activeTab === 'biblioteca'
-                ? 'text-accent border-b-2 border-accent'
-                : 'text-neutral-600 hover:text-neutral-900'
+                ? 'text-accent border-accent'
+                : 'border-transparent text-neutral-500 dark:text-white/50 hover:text-neutral-700 dark:hover:text-white/70'
             }`}
           >
             <div className="flex items-center space-x-2">
-              <Palette className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-sm sm:text-base">Biblioteca</span>
+              <Palette className="w-4 h-4" />
+              <span>Biblioteca</span>
             </div>
           </button>
           <button
             onClick={() => setActiveTab('mis-disenos')}
-            className={`flex-shrink-0 px-4 sm:px-6 py-3 font-semibold transition-all min-h-[44px] ${
+            className={`flex-shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-all ${
               activeTab === 'mis-disenos'
-                ? 'text-accent border-b-2 border-accent'
-                : 'text-neutral-600 hover:text-neutral-900'
+                ? 'text-accent border-accent'
+                : 'border-transparent text-neutral-500 dark:text-white/50 hover:text-neutral-700 dark:hover:text-white/70'
             }`}
           >
             <div className="flex items-center space-x-2">
-              <Image className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-sm sm:text-base">Mis Diseños</span>
+              <Image className="w-4 h-4" />
+              <span>Mis Diseños</span>
             </div>
           </button>
         </div>
       </div>
 
       {activeTab === 'biblioteca' && (
-        <div className="space-y-4 sm:space-y-6">
-          <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-3 sm:p-4">
+        <div className="space-y-4">
+          <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-3">
-              <Filter className="w-4 h-4 text-neutral-500" />
-              <span className="text-sm font-medium text-neutral-700">Filtros</span>
+              <Filter className="w-4 h-4 text-neutral-500 dark:text-white/40" />
+              <span className="text-sm font-medium text-neutral-700 dark:text-white/70">Filtros</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <select
                 value={selectedCategoria}
                 onChange={(e) => setSelectedCategoria(e.target.value)}
-                className="px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all min-h-[44px]"
+                className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
               >
-                <option value="todas">Todas las categorías</option>
+                <option value="todas">Todas las categorias</option>
                 {CATEGORIAS_LIST.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
@@ -300,7 +300,7 @@ export function Publicidad() {
               <select
                 value={selectedRamo}
                 onChange={(e) => setSelectedRamo(e.target.value)}
-                className="px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all min-h-[44px]"
+                className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
               >
                 <option value="todos">Todos los ramos</option>
                 {RAMOS_LIST.map(ramo => (
@@ -310,35 +310,29 @@ export function Publicidad() {
               <select
                 value={selectedTipo}
                 onChange={(e) => setSelectedTipo(e.target.value)}
-                className="px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all min-h-[44px]"
+                className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
               >
                 <option value="todos">Todos los tipos</option>
-                <option value="imagen">Imágenes</option>
+                <option value="imagen">Imagenes</option>
                 <option value="video">Videos</option>
               </select>
             </div>
           </div>
 
           {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-            </div>
+            <LoadingState text="Cargando plantillas..." />
           ) : plantillas.length === 0 ? (
-            <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-8 sm:p-12 text-center">
-              <Palette className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300 mx-auto mb-3 sm:mb-4" />
-              <h3 className="text-lg sm:text-xl font-semibold text-neutral-700 mb-2">
-                No hay plantillas disponibles
-              </h3>
-              <p className="text-sm sm:text-base text-neutral-500">
-                {isAdmin ? 'Crea tu primera plantilla para comenzar' : 'Próximamente habrá plantillas disponibles'}
-              </p>
-            </div>
+            <EmptyState
+              icon={Palette}
+              title="No hay plantillas disponibles"
+              description={isAdmin ? 'Crea tu primera plantilla para comenzar' : 'Proximamente habra plantillas disponibles'}
+            />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {plantillas.map(plantilla => (
                 <div
                   key={plantilla.id}
-                  className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 overflow-hidden hover:shadow-medium transition-all duration-200 active:scale-[0.98]"
+                  className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden hover:border-neutral-300 dark:hover:border-white/15 hover:shadow-sm transition-all duration-200"
                 >
                   <div className="relative aspect-[4/5] bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
                     {plantilla.miniatura_url ? (
@@ -357,16 +351,16 @@ export function Publicidad() {
                     ) : null}
                     <div className={`w-full h-full items-center justify-center absolute inset-0 ${plantilla.miniatura_url ? 'hidden' : 'flex'}`}>
                       {plantilla.tipo === 'imagen' ? (
-                        <Image className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300" />
+                        <Image className="w-12 h-12 text-neutral-300 dark:text-white/20" />
                       ) : (
-                        <Video className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300" />
+                        <Video className="w-12 h-12 text-neutral-300 dark:text-white/20" />
                       )}
                     </div>
-                    <div className="absolute top-2 sm:top-3 left-2 sm:left-3 right-2 sm:right-3 flex items-center justify-between">
-                      <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold ${
+                    <div className="absolute top-2 left-2 right-2 flex items-center justify-between">
+                      <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${
                         plantilla.tipo === 'imagen'
-                          ? 'bg-primary-100 text-primary-700'
-                          : 'bg-teal-100 text-teal-700'
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
+                          : 'bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300'
                       }`}>
                         {plantilla.tipo === 'imagen' ? 'Imagen' : 'Video'}
                       </span>
@@ -376,29 +370,30 @@ export function Publicidad() {
                             e.stopPropagation();
                             handleEliminarPlantilla(plantilla);
                           }}
-                          className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all duration-200 shadow-lg min-w-[44px] min-h-[44px] flex items-center justify-center active:scale-95"
+                          className="p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all"
                           title="Eliminar plantilla"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       )}
                     </div>
                   </div>
-                  <div className="p-3 sm:p-4">
+                  <div className="p-3">
                     <div className="flex flex-wrap gap-1.5 mb-3">
-                      <span className="inline-block px-2 py-0.5 bg-neutral-100 text-neutral-700 text-xs rounded-lg font-medium">
+                      <span className="inline-block px-2 py-0.5 bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-white/60 text-xs rounded-md font-medium">
                         {plantilla.categoria}
                       </span>
-                      <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-lg font-medium">
+                      <span className="inline-block px-2 py-0.5 bg-accent/10 text-accent text-xs rounded-md font-medium">
                         {plantilla.ramo}
                       </span>
                     </div>
-                    <button
+                    <Button
+                      size="sm"
+                      className="w-full"
                       onClick={() => handleUsarPlantilla(plantilla)}
-                      className="w-full bg-gradient-to-r from-primary-500 to-primary-600 text-white py-2.5 sm:py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold text-sm sm:text-base min-h-[44px] active:scale-95"
                     >
-                      Usar este diseño
-                    </button>
+                      Usar este diseno
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -408,42 +403,31 @@ export function Publicidad() {
       )}
 
       {activeTab === 'mis-disenos' && (
-        <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-4 sm:p-6">
-          <h2 className="text-xl sm:text-2xl font-display font-bold text-neutral-900 mb-4 sm:mb-6">
-            Mis Diseños Personalizados
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4 sm:p-5">
+          <h2 className="text-base font-bold text-neutral-900 dark:text-white mb-4">
+            Mis Disenos Personalizados
           </h2>
           {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-            </div>
+            <LoadingState text="Cargando disenos..." />
           ) : disenos.length === 0 ? (
-            <div className="text-center py-8 sm:py-12">
-              <Image className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300 mx-auto mb-3 sm:mb-4" />
-              <h3 className="text-lg sm:text-xl font-semibold text-neutral-700 mb-2">
-                No tienes diseños personalizados
-              </h3>
-              <p className="text-sm sm:text-base text-neutral-500 mb-4 sm:mb-6">
-                Crea tu primer diseño desde la biblioteca
-              </p>
-              <button
-                onClick={() => setActiveTab('biblioteca')}
-                className="bg-gradient-to-r from-primary-500 to-primary-600 text-white px-5 sm:px-6 py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold min-h-[44px]"
-              >
-                Ir a la Biblioteca
-              </button>
-            </div>
+            <EmptyState
+              icon={Image}
+              title="No tienes disenos personalizados"
+              description="Crea tu primer diseno desde la biblioteca"
+              action={{ label: 'Ir a la Biblioteca', onClick: () => setActiveTab('biblioteca') }}
+            />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {disenos.map(diseno => (
                 <div
                   key={diseno.id}
-                  className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 overflow-hidden hover:shadow-medium transition-all duration-200 active:scale-[0.98]"
+                  className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden hover:border-neutral-300 dark:hover:border-white/15 hover:shadow-sm transition-all duration-200"
                 >
                   <div className="relative aspect-[4/5] bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
                     {diseno.archivo_resultante_url ? (
                       <img
                         src={diseno.archivo_resultante_url}
-                        alt="Diseño personalizado"
+                        alt="Diseno personalizado"
                         className="w-full h-full object-cover"
                         loading="lazy"
                         onError={(e) => {
@@ -455,23 +439,23 @@ export function Publicidad() {
                       />
                     ) : null}
                     <div className={`w-full h-full items-center justify-center absolute inset-0 ${diseno.archivo_resultante_url ? 'hidden' : 'flex'}`}>
-                      <Image className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300" />
+                      <Image className="w-12 h-12 text-neutral-300 dark:text-white/20" />
                     </div>
                   </div>
-                  <div className="p-3 sm:p-4">
+                  <div className="p-3">
                     <div className="flex flex-wrap gap-1.5 mb-1">
                       {diseno.publicidad_plantillas?.categoria && (
-                        <span className="inline-block px-2 py-0.5 bg-neutral-100 text-neutral-700 text-xs rounded-lg font-medium">
+                        <span className="inline-block px-2 py-0.5 bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-white/60 text-xs rounded-md font-medium">
                           {diseno.publicidad_plantillas.categoria}
                         </span>
                       )}
                       {diseno.publicidad_plantillas?.ramo && (
-                        <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-lg font-medium">
+                        <span className="inline-block px-2 py-0.5 bg-accent/10 text-accent text-xs rounded-md font-medium">
                           {diseno.publicidad_plantillas.ramo}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs sm:text-sm text-neutral-600 mb-3">
+                    <p className="text-xs text-neutral-500 dark:text-white/40 mb-3">
                       {new Date(diseno.created_at).toLocaleDateString('es-MX', {
                         day: 'numeric',
                         month: 'long',
@@ -479,18 +463,19 @@ export function Publicidad() {
                       })}
                     </p>
                     <div className="flex gap-2">
-                      <button
+                      <Button
+                        size="sm"
+                        className="flex-1"
                         onClick={() => handleDescargarDiseno(diseno.archivo_resultante_url || '')}
-                        className="flex-1 bg-gradient-to-r from-primary-500 to-primary-600 text-white py-2.5 sm:py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold text-sm sm:text-base min-h-[44px] active:scale-95"
                       >
                         Descargar
-                      </button>
+                      </Button>
                       <button
                         onClick={() => handleEliminarDiseno(diseno)}
-                        className="p-2.5 sm:p-3 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-all duration-200 hover:scale-105 min-w-[44px] min-h-[44px] flex items-center justify-center active:scale-95"
-                        title="Eliminar diseño"
+                        className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all"
+                        title="Eliminar diseno"
                       >
-                        <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>

@@ -3,6 +3,7 @@ import { Megaphone, Sparkles, Globe as Globe2, Palette } from 'lucide-react';
 import MiMarca from './MiMarca';
 import MiPaginaWeb from './MiPaginaWeb';
 import { Publicidad } from './Publicidad';
+import { PageHeader } from '@/components/ui/page-header';
 
 type SubSection = 'mi-marca' | 'mi-pagina-web' | 'publicidad';
 
@@ -49,21 +50,13 @@ export default function Mercadotecnia({ section }: MercadotecniaProps) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm">
-        <div className="flex items-start gap-3 mb-6">
-          <div className="p-2.5 bg-blue-100 rounded-xl">
-            <Megaphone className="w-6 h-6 text-blue-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-neutral-900">Mercadotecnia</h1>
-            <p className="text-sm text-neutral-500 mt-0.5">
-              {activeTab.description}
-            </p>
-          </div>
-        </div>
-
-        <nav className="flex flex-wrap gap-2 border-b border-neutral-200 -mb-6 pb-0">
+    <div className="space-y-5">
+      <PageHeader
+        title="Mercadotecnia"
+        description={activeTab.description}
+        icon={Megaphone}
+      >
+        <nav className="flex flex-wrap gap-1 border-b border-neutral-200 dark:border-white/8 -mb-px">
           {TABS.map(tab => {
             const Icon = tab.icon;
             const isActive = tab.key === section;
@@ -74,10 +67,10 @@ export default function Mercadotecnia({ section }: MercadotecniaProps) {
                   const target = `/mercadotecnia/${tab.key}`;
                   if (location.pathname !== target) navigate(target);
                 }}
-                className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+                className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
                   isActive
-                    ? 'border-blue-600 text-blue-700 bg-blue-50/60'
-                    : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
+                    ? 'border-accent text-accent'
+                    : 'border-transparent text-neutral-500 dark:text-white/50 hover:text-neutral-700 dark:hover:text-white/70'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -86,7 +79,7 @@ export default function Mercadotecnia({ section }: MercadotecniaProps) {
             );
           })}
         </nav>
-      </div>
+      </PageHeader>
 
       <div>{renderContent()}</div>
     </div>

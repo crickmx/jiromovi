@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Upload, AlertCircle, CheckCircle, FileSpreadsheet, Link as LinkIcon, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { PageHeader } from '@/components/ui/page-header';
+import { LoadingState } from '@/components/ui/loading-state';
+import { Button } from '@/components/ui/button';
 
 type UploadMode = 'excel' | 'sheets';
 
@@ -56,19 +59,16 @@ export default function ProduccionCargar() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-6">
-        <div className="bg-white rounded-3xl shadow-soft p-12 text-center max-w-md">
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center p-6">
+        <div className="bg-white dark:bg-neutral-800/50 rounded-3xl shadow-soft border border-neutral-200/60 dark:border-white/8 p-12 text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-neutral-900 mb-2">Acceso Denegado</h2>
-          <p className="text-neutral-600 mb-6">
+          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">Acceso Denegado</h2>
+          <p className="text-neutral-600 dark:text-white/60 mb-6">
             Solo los administradores pueden cargar archivos de producción.
           </p>
-          <button
-            onClick={() => navigate('/produccion/total')}
-            className="px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors font-semibold"
-          >
+          <Button onClick={() => navigate('/produccion/total')} size="lg">
             Ver Producción
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -200,28 +200,21 @@ export default function ProduccionCargar() {
 
   return (
     <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
-      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
-        <div className="mb-4 sm:mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-display font-bold text-neutral-900 mb-1 sm:mb-2">
-                Cargar Producción
-              </h1>
-              <p className="text-sm sm:text-base text-neutral-600">
-                Sincroniza desde Google Sheets o sube un archivo Excel
-              </p>
-            </div>
-            <FileSpreadsheet className="w-10 h-10 sm:w-12 sm:h-12 text-accent flex-shrink-0" />
-          </div>
-        </div>
+      <PageHeader
+        title="Cargar Producción"
+        description="Sincroniza desde Google Sheets o sube un archivo Excel"
+        icon={FileSpreadsheet}
+      />
 
-        <div className="flex gap-2 mb-4 sm:mb-6 bg-neutral-100 p-1 rounded-xl">
+      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4 sm:p-6">
+
+        <div className="flex gap-2 mb-4 sm:mb-6 bg-neutral-100 dark:bg-white/10 p-1 rounded-xl">
           <button
             onClick={() => setMode('sheets')}
             className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-semibold transition-all text-sm sm:text-base ${
               mode === 'sheets'
-                ? 'bg-white text-accent shadow-sm'
-                : 'text-neutral-600 hover:text-neutral-900'
+                ? 'bg-white dark:bg-neutral-800 text-accent shadow-sm'
+                : 'text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white'
             }`}
           >
             <LinkIcon className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -231,8 +224,8 @@ export default function ProduccionCargar() {
             onClick={() => setMode('excel')}
             className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-semibold transition-all text-sm sm:text-base ${
               mode === 'excel'
-                ? 'bg-white text-accent shadow-sm'
-                : 'text-neutral-600 hover:text-neutral-900'
+                ? 'bg-white dark:bg-neutral-800 text-accent shadow-sm'
+                : 'text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white'
             }`}
           >
             <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -290,10 +283,10 @@ export default function ProduccionCargar() {
               </div>
 
               {config?.last_sync_at && (
-                <div className="bg-white/70 rounded-lg p-3 mb-4">
+                <div className="bg-white/70 dark:bg-white/5 rounded-lg p-3 mb-4">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-neutral-600">Última sincronización:</span>
-                    <span className="font-semibold text-neutral-900">
+                    <span className="text-neutral-600 dark:text-white/60">Última sincronización:</span>
+                    <span className="font-semibold text-neutral-900 dark:text-white">
                       {new Date(config.last_sync_at).toLocaleString('es-MX', {
                         day: '2-digit',
                         month: 'short',
@@ -308,7 +301,7 @@ export default function ProduccionCargar() {
 
               <div className="space-y-3">
                 <label className="block">
-                  <span className="text-sm font-semibold text-neutral-700 mb-2 block">
+                  <span className="text-sm font-semibold text-neutral-700 dark:text-white/70 mb-2 block">
                     URL de Google Sheets
                   </span>
                   <input
@@ -316,7 +309,7 @@ export default function ProduccionCargar() {
                     value={sheetUrl}
                     onChange={(e) => setSheetUrl(e.target.value)}
                     placeholder="https://docs.google.com/spreadsheets/d/..."
-                    className="w-full px-4 py-3 border-2 border-neutral-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                    className="w-full px-4 py-3 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
                   />
                 </label>
 
@@ -329,8 +322,8 @@ export default function ProduccionCargar() {
             </div>
           </div>
         ) : (
-          <div className="border-2 border-dashed border-neutral-300 rounded-2xl p-8 text-center hover:border-accent transition-colors">
-            <Upload className="w-16 h-16 text-neutral-400 mx-auto mb-4" />
+          <div className="border-2 border-dashed border-neutral-300 dark:border-white/15 rounded-2xl p-8 text-center hover:border-accent transition-colors">
+            <Upload className="w-16 h-16 text-neutral-400 dark:text-white/40 mx-auto mb-4" />
 
             <label
               htmlFor="file-upload"
@@ -359,7 +352,7 @@ export default function ProduccionCargar() {
               </div>
             )}
 
-            <p className="text-sm text-neutral-500 mt-4">
+            <p className="text-sm text-neutral-500 dark:text-white/50 mt-4">
               Formatos aceptados: .xlsx, .xls
             </p>
           </div>
@@ -403,36 +396,36 @@ export default function ProduccionCargar() {
             )}
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-              <div className="bg-white rounded-lg p-4">
-                <p className="text-sm text-neutral-600 mb-1">Nuevos Registros</p>
+              <div className="bg-white dark:bg-white/5 rounded-lg p-4">
+                <p className="text-sm text-neutral-600 dark:text-white/60 mb-1">Nuevos Registros</p>
                 <p className="text-2xl font-bold text-green-600">
                   {stats.recordsImported?.toLocaleString() || 0}
                 </p>
               </div>
 
-              <div className="bg-white rounded-lg p-4">
-                <p className="text-sm text-neutral-600 mb-1">Importe Total</p>
+              <div className="bg-white dark:bg-white/5 rounded-lg p-4">
+                <p className="text-sm text-neutral-600 dark:text-white/60 mb-1">Importe Total</p>
                 <p className="text-2xl font-bold text-green-600">
                   ${(stats.stats?.totalImporte || 0).toLocaleString()}
                 </p>
               </div>
 
-              <div className="bg-white rounded-lg p-4">
-                <p className="text-sm text-neutral-600 mb-1">Prima Convenio</p>
+              <div className="bg-white dark:bg-white/5 rounded-lg p-4">
+                <p className="text-sm text-neutral-600 dark:text-white/60 mb-1">Prima Convenio</p>
                 <p className="text-2xl font-bold text-accent">
                   ${(stats.stats?.totalConvenio || 0).toLocaleString()}
                 </p>
               </div>
 
-              <div className="bg-white rounded-lg p-4">
-                <p className="text-sm text-neutral-600 mb-1">Prima Ponderada</p>
+              <div className="bg-white dark:bg-white/5 rounded-lg p-4">
+                <p className="text-sm text-neutral-600 dark:text-white/60 mb-1">Prima Ponderada</p>
                 <p className="text-2xl font-bold text-orange-600">
                   ${(stats.stats?.totalPonderada || 0).toLocaleString()}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center justify-center space-x-2 text-sm text-green-700 bg-white rounded-lg p-3">
+            <div className="flex items-center justify-center space-x-2 text-sm text-green-700 bg-white dark:bg-white/5 rounded-lg p-3">
               <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></div>
               <span>Redirigiendo a Producción Total en 3 segundos...</span>
             </div>
@@ -441,42 +434,41 @@ export default function ProduccionCargar() {
 
 {mode === 'sheets' && sheetUrl && !loading && !success && (
           <div className="mt-4 sm:mt-6 flex justify-center px-4">
-            <button
+            <Button
               onClick={handleSyncGoogleSheets}
-              className="flex items-center justify-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:shadow-lg transition-all duration-200 hover:scale-105 font-semibold text-base sm:text-lg w-full sm:w-auto"
+              size="lg"
+              className="gap-2 w-full sm:w-auto"
             >
-              <RefreshCw className="w-5 h-5 sm:w-6 sm:h-6" />
+              <RefreshCw className="w-5 h-5" />
               <span className="hidden sm:inline">Sincronizar Google Sheets</span>
               <span className="sm:hidden">Sincronizar</span>
-            </button>
+            </Button>
           </div>
         )}
 
         {mode === 'excel' && file && !loading && !success && (
           <div className="mt-4 sm:mt-6 flex justify-center px-4">
-            <button
+            <Button
               onClick={handleUpload}
-              className="flex items-center justify-center gap-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:shadow-lg transition-all duration-200 hover:scale-105 font-semibold text-base sm:text-lg w-full sm:w-auto"
+              size="lg"
+              className="gap-2 w-full sm:w-auto"
             >
-              <Upload className="w-5 h-5 sm:w-6 sm:h-6" />
+              <Upload className="w-5 h-5" />
               <span>Procesar Archivo</span>
-            </button>
+            </Button>
           </div>
         )}
 
         {loading && (
-          <div className="mt-4 sm:mt-6 text-center px-4">
-            <div className="inline-block w-10 h-10 sm:w-12 sm:h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mb-3 sm:mb-4"></div>
-            <p className="text-sm sm:text-base text-neutral-600 font-medium">
-              {mode === 'sheets' ? 'Sincronizando desde Google Sheets...' : 'Procesando archivo...'} Esto puede tomar varios minutos.
-            </p>
-          </div>
+          <LoadingState
+            text={mode === 'sheets' ? 'Sincronizando desde Google Sheets... Esto puede tomar varios minutos.' : 'Procesando archivo... Esto puede tomar varios minutos.'}
+          />
         )}
       </div>
 
 {mode === 'sheets' && (
-        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6 mb-4 sm:mb-6">
-          <h2 className="text-lg sm:text-xl font-bold text-neutral-900 mb-3 sm:mb-4">
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4 sm:p-6 mb-4 sm:mb-6">
+          <h2 className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-white mb-3 sm:mb-4">
             Cómo configurar tu Google Sheet
           </h2>
 
@@ -505,8 +497,8 @@ export default function ProduccionCargar() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
-        <h2 className="text-lg sm:text-xl font-bold text-neutral-900 mb-3 sm:mb-4">
+      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4 sm:p-6">
+        <h2 className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-white mb-3 sm:mb-4">
           Estructura de Datos Requerida
         </h2>
 
@@ -525,72 +517,72 @@ export default function ProduccionCargar() {
           </div>
         </div>
 
-        <div className="bg-neutral-50 rounded-lg sm:rounded-xl p-3 sm:p-4">
-          <p className="text-xs sm:text-sm font-semibold text-neutral-700 mb-2 sm:mb-3">
+        <div className="bg-neutral-50 dark:bg-white/5 rounded-lg sm:rounded-xl p-3 sm:p-4">
+          <p className="text-xs sm:text-sm font-semibold text-neutral-700 dark:text-white/70 mb-2 sm:mb-3">
             Columnas requeridas (obligatorias):
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-sm mb-3 sm:mb-4">
-            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+            <div className="flex items-center space-x-2 bg-white dark:bg-white/5 p-2 rounded-lg border border-neutral-200 dark:border-white/10">
               <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-800">FechaSimp</code>
             </div>
-            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+            <div className="flex items-center space-x-2 bg-white dark:bg-white/5 p-2 rounded-lg border border-neutral-200 dark:border-white/10">
               <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-800">DespNombre</code>
             </div>
-            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+            <div className="flex items-center space-x-2 bg-white dark:bg-white/5 p-2 rounded-lg border border-neutral-200 dark:border-white/10">
               <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-800">GerenciaNombre</code>
             </div>
-            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+            <div className="flex items-center space-x-2 bg-white dark:bg-white/5 p-2 rounded-lg border border-neutral-200 dark:border-white/10">
               <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-800">VendNombre</code>
             </div>
-            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+            <div className="flex items-center space-x-2 bg-white dark:bg-white/5 p-2 rounded-lg border border-neutral-200 dark:border-white/10">
               <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-800">Nombre Compañía</code>
             </div>
-            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+            <div className="flex items-center space-x-2 bg-white dark:bg-white/5 p-2 rounded-lg border border-neutral-200 dark:border-white/10">
               <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-800">Sub Ramo</code>
             </div>
-            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+            <div className="flex items-center space-x-2 bg-white dark:bg-white/5 p-2 rounded-lg border border-neutral-200 dark:border-white/10">
               <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-800">IMPORTE PESOS</code>
             </div>
-            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+            <div className="flex items-center space-x-2 bg-white dark:bg-white/5 p-2 rounded-lg border border-neutral-200 dark:border-white/10">
               <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-800">Prima de convenio</code>
             </div>
-            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+            <div className="flex items-center space-x-2 bg-white dark:bg-white/5 p-2 rounded-lg border border-neutral-200 dark:border-white/10">
               <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-800">Prima Ponderada</code>
             </div>
-            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+            <div className="flex items-center space-x-2 bg-white dark:bg-white/5 p-2 rounded-lg border border-neutral-200 dark:border-white/10">
               <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-800">Bono</code>
             </div>
           </div>
 
-          <p className="text-sm font-semibold text-neutral-700 mb-2 mt-4">
+          <p className="text-sm font-semibold text-neutral-700 dark:text-white/70 mb-2 mt-4">
             Columnas opcionales:
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
-            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+            <div className="flex items-center space-x-2 bg-white dark:bg-white/5 p-2 rounded-lg border border-neutral-200 dark:border-white/10">
               <div className="w-2 h-2 bg-neutral-400 rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-600">Dirección Regional</code>
             </div>
-            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+            <div className="flex items-center space-x-2 bg-white dark:bg-white/5 p-2 rounded-lg border border-neutral-200 dark:border-white/10">
               <div className="w-2 h-2 bg-neutral-400 rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-600">RamosNombre</code>
             </div>
-            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+            <div className="flex items-center space-x-2 bg-white dark:bg-white/5 p-2 rounded-lg border border-neutral-200 dark:border-white/10">
               <div className="w-2 h-2 bg-neutral-400 rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-600">CONVENIO</code>
             </div>
-            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+            <div className="flex items-center space-x-2 bg-white dark:bg-white/5 p-2 rounded-lg border border-neutral-200 dark:border-white/10">
               <div className="w-2 h-2 bg-neutral-400 rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-600">% BONO</code>
             </div>

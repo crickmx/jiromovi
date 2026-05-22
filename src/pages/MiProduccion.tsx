@@ -6,6 +6,9 @@ import * as XLSX from 'xlsx';
 import GraficaColumnas from '../components/comisiones/GraficaColumnas';
 import GraficaCircular from '../components/comisiones/GraficaCircular';
 import FiltrosProduccionAgente from '../components/produccion/FiltrosProduccionAgente';
+import { PageHeader } from '@/components/ui/page-header';
+import { Button } from '@/components/ui/button';
+import { LoadingState } from '@/components/ui/loading-state';
 
 interface ProductionFilters {
   fechaDesde: string;
@@ -379,14 +382,7 @@ export default function MiProduccion() {
     `$${value.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
   if (loading && records.length === 0) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-neutral-600">Cargando tu producción...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState text="Cargando tu produccion..." />;
   }
 
   if (message && !vendorName) {
@@ -445,49 +441,39 @@ export default function MiProduccion() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
-        <div className="mb-6">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <h1 className="text-3xl font-display font-bold text-accent mb-2">
-                Mi Producción
-              </h1>
-              <p className="text-neutral-600">
-                Resumen de tu producción como <span className="font-semibold text-accent">{vendorName}</span>
-              </p>
-              {fechaActualizacion && (
-                <p className="text-sm text-neutral-500 mt-2">
-                  Última actualización: <span className="font-medium">{new Date(fechaActualizacion).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                </p>
-              )}
-            </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="Mi Produccion"
+        description={vendorName ? `Resumen como ${vendorName}` : undefined}
+        icon={TrendingUp}
+        actions={(usuario?.rol === 'admin' || usuario?.rol === 'gerente') ? (
+          <Button
+            size="sm"
+            onClick={handleSyncProduction}
+            disabled={syncing}
+          >
+            <RefreshCw className={`w-4 h-4 mr-1.5 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Sincronizando...' : 'Recargar'}
+          </Button>
+        ) : undefined}
+      />
 
-            {(usuario?.rol === 'admin' || usuario?.rol === 'gerente') && (
-              <button
-                onClick={handleSyncProduction}
-                disabled={syncing}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                  syncing
-                    ? 'bg-neutral-200 text-neutral-500 cursor-not-allowed'
-                    : 'bg-accent text-white hover:bg-accent-hover'
-                }`}
-              >
-                <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-                <span>{syncing ? 'Sincronizando...' : 'Recargar información'}</span>
-              </button>
-            )}
+      {fechaActualizacion && (
+        <p className="text-xs text-neutral-400 dark:text-white/30 -mt-3">
+          Actualizado: {new Date(fechaActualizacion).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}
+        </p>
+      )}
+
+      {message && (
+        <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-amber-800 dark:text-amber-200">{message}</p>
           </div>
         </div>
+      )}
 
-        {message && (
-          <div className="mb-6 bg-primary-50 border border-primary-200 rounded-xl p-4">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-primary-800">{message}</p>
-            </div>
-          </div>
-        )}
+      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-5">
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">

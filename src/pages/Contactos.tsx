@@ -1,22 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import {
-  Users,
-  Plus,
-  Search,
-  Edit2,
-  Trash2,
-  Save,
-  X,
-  Mail,
-  Phone,
-  Building2,
-  Calendar,
-  Filter,
-  Download,
-  Upload,
-} from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { LoadingState } from '@/components/ui/loading-state';
+import { Button } from '@/components/ui/button';
+import { Users, Plus, Search, CreditCard as Edit2, Trash2, Save, X, Mail, Phone, Building2, Calendar, Filter, Download, Upload } from 'lucide-react';
 
 interface Contacto {
   id: string;
@@ -227,41 +215,24 @@ export function Contactos() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-slate-600">Cargando contactos...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState text="Cargando contactos..." />;
   }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Users className="w-10 h-10 text-white" />
-              <div>
-                <h1 className="text-2xl font-bold text-white">Contactos</h1>
-                <p className="text-primary-100 mt-1">
-                  Gestiona tus contactos de email
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleNuevoContacto}
-              className="flex items-center space-x-2 bg-white text-accent px-6 py-3 rounded-lg font-semibold hover:bg-primary-50 transition-all shadow-md"
-            >
-              <Plus className="w-5 h-5" />
-              <span>Nuevo Contacto</span>
-            </button>
-          </div>
-        </div>
+      <div className="bg-white dark:bg-white/5 rounded-2xl shadow-sm border border-neutral-200 dark:border-white/10 overflow-hidden">
+        <PageHeader
+          title="Contactos"
+          description="Gestiona tus contactos de email"
+          icon={Users}
+        >
+          <Button onClick={handleNuevoContacto}>
+            <Plus className="w-5 h-5" />
+            <span>Nuevo Contacto</span>
+          </Button>
+        </PageHeader>
 
-        <div className="p-6 border-b border-slate-200">
+        <div className="p-6 border-b border-neutral-200 dark:border-white/10">
           {message && (
             <div
               className={`mb-4 px-4 py-3 rounded-lg ${
@@ -276,22 +247,22 @@ export function Contactos() {
 
           <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 md:space-x-4">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400 dark:text-white/30" />
               <input
                 type="text"
                 placeholder="Buscar por nombre, email, empresa..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2.5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
               />
             </div>
 
             <div className="flex items-center space-x-2">
-              <Filter className="w-5 h-5 text-slate-600" />
+              <Filter className="w-5 h-5 text-neutral-600 dark:text-white/60" />
               <select
                 value={filtroOrigen}
                 onChange={e => setFiltroOrigen(e.target.value as FiltroOrigen)}
-                className="px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-4 py-2.5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
               >
                 <option value="todos">Todos los contactos</option>
                 <option value="automatico">Automáticos</option>
@@ -301,7 +272,7 @@ export function Contactos() {
           </div>
 
           <div className="mt-4 flex items-center justify-between">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-neutral-600 dark:text-white/60">
               {filteredContactos.length} contacto{filteredContactos.length !== 1 ? 's' : ''}
               {filtroOrigen !== 'todos' && ` (${filtroOrigen === 'automatico' ? 'automáticos' : 'manuales'})`}
             </p>
@@ -311,9 +282,9 @@ export function Contactos() {
         <div className="overflow-x-auto">
           {filteredContactos.length === 0 ? (
             <div className="text-center py-16">
-              <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-600 font-semibold">No hay contactos</p>
-              <p className="text-sm text-slate-500 mt-1">
+              <Users className="w-16 h-16 text-neutral-300 dark:text-white/20 mx-auto mb-4" />
+              <p className="text-neutral-600 dark:text-white/60 font-semibold">No hay contactos</p>
+              <p className="text-sm text-neutral-500 dark:text-white/40 mt-1">
                 {searchQuery
                   ? 'No se encontraron contactos con ese criterio'
                   : 'Agrega tu primer contacto o sincroniza tus correos'}
@@ -321,34 +292,34 @@ export function Contactos() {
             </div>
           ) : (
             <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200">
+              <thead className="bg-neutral-50 dark:bg-white/3 border-b border-neutral-200 dark:border-white/10">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-neutral-600 dark:text-white/60 uppercase tracking-wider">
                     Nombre
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-neutral-600 dark:text-white/60 uppercase tracking-wider">
                     Email
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-neutral-600 dark:text-white/60 uppercase tracking-wider">
                     Teléfono
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-neutral-600 dark:text-white/60 uppercase tracking-wider">
                     Empresa
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-neutral-600 dark:text-white/60 uppercase tracking-wider">
                     Última Interacción
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-neutral-600 dark:text-white/60 uppercase tracking-wider">
                     Origen
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-neutral-600 dark:text-white/60 uppercase tracking-wider">
                     Acciones
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-slate-200">
+              <tbody className="bg-white dark:bg-transparent divide-y divide-neutral-200 dark:divide-white/10">
                 {filteredContactos.map(contacto => (
-                  <tr key={contacto.id} className="hover:bg-slate-50 transition">
+                  <tr key={contacto.id} className="hover:bg-neutral-50 dark:hover:bg-white/3 transition">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
@@ -357,13 +328,13 @@ export function Contactos() {
                           </span>
                         </div>
                         <div className="ml-3">
-                          <div className="font-semibold text-slate-900">
+                          <div className="font-semibold text-neutral-900 dark:text-white">
                             {contacto.nombre || contacto.apellido
                               ? `${contacto.nombre || ''} ${contacto.apellido || ''}`.trim()
                               : 'Sin nombre'}
                           </div>
                           {contacto.cantidad_emails > 0 && (
-                            <div className="text-xs text-slate-500">
+                            <div className="text-xs text-neutral-500 dark:text-white/40">
                               {contacto.cantidad_emails} email{contacto.cantidad_emails !== 1 ? 's' : ''}
                             </div>
                           )}
@@ -371,34 +342,34 @@ export function Contactos() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center text-sm text-slate-600">
-                        <Mail className="w-4 h-4 mr-2 text-slate-400" />
+                      <div className="flex items-center text-sm text-neutral-600 dark:text-white/60">
+                        <Mail className="w-4 h-4 mr-2 text-neutral-400 dark:text-white/30" />
                         {contacto.email}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600 dark:text-white/60">
                       {contacto.celular ? (
                         <div className="flex items-center">
-                          <Phone className="w-4 h-4 mr-2 text-slate-400" />
+                          <Phone className="w-4 h-4 mr-2 text-neutral-400 dark:text-white/30" />
                           {contacto.celular}
                         </div>
                       ) : (
-                        <span className="text-slate-400">—</span>
+                        <span className="text-neutral-400 dark:text-white/30">—</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600 dark:text-white/60">
                       {contacto.empresa ? (
                         <div className="flex items-center">
-                          <Building2 className="w-4 h-4 mr-2 text-slate-400" />
+                          <Building2 className="w-4 h-4 mr-2 text-neutral-400 dark:text-white/30" />
                           {contacto.empresa}
                         </div>
                       ) : (
-                        <span className="text-slate-400">—</span>
+                        <span className="text-neutral-400 dark:text-white/30">—</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600 dark:text-white/60">
                       <div className="flex items-center">
-                        <Calendar className="w-4 h-4 mr-2 text-slate-400" />
+                        <Calendar className="w-4 h-4 mr-2 text-neutral-400 dark:text-white/30" />
                         {formatFecha(contacto.ultima_interaccion)}
                       </div>
                     </td>
@@ -441,14 +412,14 @@ export function Contactos() {
 
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full my-8 flex flex-col max-h-[85vh]">
-            <div className="flex-shrink-0 bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex items-center justify-between rounded-t-2xl">
-              <h2 className="text-xl font-bold text-white">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl max-w-2xl w-full my-8 flex flex-col max-h-[85vh]">
+            <div className="flex-shrink-0 bg-neutral-50 dark:bg-white/3 px-6 py-4 flex items-center justify-between rounded-t-2xl border-b border-neutral-200 dark:border-white/10">
+              <h2 className="text-xl font-bold text-neutral-900 dark:text-white">
                 {editingContacto ? 'Editar Contacto' : 'Nuevo Contacto'}
               </h2>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition"
+                className="text-neutral-500 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/5 p-2 rounded-lg transition"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -457,34 +428,34 @@ export function Contactos() {
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  <label className="block text-sm font-semibold text-neutral-700 dark:text-white/70 mb-2">
                     Nombre
                   </label>
                   <input
                     type="text"
                     value={formData.nombre}
                     onChange={e => setFormData({ ...formData, nombre: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2.5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                     placeholder="Juan"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  <label className="block text-sm font-semibold text-neutral-700 dark:text-white/70 mb-2">
                     Apellido
                   </label>
                   <input
                     type="text"
                     value={formData.apellido}
                     onChange={e => setFormData({ ...formData, apellido: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2.5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                     placeholder="Pérez"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <label className="block text-sm font-semibold text-neutral-700 dark:text-white/70 mb-2">
                   Email <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -492,11 +463,11 @@ export function Contactos() {
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
                   disabled={!!editingContacto}
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500"
+                  className="w-full px-4 py-2.5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent disabled:bg-neutral-50 dark:disabled:bg-white/3 disabled:text-neutral-500 dark:disabled:text-white/40"
                   placeholder="juan@ejemplo.com"
                 />
                 {editingContacto && (
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">
                     El email no puede modificarse
                   </p>
                 )}
@@ -504,50 +475,50 @@ export function Contactos() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  <label className="block text-sm font-semibold text-neutral-700 dark:text-white/70 mb-2">
                     Celular
                   </label>
                   <input
                     type="tel"
                     value={formData.celular}
                     onChange={e => setFormData({ ...formData, celular: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2.5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                     placeholder="+52 555 123 4567"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  <label className="block text-sm font-semibold text-neutral-700 dark:text-white/70 mb-2">
                     Empresa
                   </label>
                   <input
                     type="text"
                     value={formData.empresa}
                     onChange={e => setFormData({ ...formData, empresa: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2.5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                     placeholder="Empresa S.A."
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <label className="block text-sm font-semibold text-neutral-700 dark:text-white/70 mb-2">
                   Comentarios
                 </label>
                 <textarea
                   value={formData.comentarios}
                   onChange={e => setFormData({ ...formData, comentarios: e.target.value })}
                   rows={3}
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2.5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                   placeholder="Notas adicionales sobre este contacto..."
                 />
               </div>
             </div>
 
-            <div className="flex-shrink-0 px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end space-x-3 rounded-b-2xl">
+            <div className="flex-shrink-0 px-6 py-4 bg-neutral-50 dark:bg-white/3 border-t border-neutral-200 dark:border-white/10 flex justify-end space-x-3 rounded-b-2xl">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-6 py-2.5 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-100 transition font-medium"
+                className="px-6 py-2.5 border border-neutral-200 dark:border-white/10 text-neutral-700 dark:text-white/70 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/5 transition font-medium"
               >
                 Cancelar
               </button>

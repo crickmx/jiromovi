@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link2, Mail, User, Edit2, Trash2, X, Save, Plus, Search, CheckCircle, RefreshCw } from 'lucide-react';
+import { Link2, Mail, User, CreditCard as Edit2, Trash2, X, Save, Plus, Search, CheckCircle, RefreshCw } from 'lucide-react';
 import {
   obtenerVendorMappings,
   actualizarVendorMapping,
@@ -10,6 +10,9 @@ import {
 } from '../lib/vendorMappingUtils';
 import type { VendorMapping, VendorMappingSourceType } from '../lib/vendorMappingTypes';
 import { useAuth } from '../contexts/AuthContext';
+import { PageHeader } from '@/components/ui/page-header';
+import { LoadingState } from '@/components/ui/loading-state';
+import { Button } from '@/components/ui/button';
 
 export default function MapeoVendedores() {
   console.log('[MapeoVendedores] 🚀 Componente renderizando');
@@ -86,16 +89,14 @@ export default function MapeoVendedores() {
 
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
-      </div>
+      <LoadingState text="Cargando..." className="min-h-screen" />
     );
   }
 
   if (!usuario) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p className="text-gray-600">No se pudo cargar la información del usuario</p>
+        <p className="text-neutral-600 dark:text-white/60">No se pudo cargar la información del usuario</p>
       </div>
     );
   }
@@ -132,69 +133,59 @@ export default function MapeoVendedores() {
 
       <div>
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                <Link2 className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-accent">Mapeo de Vendedores</h1>
-                <p className="text-gray-600">
-                  Gestiona las relaciones entre vendedores externos y usuarios MOVI
-                </p>
-                {ultimaCarga && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Última actualización: {ultimaCarga.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={cargarDatos}
-                disabled={loading}
-                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Recargar datos desde la base de datos"
-              >
-                <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
-                <span>Cargar</span>
-              </button>
-              <button
-                onClick={() => setNuevoMapeo(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
-              >
-                <Plus className="h-5 w-5" />
-                <span>Nuevo Mapeo</span>
-              </button>
-            </div>
-          </div>
+          <PageHeader
+            title="Mapeo de Vendedores"
+            description={`Gestiona las relaciones entre vendedores externos y usuarios MOVI${ultimaCarga ? ` · Última actualización: ${ultimaCarga.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}`}
+            icon={Link2}
+            actions={
+              <>
+                <Button
+                  onClick={cargarDatos}
+                  disabled={loading}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  <span>Cargar</span>
+                </Button>
+                <Button
+                  onClick={() => setNuevoMapeo(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Nuevo Mapeo</span>
+                </Button>
+              </>
+            }
+            className="mb-4"
+          />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Total Mapeos</p>
-                  <p className="text-2xl font-bold text-gray-900">{mapeos.length}</p>
+                  <p className="text-sm text-neutral-600 dark:text-white/60">Total Mapeos</p>
+                  <p className="text-2xl font-bold text-neutral-900 dark:text-white">{mapeos.length}</p>
                 </div>
                 <Link2 className="h-8 w-8 text-accent" />
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Por Email</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-sm text-neutral-600 dark:text-white/60">Por Email</p>
+                  <p className="text-2xl font-bold text-neutral-900 dark:text-white">
                     {mapeos.filter((m) => m.source_type === 'email').length}
                   </p>
                 </div>
                 <Mail className="h-8 w-8 text-accent" />
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Por Nombre</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-sm text-neutral-600 dark:text-white/60">Por Nombre</p>
+                  <p className="text-2xl font-bold text-neutral-900 dark:text-white">
                     {mapeos.filter((m) => m.source_type === 'name').length}
                   </p>
                 </div>
@@ -205,19 +196,19 @@ export default function MapeoVendedores() {
 
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400 dark:text-white/40" />
               <input
                 type="text"
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 placeholder="Buscar por vendedor o usuario MOVI..."
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-accent"
+                className="w-full pl-10 pr-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent"
               />
             </div>
             <select
               value={filtroEstatus}
               onChange={(e) => setFiltroEstatus(e.target.value as any)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-accent"
+              className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent"
             >
               <option value="all">Todos los mapeos</option>
               <option value="active">Solo activos</option>
@@ -227,45 +218,43 @@ export default function MapeoVendedores() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
-          </div>
+          <LoadingState text="Cargando mapeos..." />
         ) : mapeosFiltrados.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-            <Link2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay mapeos</h3>
-            <p className="text-gray-600 mb-4">
+          <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-12 text-center">
+            <Link2 className="h-12 w-12 text-neutral-400 dark:text-white/40 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-2">No hay mapeos</h3>
+            <p className="text-neutral-600 dark:text-white/60 mb-4">
               {busqueda
                 ? 'No se encontraron mapeos con esos criterios de búsqueda.'
                 : 'Los mapeos se crean automáticamente al asignar vendedores no reconocidos.'}
             </p>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden">
+            <table className="min-w-full divide-y divide-neutral-200 dark:divide-white/10">
+              <thead className="bg-neutral-50 dark:bg-white/5">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 dark:text-white/70 uppercase tracking-wider">
                     Tipo
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 dark:text-white/70 uppercase tracking-wider">
                     Vendedor Externo
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 dark:text-white/70 uppercase tracking-wider">
                     Usuario MOVI
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 dark:text-white/70 uppercase tracking-wider">
                     Estado
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 dark:text-white/70 uppercase tracking-wider">
                     Última Actualización
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 dark:text-white/70 uppercase tracking-wider">
                     Acciones
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-transparent divide-y divide-neutral-200 dark:divide-white/10">
                 {mapeosFiltrados.map((mapeo) => (
                   <MapeoRow
                     key={mapeo.id}
@@ -397,8 +386,8 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId, onMarkUnsaved, onMarkSave
 
   return (
     <tr className={`
-      ${mapeo.status === 'inactive' ? 'bg-gray-50 opacity-60' : ''}
-      ${hasUnsavedChanges && editando ? 'ring-2 ring-orange-400 ring-inset bg-orange-50' : ''}
+      ${mapeo.status === 'inactive' ? 'bg-neutral-50 dark:bg-white/5 opacity-60' : ''}
+      ${hasUnsavedChanges && editando ? 'ring-2 ring-orange-400 ring-inset bg-orange-50 dark:bg-orange-900/20' : ''}
       transition-all duration-200
     `}>
       <td className="px-6 py-4 whitespace-nowrap">
@@ -419,8 +408,8 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId, onMarkUnsaved, onMarkSave
       </td>
       <td className="px-6 py-4">
         <div>
-          <p className="font-medium text-gray-900">{mapeo.source_value}</p>
-          {mapeo.notes && <p className="text-sm text-gray-500 mt-1">{mapeo.notes}</p>}
+          <p className="font-medium text-neutral-900 dark:text-white">{mapeo.source_value}</p>
+          {mapeo.notes && <p className="text-sm text-neutral-500 dark:text-white/50 mt-1">{mapeo.notes}</p>}
         </div>
       </td>
       <td className="px-6 py-4">
@@ -429,8 +418,8 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId, onMarkUnsaved, onMarkSave
             <select
               value={usuarioId}
               onChange={(e) => setUsuarioId(e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                tieneCambios ? 'border-orange-400 bg-orange-50' : 'border-gray-300'
+              className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent ${
+                tieneCambios ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : 'border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5'
               }`}
             >
               <option value="">--Sin asignar--</option>
@@ -466,8 +455,8 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId, onMarkUnsaved, onMarkSave
               {mapeo.usuarios?.nombre_completo.charAt(0).toUpperCase()}
             </div>
             <div>
-              <p className="font-medium text-gray-900">{mapeo.usuarios?.nombre_completo}</p>
-              <p className="text-sm text-gray-500">
+              <p className="font-medium text-neutral-900 dark:text-white">{mapeo.usuarios?.nombre_completo}</p>
+              <p className="text-sm text-neutral-500 dark:text-white/50">
                 {mapeo.usuarios?.email_laboral || mapeo.usuarios?.email_personal || 'Sin email'}
               </p>
             </div>
@@ -479,14 +468,14 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId, onMarkUnsaved, onMarkSave
           onClick={handleCambiarEstado}
           className={`px-2 py-1 text-xs font-medium rounded-full ${
             mapeo.status === 'active'
-              ? 'bg-green-100 text-green-800 hover:bg-green-200'
-              : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+              ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50'
+              : 'bg-neutral-100 dark:bg-white/10 text-neutral-800 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/15'
           }`}
         >
           {mapeo.status === 'active' ? 'Activo' : 'Inactivo'}
         </button>
       </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-500 dark:text-white/50">
         {new Date(mapeo.updated_at).toLocaleDateString('es-MX', {
           year: 'numeric',
           month: 'short',
@@ -504,8 +493,8 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId, onMarkUnsaved, onMarkSave
                   guardadoExitoso
                     ? 'bg-green-600 text-white scale-105'
                     : tieneCambios
-                    ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 shadow-lg hover:shadow-xl scale-105 animate-pulse'
-                    : 'bg-gray-200 text-gray-500 cursor-not-allowed scale-100'
+                    ? 'bg-green-600 text-white hover:bg-green-700 shadow-lg hover:shadow-xl scale-105 animate-pulse'
+                    : 'bg-neutral-200 dark:bg-white/10 text-neutral-500 dark:text-white/40 cursor-not-allowed scale-100'
                 } disabled:opacity-50`}
                 title={!tieneCambios ? 'No hay cambios para guardar' : 'GUARDAR CAMBIOS'}
               >
@@ -529,7 +518,7 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId, onMarkUnsaved, onMarkSave
               <button
                 onClick={handleCancelar}
                 disabled={saving}
-                className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-50 transition-colors"
+                className="p-2 rounded-lg text-neutral-600 dark:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/10 hover:text-neutral-900 dark:hover:text-white disabled:opacity-50 transition-colors"
                 title="Cancelar"
               >
                 <X className="h-5 w-5" />
@@ -601,24 +590,24 @@ function NuevoMapeoModal({ usuarios, onClose, onSuccess, userId }: NuevoMapeoMod
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-bold text-gray-900">Nuevo Mapeo de Vendedor</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 shadow-xl max-w-lg w-full">
+        <div className="flex items-center justify-between p-6 border-b border-neutral-200 dark:border-white/10">
+          <h2 className="text-xl font-bold text-neutral-900 dark:text-white">Nuevo Mapeo de Vendedor</h2>
+          <button onClick={onClose} className="text-neutral-400 dark:text-white/40 hover:text-neutral-600 dark:hover:text-white/60">
             <X className="h-6 w-6" />
           </button>
         </div>
 
         <div className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Mapeo</label>
+            <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">Tipo de Mapeo</label>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setSourceType('email')}
                 className={`p-3 border-2 rounded-lg flex items-center justify-center space-x-2 transition-colors ${
                   sourceType === 'email'
-                    ? 'border-accent bg-primary-50 text-primary-700'
-                    : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                    ? 'border-accent bg-primary-50 dark:bg-accent/10 text-primary-700 dark:text-accent'
+                    : 'border-neutral-300 dark:border-white/15 text-neutral-700 dark:text-white/70 hover:border-neutral-400 dark:hover:border-white/25'
                 }`}
               >
                 <Mail className="h-5 w-5" />
@@ -628,8 +617,8 @@ function NuevoMapeoModal({ usuarios, onClose, onSuccess, userId }: NuevoMapeoMod
                 onClick={() => setSourceType('name')}
                 className={`p-3 border-2 rounded-lg flex items-center justify-center space-x-2 transition-colors ${
                   sourceType === 'name'
-                    ? 'border-purple-600 bg-purple-50 text-purple-700'
-                    : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                    ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300'
+                    : 'border-neutral-300 dark:border-white/15 text-neutral-700 dark:text-white/70 hover:border-neutral-400 dark:hover:border-white/25'
                 }`}
               >
                 <User className="h-5 w-5" />
@@ -639,7 +628,7 @@ function NuevoMapeoModal({ usuarios, onClose, onSuccess, userId }: NuevoMapeoMod
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">
               {sourceType === 'email' ? 'Email del Vendedor' : 'Nombre del Vendedor'}
             </label>
             <input
@@ -649,18 +638,18 @@ function NuevoMapeoModal({ usuarios, onClose, onSuccess, userId }: NuevoMapeoMod
               placeholder={
                 sourceType === 'email' ? 'vendedor@ejemplo.com' : 'Juan Pérez'
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">
               Usuario MOVI Correspondiente
             </label>
             <select
               value={moviUserId}
               onChange={(e) => setMoviUserId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent"
             >
               <option value="">--Sin asignar--</option>
               {usuarios.length === 0 ? (
@@ -681,7 +670,7 @@ function NuevoMapeoModal({ usuarios, onClose, onSuccess, userId }: NuevoMapeoMod
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">
               Notas (opcional)
             </label>
             <textarea
@@ -689,23 +678,23 @@ function NuevoMapeoModal({ usuarios, onClose, onSuccess, userId }: NuevoMapeoMod
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
               placeholder="Información adicional sobre este mapeo..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent"
             />
           </div>
         </div>
 
-        <div className="flex items-center justify-end space-x-3 p-6 border-t bg-gray-50">
-          <button
+        <div className="flex items-center justify-end space-x-3 p-6 border-t border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 rounded-b-xl">
+          <Button
             onClick={onClose}
             disabled={saving}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+            variant="outline"
           >
             Cancelar
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleCrear}
             disabled={saving}
-            className="px-6 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50 flex items-center space-x-2"
+            className="flex items-center space-x-2"
           >
             {saving ? (
               <>
@@ -718,7 +707,7 @@ function NuevoMapeoModal({ usuarios, onClose, onSuccess, userId }: NuevoMapeoMod
                 <span>Crear Mapeo</span>
               </>
             )}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft, Upload, AlertCircle, CheckCircle, Loader2, Users, UserX } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { PageHeader } from '@/components/ui/page-header';
 
 interface StagingSession {
   id: string;
@@ -153,13 +154,13 @@ export default function ComisionesUploadNuevo() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-6">
-        <div className="bg-white rounded-3xl shadow-soft p-12 text-center max-w-md">
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center p-6">
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 shadow-soft p-12 text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-neutral-900 mb-2">
+          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
             Acceso Denegado
           </h2>
-          <p className="text-neutral-600 mb-6">
+          <p className="text-neutral-600 dark:text-white/60 mb-6">
             Solo los administradores pueden acceder a esta sección.
           </p>
           <button
@@ -175,25 +176,15 @@ export default function ComisionesUploadNuevo() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate('/comisiones')}
-              className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6 text-neutral-700" />
-            </button>
-            <div>
-              <h1 className="text-3xl font-display font-bold text-accent mb-1">
-                Cargar Archivo de Comisiones
-              </h1>
-              <p className="text-neutral-600">
-                Sube un archivo Excel (.xlsx) o CSV (.csv) para procesarlo e identificar vendedores
-              </p>
-            </div>
-          </div>
-        </div>
+      <PageHeader
+        title="Cargar Archivo de Comisiones"
+        description="Sube un archivo Excel (.xlsx) o CSV (.csv) para procesarlo e identificar vendedores"
+        icon={Upload}
+        backTo="/comisiones"
+        backLabel="Regresar"
+      />
+
+      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-6">
 
         <div className="bg-primary-50 border border-primary-200 rounded-xl p-4 mb-6">
           <h3 className="font-semibold text-primary-900 mb-2">
@@ -229,7 +220,7 @@ export default function ComisionesUploadNuevo() {
         {!session ? (
           <div className="space-y-6">
             {!file ? (
-              <div className="border-2 border-dashed border-neutral-300 rounded-2xl p-12 text-center hover:border-primary-400 transition-colors">
+              <div className="border-2 border-dashed border-neutral-300 dark:border-white/15 rounded-2xl p-12 text-center hover:border-primary-400 transition-colors">
                 <label htmlFor="file-upload" className="cursor-pointer block">
                   <input
                     id="file-upload"
@@ -238,11 +229,11 @@ export default function ComisionesUploadNuevo() {
                     onChange={handleFileSelect}
                     className="hidden"
                   />
-                  <Upload className="w-16 h-16 text-neutral-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-neutral-700 mb-2">
+                  <Upload className="w-16 h-16 text-neutral-400 dark:text-white/40 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-neutral-700 dark:text-white/70 mb-2">
                     Haz clic para seleccionar un archivo
                   </h3>
-                  <p className="text-neutral-500">
+                  <p className="text-neutral-500 dark:text-white/50">
                     o arrastra y suelta aquí un archivo .xlsx o .csv
                   </p>
                 </label>
@@ -272,7 +263,7 @@ export default function ComisionesUploadNuevo() {
                   <button
                     onClick={handleUpload}
                     disabled={uploading}
-                    className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl hover:shadow-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                    className="flex items-center space-x-2 px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
                   >
                     {uploading ? (
                       <>
@@ -358,21 +349,21 @@ export default function ComisionesUploadNuevo() {
               </div>
             )}
 
-            <div className="flex justify-between items-center pt-4 border-t border-neutral-200">
+            <div className="flex justify-between items-center pt-4 border-t border-neutral-200 dark:border-white/10">
               <button
                 onClick={() => {
                   setFile(null);
                   setSession(null);
                   setError(null);
                 }}
-                className="text-neutral-600 hover:text-neutral-900 font-semibold"
+                className="text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white font-semibold"
               >
                 Cargar otro archivo
               </button>
 
               <button
                 onClick={handlePrepararLote}
-                className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl hover:shadow-medium transition-all duration-200 font-semibold"
+                className="flex items-center space-x-2 px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-all duration-200 font-semibold"
               >
                 <span>Preparar Lote</span>
                 <ArrowLeft className="w-5 h-5 rotate-180" />

@@ -239,36 +239,36 @@ export function Chat() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-neutral-50">
+    <div className="h-full flex flex-col bg-neutral-50 dark:bg-neutral-900">
       {/* Header */}
-      <div className="bg-white border-b border-neutral-200 px-6 py-4">
+      <div className="bg-white dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-white/8 px-4 sm:px-6 py-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="p-2 bg-primary-100 rounded-lg">
-              <MessageSquare className="w-6 h-6 text-accent" />
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-accent/10 rounded-lg">
+              <MessageSquare className="w-5 h-5 text-accent" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-accent">Chat</h1>
-              <p className="text-sm text-neutral-600">Mensajería interna en tiempo real</p>
+              <h1 className="text-lg font-bold text-neutral-900 dark:text-white">Chat</h1>
+              <p className="text-xs text-neutral-500 dark:text-white/50">Mensajeria interna en tiempo real</p>
             </div>
           </div>
 
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setShowNuevoChat(true)}
-              className="flex items-center space-x-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-all"
+              className="flex items-center space-x-1.5 px-3 py-2 text-sm font-medium bg-accent text-white rounded-lg hover:bg-accent-hover transition-all"
             >
-              <Plus className="w-5 h-5" />
-              <span>Nuevo Chat</span>
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Nuevo Chat</span>
             </button>
 
             {usuario.rol !== 'Empleado' && (
               <button
                 onClick={() => setShowNuevoGrupo(true)}
-                className="flex items-center space-x-2 px-4 py-2 border border-accent text-accent rounded-lg hover:bg-primary-50 transition-all"
+                className="flex items-center space-x-1.5 px-3 py-2 text-sm font-medium border border-neutral-200 dark:border-white/10 text-neutral-700 dark:text-white/70 rounded-lg hover:bg-neutral-50 dark:hover:bg-white/5 transition-all"
               >
-                <Users className="w-5 h-5" />
-                <span>Nuevo Grupo</span>
+                <Users className="w-4 h-4" />
+                <span className="hidden sm:inline">Nuevo Grupo</span>
               </button>
             )}
           </div>
@@ -278,17 +278,17 @@ export function Chat() {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Sidebar */}
-        <div className="w-80 border-r border-neutral-200 bg-white flex flex-col">
+        <div className="w-80 border-r border-neutral-200 dark:border-white/8 bg-white dark:bg-neutral-800/30 flex flex-col">
           {/* Search */}
-          <div className="p-4 border-b border-neutral-200">
+          <div className="p-3 border-b border-neutral-200 dark:border-white/8">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-white/30" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Buscar chats..."
-                className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-9 pr-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
               />
             </div>
           </div>
@@ -297,13 +297,13 @@ export function Chat() {
           <div className="flex-1 overflow-y-auto">
             {loading ? (
               <div className="flex items-center justify-center h-full">
-                <div className="text-neutral-600">Cargando chats...</div>
+                <div className="text-sm text-neutral-500 dark:text-white/40">Cargando chats...</div>
               </div>
             ) : filteredChats.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-                <MessageSquare className="w-16 h-16 text-neutral-300 mb-4" />
-                <p className="text-neutral-600 mb-2">No tienes chats aún</p>
-                <p className="text-sm text-neutral-500">
+                <MessageSquare className="w-12 h-12 text-neutral-300 dark:text-white/15 mb-3" />
+                <p className="text-sm text-neutral-600 dark:text-white/50 mb-1">No tienes chats aun</p>
+                <p className="text-xs text-neutral-500 dark:text-white/30">
                   Crea un nuevo chat o grupo para comenzar
                 </p>
               </div>
@@ -331,14 +331,14 @@ export function Chat() {
               />
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center bg-neutral-100">
+            <div className="flex-1 flex items-center justify-center bg-neutral-50 dark:bg-neutral-900">
               <div className="text-center">
-                <MessageSquare className="w-24 h-24 text-neutral-300 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-neutral-600 mb-2">
+                <MessageSquare className="w-16 h-16 text-neutral-200 dark:text-white/10 mx-auto mb-3" />
+                <h3 className="text-base font-semibold text-neutral-600 dark:text-white/50 mb-1">
                   Selecciona un chat
                 </h3>
-                <p className="text-neutral-500">
-                  Elige una conversación para ver los mensajes
+                <p className="text-sm text-neutral-500 dark:text-white/30">
+                  Elige una conversacion para ver los mensajes
                 </p>
               </div>
             </div>

@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Settings, Save, Plus, Trash2, X } from 'lucide-react';
+import { Settings, Save, Plus, X } from 'lucide-react';
 import type { Database } from '../lib/database.types';
+import { PageHeader } from '@/components/ui/page-header';
+import { Button } from '@/components/ui/button';
+import { LoadingState } from '@/components/ui/loading-state';
 
 type PermisosCampo = Database['public']['Tables']['permisos_campos']['Row'];
 type CampoPersonalizado = Database['public']['Tables']['campos_personalizados']['Row'];
@@ -193,58 +196,40 @@ export function Configuracion() {
   };
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
+    return <LoadingState text="Cargando configuracion..." />;
   }
 
   return (
-    <div>
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
-          <div className="flex items-center space-x-3">
-            <Settings className="w-8 h-8 text-white" />
-            <div>
-              <h1 className="text-2xl font-bold text-white">Configuración del Sistema</h1>
-              <p className="text-primary-100 mt-1">Gestiona permisos y campos personalizados</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="border-b border-slate-200">
-          <div className="flex px-8">
+    <div className="space-y-5">
+      <PageHeader
+        title="Configuracion del Sistema"
+        description="Gestiona permisos y campos personalizados"
+        icon={Settings}
+      >
+        <div className="flex gap-1 border-b border-neutral-200 dark:border-white/8">
+          {([['permisos', 'Permisos de Campos'], ['campos', 'Campos Personalizados']] as const).map(([key, label]) => (
             <button
-              onClick={() => setActiveTab('permisos')}
-              className={`px-6 py-4 font-medium transition border-b-2 ${
-                activeTab === 'permisos'
-                  ? 'border-accent text-accent'
-                  : 'border-transparent text-slate-600 hover:text-slate-800'
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={`px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
+                activeTab === key
+                  ? 'text-accent border-accent'
+                  : 'text-neutral-500 dark:text-white/50 border-transparent hover:text-neutral-700 dark:hover:text-white/70'
               }`}
             >
-              Permisos de Campos
+              {label}
             </button>
-            <button
-              onClick={() => setActiveTab('campos')}
-              className={`px-6 py-4 font-medium transition border-b-2 ${
-                activeTab === 'campos'
-                  ? 'border-accent text-accent'
-                  : 'border-transparent text-slate-600 hover:text-slate-800'
-              }`}
-            >
-              Campos Personalizados
-            </button>
-          </div>
+          ))}
         </div>
+      </PageHeader>
 
-        <div className="p-8">
+      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-5 sm:p-8">
           {message && (
             <div
-              className={`mb-6 px-4 py-3 rounded-lg ${
+              className={`mb-6 px-4 py-3 rounded-lg text-sm ${
                 message.type === 'success'
-                  ? 'bg-green-50 text-green-700 border border-green-200'
-                  : 'bg-red-50 text-red-700 border border-red-200'
+                  ? 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-500/20'
+                  : 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20'
               }`}
             >
               {message.text}
@@ -253,27 +238,27 @@ export function Configuracion() {
 
           {activeTab === 'permisos' ? (
             <>
-              <div className="mb-6 p-4 bg-primary-50 border border-primary-200 rounded-lg">
-                <p className="text-sm text-primary-800">
+              <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg">
+                <p className="text-sm text-blue-800 dark:text-blue-300">
                   <strong>Nota:</strong> Los administradores siempre tienen acceso completo a todos los campos.
-                  Esta configuración afecta a Empleados, Agentes y Gerentes.
+                  Esta configuracion afecta a Empleados, Agentes y Gerentes.
                 </p>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-slate-50 border-b-2 border-slate-200">
+                  <thead className="bg-neutral-50 dark:bg-white/5 border-b border-neutral-200 dark:border-white/10">
                     <tr>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 dark:text-white/60 uppercase tracking-wider">
                         Campo
                       </th>
                       {roles.map((rol) => (
                         <th
                           key={rol}
-                          className="px-6 py-4 text-center text-sm font-semibold text-slate-700"
+                          className="px-4 py-3 text-center text-xs font-semibold text-neutral-600 dark:text-white/60 uppercase tracking-wider"
                         >
                           <div>{rol}</div>
-                          <div className="text-xs font-normal text-slate-500 mt-1">
+                          <div className="text-[10px] font-normal text-neutral-400 dark:text-white/30 mt-1">
                             <span className="inline-block mr-3">V = Visible</span>
                             <span className="inline-block">E = Editable</span>
                           </div>
@@ -281,10 +266,10 @@ export function Configuracion() {
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200">
+                  <tbody className="divide-y divide-neutral-200 dark:divide-white/5">
                     {campos.map((campo) => (
-                      <tr key={campo.key} className="hover:bg-slate-50 transition">
-                        <td className="px-6 py-4 text-sm font-medium text-slate-900">
+                      <tr key={campo.key} className="hover:bg-neutral-50 dark:hover:bg-white/3 transition">
+                        <td className="px-4 py-3 text-sm font-medium text-neutral-900 dark:text-white">
                           {campo.label}
                         </td>
                         {roles.map((rol) => {
@@ -292,16 +277,16 @@ export function Configuracion() {
                           if (!permiso) return <td key={rol}></td>;
 
                           return (
-                            <td key={rol} className="px-6 py-4">
+                            <td key={rol} className="px-4 py-3">
                               <div className="flex items-center justify-center space-x-4">
                                 <label className="flex items-center space-x-2 cursor-pointer">
                                   <input
                                     type="checkbox"
                                     checked={permiso.visible}
                                     onChange={() => toggleVisible(rol, campo.key)}
-                                    className="w-5 h-5 text-accent rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                                    className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-accent/30 cursor-pointer"
                                   />
-                                  <span className="text-sm text-slate-600">V</span>
+                                  <span className="text-xs text-neutral-500 dark:text-white/50">V</span>
                                 </label>
                                 <label
                                   className={`flex items-center space-x-2 ${
@@ -313,9 +298,9 @@ export function Configuracion() {
                                     checked={permiso.editable}
                                     onChange={() => toggleEditable(rol, campo.key)}
                                     disabled={!permiso.visible}
-                                    className="w-5 h-5 text-green-600 rounded focus:ring-2 focus:ring-green-500 cursor-pointer disabled:cursor-not-allowed"
+                                    className="w-4 h-4 text-green-600 rounded focus:ring-2 focus:ring-green-500/30 cursor-pointer disabled:cursor-not-allowed"
                                   />
-                                  <span className="text-sm text-slate-600">E</span>
+                                  <span className="text-xs text-neutral-500 dark:text-white/50">E</span>
                                 </label>
                               </div>
                             </td>
@@ -328,114 +313,106 @@ export function Configuracion() {
               </div>
 
               <div className="mt-8 flex justify-end">
-                <button
-                  onClick={handleSavePermisos}
-                  disabled={saving}
-                  className="flex items-center space-x-2 bg-accent hover:bg-accent-hover text-white px-6 py-3 rounded-lg font-medium transition disabled:opacity-50"
-                >
-                  <Save className="w-5 h-5" />
-                  <span>{saving ? 'Guardando...' : 'Guardar Configuración'}</span>
-                </button>
+                <Button onClick={handleSavePermisos} disabled={saving}>
+                  <Save className="w-4 h-4 mr-2" />
+                  {saving ? 'Guardando...' : 'Guardar Configuracion'}
+                </Button>
               </div>
             </>
           ) : (
             <>
-              <div className="mb-6 flex justify-between items-center">
-                <p className="text-sm text-slate-600">
-                  Crea campos personalizados que se mostrarán en todos los perfiles de usuario
+              <div className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                <p className="text-sm text-neutral-600 dark:text-white/50">
+                  Crea campos personalizados que se mostraran en todos los perfiles de usuario
                 </p>
-                <button
-                  onClick={() => setShowNewFieldModal(true)}
-                  className="flex items-center space-x-2 bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-lg font-medium transition"
-                >
-                  <Plus className="w-5 h-5" />
-                  <span>Agregar Campo</span>
-                </button>
+                <Button size="sm" onClick={() => setShowNewFieldModal(true)}>
+                  <Plus className="w-4 h-4 mr-1.5" />
+                  Agregar Campo
+                </Button>
               </div>
 
               {camposPersonalizados.length === 0 ? (
-                <div className="text-center py-12 bg-slate-50 rounded-lg">
-                  <p className="text-slate-600">No hay campos personalizados creados</p>
-                  <p className="text-sm text-slate-500 mt-2">
+                <div className="text-center py-12 bg-neutral-50 dark:bg-white/3 rounded-lg">
+                  <p className="text-neutral-600 dark:text-white/60">No hay campos personalizados creados</p>
+                  <p className="text-sm text-neutral-500 dark:text-white/40 mt-2">
                     Haz clic en "Agregar Campo" para crear uno nuevo
                   </p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {camposPersonalizados.map((campo) => (
                     <div
                       key={campo.id}
-                      className={`border rounded-lg p-6 ${
-                        campo.activo ? 'border-slate-200 bg-white' : 'border-slate-200 bg-slate-50'
+                      className={`border rounded-xl p-5 transition-all ${
+                        campo.activo
+                          ? 'border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-800/30'
+                          : 'border-neutral-200 dark:border-white/5 bg-neutral-50 dark:bg-white/3 opacity-75'
                       }`}
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-3">
-                            <h3 className="text-lg font-semibold text-slate-900">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-3">
+                            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">
                               {campo.nombre}
                             </h3>
                             <span
-                              className={`px-2 py-1 text-xs font-medium rounded ${
+                              className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${
                                 campo.activo
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-slate-200 text-slate-600'
+                                  ? 'bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400'
+                                  : 'bg-neutral-200 dark:bg-white/10 text-neutral-600 dark:text-white/50'
                               }`}
                             >
                               {campo.activo ? 'Activo' : 'Inactivo'}
                             </span>
-                            <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-700 rounded">
+                            <span className="px-2 py-0.5 text-[10px] font-semibold bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 rounded-full">
                               {campo.tipo}
                             </span>
                           </div>
 
-                          <div className="grid grid-cols-3 gap-4">
-                            <label className="flex items-center space-x-2">
+                          <div className="flex flex-wrap gap-4">
+                            <label className="flex items-center space-x-2 cursor-pointer">
                               <input
                                 type="checkbox"
                                 checked={campo.visible}
                                 onChange={(e) =>
                                   handleUpdateField(campo.id, { visible: e.target.checked })
                                 }
-                                className="w-4 h-4 text-accent rounded"
+                                className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-accent/30"
                               />
-                              <span className="text-sm text-slate-700">Visible</span>
+                              <span className="text-xs text-neutral-700 dark:text-white/60">Visible</span>
                             </label>
-                            <label className="flex items-center space-x-2">
+                            <label className="flex items-center space-x-2 cursor-pointer">
                               <input
                                 type="checkbox"
                                 checked={campo.editable}
                                 onChange={(e) =>
                                   handleUpdateField(campo.id, { editable: e.target.checked })
                                 }
-                                className="w-4 h-4 text-accent rounded"
+                                className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-accent/30"
                               />
-                              <span className="text-sm text-slate-700">Editable</span>
+                              <span className="text-xs text-neutral-700 dark:text-white/60">Editable</span>
                             </label>
-                            <label className="flex items-center space-x-2">
+                            <label className="flex items-center space-x-2 cursor-pointer">
                               <input
                                 type="checkbox"
                                 checked={campo.requerido}
                                 onChange={(e) =>
                                   handleUpdateField(campo.id, { requerido: e.target.checked })
                                 }
-                                className="w-4 h-4 text-accent rounded"
+                                className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-accent/30"
                               />
-                              <span className="text-sm text-slate-700">Requerido</span>
+                              <span className="text-xs text-neutral-700 dark:text-white/60">Requerido</span>
                             </label>
                           </div>
                         </div>
 
-                        <button
+                        <Button
+                          variant={campo.activo ? 'destructive' : 'outline'}
+                          size="sm"
                           onClick={() => handleToggleFieldActive(campo.id, campo.activo)}
-                          className={`ml-4 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                            campo.activo
-                              ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                              : 'bg-green-100 text-green-700 hover:bg-green-200'
-                          }`}
                         >
                           {campo.activo ? 'Desactivar' : 'Activar'}
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -443,38 +420,37 @@ export function Configuracion() {
               )}
             </>
           )}
-        </div>
       </div>
 
       {showNewFieldModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-900">Nuevo Campo Personalizado</h2>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-xl max-w-md w-full">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 dark:border-white/10">
+              <h2 className="text-base font-bold text-neutral-900 dark:text-white">Nuevo Campo Personalizado</h2>
               <button
                 onClick={() => setShowNewFieldModal(false)}
-                className="text-slate-400 hover:text-slate-600"
+                className="text-neutral-400 hover:text-neutral-600 dark:hover:text-white/70 transition-colors"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-5 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-1.5">
                   Nombre del Campo
                 </label>
                 <input
                   type="text"
                   value={newField.nombre}
                   onChange={(e) => setNewField({ ...newField, nombre: e.target.value })}
-                  placeholder="Ej: Número de Seguro Social"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Ej: Numero de Seguro Social"
+                  className="w-full px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/80"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-1.5">
                   Tipo de Dato
                 </label>
                 <select
@@ -485,60 +461,53 @@ export function Configuracion() {
                       tipo: e.target.value as 'texto' | 'numero' | 'fecha' | 'booleano',
                     })
                   }
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/80"
                 >
                   <option value="texto">Texto</option>
-                  <option value="numero">Número</option>
+                  <option value="numero">Numero</option>
                   <option value="fecha">Fecha</option>
-                  <option value="booleano">Sí/No</option>
+                  <option value="booleano">Si/No</option>
                 </select>
               </div>
 
-              <div className="space-y-2">
-                <label className="flex items-center space-x-2">
+              <div className="space-y-2.5">
+                <label className="flex items-center space-x-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={newField.visible}
                     onChange={(e) => setNewField({ ...newField, visible: e.target.checked })}
-                    className="w-4 h-4 text-accent rounded"
+                    className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-accent/30"
                   />
-                  <span className="text-sm text-slate-700">Visible para usuarios</span>
+                  <span className="text-sm text-neutral-700 dark:text-white/70">Visible para usuarios</span>
                 </label>
-                <label className="flex items-center space-x-2">
+                <label className="flex items-center space-x-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={newField.editable}
                     onChange={(e) => setNewField({ ...newField, editable: e.target.checked })}
-                    className="w-4 h-4 text-accent rounded"
+                    className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-accent/30"
                   />
-                  <span className="text-sm text-slate-700">Editable por usuarios</span>
+                  <span className="text-sm text-neutral-700 dark:text-white/70">Editable por usuarios</span>
                 </label>
-                <label className="flex items-center space-x-2">
+                <label className="flex items-center space-x-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={newField.requerido}
                     onChange={(e) => setNewField({ ...newField, requerido: e.target.checked })}
-                    className="w-4 h-4 text-accent rounded"
+                    className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-accent/30"
                   />
-                  <span className="text-sm text-slate-700">Campo requerido</span>
+                  <span className="text-sm text-neutral-700 dark:text-white/70">Campo requerido</span>
                 </label>
               </div>
             </div>
 
-            <div className="px-6 py-4 bg-slate-50 rounded-b-2xl flex justify-end space-x-3">
-              <button
-                onClick={() => setShowNewFieldModal(false)}
-                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-100 transition"
-              >
+            <div className="px-5 py-4 bg-neutral-50 dark:bg-white/3 rounded-b-xl border-t border-neutral-200 dark:border-white/10 flex justify-end gap-3">
+              <Button variant="outline" size="sm" onClick={() => setShowNewFieldModal(false)}>
                 Cancelar
-              </button>
-              <button
-                onClick={handleCreateField}
-                disabled={saving}
-                className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition disabled:opacity-50"
-              >
+              </Button>
+              <Button size="sm" onClick={handleCreateField} disabled={saving}>
                 {saving ? 'Creando...' : 'Crear Campo'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

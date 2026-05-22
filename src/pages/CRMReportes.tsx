@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Download,
   TrendingUp,
   DollarSign,
   FileText,
   Users,
-  ArrowLeft,
   BarChart3,
   PieChart,
   Filter,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { PageHeader } from '@/components/ui/page-header';
+import { Button } from '@/components/ui/button';
+import { LoadingState } from '@/components/ui/loading-state';
 
 interface ReporteData {
   totalContactos: number;
@@ -25,7 +26,6 @@ interface ReporteData {
 }
 
 export default function CRMReportes() {
-  const navigate = useNavigate();
   const [fechaInicio, setFechaInicio] = useState(() => {
     const d = new Date();
     d.setMonth(d.getMonth() - 3);
@@ -122,77 +122,61 @@ export default function CRMReportes() {
   };
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-5">
-        <button
-          onClick={() => navigate('/mi-crm')}
-          className="flex items-center text-sm text-gray-500 hover:text-gray-700 mb-3 transition"
-        >
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          Mi CRM
-        </button>
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Reportes y Analiticas</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Analiza el desempeno de tu CRM</p>
-          </div>
-          {reporteData && (
-            <button
-              onClick={exportarCSV}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium shadow-sm"
-            >
-              <Download className="h-4 w-4" />
-              Exportar CSV
-            </button>
-          )}
-        </div>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="Reportes y Analiticas"
+        description="Analiza el desempeno de tu CRM"
+        icon={BarChart3}
+        backTo="/mi-crm"
+        backLabel="Mi CRM"
+        actions={reporteData ? (
+          <Button variant="outline" size="sm" onClick={exportarCSV}>
+            <Download className="h-4 w-4 mr-1.5" />
+            Exportar CSV
+          </Button>
+        ) : undefined}
+      />
 
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-5">
-        <div className="flex flex-col md:flex-row md:items-end gap-3">
+      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4">
+        <div className="flex flex-col sm:flex-row sm:items-end gap-3">
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Fecha Inicio</label>
+              <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-1.5">
+                Fecha Inicio
+              </label>
               <input
                 type="date"
                 value={fechaInicio}
                 onChange={(e) => setFechaInicio(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/80"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Fecha Fin</label>
+              <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-1.5">
+                Fecha Fin
+              </label>
               <input
                 type="date"
                 value={fechaFin}
                 onChange={(e) => setFechaFin(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/80"
               />
             </div>
           </div>
-          <button
-            onClick={generarReporte}
-            disabled={loading}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium disabled:opacity-50"
-          >
-            <Filter className="h-4 w-4" />
+          <Button size="sm" onClick={generarReporte} disabled={loading}>
+            <Filter className="h-4 w-4 mr-1.5" />
             {loading ? 'Cargando...' : 'Aplicar'}
-          </button>
+          </Button>
         </div>
       </div>
 
-      {loading && !reporteData && (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-blue-600 border-t-transparent"></div>
-        </div>
-      )}
+      {loading && !reporteData && <LoadingState text="Generando reporte..." />}
 
       {reporteData && (
         <>
           {/* KPI Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
             <MetricCard label="Contactos" value={reporteData.totalContactos} icon={<Users className="h-4 w-4" />} color="blue" />
             <MetricCard label="Clientes" value={reporteData.totalClientes} icon={<Users className="h-4 w-4" />} color="green" />
             <MetricCard label="Conversion" value={`${reporteData.tasaConversion.toFixed(1)}%`} icon={<TrendingUp className="h-4 w-4" />} color="emerald" />
@@ -202,12 +186,11 @@ export default function CRMReportes() {
           </div>
 
           {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {/* Distribution by Status */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-5">
               <div className="flex items-center gap-2 mb-4">
-                <PieChart className="h-4 w-4 text-gray-500" />
-                <h3 className="text-sm font-semibold text-gray-900">Distribucion por Estatus</h3>
+                <PieChart className="h-4 w-4 text-neutral-400 dark:text-white/30" />
+                <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Por Estatus</h3>
               </div>
               <div className="space-y-3">
                 {Object.entries(reporteData.porEstatus)
@@ -219,12 +202,12 @@ export default function CRMReportes() {
                     return (
                       <div key={estatus}>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-medium text-gray-600">{estatus}</span>
-                          <span className="text-xs text-gray-500">{count} ({pct}%)</span>
+                          <span className="text-xs font-medium text-neutral-600 dark:text-white/60">{estatus}</span>
+                          <span className="text-xs text-neutral-400 dark:text-white/30">{count} ({pct}%)</span>
                         </div>
-                        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="w-full h-1.5 bg-neutral-100 dark:bg-white/5 rounded-full overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all duration-500 ${estatusColors[estatus] || 'bg-gray-400'}`}
+                            className={`h-full rounded-full transition-all duration-500 ${estatusColors[estatus] || 'bg-neutral-400'}`}
                             style={{ width: `${Math.max(pct, 2)}%` }}
                           />
                         </div>
@@ -232,16 +215,15 @@ export default function CRMReportes() {
                     );
                   })}
                 {Object.keys(reporteData.porEstatus).length === 0 && (
-                  <p className="text-xs text-gray-400 text-center py-4">Sin datos en este periodo</p>
+                  <p className="text-xs text-neutral-400 dark:text-white/30 text-center py-4">Sin datos en este periodo</p>
                 )}
               </div>
             </div>
 
-            {/* Distribution by Source */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-5">
               <div className="flex items-center gap-2 mb-4">
-                <BarChart3 className="h-4 w-4 text-gray-500" />
-                <h3 className="text-sm font-semibold text-gray-900">Distribucion por Fuente</h3>
+                <BarChart3 className="h-4 w-4 text-neutral-400 dark:text-white/30" />
+                <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Por Fuente</h3>
               </div>
               <div className="space-y-3">
                 {Object.entries(reporteData.porFuente)
@@ -253,12 +235,12 @@ export default function CRMReportes() {
                     return (
                       <div key={fuente}>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-medium text-gray-600">{fuente}</span>
-                          <span className="text-xs text-gray-500">{count} ({pct}%)</span>
+                          <span className="text-xs font-medium text-neutral-600 dark:text-white/60">{fuente}</span>
+                          <span className="text-xs text-neutral-400 dark:text-white/30">{count} ({pct}%)</span>
                         </div>
-                        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="w-full h-1.5 bg-neutral-100 dark:bg-white/5 rounded-full overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-blue-400 transition-all duration-500"
+                            className="h-full rounded-full bg-accent transition-all duration-500"
                             style={{ width: `${Math.max(pct, 2)}%` }}
                           />
                         </div>
@@ -266,7 +248,7 @@ export default function CRMReportes() {
                     );
                   })}
                 {Object.keys(reporteData.porFuente).length === 0 && (
-                  <p className="text-xs text-gray-400 text-center py-4">Sin datos en este periodo</p>
+                  <p className="text-xs text-neutral-400 dark:text-white/30 text-center py-4">Sin datos en este periodo</p>
                 )}
               </div>
             </div>
@@ -286,16 +268,16 @@ function MetricCard({
   color: 'blue' | 'green' | 'orange' | 'emerald' | 'teal';
 }) {
   const colors = {
-    blue: 'bg-blue-50 text-blue-600 border-blue-100',
-    green: 'bg-green-50 text-green-600 border-green-100',
-    orange: 'bg-orange-50 text-orange-600 border-orange-100',
-    emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
-    teal: 'bg-teal-50 text-teal-600 border-teal-100',
+    blue: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-500/20',
+    green: 'bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border-green-100 dark:border-green-500/20',
+    orange: 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-100 dark:border-orange-500/20',
+    emerald: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20',
+    teal: 'bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-100 dark:border-teal-500/20',
   };
 
   return (
     <div className={`p-3 rounded-xl border ${colors[color]}`}>
-      <div className="flex items-center gap-1.5 mb-1">{icon}<span className="text-[10px] font-medium opacity-80">{label}</span></div>
+      <div className="flex items-center gap-1.5 mb-1">{icon}<span className="text-[10px] font-medium opacity-70">{label}</span></div>
       <p className="text-lg font-bold">{value}</p>
     </div>
   );

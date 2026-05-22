@@ -18,6 +18,7 @@ import {
   evaluarExamen
 } from '../lib/cedulaAUtils';
 import type { CedulaAExamen, CedulaAPregunta, ResultadoEvaluacion } from '../lib/cedulaATypes';
+import { LoadingState } from '@/components/ui/loading-state';
 
 export default function ExamenInterface() {
   const { examenId } = useParams<{ examenId: string }>();
@@ -128,7 +129,7 @@ export default function ExamenInterface() {
     } else if (respondida) {
       return 'bg-emerald-500 text-white';
     } else {
-      return 'bg-neutral-200 text-neutral-600';
+      return 'bg-neutral-200 dark:bg-white/10 text-neutral-600 dark:text-white/60';
     }
   };
 
@@ -145,20 +146,17 @@ export default function ExamenInterface() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-neutral-600">Cargando examen...</p>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-900 flex items-center justify-center">
+        <LoadingState text="Cargando examen..." />
       </div>
     );
   }
 
   if (!examen || preguntas.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-900 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-neutral-600 mb-4">No se encontró el examen</p>
+          <p className="text-neutral-600 dark:text-white/60 mb-4">No se encontró el examen</p>
           <button
             onClick={() => navigate('/seguros-education/cedula-a')}
             className="text-accent hover:text-primary-700"
@@ -172,9 +170,9 @@ export default function ExamenInterface() {
 
   if (resultado) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50">
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-900">
         <div className="max-w-5xl mx-auto px-4 py-8">
-          <div className="bg-white rounded-ios-xl shadow-ios-lg p-8 mb-6">
+          <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 shadow-ios-lg p-8 mb-6">
             <div className="text-center mb-8">
               <div className={`w-24 h-24 rounded-full mx-auto mb-4 flex items-center justify-center ${
                 resultado.aprobado ? 'bg-emerald-100' : 'bg-red-100'
@@ -185,33 +183,33 @@ export default function ExamenInterface() {
                   <XCircle className="w-12 h-12 text-red-600" />
                 )}
               </div>
-              <h1 className="text-3xl font-bold text-neutral-900 mb-2">
+              <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">
                 {resultado.aprobado ? '¡Felicidades!' : 'Sigue Practicando'}
               </h1>
-              <p className="text-lg text-neutral-600 mb-6">
+              <p className="text-lg text-neutral-600 dark:text-white/60 mb-6">
                 {resultado.aprobado
                   ? 'Has aprobado el examen exitosamente'
                   : 'No alcanzaste el puntaje mínimo requerido'}
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-neutral-50 rounded-ios-lg p-4">
+                <div className="bg-neutral-50 dark:bg-white/5 rounded-ios-lg p-4">
                   <div className="text-3xl font-bold text-accent mb-1">
                     {resultado.puntaje}%
                   </div>
-                  <div className="text-sm text-neutral-600">Calificación</div>
+                  <div className="text-sm text-neutral-600 dark:text-white/60">Calificación</div>
                 </div>
-                <div className="bg-neutral-50 rounded-ios-lg p-4">
-                  <div className="text-3xl font-bold text-neutral-900 mb-1">
+                <div className="bg-neutral-50 dark:bg-white/5 rounded-ios-lg p-4">
+                  <div className="text-3xl font-bold text-neutral-900 dark:text-white mb-1">
                     {resultado.respuestas_correctas}/{resultado.total_preguntas}
                   </div>
-                  <div className="text-sm text-neutral-600">Correctas</div>
+                  <div className="text-sm text-neutral-600 dark:text-white/60">Correctas</div>
                 </div>
-                <div className="bg-neutral-50 rounded-ios-lg p-4">
-                  <div className="text-3xl font-bold text-neutral-900 mb-1">
+                <div className="bg-neutral-50 dark:bg-white/5 rounded-ios-lg p-4">
+                  <div className="text-3xl font-bold text-neutral-900 dark:text-white mb-1">
                     {formatearTiempo(tiempoTranscurrido)}
                   </div>
-                  <div className="text-sm text-neutral-600">Tiempo</div>
+                  <div className="text-sm text-neutral-600 dark:text-white/60">Tiempo</div>
                 </div>
               </div>
             </div>
@@ -242,8 +240,8 @@ export default function ExamenInterface() {
             </div>
           </div>
 
-          <div className="bg-white rounded-ios-xl shadow-ios p-6">
-            <h2 className="text-xl font-bold text-neutral-900 mb-4">Retroalimentación Detallada</h2>
+          <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 shadow-ios p-6">
+            <h2 className="text-xl font-bold text-neutral-900 dark:text-white mb-4">Retroalimentación Detallada</h2>
             <div className="space-y-6">
               {resultado.retroalimentacion.map((retro, index) => (
                 <div key={index} className={`border-l-4 rounded-ios-lg p-4 ${
@@ -256,10 +254,10 @@ export default function ExamenInterface() {
                       <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                     )}
                     <div className="flex-1">
-                      <h3 className="font-semibold text-neutral-900 mb-2">
+                      <h3 className="font-semibold text-neutral-900 dark:text-white mb-2">
                         Pregunta {index + 1}
                       </h3>
-                      <p className="text-neutral-700">{retro.pregunta}</p>
+                      <p className="text-neutral-700 dark:text-white/70">{retro.pregunta}</p>
                     </div>
                   </div>
 
@@ -276,7 +274,7 @@ export default function ExamenInterface() {
                               ? 'bg-emerald-100 border-2 border-emerald-500'
                               : esRespuestaUsuario && !retro.es_correcta
                               ? 'bg-red-100 border-2 border-red-500'
-                              : 'bg-white border border-neutral-200'
+                              : 'bg-white dark:bg-white/5 border border-neutral-200 dark:border-white/10'
                           }`}
                         >
                           <div className="flex items-center gap-2">
@@ -294,9 +292,9 @@ export default function ExamenInterface() {
                     })}
                   </div>
 
-                  <div className="bg-white rounded-ios p-3">
-                    <h4 className="font-semibold text-neutral-900 mb-1">Explicación:</h4>
-                    <p className="text-neutral-700">{retro.explicacion}</p>
+                  <div className="bg-white dark:bg-white/5 rounded-ios p-3">
+                    <h4 className="font-semibold text-neutral-900 dark:text-white mb-1">Explicación:</h4>
+                    <p className="text-neutral-700 dark:text-white/70">{retro.explicacion}</p>
                   </div>
                 </div>
               ))}
@@ -312,36 +310,36 @@ export default function ExamenInterface() {
   const progresoRespuestas = Math.round((respondidas / preguntas.length) * 100);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 flex flex-col">
-      <div className="bg-white/80 backdrop-blur-sm border-b border-neutral-200/50 px-4 sm:px-6 py-4 sticky top-0 z-10">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-900 flex flex-col">
+      <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm border-b border-neutral-200/50 dark:border-white/10 px-4 sm:px-6 py-4 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto">
           <button
             onClick={() => navigate('/seguros-education/cedula-a')}
-            className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 mb-3 transition-colors"
+            className="flex items-center gap-2 text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white mb-3 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             <span className="text-sm">Volver al curso</span>
           </button>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-lg sm:text-xl font-bold text-neutral-900">{examen.titulo}</h1>
-              <p className="text-sm text-neutral-600">
+              <h1 className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-white">{examen.titulo}</h1>
+              <p className="text-sm text-neutral-600 dark:text-white/60">
                 Pregunta {preguntaActual + 1} de {preguntas.length}
               </p>
             </div>
             <div className="flex items-center gap-4 sm:gap-6">
               <div className="text-center">
-                <div className="flex items-center gap-2 text-base sm:text-lg font-semibold text-neutral-900">
+                <div className="flex items-center gap-2 text-base sm:text-lg font-semibold text-neutral-900 dark:text-white">
                   <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
                   <span>{formatearTiempo(tiempoTranscurrido)}</span>
                 </div>
-                <p className="text-xs text-neutral-500 hidden sm:block">Tiempo de referencia: {examen.duracion_referencia_minutos} min</p>
+                <p className="text-xs text-neutral-500 dark:text-white/50 hidden sm:block">Tiempo de referencia: {examen.duracion_referencia_minutos} min</p>
               </div>
               <div className="text-center">
-                <div className="text-base sm:text-lg font-semibold text-neutral-900">
+                <div className="text-base sm:text-lg font-semibold text-neutral-900 dark:text-white">
                   {respondidas}/{preguntas.length}
                 </div>
-                <p className="text-xs text-neutral-500">Respondidas</p>
+                <p className="text-xs text-neutral-500 dark:text-white/50">Respondidas</p>
               </div>
             </div>
           </div>
@@ -352,8 +350,8 @@ export default function ExamenInterface() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
             <div className="lg:col-span-3">
-              <div className="bg-white rounded-ios-xl shadow-ios p-5 sm:p-8 mb-4 sm:mb-6">
-                <h2 className="text-xl font-semibold text-neutral-900 mb-6">
+              <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 shadow-ios p-5 sm:p-8 mb-4 sm:mb-6">
+                <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-6">
                   {pregunta.pregunta}
                 </h2>
 
@@ -367,23 +365,23 @@ export default function ExamenInterface() {
                         onClick={() => seleccionarRespuesta(pregunta.id, opcion.letra)}
                         className={`w-full text-left p-4 rounded-ios-lg border-2 transition-all ${
                           seleccionada
-                            ? 'border-accent bg-primary-50'
-                            : 'border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50'
+                            ? 'border-accent bg-primary-50 dark:bg-accent/10'
+                            : 'border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 hover:border-neutral-300 dark:hover:border-white/15 hover:bg-neutral-50 dark:hover:bg-white/8'
                         }`}
                       >
                         <div className="flex items-start gap-3">
                           <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
                             seleccionada
                               ? 'border-accent bg-accent'
-                              : 'border-neutral-300'
+                              : 'border-neutral-300 dark:border-white/15'
                           }`}>
                             {seleccionada && (
                               <div className="w-3 h-3 rounded-full bg-white"></div>
                             )}
                           </div>
                           <div className="flex-1">
-                            <span className="font-semibold text-neutral-900">{opcion.letra}.</span>
-                            <span className="ml-2 text-neutral-700">{opcion.texto}</span>
+                            <span className="font-semibold text-neutral-900 dark:text-white">{opcion.letra}.</span>
+                            <span className="ml-2 text-neutral-700 dark:text-white/70">{opcion.texto}</span>
                           </div>
                         </div>
                       </button>
@@ -396,20 +394,20 @@ export default function ExamenInterface() {
                 <button
                   onClick={() => navegarPregunta(preguntaActual - 1)}
                   disabled={preguntaActual === 0}
-                  className="p-2 sm:p-3 rounded-ios-lg text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
+                  className="p-2 sm:p-3 rounded-ios-lg text-neutral-600 dark:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/10 hover:text-neutral-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
                   title="Pregunta anterior"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
 
-                <div className="text-sm text-neutral-600 font-medium">
+                <div className="text-sm text-neutral-600 dark:text-white/60 font-medium">
                   {preguntaActual + 1} / {preguntas.length}
                 </div>
 
                 <button
                   onClick={() => navegarPregunta(preguntaActual + 1)}
                   disabled={preguntaActual === preguntas.length - 1}
-                  className="p-2 sm:p-3 rounded-ios-lg text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
+                  className="p-2 sm:p-3 rounded-ios-lg text-neutral-600 dark:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/10 hover:text-neutral-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
                   title="Siguiente pregunta"
                 >
                   <ChevronRight className="w-5 h-5" />
@@ -418,8 +416,8 @@ export default function ExamenInterface() {
             </div>
 
             <div className="lg:col-span-1 order-first lg:order-last">
-              <div className="bg-white/80 backdrop-blur-sm rounded-ios-xl shadow-ios p-4 sm:p-6 lg:sticky lg:top-24">
-                <h3 className="font-semibold text-neutral-900 mb-4 text-sm sm:text-base">Preguntas</h3>
+              <div className="bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm rounded-xl border border-neutral-200/60 dark:border-white/8 shadow-ios p-4 sm:p-6 lg:sticky lg:top-24">
+                <h3 className="font-semibold text-neutral-900 dark:text-white mb-4 text-sm sm:text-base">Preguntas</h3>
                 <div className="grid grid-cols-8 sm:grid-cols-10 lg:grid-cols-5 gap-2 mb-6 max-h-[300px] lg:max-h-[400px] overflow-y-auto scrollbar-thin">
                   {preguntas.map((_, index) => (
                     <button
@@ -434,27 +432,27 @@ export default function ExamenInterface() {
                   ))}
                 </div>
 
-                <div className="space-y-2 mb-6 text-xs bg-neutral-50 rounded-ios-lg p-3">
+                <div className="space-y-2 mb-6 text-xs bg-neutral-50 dark:bg-white/5 rounded-ios-lg p-3">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 bg-accent rounded"></div>
-                    <span className="text-neutral-600">Actual</span>
+                    <span className="text-neutral-600 dark:text-white/60">Actual</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 bg-emerald-500 rounded"></div>
-                    <span className="text-neutral-600">Respondida</span>
+                    <span className="text-neutral-600 dark:text-white/60">Respondida</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-neutral-300 rounded"></div>
-                    <span className="text-neutral-600">Pendiente</span>
+                    <div className="w-3 h-3 bg-neutral-300 dark:bg-white/15 rounded"></div>
+                    <span className="text-neutral-600 dark:text-white/60">Pendiente</span>
                   </div>
                 </div>
 
                 <div className="space-y-2 mb-6">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-neutral-600">Progreso</span>
-                    <span className="font-semibold text-neutral-900">{progresoRespuestas}%</span>
+                    <span className="text-neutral-600 dark:text-white/60">Progreso</span>
+                    <span className="font-semibold text-neutral-900 dark:text-white">{progresoRespuestas}%</span>
                   </div>
-                  <div className="w-full bg-neutral-200 rounded-full h-2.5 overflow-hidden">
+                  <div className="w-full bg-neutral-200 dark:bg-white/10 rounded-full h-2.5 overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-primary-500 to-primary-600 rounded-full transition-all duration-500"
                       style={{ width: `${progresoRespuestas}%` }}
@@ -464,7 +462,7 @@ export default function ExamenInterface() {
 
                 <button
                   onClick={() => setModalConfirmacion(true)}
-                  className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-accent to-accent-dark text-white rounded-ios-lg hover:from-primary-700 hover:to-primary-800 active:scale-[0.98] transition-all font-medium shadow-lg shadow-primary-600/25"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-accent text-white rounded-ios-lg hover:bg-accent-hover active:scale-[0.98] transition-all font-medium shadow-lg shadow-primary-600/25"
                 >
                   <Send className="w-5 h-5" />
                   <span>Enviar Examen</span>
@@ -477,14 +475,14 @@ export default function ExamenInterface() {
 
       {modalConfirmacion && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-ios-xl w-full max-w-md p-6 sm:p-8 shadow-ios-xl animate-scale-in">
+          <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200/60 dark:border-white/8 w-full max-w-md p-6 sm:p-8 shadow-ios-xl animate-scale-in">
             <div className="w-14 h-14 bg-gradient-to-br from-amber-500 to-amber-600 rounded-ios-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
               <AlertCircle className="w-7 h-7 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-neutral-900 text-center mb-2">
+            <h2 className="text-2xl font-bold text-neutral-900 dark:text-white text-center mb-2">
               ¿Enviar Examen?
             </h2>
-            <p className="text-neutral-600 text-center mb-6">
+            <p className="text-neutral-600 dark:text-white/60 text-center mb-6">
               Has respondido <strong>{respondidas}</strong> de <strong>{preguntas.length}</strong> preguntas.
               {respondidas < preguntas.length && (
                 <span className="block mt-2 text-amber-600">
@@ -495,13 +493,13 @@ export default function ExamenInterface() {
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => setModalConfirmacion(false)}
-                className="flex-1 px-6 py-3 bg-neutral-100 text-neutral-700 rounded-ios-lg hover:bg-neutral-200 active:scale-[0.98] transition-all font-medium"
+                className="flex-1 px-6 py-3 bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 rounded-ios-lg hover:bg-neutral-200 dark:hover:bg-white/15 active:scale-[0.98] transition-all font-medium"
               >
                 Cancelar
               </button>
               <button
                 onClick={enviarExamen}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-accent to-accent-dark text-white rounded-ios-lg hover:from-primary-700 hover:to-primary-800 active:scale-[0.98] transition-all font-medium shadow-lg shadow-primary-600/25"
+                className="flex-1 px-6 py-3 bg-accent text-white rounded-ios-lg hover:bg-accent-hover active:scale-[0.98] transition-all font-medium shadow-lg shadow-primary-600/25"
               >
                 Confirmar
               </button>

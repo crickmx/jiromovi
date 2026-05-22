@@ -8,6 +8,7 @@ import {
 import { ConfiguracionCorreo } from '../components/email/ConfiguracionCorreo';
 import { RedactarCorreo } from '../components/email/RedactarCorreo';
 import { BuscadorAvanzado } from '../components/email/BuscadorAvanzado';
+import { LoadingState } from '@/components/ui/loading-state';
 
 interface EmailConfig {
   id: string;
@@ -278,16 +279,14 @@ export function GestorEmails() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-      </div>
+      <LoadingState text="Cargando correos..." className="min-h-screen" />
     );
   }
 
   return (
-    <div className="h-screen flex flex-col bg-neutral-50">
+    <div className="h-screen flex flex-col bg-neutral-50 dark:bg-neutral-900">
       {/* Header */}
-      <div className="bg-white border-b border-neutral-200 px-6 py-4">
+      <div className="bg-white dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-white/10 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Mail className="w-8 h-8 text-accent" />
@@ -297,7 +296,7 @@ export function GestorEmails() {
               </h1>
               {configuracion && (
                 <div>
-                  <p className="text-sm text-neutral-600">
+                  <p className="text-sm text-neutral-600 dark:text-white/60">
                     {configuracion.email}
                     {configuracion.ultima_sincronizacion && (
                       <span className="ml-2">
@@ -318,7 +317,7 @@ export function GestorEmails() {
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setShowBuscador(true)}
-              className="flex items-center space-x-2 px-4 py-2 text-neutral-700 hover:bg-neutral-100 rounded-lg transition-all"
+              className="flex items-center space-x-2 px-4 py-2 text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-all"
               title="Buscador avanzado"
             >
               <Search className="w-5 h-5" />
@@ -328,7 +327,7 @@ export function GestorEmails() {
             <button
               onClick={handleSincronizar}
               disabled={sincronizando || !configuracion}
-              className="flex items-center space-x-2 px-4 py-2 text-neutral-700 hover:bg-neutral-100 rounded-lg transition-all disabled:opacity-50"
+              className="flex items-center space-x-2 px-4 py-2 text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-all disabled:opacity-50"
               title="Actualizar"
             >
               <RefreshCw className={`w-5 h-5 ${sincronizando ? 'animate-spin' : ''}`} />
@@ -339,7 +338,7 @@ export function GestorEmails() {
 
             <button
               onClick={() => setShowConfig(true)}
-              className="flex items-center space-x-2 px-4 py-2 text-neutral-700 hover:bg-neutral-100 rounded-lg transition-all"
+              className="flex items-center space-x-2 px-4 py-2 text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-all"
               title="Configuración"
             >
               <Settings className="w-5 h-5" />
@@ -362,11 +361,11 @@ export function GestorEmails() {
       {!configuracion && !usuario?.email_cuenta ? (
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="text-center max-w-md">
-            <Mail className="w-16 h-16 text-neutral-400 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-neutral-900 mb-2">
+            <Mail className="w-16 h-16 text-neutral-400 dark:text-white/40 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">
               Configura tu cuenta de correo IONOS
             </h2>
-            <p className="text-neutral-600 mb-6">
+            <p className="text-neutral-600 dark:text-white/60 mb-6">
               Para comenzar a usar Mi E-Mail, configura tu correo IONOS en tu perfil o aquí.
             </p>
             <div className="space-y-3">
@@ -407,7 +406,7 @@ export function GestorEmails() {
 
           <div className="flex-1 flex overflow-hidden">
           {/* Sidebar - Carpetas */}
-          <div className="w-64 bg-white border-r border-neutral-200 overflow-y-auto">
+          <div className="w-64 bg-white dark:bg-neutral-800/50 border-r border-neutral-200 dark:border-white/10 overflow-y-auto">
             <div className="p-4 space-y-1">
               {Object.entries(CARPETAS_INFO).map(([key, info]) => {
                 const Icon = info.icon;
@@ -420,8 +419,8 @@ export function GestorEmails() {
                     onClick={() => setCarpetaActual(key as Carpeta)}
                     className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
                       isActive
-                        ? 'bg-primary-50 text-primary-700 font-semibold'
-                        : 'text-neutral-700 hover:bg-neutral-100'
+                        ? 'bg-primary-50 dark:bg-accent/10 text-primary-700 dark:text-accent font-semibold'
+                        : 'text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/10'
                     }`}
                   >
                     <div className="flex items-center space-x-3">
@@ -444,20 +443,20 @@ export function GestorEmails() {
           </div>
 
           {/* Lista de mensajes */}
-          <div className="w-96 bg-white border-r border-neutral-200 overflow-y-auto">
-            <div className="p-4 border-b border-neutral-200">
-              <h2 className="text-lg font-bold text-neutral-900">
+          <div className="w-96 bg-white dark:bg-neutral-800/50 border-r border-neutral-200 dark:border-white/10 overflow-y-auto">
+            <div className="p-4 border-b border-neutral-200 dark:border-white/10">
+              <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
                 {CARPETAS_INFO[carpetaActual].nombre}
               </h2>
-              <p className="text-sm text-neutral-600">
+              <p className="text-sm text-neutral-600 dark:text-white/60">
                 {mensajes.length} {mensajes.length === 1 ? 'mensaje' : 'mensajes'}
               </p>
             </div>
 
             {mensajes.length === 0 ? (
               <div className="p-8 text-center">
-                <Mail className="w-12 h-12 text-neutral-300 mx-auto mb-3" />
-                <p className="text-neutral-500 mb-4">No hay mensajes</p>
+                <Mail className="w-12 h-12 text-neutral-300 dark:text-white/20 mx-auto mb-3" />
+                <p className="text-neutral-500 dark:text-white/50 mb-4">No hay mensajes</p>
                 <button
                   onClick={handleSincronizar}
                   disabled={sincronizando}
@@ -475,11 +474,11 @@ export function GestorEmails() {
                       setMensajeSeleccionado(mensaje);
                       if (!mensaje.leido) handleMarcarLeido(mensaje);
                     }}
-                    className={`p-4 border-b border-neutral-200 cursor-pointer transition-all ${
-                      !mensaje.leido ? 'bg-primary-50' : 'hover:bg-neutral-50'
+                    className={`p-4 border-b border-neutral-200 dark:border-white/10 cursor-pointer transition-all ${
+                      !mensaje.leido ? 'bg-primary-50 dark:bg-accent/10' : 'hover:bg-neutral-50 dark:hover:bg-white/5'
                     } ${
                       mensajeSeleccionado?.id === mensaje.id
-                        ? 'bg-primary-50 border-l-4 border-l-primary-600'
+                        ? 'bg-primary-50 dark:bg-accent/10 border-l-4 border-l-primary-600'
                         : ''
                     }`}
                   >
@@ -502,26 +501,26 @@ export function GestorEmails() {
                             />
                           </button>
                           <p className={`text-sm truncate ${
-                            !mensaje.leido ? 'font-bold text-neutral-900' : 'text-neutral-700'
+                            !mensaje.leido ? 'font-bold text-neutral-900 dark:text-white' : 'text-neutral-700 dark:text-white/70'
                           }`}>
                             {mensaje.remitente}
                           </p>
                         </div>
                       </div>
-                      <span className="text-xs text-neutral-500 flex-shrink-0 ml-2">
+                      <span className="text-xs text-neutral-500 dark:text-white/50 flex-shrink-0 ml-2">
                         {formatFecha(mensaje.fecha)}
                       </span>
                     </div>
                     <p className={`text-sm mb-1 truncate ${
-                      !mensaje.leido ? 'font-semibold text-neutral-900' : 'text-neutral-600'
+                      !mensaje.leido ? 'font-semibold text-neutral-900 dark:text-white' : 'text-neutral-600 dark:text-white/60'
                     }`}>
                       {mensaje.asunto || '(Sin asunto)'}
                     </p>
                     <div className="flex items-center space-x-2">
                       {mensaje.tiene_adjuntos && (
-                        <Paperclip className="w-3 h-3 text-neutral-400" />
+                        <Paperclip className="w-3 h-3 text-neutral-400 dark:text-white/40" />
                       )}
-                      <p className="text-xs text-neutral-500 truncate">
+                      <p className="text-xs text-neutral-500 dark:text-white/50 truncate">
                         {mensaje.cuerpo_texto?.substring(0, 50)}...
                       </p>
                     </div>
@@ -532,30 +531,30 @@ export function GestorEmails() {
           </div>
 
           {/* Panel de lectura */}
-          <div className="flex-1 bg-white overflow-y-auto">
+          <div className="flex-1 bg-white dark:bg-neutral-800/50 overflow-y-auto">
             {mensajeSeleccionado ? (
               <div className="h-full flex flex-col">
-                <div className="p-6 border-b border-neutral-200">
+                <div className="p-6 border-b border-neutral-200 dark:border-white/10">
                   <div className="flex items-start justify-between mb-4">
-                    <h2 className="text-2xl font-bold text-neutral-900">
+                    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">
                       {mensajeSeleccionado.asunto || '(Sin asunto)'}
                     </h2>
                     <div className="flex items-center space-x-2">
-                      <button className="p-2 text-neutral-600 hover:bg-neutral-100 rounded-lg">
+                      <button className="p-2 text-neutral-600 dark:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg">
                         <Trash2 className="w-5 h-5" />
                       </button>
                     </div>
                   </div>
                   <div className="flex items-center space-x-4 text-sm">
                     <div>
-                      <span className="font-semibold text-neutral-900">
+                      <span className="font-semibold text-neutral-900 dark:text-white">
                         {mensajeSeleccionado.remitente}
                       </span>
-                      <span className="text-neutral-600 ml-2">
+                      <span className="text-neutral-600 dark:text-white/60 ml-2">
                         {`<${mensajeSeleccionado.remitente_email}>`}
                       </span>
                     </div>
-                    <span className="text-neutral-500">
+                    <span className="text-neutral-500 dark:text-white/50">
                       {new Date(mensajeSeleccionado.fecha).toLocaleString('es-ES', {
                         day: 'numeric',
                         month: 'long',
@@ -566,7 +565,7 @@ export function GestorEmails() {
                     </span>
                   </div>
                   {mensajeSeleccionado.destinatarios.length > 0 && (
-                    <div className="mt-2 text-sm text-neutral-600">
+                    <div className="mt-2 text-sm text-neutral-600 dark:text-white/60">
                       <span className="font-semibold">Para:</span> {mensajeSeleccionado.destinatarios.join(', ')}
                     </div>
                   )}
@@ -579,13 +578,13 @@ export function GestorEmails() {
                       dangerouslySetInnerHTML={{ __html: mensajeSeleccionado.cuerpo_html }}
                     />
                   ) : (
-                    <p className="whitespace-pre-wrap text-neutral-700">
+                    <p className="whitespace-pre-wrap text-neutral-700 dark:text-white/70">
                       {mensajeSeleccionado.cuerpo_texto}
                     </p>
                   )}
                 </div>
 
-                <div className="p-4 border-t border-neutral-200 flex space-x-2">
+                <div className="p-4 border-t border-neutral-200 dark:border-white/10 flex space-x-2">
                   <button
                     onClick={() => {
                       setShowRedactar(true);
@@ -594,16 +593,16 @@ export function GestorEmails() {
                   >
                     Responder
                   </button>
-                  <button className="px-4 py-2 text-neutral-700 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-all">
+                  <button className="px-4 py-2 text-neutral-700 dark:text-white/70 border border-neutral-300 dark:border-white/15 rounded-lg hover:bg-neutral-50 dark:hover:bg-white/5 transition-all">
                     Responder a todos
                   </button>
-                  <button className="px-4 py-2 text-neutral-700 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-all">
+                  <button className="px-4 py-2 text-neutral-700 dark:text-white/70 border border-neutral-300 dark:border-white/15 rounded-lg hover:bg-neutral-50 dark:hover:bg-white/5 transition-all">
                     Reenviar
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="h-full flex items-center justify-center text-neutral-400">
+              <div className="h-full flex items-center justify-center text-neutral-400 dark:text-white/40">
                 <div className="text-center">
                   <Mail className="w-16 h-16 mx-auto mb-4" />
                   <p>Selecciona un mensaje para leerlo</p>

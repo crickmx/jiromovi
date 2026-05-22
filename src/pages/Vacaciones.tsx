@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Calendar, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, Palmtree } from 'lucide-react';
 import { calcularDiasLaborables, formatearFecha, getEstadoBadgeClass, getEstadoLabel } from '../lib/vacacionesUtils';
 import type { Database } from '../lib/database.types';
+import { PageHeader } from '@/components/ui/page-header';
+import { Button } from '@/components/ui/button';
+import { LoadingState } from '@/components/ui/loading-state';
 
 type SolicitudVacaciones = Database['public']['Tables']['solicitudes_vacaciones']['Row'] & {
   empleado?: { nombre_completo: string; email_laboral: string; oficina_id: string } | null;
@@ -252,11 +255,7 @@ export function Vacaciones() {
   };
 
   if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
+    return <LoadingState text="Cargando vacaciones..." />;
   }
 
   const isEmpleado = currentUser?.rol === 'Empleado' || currentUser?.rol === 'Agente';
@@ -268,52 +267,50 @@ export function Vacaciones() {
   const misSolicitudes = isGerente ? solicitudes.filter(s => s.usuario_id === currentUser?.id) : solicitudes;
 
   return (
-    <div className="space-y-6">
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl shadow-lg p-8 text-white">
-        <h1 className="text-3xl font-bold mb-2">Gestión de Vacaciones</h1>
-        <p className="text-primary-100">
-          {isEmpleado && 'Solicita y gestiona tus días de vacaciones'}
-          {isGerente && 'Solicita tus vacaciones y gestiona las solicitudes de tu oficina'}
-          {isAdmin && 'Autoriza solicitudes de vacaciones preaprobadas'}
-        </p>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="Gestion de Vacaciones"
+        description={
+          isEmpleado ? 'Solicita y gestiona tus dias de vacaciones'
+          : isGerente ? 'Solicita tus vacaciones y gestiona las solicitudes de tu oficina'
+          : 'Autoriza solicitudes de vacaciones preaprobadas'
+        }
+        icon={Palmtree}
+      />
 
       {(isEmpleado || isGerente) && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <div className="flex items-center justify-between mb-6">
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-5">
+          <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="text-xl font-bold text-slate-800">Mis Días Disponibles</h2>
-              <p className="text-sm text-slate-600">Días de vacaciones que puedes solicitar</p>
+              <h2 className="text-sm font-bold text-neutral-900 dark:text-white">Mis Dias Disponibles</h2>
+              <p className="text-xs text-neutral-500 dark:text-white/40 mt-0.5">Dias de vacaciones que puedes solicitar</p>
             </div>
-            <div className="bg-primary-100 text-primary-800 px-6 py-4 rounded-xl">
-              <div className="text-4xl font-bold">{diasDisponibles}</div>
-              <div className="text-sm">días</div>
+            <div className="bg-accent/10 text-accent px-5 py-3 rounded-xl text-center">
+              <div className="text-3xl font-bold">{diasDisponibles}</div>
+              <div className="text-xs font-medium opacity-70">dias</div>
             </div>
           </div>
-          <button
-            onClick={() => setShowModal(true)}
-            className="w-full bg-accent hover:bg-accent-hover text-white px-6 py-3 rounded-lg font-medium transition"
-          >
+          <Button onClick={() => setShowModal(true)} className="w-full">
             Solicitar Vacaciones
-          </button>
+          </Button>
         </div>
       )}
 
       {isGerente && solicitudesPendientes.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <h2 className="text-xl font-bold text-slate-800 mb-4">
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-5">
+          <h2 className="text-sm font-bold text-neutral-900 dark:text-white mb-4">
             Solicitudes Pendientes ({solicitudesPendientes.length})
           </h2>
           <div className="space-y-4">
             {solicitudesPendientes.map((solicitud) => (
-              <div key={solicitud.id} className="border border-slate-200 rounded-lg p-4">
+              <div key={solicitud.id} className="border border-neutral-200 dark:border-white/10 rounded-xl p-4">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="font-semibold text-slate-900">
+                    <h3 className="font-semibold text-neutral-900 dark:text-white">
                       {solicitud.empleado?.nombre_completo}
                     </h3>
-                    <p className="text-sm text-slate-600">{solicitud.empleado?.email_laboral}</p>
-                    <div className="flex items-center space-x-4 mt-2 text-sm text-slate-700">
+                    <p className="text-sm text-neutral-600 dark:text-white/60">{solicitud.empleado?.email_laboral}</p>
+                    <div className="flex items-center space-x-4 mt-2 text-sm text-neutral-700 dark:text-white/70">
                       <span className="flex items-center">
                         <Calendar className="w-4 h-4 mr-1" />
                         {formatearFecha(solicitud.fecha_inicio)} - {formatearFecha(solicitud.fecha_fin)}
@@ -336,7 +333,7 @@ export function Vacaciones() {
                     value={comentarios[solicitud.id] || ''}
                     onChange={(e) => setComentarios({ ...comentarios, [solicitud.id]: e.target.value })}
                     rows={2}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/80"
                     placeholder="Agrega tus comentarios..."
                   />
                 </div>
@@ -365,26 +362,26 @@ export function Vacaciones() {
       )}
 
       {isAdmin && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <h2 className="text-xl font-bold text-slate-800 mb-4">
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-5">
+          <h2 className="text-sm font-bold text-neutral-900 dark:text-white mb-4">
             Solicitudes Preaprobadas ({solicitudesPreaprobadas.length})
           </h2>
           {solicitudesPreaprobadas.length === 0 ? (
-            <div className="text-center py-8 text-slate-500">
-              <AlertCircle className="w-12 h-12 mx-auto mb-2 text-slate-400" />
+            <div className="text-center py-8 text-neutral-500 dark:text-white/40">
+              <AlertCircle className="w-10 h-10 mx-auto mb-2 text-neutral-300 dark:text-white/20" />
               <p>No hay solicitudes preaprobadas pendientes de autorización</p>
             </div>
           ) : (
             <div className="space-y-4">
               {solicitudesPreaprobadas.map((solicitud) => (
-              <div key={solicitud.id} className="border border-slate-200 rounded-lg p-4">
+              <div key={solicitud.id} className="border border-neutral-200 dark:border-white/10 rounded-xl p-4">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="font-semibold text-slate-900">
+                    <h3 className="font-semibold text-neutral-900 dark:text-white">
                       {solicitud.empleado?.nombre_completo}
                     </h3>
-                    <p className="text-sm text-slate-600">{solicitud.empleado?.email_laboral}</p>
-                    <div className="flex items-center space-x-4 mt-2 text-sm text-slate-700">
+                    <p className="text-sm text-neutral-600 dark:text-white/60">{solicitud.empleado?.email_laboral}</p>
+                    <div className="flex items-center space-x-4 mt-2 text-sm text-neutral-700 dark:text-white/70">
                       <span className="flex items-center">
                         <Calendar className="w-4 h-4 mr-1" />
                         {formatearFecha(solicitud.fecha_inicio)} - {formatearFecha(solicitud.fecha_fin)}
@@ -395,7 +392,7 @@ export function Vacaciones() {
                       </span>
                     </div>
                     {solicitud.comentarios_gerente && (
-                      <div className="mt-2 p-2 bg-slate-50 rounded text-sm text-slate-700">
+                      <div className="mt-2 p-2 bg-neutral-50 dark:bg-white/5 rounded text-sm text-neutral-700 dark:text-white/70">
                         <strong>Comentarios del Gerente:</strong> {solicitud.comentarios_gerente}
                       </div>
                     )}
@@ -412,7 +409,7 @@ export function Vacaciones() {
                     value={comentarios[solicitud.id] || ''}
                     onChange={(e) => setComentarios({ ...comentarios, [solicitud.id]: e.target.value })}
                     rows={2}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/80"
                     placeholder="Agrega tus comentarios..."
                   />
                 </div>
@@ -442,19 +439,19 @@ export function Vacaciones() {
       )}
 
       {isGerente && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <h2 className="text-xl font-bold text-slate-800 mb-4">Mis Solicitudes de Vacaciones</h2>
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-5">
+          <h2 className="text-sm font-bold text-neutral-900 dark:text-white mb-4">Mis Solicitudes de Vacaciones</h2>
           {misSolicitudes.filter(s => s.usuario_id === currentUser?.id).length === 0 ? (
-            <div className="text-center py-8 text-slate-500">
-              <AlertCircle className="w-12 h-12 mx-auto mb-2 text-slate-400" />
+            <div className="text-center py-8 text-neutral-500 dark:text-white/40">
+              <AlertCircle className="w-10 h-10 mx-auto mb-2 text-neutral-300 dark:text-white/20" />
               <p>No has solicitado vacaciones aún</p>
             </div>
           ) : (
             <div className="space-y-3">
               {misSolicitudes.filter(s => s.usuario_id === currentUser?.id).map((solicitud) => (
-                <div key={solicitud.id} className="border border-slate-200 rounded-lg p-4">
+                <div key={solicitud.id} className="border border-neutral-200 dark:border-white/10 rounded-xl p-4">
                   <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center space-x-4 text-sm text-slate-700">
+                    <div className="flex items-center space-x-4 text-sm text-neutral-700 dark:text-white/70">
                       <span className="flex items-center">
                         <Calendar className="w-4 h-4 mr-1" />
                         {formatearFecha(solicitud.fecha_inicio)} - {formatearFecha(solicitud.fecha_fin)}
@@ -469,7 +466,7 @@ export function Vacaciones() {
                     </span>
                   </div>
                   {(solicitud.comentarios_gerente || solicitud.comentarios_administrador) && (
-                    <div className="mt-2 text-sm text-slate-600">
+                    <div className="mt-2 text-sm text-neutral-600 dark:text-white/60">
                       {solicitud.comentarios_gerente && (
                         <div className="mb-1">
                           <strong>Comentarios del Gerente:</strong> {solicitud.comentarios_gerente}
@@ -489,42 +486,42 @@ export function Vacaciones() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-        <h2 className="text-xl font-bold text-slate-800 mb-4">
+      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-5">
+        <h2 className="text-sm font-bold text-neutral-900 dark:text-white mb-4">
           {isGerente ? 'Solicitudes de la Oficina' : 'Historial de Solicitudes'}
         </h2>
         {(isGerente ? solicitudes.filter(s => s.usuario_id !== currentUser?.id) : solicitudes).length === 0 ? (
-          <div className="text-center py-8 text-slate-500">
-            <AlertCircle className="w-12 h-12 mx-auto mb-2 text-slate-400" />
+          <div className="text-center py-8 text-neutral-500 dark:text-white/40">
+            <AlertCircle className="w-10 h-10 mx-auto mb-2 text-neutral-300 dark:text-white/20" />
             <p>No hay solicitudes de vacaciones</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-50">
+              <thead className="bg-neutral-50 dark:bg-white/5">
                 <tr>
                   {!isEmpleado && (
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/40 uppercase">
                       Empleado
                     </th>
                   )}
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/40 uppercase">
                     Periodo
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/40 uppercase">
                     Días
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/40 uppercase">
                     Estado
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/40 uppercase">
                     Comentarios
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-neutral-200 dark:divide-white/5">
                 {(isGerente ? solicitudes.filter(s => s.usuario_id !== currentUser?.id) : solicitudes).map((solicitud) => (
-                  <tr key={solicitud.id} className="hover:bg-slate-50">
+                  <tr key={solicitud.id} className="hover:bg-neutral-50 dark:bg-white/5">
                     {!isEmpleado && (
                       <td className="px-4 py-3 text-sm">
                         <div className="font-medium text-slate-900">
@@ -545,7 +542,7 @@ export function Vacaciones() {
                         {getEstadoLabel(solicitud.estado)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
+                    <td className="px-4 py-3 text-sm text-neutral-600 dark:text-white/60">
                       {solicitud.comentarios_gerente && (
                         <div className="mb-1">
                           <strong>Gerente:</strong> {solicitud.comentarios_gerente}
@@ -629,7 +626,7 @@ export function Vacaciones() {
                     setShowModal(false);
                     setFormData({ fecha_inicio: '', fecha_fin: '' });
                   }}
-                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition"
+                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-neutral-50 dark:bg-white/5 transition"
                 >
                   Cancelar
                 </button>

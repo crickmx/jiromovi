@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
-import { Video as LucideIcon } from 'lucide-react';
+import { type LucideIcon, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 interface PageHeaderProps {
@@ -9,6 +10,10 @@ interface PageHeaderProps {
   actions?: ReactNode;
   children?: ReactNode;
   className?: string;
+  backTo?: string;
+  backLabel?: string;
+  onBack?: () => void;
+  badge?: ReactNode;
 }
 
 export function PageHeader({
@@ -17,10 +22,36 @@ export function PageHeader({
   icon: Icon,
   actions,
   children,
-  className
+  className,
+  backTo,
+  backLabel,
+  onBack,
+  badge,
 }: PageHeaderProps) {
+  const navigate = useNavigate();
+
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else if (backTo) {
+      navigate(backTo);
+    }
+  };
+
+  const showBack = backTo || onBack;
+
   return (
     <div className={cn("flex flex-col gap-4 sm:gap-5", className)}>
+      {showBack && (
+        <button
+          onClick={handleBack}
+          className="inline-flex items-center gap-1.5 text-sm text-neutral-500 dark:text-white/50 hover:text-neutral-700 dark:hover:text-white/70 transition-colors w-fit -mb-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>{backLabel || 'Regresar'}</span>
+        </button>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-1.5">
@@ -32,6 +63,7 @@ export function PageHeader({
             <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white tracking-tight truncate">
               {title}
             </h1>
+            {badge && badge}
           </div>
           {description && (
             <p className={cn(

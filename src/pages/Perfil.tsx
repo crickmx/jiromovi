@@ -10,6 +10,9 @@ import { MiLogotipoEditor } from '../components/MiLogotipoEditor';
 import { getMiPaginaWeb } from '../lib/webUrlUtils';
 import { trackProfileUpdate } from '../lib/activityLogger';
 import type { Database } from '../lib/database.types';
+import { PageHeader } from '@/components/ui/page-header';
+import { Button } from '@/components/ui/button';
+import { LoadingState } from '@/components/ui/loading-state';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
@@ -235,11 +238,7 @@ export function Perfil() {
   };
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
+    return <LoadingState text="Cargando perfil..." />;
   }
 
   if (!usuario) return null;
@@ -271,42 +270,48 @@ export function Perfil() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
-          <h1 className="text-2xl font-bold text-white">Mi Perfil</h1>
-          <p className="text-primary-100 mt-1">Administra tu información personal</p>
-        </div>
+    <div className="max-w-4xl mx-auto space-y-5">
+      <PageHeader
+        title="Mi Perfil"
+        description="Administra tu informacion personal"
+        icon={UserIcon}
+        actions={
+          <Button onClick={handleSave} disabled={saving}>
+            <Save className="w-4 h-4 mr-1.5" />
+            {saving ? 'Guardando...' : 'Guardar Cambios'}
+          </Button>
+        }
+      />
 
-        <div className="p-8">
+      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-5 sm:p-6">
           {message && (
             <div
-              className={`mb-6 px-4 py-3 rounded-lg ${
+              className={`mb-5 px-4 py-3 rounded-lg text-sm ${
                 message.type === 'success'
-                  ? 'bg-green-50 text-green-700 border border-green-200'
-                  : 'bg-red-50 text-red-700 border border-red-200'
+                  ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800/30'
+                  : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800/30'
               }`}
             >
               {message.text}
             </div>
           )}
 
-          <div className="flex flex-col items-center mb-8">
+          <div className="flex flex-col items-center mb-6">
             <div className="relative group">
               {formData.imagen_perfil_url ? (
                 <img
                   src={formData.imagen_perfil_url}
                   alt="Perfil"
-                  className="w-32 h-32 rounded-full object-cover border-4 border-slate-200"
+                  className="w-24 h-24 rounded-full object-cover border-3 border-neutral-200 dark:border-white/10"
                 />
               ) : (
-                <div className="w-32 h-32 rounded-full bg-accent flex items-center justify-center border-4 border-slate-200">
-                  <UserIcon className="w-16 h-16 text-white" />
+                <div className="w-24 h-24 rounded-full bg-accent flex items-center justify-center border-3 border-neutral-200 dark:border-white/10">
+                  <UserIcon className="w-12 h-12 text-white" />
                 </div>
               )}
               {isFieldEditable('imagen_perfil_url') && (
-                <label className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition cursor-pointer">
-                  <Upload className="w-8 h-8 text-white" />
+                <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition cursor-pointer">
+                  <Upload className="w-6 h-6 text-white" />
                   <input
                     type="file"
                     accept="image/*"
@@ -316,19 +321,19 @@ export function Perfil() {
                 </label>
               )}
             </div>
-            <p className="text-sm text-slate-500 mt-2">
+            <p className="text-xs text-neutral-500 dark:text-white/40 mt-2">
               {usuario.rol}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {fields.map((field) => {
               if (!isFieldVisible(field.key)) return null;
               const editable = isFieldEditable(field.key);
 
               return (
                 <div key={field.key}>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1.5">
                     {field.label}
                   </label>
                   {field.type === 'select' ? (
@@ -338,7 +343,7 @@ export function Perfil() {
                         setFormData({ ...formData, [field.key]: e.target.value || null })
                       }
                       disabled={!editable}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500"
+                      className="w-full px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                       <option value="">Seleccionar oficina</option>
                       {oficinas.map((oficina) => (
@@ -355,7 +360,7 @@ export function Perfil() {
                         setFormData({ ...formData, [field.key]: e.target.value })
                       }
                       disabled={!editable}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500"
+                      className="w-full px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     />
                   )}
                 </div>
@@ -364,36 +369,32 @@ export function Perfil() {
 
             {formData.web_slug && (
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Mi Página Web
+                <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1.5">
+                  Mi Pagina Web
                 </label>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     value={getMiPaginaWeb(formData.web_slug)}
                     readOnly
-                    className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 font-medium"
+                    className="flex-1 px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg text-neutral-600 dark:text-white/60 font-medium"
                   />
-                  <button
-                    type="button"
-                    onClick={handleCopyUrl}
-                    className="px-4 py-2.5 bg-accent text-white rounded-lg hover:bg-accent-hover transition flex items-center gap-2"
-                  >
+                  <Button variant="outline" size="sm" onClick={handleCopyUrl}>
                     {copiedUrl ? (
                       <>
-                        <Check className="w-4 h-4" />
-                        <span>Copiado</span>
+                        <Check className="w-4 h-4 mr-1" />
+                        Copiado
                       </>
                     ) : (
                       <>
-                        <Copy className="w-4 h-4" />
-                        <span>Copiar URL</span>
+                        <Copy className="w-4 h-4 mr-1" />
+                        Copiar URL
                       </>
                     )}
-                  </button>
+                  </Button>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">
-                  Esta es tu página web pública que puedes compartir con tus clientes
+                <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">
+                  Esta es tu pagina web publica que puedes compartir con tus clientes
                 </p>
               </div>
             )}
@@ -435,23 +436,10 @@ export function Perfil() {
             />
           </div>
 
-          <div className="mt-8">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Expediente</h3>
+          <div className="mt-6">
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-3">Expediente</h3>
             <ExpedienteSection usuarioId={usuario.id} canEdit={false} />
           </div>
-
-
-          <div className="mt-8 flex justify-end">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center space-x-2 bg-accent hover:bg-accent-hover text-white px-6 py-3 rounded-lg font-medium transition disabled:opacity-50"
-            >
-              <Save className="w-5 h-5" />
-              <span>{saving ? 'Guardando...' : 'Guardar Cambios'}</span>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

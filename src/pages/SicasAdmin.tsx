@@ -10,6 +10,7 @@ import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Container } from '../components/ui/container';
 import { PageHeader } from '../components/ui/page-header';
+import { LoadingState } from '../components/ui/loading-state';
 import { Section } from '../components/ui/section';
 import { supabase } from '../lib/supabase';
 import {
@@ -929,9 +930,7 @@ export default function SicasAdmin() {
   if (loading) {
     return (
       <Container>
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-accent" />
-        </div>
+        <LoadingState text="Cargando configuración SICAS..." />
       </Container>
     );
   }

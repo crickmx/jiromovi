@@ -7,6 +7,9 @@ import { Video, Calendar, Clock, Play, Award, TrendingUp, GraduationCap, BarChar
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { obtenerSesiones } from '../lib/aulaVirtualUtils';
+import { PageHeader } from '@/components/ui/page-header';
+import { LoadingState } from '@/components/ui/loading-state';
+import { Button } from '@/components/ui/button';
 
 interface Lesson {
   id: string;
@@ -188,74 +191,63 @@ export function SegurosEducation() {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-neutral-600">Cargando...</div>
-        </div>
+        <LoadingState text="Cargando capacitacion..." />
       </Layout>
     );
   }
 
   return (
     <Layout>
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-accent to-accent-dark rounded-2xl p-8 text-white">
-          <div className="flex items-center justify-center mb-4">
-            <img
-              src="/movirecurso_11.png"
-              alt="Seguros Education"
-              className="h-16 sm:h-20 object-contain"
-            />
-          </div>
-          <p className="text-primary-100 text-center">Sistema de capacitación y formación continua</p>
-        </div>
+      <div className="space-y-6">
+        <PageHeader
+          title="Seguros Education"
+          description="Sistema de capacitacion y formacion continua"
+          icon={GraduationCap}
+        />
 
-        {/* Quick Access Buttons - TOP PRIORITY */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Quick Access Buttons */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <button
             onClick={() => navigate('/seguros-education/cedula-a')}
-            className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-8 shadow-lg hover:shadow-xl transition-all group relative overflow-hidden"
+            className="bg-amber-500 dark:bg-amber-600 rounded-xl p-6 hover:bg-amber-600 dark:hover:bg-amber-700 transition-all group relative overflow-hidden text-left"
           >
-            <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform"></div>
-            <div className="relative">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
-                  <GraduationCap className="w-8 h-8 text-white" />
-                </div>
-                <div className="text-left flex-1">
-                  <h3 className="text-xl font-bold text-white mb-1">Curso Cédula A</h3>
-                  <p className="text-amber-100 text-sm">Preparación completa CNSF</p>
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                <GraduationCap className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-white mb-0.5">Curso Cedula A</h3>
+                <p className="text-amber-100 text-xs">Preparacion completa CNSF</p>
               </div>
             </div>
           </button>
 
           <button
             onClick={() => navigate('/seguros-education/on-demand')}
-            className="bg-white rounded-xl p-8 border-2 border-neutral-200 hover:border-accent shadow-sm hover:shadow-md transition-all group"
+            className="bg-white dark:bg-neutral-800/50 rounded-xl p-6 border border-neutral-200/60 dark:border-white/8 hover:border-accent dark:hover:border-accent/50 hover:shadow-sm transition-all group text-left"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-xl bg-primary-100 flex items-center justify-center group-hover:bg-primary-200 transition-colors">
-                <Video className="w-8 h-8 text-accent" />
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0 group-hover:bg-accent/15 transition-colors">
+                <Video className="w-6 h-6 text-accent" />
               </div>
-              <div className="text-left flex-1">
-                <h3 className="text-xl font-bold text-neutral-800 mb-1">On Demand</h3>
-                <p className="text-neutral-600 text-sm">Accede a lecciones grabadas</p>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-neutral-800 dark:text-white mb-0.5">On Demand</h3>
+                <p className="text-neutral-500 dark:text-white/40 text-xs">Accede a lecciones grabadas</p>
               </div>
             </div>
           </button>
 
           <button
             onClick={() => navigate('/seguros-education/aula-virtual')}
-            className="bg-white rounded-xl p-8 border-2 border-neutral-200 hover:border-emerald-500 shadow-sm hover:shadow-md transition-all group"
+            className="bg-white dark:bg-neutral-800/50 rounded-xl p-6 border border-neutral-200/60 dark:border-white/8 hover:border-emerald-400 dark:hover:border-emerald-500/50 hover:shadow-sm transition-all group text-left"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-xl bg-emerald-100 flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
-                <Calendar className="w-8 h-8 text-emerald-600" />
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-emerald-100 dark:bg-emerald-500/10 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-200 dark:group-hover:bg-emerald-500/20 transition-colors">
+                <Calendar className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <div className="text-left flex-1">
-                <h3 className="text-xl font-bold text-neutral-800 mb-1">Aula Digital</h3>
-                <p className="text-neutral-600 text-sm">Capacitaciones programadas y eventos en vivo</p>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-neutral-800 dark:text-white mb-0.5">Aula Digital</h3>
+                <p className="text-neutral-500 dark:text-white/40 text-xs">Capacitaciones y eventos en vivo</p>
               </div>
             </div>
           </button>
@@ -263,33 +255,33 @@ export function SegurosEducation() {
           {(usuario?.rol?.toLowerCase() === 'admin' || usuario?.rol?.toLowerCase() === 'administrador') && (
             <button
               onClick={() => navigate('/seguros-education/analytics')}
-              className="bg-white rounded-xl p-8 border-2 border-neutral-200 hover:border-accent shadow-sm hover:shadow-md transition-all group"
+              className="bg-white dark:bg-neutral-800/50 rounded-xl p-6 border border-neutral-200/60 dark:border-white/8 hover:border-accent dark:hover:border-accent/50 hover:shadow-sm transition-all group text-left"
             >
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-xl bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                  <BarChart3 className="w-8 h-8 text-accent" />
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0 group-hover:bg-accent/15 transition-colors">
+                  <BarChart3 className="w-6 h-6 text-accent" />
                 </div>
-                <div className="text-left flex-1">
-                  <h3 className="text-xl font-bold text-neutral-800 mb-1">Analytics</h3>
-                  <p className="text-neutral-600 text-sm">Métricas y reportes</p>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-bold text-neutral-800 dark:text-white mb-0.5">Analytics</h3>
+                  <p className="text-neutral-500 dark:text-white/40 text-xs">Metricas y reportes</p>
                 </div>
               </div>
             </button>
           )}
         </div>
 
-        {/* Próximas Capacitaciones */}
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200">
-          <div className="p-6 border-b border-neutral-200">
-            <h2 className="text-xl font-bold text-neutral-800 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-accent" />
-              Próximas Capacitaciones
+        {/* Proximas Capacitaciones */}
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8">
+          <div className="p-5 border-b border-neutral-200 dark:border-white/8">
+            <h2 className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-accent" />
+              Proximas Capacitaciones
             </h2>
-            <p className="text-sm text-neutral-600 mt-1">Sesiones y eventos programados</p>
+            <p className="text-xs text-neutral-500 dark:text-white/40 mt-0.5">Sesiones y eventos programados</p>
           </div>
-          <div className="p-6">
+          <div className="p-5">
             {proxSessions.length === 0 ? (
-              <p className="text-neutral-500 text-center py-8">No hay capacitaciones programadas</p>
+              <p className="text-neutral-500 dark:text-white/40 text-sm text-center py-8">No hay capacitaciones programadas</p>
             ) : (
               <div className="space-y-4">
                 {proxSessions.map((session) => {
@@ -300,11 +292,11 @@ export function SegurosEducation() {
                   return (
                     <div
                       key={session.id}
-                      className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition-colors"
+                      className="flex items-center justify-between p-4 bg-neutral-50 dark:bg-white/3 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors"
                     >
                       <div className="flex-1">
                         <div className="flex items-start justify-between mb-1">
-                          <h3 className="font-semibold text-neutral-800 flex-1">{session.titulo}</h3>
+                          <h3 className="font-semibold text-neutral-800 dark:text-white text-sm flex-1">{session.titulo}</h3>
                           <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${
                             session.tipo === 'evento'
                               ? 'bg-emerald-100 text-emerald-700'
@@ -335,12 +327,12 @@ export function SegurosEducation() {
                           </p>
                         )}
                       </div>
-                      <button
+                      <Button
+                        size="sm"
                         onClick={() => navigate('/seguros-education/aula-virtual')}
-                        className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium"
                       >
                         Ver Detalles
-                      </button>
+                      </Button>
                     </div>
                   );
                 })}
@@ -349,17 +341,17 @@ export function SegurosEducation() {
           </div>
         </div>
 
-        {/* Últimos Cursos */}
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200">
-          <div className="p-6 border-b border-neutral-200">
-            <h2 className="text-xl font-bold text-neutral-800 flex items-center gap-2">
-              <Video className="w-5 h-5 text-accent" />
-              Últimos Cursos
+        {/* Ultimos Cursos */}
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8">
+          <div className="p-5 border-b border-neutral-200 dark:border-white/8">
+            <h2 className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+              <Video className="w-4 h-4 text-accent" />
+              Ultimos Cursos
             </h2>
           </div>
-          <div className="p-6">
+          <div className="p-5">
             {recentLessons.length === 0 ? (
-              <p className="text-neutral-500 text-center py-8">No hay lecciones disponibles</p>
+              <p className="text-neutral-500 dark:text-white/40 text-sm text-center py-8">No hay lecciones disponibles</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {recentLessons.map((lesson) => (
@@ -416,41 +408,41 @@ export function SegurosEducation() {
           </div>
         </div>
 
-        {/* Stats Cards - AT THE BOTTOM */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-xl p-6 border border-neutral-200 shadow-sm">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-white dark:bg-neutral-800/50 rounded-xl p-4 border border-neutral-200/60 dark:border-white/8">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-neutral-600 text-sm font-medium">Cursos Completados</span>
-              <Award className="w-5 h-5 text-emerald-600" />
+              <span className="text-neutral-500 dark:text-white/40 text-xs font-medium">Completados</span>
+              <Award className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <p className="text-3xl font-bold text-neutral-800">{stats.completados}</p>
+            <p className="text-2xl font-bold text-neutral-900 dark:text-white">{stats.completados}</p>
           </div>
 
-          <div className="bg-white rounded-xl p-6 border border-neutral-200 shadow-sm">
+          <div className="bg-white dark:bg-neutral-800/50 rounded-xl p-4 border border-neutral-200/60 dark:border-white/8">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-neutral-600 text-sm font-medium">En Proceso</span>
-              <TrendingUp className="w-5 h-5 text-accent" />
+              <span className="text-neutral-500 dark:text-white/40 text-xs font-medium">En Proceso</span>
+              <TrendingUp className="w-4 h-4 text-accent" />
             </div>
-            <p className="text-3xl font-bold text-neutral-800">{stats.en_proceso}</p>
+            <p className="text-2xl font-bold text-neutral-900 dark:text-white">{stats.en_proceso}</p>
           </div>
 
-          <div className="bg-white rounded-xl p-6 border border-neutral-200 shadow-sm">
+          <div className="bg-white dark:bg-neutral-800/50 rounded-xl p-4 border border-neutral-200/60 dark:border-white/8">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-neutral-600 text-sm font-medium">Tiempo Total</span>
-              <Clock className="w-5 h-5 text-amber-600" />
+              <span className="text-neutral-500 dark:text-white/40 text-xs font-medium">Tiempo Total</span>
+              <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
             </div>
-            <p className="text-3xl font-bold text-neutral-800">
+            <p className="text-2xl font-bold text-neutral-900 dark:text-white">
               {stats.tiempo_total}
-              <span className="text-lg text-neutral-500 ml-1">min</span>
+              <span className="text-sm text-neutral-400 dark:text-white/30 ml-1">min</span>
             </p>
           </div>
 
-          <div className="bg-white rounded-xl p-6 border border-neutral-200 shadow-sm">
+          <div className="bg-white dark:bg-neutral-800/50 rounded-xl p-4 border border-neutral-200/60 dark:border-white/8">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-neutral-600 text-sm font-medium">Última Lección</span>
-              <Play className="w-5 h-5 text-accent" />
+              <span className="text-neutral-500 dark:text-white/40 text-xs font-medium">Ultima Leccion</span>
+              <Play className="w-4 h-4 text-accent" />
             </div>
-            <p className="text-sm font-medium text-neutral-800 line-clamp-2">
+            <p className="text-xs font-medium text-neutral-800 dark:text-white/80 line-clamp-2">
               {stats.ultima_leccion || 'Ninguna'}
             </p>
           </div>

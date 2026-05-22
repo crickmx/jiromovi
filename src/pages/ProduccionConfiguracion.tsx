@@ -6,6 +6,9 @@ import { Settings, Save, Link as LinkIcon, Check, AlertCircle, Building, Users, 
 import { getUniqueVendorsFromProduction, syncVendorsToCache, createOrUpdateVendorMapping, deleteVendorMapping, type VendorMappingInfo } from '../lib/produccionVendorUtils';
 import { SearchableUserSelect } from '../components/SearchableUserSelect';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { PageHeader } from '@/components/ui/page-header';
+import { LoadingState } from '@/components/ui/loading-state';
+import { Button } from '@/components/ui/button';
 
 interface GoogleSheetsConfig {
   id: string;
@@ -515,30 +518,17 @@ export default function ProduccionConfiguracion() {
   }, [vendors, searchVendor, filterMappingStatus, savingVendor]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto mb-4"></div>
-          <p className="text-neutral-600">Cargando configuración...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState text="Cargando configuración..." />;
   }
 
   return (
     <div className="max-w-6xl mx-auto p-4 sm:p-6">
       <div className="bg-white rounded-2xl sm:rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 sm:px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur flex-shrink-0">
-              <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg sm:text-xl font-bold text-white">Configuración de Producción</h1>
-              <p className="text-xs sm:text-sm text-primary-100">Gestiona la conexión y mapeo de datos de producción</p>
-            </div>
-          </div>
-        </div>
+        <PageHeader
+          title="Configuración de Producción"
+          description="Gestiona la conexión y mapeo de datos de producción"
+          icon={Settings}
+        />
 
         <div className="p-4 sm:p-6">
           {message && (
@@ -616,7 +606,7 @@ export default function ProduccionConfiguracion() {
                       value={sheetUrl}
                       onChange={(e) => setSheetUrl(e.target.value)}
                       placeholder="https://docs.google.com/spreadsheets/d/..."
-                      className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                     />
                   </div>
                   {config && (
@@ -787,7 +777,7 @@ export default function ProduccionConfiguracion() {
                               <select
                                 value={mapping?.excel_office_name || ''}
                                 onChange={(e) => handleMappingChange(oficina.id, e.target.value)}
-                                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                               >
                                 <option value="">-- Sin mapear --</option>
                                 {excelOfficeNames.map((name) => (
@@ -908,10 +898,7 @@ export default function ProduccionConfiguracion() {
                     </button>
                   </div>
                 ) : loadingVendors ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-accent border-t-transparent mx-auto mb-3"></div>
-                    <p className="text-sm text-neutral-600">Cargando vendedores desde Google Sheets...</p>
-                  </div>
+                  <LoadingState text="Cargando vendedores desde Google Sheets..." />
                 ) : (
                   <>
                     <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -953,14 +940,14 @@ export default function ProduccionConfiguracion() {
                             value={searchVendor}
                             onChange={(e) => handleSearchChange(e.target.value)}
                             placeholder="Buscar vendedor..."
-                            className="w-full pl-9 pr-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full pl-9 pr-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent"
                           />
                         </div>
                       </div>
                       <select
                         value={filterMappingStatus}
                         onChange={(e) => handleFilterChange(e.target.value as 'all' | 'mapped' | 'unmapped')}
-                        className="px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent"
                       >
                         <option value="all">Todos</option>
                         <option value="mapped">Asignados</option>

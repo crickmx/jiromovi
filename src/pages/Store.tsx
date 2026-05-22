@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Package, Filter, X, Settings, ShoppingBag, ArrowLeft } from 'lucide-react';
+import { ShoppingCart, Package, Settings, ShoppingBag } from 'lucide-react';
 import {
   obtenerProductos,
   obtenerCategorias,
@@ -14,6 +14,10 @@ import { ProductoCard } from '../components/store/ProductoCard';
 import { ProductoDetalleModal } from '../components/store/ProductoDetalleModal';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
 import { trackStoreOpened, trackStoreProductViewed, trackStorePurchaseStarted } from '../lib/activityLogger';
+import { PageHeader } from '@/components/ui/page-header';
+import { Button } from '@/components/ui/button';
+import { LoadingState } from '@/components/ui/loading-state';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export default function Store() {
   const { usuario } = useAuth();
@@ -71,126 +75,92 @@ export default function Store() {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
-        </div>
+        <LoadingState text="Cargando productos..." />
       </Layout>
     );
   }
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 sm:mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Volver al Dashboard</span>
-        </button>
-
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 sm:mb-8 gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-accent">MOVI Store</h1>
-            <p className="text-sm sm:text-base text-gray-600 mt-1">Explora nuestro catálogo de productos</p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {isAdmin && (
-              <>
-                <button
-                  onClick={() => navigate('/store/pedidos')}
-                  className="flex items-center gap-2 bg-green-600 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg hover:bg-green-700 transition-colors font-medium shadow-sm text-sm sm:text-base"
-                >
-                  <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span className="hidden sm:inline">Gestión de Pedidos</span>
-                  <span className="sm:hidden">Pedidos</span>
-                </button>
-
-                <button
-                  onClick={() => navigate('/store/admin')}
-                  className="flex items-center gap-2 bg-gray-600 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg hover:bg-gray-700 transition-colors font-medium shadow-sm text-sm sm:text-base"
-                >
-                  <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span className="hidden sm:inline">Administrar</span>
-                  <span className="sm:hidden">Admin</span>
-                </button>
-              </>
-            )}
-
-            {!isAdmin && (
-              <button
-                onClick={() => navigate('/store/mis-pedidos')}
-                className="flex items-center gap-2 bg-green-600 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg hover:bg-green-700 transition-colors font-medium shadow-sm text-sm sm:text-base"
-              >
-                <Package className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>Mis Pedidos</span>
-              </button>
-            )}
-
-            <button
-              onClick={() => navigate('/store/carrito')}
-              className="relative flex items-center gap-2 bg-accent text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium shadow-sm text-sm sm:text-base"
-            >
-              <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span>Carrito</span>
-              {cantidadCarrito > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center">
-                  {cantidadCarrito}
-                </span>
+      <div className="space-y-5">
+        <PageHeader
+          title="MOVI Store"
+          description="Explora nuestro catalogo de productos"
+          icon={ShoppingCart}
+          backTo="/dashboard"
+          backLabel="Dashboard"
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              {isAdmin && (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/store/pedidos')}>
+                    <ShoppingBag className="w-4 h-4 mr-1.5" />
+                    <span className="hidden sm:inline">Pedidos</span>
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/store/admin')}>
+                    <Settings className="w-4 h-4 mr-1.5" />
+                    <span className="hidden sm:inline">Admin</span>
+                  </Button>
+                </>
               )}
-            </button>
-          </div>
-        </div>
+              {!isAdmin && (
+                <Button variant="outline" size="sm" onClick={() => navigate('/store/mis-pedidos')}>
+                  <Package className="w-4 h-4 mr-1.5" />
+                  Mis Pedidos
+                </Button>
+              )}
+              <Button size="sm" onClick={() => navigate('/store/carrito')} className="relative">
+                <ShoppingCart className="w-4 h-4 mr-1.5" />
+                Carrito
+                {cantidadCarrito > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {cantidadCarrito}
+                  </span>
+                )}
+              </Button>
+            </div>
+          }
+        />
 
-        <div className="mb-4 sm:mb-6">
-          <div className="flex items-center gap-2 text-gray-700 mb-3">
-            <Filter className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="font-medium text-sm sm:text-base">Categorías:</span>
-          </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setCategoriaSeleccionada('')}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              !categoriaSeleccionada
+                ? 'bg-accent text-white shadow-sm'
+                : 'bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-white/60 hover:bg-neutral-200 dark:hover:bg-white/10'
+            }`}
+          >
+            Todas
+          </button>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          {categorias.map(categoria => (
             <button
-              onClick={() => setCategoriaSeleccionada('')}
-              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-sm sm:text-base ${
-                !categoriaSeleccionada
-                  ? 'bg-accent text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              key={categoria.id}
+              onClick={() => setCategoriaSeleccionada(categoria.id)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                categoriaSeleccionada === categoria.id
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-white/60 hover:bg-neutral-200 dark:hover:bg-white/10'
               }`}
             >
-              Todas
+              {categoria.nombre}
             </button>
-
-            {categorias.map(categoria => (
-              <button
-                key={categoria.id}
-                onClick={() => setCategoriaSeleccionada(categoria.id)}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-sm sm:text-base ${
-                  categoriaSeleccionada === categoria.id
-                    ? 'bg-accent text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {categoria.nombre}
-              </button>
-            ))}
-          </div>
+          ))}
         </div>
 
         {productos.length === 0 ? (
-          <div className="text-center py-12">
-            <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">
-              No hay productos disponibles
-            </h3>
-            <p className="text-gray-500">
-              {categoriaSeleccionada
-                ? 'Intenta seleccionar otra categoría'
-                : 'Vuelve pronto para ver nuevos productos'}
-            </p>
-          </div>
+          <EmptyState
+            icon={Package}
+            title="No hay productos disponibles"
+            description={
+              categoriaSeleccionada
+                ? 'Intenta seleccionar otra categoria'
+                : 'Vuelve pronto para ver nuevos productos'
+            }
+          />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {productos.map(producto => (
               <ProductoCard
                 key={producto.id}
@@ -216,3 +186,4 @@ export default function Store() {
     </Layout>
   );
 }
+

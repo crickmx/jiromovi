@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, Mail, Phone, MapPin, Briefcase, Copy, Check, X } from 'lucide-react';
+import { Search, Mail, Phone, MapPin, Briefcase, Copy, Check, X, Users } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { LoadingState } from '@/components/ui/loading-state';
+import { Button } from '@/components/ui/button';
 import type { Database } from '../lib/database.types';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
@@ -151,9 +154,7 @@ export function DirectorioJiro() {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-neutral-600">Cargando empleados...</div>
-        </div>
+        <LoadingState text="Cargando empleados..." />
       </Layout>
     );
   }
@@ -161,44 +162,43 @@ export function DirectorioJiro() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-8 shadow-lg">
-          <h1 className="text-3xl font-bold text-white">Directorio JIRO</h1>
-          <p className="text-primary-100 mt-2">
-            {isAgente
-              ? 'Encuentra y contacta a los empleados de tu oficina'
-              : 'Encuentra y contacta a los empleados de la organización'
-            }
-          </p>
-        </div>
+        <PageHeader
+          title="Directorio JIRO"
+          description={isAgente
+            ? 'Encuentra y contacta a los empleados de tu oficina'
+            : 'Encuentra y contacta a los empleados de la organización'
+          }
+          icon={Users}
+        />
 
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+        <div className="bg-white dark:bg-white/3 rounded-xl shadow-sm border border-neutral-200 dark:border-white/10 p-6">
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400 dark:text-white/40" />
             <input
               type="text"
               placeholder="Buscar por nombre, puesto u oficina..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-accent transition-all"
+              className="w-full pl-12 pr-4 py-3 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all dark:bg-white/3 dark:text-white dark:placeholder:text-white/40"
             />
           </div>
         </div>
 
         {empleadosFiltrados.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-12 text-center">
-            <div className="text-neutral-400 mb-2">
+          <div className="bg-white dark:bg-white/3 rounded-xl shadow-sm border border-neutral-200 dark:border-white/10 p-12 text-center">
+            <div className="text-neutral-400 dark:text-white/40 mb-2">
               <Search className="w-16 h-16 mx-auto mb-4" />
             </div>
-            <p className="text-neutral-600 text-lg">No se encontraron empleados</p>
-            <p className="text-neutral-500 text-sm mt-2">
+            <p className="text-neutral-600 dark:text-white/60 text-lg">No se encontraron empleados</p>
+            <p className="text-neutral-500 dark:text-white/40 text-sm mt-2">
               {searchTerm ? 'Intenta ajustar tu búsqueda' : 'No hay empleados disponibles'}
             </p>
           </div>
         ) : (
           <>
             <div className="flex justify-between items-center">
-              <p className="text-neutral-600">
-                Mostrando <span className="font-semibold text-neutral-900">{empleadosFiltrados.length}</span> empleado{empleadosFiltrados.length !== 1 ? 's' : ''}
+              <p className="text-neutral-600 dark:text-white/60">
+                Mostrando <span className="font-semibold text-neutral-900 dark:text-white">{empleadosFiltrados.length}</span> empleado{empleadosFiltrados.length !== 1 ? 's' : ''}
               </p>
             </div>
 
@@ -207,7 +207,7 @@ export function DirectorioJiro() {
                 <div
                   key={empleado.id}
                   onClick={() => abrirModal(empleado)}
-                  className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6 hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                  className="bg-white dark:bg-white/3 rounded-xl shadow-sm border border-neutral-200 dark:border-white/10 p-6 hover:shadow-lg transition-all duration-200 cursor-pointer group"
                 >
                   <div className="flex flex-col items-center text-center">
                     <div className="relative mb-4">
@@ -224,7 +224,7 @@ export function DirectorioJiro() {
                       )}
                     </div>
 
-                    <h3 className="text-lg font-bold text-neutral-900 mb-1">
+                    <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-1">
                       {empleado.nombre_completo}
                     </h3>
 
@@ -233,21 +233,21 @@ export function DirectorioJiro() {
                       <span>{empleado.puesto}</span>
                     </div>
 
-                    <div className="flex items-center gap-1 text-neutral-600 text-sm mb-4">
+                    <div className="flex items-center gap-1 text-neutral-600 dark:text-white/60 text-sm mb-4">
                       <MapPin className="w-4 h-4" />
                       <span>{empleado.oficina}</span>
                     </div>
 
                     <div className="w-full space-y-2">
                       {empleado.email_laboral && (
-                        <div className="flex items-center gap-2 text-sm text-neutral-600 bg-neutral-50 rounded-lg p-2">
+                        <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-white/60 bg-neutral-50 dark:bg-white/3 rounded-lg p-2">
                           <Mail className="w-4 h-4 flex-shrink-0" />
                           <span className="flex-1 truncate text-left">{empleado.email_laboral}</span>
                         </div>
                       )}
 
                       {empleado.celular_laboral && (
-                        <div className="flex items-center gap-2 text-sm text-neutral-600 bg-neutral-50 rounded-lg p-2">
+                        <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-white/60 bg-neutral-50 dark:bg-white/3 rounded-lg p-2">
                           <Phone className="w-4 h-4 flex-shrink-0" />
                           <span className="flex-1 truncate text-left">{empleado.celular_laboral}</span>
                         </div>
@@ -263,9 +263,9 @@ export function DirectorioJiro() {
 
       {showModal && selectedEmpleado && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="relative">
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-2xl p-6 text-center">
+              <div className="bg-accent rounded-t-2xl p-6 text-center">
                 <button
                   onClick={cerrarModal}
                   className="absolute top-4 right-4 text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
@@ -291,25 +291,25 @@ export function DirectorioJiro() {
                   {selectedEmpleado.nombre_completo}
                 </h2>
 
-                <p className="text-primary-100 text-lg">{selectedEmpleado.puesto}</p>
+                <p className="text-white/80 text-lg">{selectedEmpleado.puesto}</p>
               </div>
 
               <div className="p-6 space-y-4">
-                <div className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-white/3 rounded-lg">
                   <MapPin className="w-5 h-5 text-accent flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs text-neutral-500 font-medium">Oficina</p>
-                    <p className="text-neutral-900">{selectedEmpleado.oficina}</p>
+                    <p className="text-xs text-neutral-500 dark:text-white/40 font-medium">Oficina</p>
+                    <p className="text-neutral-900 dark:text-white">{selectedEmpleado.oficina}</p>
                   </div>
                 </div>
 
                 {selectedEmpleado.email_laboral && (
-                  <div className="bg-neutral-50 rounded-lg p-3">
+                  <div className="bg-neutral-50 dark:bg-white/3 rounded-lg p-3">
                     <div className="flex items-center gap-3 mb-2">
                       <Mail className="w-5 h-5 text-accent flex-shrink-0" />
                       <div className="flex-1">
-                        <p className="text-xs text-neutral-500 font-medium">Email Laboral</p>
-                        <p className="text-neutral-900 break-all">{selectedEmpleado.email_laboral}</p>
+                        <p className="text-xs text-neutral-500 dark:text-white/40 font-medium">Email Laboral</p>
+                        <p className="text-neutral-900 dark:text-white break-all">{selectedEmpleado.email_laboral}</p>
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -331,7 +331,7 @@ export function DirectorioJiro() {
                       </button>
                       <a
                         href={`mailto:${selectedEmpleado.email_laboral}`}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors text-sm"
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-neutral-200 dark:bg-white/10 text-neutral-700 dark:text-white/70 rounded-lg hover:bg-neutral-300 dark:hover:bg-white/15 transition-colors text-sm"
                       >
                         <Mail className="w-4 h-4" />
                         Enviar correo
@@ -341,12 +341,12 @@ export function DirectorioJiro() {
                 )}
 
                 {selectedEmpleado.celular_laboral && (
-                  <div className="bg-neutral-50 rounded-lg p-3">
+                  <div className="bg-neutral-50 dark:bg-white/3 rounded-lg p-3">
                     <div className="flex items-center gap-3 mb-2">
                       <Phone className="w-5 h-5 text-accent flex-shrink-0" />
                       <div className="flex-1">
-                        <p className="text-xs text-neutral-500 font-medium">Celular Laboral</p>
-                        <p className="text-neutral-900">{selectedEmpleado.celular_laboral}</p>
+                        <p className="text-xs text-neutral-500 dark:text-white/40 font-medium">Celular Laboral</p>
+                        <p className="text-neutral-900 dark:text-white">{selectedEmpleado.celular_laboral}</p>
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -378,10 +378,10 @@ export function DirectorioJiro() {
                 )}
               </div>
 
-              <div className="p-6 border-t border-neutral-200">
+              <div className="p-6 border-t border-neutral-200 dark:border-white/10">
                 <button
                   onClick={cerrarModal}
-                  className="w-full px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors font-medium"
+                  className="w-full px-4 py-2 bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/15 transition-colors font-medium"
                 >
                   Cerrar
                 </button>
