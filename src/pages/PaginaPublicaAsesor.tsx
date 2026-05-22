@@ -243,16 +243,6 @@ export default function PaginaPublicaAsesor() {
   const processedLinks: ProcessedFormLink[] = useMemo(() => {
     // Prefer form_templates (all ramos) over form_links (only manually created)
     if (data?.form_templates?.length) {
-      // Build lookup: template_id -> shared link slug for public URLs
-      const linkByTemplateId: Record<string, string> = {};
-      if (data.form_links?.length) {
-        for (const fl of data.form_links) {
-          if (fl.quote_form_template_id) {
-            linkByTemplateId[fl.quote_form_template_id] = fl.slug;
-          }
-        }
-      }
-
       const wpNumber = data.user?.phone?.replace(/\D/g, '') || '';
       const waFallback = wpNumber ? `https://wa.me/52${wpNumber}` : '#';
 
@@ -265,12 +255,12 @@ export default function PaginaPublicaAsesor() {
           category: 'otros',
           keywords: []
         };
-        const sharedSlug = linkByTemplateId[tmpl.id];
-        const publicUrl = sharedSlug
-          ? `https://agentedeseguros.website/cotizar/${sharedSlug}`
-          : `${waFallback}${wpNumber ? `?text=${encodeURIComponent(`Hola, me interesa una cotizacion de ${tmpl.title}`)}` : ''}`;
+        // Use public_url directly from DB (auto-provisioned shared links)
+        const publicUrl = tmpl.public_url
+          || (tmpl.link_slug ? `https://agentedeseguros.website/cotizar/${tmpl.link_slug}` : null)
+          || `${waFallback}${wpNumber ? `?text=${encodeURIComponent(`Hola, me interesa una cotizacion de ${tmpl.title}`)}` : ''}`;
         return {
-          slug: tmpl.slug || tmpl.form_type,
+          slug: tmpl.link_slug || tmpl.slug || tmpl.form_type,
           form_title: tmpl.title,
           form_type: tmpl.form_type,
           form_slug: tmpl.slug || tmpl.form_type,

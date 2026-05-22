@@ -63,6 +63,8 @@ export interface FormTemplate {
   category: string;
   icon: string;
   slug: string | null;
+  public_url: string | null;
+  link_slug: string | null;
   is_featured: boolean;
   featured_order: number;
 }
