@@ -145,22 +145,17 @@ export function Login() {
         {/* Subtle radial glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Header: Logo + Title */}
+        {/* Header: Logo centered as protagonist */}
         <div className="text-center mb-8 relative z-10">
-          <div className="flex items-center justify-center gap-4 mb-3">
-            <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center">
-              <img
-                src="/movirecurso_1.png"
-                alt="MOVI Digital"
-                className="h-9 w-9 object-contain"
-              />
-            </div>
-            <div className="text-left">
-              <h1 className="text-2xl font-bold text-white tracking-tight">MOVI Digital</h1>
-              <p className="text-sm text-blue-200/70">Tu plataforma integral de seguros</p>
-            </div>
+          <div className="flex justify-center mb-5">
+            <img
+              src="/movirecurso_1.png"
+              alt="MOVI Digital"
+              className="h-20 object-contain drop-shadow-lg"
+            />
           </div>
-          <p className="text-blue-100/60 text-sm mt-4">
+          <h1 className="text-2xl font-bold text-white tracking-tight mb-1">MOVI Digital</h1>
+          <p className="text-blue-100/60 text-sm">
             {showForgotPassword ? 'Te ayudaremos a recuperar el acceso' : 'Ingresa a tu cuenta para continuar'}
           </p>
         </div>
@@ -332,9 +327,10 @@ export function Login() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-blue-200/40 mt-8 relative z-10">
-          Plataforma exclusiva para agentes de seguros
-        </p>
+        <div className="text-center mt-8 relative z-10">
+          <p className="text-sm font-medium text-blue-100/70">MOVI Digital</p>
+          <p className="text-xs text-blue-200/40 mt-0.5">Tu plataforma integral de seguros</p>
+        </div>
       </div>
     </>
   );
