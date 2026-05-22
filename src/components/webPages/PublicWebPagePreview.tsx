@@ -82,6 +82,7 @@ interface PublicWebPagePreviewProps {
     photo_url: string | null;
     logo_url: string | null;
     office_name: string;
+    office_logo_url?: string | null;
     web_slug?: string | null;
   };
 }
@@ -140,10 +141,10 @@ export default function PublicWebPagePreview({
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
             <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
-              {userData.logo_url && (
+              {(userData.logo_url || userData.office_logo_url) && (
                 <div className="mb-6">
                   <img
-                    src={userData.logo_url}
+                    src={userData.logo_url || userData.office_logo_url || ''}
                     alt="Logo"
                     className="h-16 md:h-20 w-auto object-contain"
                   />

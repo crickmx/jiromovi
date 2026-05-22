@@ -520,6 +520,7 @@ export default function MiPaginaWeb() {
                     photo_url: usuario?.imagen_perfil_url || null,
                     logo_url: usuario?.mi_logotipo_url || null,
                     office_name: usuario?.oficina?.nombre || '',
+                    office_logo_url: usuario?.oficina?.logo_url || null,
                     web_slug: usuario?.web_slug || null
                   }}
                 />

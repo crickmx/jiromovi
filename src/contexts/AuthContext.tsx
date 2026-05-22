@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .from('usuarios')
         .select(`
           *,
-          oficina:oficinas(id, nombre, accent_color),
+          oficina:oficinas(id, nombre, accent_color, logo_url),
           regimen_fiscal:commission_fiscal_regimes(id, name)
         `)
         .eq('id', userId)

@@ -243,6 +243,19 @@ export default function PaginaPublicaAsesor() {
   const processedLinks: ProcessedFormLink[] = useMemo(() => {
     // Prefer form_templates (all ramos) over form_links (only manually created)
     if (data?.form_templates?.length) {
+      // Build lookup: template_id -> shared link slug for public URLs
+      const linkByTemplateId: Record<string, string> = {};
+      if (data.form_links?.length) {
+        for (const fl of data.form_links) {
+          if (fl.quote_form_template_id) {
+            linkByTemplateId[fl.quote_form_template_id] = fl.slug;
+          }
+        }
+      }
+
+      const wpNumber = data.user?.phone?.replace(/\D/g, '') || '';
+      const waFallback = wpNumber ? `https://wa.me/52${wpNumber}` : '#';
+
       return data.form_templates.map(tmpl => {
         const typeKey = tmpl.form_type?.toLowerCase().replace(/[^a-z_]/g, '') || '';
         const meta = FORM_TYPE_META[typeKey] || {
@@ -252,6 +265,10 @@ export default function PaginaPublicaAsesor() {
           category: 'otros',
           keywords: []
         };
+        const sharedSlug = linkByTemplateId[tmpl.id];
+        const publicUrl = sharedSlug
+          ? `https://agentedeseguros.website/cotizar/${sharedSlug}`
+          : `${waFallback}${wpNumber ? `?text=${encodeURIComponent(`Hola, me interesa una cotizacion de ${tmpl.title}`)}` : ''}`;
         return {
           slug: tmpl.slug || tmpl.form_type,
           form_title: tmpl.title,
@@ -261,7 +278,7 @@ export default function PaginaPublicaAsesor() {
           meta: { ...meta, icon: tmpl.icon || meta.icon },
           displayName: cleanFormTitle(tmpl.title),
           isFeatured: tmpl.is_featured,
-          publicUrl: '#',
+          publicUrl,
         };
       }).sort((a, b) => {
         if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
@@ -444,9 +461,9 @@ export default function PaginaPublicaAsesor() {
           <div className="max-w-7xl mx-auto">
             <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
               <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
-                {user.logo_url && (
+                {(user.logo_url || user.office?.logo_url) && (
                   <div className="mb-6">
-                    <img src={user.logo_url} alt="Logo" className="h-16 md:h-20 w-auto object-contain" />
+                    <img src={user.logo_url || user.office?.logo_url || ''} alt="Logo" className="h-16 md:h-20 w-auto object-contain" />
                   </div>
                 )}
                 {user.photo_url && (
@@ -586,7 +603,7 @@ export default function PaginaPublicaAsesor() {
                 {visibleFeatured.map((link, idx) => {
                   const IconComponent = (LucideIcons as any)[link.meta.icon];
                   return (
-                    <a key={link.slug} href={link.publicUrl} className="group relative bg-white p-6 sm:p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 no-underline block" style={{ animationDelay: `${idx * 80}ms` }}>
+                    <a key={link.slug} href={link.publicUrl} target="_blank" rel="noopener noreferrer" className="group relative bg-white p-6 sm:p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 no-underline block" style={{ animationDelay: `${idx * 80}ms` }}>
                       <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl" style={{ background: `linear-gradient(135deg, ${createColorVariant(primaryColor, 0.1)} 0%, ${createColorVariant(secondaryColor, 0.1)} 100%)` }} />
                       <div className="relative z-10">
                         {IconComponent && (
@@ -688,6 +705,8 @@ export default function PaginaPublicaAsesor() {
                         <a
                           key={link.slug}
                           href={link.publicUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="group flex items-center gap-3 bg-white p-4 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all duration-300 no-underline"
                         >
                           <div className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110" style={{ backgroundColor: createColorVariant(primaryColor, 0.08) }}>
