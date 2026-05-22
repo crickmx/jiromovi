@@ -4,7 +4,6 @@ import {
   Plus,
   LayoutGrid,
   List,
-  Filter,
   Calendar,
   Flag,
   Clock,
@@ -33,7 +32,7 @@ interface BoardInfo {
 }
 
 export default function CRMTareas() {
-  const { usuario } = useAuth();
+  useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const boardId = searchParams.get('board');
@@ -463,7 +462,7 @@ export default function CRMTareas() {
         <TareasKanban
           tareas={tareasFiltradas}
           onUpdateEstatus={handleUpdateEstatus}
-          onVerDetalle={handleVerDetalle}
+          onVerDetalle={handleVerDetalle as any}
           loading={loading}
         />
       ) : vista === 'calendario' && !boardId ? (

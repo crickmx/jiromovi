@@ -1,367 +1,634 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Users,
   FileText,
-  Shield,
   CheckCircle,
-  TrendingUp,
   DollarSign,
-  Target,
   Clock,
   Settings,
+  AlertTriangle,
+  UserPlus,
+  PhoneCall,
+  CalendarCheck,
+  Kanban,
+  BarChart3,
+  RefreshCw,
+  ChevronRight,
+  Calendar,
+  Phone,
+  Mail,
+  CheckCircle2,
+  CalendarClock,
+  UserX,
+  Zap,
 } from 'lucide-react';
 import {
+  obtenerKPIsDashboard,
+  obtenerTareasVencidas,
+  obtenerTareasHoy,
+  obtenerLeadsNuevos,
+  obtenerLeadsSinSeguimiento,
+  completarTareaRapido,
+  reprogramarTarea,
   obtenerEstadisticasDashboard,
   obtenerDatosFunnel,
-  obtenerTareasPendientes,
 } from '../lib/crmUtils';
-import type { DashboardStats, FunnelData } from '../lib/crmTypes';
+import type { DashboardStats, FunnelData, CRMContacto } from '../lib/crmTypes';
 import TablerosSeccion from '../components/crm/TablerosSeccion';
 import { useAuth } from '../contexts/AuthContext';
 
+interface CRMDashboardKPIs {
+  leadsNuevos: number;
+  leadsContactados: number;
+  tareasVencidas: number;
+  tareasHoy: number;
+  sinSeguimiento: number;
+}
+
 export default function MiCRM() {
+  const navigate = useNavigate();
+  const { usuario } = useAuth();
+  const [kpis, setKpis] = useState<CRMDashboardKPIs | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [funnel, setFunnel] = useState<FunnelData | null>(null);
-  const [tareasPendientes, setTareasPendientes] = useState<any[]>([]);
+  const [tareasVencidas, setTareasVencidas] = useState<any[]>([]);
+  const [tareasHoy, setTareasHoy] = useState<any[]>([]);
+  const [leadsNuevos, setLeadsNuevos] = useState<CRMContacto[]>([]);
+  const [leadsSinSeguimiento, setLeadsSinSeguimiento] = useState<CRMContacto[]>([]);
   const [loading, setLoading] = useState(true);
-  const { usuario } = useAuth();
+  const [refreshing, setRefreshing] = useState(false);
 
   const rolPermitido = usuario?.rol && ['Empleado', 'Gerente', 'Administrador'].includes(usuario.rol);
 
-  useEffect(() => {
-    cargarDatos();
-  }, []);
-
-  const cargarDatos = async () => {
+  const cargarDatos = useCallback(async (silencioso = false) => {
     try {
-      setLoading(true);
-      const [statsData, funnelData, tareasData] = await Promise.all([
-        obtenerEstadisticasDashboard(),
-        obtenerDatosFunnel(),
-        obtenerTareasPendientes(5),
-      ]);
+      if (!silencioso) setLoading(true);
+      else setRefreshing(true);
+
+      const [kpisData, statsData, funnelData, vencidasData, hoyData, nuevosData, sinSegData] =
+        await Promise.all([
+          obtenerKPIsDashboard(),
+          obtenerEstadisticasDashboard(),
+          obtenerDatosFunnel(),
+          obtenerTareasVencidas(5),
+          obtenerTareasHoy(5),
+          obtenerLeadsNuevos(5),
+          obtenerLeadsSinSeguimiento(5),
+        ]);
+
+      setKpis(kpisData);
       setStats(statsData);
       setFunnel(funnelData);
-      setTareasPendientes(tareasData);
+      setTareasVencidas(vencidasData);
+      setTareasHoy(hoyData);
+      setLeadsNuevos(nuevosData);
+      setLeadsSinSeguimiento(sinSegData);
     } catch (error) {
-      console.error('Error al cargar dashboard:', error);
+      console.error('Error al cargar dashboard CRM:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    cargarDatos();
+  }, [cargarDatos]);
+
+  const handleCompletarTarea = async (tareaId: string) => {
+    try {
+      await completarTareaRapido(tareaId);
+      cargarDatos(true);
+    } catch (error) {
+      console.error('Error al completar tarea:', error);
+    }
+  };
+
+  const handleReprogramarTarea = async (tareaId: string) => {
+    const manana = new Date();
+    manana.setDate(manana.getDate() + 1);
+    manana.setHours(9, 0, 0, 0);
+    try {
+      await reprogramarTarea(tareaId, manana.toISOString());
+      cargarDatos(true);
+    } catch (error) {
+      console.error('Error al reprogramar tarea:', error);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-blue-600 border-t-transparent mx-auto mb-3"></div>
+          <p className="text-sm text-gray-500">Cargando tu CRM...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-6 lg:p-8">
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-accent">Mi CRM</h1>
-        <p className="text-gray-600 mt-1">Gestiona tus prospectos, clientes y ventas</p>
+    <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Mi CRM</h1>
+          <p className="text-gray-500 mt-0.5 text-sm">
+            {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </p>
+        </div>
+        <button
+          onClick={() => cargarDatos(true)}
+          disabled={refreshing}
+          className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          <span className="hidden sm:inline">Actualizar</span>
+        </button>
       </div>
 
-      {/* SECCIÓN 0: Tableros Compartidos (solo para Empleado/Gerente/Admin) */}
+      {/* Navigation Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+        <Link
+          to="/mi-crm/contactos"
+          className="group flex flex-col items-center p-3 bg-white border border-gray-200 rounded-xl hover:border-blue-300 hover:shadow-md transition-all"
+        >
+          <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-100 transition mb-2">
+            <Users className="h-5 w-5" />
+          </div>
+          <span className="text-xs font-medium text-gray-700 text-center">Contactos</span>
+        </Link>
+
+        <Link
+          to="/mi-crm/tareas"
+          className="group flex flex-col items-center p-3 bg-white border border-gray-200 rounded-xl hover:border-orange-300 hover:shadow-md transition-all"
+        >
+          <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-orange-50 text-orange-600 group-hover:bg-orange-100 transition mb-2">
+            <CheckCircle className="h-5 w-5" />
+          </div>
+          <span className="text-xs font-medium text-gray-700 text-center">Tareas</span>
+        </Link>
+
+        <Link
+          to="/mi-crm/contactos?view=kanban"
+          className="group flex flex-col items-center p-3 bg-white border border-gray-200 rounded-xl hover:border-teal-300 hover:shadow-md transition-all"
+        >
+          <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-teal-50 text-teal-600 group-hover:bg-teal-100 transition mb-2">
+            <Kanban className="h-5 w-5" />
+          </div>
+          <span className="text-xs font-medium text-gray-700 text-center">Embudo</span>
+        </Link>
+
+        <Link
+          to="/mi-crm/reportes"
+          className="group flex flex-col items-center p-3 bg-white border border-gray-200 rounded-xl hover:border-emerald-300 hover:shadow-md transition-all"
+        >
+          <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100 transition mb-2">
+            <BarChart3 className="h-5 w-5" />
+          </div>
+          <span className="text-xs font-medium text-gray-700 text-center">Reportes</span>
+        </Link>
+
+        <Link
+          to="/mi-crm/configuracion"
+          className="group flex flex-col items-center p-3 bg-white border border-gray-200 rounded-xl hover:border-gray-400 hover:shadow-md transition-all"
+        >
+          <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 group-hover:bg-gray-200 transition mb-2">
+            <Settings className="h-5 w-5" />
+          </div>
+          <span className="text-xs font-medium text-gray-700 text-center">Config</span>
+        </Link>
+
+        <Link
+          to="/mi-crm/contactos"
+          state={{ openNew: true }}
+          className="group flex flex-col items-center p-3 bg-blue-50 border border-blue-200 rounded-xl hover:border-blue-400 hover:shadow-md transition-all"
+        >
+          <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-blue-100 text-blue-700 group-hover:bg-blue-200 transition mb-2">
+            <UserPlus className="h-5 w-5" />
+          </div>
+          <span className="text-xs font-medium text-blue-700 text-center">Nuevo Lead</span>
+        </Link>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+        <KPICard
+          label="Leads Nuevos"
+          value={kpis?.leadsNuevos || 0}
+          icon={<UserPlus className="h-5 w-5" />}
+          color="blue"
+          onClick={() => navigate('/mi-crm/contactos?filter=nuevos')}
+          subtitle="ultimas 24h"
+        />
+        <KPICard
+          label="Contactados"
+          value={kpis?.leadsContactados || 0}
+          icon={<PhoneCall className="h-5 w-5" />}
+          color="green"
+          onClick={() => navigate('/mi-crm/contactos?filter=contactados')}
+          subtitle="en proceso"
+        />
+        <KPICard
+          label="Tareas Vencidas"
+          value={kpis?.tareasVencidas || 0}
+          icon={<AlertTriangle className="h-5 w-5" />}
+          color="red"
+          onClick={() => navigate('/mi-crm/tareas?filter=vencidas')}
+          urgent={kpis?.tareasVencidas ? kpis.tareasVencidas > 0 : false}
+        />
+        <KPICard
+          label="Tareas Hoy"
+          value={kpis?.tareasHoy || 0}
+          icon={<CalendarCheck className="h-5 w-5" />}
+          color="orange"
+          onClick={() => navigate('/mi-crm/tareas?filter=hoy')}
+          subtitle="pendientes"
+        />
+        <KPICard
+          label="Sin Seguimiento"
+          value={kpis?.sinSeguimiento || 0}
+          icon={<UserX className="h-5 w-5" />}
+          color="amber"
+          onClick={() => navigate('/mi-crm/contactos?filter=sin_seguimiento')}
+          subtitle="+24h sin contacto"
+        />
+      </div>
+
+      {/* Que hacer hoy + Embudo */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        {/* Que hacer hoy - 2/3 */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-orange-500" />
+                <h2 className="font-semibold text-gray-900">Que hacer hoy</h2>
+              </div>
+              <Link to="/mi-crm/tareas" className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                Ver todas
+              </Link>
+            </div>
+
+            <div className="divide-y divide-gray-50">
+              {/* Tareas Vencidas */}
+              {tareasVencidas.length > 0 && (
+                <div className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
+                      <AlertTriangle className="h-3 w-3 mr-1" />
+                      Vencidas
+                    </span>
+                    <span className="text-xs text-gray-400">{tareasVencidas.length} pendientes</span>
+                  </div>
+                  <div className="space-y-2">
+                    {tareasVencidas.map((tarea) => (
+                      <TaskRow
+                        key={tarea.id}
+                        tarea={tarea}
+                        variant="overdue"
+                        onComplete={handleCompletarTarea}
+                        onReschedule={handleReprogramarTarea}
+                        onNavigate={() => navigate(`/mi-crm/contactos/${tarea.contacto_id}`)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Tareas de Hoy */}
+              {tareasHoy.length > 0 && (
+                <div className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700">
+                      <Clock className="h-3 w-3 mr-1" />
+                      Hoy
+                    </span>
+                    <span className="text-xs text-gray-400">{tareasHoy.length} programadas</span>
+                  </div>
+                  <div className="space-y-2">
+                    {tareasHoy.map((tarea) => (
+                      <TaskRow
+                        key={tarea.id}
+                        tarea={tarea}
+                        variant="today"
+                        onComplete={handleCompletarTarea}
+                        onReschedule={handleReprogramarTarea}
+                        onNavigate={() => navigate(`/mi-crm/contactos/${tarea.contacto_id}`)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Leads sin seguimiento */}
+              {leadsSinSeguimiento.length > 0 && (
+                <div className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
+                      <UserX className="h-3 w-3 mr-1" />
+                      Sin seguimiento
+                    </span>
+                    <span className="text-xs text-gray-400">{leadsSinSeguimiento.length} leads</span>
+                  </div>
+                  <div className="space-y-2">
+                    {leadsSinSeguimiento.map((lead) => (
+                      <LeadRow
+                        key={lead.id}
+                        lead={lead}
+                        onNavigate={() => navigate(`/mi-crm/contactos/${lead.id}`)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Leads nuevos */}
+              {leadsNuevos.length > 0 && (
+                <div className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                      <UserPlus className="h-3 w-3 mr-1" />
+                      Nuevos
+                    </span>
+                    <span className="text-xs text-gray-400">{leadsNuevos.length} leads recientes</span>
+                  </div>
+                  <div className="space-y-2">
+                    {leadsNuevos.map((lead) => (
+                      <LeadRow
+                        key={lead.id}
+                        lead={lead}
+                        isNew
+                        onNavigate={() => navigate(`/mi-crm/contactos/${lead.id}`)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Empty state */}
+              {tareasVencidas.length === 0 &&
+                tareasHoy.length === 0 &&
+                leadsSinSeguimiento.length === 0 &&
+                leadsNuevos.length === 0 && (
+                <div className="py-12 text-center">
+                  <CheckCircle2 className="h-10 w-10 text-green-400 mx-auto mb-3" />
+                  <p className="text-sm font-medium text-gray-700">Todo al dia</p>
+                  <p className="text-xs text-gray-400 mt-1">No tienes pendientes urgentes</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Embudo de Ventas - 1/3 */}
+        <div className="space-y-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-gray-900 text-sm">Embudo de Ventas</h2>
+              <Link to="/mi-crm/contactos?view=kanban" className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                Ver kanban
+              </Link>
+            </div>
+            <div className="space-y-3">
+              <FunnelStage
+                label="Prospectos"
+                count={funnel?.prospectos || 0}
+                total={stats?.totalContactos || 1}
+                color="bg-blue-500"
+              />
+              <FunnelStage
+                label="Cotizacion"
+                count={funnel?.cotizacionPresentada || 0}
+                total={stats?.totalContactos || 1}
+                color="bg-amber-500"
+              />
+              <FunnelStage
+                label="Negociacion"
+                count={funnel?.negociacion || 0}
+                total={stats?.totalContactos || 1}
+                color="bg-orange-500"
+              />
+              <FunnelStage
+                label="Clientes"
+                count={funnel?.clientes || 0}
+                total={stats?.totalContactos || 1}
+                color="bg-green-500"
+              />
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-3">
+              <div className="text-center">
+                <p className="text-lg font-bold text-gray-900">{stats?.tasaConversion.toFixed(0)}%</p>
+                <p className="text-xs text-gray-500">Conversion</p>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-bold text-gray-900">
+                  ${((stats?.primaTotal || 0) / 1000).toFixed(0)}k
+                </p>
+                <p className="text-xs text-gray-500">Prima Total</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Stats */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 className="font-semibold text-gray-900 text-sm mb-3">Resumen</h2>
+            <div className="space-y-2.5">
+              <StatRow icon={<Users className="h-4 w-4 text-blue-500" />} label="Total Contactos" value={stats?.totalContactos || 0} />
+              <StatRow icon={<FileText className="h-4 w-4 text-orange-500" />} label="Cotizaciones" value={stats?.totalCotizaciones || 0} />
+              <StatRow icon={<DollarSign className="h-4 w-4 text-green-500" />} label="Polizas Activas" value={stats?.totalPolizas || 0} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tableros Compartidos */}
       {rolPermitido && (
         <div className="mb-6">
           <TablerosSeccion />
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* SECCIÓN 1: Botones de Acceso Rápido */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Link
-          to="/mi-crm/contactos"
-          className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg shadow-lg p-6 hover:shadow-xl transition transform hover:scale-105"
-        >
-          <Users className="h-8 w-8 mb-3" />
-          <h3 className="text-lg font-semibold mb-1">Contactos</h3>
-          <p className="text-sm text-primary-100">Gestiona prospectos y clientes</p>
-        </Link>
+// ─── Sub-components ─────────────────────────────────────────────────────────────
 
-        <Link
-          to="/mi-crm/tareas"
-          className="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-lg shadow-lg p-6 hover:shadow-xl transition transform hover:scale-105"
-        >
-          <CheckCircle className="h-8 w-8 mb-3" />
-          <h3 className="text-lg font-semibold mb-1">Tareas</h3>
-          <p className="text-sm text-orange-100">Organiza tus actividades</p>
-        </Link>
+function KPICard({
+  label, value, icon, color, onClick, subtitle, urgent,
+}: {
+  label: string;
+  value: number;
+  icon: React.ReactNode;
+  color: 'blue' | 'green' | 'red' | 'orange' | 'amber';
+  onClick: () => void;
+  subtitle?: string;
+  urgent?: boolean;
+}) {
+  const colors = {
+    blue: { bg: 'bg-blue-50', text: 'text-blue-700', icon: 'bg-blue-100 text-blue-600', border: 'border-blue-100' },
+    green: { bg: 'bg-green-50', text: 'text-green-700', icon: 'bg-green-100 text-green-600', border: 'border-green-100' },
+    red: { bg: 'bg-red-50', text: 'text-red-700', icon: 'bg-red-100 text-red-600', border: 'border-red-100' },
+    orange: { bg: 'bg-orange-50', text: 'text-orange-700', icon: 'bg-orange-100 text-orange-600', border: 'border-orange-100' },
+    amber: { bg: 'bg-amber-50', text: 'text-amber-700', icon: 'bg-amber-100 text-amber-600', border: 'border-amber-100' },
+  };
 
-        <Link
-          to="/mi-crm/reportes"
-          className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg shadow-lg p-6 hover:shadow-xl transition transform hover:scale-105"
-        >
-          <Target className="h-8 w-8 mb-3" />
-          <h3 className="text-lg font-semibold mb-1">Reportes</h3>
-          <p className="text-sm text-purple-100">Analiza tu desempeño</p>
-        </Link>
+  const c = colors[color];
 
-        <Link
-          to="/mi-crm/configuracion"
-          className="bg-gradient-to-br from-gray-600 to-gray-700 text-white rounded-lg shadow-lg p-6 hover:shadow-xl transition transform hover:scale-105"
-        >
-          <Settings className="h-8 w-8 mb-3" />
-          <h3 className="text-lg font-semibold mb-1">Configuración</h3>
-          <p className="text-sm text-gray-100">Personaliza tu CRM</p>
-        </Link>
+  return (
+    <button
+      onClick={onClick}
+      className={`relative p-4 rounded-xl border ${c.border} ${c.bg} hover:shadow-md transition-all text-left group w-full ${urgent ? 'ring-2 ring-red-300 animate-pulse' : ''}`}
+    >
+      {urgent && value > 0 && (
+        <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+          {value > 9 ? '9+' : value}
+        </span>
+      )}
+      <div className={`w-8 h-8 rounded-lg ${c.icon} flex items-center justify-center mb-2`}>
+        {icon}
       </div>
+      <p className={`text-2xl font-bold ${c.text}`}>{value}</p>
+      <p className="text-xs font-medium text-gray-600 mt-0.5">{label}</p>
+      {subtitle && <p className="text-[10px] text-gray-400 mt-0.5">{subtitle}</p>}
+      <ChevronRight className="absolute top-3 right-3 h-3.5 w-3.5 text-gray-300 group-hover:text-gray-500 transition" />
+    </button>
+  );
+}
 
-      {/* SECCIÓN 2: Tareas Pendientes */}
-      <div className="mb-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <Clock className="h-5 w-5 mr-2 text-orange-600" />
-            Tareas Pendientes
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {tareasPendientes.length === 0 ? (
-              <div className="col-span-full">
-                <p className="text-sm text-gray-500 text-center py-8">
-                  No hay tareas pendientes
-                </p>
-              </div>
-            ) : (
-              tareasPendientes.map((tarea) => (
-                <Link
-                  key={tarea.id}
-                  to={`/mi-crm/contactos/${tarea.contacto_id}`}
-                  className="block p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition border border-gray-200 hover:border-orange-300"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <p className="text-sm font-medium text-gray-900">
-                      {tarea.tipo_actividad}
-                    </p>
-                    <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded text-xs font-medium">
-                      Pendiente
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-600 mb-2 line-clamp-2">{tarea.descripcion}</p>
-                  <div className="flex items-center justify-between pt-2 border-t border-gray-200">
-                    <span className="text-xs text-gray-500">
-                      {tarea.crm_contactos?.nombre_completo}
-                    </span>
-                    <span className="text-xs font-medium text-orange-600">
-                      {new Date(tarea.fecha_vencimiento).toLocaleDateString('es-MX')}
-                    </span>
-                  </div>
-                </Link>
-              ))
-            )}
-          </div>
-          {tareasPendientes.length > 0 && (
-            <div className="mt-4 text-center">
-              <Link
-                to="/mi-crm/tareas"
-                className="text-sm text-orange-600 hover:text-orange-700 font-medium hover:underline"
-              >
-                Ver todas las tareas →
-              </Link>
-            </div>
+function TaskRow({
+  tarea, variant, onComplete, onReschedule, onNavigate,
+}: {
+  tarea: any;
+  variant: 'overdue' | 'today';
+  onComplete: (id: string) => void;
+  onReschedule: (id: string) => void;
+  onNavigate: () => void;
+}) {
+  const getActivityIcon = (tipo: string) => {
+    switch (tipo) {
+      case 'Llamada': return <Phone className="h-3.5 w-3.5" />;
+      case 'Email': return <Mail className="h-3.5 w-3.5" />;
+      case 'Reunión': return <Calendar className="h-3.5 w-3.5" />;
+      default: return <FileText className="h-3.5 w-3.5" />;
+    }
+  };
+
+  return (
+    <div className={`flex items-center gap-3 p-2.5 rounded-lg border ${variant === 'overdue' ? 'border-red-100 bg-red-50/50' : 'border-gray-100 bg-gray-50/50'} group`}>
+      <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${variant === 'overdue' ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
+        {getActivityIcon(tarea.tipo_actividad)}
+      </div>
+      <div className="flex-1 min-w-0 cursor-pointer" onClick={onNavigate}>
+        <p className="text-sm font-medium text-gray-800 truncate">
+          {tarea.descripcion || tarea.tipo_actividad}
+        </p>
+        <p className="text-xs text-gray-500 truncate">
+          {tarea.crm_contactos?.nombre_completo || 'Sin contacto'}
+          {tarea.fecha_vencimiento && (
+            <span className={`ml-2 ${variant === 'overdue' ? 'text-red-500' : 'text-gray-400'}`}>
+              {new Date(tarea.fecha_vencimiento).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
+            </span>
           )}
-        </div>
+        </p>
       </div>
-
-      {/* SECCIÓN 3: Métricas Rápidas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-accent">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Contactos</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{stats?.totalContactos || 0}</p>
-            </div>
-            <div className="bg-primary-100 p-3 rounded-lg">
-              <Users className="h-6 w-6 text-accent" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Clientes Activos</p>
-              <p className="text-2xl font-bold text-green-600 mt-1">{stats?.totalClientes || 0}</p>
-            </div>
-            <div className="bg-green-100 p-3 rounded-lg">
-              <CheckCircle className="h-6 w-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-orange-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Cotizaciones</p>
-              <p className="text-2xl font-bold text-orange-600 mt-1">
-                {stats?.totalCotizaciones || 0}
-              </p>
-            </div>
-            <div className="bg-orange-100 p-3 rounded-lg">
-              <FileText className="h-6 w-6 text-orange-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Pólizas Activas</p>
-              <p className="text-2xl font-bold text-purple-600 mt-1">{stats?.totalPolizas || 0}</p>
-            </div>
-            <div className="bg-purple-100 p-3 rounded-lg">
-              <Shield className="h-6 w-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          onClick={(e) => { e.stopPropagation(); onComplete(tarea.id); }}
+          className="p-1.5 rounded-md hover:bg-green-100 text-green-600 transition"
+          title="Completar"
+        >
+          <CheckCircle2 className="h-4 w-4" />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onReschedule(tarea.id); }}
+          className="p-1.5 rounded-md hover:bg-blue-100 text-blue-600 transition"
+          title="Reprogramar a manana"
+        >
+          <CalendarClock className="h-4 w-4" />
+        </button>
       </div>
+    </div>
+  );
+}
 
-      {/* SECCIÓN 4: Embudo de Ventas y Métricas Adicionales */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Embudo de Ventas</h2>
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-700">Prospectos</span>
-                  <span className="text-sm font-bold text-gray-900">{funnel?.prospectos || 0}</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div
-                    className="bg-accent h-3 rounded-full transition-all"
-                    style={{
-                      width: `${funnel?.prospectos ? (funnel.prospectos / (stats?.totalContactos || 1)) * 100 : 0}%`,
-                    }}
-                  ></div>
-                </div>
-              </div>
+function LeadRow({
+  lead, isNew, onNavigate,
+}: {
+  lead: CRMContacto;
+  isNew?: boolean;
+  onNavigate: () => void;
+}) {
+  const timeSince = (date: string) => {
+    const diff = Date.now() - new Date(date).getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    if (hours < 1) return 'hace unos minutos';
+    if (hours < 24) return `hace ${hours}h`;
+    return `hace ${Math.floor(hours / 24)}d`;
+  };
 
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-700">Cotización Presentada</span>
-                  <span className="text-sm font-bold text-gray-900">
-                    {funnel?.cotizacionPresentada || 0}
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div
-                    className="bg-yellow-500 h-3 rounded-full transition-all"
-                    style={{
-                      width: `${funnel?.cotizacionPresentada ? (funnel.cotizacionPresentada / (stats?.totalContactos || 1)) * 100 : 0}%`,
-                    }}
-                  ></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-700">Negociación</span>
-                  <span className="text-sm font-bold text-gray-900">
-                    {funnel?.negociacion || 0}
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div
-                    className="bg-orange-500 h-3 rounded-full transition-all"
-                    style={{
-                      width: `${funnel?.negociacion ? (funnel.negociacion / (stats?.totalContactos || 1)) * 100 : 0}%`,
-                    }}
-                  ></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-700">Clientes</span>
-                  <span className="text-sm font-bold text-gray-900">{funnel?.clientes || 0}</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div
-                    className="bg-green-500 h-3 rounded-full transition-all"
-                    style={{
-                      width: `${funnel?.clientes ? (funnel.clientes / (stats?.totalContactos || 1)) * 100 : 0}%`,
-                    }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 pt-6 border-t grid grid-cols-2 gap-4">
-              <div className="flex items-center space-x-3">
-                <div className="bg-primary-100 p-2 rounded-lg">
-                  <TrendingUp className="h-5 w-5 text-accent" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600">Tasa de Conversión</p>
-                  <p className="text-lg font-bold text-gray-900">
-                    {stats?.tasaConversion.toFixed(1)}%
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-3">
-                <div className="bg-green-100 p-2 rounded-lg">
-                  <DollarSign className="h-5 w-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600">Prima Total</p>
-                  <p className="text-lg font-bold text-gray-900">
-                    ${(stats?.primaTotal || 0).toLocaleString('es-MX')}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Resumen Rápido</h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-primary-50 rounded-lg">
-                <div className="flex items-center">
-                  <Users className="h-5 w-5 text-accent mr-2" />
-                  <span className="text-sm font-medium text-gray-700">Prospectos</span>
-                </div>
-                <span className="text-lg font-bold text-accent">{funnel?.prospectos || 0}</span>
-              </div>
-
-              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                <div className="flex items-center">
-                  <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
-                  <span className="text-sm font-medium text-gray-700">Clientes</span>
-                </div>
-                <span className="text-lg font-bold text-green-600">{funnel?.clientes || 0}</span>
-              </div>
-
-              <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
-                <div className="flex items-center">
-                  <FileText className="h-5 w-5 text-orange-600 mr-2" />
-                  <span className="text-sm font-medium text-gray-700">Cotizaciones</span>
-                </div>
-                <span className="text-lg font-bold text-orange-600">
-                  {stats?.totalCotizaciones || 0}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                <div className="flex items-center">
-                  <Shield className="h-5 w-5 text-purple-600 mr-2" />
-                  <span className="text-sm font-medium text-gray-700">Pólizas</span>
-                </div>
-                <span className="text-lg font-bold text-purple-600">
-                  {stats?.totalPolizas || 0}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+  return (
+    <div
+      onClick={onNavigate}
+      className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-blue-200 cursor-pointer transition group"
+    >
+      <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${isNew ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'}`}>
+        <Users className="h-3.5 w-3.5" />
       </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-800 truncate">{lead.nombre_completo}</p>
+        <p className="text-xs text-gray-500">
+          {lead.celular || lead.email || 'Sin contacto'}
+          <span className="ml-2 text-gray-400">{timeSince(lead.fecha_creacion)}</span>
+        </p>
+      </div>
+      <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-blue-500 transition" />
+    </div>
+  );
+}
+
+function FunnelStage({
+  label, count, total, color,
+}: {
+  label: string;
+  count: number;
+  total: number;
+  color: string;
+}) {
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-xs font-medium text-gray-600">{label}</span>
+        <span className="text-xs font-bold text-gray-800">{count}</span>
+      </div>
+      <div className="w-full bg-gray-100 rounded-full h-2">
+        <div
+          className={`${color} h-2 rounded-full transition-all duration-500`}
+          style={{ width: `${Math.max(pct, 2)}%` }}
+        ></div>
+      </div>
+    </div>
+  );
+}
+
+function StatRow({
+  icon, label, value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        {icon}
+        <span className="text-xs text-gray-600">{label}</span>
+      </div>
+      <span className="text-sm font-bold text-gray-800">{value}</span>
     </div>
   );
 }

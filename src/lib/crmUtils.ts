@@ -522,7 +522,7 @@ export async function subirArchivoCRM(file: File, path: string) {
   return data;
 }
 
-export async function obtenerUrlArchivoCRM(path: string) {
+export function obtenerUrlArchivoCRM(path: string) {
   const { data } = supabase.storage.from('crm-documentos').getPublicUrl(path);
   return data.publicUrl;
 }
@@ -709,4 +709,221 @@ export async function renombrarTablero(boardId: string, newName: string): Promis
     .eq('id', boardId);
 
   if (error) throw error;
+}
+
+// ============================================================
+// ENHANCED DASHBOARD FUNCTIONS
+// ============================================================
+
+export interface CRMDashboardKPIs {
+  leadsNuevos: number;
+  leadsContactados: number;
+  tareasVencidas: number;
+  tareasHoy: number;
+  sinSeguimiento: number;
+}
+
+export interface CRMUserPreferences {
+  id?: string;
+  default_view: string;
+  dashboard_blocks: string[];
+  table_columns: string[];
+  saved_filters: any[];
+  no_contact_hours: number;
+  automations_active: boolean;
+}
+
+export async function obtenerKPIsDashboard(): Promise<CRMDashboardKPIs> {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
+  const hace24h = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+
+  const [contactosRes, tareasRes] = await Promise.all([
+    supabase.from('crm_contactos').select('id, estatus, fecha_creacion, actualizado_en'),
+    supabase.from('crm_tareas').select('id, fecha_vencimiento, completada, estatus').eq('completada', false),
+  ]);
+
+  const contactos = contactosRes.data || [];
+  const tareas = tareasRes.data || [];
+
+  const leadsNuevos = contactos.filter(
+    (c) => c.estatus === 'Prospecto' && c.fecha_creacion >= hace24h
+  ).length;
+
+  const leadsContactados = contactos.filter(
+    (c) => c.estatus !== 'Prospecto' && c.estatus !== 'Perdido'
+  ).length;
+
+  const tareasVencidas = tareas.filter(
+    (t) => new Date(t.fecha_vencimiento) < now
+  ).length;
+
+  const tareasHoy = tareas.filter((t) => {
+    const fv = t.fecha_vencimiento;
+    return fv >= todayStart && fv <= todayEnd;
+  }).length;
+
+  const sinSeguimiento = contactos.filter((c) => {
+    if (c.estatus !== 'Prospecto') return false;
+    const lastUpdate = new Date(c.actualizado_en || c.fecha_creacion);
+    return (now.getTime() - lastUpdate.getTime()) > 24 * 60 * 60 * 1000;
+  }).length;
+
+  return { leadsNuevos, leadsContactados, tareasVencidas, tareasHoy, sinSeguimiento };
+}
+
+export async function obtenerTareasVencidas(limite: number = 10) {
+  const { data, error } = await supabase
+    .from('crm_tareas')
+    .select('*, crm_contactos(nombre_completo)')
+    .eq('completada', false)
+    .lt('fecha_vencimiento', new Date().toISOString())
+    .order('fecha_vencimiento', { ascending: true })
+    .limit(limite);
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function obtenerTareasHoy(limite: number = 10) {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
+
+  const { data, error } = await supabase
+    .from('crm_tareas')
+    .select('*, crm_contactos(nombre_completo)')
+    .eq('completada', false)
+    .gte('fecha_vencimiento', todayStart)
+    .lte('fecha_vencimiento', todayEnd)
+    .order('fecha_vencimiento', { ascending: true })
+    .limit(limite);
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function obtenerLeadsNuevos(limite: number = 10) {
+  const hace24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  const { data, error } = await supabase
+    .from('crm_contactos')
+    .select('*')
+    .eq('estatus', 'Prospecto')
+    .gte('fecha_creacion', hace24h)
+    .order('fecha_creacion', { ascending: false })
+    .limit(limite);
+
+  if (error) throw error;
+  return (data || []) as CRMContacto[];
+}
+
+export async function obtenerLeadsSinSeguimiento(limite: number = 10) {
+  const hace24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  const { data, error } = await supabase
+    .from('crm_contactos')
+    .select('*')
+    .eq('estatus', 'Prospecto')
+    .lt('actualizado_en', hace24h)
+    .order('actualizado_en', { ascending: true })
+    .limit(limite);
+
+  if (error) throw error;
+  return (data || []) as CRMContacto[];
+}
+
+export async function obtenerPreferenciasUsuarioCRM(userId: string): Promise<CRMUserPreferences> {
+  const { data, error } = await supabase
+    .from('crm_user_preferences')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  if (!data) {
+    return {
+      default_view: 'dashboard',
+      dashboard_blocks: ['leads_nuevos', 'tareas_vencidas', 'tareas_hoy', 'sin_seguimiento', 'seguimiento_cotizaciones'],
+      table_columns: ['nombre_completo', 'celular', 'estatus', 'fuente_origen', 'tipo_seguro', 'fecha_creacion'],
+      saved_filters: [],
+      no_contact_hours: 24,
+      automations_active: true,
+    };
+  }
+
+  return {
+    id: data.id,
+    default_view: data.default_view,
+    dashboard_blocks: data.dashboard_blocks || [],
+    table_columns: data.table_columns || [],
+    saved_filters: data.saved_filters || [],
+    no_contact_hours: data.no_contact_hours,
+    automations_active: data.automations_active,
+  };
+}
+
+export async function guardarPreferenciasUsuarioCRM(
+  userId: string,
+  prefs: Partial<CRMUserPreferences>
+): Promise<void> {
+  const { error } = await supabase
+    .from('crm_user_preferences')
+    .upsert(
+      { user_id: userId, ...prefs, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id' }
+    );
+
+  if (error) throw error;
+}
+
+export async function completarTareaRapido(tareaId: string): Promise<void> {
+  const { error } = await supabase
+    .from('crm_tareas')
+    .update({
+      completada: true,
+      estatus: 'Completada',
+      fecha_completado: new Date().toISOString(),
+      actualizado_en: new Date().toISOString(),
+    })
+    .eq('id', tareaId);
+
+  if (error) throw error;
+}
+
+export async function reprogramarTarea(tareaId: string, nuevaFecha: string): Promise<void> {
+  const { error } = await supabase
+    .from('crm_tareas')
+    .update({
+      fecha_vencimiento: nuevaFecha,
+      actualizado_en: new Date().toISOString(),
+    })
+    .eq('id', tareaId);
+
+  if (error) throw error;
+}
+
+export async function cambiarEtapaContacto(
+  contactoId: string,
+  nuevaEtapa: string,
+  userId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('crm_contactos')
+    .update({
+      estatus: nuevaEtapa,
+      actualizado_en: new Date().toISOString(),
+      ...(nuevaEtapa === 'Cliente' ? { fecha_conversion_cliente: new Date().toISOString() } : {}),
+    })
+    .eq('id', contactoId);
+
+  if (error) throw error;
+
+  await supabase.from('crm_notas').insert({
+    contacto_id: contactoId,
+    contenido: `Etapa cambiada a: ${nuevaEtapa}`,
+    creado_por: userId,
+  });
 }
