@@ -1,12 +1,9 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogIn } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
+import { Eye, EyeOff } from 'lucide-react';
 import { Checkbox } from '../components/ui/checkbox';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
+import { Label } from '../components/ui/label';
 import MoviPreloader from '../components/MoviPreloader';
 import { supabase } from '../lib/supabase';
 
@@ -16,6 +13,7 @@ export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -139,65 +137,86 @@ export function Login() {
       <MoviPreloader
         isOpen={showPreloader}
         userName={userName}
-        subtitle="Preparando tu experiencia digital…"
+        subtitle="Preparando tu experiencia digital..."
         logoIconUrl="/movirecurso_1.png"
         minDurationMs={3000}
       />
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50/30 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-        <Card className="shadow-xl border-0">
-          <CardHeader className="text-center pb-6 pt-8">
-            <div className="flex justify-center mb-6">
+      <div className="min-h-screen bg-gradient-to-b from-[#0f1b3d] via-[#162350] to-[#1a2a5e] flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        {/* Subtle radial glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Header: Logo + Title */}
+        <div className="text-center mb-8 relative z-10">
+          <div className="flex items-center justify-center gap-4 mb-3">
+            <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center">
               <img
                 src="/movirecurso_1.png"
                 alt="MOVI Digital"
-                className="h-20 object-contain"
+                className="h-9 w-9 object-contain"
               />
             </div>
-            <CardTitle className="text-3xl mb-3 font-bold bg-gradient-to-r from-accent to-blue-600 bg-clip-text text-transparent">
-              {showForgotPassword ? 'Recuperar Contraseña' : '¡Bienvenido de nuevo!'}
-            </CardTitle>
-            <CardDescription className="text-base">
-              {showForgotPassword
-                ? 'Te ayudaremos a recuperar el acceso a tu cuenta'
-                : 'Nos alegra verte de nuevo. Ingresa tus credenciales para continuar'}
-            </CardDescription>
-          </CardHeader>
+            <div className="text-left">
+              <h1 className="text-2xl font-bold text-white tracking-tight">MOVI Digital</h1>
+              <p className="text-sm text-blue-200/70">Tu plataforma integral de seguros</p>
+            </div>
+          </div>
+          <p className="text-blue-100/60 text-sm mt-4">
+            {showForgotPassword ? 'Te ayudaremos a recuperar el acceso' : 'Ingresa a tu cuenta para continuar'}
+          </p>
+        </div>
 
-          <CardContent className="pb-8">
+        {/* Card */}
+        <div className="w-full max-w-[420px] relative z-10">
+          <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 p-8 sm:p-10">
+            <h2 className="text-xl font-bold text-neutral-900 mb-6">
+              {showForgotPassword ? 'Recuperar contrasena' : 'Iniciar sesion'}
+            </h2>
+
             {!showForgotPassword ? (
               <form onSubmit={handleSubmit} className="space-y-5">
                 {error && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
-                    <span className="text-red-500 mt-0.5">⚠️</span>
-                    <span>{error}</span>
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+                    {error}
                   </div>
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium">Correo Electrónico</Label>
-                  <Input
+                  <label htmlFor="email" className="block text-sm font-medium text-neutral-700">
+                    Correo electronico
+                  </label>
+                  <input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    placeholder="tu@correo.com"
-                    className="h-11"
+                    placeholder="usuario@empresa.com"
+                    className="w-full h-12 px-4 text-sm bg-white border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-neutral-400"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium">Contraseña</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    placeholder="Ingresa tu contraseña"
-                    className="h-11"
-                  />
+                  <label htmlFor="password" className="block text-sm font-medium text-neutral-700">
+                    Contrasena
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      placeholder="Ingresa tu contrasena"
+                      className="w-full h-12 px-4 pr-11 text-sm bg-white border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-neutral-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -217,85 +236,84 @@ export function Login() {
                   <button
                     type="button"
                     onClick={() => setShowForgotPassword(true)}
-                    className="text-sm text-accent hover:text-primary-700 font-medium"
+                    className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
                   >
-                    ¿Olvidaste tu contraseña?
+                    Olvide mi contrasena
                   </button>
                 </div>
 
-                <Button
+                <button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-11 text-base font-medium"
-                  size="lg"
+                  className="w-full h-12 bg-[#1e3a8a] hover:bg-[#1e40af] text-white font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-900/20"
                 >
                   {loading ? (
-                    <span className="flex items-center gap-2">
+                    <span className="flex items-center justify-center gap-2">
                       <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Iniciando sesión...
+                      Iniciando sesion...
                     </span>
                   ) : (
-                    'Iniciar Sesión'
+                    'Ingresar'
                   )}
-                </Button>
+                </button>
 
-                <div className="mt-4 text-center">
+                <div className="pt-4 border-t border-neutral-100 text-center">
+                  <span className="text-sm text-neutral-500">No tienes cuenta?{' '}</span>
                   <button
                     type="button"
                     onClick={() => window.location.href = '/registro'}
-                    className="text-sm text-accent hover:text-primary-700 font-medium hover:underline transition-colors"
+                    className="text-sm text-blue-600 hover:text-blue-800 font-semibold hover:underline transition-colors"
                   >
-                    Aún no soy usuario
+                    Registrate
                   </button>
                 </div>
               </form>
             ) : (
               <form onSubmit={handlePasswordReset} className="space-y-5">
                 {error && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
-                    <span className="text-red-500 mt-0.5">⚠️</span>
-                    <span>{error}</span>
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+                    {error}
                   </div>
                 )}
 
                 {success && (
-                  <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
-                    <span className="text-green-500 mt-0.5">✓</span>
-                    <span>{success}</span>
+                  <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm">
+                    {success}
                   </div>
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="resetEmail" className="text-sm font-medium">Correo Electrónico</Label>
-                  <Input
+                  <label htmlFor="resetEmail" className="block text-sm font-medium text-neutral-700">
+                    Correo electronico
+                  </label>
+                  <input
                     id="resetEmail"
                     type="email"
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
                     required
-                    placeholder="tu@correo.com"
-                    className="h-11"
+                    placeholder="usuario@empresa.com"
+                    className="w-full h-12 px-4 text-sm bg-white border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-neutral-400"
                   />
                   <p className="text-xs text-neutral-500 mt-1">
-                    Te enviaremos un enlace para restablecer tu contraseña
+                    Te enviaremos un enlace para restablecer tu contrasena
                   </p>
                 </div>
 
-                <Button
+                <button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-11 text-base font-medium"
-                  size="lg"
+                  className="w-full h-12 bg-[#1e3a8a] hover:bg-[#1e40af] text-white font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-900/20"
                 >
                   {loading ? (
-                    <span className="flex items-center gap-2">
+                    <span className="flex items-center justify-center gap-2">
                       <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       Enviando...
                     </span>
                   ) : (
-                    'Enviar Enlace de Recuperación'
+                    'Enviar enlace de recuperacion'
                   )}
-                </Button>
+                </button>
 
                 <button
                   type="button"
@@ -304,21 +322,19 @@ export function Login() {
                     setError('');
                     setSuccess('');
                   }}
-                  className="w-full text-sm text-neutral-600 hover:text-neutral-800 font-medium py-2"
+                  className="w-full text-sm text-neutral-500 hover:text-neutral-700 font-medium py-2 transition-colors"
                 >
-                  ← Volver al inicio de sesión
+                  Volver al inicio de sesion
                 </button>
               </form>
             )}
-          </CardContent>
-        </Card>
-
-        <p className="text-center text-sm text-neutral-400 mt-8">
-          <span className="font-medium text-neutral-600">MOVI Digital</span>
-          <br />
-          <span className="text-xs">Tu plataforma integral de seguros</span>
-        </p>
+          </div>
         </div>
+
+        {/* Footer */}
+        <p className="text-center text-xs text-blue-200/40 mt-8 relative z-10">
+          Plataforma exclusiva para agentes de seguros
+        </p>
       </div>
     </>
   );
