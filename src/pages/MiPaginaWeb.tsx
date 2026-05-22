@@ -22,82 +22,39 @@ import {
 } from '../lib/webPagesTypes';
 import PublicWebPagePreview from '../components/webPages/PublicWebPagePreview';
 import { getDisplayName } from '../lib/utils';
-import { fetchAgentSharedLinks, type SharedQuoteFormLink } from '../lib/sharedQuoteFormUtils';
 import { supabase } from '../lib/supabase';
 
-interface FormLinkMeta {
-  icon: string;
-  description: string;
-  category: string;
-}
-
-const FORM_TYPE_META: Record<string, FormLinkMeta> = {
-  auto: { icon: 'Car', description: 'Seguro para Autos', category: 'vehiculos' },
-  vida: { icon: 'Heart', description: 'Seguro de Vida', category: 'personales' },
-  gmm: { icon: 'Stethoscope', description: 'Gastos Medicos Mayores', category: 'personales' },
-  gastos_medicos: { icon: 'Stethoscope', description: 'Gastos Medicos', category: 'personales' },
-  salud: { icon: 'HeartPulse', description: 'Seguro de Salud', category: 'personales' },
-  hogar: { icon: 'Home', description: 'Seguro de Hogar', category: 'hogar' },
-  casa: { icon: 'Home', description: 'Seguro de Casa', category: 'hogar' },
-  motocicleta: { icon: 'Bike', description: 'Seguro de Motocicleta', category: 'vehiculos' },
-  moto: { icon: 'Bike', description: 'Seguro de Motocicleta', category: 'vehiculos' },
-  accidentes_personales: { icon: 'ShieldAlert', description: 'Accidentes Personales', category: 'personales' },
-  empresa: { icon: 'Building2', description: 'Seguro Empresarial', category: 'empresariales' },
-  negocio: { icon: 'Building2', description: 'Seguro para Negocio', category: 'empresariales' },
-  pyme: { icon: 'Store', description: 'Seguro para PyME', category: 'empresariales' },
-  responsabilidad_civil: { icon: 'Shield', description: 'Responsabilidad Civil', category: 'empresariales' },
-  rc: { icon: 'Shield', description: 'Responsabilidad Civil', category: 'empresariales' },
-  transporte: { icon: 'Truck', description: 'Seguro de Transporte', category: 'vehiculos' },
-  flotilla: { icon: 'Bus', description: 'Seguro de Flotilla', category: 'vehiculos' },
-  viaje: { icon: 'Plane', description: 'Seguro de Viaje', category: 'especializados' },
-  mascota: { icon: 'PawPrint', description: 'Seguro de Mascota', category: 'hogar' },
-  dental: { icon: 'Smile', description: 'Seguro Dental', category: 'personales' },
-  condominio: { icon: 'Building', description: 'Seguro Condominal', category: 'hogar' },
-  incendio: { icon: 'Flame', description: 'Seguro contra Incendio', category: 'hogar' },
-  construccion: { icon: 'HardHat', description: 'Seguro de Construccion', category: 'empresariales' },
-  agricola: { icon: 'Leaf', description: 'Seguro Agricola', category: 'especializados' },
-  educacion: { icon: 'GraduationCap', description: 'Seguro Educativo', category: 'personales' },
-  ahorro: { icon: 'PiggyBank', description: 'Plan de Ahorro', category: 'personales' },
-  retiro: { icon: 'Landmark', description: 'Plan de Retiro', category: 'personales' },
-  taxi: { icon: 'CarTaxiFront', description: 'Seguro de Taxi', category: 'vehiculos' },
-  eventos: { icon: 'Calendar', description: 'Seguro de Eventos', category: 'especializados' },
-};
-
-function getFormMeta(link: SharedQuoteFormLink): FormLinkMeta {
-  const typeKey = link.form_type?.toLowerCase().replace(/[^a-z_]/g, '') || '';
-  if (FORM_TYPE_META[typeKey]) return FORM_TYPE_META[typeKey];
-
-  const title = link.form_title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  for (const [key, meta] of Object.entries(FORM_TYPE_META)) {
-    if (title.includes(key.replace(/_/g, ' '))) return meta;
-  }
-  if (title.includes('auto') || title.includes('vehiculo')) return FORM_TYPE_META.auto;
-  if (title.includes('vida')) return FORM_TYPE_META.vida;
-  if (title.includes('gmm') || title.includes('medic')) return FORM_TYPE_META.gmm;
-  if (title.includes('hogar') || title.includes('casa')) return FORM_TYPE_META.hogar;
-  if (title.includes('empresa') || title.includes('pyme')) return FORM_TYPE_META.empresa;
-  if (title.includes('moto')) return FORM_TYPE_META.moto;
-
-  return { icon: 'FileText', description: 'Seguro especializado', category: 'otros' };
-}
-
-interface FormLinkDisplay {
+interface FormTemplate {
   id: string;
-  form_title: string;
   form_type: string;
-  slug: string;
-  featured_on_website: boolean;
-  featured_order: number | null;
-  meta: FormLinkMeta;
-  status: string;
+  title: string;
+  category: string;
+  icon: string;
+  slug: string | null;
 }
+
+interface FeaturedEntry {
+  form_template_id: string;
+  featured_order: number;
+}
+
+const DEFAULT_FEATURED_TYPES = [
+  'auto_individual',
+  'vida_individual',
+  'gmm_individual',
+  'hogar_casa_habitacion',
+  'accidentes_personales_individual',
+  'empresa_paquete'
+];
 
 export default function MiPaginaWeb() {
   const { user, usuario } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [insurers, setInsurers] = useState<WebPageInsurer[]>([]);
-  const [formLinks, setFormLinks] = useState<FormLinkDisplay[]>([]);
+  const [templates, setTemplates] = useState<FormTemplate[]>([]);
+  const [featuredIds, setFeaturedIds] = useState<Set<string>>(new Set());
+  const [featuredOrder, setFeaturedOrder] = useState<string[]>([]);
 
   const [config, setConfig] = useState<UserWebPageConfig>({
     primary_color: DEFAULT_COLORS.primary,
@@ -116,10 +73,20 @@ export default function MiPaginaWeb() {
     if (!user?.id) return;
 
     try {
-      const [insurersData, existingConfig, links] = await Promise.all([
+      const [insurersData, existingConfig, templatesData, featuredData] = await Promise.all([
         getActiveInsurers(),
         getUserWebPageConfig(user.id),
-        fetchAgentSharedLinks(user.id)
+        supabase
+          .from('quote_form_templates')
+          .select('id, form_type, title, category, icon, slug')
+          .eq('is_active', true)
+          .order('category')
+          .order('title'),
+        supabase
+          .from('user_web_featured_forms')
+          .select('form_template_id, featured_order')
+          .eq('user_id', user.id)
+          .order('featured_order')
       ]);
 
       setInsurers(insurersData);
@@ -128,20 +95,29 @@ export default function MiPaginaWeb() {
         setConfig(existingConfig);
       }
 
-      const activeLinks = links
-        .filter(l => l.status === 'active')
-        .map(l => ({
-          id: l.id,
-          form_title: l.form_title,
-          form_type: l.form_type,
-          slug: l.slug,
-          featured_on_website: (l as any).featured_on_website ?? false,
-          featured_order: (l as any).featured_order ?? null,
-          meta: getFormMeta(l),
-          status: l.status
-        }));
+      const allTemplates: FormTemplate[] = templatesData.data || [];
+      setTemplates(allTemplates);
 
-      setFormLinks(activeLinks);
+      const featured: FeaturedEntry[] = featuredData.data || [];
+
+      if (featured.length > 0) {
+        const ids = new Set(featured.map(f => f.form_template_id));
+        setFeaturedIds(ids);
+        setFeaturedOrder(featured.map(f => f.form_template_id));
+      } else {
+        const defaultIds = new Set(
+          allTemplates
+            .filter(t => DEFAULT_FEATURED_TYPES.includes(t.form_type))
+            .map(t => t.id)
+        );
+        setFeaturedIds(defaultIds);
+        setFeaturedOrder(
+          allTemplates
+            .filter(t => DEFAULT_FEATURED_TYPES.includes(t.form_type))
+            .sort((a, b) => DEFAULT_FEATURED_TYPES.indexOf(a.form_type) - DEFAULT_FEATURED_TYPES.indexOf(b.form_type))
+            .map(t => t.id)
+        );
+      }
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -156,14 +132,21 @@ export default function MiPaginaWeb() {
       setSaving(true);
       await saveUserWebPageConfig(user.id, config);
 
-      for (const link of formLinks) {
+      await supabase
+        .from('user_web_featured_forms')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (featuredOrder.length > 0) {
+        const rows = featuredOrder.map((templateId, idx) => ({
+          user_id: user.id,
+          form_template_id: templateId,
+          featured_order: idx + 1
+        }));
+
         await supabase
-          .from('shared_quote_form_links')
-          .update({
-            featured_on_website: link.featured_on_website,
-            featured_order: link.featured_order
-          })
-          .eq('id', link.id);
+          .from('user_web_featured_forms')
+          .insert(rows);
       }
 
       alert('Configuracion guardada exitosamente');
@@ -184,64 +167,54 @@ export default function MiPaginaWeb() {
     }));
   }
 
-  function toggleFeatured(linkId: string) {
-    setFormLinks(prev => prev.map(link => {
-      if (link.id !== linkId) return link;
-      const newFeatured = !link.featured_on_website;
-      return {
-        ...link,
-        featured_on_website: newFeatured,
-        featured_order: newFeatured ? (getFeaturedCount() + 1) : null
-      };
-    }));
+  function toggleFeatured(templateId: string) {
+    setFeaturedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(templateId)) {
+        next.delete(templateId);
+        setFeaturedOrder(order => order.filter(id => id !== templateId));
+      } else {
+        next.add(templateId);
+        setFeaturedOrder(order => [...order, templateId]);
+      }
+      return next;
+    });
   }
 
-  function getFeaturedCount(): number {
-    return formLinks.filter(l => l.featured_on_website).length;
-  }
-
-  function moveFeaturedUp(linkId: string) {
-    setFormLinks(prev => {
-      const featured = prev.filter(l => l.featured_on_website).sort((a, b) => (a.featured_order || 99) - (b.featured_order || 99));
-      const idx = featured.findIndex(l => l.id === linkId);
+  function moveFeaturedUp(templateId: string) {
+    setFeaturedOrder(prev => {
+      const idx = prev.indexOf(templateId);
       if (idx <= 0) return prev;
-
-      const prevLink = featured[idx - 1];
-      return prev.map(l => {
-        if (l.id === linkId) return { ...l, featured_order: prevLink.featured_order };
-        if (l.id === prevLink.id) return { ...l, featured_order: featured[idx].featured_order };
-        return l;
-      });
+      const next = [...prev];
+      [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+      return next;
     });
   }
 
-  function moveFeaturedDown(linkId: string) {
-    setFormLinks(prev => {
-      const featured = prev.filter(l => l.featured_on_website).sort((a, b) => (a.featured_order || 99) - (b.featured_order || 99));
-      const idx = featured.findIndex(l => l.id === linkId);
-      if (idx >= featured.length - 1) return prev;
-
-      const nextLink = featured[idx + 1];
-      return prev.map(l => {
-        if (l.id === linkId) return { ...l, featured_order: nextLink.featured_order };
-        if (l.id === nextLink.id) return { ...l, featured_order: featured[idx].featured_order };
-        return l;
-      });
+  function moveFeaturedDown(templateId: string) {
+    setFeaturedOrder(prev => {
+      const idx = prev.indexOf(templateId);
+      if (idx >= prev.length - 1) return prev;
+      const next = [...prev];
+      [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+      return next;
     });
   }
 
-  const featuredLinks = formLinks
-    .filter(l => l.featured_on_website)
-    .sort((a, b) => (a.featured_order || 99) - (b.featured_order || 99));
+  const groupedTemplates = templates.reduce<Record<string, FormTemplate[]>>((acc, t) => {
+    if (!acc[t.category]) acc[t.category] = [];
+    acc[t.category].push(t);
+    return acc;
+  }, {});
 
-  const previewFormLinks = formLinks.map(l => ({
-    slug: l.slug,
-    form_title: l.form_title,
-    form_type: l.form_type,
-    form_slug: l.slug,
-    quote_form_template_id: null,
-    featured_on_website: l.featured_on_website,
-    featured_order: l.featured_order
+  const previewFormLinks = templates.map(t => ({
+    slug: t.slug || t.form_type,
+    form_title: t.title,
+    form_type: t.form_type,
+    form_slug: t.slug || t.form_type,
+    quote_form_template_id: t.id,
+    featured_on_website: featuredIds.has(t.id),
+    featured_order: featuredOrder.indexOf(t.id) >= 0 ? featuredOrder.indexOf(t.id) + 1 : null
   }));
 
   if (loading) {
@@ -392,85 +365,82 @@ export default function MiPaginaWeb() {
           <Card className="p-4">
             <h2 className="text-base font-semibold mb-1">Ramos que Ofreces</h2>
             <p className="text-xs text-gray-500 mb-3">
-              Marca con estrella los tipos de seguro destacados en tu pagina (max. 6 recomendado).
-              Se muestran segun tus formularios de cotizacion activos.
+              Todos los ramos se muestran en tu pagina. Marca con estrella los destacados (3-6 recomendado).
             </p>
 
-            {formLinks.length === 0 ? (
-              <div className="text-center py-6 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                <p className="text-sm text-gray-500">
-                  No tienes formularios de cotizacion activos.
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  Crea formularios compartidos desde la seccion de Formularios de Cotizacion.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-1.5 max-h-64 overflow-y-auto">
-                {formLinks.map(link => {
-                  const IconComponent = (LucideIcons as any)[link.meta.icon];
-                  return (
-                    <div
-                      key={link.id}
-                      className={`flex items-center gap-2 p-2 rounded border transition-colors ${
-                        link.featured_on_website
-                          ? 'border-amber-300 bg-amber-50'
-                          : 'border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => toggleFeatured(link.id)}
-                        className={`flex-shrink-0 p-1 rounded transition-colors ${
-                          link.featured_on_website
-                            ? 'text-amber-500 hover:text-amber-600'
-                            : 'text-gray-300 hover:text-amber-400'
-                        }`}
-                        title={link.featured_on_website ? 'Quitar de destacados' : 'Marcar como destacado'}
-                      >
-                        <Star className={`w-4 h-4 ${link.featured_on_website ? 'fill-current' : ''}`} />
-                      </button>
+            <div className="space-y-3 max-h-72 overflow-y-auto">
+              {Object.entries(groupedTemplates).map(([category, items]) => (
+                <div key={category}>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 sticky top-0 bg-white py-1">
+                    {category}
+                  </p>
+                  <div className="space-y-1">
+                    {items.map(template => {
+                      const IconComponent = (LucideIcons as any)[template.icon];
+                      const isFeatured = featuredIds.has(template.id);
+                      return (
+                        <div
+                          key={template.id}
+                          className={`flex items-center gap-2 p-2 rounded border transition-colors ${
+                            isFeatured
+                              ? 'border-amber-300 bg-amber-50'
+                              : 'border-gray-200 hover:bg-gray-50'
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => toggleFeatured(template.id)}
+                            className={`flex-shrink-0 p-1 rounded transition-colors ${
+                              isFeatured
+                                ? 'text-amber-500 hover:text-amber-600'
+                                : 'text-gray-300 hover:text-amber-400'
+                            }`}
+                            title={isFeatured ? 'Quitar de destacados' : 'Marcar como destacado'}
+                          >
+                            <Star className={`w-4 h-4 ${isFeatured ? 'fill-current' : ''}`} />
+                          </button>
 
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: `${config.primary_color}15` }}
-                      >
-                        {IconComponent && <IconComponent className="w-4 h-4" style={{ color: config.primary_color }} />}
-                      </div>
+                          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                            style={{ backgroundColor: `${config.primary_color}15` }}
+                          >
+                            {IconComponent && <IconComponent className="w-3.5 h-3.5" style={{ color: config.primary_color }} />}
+                          </div>
 
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{link.form_title}</p>
-                        <p className="text-xs text-gray-500 truncate">{link.meta.description}</p>
-                      </div>
+                          <span className="text-sm font-medium flex-1 truncate">{template.title}</span>
 
-                      {link.featured_on_website && (
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-200 text-amber-800 flex-shrink-0">
-                          Destacado
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                          {isFeatured && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-200 text-amber-800 flex-shrink-0">
+                              Destacado
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
 
-            {featuredLinks.length > 0 && (
+            {featuredOrder.length > 0 && (
               <div className="mt-3 pt-3 border-t">
                 <p className="text-xs font-medium text-gray-700 mb-2">
-                  Orden de destacados ({featuredLinks.length}):
+                  Orden de destacados ({featuredOrder.length}):
                 </p>
                 <div className="space-y-1">
-                  {featuredLinks.map((link, idx) => {
-                    const IconComponent = (LucideIcons as any)[link.meta.icon];
+                  {featuredOrder.map((templateId, idx) => {
+                    const template = templates.find(t => t.id === templateId);
+                    if (!template) return null;
+                    const IconComponent = (LucideIcons as any)[template.icon];
                     return (
-                      <div key={link.id} className="flex items-center gap-2 text-xs px-2 py-1.5 rounded bg-amber-50 border border-amber-200">
+                      <div key={templateId} className="flex items-center gap-2 text-xs px-2 py-1.5 rounded bg-amber-50 border border-amber-200">
                         <GripVertical className="w-3 h-3 text-gray-400 flex-shrink-0" />
                         <span className="w-4 text-center font-bold text-amber-700">{idx + 1}</span>
                         {IconComponent && <IconComponent className="w-3.5 h-3.5 text-gray-600 flex-shrink-0" />}
-                        <span className="flex-1 truncate font-medium">{link.form_title}</span>
+                        <span className="flex-1 truncate font-medium">{template.title}</span>
                         <div className="flex gap-0.5">
                           <button
                             type="button"
-                            onClick={() => moveFeaturedUp(link.id)}
+                            onClick={() => moveFeaturedUp(templateId)}
                             disabled={idx === 0}
                             className="px-1 py-0.5 text-gray-500 hover:text-gray-700 disabled:opacity-30"
                           >
@@ -478,8 +448,8 @@ export default function MiPaginaWeb() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => moveFeaturedDown(link.id)}
-                            disabled={idx === featuredLinks.length - 1}
+                            onClick={() => moveFeaturedDown(templateId)}
+                            disabled={idx === featuredOrder.length - 1}
                             className="px-1 py-0.5 text-gray-500 hover:text-gray-700 disabled:opacity-30"
                           >
                             &#8595;

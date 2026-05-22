@@ -241,6 +241,35 @@ export default function PaginaPublicaAsesor() {
   }
 
   const processedLinks: ProcessedFormLink[] = useMemo(() => {
+    // Prefer form_templates (all ramos) over form_links (only manually created)
+    if (data?.form_templates?.length) {
+      return data.form_templates.map(tmpl => {
+        const typeKey = tmpl.form_type?.toLowerCase().replace(/[^a-z_]/g, '') || '';
+        const meta = FORM_TYPE_META[typeKey] || {
+          icon: tmpl.icon || 'FileText',
+          description: 'Solicita una cotizacion personalizada con atencion profesional y sin compromiso.',
+          priority: 99,
+          category: 'otros',
+          keywords: []
+        };
+        return {
+          slug: tmpl.slug || tmpl.form_type,
+          form_title: tmpl.title,
+          form_type: tmpl.form_type,
+          form_slug: tmpl.slug || tmpl.form_type,
+          quote_form_template_id: tmpl.id,
+          meta: { ...meta, icon: tmpl.icon || meta.icon },
+          displayName: cleanFormTitle(tmpl.title),
+          isFeatured: tmpl.is_featured,
+          publicUrl: '#',
+        };
+      }).sort((a, b) => {
+        if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
+        if (a.meta.priority !== b.meta.priority) return a.meta.priority - b.meta.priority;
+        return 0;
+      });
+    }
+
     if (!data?.form_links?.length) return [];
     const hasManualFeatured = data.form_links.some(l => l.featured_on_website);
     const links = data.form_links.map(link => {
@@ -269,7 +298,7 @@ export default function PaginaPublicaAsesor() {
       if (a.meta.priority !== b.meta.priority) return a.meta.priority - b.meta.priority;
       return 0;
     });
-  }, [data?.form_links]);
+  }, [data?.form_links, data?.form_templates]);
 
   const featuredLinks = useMemo(() => processedLinks.filter(l => l.isFeatured).slice(0, 6), [processedLinks]);
 

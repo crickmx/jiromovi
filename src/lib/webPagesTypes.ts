@@ -56,6 +56,17 @@ export interface SharedFormLink {
   featured_order?: number | null;
 }
 
+export interface FormTemplate {
+  id: string;
+  form_type: string;
+  title: string;
+  category: string;
+  icon: string;
+  slug: string | null;
+  is_featured: boolean;
+  featured_order: number;
+}
+
 export interface PublicWebPageData {
   user: {
     id: string;
@@ -91,6 +102,7 @@ export interface PublicWebPageData {
     card_description: string;
   }> | null;
   form_links: SharedFormLink[] | null;
+  form_templates: FormTemplate[] | null;
 }
 
 export interface UserWebPageConfig {
