@@ -1,14 +1,80 @@
 import { Phone, Mail, MessageCircle, ChevronLeft, ChevronRight, ArrowUp, Car } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
-import type { WebPageInsurer, WebPageCategory, UserWebPageConfig } from '../../lib/webPagesTypes';
+import type { WebPageInsurer, UserWebPageConfig, SharedFormLink } from '../../lib/webPagesTypes';
 import { DEFAULT_TEXT } from '../../lib/webPagesTypes';
 import { createColorVariant } from '../../lib/animationUtils';
 import { useState } from 'react';
 
+interface FormLinkMeta {
+  icon: string;
+  description: string;
+  category: string;
+}
+
+const FORM_TYPE_META: Record<string, FormLinkMeta> = {
+  auto: { icon: 'Car', description: 'Protege tu vehiculo con coberturas completas contra accidentes, robo y danos a terceros.', category: 'vehiculos' },
+  vida: { icon: 'Heart', description: 'Asegura el bienestar economico de tu familia con planes de vida a tu medida.', category: 'personales' },
+  gmm: { icon: 'Stethoscope', description: 'Accede a la mejor atencion medica con cobertura hospitalaria y de especialistas.', category: 'personales' },
+  gastos_medicos: { icon: 'Stethoscope', description: 'Cobertura hospitalaria y de especialistas para ti y tu familia.', category: 'personales' },
+  salud: { icon: 'HeartPulse', description: 'Planes de salud preventiva y hospitalaria para toda la familia.', category: 'personales' },
+  hogar: { icon: 'Home', description: 'Protege tu patrimonio contra incendios, robos y desastres naturales.', category: 'hogar' },
+  casa: { icon: 'Home', description: 'Protege tu hogar contra incendios, robos y desastres naturales.', category: 'hogar' },
+  motocicleta: { icon: 'Bike', description: 'Coberturas de danos, robo y responsabilidad civil para tu moto.', category: 'vehiculos' },
+  moto: { icon: 'Bike', description: 'Coberturas de danos, robo y responsabilidad civil para tu moto.', category: 'vehiculos' },
+  accidentes_personales: { icon: 'ShieldAlert', description: 'Cobertura ante accidentes con indemnizaciones y gastos medicos.', category: 'personales' },
+  empresa: { icon: 'Building2', description: 'Seguros empresariales que protegen tus activos y operaciones.', category: 'empresariales' },
+  negocio: { icon: 'Building2', description: 'Seguros para tu negocio con coberturas integrales.', category: 'empresariales' },
+  pyme: { icon: 'Store', description: 'Proteccion integral para pequenas y medianas empresas.', category: 'empresariales' },
+  responsabilidad_civil: { icon: 'Shield', description: 'Proteccion ante reclamaciones de terceros por danos.', category: 'empresariales' },
+  rc: { icon: 'Shield', description: 'Proteccion ante reclamaciones de terceros.', category: 'empresariales' },
+  transporte: { icon: 'Truck', description: 'Cobertura integral para mercancia en transito.', category: 'vehiculos' },
+  flotilla: { icon: 'Bus', description: 'Seguros para flotillas con tarifas preferenciales.', category: 'vehiculos' },
+  viaje: { icon: 'Plane', description: 'Viaja tranquilo con cobertura medica y equipaje.', category: 'especializados' },
+  mascota: { icon: 'PawPrint', description: 'Cobertura veterinaria y de accidentes para tu mascota.', category: 'hogar' },
+  dental: { icon: 'Smile', description: 'Cobertura dental preventiva, correctiva y de emergencia.', category: 'personales' },
+  condominio: { icon: 'Building', description: 'Proteccion para areas comunes y estructura.', category: 'hogar' },
+  incendio: { icon: 'Flame', description: 'Cobertura contra incendios y fenomenos naturales.', category: 'hogar' },
+  construccion: { icon: 'HardHat', description: 'Seguros para obras en construccion.', category: 'empresariales' },
+  agricola: { icon: 'Leaf', description: 'Cobertura para cultivos y actividades agricolas.', category: 'especializados' },
+  educacion: { icon: 'GraduationCap', description: 'Asegura el futuro educativo de tus hijos.', category: 'personales' },
+  ahorro: { icon: 'PiggyBank', description: 'Planes de ahorro e inversion respaldados.', category: 'personales' },
+  retiro: { icon: 'Landmark', description: 'Planifica tu retiro con rendimientos garantizados.', category: 'personales' },
+  taxi: { icon: 'CarTaxiFront', description: 'Seguro especializado para taxis.', category: 'vehiculos' },
+  eventos: { icon: 'Calendar', description: 'Cobertura para eventos contra cancelaciones.', category: 'especializados' },
+};
+
+function getFormMeta(link: SharedFormLink): FormLinkMeta {
+  const typeKey = link.form_type?.toLowerCase().replace(/[^a-z_]/g, '') || '';
+  if (FORM_TYPE_META[typeKey]) return FORM_TYPE_META[typeKey];
+
+  const title = link.form_title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  for (const [key, meta] of Object.entries(FORM_TYPE_META)) {
+    if (title.includes(key.replace(/_/g, ' '))) return meta;
+  }
+  if (title.includes('auto') || title.includes('vehiculo')) return FORM_TYPE_META.auto;
+  if (title.includes('vida')) return FORM_TYPE_META.vida;
+  if (title.includes('gmm') || title.includes('medic')) return FORM_TYPE_META.gmm;
+  if (title.includes('hogar') || title.includes('casa')) return FORM_TYPE_META.hogar;
+  if (title.includes('empresa') || title.includes('pyme')) return FORM_TYPE_META.empresa;
+  if (title.includes('moto')) return FORM_TYPE_META.moto;
+
+  return { icon: 'FileText', description: 'Solicita una cotizacion personalizada sin compromiso.', category: 'otros' };
+}
+
+function cleanFormTitle(title: string): string {
+  return title
+    .replace(/^formulario\s+de\s+/i, '')
+    .replace(/^cotizaci[oó]n\s+de\s+/i, '')
+    .replace(/^solicitud\s+de\s+/i, '')
+    .replace(/^seguro\s+de\s+/i, '')
+    .trim()
+    .replace(/^\w/, c => c.toUpperCase());
+}
+
 interface PublicWebPagePreviewProps {
   config: UserWebPageConfig;
   insurers: WebPageInsurer[];
-  categories: WebPageCategory[];
+  formLinks?: SharedFormLink[];
   userData: {
     name: string;
     email: string;
@@ -23,7 +89,7 @@ interface PublicWebPagePreviewProps {
 export default function PublicWebPagePreview({
   config,
   insurers,
-  categories,
+  formLinks = [],
   userData
 }: PublicWebPagePreviewProps) {
   const primaryColor = config.primary_color;
@@ -37,19 +103,13 @@ export default function PublicWebPagePreview({
     ? `https://multicotizador.digital/cotiza/${userData.web_slug}`
     : '#';
 
-  const categoriesText = categories.map(c => c.name.toLowerCase()).join(', ');
-  const seoText = `${userData.name} de ${userData.office_name} te ayuda a cotizar y contratar seguros de ${categoriesText} con atención personalizada por WhatsApp.`;
-
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [showScrollTop, setShowScrollTop] = useState(false);
   const [formData, setFormData] = useState({
     nombre: '',
     celular: '',
     email: '',
     seguro_interes: ''
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   const handlePrevSlide = () => {
     setCurrentSlide(prev => (prev - 1 + Math.ceil(insurers.length / 4)) % Math.ceil(insurers.length / 4));
@@ -58,6 +118,13 @@ export default function PublicWebPagePreview({
   const handleNextSlide = () => {
     setCurrentSlide(prev => (prev + 1) % Math.ceil(insurers.length / 4));
   };
+
+  const featuredFormLinks = formLinks
+    .filter(l => l.featured_on_website)
+    .sort((a, b) => (a.featured_order || 99) - (b.featured_order || 99))
+    .slice(0, 6);
+
+  const displayLinks = featuredFormLinks.length > 0 ? featuredFormLinks : formLinks.slice(0, 6);
 
   return (
     <div className="bg-white min-h-screen overflow-x-hidden">
@@ -102,10 +169,10 @@ export default function PublicWebPagePreview({
 
               <div className="mb-8">
                 <h2 className="text-2xl md:text-3xl font-bold mb-4" style={{ color: primaryColor }}>
-                  Protege lo que más importa
+                  Protege lo que mas importa
                 </h2>
                 <p className="text-gray-600 leading-relaxed max-w-lg">
-                  Te ayudo a encontrar el seguro perfecto para ti y tu familia. Cotizaciones personalizadas, asesoría profesional y atención inmediata por WhatsApp.
+                  Te ayudo a encontrar el seguro perfecto para ti y tu familia. Cotizaciones personalizadas, asesoria profesional y atencion inmediata por WhatsApp.
                 </p>
               </div>
 
@@ -150,110 +217,84 @@ export default function PublicWebPagePreview({
                 style={{ borderColor: createColorVariant(primaryColor, 0.2) }}
               >
                 <h3 className="text-xl font-bold text-gray-900 mb-1">
-                  Solicita tu Cotización
+                  Solicita tu Cotizacion
                 </h3>
                 <p className="text-gray-600 mb-4 text-sm">
-                  Completa el formulario y te contactaré de inmediato
+                  Completa el formulario y te contactare de inmediato
                 </p>
 
-                {submitStatus === 'success' ? (
-                  <div className="text-center py-6">
-                    <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <h4 className="text-lg font-bold text-gray-900 mb-2">¡Solicitud Recibida!</h4>
-                    <p className="text-gray-600 text-sm">
-                      Gracias por tu solicitud. Te contactaré a la brevedad para ofrecerte la mejor opción.
-                    </p>
+                <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                      Nombre Completo *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.nombre}
+                      onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
+                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none transition-colors text-sm"
+                      placeholder="Tu nombre"
+                    />
                   </div>
-                ) : (
-                  <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                        Nombre Completo *
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.nombre}
-                        onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
-                        className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:border-opacity-100 focus:outline-none transition-colors text-sm"
-                        style={{ focusBorderColor: primaryColor }}
-                        placeholder="Tu nombre"
-                        required
-                      />
-                    </div>
 
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                        Celular *
-                      </label>
-                      <input
-                        type="tel"
-                        value={formData.celular}
-                        onChange={(e) => setFormData(prev => ({ ...prev, celular: e.target.value }))}
-                        className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:border-opacity-100 focus:outline-none transition-colors text-sm"
-                        placeholder="55 1234 5678"
-                        required
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                      Celular *
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.celular}
+                      onChange={(e) => setFormData(prev => ({ ...prev, celular: e.target.value }))}
+                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none transition-colors text-sm"
+                      placeholder="55 1234 5678"
+                    />
+                  </div>
 
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                        Email *
-                      </label>
-                      <input
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                        className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:border-opacity-100 focus:outline-none transition-colors text-sm"
-                        placeholder="tu@email.com"
-                        required
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none transition-colors text-sm"
+                      placeholder="tu@email.com"
+                    />
+                  </div>
 
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                        Seguro de Interés *
-                      </label>
-                      <select
-                        value={formData.seguro_interes}
-                        onChange={(e) => setFormData(prev => ({ ...prev, seguro_interes: e.target.value }))}
-                        className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:border-opacity-100 focus:outline-none transition-colors bg-white text-sm"
-                        required
-                      >
-                        <option value="">Selecciona un seguro</option>
-                        {categories.map(category => (
-                          <option key={category.id} value={category.name}>
-                            {category.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {submitStatus === 'error' && (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-2.5 text-xs text-red-700">
-                        Error al enviar la solicitud. Por favor intenta nuevamente.
-                      </div>
-                    )}
-
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="w-full py-3 rounded-lg font-bold text-white transition-all duration-300 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                      style={{
-                        background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`
-                      }}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                      Seguro de Interes *
+                    </label>
+                    <select
+                      value={formData.seguro_interes}
+                      onChange={(e) => setFormData(prev => ({ ...prev, seguro_interes: e.target.value }))}
+                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none transition-colors bg-white text-sm"
                     >
-                      {isSubmitting ? 'Enviando...' : 'Solicitar Cotización'}
-                    </button>
+                      <option value="">Selecciona un seguro</option>
+                      {displayLinks.map(link => (
+                        <option key={link.slug} value={link.form_title}>
+                          {cleanFormTitle(link.form_title)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                    <p className="text-xs text-gray-500 text-center">
-                      Al enviar, aceptas que te contactemos para ofrecerte información sobre seguros.
-                    </p>
-                  </form>
-                )}
+                  <button
+                    type="submit"
+                    className="w-full py-3 rounded-lg font-bold text-white transition-all duration-300 hover:shadow-lg text-sm"
+                    style={{
+                      background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`
+                    }}
+                  >
+                    Solicitar Cotizacion
+                  </button>
+
+                  <p className="text-xs text-gray-500 text-center">
+                    Al enviar, aceptas que te contactemos para ofrecerte informacion sobre seguros.
+                  </p>
+                </form>
               </div>
             </div>
           </div>
@@ -338,31 +379,27 @@ export default function PublicWebPagePreview({
         </section>
       )}
 
-      <section className="relative py-16 px-4 bg-gradient-to-b from-gray-50 to-white z-10">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center mb-3 px-4" style={{ color: primaryColor }}>
-            Seguros a tu medida
-          </h2>
-          <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto text-base sm:text-lg px-4">
-            Protección completa para lo que más valoras
-          </p>
+      {displayLinks.length > 0 && (
+        <section className="relative py-16 px-4 bg-gradient-to-b from-gray-50 to-white z-10">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center mb-3 px-4" style={{ color: primaryColor }}>
+              Seguros a tu medida
+            </h2>
+            <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto text-base sm:text-lg px-4">
+              Proteccion completa para lo que mas valoras
+            </p>
 
-          {!categories || categories.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500">No hay ramos configurados</p>
-            </div>
-          ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 px-4">
-              {categories.map((category, idx) => {
-                const IconComponent = category.lucide_icon && (LucideIcons as any)[category.lucide_icon];
+              {displayLinks.map((link, idx) => {
+                const meta = getFormMeta(link);
+                const IconComponent = (LucideIcons as any)[meta.icon];
+                const displayName = cleanFormTitle(link.form_title);
 
                 return (
                   <div
-                    key={category.id}
+                    key={link.slug}
                     className="group relative bg-white p-6 sm:p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2"
-                    style={{
-                      animationDelay: `${idx * 100}ms`
-                    }}
+                    style={{ animationDelay: `${idx * 100}ms` }}
                   >
                     <div
                       className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"
@@ -384,10 +421,10 @@ export default function PublicWebPagePreview({
                       )}
 
                       <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 group-hover:text-opacity-90 transition-all" style={{ color: primaryColor }}>
-                        {category.card_title}
+                        {displayName}
                       </h3>
                       <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 leading-relaxed">
-                        {category.card_description}
+                        {meta.description}
                       </p>
 
                       <a
@@ -395,7 +432,7 @@ export default function PublicWebPagePreview({
                         className="inline-flex items-center gap-2 text-sm sm:text-base font-bold hover:gap-3 transition-all duration-300 group/link"
                         style={{ color: secondaryColor }}
                       >
-                        Cotizar {category.name}
+                        Cotizar
                         <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 group-hover/link:rotate-12 transition-transform" />
                       </a>
                     </div>
@@ -403,19 +440,19 @@ export default function PublicWebPagePreview({
                 );
               })}
             </div>
-          )}
-        </div>
-      </section>
+          </div>
+        </section>
+      )}
 
       <section className="relative py-16 px-4 bg-white z-10">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-6 sm:mb-8 text-center px-4" style={{ color: primaryColor }}>
-            Sobre Mí
+            Sobre Mi
           </h2>
 
           {!textToDisplay || textToDisplay.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-500">No hay información disponible</p>
+              <p className="text-gray-500">No hay informacion disponible</p>
             </div>
           ) : (
             <div className="space-y-4 px-4">
@@ -455,11 +492,11 @@ export default function PublicWebPagePreview({
                 </h2>
 
                 <p className="text-base sm:text-lg text-gray-700 leading-relaxed mb-2">
-                  Todas tus pólizas contratadas en Grupo JIRO, en un solo lugar.
+                  Todas tus polizas contratadas en Grupo JIRO, en un solo lugar.
                 </p>
 
                 <p className="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8">
-                  Accede, consulta y mantente al día con tus pólizas desde tu celular.
+                  Accede, consulta y mantente al dia con tus polizas desde tu celular.
                 </p>
 
                 <div className="flex flex-col w-full sm:w-auto gap-3 mb-4">
@@ -501,7 +538,7 @@ export default function PublicWebPagePreview({
                   className="inline-flex items-center gap-2 text-sm sm:text-base font-bold transition-all duration-300 hover:gap-3"
                   style={{ color: secondaryColor }}
                 >
-                  Conoce más sobre Seguwallet
+                  Conoce mas sobre Seguwallet
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
@@ -524,10 +561,10 @@ export default function PublicWebPagePreview({
       <section className="relative py-12 sm:py-16 px-4 bg-gray-50 z-10">
         <div className="max-w-4xl mx-auto text-center">
           <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 px-4" style={{ color: primaryColor }}>
-            ¿Listo para proteger lo que más valoras?
+            Listo para proteger lo que mas valoras?
           </h3>
           <p className="text-sm sm:text-base md:text-lg text-gray-600 mb-6 sm:mb-8 px-4">
-            {seoText}
+            {userData.name} de {userData.office_name} te ayuda a cotizar y contratar seguros con atencion personalizada por WhatsApp.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
@@ -537,7 +574,7 @@ export default function PublicWebPagePreview({
               style={{ backgroundColor: primaryColor }}
             >
               <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 group-hover:rotate-12 transition-transform" />
-              Contáctame por WhatsApp
+              Contactame por WhatsApp
             </a>
             <a
               href={`tel:${userData.phone?.replace(/\D/g, '')}`}
@@ -568,7 +605,7 @@ export default function PublicWebPagePreview({
             </a>
           </div>
           <p className="text-sm text-gray-400 mb-2">
-            © {new Date().getFullYear()} Grupo JIRO. Todos los derechos reservados.
+            {new Date().getFullYear()} Grupo JIRO. Todos los derechos reservados.
           </p>
           <div className="flex items-center justify-center gap-4 mb-2">
             <a
@@ -595,19 +632,7 @@ export default function PublicWebPagePreview({
         style={{ backgroundColor: primaryColor }}
       >
         <MessageCircle className="w-6 h-6 text-white group-hover:rotate-12 transition-transform" />
-        <span className="absolute -top-12 right-0 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-          WhatsApp
-        </span>
       </a>
-
-      <button
-        className={`hidden md:flex fixed bottom-8 right-28 items-center justify-center w-12 h-12 bg-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 z-50 border-2 ${
-          showScrollTop ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0 pointer-events-none'
-        }`}
-        style={{ borderColor: createColorVariant(primaryColor, 0.3) }}
-      >
-        <ArrowUp className="w-5 h-5" style={{ color: primaryColor }} />
-      </button>
 
       <div className="fixed bottom-0 left-0 right-0 md:hidden backdrop-blur-lg bg-white border-t border-gray-200 shadow-lg z-50">
         <div className="flex divide-x divide-gray-200">
