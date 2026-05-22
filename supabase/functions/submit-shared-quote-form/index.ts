@@ -251,24 +251,30 @@ Deno.serve(async (req: Request) => {
       let isNewLead = true;
 
       try {
+        console.log("CRM: calling create_crm_lead_and_task_from_public_form", {
+          agentId, officeId, client_name: client_name.trim(), form_type: link.form_type,
+        });
+
         const { data: crmResult, error: crmErr } = await supabase.rpc(
           "create_crm_lead_and_task_from_public_form",
           {
             p_agent_id: agentId,
-            p_office_id: officeId,
+            p_office_id: officeId || null,
             p_client_name: client_name.trim(),
             p_client_phone: client_phone || null,
             p_client_whatsapp: client_whatsapp || null,
             p_client_email: client_email || null,
-            p_form_type: link.form_type,
-            p_form_title: link.form_title,
+            p_form_type: link.form_type || null,
+            p_form_title: link.form_title || null,
             p_quote_form_id: qForm.id,
-            p_ticket_id: ticketId,
+            p_ticket_id: ticketId || null,
             p_shared_link_id: link.id,
             p_public_submission_id: submission.id,
             p_notes: notes || null,
           }
         );
+
+        console.log("CRM: result", { crmResult, crmErr });
 
         if (crmErr) {
           console.error("CRM creation error (non-critical):", crmErr);
