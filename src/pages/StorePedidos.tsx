@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Package, Eye, Filter, Download, Search, Calendar, ArrowLeft, Trash2, BarChart3 } from 'lucide-react';
+import { Package, Eye, Filter, Download, Search, Calendar, Trash2, BarChart3, ClipboardList } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import { obtenerTodosPedidos, eliminarPedido } from '../lib/storeUtils';
 import type { StorePedido } from '../lib/storeTypes';
 import { format } from 'date-fns';
@@ -91,7 +92,7 @@ export default function StorePedidos() {
       'Entregado': 'bg-green-100 text-green-800',
       'Cancelado': 'bg-red-100 text-red-800'
     };
-    return colors[estatusNombre] || 'bg-gray-100 text-gray-800';
+    return colors[estatusNombre] || 'bg-neutral-100 dark:bg-white/10 text-neutral-800 dark:text-white/80';
   };
 
   const estatusUnicos = Array.from(new Set(pedidos.map(p => p.estatus?.nombre).filter(Boolean)));
@@ -262,70 +263,59 @@ export default function StorePedidos() {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <button
-          onClick={() => navigate('/store')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Volver a MOVI Store</span>
-        </button>
-
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-accent">Gestion de Pedidos</h1>
-            <p className="text-gray-600 mt-1">
-              Administra todos los pedidos de MOVI Store
-              {pedidos.length > 0 && (
-                <span className="ml-2 text-sm font-semibold text-accent">
-                  • {pedidos.length} pedidos de {new Set(pedidos.map(p => p.usuario_id)).size} usuarios
-                </span>
-              )}
-            </p>
-          </div>
-          <button
-            onClick={() => navigate('/store/reporte')}
-            className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-primary-800 transition-colors shadow-sm"
-          >
-            <BarChart3 className="w-4 h-4" />
-            Reporte Ganancias
-          </button>
-        </div>
+        <PageHeader
+          title="Gestión de Pedidos"
+          description={`Administra todos los pedidos de MOVI Store${pedidos.length > 0 ? ` — ${pedidos.length} pedidos de ${new Set(pedidos.map(p => p.usuario_id)).size} usuarios` : ''}`}
+          icon={ClipboardList}
+          backTo="/store"
+          backLabel="Volver a MOVI Store"
+          actions={
+            <button
+              onClick={() => navigate('/store/reporte')}
+              className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors shadow-sm"
+            >
+              <BarChart3 className="w-4 h-4" />
+              Reporte Ganancias
+            </button>
+          }
+          className="mb-6 sm:mb-8"
+        />
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Pedidos</p>
-                <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
+                <p className="text-sm font-medium text-neutral-600 dark:text-white/60">Total Pedidos</p>
+                <p className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white mt-1">{stats.total}</p>
               </div>
               <Package className="w-8 h-8 text-accent" />
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Pendientes</p>
+                <p className="text-sm font-medium text-neutral-600 dark:text-white/60">Pendientes</p>
                 <p className="text-xl sm:text-2xl font-bold text-yellow-600 mt-1">{stats.pendientes}</p>
               </div>
               <Calendar className="w-8 h-8 text-yellow-600" />
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Procesando</p>
+                <p className="text-sm font-medium text-neutral-600 dark:text-white/60">Procesando</p>
                 <p className="text-xl sm:text-2xl font-bold text-accent mt-1">{stats.procesando}</p>
               </div>
               <Package className="w-8 h-8 text-accent" />
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Entregados</p>
+                <p className="text-sm font-medium text-neutral-600 dark:text-white/60">Entregados</p>
                 <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">{stats.entregados}</p>
               </div>
               <Package className="w-8 h-8 text-green-600" />
@@ -333,25 +323,25 @@ export default function StorePedidos() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+        <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6 mb-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 dark:text-white/40 w-5 h-5" />
               <input
                 type="text"
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 placeholder="Buscar por folio, ID o cliente..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div className="flex items-center gap-2">
-              <Filter className="w-5 h-5 text-gray-400" />
+              <Filter className="w-5 h-5 text-neutral-400 dark:text-white/40" />
               <select
                 value={filtroEstatus}
                 onChange={(e) => setFiltroEstatus(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="px-4 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Todos los estatus</option>
                 {estatusUnicos.map(estatus => (
@@ -376,64 +366,64 @@ export default function StorePedidos() {
         </div>
 
         {pedidosFiltrados.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-            <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">
+          <div className="text-center py-12 bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10">
+            <Package className="w-16 h-16 text-neutral-400 dark:text-white/40 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-neutral-700 dark:text-white/70 mb-2">
               {busqueda || filtroEstatus ? 'No se encontraron pedidos' : 'No hay pedidos aún'}
             </h3>
-            <p className="text-gray-500">
+            <p className="text-neutral-500 dark:text-white/50">
               {busqueda || filtroEstatus ? 'Intenta con otros filtros' : 'Los pedidos aparecerán aquí'}
             </p>
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-neutral-200 dark:divide-white/10">
+                <thead className="bg-neutral-50 dark:bg-white/5">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">
                       ID Pedido
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">
                       Cliente
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">
                       Fecha
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">
                       Estatus
                     </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-6 py-3 text-center text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">
                       Acciones
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-neutral-200 dark:divide-white/10">
                   {pedidosFiltrados.map(pedido => (
-                    <tr key={pedido.id} className="hover:bg-gray-50">
+                    <tr key={pedido.id} className="hover:bg-neutral-50 dark:bg-white/5">
                       <td className="px-6 py-4 whitespace-nowrap">
                         {pedido.folio_oc ? (
                           <span className="text-sm font-semibold text-accent bg-primary-50 px-2 py-1 rounded">
                             {pedido.folio_oc}
                           </span>
                         ) : (
-                          <span className="text-sm text-gray-400 italic">
+                          <span className="text-sm text-neutral-400 dark:text-white/40 italic">
                             Pendiente
                           </span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-col">
-                          <span className="text-sm font-medium text-gray-900">
+                          <span className="text-sm font-medium text-neutral-900 dark:text-white">
                             {pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A'}
                           </span>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-neutral-500 dark:text-white/50">
                             SICAS: {pedido.usuario?.nombre_sicas || 'Sin usuario SICAS relacionado'}
                           </span>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-900">
+                        <span className="text-sm text-neutral-900 dark:text-white">
                           {format(new Date(pedido.created_at), "d MMM yyyy", { locale: es })}
                         </span>
                       </td>
@@ -468,8 +458,8 @@ export default function StorePedidos() {
               </table>
             </div>
 
-            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-              <p className="text-sm text-gray-600">
+            <div className="bg-neutral-50 dark:bg-white/5 px-6 py-4 border-t border-neutral-200 dark:border-white/10">
+              <p className="text-sm text-neutral-600 dark:text-white/60">
                 Mostrando {pedidosFiltrados.length} de {pedidos.length} pedidos
               </p>
             </div>
@@ -485,29 +475,29 @@ export default function StorePedidos() {
                 <Trash2 className="w-6 h-6 text-red-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Eliminar Pedido</h3>
-                <p className="text-sm text-gray-500">Esta acción no se puede deshacer</p>
+                <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Eliminar Pedido</h3>
+                <p className="text-sm text-neutral-500 dark:text-white/50">Esta acción no se puede deshacer</p>
               </div>
             </div>
 
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-gray-700 mb-2">
+              <p className="text-sm text-neutral-700 dark:text-white/70 mb-2">
                 Estás a punto de eliminar el siguiente pedido:
               </p>
               <div className="space-y-1">
-                <p className="text-sm font-semibold text-gray-900">
+                <p className="text-sm font-semibold text-neutral-900 dark:text-white">
                   Folio: {pedidoAEliminar.folio_oc || 'Pendiente'}
                 </p>
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-neutral-700 dark:text-white/70">
                   Cliente: {pedidoAEliminar.usuario?.nombre || 'N/A'}
                 </p>
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-neutral-700 dark:text-white/70">
                   Total: ${pedidoAEliminar.total?.toLocaleString('es-MX', { minimumFractionDigits: 2 }) || '0.00'}
                 </p>
               </div>
             </div>
 
-            <p className="text-sm text-gray-600 mb-6">
+            <p className="text-sm text-neutral-600 dark:text-white/60 mb-6">
               Se eliminarán todos los datos relacionados con este pedido, incluyendo detalles,
               notas administrativas e historial de cambios.
             </p>
@@ -516,7 +506,7 @@ export default function StorePedidos() {
               <button
                 onClick={() => setPedidoAEliminar(null)}
                 disabled={eliminando}
-                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors disabled:opacity-50"
+                className="flex-1 px-4 py-2 bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/15 font-medium transition-colors disabled:opacity-50"
               >
                 Cancelar
               </button>

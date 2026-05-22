@@ -3,7 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 import { trackDocumentView, trackDashboardView, trackDashboardTabOpened, trackDashboardFilterApplied, trackDashboardDrilldown } from '../lib/activityLogger';
-import { TrendingUp, Database, Loader2, AlertTriangle, Users, BarChart3, RefreshCcw, Shield, FileText, Building2, Layers, CalendarClock, GitCompare, Cloud, Search, X, Filter, MapPin, CircleUser as UserCircle, Lightbulb, Bell } from 'lucide-react';
+import { TrendingUp, Database, Loader2, AlertTriangle, Users, BarChart3, RefreshCcw, Shield, FileText, Building2, Layers, CalendarClock, GitCompare, Cloud, Search, X, Filter, MapPin, CircleUser as UserCircle, Lightbulb, Bell, Radio } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import {
   type DashboardTab, type DashboardScope, type DashboardKPIs,
   type DashboardCharts, type GlobalFilters, type OficinaOption,
@@ -195,86 +196,69 @@ export default function ProduccionSICASLive() {
   ).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-slate-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-900 dark:to-neutral-800">
       <div className="max-w-[1480px] mx-auto px-4 md:px-6 py-4 md:py-6 space-y-4">
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: accentColor + '15' }}>
-                <TrendingUp className="w-5 h-5" style={{ color: accentColor }} />
-              </div>
-              Produccion SICAS
-            </h1>
-            <div className="flex items-center gap-3 mt-1">
-              <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                <Shield className="w-3 h-3" /> {scopeLabel}
-              </span>
-              {kpis?.last_sync && (
-                <span className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
-                  <Database className="w-3 h-3" /> Sync: {formatDate(kpis.last_sync)}
-                </span>
+        <PageHeader
+          title="Produccion SICAS"
+          description={`${scopeLabel}${kpis?.last_sync ? ` | Sync: ${formatDate(kpis.last_sync)}` : ''}`}
+          icon={Radio}
+          actions={
+            <div className="flex items-center gap-2 flex-wrap">
+              <DateRangeSelector
+                fechaDesde={filters.fechaDesde}
+                fechaHasta={filters.fechaHasta}
+                onChange={(desde, hasta) => setFilters(f => ({ ...f, fechaDesde: desde, fechaHasta: hasta }))}
+              />
+              {isAdmin && oficinas.length > 0 && (
+                <select
+                  value={filters.oficina}
+                  onChange={e => setFilters(f => ({ ...f, oficina: e.target.value, vendedor: '' }))}
+                  className="px-2 py-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs text-neutral-700 dark:text-neutral-300 outline-none focus:ring-1 focus:ring-blue-500 max-w-[180px]"
+                >
+                  <option value="">Todas las oficinas</option>
+                  {oficinas.map(o => (
+                    <option key={o.id} value={o.id}>{o.nombre} ({o.documentos})</option>
+                  ))}
+                </select>
               )}
+              {(isAdmin || isOfficeRole) && filterOptions?.vendedores && filterOptions.vendedores.length > 0 && (
+                <select
+                  value={filters.vendedor}
+                  onChange={e => setFilters(f => ({ ...f, vendedor: e.target.value }))}
+                  className="px-2 py-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs text-neutral-700 dark:text-neutral-300 outline-none focus:ring-1 focus:ring-blue-500 max-w-[180px]"
+                >
+                  <option value="">Todos los vendedores</option>
+                  {filterOptions.vendedores.map(v => (
+                    <option key={v.id} value={v.id}>{v.nombre}</option>
+                  ))}
+                </select>
+              )}
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                  activeFiltersCount > 0
+                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                    : 'bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border-neutral-200 dark:border-neutral-700 hover:border-neutral-300'
+                }`}
+              >
+                <Filter className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Filtros</span>
+                {activeFiltersCount > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center">{activeFiltersCount}</span>
+                )}
+              </button>
+              <button
+                onClick={loadData}
+                disabled={loading}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700 rounded-lg hover:border-neutral-300 text-xs font-medium transition-all disabled:opacity-50"
+              >
+                <RefreshCcw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              </button>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Date Range */}
-            <DateRangeSelector
-              fechaDesde={filters.fechaDesde}
-              fechaHasta={filters.fechaHasta}
-              onChange={(desde, hasta) => setFilters(f => ({ ...f, fechaDesde: desde, fechaHasta: hasta }))}
-            />
-            {/* Admin Office Filter */}
-            {isAdmin && oficinas.length > 0 && (
-              <select
-                value={filters.oficina}
-                onChange={e => setFilters(f => ({ ...f, oficina: e.target.value, vendedor: '' }))}
-                className="px-2 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs text-gray-700 dark:text-gray-300 outline-none focus:ring-1 focus:ring-blue-500 max-w-[180px]"
-              >
-                <option value="">Todas las oficinas</option>
-                {oficinas.map(o => (
-                  <option key={o.id} value={o.id}>{o.nombre} ({o.documentos})</option>
-                ))}
-              </select>
-            )}
-            {/* Vendor Filter (admin, office roles) */}
-            {(isAdmin || isOfficeRole) && filterOptions?.vendedores && filterOptions.vendedores.length > 0 && (
-              <select
-                value={filters.vendedor}
-                onChange={e => setFilters(f => ({ ...f, vendedor: e.target.value }))}
-                className="px-2 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs text-gray-700 dark:text-gray-300 outline-none focus:ring-1 focus:ring-blue-500 max-w-[180px]"
-              >
-                <option value="">Todos los vendedores</option>
-                {filterOptions.vendedores.map(v => (
-                  <option key={v.id} value={v.id}>{v.nombre}</option>
-                ))}
-              </select>
-            )}
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
-                activeFiltersCount > 0
-                  ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
-                  : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <Filter className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Filtros</span>
-              {activeFiltersCount > 0 && (
-                <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center">{activeFiltersCount}</span>
-              )}
-            </button>
-            <button
-              onClick={loadData}
-              disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 text-xs font-medium transition-all disabled:opacity-50"
-            >
-              <RefreshCcw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-        </div>
+          }
+        />
 
         {/* Filters Panel */}
         {showFilters && (
@@ -299,7 +283,7 @@ export default function ProduccionSICASLive() {
         )}
 
         {/* Tab Navigation */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-1">
+        <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-1">
           <div className="flex flex-wrap gap-0.5">
             {visibleTabs.map(tab => {
               const isActive = activeTab === tab.key;
@@ -310,7 +294,7 @@ export default function ProduccionSICASLive() {
                   className={`flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 md:py-2 text-[11px] md:text-xs font-medium rounded-lg transition-all whitespace-nowrap ${
                     isActive
                       ? 'text-white shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                      : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700/50'
                   }`}
                   style={isActive ? { backgroundColor: accentColor } : undefined}
                 >
@@ -503,14 +487,14 @@ function DateRangeSelector({ fechaDesde, fechaHasta, onChange }: {
     `px-2 py-1 text-[10px] font-medium rounded-md transition-colors ${
       activePreset === key
         ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+        : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700'
     }`;
 
-  const inputClass = "px-2 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs text-gray-700 dark:text-gray-300 outline-none focus:ring-1 focus:ring-blue-500 w-[120px]";
+  const inputClass = "px-2 py-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs text-neutral-700 dark:text-neutral-300 outline-none focus:ring-1 focus:ring-blue-500 w-[120px]";
 
   return (
-    <div className="flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-1.5 py-0.5">
-      <CalendarClock className="w-3.5 h-3.5 text-gray-400 shrink-0 ml-1" />
+    <div className="flex items-center gap-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-1.5 py-0.5">
+      <CalendarClock className="w-3.5 h-3.5 text-neutral-400 shrink-0 ml-1" />
       <div className="flex items-center gap-0.5">
         <button onClick={() => setPreset('este_mes')} className={presetBtnClass('este_mes')}>Mes</button>
         <button onClick={() => setPreset('mes_anterior')} className={presetBtnClass('mes_anterior')}>Ant.</button>
@@ -518,7 +502,7 @@ function DateRangeSelector({ fechaDesde, fechaHasta, onChange }: {
         <button onClick={() => setPreset('este_anio')} className={presetBtnClass('este_anio')}>Anio</button>
         <button onClick={() => setPreset('todo')} className={presetBtnClass('todo')}>Todo</button>
       </div>
-      <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-0.5" />
+      <div className="w-px h-4 bg-neutral-200 dark:bg-neutral-700 mx-0.5" />
       <input
         type="date"
         value={fechaDesde}
@@ -526,7 +510,7 @@ function DateRangeSelector({ fechaDesde, fechaHasta, onChange }: {
         className={inputClass}
         title="Desde"
       />
-      <span className="text-[10px] text-gray-400">-</span>
+      <span className="text-[10px] text-neutral-400">-</span>
       <input
         type="date"
         value={fechaHasta}
@@ -554,26 +538,26 @@ function FiltersPanel({ filters, onChange, options, onClose }: {
 
   const reset = () => onChange(DEFAULT_FILTERS);
 
-  const selectClass = "w-full px-2.5 py-1.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 outline-none";
+  const selectClass = "w-full px-2.5 py-1.5 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded-lg text-xs text-neutral-800 dark:text-neutral-200 focus:ring-2 focus:ring-blue-500 outline-none";
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 animate-in slide-in-from-top-2 duration-200">
+    <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 animate-in slide-in-from-top-2 duration-200">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
           <Filter className="w-4 h-4 text-blue-600" /> Filtros Globales
         </h3>
         <div className="flex items-center gap-2">
-          <button onClick={reset} className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">Limpiar</button>
-          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+          <button onClick={reset} className="text-xs text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200">Limpiar</button>
+          <button onClick={onClose} className="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700">
             <X className="w-4 h-4" />
           </button>
         </div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <div>
-          <label className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase mb-1 block">Busqueda</label>
+          <label className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400 uppercase mb-1 block">Busqueda</label>
           <div className="relative">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-neutral-400" />
             <input
               type="text"
               value={filters.search}
@@ -584,7 +568,7 @@ function FiltersPanel({ filters, onChange, options, onClose }: {
           </div>
         </div>
         <div>
-          <label className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase mb-1 block">Tipo</label>
+          <label className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400 uppercase mb-1 block">Tipo</label>
           <select value={filters.tipo} onChange={e => update('tipo', e.target.value)} className={selectClass}>
             <option value="">Todos</option>
             <option value="polizas">Polizas</option>
@@ -592,7 +576,7 @@ function FiltersPanel({ filters, onChange, options, onClose }: {
           </select>
         </div>
         <div>
-          <label className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase mb-1 block">Estatus</label>
+          <label className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400 uppercase mb-1 block">Estatus</label>
           <select value={filters.status} onChange={e => update('status', e.target.value)} className={selectClass}>
             <option value="">Todos</option>
             <option value="vigente">Vigente</option>
@@ -600,21 +584,21 @@ function FiltersPanel({ filters, onChange, options, onClose }: {
           </select>
         </div>
         <div>
-          <label className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase mb-1 block">Aseguradora</label>
+          <label className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400 uppercase mb-1 block">Aseguradora</label>
           <select value={filters.aseguradora} onChange={e => update('aseguradora', e.target.value)} className={selectClass}>
             <option value="">Todas</option>
             {options?.aseguradoras.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
         </div>
         <div>
-          <label className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase mb-1 block">Ramo</label>
+          <label className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400 uppercase mb-1 block">Ramo</label>
           <select value={filters.ramo} onChange={e => update('ramo', e.target.value)} className={selectClass}>
             <option value="">Todos</option>
             {options?.ramos.map(r => <option key={r} value={r}>{r}</option>)}
           </select>
         </div>
         <div>
-          <label className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase mb-1 block">Moneda</label>
+          <label className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400 uppercase mb-1 block">Moneda</label>
           <select value={filters.moneda} onChange={e => update('moneda', e.target.value)} className={selectClass}>
             <option value="">Todas</option>
             {options?.monedas.map(m => <option key={m} value={m}>{m}</option>)}

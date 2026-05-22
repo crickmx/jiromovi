@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Package, Plus, CreditCard as Edit, Trash2, Eye, EyeOff, Upload, X, FolderOpen, ArrowLeft, DollarSign } from 'lucide-react';
+import { Store, Package, Plus, CreditCard as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import {
   obtenerTodosProductos,
   obtenerTodasCategorias,
@@ -146,20 +147,14 @@ export default function StoreAdmin() {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <button
-          onClick={() => navigate('/store')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Volver a MOVI Store</span>
-        </button>
-
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-accent">Administración de MOVI Store</h1>
-            <p className="text-gray-600 mt-1">Gestiona productos y categorías</p>
-          </div>
-        </div>
+        <PageHeader
+          title="Administración de MOVI Store"
+          description="Gestiona productos y categorías"
+          icon={Store}
+          backTo="/store"
+          backLabel="Volver a MOVI Store"
+          className="mb-8"
+        />
 
         <div className="flex items-center gap-4 mb-6">
           <button
@@ -167,7 +162,7 @@ export default function StoreAdmin() {
             className={`px-6 py-3 rounded-lg font-medium transition-colors ${
               vistaActual === 'productos'
                 ? 'bg-accent text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/15'
             }`}
           >
             <Package className="w-5 h-5 inline mr-2" />
@@ -179,7 +174,7 @@ export default function StoreAdmin() {
             className={`px-6 py-3 rounded-lg font-medium transition-colors ${
               vistaActual === 'categorias'
                 ? 'bg-accent text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/15'
             }`}
           >
             <FolderOpen className="w-5 h-5 inline mr-2" />
@@ -199,24 +194,24 @@ export default function StoreAdmin() {
               </button>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-neutral-200 dark:divide-white/10">
+                  <thead className="bg-neutral-50 dark:bg-white/5">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Imagen</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Costo</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Precio</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Margen</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Imagen</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Producto</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Categoría</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Costo</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Precio</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Margen</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Estado</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Acciones</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white divide-y divide-neutral-200 dark:divide-white/10">
                     {productos.map(producto => (
-                      <tr key={producto.id} className="hover:bg-gray-50">
+                      <tr key={producto.id} className="hover:bg-neutral-50 dark:bg-white/5">
                         <td className="px-6 py-4">
                           <img
                             src={getImageUrl(producto.imagen_url)}
@@ -229,19 +224,19 @@ export default function StoreAdmin() {
                           />
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{producto.titulo}</div>
-                          <div className="text-sm text-gray-500 line-clamp-1">{producto.descripcion}</div>
+                          <div className="text-sm font-medium text-neutral-900 dark:text-white">{producto.titulo}</div>
+                          <div className="text-sm text-neutral-500 dark:text-white/50 line-clamp-1">{producto.descripcion}</div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-sm text-gray-900">{producto.categoria?.nombre}</span>
+                          <span className="text-sm text-neutral-900 dark:text-white">{producto.categoria?.nombre}</span>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-sm text-gray-600">
+                          <span className="text-sm text-neutral-600 dark:text-white/60">
                             ${(producto.costo_base || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-sm font-semibold text-gray-900">
+                          <span className="text-sm font-semibold text-neutral-900 dark:text-white">
                             ${producto.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                           </span>
                         </td>
@@ -254,7 +249,7 @@ export default function StoreAdmin() {
                               {((producto.precio - producto.costo_base) / producto.precio * 100).toFixed(0)}%
                             </span>
                           ) : (
-                            <span className="text-xs text-gray-400">--</span>
+                            <span className="text-xs text-neutral-400 dark:text-white/40">--</span>
                           )}
                         </td>
                         <td className="px-6 py-4">
@@ -263,7 +258,7 @@ export default function StoreAdmin() {
                             className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full ${
                               producto.activo
                                 ? 'bg-green-100 text-green-800'
-                                : 'bg-gray-100 text-gray-800'
+                                : 'bg-neutral-100 dark:bg-white/10 text-neutral-800 dark:text-white/80'
                             }`}
                           >
                             {producto.activo ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
@@ -309,12 +304,12 @@ export default function StoreAdmin() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {categorias.map(categoria => (
-                <div key={categoria.id} className="bg-white rounded-xl border border-gray-200 p-6">
+                <div key={categoria.id} className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">{categoria.nombre}</h3>
+                      <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-1">{categoria.nombre}</h3>
                       {categoria.descripcion && (
-                        <p className="text-sm text-gray-600">{categoria.descripcion}</p>
+                        <p className="text-sm text-neutral-600 dark:text-white/60">{categoria.descripcion}</p>
                       )}
                     </div>
                     <button
@@ -322,7 +317,7 @@ export default function StoreAdmin() {
                       className={`ml-3 inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full ${
                         categoria.activo
                           ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
+                          : 'bg-neutral-100 dark:bg-white/10 text-neutral-800 dark:text-white/80'
                       }`}
                     >
                       {categoria.activo ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
@@ -527,26 +522,26 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
     >
       <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
             Titulo *
           </label>
           <input
             type="text"
             value={titulo}
             onChange={(e) => setTitulo(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
             placeholder="Nombre del producto"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
             Descripcion *
           </label>
           <textarea
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
             rows={3}
             placeholder="Descripcion detallada del producto"
           />
@@ -554,7 +549,7 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
               Precio de venta *
             </label>
             <input
@@ -563,13 +558,13 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
               min="0"
               value={precio}
               onChange={(e) => setPrecio(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
               placeholder="0.00"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
               Costo base (adquisicion)
             </label>
             <input
@@ -578,20 +573,20 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
               min="0"
               value={costoBase}
               onChange={(e) => setCostoBase(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
               placeholder="0.00"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
             Categoria *
           </label>
           <select
             value={categoriaId}
             onChange={(e) => setCategoriaId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Selecciona una categoria</option>
             {categorias.filter(c => c.activo).map(categoria => (
@@ -603,14 +598,14 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
             Imagen {!producto && '*'}
           </label>
           <input
             type="file"
             accept="image/*"
             onChange={handleImagenChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
           />
           {imagenUrl && (
             <div className="mt-3">
@@ -625,24 +620,24 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
 
         {/* Costos extras section - only for existing products */}
         {producto && (
-          <div className="border border-gray-200 rounded-xl p-4 space-y-3">
-            <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+          <div className="border border-neutral-200 dark:border-white/10 rounded-xl p-4 space-y-3">
+            <h4 className="text-sm font-semibold text-neutral-800 dark:text-white/80 flex items-center gap-2">
               <DollarSign className="w-4 h-4" />
               Costos extras fijos
             </h4>
-            <p className="text-xs text-gray-500">Costos que siempre aplican: empaque, comision, etc.</p>
+            <p className="text-xs text-neutral-500 dark:text-white/50">Costos que siempre aplican: empaque, comision, etc.</p>
 
             {costosExtras.length > 0 && (
               <ul className="space-y-1.5">
                 {costosExtras.map(c => (
-                  <li key={c.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                  <li key={c.id} className="flex items-center justify-between bg-neutral-50 dark:bg-white/5 rounded-lg px-3 py-2">
                     <div className="flex-1 min-w-0">
-                      <span className="text-sm font-medium text-gray-800">{c.concepto}</span>
-                      <span className="text-xs text-gray-400 ml-2">({TIPO_GASTO_OPTIONS.find(t => t.value === c.tipo)?.label || c.tipo})</span>
-                      {c.descripcion && <p className="text-xs text-gray-400 truncate">{c.descripcion}</p>}
+                      <span className="text-sm font-medium text-neutral-800 dark:text-white/80">{c.concepto}</span>
+                      <span className="text-xs text-neutral-400 dark:text-white/40 ml-2">({TIPO_GASTO_OPTIONS.find(t => t.value === c.tipo)?.label || c.tipo})</span>
+                      {c.descripcion && <p className="text-xs text-neutral-400 dark:text-white/40 truncate">{c.descripcion}</p>}
                     </div>
                     <div className="flex items-center gap-2 ml-2">
-                      <span className="text-sm font-semibold text-gray-700">${c.monto.toFixed(2)}</span>
+                      <span className="text-sm font-semibold text-neutral-700 dark:text-white/70">${c.monto.toFixed(2)}</span>
                       <button onClick={() => removeCostoExtra(c.id)} className="text-red-400 hover:text-red-600">
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -659,14 +654,14 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
                   value={newCostoConcepto}
                   onChange={e => setNewCostoConcepto(e.target.value)}
                   placeholder="Concepto"
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
+                  className="w-full px-2 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white"
                 />
               </div>
               <div className="col-span-3">
                 <select
                   value={newCostoTipo}
                   onChange={e => setNewCostoTipo(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
+                  className="w-full px-2 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white"
                 >
                   {TIPO_GASTO_OPTIONS.map(o => (
                     <option key={o.value} value={o.value}>{o.label}</option>
@@ -681,7 +676,7 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
                   value={newCostoMonto}
                   onChange={e => setNewCostoMonto(e.target.value)}
                   placeholder="$0.00"
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
+                  className="w-full px-2 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white"
                 />
               </div>
               <div className="col-span-2">
@@ -697,17 +692,17 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
 
             {/* Live cost summary */}
             <div className="bg-blue-50 rounded-lg p-3 space-y-1 text-sm">
-              <div className="flex justify-between text-gray-600">
+              <div className="flex justify-between text-neutral-600 dark:text-white/60">
                 <span>Costo base:</span>
                 <span>${(parseFloat(costoBase) || 0).toFixed(2)}</span>
               </div>
               {totalCostosExtras > 0 && (
-                <div className="flex justify-between text-gray-600">
+                <div className="flex justify-between text-neutral-600 dark:text-white/60">
                   <span>+ Costos extras:</span>
                   <span>${totalCostosExtras.toFixed(2)}</span>
                 </div>
               )}
-              <div className="flex justify-between font-semibold text-gray-800 border-t border-blue-200 pt-1">
+              <div className="flex justify-between font-semibold text-neutral-800 dark:text-white/80 border-t border-blue-200 dark:border-blue-700 pt-1">
                 <span>= Costo real:</span>
                 <span>${costoReal.toFixed(2)}</span>
               </div>
@@ -727,7 +722,7 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
             onChange={(e) => setActivo(e.target.checked)}
             className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-blue-500"
           />
-          <label htmlFor="activo" className="text-sm font-medium text-gray-700">
+          <label htmlFor="activo" className="text-sm font-medium text-neutral-700 dark:text-white/70">
             Producto activo (visible en el catalogo)
           </label>
         </div>
@@ -742,7 +737,7 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
           </button>
           <button
             onClick={onClose}
-            className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+            className="flex-1 bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 px-6 py-3 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/15 transition-colors font-medium"
           >
             Cancelar
           </button>
@@ -804,26 +799,26 @@ function CategoriaModal({ categoria, onClose, onGuardar }: CategoriaModalProps) 
     >
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
             Nombre *
           </label>
           <input
             type="text"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
             placeholder="Nombre de la categoría"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
             Descripción (opcional)
           </label>
           <textarea
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
             rows={3}
             placeholder="Descripción de la categoría"
           />
@@ -837,7 +832,7 @@ function CategoriaModal({ categoria, onClose, onGuardar }: CategoriaModalProps) 
             onChange={(e) => setActivo(e.target.checked)}
             className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-blue-500"
           />
-          <label htmlFor="activo-cat" className="text-sm font-medium text-gray-700">
+          <label htmlFor="activo-cat" className="text-sm font-medium text-neutral-700 dark:text-white/70">
             Categoría activa
           </label>
         </div>
@@ -852,7 +847,7 @@ function CategoriaModal({ categoria, onClose, onGuardar }: CategoriaModalProps) 
           </button>
           <button
             onClick={onClose}
-            className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+            className="flex-1 bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 px-6 py-3 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/15 transition-colors font-medium"
           >
             Cancelar
           </button>

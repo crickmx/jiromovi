@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Package, ArrowLeft, Eye } from 'lucide-react';
+import { Package, Eye } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import { obtenerPedidosUsuario } from '../lib/storeUtils';
 import type { StorePedido } from '../lib/storeTypes';
 import { format } from 'date-fns';
@@ -48,26 +49,22 @@ export default function StoreMisPedidos() {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <button
-          onClick={() => navigate('/store')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Volver a MOVI Store</span>
-        </button>
-
-        <div className="flex items-center gap-3 mb-8">
-          <Package className="w-8 h-8 text-accent" />
-          <h1 className="text-3xl font-bold text-accent">Mis Pedidos</h1>
-        </div>
+        <PageHeader
+          title="Mis Pedidos"
+          description="Consulta el historial y estatus de tus pedidos"
+          icon={Package}
+          backTo="/store"
+          backLabel="Volver a MOVI Store"
+          className="mb-8"
+        />
 
         {pedidos.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-            <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">
+          <div className="text-center py-12 bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10">
+            <Package className="w-16 h-16 text-neutral-400 dark:text-white/40 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-neutral-700 dark:text-white/70 mb-2">
               No tienes pedidos aún
             </h3>
-            <p className="text-gray-500 mb-6">Realiza tu primer pedido en MOVI Store</p>
+            <p className="text-neutral-500 dark:text-white/50 mb-6">Realiza tu primer pedido en MOVI Store</p>
             <button
               onClick={() => navigate('/store')}
               className="bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium"
@@ -76,41 +73,41 @@ export default function StoreMisPedidos() {
             </button>
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-neutral-200 dark:divide-white/10">
+                <thead className="bg-neutral-50 dark:bg-white/5">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase tracking-wider">
                       ID Pedido
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase tracking-wider">
                       Fecha
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase tracking-wider">
                       Estatus
                     </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-center text-xs font-medium text-neutral-500 dark:text-white/50 uppercase tracking-wider">
                       Acciones
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-neutral-200 dark:divide-white/10">
                   {pedidos.map(pedido => (
-                    <tr key={pedido.id} className="hover:bg-gray-50">
+                    <tr key={pedido.id} className="hover:bg-neutral-50 dark:bg-white/5">
                       <td className="px-6 py-4 whitespace-nowrap">
                         {pedido.folio_oc ? (
                           <span className="text-sm font-semibold text-accent bg-primary-50 px-2 py-1 rounded">
                             {pedido.folio_oc}
                           </span>
                         ) : (
-                          <span className="text-sm text-gray-400 italic">
+                          <span className="text-sm text-neutral-400 dark:text-white/40 italic">
                             Pendiente
                           </span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-900">
+                        <span className="text-sm text-neutral-900 dark:text-white">
                           {format(new Date(pedido.created_at), "d 'de' MMMM, yyyy", { locale: es })}
                         </span>
                       </td>

@@ -11,8 +11,8 @@ import {
   AlertCircle,
   Search,
   User,
-  ArrowLeft,
   Users,
+  KanbanSquare,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -20,6 +20,7 @@ import TareasKanban from '../components/crm/TareasKanban';
 import CRMBoardCalendarView from '../components/crm/CRMBoardCalendarView';
 import TareaModal from '../components/crm/TareaModal';
 import type { CRMTarea, EstatusTarea } from '../lib/crmTypes';
+import { PageHeader } from '@/components/ui/page-header';
 
 type Vista = 'lista' | 'kanban' | 'calendario';
 type FiltroEstatus = 'todas' | 'Pendiente' | 'En Proceso' | 'Completada' | 'vencidas';
@@ -207,7 +208,7 @@ export default function CRMTareas() {
       case 'Baja':
         return 'bg-green-100 text-green-800 border-green-200';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-neutral-100 text-neutral-800 border-neutral-200';
     }
   };
 
@@ -220,7 +221,7 @@ export default function CRMTareas() {
       case 'Pendiente':
         return 'bg-orange-100 text-orange-800 border-orange-200';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-neutral-100 text-neutral-800 border-neutral-200';
     }
   };
 
@@ -242,91 +243,83 @@ export default function CRMTareas() {
   return (
     <div className="p-4 md:p-6 lg:p-8">
       <div className="mb-6">
-        <button
-          onClick={() => navigate('/mi-crm')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition"
-        >
-          <ArrowLeft className="h-5 w-5" />
-          <span className="font-medium">Volver a Mi CRM</span>
-        </button>
+        <PageHeader
+          title={boardInfo ? boardInfo.name : 'Mis Tareas'}
+          description={boardInfo ? undefined : 'Gestiona tus actividades y seguimientos personales'}
+          icon={KanbanSquare}
+          backTo="/mi-crm"
+          backLabel="Mi CRM"
+          badge={boardInfo ? (
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                <Users className="h-4 w-4" />
+                {boardInfo.members_count} miembros
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm capitalize">
+                {boardInfo.my_role === 'owner' && 'Propietario'}
+                {boardInfo.my_role === 'admin' && 'Administrador'}
+                {boardInfo.my_role === 'editor' && 'Editor'}
+                {boardInfo.my_role === 'viewer' && 'Visualizador'}
+              </span>
+            </div>
+          ) : undefined}
+          actions={
+            <button
+              onClick={handleNuevaTarea}
+              className="flex items-center justify-center gap-2 bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent/90 transition shadow-md hover:shadow-lg"
+            >
+              <Plus className="h-5 w-5" />
+              Nueva Tarea
+            </button>
+          }
+        />
 
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-accent">
-              {boardInfo ? boardInfo.name : 'Mis Tareas'}
-            </h1>
-            {boardInfo ? (
-              <div className="flex items-center gap-3 mt-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                  <Users className="h-4 w-4" />
-                  {boardInfo.members_count} miembros
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm capitalize">
-                  {boardInfo.my_role === 'owner' && 'Propietario'}
-                  {boardInfo.my_role === 'admin' && 'Administrador'}
-                  {boardInfo.my_role === 'editor' && 'Editor'}
-                  {boardInfo.my_role === 'viewer' && 'Visualizador'}
-                </span>
-              </div>
-            ) : (
-              <p className="text-gray-600 mt-1">Gestiona tus actividades y seguimientos personales</p>
-            )}
-          </div>
-          <button
-            onClick={handleNuevaTarea}
-            className="flex items-center justify-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition shadow-md hover:shadow-lg"
-          >
-            <Plus className="h-5 w-5" />
-            Nueva Tarea
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-          <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg border border-gray-200">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-6 mb-6">
+          <div className="bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-800 dark:to-neutral-900 p-4 rounded-lg border border-neutral-200 dark:border-neutral-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-gray-600 font-medium">Total</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{contadores.total}</p>
+                <p className="text-xs text-neutral-600 dark:text-white/60 font-medium">Total</p>
+                <p className="text-2xl font-bold text-neutral-900 dark:text-white mt-1">{contadores.total}</p>
               </div>
-              <List className="h-8 w-8 text-gray-400" />
+              <List className="h-8 w-8 text-neutral-400 dark:text-white/30" />
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
+          <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-900/10 p-4 rounded-lg border border-orange-200 dark:border-orange-800/30">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-orange-700 font-medium">Pendientes</p>
-                <p className="text-2xl font-bold text-orange-900 mt-1">{contadores.pendientes}</p>
+                <p className="text-xs text-orange-700 dark:text-orange-400 font-medium">Pendientes</p>
+                <p className="text-2xl font-bold text-orange-900 dark:text-orange-300 mt-1">{contadores.pendientes}</p>
               </div>
               <Clock className="h-8 w-8 text-orange-400" />
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-primary-200">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/10 p-4 rounded-lg border border-primary-200 dark:border-primary-800/30">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-primary-700 font-medium">En Proceso</p>
-                <p className="text-2xl font-bold text-primary-900 mt-1">{contadores.enProceso}</p>
+                <p className="text-xs text-primary-700 dark:text-primary-400 font-medium">En Proceso</p>
+                <p className="text-2xl font-bold text-primary-900 dark:text-primary-300 mt-1">{contadores.enProceso}</p>
               </div>
               <Clock className="h-8 w-8 text-primary-400" />
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
+          <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/10 p-4 rounded-lg border border-green-200 dark:border-green-800/30">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-green-700 font-medium">Completadas</p>
-                <p className="text-2xl font-bold text-green-900 mt-1">{contadores.completadas}</p>
+                <p className="text-xs text-green-700 dark:text-green-400 font-medium">Completadas</p>
+                <p className="text-2xl font-bold text-green-900 dark:text-green-300 mt-1">{contadores.completadas}</p>
               </div>
               <CheckCircle2 className="h-8 w-8 text-green-400" />
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
+          <div className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-900/10 p-4 rounded-lg border border-red-200 dark:border-red-800/30">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-red-700 font-medium">Vencidas</p>
-                <p className="text-2xl font-bold text-red-900 mt-1">{contadores.vencidas}</p>
+                <p className="text-xs text-red-700 dark:text-red-400 font-medium">Vencidas</p>
+                <p className="text-2xl font-bold text-red-900 dark:text-red-300 mt-1">{contadores.vencidas}</p>
               </div>
               <AlertCircle className="h-8 w-8 text-red-400" />
             </div>
@@ -334,17 +327,17 @@ export default function CRMTareas() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow mb-6 p-4">
+      <div className="bg-white dark:bg-neutral-900 rounded-lg shadow dark:shadow-none border border-neutral-200 dark:border-neutral-700 mb-6 p-4">
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-400 dark:text-white/40" />
               <input
                 type="text"
                 placeholder="Buscar tareas..."
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2.5 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
               />
             </div>
           </div>
@@ -360,7 +353,7 @@ export default function CRMTareas() {
             <select
               value={filtroEstatus}
               onChange={(e) => setFiltroEstatus(e.target.value as FiltroEstatus)}
-              className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              className="px-4 py-2.5 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
             >
               <option value="todas">Todos los estatus</option>
               <option value="Pendiente">Pendiente</option>
@@ -372,7 +365,7 @@ export default function CRMTareas() {
             <select
               value={filtroPrioridad}
               onChange={(e) => setFiltroPrioridad(e.target.value)}
-              className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              className="px-4 py-2.5 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
             >
               <option value="todas">Todas las prioridades</option>
               <option value="Alta">Alta</option>
@@ -380,11 +373,11 @@ export default function CRMTareas() {
               <option value="Baja">Baja</option>
             </select>
 
-            <div className="flex bg-gray-100 rounded-lg p-1">
+            <div className="flex bg-neutral-100 dark:bg-neutral-800 rounded-lg p-1">
               <button
                 onClick={() => setVista('kanban')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-md transition ${
-                  vista === 'kanban' ? 'bg-white shadow text-purple-600' : 'text-gray-600 hover:text-gray-900'
+                  vista === 'kanban' ? 'bg-white dark:bg-neutral-700 shadow text-accent' : 'text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white'
                 }`}
               >
                 <LayoutGrid className="h-4 w-4" />
@@ -394,7 +387,7 @@ export default function CRMTareas() {
                 <button
                   onClick={() => setVista('calendario')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-md transition ${
-                    vista === 'calendario' ? 'bg-white shadow text-purple-600' : 'text-gray-600 hover:text-gray-900'
+                    vista === 'calendario' ? 'bg-white dark:bg-neutral-700 shadow text-accent' : 'text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white'
                   }`}
                 >
                   <Calendar className="h-4 w-4" />
@@ -404,7 +397,7 @@ export default function CRMTareas() {
               <button
                 onClick={() => setVista('lista')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-md transition ${
-                  vista === 'lista' ? 'bg-white shadow text-purple-600' : 'text-gray-600 hover:text-gray-900'
+                  vista === 'lista' ? 'bg-white dark:bg-neutral-700 shadow text-accent' : 'text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white'
                 }`}
               >
                 <List className="h-4 w-4" />
@@ -419,11 +412,11 @@ export default function CRMTareas() {
       {boardId && (
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
               <Calendar className="h-5 w-5 text-accent" />
               Calendario de Tareas
             </h2>
-            <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+            <span className="text-xs text-neutral-500 dark:text-white/50 bg-neutral-100 dark:bg-neutral-800 px-3 py-1 rounded-full">
               Vista permanente en tableros compartidos
             </span>
           </div>
@@ -439,8 +432,8 @@ export default function CRMTareas() {
       {/* Separador visual en tableros compartidos */}
       {boardId && (
         <div className="flex items-center gap-3 mb-4">
-          <div className="flex-1 h-px bg-gradient-to-r from-gray-200 to-transparent"></div>
-          <span className="text-sm font-medium text-gray-600 flex items-center gap-2">
+          <div className="flex-1 h-px bg-gradient-to-r from-neutral-200 dark:from-neutral-700 to-transparent"></div>
+          <span className="text-sm font-medium text-neutral-600 dark:text-white/60 flex items-center gap-2">
             {vista === 'lista' ? (
               <>
                 <List className="h-4 w-4" />
@@ -453,7 +446,7 @@ export default function CRMTareas() {
               </>
             )}
           </span>
-          <div className="flex-1 h-px bg-gradient-to-l from-gray-200 to-transparent"></div>
+          <div className="flex-1 h-px bg-gradient-to-l from-neutral-200 dark:from-neutral-700 to-transparent"></div>
         </div>
       )}
 
@@ -473,16 +466,16 @@ export default function CRMTareas() {
           loading={loading}
         />
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow dark:shadow-none border border-neutral-200 dark:border-neutral-700 overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
             </div>
           ) : tareasFiltradas.length === 0 ? (
             <div className="text-center py-12">
-              <Clock className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg mb-2">No hay tareas</p>
-              <p className="text-gray-400 text-sm">
+              <Clock className="h-16 w-16 text-neutral-300 dark:text-white/20 mx-auto mb-4" />
+              <p className="text-neutral-500 dark:text-white/50 text-lg mb-2">No hay tareas</p>
+              <p className="text-neutral-400 dark:text-white/40 text-sm">
                 {busqueda || filtroEstatus !== 'todas' || filtroPrioridad !== 'todas'
                   ? 'Intenta cambiar los filtros'
                   : 'Crea tu primera tarea para comenzar'}
@@ -491,17 +484,17 @@ export default function CRMTareas() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tarea</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contacto</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Prioridad</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estatus</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vencimiento</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Tarea</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Tipo</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Contacto</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Prioridad</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Estatus</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Vencimiento</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
                   {tareasFiltradas.map((tarea) => {
                     const vencida = isVencida(tarea.fecha_vencimiento, tarea.estatus);
 
@@ -509,22 +502,22 @@ export default function CRMTareas() {
                       <tr
                         key={tarea.id}
                         onClick={() => handleVerDetalle(tarea)}
-                        className="hover:bg-gray-50 cursor-pointer transition"
+                        className="hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer transition"
                       >
                         <td className="px-6 py-4">
-                          <p className="text-sm font-medium text-gray-900 line-clamp-2">{tarea.descripcion}</p>
+                          <p className="text-sm font-medium text-neutral-900 dark:text-white line-clamp-2">{tarea.descripcion}</p>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-sm text-gray-600">{tarea.tipo_actividad}</span>
+                          <span className="text-sm text-neutral-600 dark:text-white/60">{tarea.tipo_actividad}</span>
                         </td>
                         <td className="px-6 py-4">
                           {tarea.crm_contactos?.nombre_completo ? (
                             <div className="flex items-center gap-2">
-                              <User className="h-4 w-4 text-gray-400" />
-                              <span className="text-sm text-gray-700">{tarea.crm_contactos.nombre_completo}</span>
+                              <User className="h-4 w-4 text-neutral-400 dark:text-white/40" />
+                              <span className="text-sm text-neutral-700 dark:text-white/70">{tarea.crm_contactos.nombre_completo}</span>
                             </div>
                           ) : (
-                            <span className="text-sm text-gray-400">-</span>
+                            <span className="text-sm text-neutral-400 dark:text-white/40">-</span>
                           )}
                         </td>
                         <td className="px-6 py-4">
@@ -548,8 +541,8 @@ export default function CRMTareas() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-gray-400" />
-                            <span className={`text-sm ${vencida ? 'text-red-600 font-semibold' : 'text-gray-700'}`}>
+                            <Calendar className="h-4 w-4 text-neutral-400 dark:text-white/40" />
+                            <span className={`text-sm ${vencida ? 'text-red-600 font-semibold' : 'text-neutral-700 dark:text-white/70'}`}>
                               {new Date(tarea.fecha_vencimiento).toLocaleDateString('es-MX', {
                                 day: 'numeric',
                                 month: 'short',

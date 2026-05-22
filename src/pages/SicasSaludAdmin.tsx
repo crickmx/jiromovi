@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import {
-  Activity, AlertTriangle, CheckCircle, XCircle, RefreshCw, Link, Unlink,
+  Activity, HeartPulse, AlertTriangle, CheckCircle, XCircle, RefreshCw, Link, Unlink,
   Search, Filter, Users, FileText, TrendingUp, Database, Clock, Shield,
   ChevronDown, ChevronUp, Play, Info, BarChart3, Zap, Building2, Star
 } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -106,10 +107,10 @@ function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     active: { label: 'Activo', cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
     pending_review: { label: 'Pendiente', cls: 'bg-amber-100 text-amber-700 border-amber-200' },
-    inactive: { label: 'Inactivo', cls: 'bg-slate-100 text-slate-500 border-slate-200' },
+    inactive: { label: 'Inactivo', cls: 'bg-neutral-100 text-neutral-500 border-neutral-200' },
     manual: { label: 'Manual', cls: 'bg-sky-100 text-sky-700 border-sky-200' },
   };
-  const s = map[status] || { label: status, cls: 'bg-slate-100 text-slate-600 border-slate-200' };
+  const s = map[status] || { label: status, cls: 'bg-neutral-100 text-neutral-600 border-neutral-200' };
   return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${s.cls}`}>{s.label}</span>;
 }
 
@@ -123,7 +124,7 @@ function MatchTypeBadge({ type }: { type: string | null }) {
     manual: 'Manual',
     no_match: 'Sin match',
   };
-  return <span className="text-xs text-slate-500">{map[type] || type}</span>;
+  return <span className="text-xs text-neutral-500">{map[type] || type}</span>;
 }
 
 // ── Tab: Salud del Sistema ─────────────────────────────────────────────────────
@@ -193,7 +194,7 @@ function TabSalud() {
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
-      <RefreshCw className="w-6 h-6 animate-spin text-slate-400" />
+      <RefreshCw className="w-6 h-6 animate-spin text-neutral-400" />
     </div>
   );
 
@@ -209,44 +210,44 @@ function TabSalud() {
   return (
     <div className="space-y-6">
       {/* Connection status */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5">
+      <div className="bg-white border border-neutral-200 rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+          <h3 className="font-semibold text-neutral-800 flex items-center gap-2">
             <Activity className="w-4 h-4 text-sky-500" /> Estado de Conexión
           </h3>
-          <button onClick={loadReport} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors">
+          <button onClick={loadReport} className="flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-700 transition-colors">
             <RefreshCw className="w-3.5 h-3.5" /> Actualizar
           </button>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
-            <p className="text-xs text-slate-500 mb-1">Protocolo</p>
-            <p className="font-medium text-slate-800">{report.use_rest ? 'REST' : 'SOAP/ProcesarWS'}</p>
+            <p className="text-xs text-neutral-500 mb-1">Protocolo</p>
+            <p className="font-medium text-neutral-800">{report.use_rest ? 'REST' : 'SOAP/ProcesarWS'}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-500 mb-1">Última prueba</p>
-            <p className="font-medium text-slate-800">{formatDate(report.last_test_at)}</p>
+            <p className="text-xs text-neutral-500 mb-1">Última prueba</p>
+            <p className="font-medium text-neutral-800">{formatDate(report.last_test_at)}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-500 mb-1">Resultado</p>
+            <p className="text-xs text-neutral-500 mb-1">Resultado</p>
             <div className="flex items-center gap-1.5">
               {report.last_test_success === true
                 ? <CheckCircle className="w-4 h-4 text-emerald-500" />
                 : report.last_test_success === false
                   ? <XCircle className="w-4 h-4 text-red-500" />
-                  : <Clock className="w-4 h-4 text-slate-400" />}
+                  : <Clock className="w-4 h-4 text-neutral-400" />}
               <span className="text-sm font-medium">
                 {report.last_test_success === true ? 'OK' : report.last_test_success === false ? 'Falló' : 'Sin datos'}
               </span>
             </div>
           </div>
           <div>
-            <p className="text-xs text-slate-500 mb-1">Endpoint</p>
-            <p className="text-xs text-slate-600 truncate" title={report.endpoint}>{report.endpoint || '—'}</p>
+            <p className="text-xs text-neutral-500 mb-1">Endpoint</p>
+            <p className="text-xs text-neutral-600 truncate" title={report.endpoint}>{report.endpoint || '—'}</p>
           </div>
         </div>
         {report.last_test_message && (
-          <div className="mt-3 px-3 py-2 bg-slate-50 rounded-lg text-xs text-slate-600 font-mono">{report.last_test_message}</div>
+          <div className="mt-3 px-3 py-2 bg-neutral-50 rounded-lg text-xs text-neutral-600 font-mono">{report.last_test_message}</div>
         )}
       </div>
 
@@ -256,7 +257,7 @@ function TabSalud() {
           <div key={k.label} className={`${k.bg} rounded-xl p-4 border border-white`}>
             <div className="flex items-center gap-2 mb-2">
               <k.icon className={`w-4 h-4 ${k.color}`} />
-              <p className="text-xs text-slate-600">{k.label}</p>
+              <p className="text-xs text-neutral-600">{k.label}</p>
             </div>
             <p className={`text-2xl font-bold ${k.color}`}>{k.value}</p>
           </div>
@@ -264,44 +265,44 @@ function TabSalud() {
       </div>
 
       {/* Mapping progress bar */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5">
-        <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+      <div className="bg-white border border-neutral-200 rounded-xl p-5">
+        <h3 className="font-semibold text-neutral-800 mb-3 flex items-center gap-2">
           <BarChart3 className="w-4 h-4 text-amber-500" /> Cobertura de Mapeo
         </h3>
         <div className="space-y-4">
           <div>
             <div className="flex justify-between text-sm mb-1">
-              <span className="text-slate-600">Vendedores mapeados</span>
+              <span className="text-neutral-600">Vendedores mapeados</span>
               <span className="font-medium">{report.mapping_pct}%</span>
             </div>
-            <div className="w-full bg-slate-100 rounded-full h-2.5">
+            <div className="w-full bg-neutral-100 rounded-full h-2.5">
               <div className="bg-amber-500 h-2.5 rounded-full transition-all" style={{ width: `${report.mapping_pct}%` }} />
             </div>
-            <p className="text-xs text-slate-500 mt-1">{report.vendors_mapped} activos · {report.vendors_pending} pendientes</p>
+            <p className="text-xs text-neutral-500 mt-1">{report.vendors_mapped} activos · {report.vendors_pending} pendientes</p>
           </div>
           <div>
             <div className="flex justify-between text-sm mb-1">
-              <span className="text-slate-600">Documentos con usuario</span>
+              <span className="text-neutral-600">Documentos con usuario</span>
               <span className="font-medium">{report.docs_with_user_pct}%</span>
             </div>
-            <div className="w-full bg-slate-100 rounded-full h-2.5">
+            <div className="w-full bg-neutral-100 rounded-full h-2.5">
               <div className="bg-sky-500 h-2.5 rounded-full transition-all" style={{ width: `${report.docs_with_user_pct}%` }} />
             </div>
-            <p className="text-xs text-slate-500 mt-1">{report.docs_with_user?.toLocaleString('es-MX')} de {report.total_docs?.toLocaleString('es-MX')}</p>
+            <p className="text-xs text-neutral-500 mt-1">{report.docs_with_user?.toLocaleString('es-MX')} de {report.total_docs?.toLocaleString('es-MX')}</p>
           </div>
         </div>
       </div>
 
       {/* Quick actions */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5">
-        <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+      <div className="bg-white border border-neutral-200 rounded-xl p-5">
+        <h3 className="font-semibold text-neutral-800 mb-3 flex items-center gap-2">
           <Zap className="w-4 h-4 text-sky-500" /> Acciones de Mantenimiento
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <button
             onClick={() => runAction('fix_expired_vigentes', 'Corregir vigentes')}
             disabled={!!runningAction}
-            className="flex items-center gap-2 px-4 py-3 rounded-lg border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 text-sm text-slate-700 hover:text-emerald-700 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-3 rounded-lg border border-neutral-200 hover:border-emerald-300 hover:bg-emerald-50 text-sm text-neutral-700 hover:text-emerald-700 transition-all disabled:opacity-50"
           >
             {runningAction === 'fix_expired_vigentes' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
             Corregir vigentes expirados
@@ -309,7 +310,7 @@ function TabSalud() {
           <button
             onClick={() => runAction('build_aseguradoras', 'Reconstruir aseguradoras')}
             disabled={!!runningAction}
-            className="flex items-center gap-2 px-4 py-3 rounded-lg border border-slate-200 hover:border-sky-300 hover:bg-sky-50 text-sm text-slate-700 hover:text-sky-700 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-3 rounded-lg border border-neutral-200 hover:border-sky-300 hover:bg-sky-50 text-sm text-neutral-700 hover:text-sky-700 transition-all disabled:opacity-50"
           >
             {runningAction === 'build_aseguradoras' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Building2 className="w-4 h-4" />}
             Reconstruir aseguradoras
@@ -317,7 +318,7 @@ function TabSalud() {
           <button
             onClick={() => runAction('sync_mapping_stats', 'Sincronizar estadísticas')}
             disabled={!!runningAction}
-            className="flex items-center gap-2 px-4 py-3 rounded-lg border border-slate-200 hover:border-amber-300 hover:bg-amber-50 text-sm text-slate-700 hover:text-amber-700 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-3 rounded-lg border border-neutral-200 hover:border-amber-300 hover:bg-amber-50 text-sm text-neutral-700 hover:text-amber-700 transition-all disabled:opacity-50"
           >
             {runningAction === 'sync_mapping_stats' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             Sincronizar estadísticas
@@ -438,19 +439,19 @@ function TabMapeo() {
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
           <input
             type="text"
             placeholder="Buscar vendedor o ID..."
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
-            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-300"
+            className="w-full pl-9 pr-4 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-300"
           />
         </div>
         <select
           value={statusFilter}
           onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white"
+          className="px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white"
         >
           <option value="">Todos los estados</option>
           <option value="active">Activos</option>
@@ -460,7 +461,7 @@ function TabMapeo() {
         <select
           value={matchFilter}
           onChange={e => { setMatchFilter(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white"
+          className="px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white"
         >
           <option value="">Todos los tipos</option>
           <option value="id_sicas_exact">ID exacto</option>
@@ -510,65 +511,65 @@ function TabMapeo() {
       )}
 
       {/* Summary chips */}
-      <div className="flex gap-3 text-sm text-slate-600">
+      <div className="flex gap-3 text-sm text-neutral-600">
         <span className="font-medium">{total.toLocaleString('es-MX')} vendedores</span>
         <span>·</span>
         <span>Página {page} de {totalPages || 1}</span>
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Vendedor SICAS</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Usuario MOVI</th>
-                <th className="text-right px-4 py-3 font-semibold text-slate-600">Docs</th>
-                <th className="text-right px-4 py-3 font-semibold text-slate-600">Prima neta</th>
-                <th className="text-center px-4 py-3 font-semibold text-slate-600">Estado</th>
-                <th className="text-center px-4 py-3 font-semibold text-slate-600">Tipo match</th>
-                <th className="text-center px-4 py-3 font-semibold text-slate-600">Confianza</th>
-                <th className="text-right px-4 py-3 font-semibold text-slate-600">Acciones</th>
+              <tr className="bg-neutral-50 border-b border-neutral-200">
+                <th className="text-left px-4 py-3 font-semibold text-neutral-600">Vendedor SICAS</th>
+                <th className="text-left px-4 py-3 font-semibold text-neutral-600">Usuario MOVI</th>
+                <th className="text-right px-4 py-3 font-semibold text-neutral-600">Docs</th>
+                <th className="text-right px-4 py-3 font-semibold text-neutral-600">Prima neta</th>
+                <th className="text-center px-4 py-3 font-semibold text-neutral-600">Estado</th>
+                <th className="text-center px-4 py-3 font-semibold text-neutral-600">Tipo match</th>
+                <th className="text-center px-4 py-3 font-semibold text-neutral-600">Confianza</th>
+                <th className="text-right px-4 py-3 font-semibold text-neutral-600">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-neutral-100">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                  <td colSpan={8} className="py-12 text-center text-neutral-400">
                     <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />
                     Cargando...
                   </td>
                 </tr>
               ) : mappings.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">Sin resultados</td>
+                  <td colSpan={8} className="py-12 text-center text-neutral-400">Sin resultados</td>
                 </tr>
               ) : mappings.map(m => (
                 <>
-                  <tr key={m.id} className={`hover:bg-slate-50 transition-colors ${linkingVend === m.vend_id ? 'bg-sky-50' : ''}`}>
+                  <tr key={m.id} className={`hover:bg-neutral-50 transition-colors ${linkingVend === m.vend_id ? 'bg-sky-50' : ''}`}>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-slate-800">{m.vend_nombre}</p>
-                      <p className="text-xs text-slate-400">{m.vend_id}</p>
+                      <p className="font-medium text-neutral-800">{m.vend_nombre}</p>
+                      <p className="text-xs text-neutral-400">{m.vend_id}</p>
                     </td>
                     <td className="px-4 py-3">
                       {m.usuario ? (
                         <div>
-                          <p className="font-medium text-slate-700">{m.usuario.nombre} {m.usuario.apellidos}</p>
-                          <p className="text-xs text-slate-400">{m.usuario.email}</p>
-                          {m.usuario.oficina && <p className="text-xs text-slate-400">{m.usuario.oficina.nombre}</p>}
+                          <p className="font-medium text-neutral-700">{m.usuario.nombre} {m.usuario.apellidos}</p>
+                          <p className="text-xs text-neutral-400">{m.usuario.email}</p>
+                          {m.usuario.oficina && <p className="text-xs text-neutral-400">{m.usuario.oficina.nombre}</p>}
                         </div>
                       ) : (
-                        <span className="text-slate-400 text-xs italic">Sin asignar</span>
+                        <span className="text-neutral-400 text-xs italic">Sin asignar</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right font-medium text-slate-700">{(m.total_docs || 0).toLocaleString('es-MX')}</td>
-                    <td className="px-4 py-3 text-right font-medium text-slate-700">{formatCurrency(m.prima_neta_total || 0)}</td>
+                    <td className="px-4 py-3 text-right font-medium text-neutral-700">{(m.total_docs || 0).toLocaleString('es-MX')}</td>
+                    <td className="px-4 py-3 text-right font-medium text-neutral-700">{formatCurrency(m.prima_neta_total || 0)}</td>
                     <td className="px-4 py-3 text-center"><StatusBadge status={m.status} /></td>
                     <td className="px-4 py-3 text-center"><MatchTypeBadge type={m.match_type} /></td>
                     <td className="px-4 py-3 text-center">
                       {m.confidence_score != null && m.confidence_score > 0 ? (
-                        <span className={`text-xs font-medium ${m.confidence_score >= 90 ? 'text-emerald-600' : m.confidence_score >= 70 ? 'text-amber-600' : 'text-slate-500'}`}>
+                        <span className={`text-xs font-medium ${m.confidence_score >= 90 ? 'text-emerald-600' : m.confidence_score >= 70 ? 'text-amber-600' : 'text-neutral-500'}`}>
                           {m.confidence_score}%
                         </span>
                       ) : '—'}
@@ -618,9 +619,9 @@ function TabMapeo() {
                                     disabled={actionLoading === m.vend_id}
                                     className="w-full text-left px-3 py-2 hover:bg-sky-50 text-sm transition-colors"
                                   >
-                                    <span className="font-medium text-slate-700">{u.nombre} {u.apellidos}</span>
-                                    <span className="text-slate-400 ml-2">{u.email}</span>
-                                    {u.oficina && <span className="text-slate-400 ml-2 text-xs">· {u.oficina.nombre}</span>}
+                                    <span className="font-medium text-neutral-700">{u.nombre} {u.apellidos}</span>
+                                    <span className="text-neutral-400 ml-2">{u.email}</span>
+                                    {u.oficina && <span className="text-neutral-400 ml-2 text-xs">· {u.oficina.nombre}</span>}
                                   </button>
                                 ))}
                               </div>
@@ -628,7 +629,7 @@ function TabMapeo() {
                           </div>
                           <button
                             onClick={() => { setLinkingVend(null); setUserSearch(''); setUserResults([]); }}
-                            className="text-sm text-slate-500 hover:text-slate-700"
+                            className="text-sm text-neutral-500 hover:text-neutral-700"
                           >
                             Cancelar
                           </button>
@@ -649,15 +650,15 @@ function TabMapeo() {
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm hover:bg-slate-50 disabled:opacity-40 transition-colors"
+            className="px-3 py-1.5 border border-neutral-200 rounded-lg text-sm hover:bg-neutral-50 disabled:opacity-40 transition-colors"
           >
             Anterior
           </button>
-          <span className="text-sm text-slate-600">Página {page} de {totalPages}</span>
+          <span className="text-sm text-neutral-600">Página {page} de {totalPages}</span>
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm hover:bg-slate-50 disabled:opacity-40 transition-colors"
+            className="px-3 py-1.5 border border-neutral-200 rounded-lg text-sm hover:bg-neutral-50 disabled:opacity-40 transition-colors"
           >
             Siguiente
           </button>
@@ -720,7 +721,7 @@ function TabCalidad() {
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
-      <RefreshCw className="w-6 h-6 animate-spin text-slate-400" />
+      <RefreshCw className="w-6 h-6 animate-spin text-neutral-400" />
     </div>
   );
 
@@ -781,7 +782,7 @@ function TabCalidad() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">Análisis de calidad sobre {stats?.total.toLocaleString('es-MX')} documentos SICAS.</p>
+        <p className="text-sm text-neutral-500">Análisis de calidad sobre {stats?.total.toLocaleString('es-MX')} documentos SICAS.</p>
         <button
           onClick={fixExpired}
           disabled={!!running}
@@ -803,13 +804,13 @@ function TabCalidad() {
                     ? <AlertTriangle className={`w-5 h-5 flex-shrink-0 ${severityIconClasses[item.severity]}`} />
                     : <Info className={`w-5 h-5 flex-shrink-0 ${severityIconClasses[item.severity]}`} />}
                 <div>
-                  <p className="font-medium text-slate-800">{item.label}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{item.desc}</p>
+                  <p className="font-medium text-neutral-800">{item.label}</p>
+                  <p className="text-xs text-neutral-500 mt-0.5">{item.desc}</p>
                 </div>
               </div>
               <div className="text-right flex-shrink-0">
-                <p className="text-xl font-bold text-slate-700">{(item.value || 0).toLocaleString('es-MX')}</p>
-                <p className="text-xs text-slate-500">{pct(item.value || 0, item.total || 1)}%</p>
+                <p className="text-xl font-bold text-neutral-700">{(item.value || 0).toLocaleString('es-MX')}</p>
+                <p className="text-xs text-neutral-500">{pct(item.value || 0, item.total || 1)}%</p>
                 {item.action && <div className="mt-1">{item.action}</div>}
               </div>
             </div>
@@ -900,26 +901,26 @@ function TabCatalogos() {
           <p className="text-sm text-amber-700">{staleCount} catálogos sin sincronizar en los últimos 7 días.</p>
         </div>
       )}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="text-left px-4 py-3 font-semibold text-slate-600">Catálogo</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-600">Fuente</th>
-              <th className="text-right px-4 py-3 font-semibold text-slate-600">Registros</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-600">Último sync</th>
-              <th className="text-center px-4 py-3 font-semibold text-slate-600">Estado</th>
+            <tr className="bg-neutral-50 border-b border-neutral-200">
+              <th className="text-left px-4 py-3 font-semibold text-neutral-600">Catálogo</th>
+              <th className="text-left px-4 py-3 font-semibold text-neutral-600">Fuente</th>
+              <th className="text-right px-4 py-3 font-semibold text-neutral-600">Registros</th>
+              <th className="text-left px-4 py-3 font-semibold text-neutral-600">Último sync</th>
+              <th className="text-center px-4 py-3 font-semibold text-neutral-600">Estado</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-neutral-100">
             {loading ? (
-              <tr><td colSpan={5} className="py-12 text-center text-slate-400"><RefreshCw className="w-5 h-5 animate-spin mx-auto" /></td></tr>
+              <tr><td colSpan={5} className="py-12 text-center text-neutral-400"><RefreshCw className="w-5 h-5 animate-spin mx-auto" /></td></tr>
             ) : catalogs.map(c => (
-              <tr key={c.name} className="hover:bg-slate-50 transition-colors">
-                <td className="px-4 py-2.5 font-medium text-slate-700">{c.name}</td>
-                <td className="px-4 py-2.5 text-slate-500 text-xs">{c.source}</td>
-                <td className="px-4 py-2.5 text-right text-slate-700">{c.total ? c.total.toLocaleString('es-MX') : '—'}</td>
-                <td className="px-4 py-2.5 text-slate-500 text-xs">{formatDate(c.last_sync)}</td>
+              <tr key={c.name} className="hover:bg-neutral-50 transition-colors">
+                <td className="px-4 py-2.5 font-medium text-neutral-700">{c.name}</td>
+                <td className="px-4 py-2.5 text-neutral-500 text-xs">{c.source}</td>
+                <td className="px-4 py-2.5 text-right text-neutral-700">{c.total ? c.total.toLocaleString('es-MX') : '—'}</td>
+                <td className="px-4 py-2.5 text-neutral-500 text-xs">{formatDate(c.last_sync)}</td>
                 <td className="px-4 py-2.5 text-center">
                   {c.stale
                     ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-700 border border-amber-200"><AlertTriangle className="w-3 h-3" /> Desactualizado</span>
@@ -948,21 +949,15 @@ export default function SicasSaludAdmin() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-sky-600 flex items-center justify-center">
-            <Activity className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">SICAS — Panel de Salud</h1>
-            <p className="text-sm text-slate-500">Integración, mapeo de vendedores, calidad de datos y catálogos</p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="SICAS — Panel de Salud"
+        description="Integración, mapeo de vendedores, calidad de datos y catálogos"
+        icon={HeartPulse}
+        className="mb-8"
+      />
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-slate-200 mb-6 overflow-x-auto">
+      <div className="flex gap-1 border-b border-neutral-200 mb-6 overflow-x-auto">
         {TABS.map(t => (
           <button
             key={t.id}
@@ -970,7 +965,7 @@ export default function SicasSaludAdmin() {
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${
               activeTab === t.id
                 ? 'border-sky-600 text-sky-700'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
+                : 'border-transparent text-neutral-500 hover:text-neutral-700'
             }`}
           >
             <t.icon className="w-4 h-4" />

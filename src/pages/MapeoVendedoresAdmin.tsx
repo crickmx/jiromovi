@@ -1,15 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  ArrowLeft,
-  Mail,
-  User,
-  Edit2,
-  Trash2,
-  CheckCircle2,
-  XCircle,
-  Search,
-} from 'lucide-react';
+import { Mail, User, CreditCard as Edit2, Trash2, CheckCircle2, XCircle, Search, Link2 } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import type { VendorMapping } from '../lib/vendorMappingTypes';
@@ -117,27 +109,20 @@ export default function MapeoVendedoresAdmin() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
-      <button
-        onClick={() => navigate('/configuracion')}
-        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition"
-      >
-        <ArrowLeft className="h-5 w-5" />
-        <span className="font-medium">Volver a Configuración</span>
-      </button>
-
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-accent">
-          Administración de mapeos de vendedores
-        </h1>
-        <p className="text-gray-600 mt-1">
-          Gestiona las asignaciones guardadas entre vendedores externos y usuarios MOVI
-        </p>
+        <PageHeader
+          title="Administración de mapeos de vendedores"
+          description="Gestiona las asignaciones guardadas entre vendedores externos y usuarios MOVI"
+          icon={Link2}
+          backTo="/configuracion"
+          backLabel="Volver a Configuración"
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-        <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg border border-gray-200">
-          <p className="text-xs text-gray-600 font-medium">Total</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
+        <div className="bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-800 dark:to-neutral-700 p-4 rounded-lg border border-neutral-200 dark:border-neutral-700">
+          <p className="text-xs text-neutral-600 dark:text-neutral-400 font-medium">Total</p>
+          <p className="text-2xl font-bold text-neutral-900 dark:text-white mt-1">{stats.total}</p>
         </div>
 
         <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
@@ -148,12 +133,12 @@ export default function MapeoVendedoresAdmin() {
           <p className="text-2xl font-bold text-green-900 mt-1">{stats.active}</p>
         </div>
 
-        <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg border border-gray-200">
+        <div className="bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-800 dark:to-neutral-700 p-4 rounded-lg border border-neutral-200 dark:border-neutral-700">
           <div className="flex items-center gap-2">
-            <XCircle className="h-4 w-4 text-gray-600" />
-            <p className="text-xs text-gray-600 font-medium">Inactivos</p>
+            <XCircle className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
+            <p className="text-xs text-neutral-600 dark:text-neutral-400 font-medium">Inactivos</p>
           </div>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{stats.inactive}</p>
+          <p className="text-2xl font-bold text-neutral-900 dark:text-white mt-1">{stats.inactive}</p>
         </div>
 
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-primary-200">
@@ -177,13 +162,13 @@ export default function MapeoVendedoresAdmin() {
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-400 dark:text-neutral-500" />
               <input
                 type="text"
                 placeholder="Buscar por email, nombre o usuario MOVI..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2.5 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
           </div>
@@ -192,7 +177,7 @@ export default function MapeoVendedoresAdmin() {
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value as any)}
-              className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2.5 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">Todos los tipos</option>
               <option value="email">Por Email</option>
@@ -202,7 +187,7 @@ export default function MapeoVendedoresAdmin() {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value as any)}
-              className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2.5 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">Todos los estados</option>
               <option value="active">Activos</option>
@@ -219,9 +204,9 @@ export default function MapeoVendedoresAdmin() {
           </div>
         ) : filteredMappings.length === 0 ? (
           <div className="text-center py-12">
-            <User className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg mb-2">No hay mapeos</p>
-            <p className="text-gray-400 text-sm">
+            <User className="h-16 w-16 text-neutral-300 dark:text-neutral-600 mx-auto mb-4" />
+            <p className="text-neutral-500 dark:text-neutral-400 text-lg mb-2">No hay mapeos</p>
+            <p className="text-neutral-400 dark:text-neutral-500 text-sm">
               {searchQuery || filterType !== 'all' || filterStatus !== 'all'
                 ? 'Intenta cambiar los filtros'
                 : 'Los mapeos se crearán automáticamente al asignar vendedores'}
@@ -230,78 +215,78 @@ export default function MapeoVendedoresAdmin() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
                     Tipo
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
                     Valor normalizado
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
                     Usuario MOVI asignado
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
                     Usuario SICAS
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
                     Estado
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
                     Actualizado
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
                     Acciones
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
                 {filteredMappings.map((mapping) => (
-                  <tr key={mapping.id} className="hover:bg-gray-50 transition">
+                  <tr key={mapping.id} className="hover:bg-neutral-50 dark:bg-neutral-800 transition">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         {mapping.source_type === 'email' ? (
                           <>
                             <Mail className="h-5 w-5 text-accent" />
-                            <span className="text-sm font-medium text-gray-900">Email</span>
+                            <span className="text-sm font-medium text-neutral-900 dark:text-white">Email</span>
                           </>
                         ) : (
                           <>
                             <User className="h-5 w-5 text-purple-600" />
-                            <span className="text-sm font-medium text-gray-900">Nombre</span>
+                            <span className="text-sm font-medium text-neutral-900 dark:text-white">Nombre</span>
                           </>
                         )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="text-sm text-gray-900 font-mono">{mapping.source_value}</p>
+                      <p className="text-sm text-neutral-900 dark:text-white font-mono">{mapping.source_value}</p>
                     </td>
                     <td className="px-6 py-4">
                       {mapping.usuarios ? (
                         <div>
-                          <p className="text-sm font-medium text-gray-900">
+                          <p className="text-sm font-medium text-neutral-900 dark:text-white">
                             {mapping.usuarios.nombre_completo}
                           </p>
-                          <p className="text-xs text-gray-600">
+                          <p className="text-xs text-neutral-600 dark:text-neutral-400">
                             {mapping.usuarios.email_laboral || mapping.usuarios.email_personal || 'Sin email'}
                           </p>
                         </div>
                       ) : (
-                        <span className="text-sm text-gray-400">Usuario no encontrado</span>
+                        <span className="text-sm text-neutral-400 dark:text-neutral-500">Usuario no encontrado</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
                       {mapping.usuarios?.nombre_sicas ? (
                         <div className="flex items-center gap-2">
                           <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-                          <span className="text-sm text-gray-900 font-medium">
+                          <span className="text-sm text-neutral-900 dark:text-white font-medium">
                             {mapping.usuarios.nombre_sicas}
                           </span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <div className="h-2 w-2 bg-gray-300 rounded-full"></div>
-                          <span className="text-xs text-gray-400 italic">Sin mapeo SICAS</span>
+                          <div className="h-2 w-2 bg-neutral-300 dark:bg-neutral-600 rounded-full"></div>
+                          <span className="text-xs text-neutral-400 dark:text-neutral-500 italic">Sin mapeo SICAS</span>
                         </div>
                       )}
                     </td>
@@ -312,14 +297,14 @@ export default function MapeoVendedoresAdmin() {
                           Activo
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded-full">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-neutral-100 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-xs font-medium rounded-full">
                           <XCircle className="h-3 w-3" />
                           Inactivo
                         </span>
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm text-neutral-600 dark:text-neutral-400">
                         {new Date(mapping.updated_at).toLocaleDateString('es-MX', {
                           day: 'numeric',
                           month: 'short',
@@ -333,7 +318,7 @@ export default function MapeoVendedoresAdmin() {
                           onClick={() => handleToggleStatus(mapping)}
                           className={`p-2 rounded-lg transition ${
                             mapping.status === 'active'
-                              ? 'hover:bg-gray-100 text-gray-600'
+                              ? 'hover:bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400'
                               : 'hover:bg-green-100 text-green-600'
                           }`}
                           title={

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { MessageCircle, Mail, Search, Filter, Send, Phone, Building2, User, Clock, CheckCircle2, XCircle, AlertCircle, Loader2, ChevronLeft, RefreshCw, X, MessageSquare, Zap, Check, ListTodo, Plus, Link2, FileText, Image, Music, Video, Paperclip, UserX, UserPlus, Eye, Download, ExternalLink, Smile, LayoutTemplate as BookTemplate, ClipboardList, Star, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, Globe, Lock, ChevronDown, Bot, Play, Pause, ArrowRightLeft, StopCircle, ChevronUp, Settings, Sparkles, Brain } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { getDisplayName } from '../lib/utils';
@@ -1015,65 +1016,72 @@ export default function CentroContacto() {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+      <div className="px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
         <div className="flex items-center gap-3">
           {selectedAgent && (
-            <button onClick={() => setSelectedAgent(null)} className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+            <button onClick={() => setSelectedAgent(null)} className="lg:hidden p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800">
               <ChevronLeft className="w-5 h-5" />
             </button>
           )}
-          <MessageSquare className="w-5 h-5 text-teal-600" />
-          <h1 className="text-lg font-bold text-gray-900 dark:text-white">Centro de Contacto</h1>
-          {conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0) > 0 && (
-            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-              {conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0)}
-            </span>
-          )}
+          <PageHeader
+            title="Centro de Contacto"
+            icon={MessageCircle}
+            badge={
+              conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0) > 0 ? (
+                <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0)}
+                </span>
+              ) : undefined
+            }
+            actions={
+              <button onClick={loadConversations} className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400">
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            }
+            className="flex-1"
+          />
         </div>
-        <button onClick={loadConversations} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
-          <RefreshCw className="w-4 h-4" />
-        </button>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left Panel */}
-        <div className={`w-full lg:w-80 xl:w-96 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 ${selectedAgent ? 'hidden lg:flex' : 'flex'}`}>
-          <div className="p-3 border-b border-gray-100 dark:border-gray-800 space-y-2">
+        <div className={`w-full lg:w-80 xl:w-96 border-r border-neutral-200 dark:border-neutral-700 flex flex-col bg-white dark:bg-neutral-900 ${selectedAgent ? 'hidden lg:flex' : 'flex'}`}>
+          <div className="p-3 border-b border-neutral-100 dark:border-neutral-800 space-y-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Buscar agente..."
-                className="w-full pl-9 pr-9 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                className="w-full pl-9 pr-9 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent"
               />
-              <button onClick={() => setShowFilters(!showFilters)} className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded ${showFilters ? 'text-teal-600' : 'text-gray-400 hover:text-gray-600'}`}>
+              <button onClick={() => setShowFilters(!showFilters)} className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded ${showFilters ? 'text-teal-600' : 'text-neutral-400 hover:text-neutral-600'}`}>
                 <Filter className="w-4 h-4" />
               </button>
             </div>
 
             {showFilters && (
               <div className="grid grid-cols-2 gap-2">
-                <select value={filterChannel} onChange={e => setFilterChannel(e.target.value)} className="text-xs rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-1.5 px-2">
+                <select value={filterChannel} onChange={e => setFilterChannel(e.target.value)} className="text-xs rounded-md border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 py-1.5 px-2">
                   <option value="">Todos canales</option>
                   <option value="whatsapp">WhatsApp</option>
                   <option value="email">Email</option>
                   <option value="system">Sistema</option>
                 </select>
-                <select value={filterType} onChange={e => setFilterType(e.target.value)} className="text-xs rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-1.5 px-2">
+                <select value={filterType} onChange={e => setFilterType(e.target.value)} className="text-xs rounded-md border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 py-1.5 px-2">
                   <option value="">Todo tipo</option>
                   <option value="manual">Manual</option>
                   <option value="automatic">Automatico</option>
                 </select>
                 {canFilterOffice && (
-                  <select value={filterOffice} onChange={e => setFilterOffice(e.target.value)} className="text-xs rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-1.5 px-2 col-span-2">
+                  <select value={filterOffice} onChange={e => setFilterOffice(e.target.value)} className="text-xs rounded-md border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 py-1.5 px-2 col-span-2">
                     <option value="">Todas oficinas</option>
                     {oficinas.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
                   </select>
                 )}
-                <label className="col-span-2 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 cursor-pointer">
-                  <input type="checkbox" checked={filterUnassigned} onChange={e => setFilterUnassigned(e.target.checked)} className="rounded border-gray-300 text-teal-600 focus:ring-teal-500" />
+                <label className="col-span-2 flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400 cursor-pointer">
+                  <input type="checkbox" checked={filterUnassigned} onChange={e => setFilterUnassigned(e.target.checked)} className="rounded border-neutral-300 text-teal-600 focus:ring-teal-500" />
                   <UserX className="w-3.5 h-3.5" /> No asignados
                 </label>
               </div>
@@ -1085,7 +1093,7 @@ export default function CentroContacto() {
             {loading ? (
               <div className="flex items-center justify-center h-32"><Loader2 className="w-6 h-6 text-teal-500 animate-spin" /></div>
             ) : conversations.length === 0 ? (
-              <div className="p-6 text-center text-sm text-gray-500 dark:text-gray-400">
+              <div className="p-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
                 <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-30" />
                 <p>Sin conversaciones</p>
               </div>
@@ -1099,7 +1107,7 @@ export default function CentroContacto() {
                 <button
                   key={convKey}
                   onClick={() => handleSelectAgent(conv)}
-                  className={`w-full text-left p-3 border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${isSelected ? 'bg-teal-50 dark:bg-teal-900/20 border-l-2 border-l-teal-500' : ''}`}
+                  className={`w-full text-left p-3 border-b border-neutral-50 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors ${isSelected ? 'bg-teal-50 dark:bg-teal-900/20 border-l-2 border-l-teal-500' : ''}`}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 relative ${conv.is_external ? 'bg-gradient-to-br from-amber-400 to-orange-500' : 'bg-gradient-to-br from-teal-400 to-teal-600'}`}>
@@ -1112,20 +1120,20 @@ export default function CentroContacto() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <p className={`text-sm font-medium truncate ${(conv.unread_count || 0) > 0 ? 'text-gray-900 dark:text-white font-semibold' : 'text-gray-700 dark:text-gray-300'}`}>{conv.agent_name}</p>
-                        <span className="text-[10px] text-gray-400 shrink-0">{formatTime(conv.last_message_at)}</span>
+                        <p className={`text-sm font-medium truncate ${(conv.unread_count || 0) > 0 ? 'text-neutral-900 dark:text-white font-semibold' : 'text-neutral-700 dark:text-neutral-300'}`}>{conv.agent_name}</p>
+                        <span className="text-[10px] text-neutral-400 shrink-0">{formatTime(conv.last_message_at)}</span>
                       </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <ChannelIcon channel={conv.last_message_channel} size={12} />
                         {conv.last_message_status === 'received' && (
                           <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
                         )}
-                        <p className={`text-xs truncate ${(conv.unread_count || 0) > 0 ? 'text-gray-700 dark:text-gray-200 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>{conv.last_message_body}</p>
+                        <p className={`text-xs truncate ${(conv.unread_count || 0) > 0 ? 'text-neutral-700 dark:text-neutral-200 font-medium' : 'text-neutral-500 dark:text-neutral-400'}`}>{conv.last_message_body}</p>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         {conv.is_external && <span className="text-[10px] text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400 px-1.5 py-0.5 rounded">Externo</span>}
-                        {conv.office_name && <span className="text-[10px] text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{conv.office_name}</span>}
-                        <span className="text-[10px] text-gray-400">{conv.total_messages} msgs</span>
+                        {conv.office_name && <span className="text-[10px] text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded">{conv.office_name}</span>}
+                        <span className="text-[10px] text-neutral-400">{conv.total_messages} msgs</span>
                       </div>
                     </div>
                   </div>
@@ -1137,9 +1145,9 @@ export default function CentroContacto() {
         </div>
 
         {/* Center Panel */}
-        <div className={`flex-1 flex flex-col bg-gray-50 dark:bg-gray-950 ${!selectedAgent ? 'hidden lg:flex' : 'flex'}`}>
+        <div className={`flex-1 flex flex-col bg-neutral-50 dark:bg-neutral-950 ${!selectedAgent ? 'hidden lg:flex' : 'flex'}`}>
           {!selectedAgent ? (
-            <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500">
+            <div className="flex-1 flex items-center justify-center text-neutral-400 dark:text-neutral-500">
               <div className="text-center">
                 <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">Selecciona un agente para ver la conversacion</p>
@@ -1148,17 +1156,17 @@ export default function CentroContacto() {
           ) : (
             <>
               {/* Thread header */}
-              <div className="flex items-center justify-between px-4 py-2.5 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between px-4 py-2.5 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700">
                 <div className="flex items-center gap-3">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${selectedAgent.is_external ? 'bg-gradient-to-br from-amber-400 to-orange-500' : 'bg-gradient-to-br from-teal-400 to-teal-600'}`}>
                     <span className="text-white text-xs font-bold">{selectedAgent.agent_name?.charAt(0)}</span>
                   </div>
                   <div>
                     <div className="flex items-center gap-1.5">
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{selectedAgent.agent_name}</p>
+                      <p className="text-sm font-semibold text-neutral-900 dark:text-white">{selectedAgent.agent_name}</p>
                       {selectedAgent.is_external && <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Externo</span>}
                     </div>
-                    <p className="text-[11px] text-gray-500">{selectedAgent.agent_email || selectedAgent.agent_phone || selectedAgent.contact_phone_ext || 'Sin datos'}</p>
+                    <p className="text-[11px] text-neutral-500">{selectedAgent.agent_email || selectedAgent.agent_phone || selectedAgent.contact_phone_ext || 'Sin datos'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1172,7 +1180,7 @@ export default function CentroContacto() {
                       className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] border transition-colors disabled:opacity-50 ${
                         smartAssistantState?.smart_assistant_enabled
                           ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 border-sky-200 dark:border-sky-700'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-sky-50 dark:hover:bg-sky-900/20 hover:text-sky-600 dark:hover:text-sky-400 border-gray-200 dark:border-gray-700'
+                          : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 hover:bg-sky-50 dark:hover:bg-sky-900/20 hover:text-sky-600 dark:hover:text-sky-400 border-neutral-200 dark:border-neutral-700'
                       }`}
                     >
                       <Brain className="w-3 h-3" />
@@ -1209,7 +1217,7 @@ export default function CentroContacto() {
                     <button
                       onClick={() => setShowStartAutoModal(true)}
                       title="Activar Modo Automático"
-                      className="flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-700 dark:hover:text-emerald-400 border border-gray-200 dark:border-gray-700 transition-colors"
+                      className="flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-700 dark:hover:text-emerald-400 border border-neutral-200 dark:border-neutral-700 transition-colors"
                     >
                       <Bot className="w-3 h-3" /> Auto
                     </button>
@@ -1221,23 +1229,23 @@ export default function CentroContacto() {
                   )}
                   <button
                     onClick={() => { setSelectionMode(!selectionMode); if (selectionMode) cancelSelection(); }}
-                    className={`p-1.5 rounded text-[11px] ${selectionMode ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400'}`}
+                    className={`p-1.5 rounded text-[11px] ${selectionMode ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400'}`}
                     title="Seleccionar mensajes"
                   >
                     <Check className="w-4 h-4" />
                   </button>
-                  <select value={threadFilterChannel} onChange={e => setThreadFilterChannel(e.target.value)} className="text-[11px] rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 py-1 px-1.5">
+                  <select value={threadFilterChannel} onChange={e => setThreadFilterChannel(e.target.value)} className="text-[11px] rounded border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 py-1 px-1.5">
                     <option value="">Todos</option>
                     <option value="whatsapp">WhatsApp</option>
                     <option value="email">Email</option>
                     <option value="system">Sistema</option>
                   </select>
-                  <select value={threadFilterType} onChange={e => setThreadFilterType(e.target.value)} className="text-[11px] rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 py-1 px-1.5">
+                  <select value={threadFilterType} onChange={e => setThreadFilterType(e.target.value)} className="text-[11px] rounded border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 py-1 px-1.5">
                     <option value="">Todo</option>
                     <option value="manual">Manual</option>
                     <option value="automatic">Auto</option>
                   </select>
-                  <button onClick={() => setShowAgentPanel(!showAgentPanel)} className="hidden xl:block p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
+                  <button onClick={() => setShowAgentPanel(!showAgentPanel)} className="hidden xl:block p-1.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400">
                     <User className="w-4 h-4" />
                   </button>
                 </div>
@@ -1253,7 +1261,7 @@ export default function CentroContacto() {
                     <button onClick={() => setShowCreateTaskModal(true)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium bg-teal-600 text-white hover:bg-teal-700 transition-colors">
                       <Plus className="w-3 h-3" /> Crear tramite
                     </button>
-                    <button onClick={() => setShowAddToTaskModal(true)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium bg-white dark:bg-gray-800 text-teal-700 dark:text-teal-400 border border-teal-300 dark:border-teal-700 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-colors">
+                    <button onClick={() => setShowAddToTaskModal(true)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium bg-white dark:bg-neutral-800 text-teal-700 dark:text-teal-400 border border-teal-300 dark:border-teal-700 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-colors">
                       <Link2 className="w-3 h-3" /> Agregar a tramite
                     </button>
                     <button onClick={cancelSelection} className="p-1.5 rounded hover:bg-teal-100 dark:hover:bg-teal-900/40 text-teal-600">
@@ -1332,7 +1340,7 @@ export default function CentroContacto() {
                             activeSession.current_stage === 'capturing'  ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300' :
                             activeSession.current_stage === 'summary'    ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' :
                             activeSession.current_stage === 'error'      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
-                            'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                            'bg-neutral-100 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300'
                           }`}>
                             {activeSession.current_stage === 'welcome'   ? 'Bienvenida' :
                              activeSession.current_stage === 'consent'   ? 'Consentimiento' :
@@ -1389,10 +1397,10 @@ export default function CentroContacto() {
                               : field.requires_human_review
                               ? 'bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800'
                               : field.status === 'captured' || field.status === 'low_confidence'
-                              ? 'bg-white dark:bg-gray-800 border border-emerald-100 dark:border-emerald-800'
+                              ? 'bg-white dark:bg-neutral-800 border border-emerald-100 dark:border-emerald-800'
                               : field.status === 'skipped'
-                              ? 'bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700'
-                              : 'bg-gray-50 dark:bg-gray-800/50 border border-dashed border-gray-200 dark:border-gray-700'
+                              ? 'bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-100 dark:border-neutral-700'
+                              : 'bg-neutral-50 dark:bg-neutral-800/50 border border-dashed border-neutral-200 dark:border-neutral-700'
                           }`}
                         >
                           <div className="flex-shrink-0 mt-0.5">
@@ -1407,16 +1415,16 @@ export default function CentroContacto() {
                                 <Check className="w-2.5 h-2.5 text-white" />
                               </div>
                             ) : field.status === 'skipped' ? (
-                              <div className="w-3.5 h-3.5 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
+                              <div className="w-3.5 h-3.5 rounded-full bg-neutral-300 dark:bg-neutral-600 flex items-center justify-center">
                                 <X className="w-2 h-2 text-white" />
                               </div>
                             ) : (
-                              <div className="w-3.5 h-3.5 rounded-full border-2 border-dashed border-gray-300 dark:border-gray-600" />
+                              <div className="w-3.5 h-3.5 rounded-full border-2 border-dashed border-neutral-300 dark:border-neutral-600" />
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
-                              <span className="font-medium text-gray-600 dark:text-gray-300 truncate">{field.field_label}</span>
+                              <span className="font-medium text-neutral-600 dark:text-neutral-300 truncate">{field.field_label}</span>
                               {field.priority === 'required' && (
                                 <span className="text-[9px] text-red-500 font-semibold uppercase">req</span>
                               )}
@@ -1430,11 +1438,11 @@ export default function CentroContacto() {
                               )}
                             </div>
                             {field.value ? (
-                              <span className="text-gray-800 dark:text-gray-200 truncate block">{field.value}</span>
+                              <span className="text-neutral-800 dark:text-neutral-200 truncate block">{field.value}</span>
                             ) : field.status === 'skipped' ? (
-                              <span className="text-gray-400 italic">omitido</span>
+                              <span className="text-neutral-400 italic">omitido</span>
                             ) : (
-                              <span className="text-gray-400 italic">pendiente</span>
+                              <span className="text-neutral-400 italic">pendiente</span>
                             )}
                           </div>
                         </div>
@@ -1478,7 +1486,7 @@ export default function CentroContacto() {
                 {loadingMessages ? (
                   <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-teal-500" /></div>
                 ) : messages.length === 0 ? (
-                  <div className="text-center py-8 text-sm text-gray-400">Sin mensajes</div>
+                  <div className="text-center py-8 text-sm text-neutral-400">Sin mensajes</div>
                 ) : (
                   messages.map(msg => (
                     <MessageBubble
@@ -1499,31 +1507,31 @@ export default function CentroContacto() {
               </div>
 
               {/* Composer */}
-              <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 p-3">
+              <div className="bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-700 p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <button
                     onClick={() => setComposerChannel('whatsapp')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${composerChannel === 'whatsapp' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${composerChannel === 'whatsapp' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400'}`}
                   >
                     <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
                   </button>
                   <button
                     onClick={() => setComposerChannel('email')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${composerChannel === 'email' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${composerChannel === 'email' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400'}`}
                   >
                     <Mail className="w-3.5 h-3.5" /> Correo
                   </button>
                   <div className="ml-auto flex items-center gap-1">
                     <button
                       onClick={() => { setShowPlantillasModal(true); setShowEmojiPicker(false); }}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors border border-neutral-200 dark:border-neutral-700"
                       title="Plantillas de mensaje"
                     >
                       <BookTemplate className="w-3.5 h-3.5" /> Plantillas
                     </button>
                     <button
                       onClick={() => { setShowFormulariosModal(true); setShowEmojiPicker(false); }}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors border border-neutral-200 dark:border-neutral-700"
                       title="Compartir formulario de cotizacion"
                     >
                       <ClipboardList className="w-3.5 h-3.5" /> Formularios
@@ -1537,7 +1545,7 @@ export default function CentroContacto() {
                     value={composerSubject}
                     onChange={e => setComposerSubject(e.target.value)}
                     placeholder="Asunto del correo..."
-                    className="w-full mb-2 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
+                    className="w-full mb-2 px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-teal-500"
                   />
                 )}
 
@@ -1546,7 +1554,7 @@ export default function CentroContacto() {
                     <div className="relative" ref={emojiPickerRef}>
                       <button
                         onClick={() => setShowEmojiPicker(p => !p)}
-                        className={`p-2 rounded-lg border transition-colors ${showEmojiPicker ? 'border-teal-400 text-teal-600 bg-teal-50 dark:bg-teal-900/20' : 'border-gray-200 dark:border-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                        className={`p-2 rounded-lg border transition-colors ${showEmojiPicker ? 'border-teal-400 text-teal-600 bg-teal-50 dark:bg-teal-900/20' : 'border-neutral-200 dark:border-neutral-700 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
                         title="Emojis"
                       >
                         <Smile className="w-4 h-4" />
@@ -1559,7 +1567,7 @@ export default function CentroContacto() {
                     onChange={e => setComposerMessage(e.target.value)}
                     placeholder={composerChannel === 'whatsapp' ? 'Escribe un mensaje...' : 'Cuerpo del correo...'}
                     rows={2}
-                    className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:ring-2 focus:ring-teal-500"
+                    className="flex-1 px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-white resize-none focus:ring-2 focus:ring-teal-500"
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && composerChannel === 'whatsapp') { e.preventDefault(); handleSend(); } }}
                   />
                   <button
@@ -1572,8 +1580,8 @@ export default function CentroContacto() {
                 </div>
                 {composerChannel === 'whatsapp' && (
                   <div className="flex items-center justify-between mt-1">
-                    <p className="text-[10px] text-gray-400">Enter para enviar, Shift+Enter para nueva linea.</p>
-                    <p className={`text-[10px] ${composerMessage.length > 500 ? 'text-red-500' : 'text-gray-400'}`}>{composerMessage.length}/550</p>
+                    <p className="text-[10px] text-neutral-400">Enter para enviar, Shift+Enter para nueva linea.</p>
+                    <p className={`text-[10px] ${composerMessage.length > 500 ? 'text-red-500' : 'text-neutral-400'}`}>{composerMessage.length}/550</p>
                   </div>
                 )}
               </div>
@@ -1583,19 +1591,19 @@ export default function CentroContacto() {
 
         {/* Right Panel */}
         {selectedAgent && showAgentPanel && (
-          <div className="hidden xl:flex w-72 flex-col border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-y-auto">
-            <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+          <div className="hidden xl:flex w-72 flex-col border-l border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-y-auto">
+            <div className="p-4 border-b border-neutral-100 dark:border-neutral-800">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase">Ficha del Agente</h3>
-                <button onClick={() => setShowAgentPanel(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
+                <h3 className="text-xs font-semibold text-neutral-500 uppercase">Ficha del Agente</h3>
+                <button onClick={() => setShowAgentPanel(false)} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400">
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
               <div className="w-14 h-14 mx-auto rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center mb-3">
                 <span className="text-white text-lg font-bold">{selectedAgent.agent_name?.charAt(0)}</span>
               </div>
-              <p className="text-sm font-semibold text-gray-900 dark:text-white text-center">{selectedAgent.agent_name}</p>
-              <p className="text-xs text-gray-500 text-center mt-0.5">{selectedAgent.agent_rol}</p>
+              <p className="text-sm font-semibold text-neutral-900 dark:text-white text-center">{selectedAgent.agent_name}</p>
+              <p className="text-xs text-neutral-500 text-center mt-0.5">{selectedAgent.agent_rol}</p>
             </div>
             <div className="p-4 space-y-3">
               <InfoRow icon={Mail} label="Correo" value={selectedAgent.agent_email || 'Sin correo'} />
@@ -1713,7 +1721,7 @@ function MessageBubble({ message, isAdmin, onRetry, formatDate, selectionMode, i
     <div className={`flex flex-col ${align} group`}>
       <div className={`flex items-start gap-2 ${isInbound ? '' : 'flex-row-reverse'}`}>
         {selectionMode && (
-          <button onClick={onToggleSelect} className={`mt-2 w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-teal-600 border-teal-600 text-white' : 'border-gray-300 dark:border-gray-600 hover:border-teal-500'}`}>
+          <button onClick={onToggleSelect} className={`mt-2 w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-teal-600 border-teal-600 text-white' : 'border-neutral-300 dark:border-neutral-600 hover:border-teal-500'}`}>
             {isSelected && <Check className="w-3 h-3" />}
           </button>
         )}
@@ -1725,15 +1733,15 @@ function MessageBubble({ message, isAdmin, onRetry, formatDate, selectionMode, i
               <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400">{message.source_module || 'Sistema'} - {message.source_event || 'automatico'}</span>
               <ChannelIcon channel={message.channel} size={11} />
             </div>
-            {message.subject && <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-0.5">{message.subject}</p>}
-            <p className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{message.body}</p>
+            {message.subject && <p className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-0.5">{message.subject}</p>}
+            <p className="text-xs text-neutral-600 dark:text-neutral-400 whitespace-pre-wrap">{message.body}</p>
             <div className="flex items-center justify-between mt-1.5">
-              <span className="text-[10px] text-gray-400">{formatDate(message.created_at)}</span>
+              <span className="text-[10px] text-neutral-400">{formatDate(message.created_at)}</span>
               <StatusBadge status={message.status} />
             </div>
           </div>
         ) : isInbound ? (
-          <div className={`max-w-[75%] rounded-xl rounded-tl-sm px-3.5 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm ${isSelected ? 'ring-2 ring-teal-500' : ''}`}>
+          <div className={`max-w-[75%] rounded-xl rounded-tl-sm px-3.5 py-2.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-sm ${isSelected ? 'ring-2 ring-teal-500' : ''}`}>
             <div className="flex items-center gap-2 mb-1">
               <ChannelIcon channel={message.channel} size={12} />
               <span className="text-[10px] font-medium text-green-600 dark:text-green-400">{message.sender_name}</span>
@@ -1744,8 +1752,8 @@ function MessageBubble({ message, isAdmin, onRetry, formatDate, selectionMode, i
                 </span>
               )}
             </div>
-            {message.subject && <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-1">{message.subject}</p>}
-            <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{message.body}</p>
+            {message.subject && <p className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 mb-1">{message.subject}</p>}
+            <p className="text-sm text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap">{message.body}</p>
             {message.attachments && message.attachments.length > 0 && (
               <div className="mt-2 space-y-1">
                 {message.attachments.map(att => (
@@ -1754,14 +1762,14 @@ function MessageBubble({ message, isAdmin, onRetry, formatDate, selectionMode, i
               </div>
             )}
             <div className="flex items-center justify-between mt-2">
-              <span className="text-[10px] text-gray-400">{formatDate(message.created_at)}</span>
+              <span className="text-[10px] text-neutral-400">{formatDate(message.created_at)}</span>
             </div>
           </div>
         ) : (
           <div className={`max-w-[75%] rounded-xl rounded-tr-sm px-3.5 py-2.5 ${isFailed ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' : 'bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800'} ${isSelected ? 'ring-2 ring-teal-500' : ''}`}>
             <div className="flex items-center gap-2 mb-1">
               <ChannelIcon channel={message.channel} size={12} />
-              <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">{message.sender_name}</span>
+              <span className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400">{message.sender_name}</span>
               {message.message_type === 'automatic' && <span className="text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-1 py-0.5 rounded">Auto</span>}
               {linkedTaskId && (
                 <span className="text-[9px] bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 px-1 py-0.5 rounded flex items-center gap-0.5">
@@ -1769,8 +1777,8 @@ function MessageBubble({ message, isAdmin, onRetry, formatDate, selectionMode, i
                 </span>
               )}
             </div>
-            {message.subject && <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-1">{message.subject}</p>}
-            <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{message.body}</p>
+            {message.subject && <p className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 mb-1">{message.subject}</p>}
+            <p className="text-sm text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap">{message.body}</p>
             {message.attachments && message.attachments.length > 0 && (
               <div className="mt-2 space-y-1">
                 {message.attachments.map(att => (
@@ -1779,7 +1787,7 @@ function MessageBubble({ message, isAdmin, onRetry, formatDate, selectionMode, i
               </div>
             )}
             <div className="flex items-center justify-between mt-2 gap-3">
-              <span className="text-[10px] text-gray-400">{formatDate(message.created_at)}</span>
+              <span className="text-[10px] text-neutral-400">{formatDate(message.created_at)}</span>
               <div className="flex items-center gap-2">
                 <StatusBadge status={message.status} />
                 {isFailed && (
@@ -1814,7 +1822,7 @@ function AttachmentChip({ attachment, onPreview }: { attachment: Attachment; onP
     return (
       <div className="mt-1">
         <div
-          className="relative group cursor-pointer rounded-lg overflow-hidden max-w-[220px] border border-gray-200 dark:border-gray-700"
+          className="relative group cursor-pointer rounded-lg overflow-hidden max-w-[220px] border border-neutral-200 dark:border-neutral-700"
           onClick={() => onPreview?.(attachment)}
         >
           <img
@@ -1827,7 +1835,7 @@ function AttachmentChip({ attachment, onPreview }: { attachment: Attachment; onP
             <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
         </div>
-        <p className="text-[10px] text-gray-400 mt-0.5 truncate max-w-[220px]">{attachment.file_name}</p>
+        <p className="text-[10px] text-neutral-400 mt-0.5 truncate max-w-[220px]">{attachment.file_name}</p>
       </div>
     );
   }
@@ -1838,7 +1846,7 @@ function AttachmentChip({ attachment, onPreview }: { attachment: Attachment; onP
         <audio controls className="w-full h-8" preload="none">
           <source src={attachment.file_url} type={attachment.mime_type || 'audio/ogg'} />
         </audio>
-        <p className="text-[10px] text-gray-400 mt-0.5 truncate">{attachment.file_name}</p>
+        <p className="text-[10px] text-neutral-400 mt-0.5 truncate">{attachment.file_name}</p>
       </div>
     );
   }
@@ -1847,7 +1855,7 @@ function AttachmentChip({ attachment, onPreview }: { attachment: Attachment; onP
     return (
       <div className="mt-1">
         <div
-          className="relative group cursor-pointer rounded-lg overflow-hidden max-w-[220px] border border-gray-200 dark:border-gray-700 bg-black"
+          className="relative group cursor-pointer rounded-lg overflow-hidden max-w-[220px] border border-neutral-200 dark:border-neutral-700 bg-black"
           onClick={() => onPreview?.(attachment)}
         >
           <video className="w-full max-h-[150px] object-cover" preload="metadata">
@@ -1855,11 +1863,11 @@ function AttachmentChip({ attachment, onPreview }: { attachment: Attachment; onP
           </video>
           <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
             <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center">
-              <Video className="w-5 h-5 text-gray-800" />
+              <Video className="w-5 h-5 text-neutral-800" />
             </div>
           </div>
         </div>
-        <p className="text-[10px] text-gray-400 mt-0.5 truncate max-w-[220px]">{attachment.file_name}</p>
+        <p className="text-[10px] text-neutral-400 mt-0.5 truncate max-w-[220px]">{attachment.file_name}</p>
       </div>
     );
   }
@@ -1867,11 +1875,11 @@ function AttachmentChip({ attachment, onPreview }: { attachment: Attachment; onP
   return (
     <button
       onClick={() => onPreview?.(attachment)}
-      className="flex items-center gap-1.5 px-2 py-1.5 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors group cursor-pointer"
+      className="flex items-center gap-1.5 px-2 py-1.5 rounded bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors group cursor-pointer"
     >
-      <Icon className="w-4 h-4 text-gray-500 shrink-0" />
-      <span className="text-[11px] text-gray-600 dark:text-gray-300 truncate max-w-[150px]">{attachment.file_name}</span>
-      <Eye className="w-3 h-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+      <Icon className="w-4 h-4 text-neutral-500 shrink-0" />
+      <span className="text-[11px] text-neutral-600 dark:text-neutral-300 truncate max-w-[150px]">{attachment.file_name}</span>
+      <Eye className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
     </button>
   );
 }
@@ -1889,8 +1897,8 @@ function AttachmentPreviewModal({ attachment, onClose }: { attachment: Attachmen
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={onClose}>
       <div className={`relative ${isDocument ? 'w-[90vw] h-[90vh] max-w-4xl' : 'max-w-[90vw] max-h-[90vh]'} flex flex-col`} onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-white dark:bg-gray-800 shadow-lg flex items-center justify-center z-10 hover:bg-gray-100 dark:hover:bg-gray-700">
-          <X className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+        <button onClick={onClose} className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-white dark:bg-neutral-800 shadow-lg flex items-center justify-center z-10 hover:bg-neutral-100 dark:hover:bg-neutral-700">
+          <X className="w-4 h-4 text-neutral-700 dark:text-neutral-300" />
         </button>
         {isImage && (
           <img
@@ -1914,16 +1922,16 @@ function AttachmentPreviewModal({ attachment, onClose }: { attachment: Attachmen
           </div>
         )}
         {isDocument && !isPdf && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-6 bg-white dark:bg-gray-900 rounded-lg shadow-2xl p-8">
-            <div className="w-20 h-20 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-              <FileText className="w-10 h-10 text-gray-400" />
+          <div className="flex-1 flex flex-col items-center justify-center gap-6 bg-white dark:bg-neutral-900 rounded-lg shadow-2xl p-8">
+            <div className="w-20 h-20 rounded-2xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
+              <FileText className="w-10 h-10 text-neutral-400" />
             </div>
             <div className="text-center">
-              <p className="text-lg font-medium text-gray-800 dark:text-gray-200">{attachment.file_name}</p>
+              <p className="text-lg font-medium text-neutral-800 dark:text-neutral-200">{attachment.file_name}</p>
               {attachment.mime_type && (
-                <p className="text-sm text-gray-500 mt-1">{attachment.mime_type}</p>
+                <p className="text-sm text-neutral-500 mt-1">{attachment.mime_type}</p>
               )}
-              <p className="text-sm text-gray-400 mt-3">Vista previa no disponible para este tipo de archivo</p>
+              <p className="text-sm text-neutral-400 mt-3">Vista previa no disponible para este tipo de archivo</p>
             </div>
             <div className="flex items-center gap-3">
               <a
@@ -1938,7 +1946,7 @@ function AttachmentPreviewModal({ attachment, onClose }: { attachment: Attachmen
                 href={attachment.file_url || '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-200 text-sm rounded-lg transition-colors"
               >
                 <ExternalLink className="w-4 h-4" /> Abrir en nueva ventana
               </a>
@@ -2023,28 +2031,28 @@ function CreateTaskModal({ agentUserId, agentName, selectedMessages, onClose, on
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 dark:border-neutral-700">
           <div className="flex items-center gap-2">
             <ListTodo className="w-5 h-5 text-teal-600" />
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Crear tramite desde mensajes</h2>
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-white">Crear tramite desde mensajes</h2>
           </div>
-          <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"><X className="w-5 h-5 text-gray-400" /></button>
+          <button onClick={onClose} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800"><X className="w-5 h-5 text-neutral-400" /></button>
         </div>
         <div className="p-5 space-y-4">
-          <p className="text-xs text-gray-500 dark:text-gray-400">{selectedMessages.length} mensaje(s) de {agentName}</p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">{selectedMessages.length} mensaje(s) de {agentName}</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Tipo de tramite</label>
-              <select value={tipoTramite} onChange={e => setTipoTramite(e.target.value)} className="mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 py-2 px-3">
+              <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Tipo de tramite</label>
+              <select value={tipoTramite} onChange={e => setTipoTramite(e.target.value)} className="mt-1 w-full text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 py-2 px-3">
                 {tipoOptions.map(t => (
                   <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Prioridad</label>
-              <select value={prioridad} onChange={e => setPrioridad(e.target.value)} className="mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 py-2 px-3">
+              <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Prioridad</label>
+              <select value={prioridad} onChange={e => setPrioridad(e.target.value)} className="mt-1 w-full text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 py-2 px-3">
                 <option>Alta</option><option>Media</option><option>Baja</option>
               </select>
             </div>
@@ -2058,12 +2066,12 @@ function CreateTaskModal({ agentUserId, agentName, selectedMessages, onClose, on
             </div>
           )}
           <div>
-            <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Instrucciones</label>
-            <textarea value={instrucciones} onChange={e => setInstrucciones(e.target.value)} rows={8} className="mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 py-2 px-3 resize-none" />
+            <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Instrucciones</label>
+            <textarea value={instrucciones} onChange={e => setInstrucciones(e.target.value)} rows={8} className="mt-1 w-full text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 py-2 px-3 resize-none" />
           </div>
         </div>
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-200 dark:border-gray-700">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Cancelar</button>
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-neutral-200 dark:border-neutral-700">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800">Cancelar</button>
           <button onClick={handleSave} disabled={saving || !instrucciones.trim()} className="px-4 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 font-medium">
             {saving ? 'Creando...' : 'Crear tramite'}
           </button>
@@ -2149,60 +2157,60 @@ function AddToTaskModal({ agentUserId, agentName, selectedMessages, onClose, onS
   const estatusColor = (estatus: string) => {
     if (estatus === 'Iniciado') return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
     if (estatus === 'En proceso') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
-    return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+    return 'bg-neutral-100 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300';
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 dark:border-neutral-700">
           <div className="flex items-center gap-2">
             <Link2 className="w-5 h-5 text-teal-600" />
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Agregar a tramite existente</h2>
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-white">Agregar a tramite existente</h2>
           </div>
-          <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"><X className="w-5 h-5 text-gray-400" /></button>
+          <button onClick={onClose} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800"><X className="w-5 h-5 text-neutral-400" /></button>
         </div>
         <div className="p-5 space-y-4">
-          <p className="text-xs text-gray-500 dark:text-gray-400">{selectedMessages.length} mensaje(s) de {agentName}</p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">{selectedMessages.length} mensaje(s) de {agentName}</p>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
             <input
               type="text"
               value={searchTramite}
               onChange={e => setSearchTramite(e.target.value)}
               placeholder="Buscar por folio, instrucciones o agente..."
-              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800"
             />
           </div>
-          <div className="max-h-60 overflow-y-auto space-y-1 border border-gray-200 dark:border-gray-700 rounded-lg p-2">
+          <div className="max-h-60 overflow-y-auto space-y-1 border border-neutral-200 dark:border-neutral-700 rounded-lg p-2">
             {loadingTramites ? (
               <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-teal-500" /></div>
             ) : filteredTramites.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-4">No se encontraron tramites abiertos</p>
+              <p className="text-sm text-neutral-400 text-center py-4">No se encontraron tramites abiertos</p>
             ) : (
               filteredTramites.map(t => (
                 <button
                   key={t.id}
                   onClick={() => setSelectedTramiteId(t.id)}
-                  className={`w-full text-left p-2.5 rounded-lg transition-colors ${selectedTramiteId === t.id ? 'bg-teal-50 dark:bg-teal-900/20 border border-teal-300 dark:border-teal-700' : 'hover:bg-gray-50 dark:hover:bg-gray-800 border border-transparent'}`}
+                  className={`w-full text-left p-2.5 rounded-lg transition-colors ${selectedTramiteId === t.id ? 'bg-teal-50 dark:bg-teal-900/20 border border-teal-300 dark:border-teal-700' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 border border-transparent'}`}
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono font-semibold text-teal-700 dark:text-teal-400">{t.folio}</span>
-                    {t.agente_nombre && <span className="text-[10px] text-gray-500 dark:text-gray-400">- {t.agente_nombre}</span>}
+                    {t.agente_nombre && <span className="text-[10px] text-neutral-500 dark:text-neutral-400">- {t.agente_nombre}</span>}
                   </div>
-                  <p className="text-sm text-gray-800 dark:text-gray-200 line-clamp-2 mt-0.5">{t.instrucciones}</p>
+                  <p className="text-sm text-neutral-800 dark:text-neutral-200 line-clamp-2 mt-0.5">{t.instrucciones}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className={`text-[10px] px-1.5 py-0.5 rounded ${estatusColor(t.estatus_nombre)}`}>{t.estatus_nombre}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${t.prioridad === 'Alta' ? 'bg-red-100 text-red-700' : t.prioridad === 'Media' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}`}>{t.prioridad}</span>
-                    <span className="text-[10px] text-gray-400">{new Date(t.fecha_creacion).toLocaleDateString('es-MX')}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${t.prioridad === 'Alta' ? 'bg-red-100 text-red-700' : t.prioridad === 'Media' ? 'bg-amber-100 text-amber-700' : 'bg-neutral-100 text-neutral-700'}`}>{t.prioridad}</span>
+                    <span className="text-[10px] text-neutral-400">{new Date(t.fecha_creacion).toLocaleDateString('es-MX')}</span>
                   </div>
                 </button>
               ))
             )}
           </div>
         </div>
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-200 dark:border-gray-700">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Cancelar</button>
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-neutral-200 dark:border-neutral-700">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800">Cancelar</button>
           <button onClick={handleAdd} disabled={saving || !selectedTramiteId} className="px-4 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 font-medium">
             {saving ? 'Agregando...' : 'Agregar a tramite'}
           </button>
@@ -2252,27 +2260,27 @@ function AssignConversationModal({ currentAgentId, onClose, onSuccess }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 dark:border-neutral-700">
           <div className="flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-teal-600" />
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Asignar conversacion</h2>
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-white">Asignar conversacion</h2>
           </div>
-          <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"><X className="w-5 h-5 text-gray-400" /></button>
+          <button onClick={onClose} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800"><X className="w-5 h-5 text-neutral-400" /></button>
         </div>
         <div className="p-5 space-y-3">
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar agente..." className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800" />
-          <div className="max-h-52 overflow-y-auto space-y-1 border border-gray-200 dark:border-gray-700 rounded-lg p-2">
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar agente..." className="w-full px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800" />
+          <div className="max-h-52 overflow-y-auto space-y-1 border border-neutral-200 dark:border-neutral-700 rounded-lg p-2">
             {filtered.slice(0, 30).map(u => (
-              <button key={u.id} onClick={() => setSelectedUserId(u.id)} className={`w-full text-left p-2 rounded-lg text-sm ${selectedUserId === u.id ? 'bg-teal-50 dark:bg-teal-900/20 border border-teal-300' : 'hover:bg-gray-50 dark:hover:bg-gray-800 border border-transparent'}`}>
-                <span className="text-gray-800 dark:text-gray-200">{u.nombre_completo}</span>
-                <span className="text-[10px] text-gray-400 ml-2">{u.rol}</span>
+              <button key={u.id} onClick={() => setSelectedUserId(u.id)} className={`w-full text-left p-2 rounded-lg text-sm ${selectedUserId === u.id ? 'bg-teal-50 dark:bg-teal-900/20 border border-teal-300' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 border border-transparent'}`}>
+                <span className="text-neutral-800 dark:text-neutral-200">{u.nombre_completo}</span>
+                <span className="text-[10px] text-neutral-400 ml-2">{u.rol}</span>
               </button>
             ))}
           </div>
         </div>
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-200 dark:border-gray-700">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Cancelar</button>
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-neutral-200 dark:border-neutral-700">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800">Cancelar</button>
           <button onClick={handleAssign} disabled={saving || !selectedUserId} className="px-4 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 font-medium">
             {saving ? 'Asignando...' : 'Asignar'}
           </button>
@@ -2318,31 +2326,31 @@ function StartAutoModeModal({ agentName, officeId, onStart, onClose, loading }: 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="px-5 py-4 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
               <Bot className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Modo Automático</h2>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400">Selecciona un asistente para {agentName}</p>
+              <h2 className="text-sm font-bold text-neutral-900 dark:text-white">Modo Automático</h2>
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400">Selecciona un asistente para {agentName}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="p-5 space-y-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Buscar asistente..."
-              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             />
           </div>
 
@@ -2351,8 +2359,8 @@ function StartAutoModeModal({ agentName, officeId, onStart, onClose, loading }: 
               <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-emerald-500" /></div>
             ) : filtered.length === 0 ? (
               <div className="text-center py-8">
-                <Bot className="w-10 h-10 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <Bot className="w-10 h-10 mx-auto mb-2 text-neutral-300 dark:text-neutral-600" />
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">
                   {assistants.length === 0
                     ? 'No hay asistentes configurados. Crea uno en Configuración.'
                     : 'Sin resultados para tu búsqueda'}
@@ -2366,28 +2374,28 @@ function StartAutoModeModal({ agentName, officeId, onStart, onClose, loading }: 
                   className={`w-full text-left p-3.5 rounded-xl border-2 transition-all ${
                     selectedId === a.id
                       ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                      : 'border-neutral-200 dark:border-neutral-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full ${a.is_active ? 'bg-emerald-500' : 'bg-gray-300'}`} />
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">{a.nombre}</span>
+                      <span className={`w-2 h-2 rounded-full ${a.is_active ? 'bg-emerald-500' : 'bg-neutral-300'}`} />
+                      <span className="text-sm font-semibold text-neutral-900 dark:text-white">{a.nombre}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       {a.source === 'form' && (
                         <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full">Formulario</span>
                       )}
                       {a.is_global && (
-                        <Globe className="w-3 h-3 text-gray-400" />
+                        <Globe className="w-3 h-3 text-neutral-400" />
                       )}
                     </div>
                   </div>
                   {a.descripcion && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 pl-4">{a.descripcion}</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-2 pl-4">{a.descripcion}</p>
                   )}
                   <div className="flex items-center gap-3 mt-2 pl-4">
-                    <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                    <span className="text-[10px] text-neutral-400 flex items-center gap-1">
                       <MessageCircle className="w-3 h-3" /> {a.total_sessions || 0} sesiones
                     </span>
                     {a.auto_create_tramite && (
@@ -2402,8 +2410,8 @@ function StartAutoModeModal({ agentName, officeId, onStart, onClose, loading }: 
           </div>
         </div>
 
-        <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+        <div className="px-5 py-4 border-t border-neutral-200 dark:border-neutral-700 flex items-center justify-between">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
             Cancelar
           </button>
           <button
@@ -2448,40 +2456,40 @@ function TransferSessionModal({ sessionId: _sessionId, onTransfer, onClose, load
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="px-5 py-4 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
               <ArrowRightLeft className="w-4 h-4 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Transferir a agente</h2>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400">El asistente dejará de gestionar la conversación</p>
+              <h2 className="text-sm font-bold text-neutral-900 dark:text-white">Transferir a agente</h2>
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400">El asistente dejará de gestionar la conversación</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="p-5 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Motivo de transferencia</label>
+            <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Motivo de transferencia</label>
             <textarea
               value={reason}
               onChange={e => setReason(e.target.value)}
               placeholder="Ej: El cliente requiere atención personalizada..."
               rows={3}
-              className="w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-white resize-none focus:ring-2 focus:ring-amber-500"
+              className="w-full text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3 py-2 text-neutral-900 dark:text-white resize-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Asignar a (opcional)</label>
-            <div className="max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg divide-y divide-gray-100 dark:divide-gray-800">
+            <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Asignar a (opcional)</label>
+            <div className="max-h-40 overflow-y-auto border border-neutral-200 dark:border-neutral-700 rounded-lg divide-y divide-neutral-100 dark:divide-neutral-800">
               <button
                 onClick={() => setSelectedUserId(null)}
-                className={`w-full text-left px-3 py-2 text-sm transition-colors ${!selectedUserId ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400' : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'}`}
+                className={`w-full text-left px-3 py-2 text-sm transition-colors ${!selectedUserId ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400'}`}
               >
                 Sin asignación específica
               </button>
@@ -2489,18 +2497,18 @@ function TransferSessionModal({ sessionId: _sessionId, onTransfer, onClose, load
                 <button
                   key={u.id}
                   onClick={() => setSelectedUserId(u.id)}
-                  className={`w-full text-left px-3 py-2 text-sm transition-colors ${selectedUserId === u.id ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400' : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'}`}
+                  className={`w-full text-left px-3 py-2 text-sm transition-colors ${selectedUserId === u.id ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300'}`}
                 >
                   {u.nombre_completo}
-                  <span className="text-[10px] text-gray-400 ml-1.5">{u.rol}</span>
+                  <span className="text-[10px] text-neutral-400 ml-1.5">{u.rol}</span>
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+        <div className="px-5 py-4 border-t border-neutral-200 dark:border-neutral-700 flex items-center justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
             Cancelar
           </button>
           <button
@@ -2533,9 +2541,9 @@ function StatusBadge({ status }: { status: string }) {
     delivered: { icon: CheckCircle2, color: 'text-blue-500', label: 'Entregado' },
     read: { icon: CheckCircle2, color: 'text-teal-500', label: 'Leido' },
     received: { icon: CheckCircle2, color: 'text-green-500', label: 'Recibido' },
-    pending: { icon: Clock, color: 'text-gray-400', label: 'Pendiente' },
+    pending: { icon: Clock, color: 'text-neutral-400', label: 'Pendiente' },
     failed: { icon: XCircle, color: 'text-red-500', label: 'Error' },
-    cancelled: { icon: AlertCircle, color: 'text-gray-400', label: 'Cancelado' },
+    cancelled: { icon: AlertCircle, color: 'text-neutral-400', label: 'Cancelado' },
   };
   const c = config[status] || config.pending;
   const Icon = c.icon;
@@ -2545,10 +2553,10 @@ function StatusBadge({ status }: { status: string }) {
 function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
   return (
     <div className="flex items-start gap-2">
-      <Icon className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
+      <Icon className="w-3.5 h-3.5 text-neutral-400 mt-0.5 shrink-0" />
       <div>
-        <p className="text-[10px] text-gray-400 uppercase">{label}</p>
-        <p className="text-xs text-gray-700 dark:text-gray-300 break-all">{value}</p>
+        <p className="text-[10px] text-neutral-400 uppercase">{label}</p>
+        <p className="text-xs text-neutral-700 dark:text-neutral-300 break-all">{value}</p>
       </div>
     </div>
   );
@@ -2579,13 +2587,13 @@ function EmojiPickerPanel({ onSelect }: { onSelect: (emoji: string) => void }) {
   const [activeCategory, setActiveCategory] = useState(0);
 
   return (
-    <div className="absolute bottom-full left-0 mb-2 w-72 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden">
-      <div className="flex border-b border-gray-100 dark:border-gray-800">
+    <div className="absolute bottom-full left-0 mb-2 w-72 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl z-50 overflow-hidden">
+      <div className="flex border-b border-neutral-100 dark:border-neutral-800">
         {EMOJI_CATEGORIES.map((cat, i) => (
           <button
             key={cat.label}
             onClick={() => setActiveCategory(i)}
-            className={`flex-1 py-2 text-xs font-medium transition-colors ${activeCategory === i ? 'text-teal-600 border-b-2 border-teal-500' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+            className={`flex-1 py-2 text-xs font-medium transition-colors ${activeCategory === i ? 'text-teal-600 border-b-2 border-teal-500' : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'}`}
           >
             {cat.label}
           </button>
@@ -2596,7 +2604,7 @@ function EmojiPickerPanel({ onSelect }: { onSelect: (emoji: string) => void }) {
           <button
             key={emoji}
             onClick={() => onSelect(emoji)}
-            className="text-lg p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors leading-none"
+            className="text-lg p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors leading-none"
           >
             {emoji}
           </button>
@@ -2750,13 +2758,13 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 dark:border-neutral-700">
           <div className="flex items-center gap-2">
             <BookTemplate className="w-5 h-5 text-teal-600" />
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Plantillas de Mensaje</h2>
-            <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full capitalize">{channel}</span>
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-white">Plantillas de Mensaje</h2>
+            <span className="text-xs text-neutral-500 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded-full capitalize">{channel}</span>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -2765,7 +2773,7 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
             >
               <Plus className="w-3.5 h-3.5" /> Nueva
             </button>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -2773,34 +2781,34 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
 
         <div className="flex flex-1 overflow-hidden">
           {/* Left: list */}
-          <div className="w-1/2 border-r border-gray-200 dark:border-gray-700 flex flex-col">
-            <div className="p-3 border-b border-gray-100 dark:border-gray-800 space-y-2">
+          <div className="w-1/2 border-r border-neutral-200 dark:border-neutral-700 flex flex-col">
+            <div className="p-3 border-b border-neutral-100 dark:border-neutral-800 space-y-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
                 <input
                   type="text"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Buscar plantilla..."
-                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-1 focus:ring-teal-500"
+                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 focus:ring-1 focus:ring-teal-500"
                 />
               </div>
               {/* Category dropdown */}
               <div className="relative">
                 <button
                   onClick={() => setShowCategoryDropdown(p => !p)}
-                  className="w-full flex items-center justify-between px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-teal-400 transition-colors"
+                  className="w-full flex items-center justify-between px-3 py-1.5 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-teal-400 transition-colors"
                 >
                   <span>{activeCategory === 'all' ? 'Todas las categorias' : activeCategory}</span>
-                  <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
                 </button>
                 {showCategoryDropdown && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 overflow-hidden">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg z-10 overflow-hidden">
                     {categories.map(cat => (
                       <button
                         key={cat}
                         onClick={() => { setActiveCategory(cat); setShowCategoryDropdown(false); }}
-                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${activeCategory === cat ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${activeCategory === cat ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-medium' : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800'}`}
                       >
                         {cat === 'all' ? 'Todas las categorias' : cat}
                       </button>
@@ -2813,7 +2821,7 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
               {loading ? (
                 <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-teal-500" /></div>
               ) : filtered.length === 0 ? (
-                <div className="p-6 text-center text-sm text-gray-400">
+                <div className="p-6 text-center text-sm text-neutral-400">
                   <BookTemplate className="w-8 h-8 mx-auto mb-2 opacity-30" />
                   <p>Sin plantillas</p>
                   <button onClick={() => setShowCreateForm(true)} className="mt-2 text-xs text-teal-600 hover:underline">Crear primera plantilla</button>
@@ -2822,7 +2830,7 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
                 filtered.map(tpl => (
                   <div
                     key={tpl.id}
-                    className={`group border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${selectedTemplate?.id === tpl.id ? 'bg-teal-50 dark:bg-teal-900/20' : ''}`}
+                    className={`group border-b border-neutral-50 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors ${selectedTemplate?.id === tpl.id ? 'bg-teal-50 dark:bg-teal-900/20' : ''}`}
                   >
                     <button className="w-full text-left p-3" onClick={() => handleSelectTemplate(tpl)}>
                       <div className="flex items-start justify-between gap-2">
@@ -2830,11 +2838,11 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
                           <div className="flex items-center gap-1.5 mb-0.5">
                             {tpl.is_global
                               ? <Globe className="w-3 h-3 text-teal-500 shrink-0" />
-                              : <Lock className="w-3 h-3 text-gray-400 shrink-0" />}
-                            <p className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">{tpl.name}</p>
+                              : <Lock className="w-3 h-3 text-neutral-400 shrink-0" />}
+                            <p className="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate">{tpl.name}</p>
                           </div>
-                          <p className="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-2">{tpl.content.substring(0, 80)}</p>
-                          <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500">{tpl.category}</span>
+                          <p className="text-[11px] text-neutral-500 dark:text-neutral-400 line-clamp-2">{tpl.content.substring(0, 80)}</p>
+                          <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-500">{tpl.category}</span>
                         </div>
                         {selectedTemplate?.id === tpl.id && <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />}
                       </div>
@@ -2843,10 +2851,10 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
                     <div className="flex items-center gap-1 px-3 pb-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       {(usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente' || tpl.created_by === usuario?.id) && (
                         <>
-                          <button onClick={e => handleEdit(tpl, e)} className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600" title="Editar">
+                          <button onClick={e => handleEdit(tpl, e)} className="p-1 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-400 hover:text-neutral-600" title="Editar">
                             <Pencil className="w-3 h-3" />
                           </button>
-                          <button onClick={e => handleDelete(tpl, e)} className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500" title="Eliminar">
+                          <button onClick={e => handleDelete(tpl, e)} className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-neutral-400 hover:text-red-500" title="Eliminar">
                             <Trash2 className="w-3 h-3" />
                           </button>
                         </>
@@ -2861,7 +2869,7 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
           {/* Right: preview / variable input */}
           <div className="w-1/2 flex flex-col" onClick={() => setShowCategoryDropdown(false)}>
             {!selectedTemplate ? (
-              <div className="flex-1 flex items-center justify-center text-gray-400">
+              <div className="flex-1 flex items-center justify-center text-neutral-400">
                 <div className="text-center p-6">
                   <Star className="w-10 h-10 mx-auto mb-3 opacity-20" />
                   <p className="text-sm">Selecciona una plantilla para previsualizar</p>
@@ -2869,9 +2877,9 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
               </div>
             ) : (
               <>
-                <div className="p-4 border-b border-gray-100 dark:border-gray-800">
-                  <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-0.5">{selectedTemplate.name}</h3>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500">{selectedTemplate.category}</span>
+                <div className="p-4 border-b border-neutral-100 dark:border-neutral-800">
+                  <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-0.5">{selectedTemplate.name}</h3>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-500">{selectedTemplate.category}</span>
                 </div>
 
                 {/* Auto-filled variables info */}
@@ -2887,8 +2895,8 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
                         return (
                           <div key={v.name} className="flex items-center gap-1 bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-md px-2 py-0.5">
                             <span className="text-[10px] font-mono text-teal-600 dark:text-teal-400">{`{{${v.name}}}`}</span>
-                            <span className="text-[10px] text-gray-400">→</span>
-                            <span className="text-[10px] font-medium text-gray-700 dark:text-gray-300 max-w-[80px] truncate" title={val}>{val || '(vacío)'}</span>
+                            <span className="text-[10px] text-neutral-400">→</span>
+                            <span className="text-[10px] font-medium text-neutral-700 dark:text-neutral-300 max-w-[80px] truncate" title={val}>{val || '(vacío)'}</span>
                           </div>
                         );
                       })}
@@ -2898,17 +2906,17 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
 
                 {/* Manual variables */}
                 {manualVarsForTemplate.length > 0 && (
-                  <div className="px-4 pb-3 border-b border-gray-100 dark:border-gray-800 space-y-2">
-                    <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-2">Completar</p>
+                  <div className="px-4 pb-3 border-b border-neutral-100 dark:border-neutral-800 space-y-2">
+                    <p className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mt-2">Completar</p>
                     {manualVarsForTemplate.map((v: { name: string; label: string }) => (
                       <div key={v.name}>
-                        <label className="text-[11px] text-gray-500 block mb-0.5 capitalize">{v.label || v.name.replace(/_/g, ' ')}</label>
+                        <label className="text-[11px] text-neutral-500 block mb-0.5 capitalize">{v.label || v.name.replace(/_/g, ' ')}</label>
                         <input
                           type="text"
                           value={variableValues[v.name] || ''}
                           onChange={e => setVariableValues(prev => ({ ...prev, [v.name]: e.target.value }))}
                           placeholder={`Escribe ${v.label || v.name.replace(/_/g, ' ')}...`}
-                          className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-1 focus:ring-teal-500"
+                          className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 focus:ring-1 focus:ring-teal-500"
                         />
                       </div>
                     ))}
@@ -2917,13 +2925,13 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
 
                 {/* Preview */}
                 <div className="flex-1 p-4 overflow-y-auto">
-                  <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Vista previa</p>
-                  <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-                    <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">{previewText}</p>
+                  <p className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">Vista previa</p>
+                  <div className="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-4 border border-neutral-200 dark:border-neutral-700">
+                    <p className="text-sm text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap leading-relaxed">{previewText}</p>
                   </div>
                 </div>
 
-                <div className="p-4 border-t border-gray-100 dark:border-gray-800">
+                <div className="p-4 border-t border-neutral-100 dark:border-neutral-800">
                   <button
                     onClick={handleInsert}
                     className="w-full py-2.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
@@ -3000,38 +3008,38 @@ function TemplateFormModal({ template, existingCategories, onSave, onClose }: {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-base font-semibold text-gray-900 dark:text-white">{template ? 'Editar plantilla' : 'Nueva plantilla'}</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"><X className="w-5 h-5" /></button>
+      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 dark:border-neutral-700">
+          <h2 className="text-base font-semibold text-neutral-900 dark:text-white">{template ? 'Editar plantilla' : 'Nueva plantilla'}</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400"><X className="w-5 h-5" /></button>
         </div>
         <div className="p-5 space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Nombre</label>
-              <input type="text" value={name} onChange={e => setName(e.target.value)} className="mt-1 w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="Nombre de la plantilla" />
+              <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Nombre</label>
+              <input type="text" value={name} onChange={e => setName(e.target.value)} className="mt-1 w-full px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="Nombre de la plantilla" />
             </div>
 
             {/* Category dropdown */}
             <div className="relative">
-              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Categoria</label>
+              <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Categoria</label>
               <button
                 type="button"
                 onClick={() => setShowCategoryDropdown(p => !p)}
-                className="mt-1 w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-teal-400 transition-colors focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                className="mt-1 w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-teal-400 transition-colors focus:ring-2 focus:ring-teal-500 focus:outline-none"
               >
                 <span>{customCategory.trim() || category}</span>
-                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
               </button>
               {showCategoryDropdown && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-20 overflow-hidden">
-                  <div className="p-2 border-b border-gray-100 dark:border-gray-800">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg z-20 overflow-hidden">
+                  <div className="p-2 border-b border-neutral-100 dark:border-neutral-800">
                     <input
                       type="text"
                       value={customCategory}
                       onChange={e => setCustomCategory(e.target.value)}
                       placeholder="Nueva categoria..."
-                      className="w-full px-2.5 py-1.5 text-xs rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-1 focus:ring-teal-500 focus:outline-none"
+                      className="w-full px-2.5 py-1.5 text-xs rounded-md border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 focus:ring-1 focus:ring-teal-500 focus:outline-none"
                       onClick={e => e.stopPropagation()}
                     />
                     {customCategory.trim() && (
@@ -3050,7 +3058,7 @@ function TemplateFormModal({ template, existingCategories, onSave, onClose }: {
                         key={cat}
                         type="button"
                         onClick={() => selectCategory(cat)}
-                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${category === cat && !customCategory.trim() ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${category === cat && !customCategory.trim() ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-medium' : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800'}`}
                       >
                         {cat}
                       </button>
@@ -3061,8 +3069,8 @@ function TemplateFormModal({ template, existingCategories, onSave, onClose }: {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Canal</label>
-              <select value={channel} onChange={e => setChannel(e.target.value)} className="mt-1 w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-teal-500 focus:outline-none">
+              <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Canal</label>
+              <select value={channel} onChange={e => setChannel(e.target.value)} className="mt-1 w-full px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 focus:ring-2 focus:ring-teal-500 focus:outline-none">
                 <option value="whatsapp">WhatsApp</option>
                 <option value="email">Email</option>
                 <option value="both">Ambos</option>
@@ -3071,10 +3079,10 @@ function TemplateFormModal({ template, existingCategories, onSave, onClose }: {
           </div>
 
           <div onClick={() => setShowCategoryDropdown(false)}>
-            <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">Contenido</label>
+            <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300 block mb-1">Contenido</label>
             {/* Variable tokens grouped */}
             <div className="mb-2 space-y-1.5">
-              <p className="text-[11px] text-gray-400">Automaticas (se rellenan al usar):</p>
+              <p className="text-[11px] text-neutral-400">Automaticas (se rellenan al usar):</p>
               <div className="flex flex-wrap gap-1">
                 {VARIABLE_TOKENS.filter(v => v.auto).map(v => (
                   <button
@@ -3088,7 +3096,7 @@ function TemplateFormModal({ template, existingCategories, onSave, onClose }: {
                   </button>
                 ))}
               </div>
-              <p className="text-[11px] text-gray-400">Manuales (el agente las completa):</p>
+              <p className="text-[11px] text-neutral-400">Manuales (el agente las completa):</p>
               <div className="flex flex-wrap gap-1">
                 {VARIABLE_TOKENS.filter(v => !v.auto).map(v => (
                   <button
@@ -3108,7 +3116,7 @@ function TemplateFormModal({ template, existingCategories, onSave, onClose }: {
               value={content}
               onChange={e => setContent(e.target.value)}
               rows={6}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 resize-none focus:ring-2 focus:ring-teal-500 focus:outline-none"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 resize-none focus:ring-2 focus:ring-teal-500 focus:outline-none"
               placeholder="Escribe el contenido de la plantilla..."
             />
             {detectedVars.length > 0 && (
@@ -3126,16 +3134,16 @@ function TemplateFormModal({ template, existingCategories, onSave, onClose }: {
             <label className="flex items-center gap-2 cursor-pointer" onClick={() => setShowCategoryDropdown(false)}>
               <div
                 onClick={() => setIsGlobal(p => !p)}
-                className={`w-10 h-5 rounded-full relative transition-colors ${isGlobal ? 'bg-teal-500' : 'bg-gray-300 dark:bg-gray-600'}`}
+                className={`w-10 h-5 rounded-full relative transition-colors ${isGlobal ? 'bg-teal-500' : 'bg-neutral-300 dark:bg-neutral-600'}`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${isGlobal ? 'translate-x-5' : ''}`} />
               </div>
-              <span className="text-xs text-gray-700 dark:text-gray-300">Disponible para todos (global)</span>
+              <span className="text-xs text-neutral-700 dark:text-neutral-300">Disponible para todos (global)</span>
             </label>
           )}
         </div>
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-200 dark:border-gray-700">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Cancelar</button>
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-neutral-200 dark:border-neutral-700">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800">Cancelar</button>
           <button onClick={handleSave} disabled={saving || !name.trim() || !content.trim()} className="px-4 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 font-medium transition-colors">
             {saving ? 'Guardando...' : 'Guardar plantilla'}
           </button>
@@ -3224,30 +3232,30 @@ function FormulariosModal({ agentName, onInsert, onClose }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 dark:border-neutral-700">
           <div className="flex items-center gap-2">
             <ClipboardList className="w-5 h-5 text-teal-600" />
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Compartir Formulario de Cotizacion</h2>
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-white">Compartir Formulario de Cotizacion</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="flex flex-1 overflow-hidden">
           {/* Left: form list */}
-          <div className="w-1/2 border-r border-gray-200 dark:border-gray-700 flex flex-col">
-            <div className="p-3 border-b border-gray-100 dark:border-gray-800 space-y-2">
+          <div className="w-1/2 border-r border-neutral-200 dark:border-neutral-700 flex flex-col">
+            <div className="p-3 border-b border-neutral-100 dark:border-neutral-800 space-y-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
                 <input
                   type="text"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Buscar formulario..."
-                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-1 focus:ring-teal-500"
+                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 focus:ring-1 focus:ring-teal-500"
                 />
               </div>
               <div className="flex gap-1 overflow-x-auto pb-0.5">
@@ -3255,7 +3263,7 @@ function FormulariosModal({ agentName, onInsert, onClose }: {
                   <button
                     key={cat}
                     onClick={() => setActiveCategory(cat)}
-                    className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${activeCategory === cat ? 'bg-teal-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                    className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${activeCategory === cat ? 'bg-teal-600 text-white' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'}`}
                   >
                     {cat === 'all' ? 'Todos' : cat}
                   </button>
@@ -3271,13 +3279,13 @@ function FormulariosModal({ agentName, onInsert, onClose }: {
                   <button
                     key={form.id}
                     onClick={() => handleSelectForm(form)}
-                    className={`w-full text-left px-4 py-2.5 border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${selectedForm?.id === form.id ? 'bg-teal-50 dark:bg-teal-900/20' : ''}`}
+                    className={`w-full text-left px-4 py-2.5 border-b border-neutral-50 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors ${selectedForm?.id === form.id ? 'bg-teal-50 dark:bg-teal-900/20' : ''}`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-medium text-gray-800 dark:text-gray-200">{form.title}</p>
+                      <p className="text-xs font-medium text-neutral-800 dark:text-neutral-200">{form.title}</p>
                       {selectedForm?.id === form.id && <Check className="w-3.5 h-3.5 text-teal-500 shrink-0" />}
                     </div>
-                    {form.description && <p className="text-[11px] text-gray-500 truncate mt-0.5">{form.description}</p>}
+                    {form.description && <p className="text-[11px] text-neutral-500 truncate mt-0.5">{form.description}</p>}
                   </button>
                 ))
               ) : (
@@ -3288,25 +3296,25 @@ function FormulariosModal({ agentName, onInsert, onClose }: {
                     <div key={cat}>
                       <button
                         onClick={() => toggleCategory(cat)}
-                        className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        className="w-full flex items-center justify-between px-4 py-2.5 bg-neutral-50 dark:bg-neutral-800/60 border-b border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
                       >
-                        <span className="text-[11px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{cat}</span>
+                        <span className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{cat}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-gray-400">{catForms.length}</span>
-                          <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                          <span className="text-[10px] text-neutral-400">{catForms.length}</span>
+                          <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                         </div>
                       </button>
                       {isExpanded && catForms.map(form => (
                         <button
                           key={form.id}
                           onClick={() => handleSelectForm(form)}
-                          className={`w-full text-left px-5 py-2.5 border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${selectedForm?.id === form.id ? 'bg-teal-50 dark:bg-teal-900/20' : ''}`}
+                          className={`w-full text-left px-5 py-2.5 border-b border-neutral-50 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors ${selectedForm?.id === form.id ? 'bg-teal-50 dark:bg-teal-900/20' : ''}`}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <p className="text-xs font-medium text-gray-800 dark:text-gray-200">{form.title}</p>
+                            <p className="text-xs font-medium text-neutral-800 dark:text-neutral-200">{form.title}</p>
                             {selectedForm?.id === form.id && <Check className="w-3.5 h-3.5 text-teal-500 shrink-0" />}
                           </div>
-                          {form.description && <p className="text-[11px] text-gray-500 truncate mt-0.5">{form.description}</p>}
+                          {form.description && <p className="text-[11px] text-neutral-500 truncate mt-0.5">{form.description}</p>}
                         </button>
                       ))}
                     </div>
@@ -3319,38 +3327,38 @@ function FormulariosModal({ agentName, onInsert, onClose }: {
           {/* Right: message preview & edit */}
           <div className="w-1/2 flex flex-col">
             {!selectedForm ? (
-              <div className="flex-1 flex items-center justify-center text-gray-400">
+              <div className="flex-1 flex items-center justify-center text-neutral-400">
                 <div className="text-center p-6">
                   <ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-20" />
                   <p className="text-sm">Selecciona un formulario</p>
-                  <p className="text-xs mt-1 text-gray-300">El link se incluira automaticamente en el mensaje</p>
+                  <p className="text-xs mt-1 text-neutral-300">El link se incluira automaticamente en el mensaje</p>
                 </div>
               </div>
             ) : (
               <>
-                <div className="p-4 border-b border-gray-100 dark:border-gray-800">
-                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">{selectedForm.title}</p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">{selectedForm.category}</p>
-                  <div className="flex items-center gap-1.5 mt-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <div className="p-4 border-b border-neutral-100 dark:border-neutral-800">
+                  <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">{selectedForm.title}</p>
+                  <p className="text-[11px] text-neutral-400 mt-0.5">{selectedForm.category}</p>
+                  <div className="flex items-center gap-1.5 mt-2 p-2 rounded-lg bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
                     <Link2 className="w-3.5 h-3.5 text-teal-500 shrink-0" />
-                    <span className="text-[11px] text-gray-500 dark:text-gray-400 truncate font-mono">
+                    <span className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate font-mono">
                       {APP_BASE_URL}/tramites/formularios/nuevo/{selectedForm.slug || selectedForm.form_type}
                     </span>
                   </div>
                 </div>
 
                 <div className="flex-1 p-4 overflow-y-auto flex flex-col">
-                  <p className="text-[11px] font-medium text-gray-600 dark:text-gray-400 uppercase mb-2">Mensaje a enviar</p>
+                  <p className="text-[11px] font-medium text-neutral-600 dark:text-neutral-400 uppercase mb-2">Mensaje a enviar</p>
                   <textarea
                     value={messageTemplate}
                     onChange={e => setMessageTemplate(e.target.value)}
                     rows={8}
-                    className="flex-1 w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 resize-none focus:ring-2 focus:ring-teal-500"
+                    className="flex-1 w-full px-3 py-2.5 text-sm rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 resize-none focus:ring-2 focus:ring-teal-500"
                   />
-                  <p className="text-[10px] text-gray-400 mt-1.5">Puedes editar el mensaje antes de enviarlo.</p>
+                  <p className="text-[10px] text-neutral-400 mt-1.5">Puedes editar el mensaje antes de enviarlo.</p>
                 </div>
 
-                <div className="p-4 border-t border-gray-100 dark:border-gray-800">
+                <div className="p-4 border-t border-neutral-100 dark:border-neutral-800">
                   <button
                     onClick={handleInsert}
                     className="w-full py-2.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"

@@ -6,6 +6,7 @@ import {
   Filter, Download, Search, ChevronDown, Eye, X,
   AlertTriangle, Flame, Timer, Inbox, Activity, Target
 } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import * as XLSX from 'xlsx';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
@@ -658,28 +659,25 @@ export default function TramitesReportes() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold text-neutral-900">Dashboard de Trámites</h1>
-            {userArea && (() => {
-              const ac = AREA_CONFIG[userArea];
-              return (
-                <span className={`px-3 py-1 text-sm font-bold rounded-full ${ac.bg} ${ac.color} border ${ac.border}`}>
-                  {userArea}
-                </span>
-              );
-            })()}
-          </div>
-          <p className="text-neutral-600 mt-1">Análisis y métricas de productividad</p>
-        </div>
-        {loading && (
-          <div className="flex items-center gap-2 text-sm text-neutral-500">
+      <PageHeader
+        title="Dashboard de Trámites"
+        description="Análisis y métricas de productividad"
+        icon={BarChart3}
+        badge={userArea ? (() => {
+          const ac = AREA_CONFIG[userArea];
+          return (
+            <span className={`px-3 py-1 text-sm font-bold rounded-full ${ac.bg} ${ac.color} border ${ac.border}`}>
+              {userArea}
+            </span>
+          );
+        })() : undefined}
+        actions={loading ? (
+          <div className="flex items-center gap-2 text-sm text-neutral-500 dark:text-white/50">
             <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
             Actualizando...
           </div>
-        )}
-      </div>
+        ) : undefined}
+      />
 
       {/* Filtros */}
       <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">

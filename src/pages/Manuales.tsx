@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { BookOpen, Search, Settings, ChevronRight, FileText, Layers } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 
 interface Manual {
   id: string;
@@ -77,29 +78,22 @@ export default function Manuales() {
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Manuales</h1>
-          </div>
-          <p className="text-sm text-neutral-500 dark:text-white/50 ml-12">
-            Consulta los manuales operativos y de referencia disponibles
-          </p>
-        </div>
-        {isAdmin && (
-          <button
-            onClick={() => navigate('/manuales/admin')}
-            className="self-start sm:self-center flex items-center gap-2 px-4 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl text-sm font-medium hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98]"
-          >
-            <Settings className="w-4 h-4" />
-            Administrar
-          </button>
-        )}
-      </div>
+      <PageHeader
+        title="Manuales"
+        description="Consulta los manuales operativos y de referencia disponibles"
+        icon={BookOpen}
+        actions={
+          isAdmin ? (
+            <button
+              onClick={() => navigate('/manuales/admin')}
+              className="flex items-center gap-2 px-4 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl text-sm font-medium hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Settings className="w-4 h-4" />
+              Administrar
+            </button>
+          ) : undefined
+        }
+      />
 
       {/* Search & Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
@@ -196,7 +190,7 @@ const CARD_GRADIENTS = [
   'from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30',
   'from-rose-50 to-pink-50 dark:from-rose-950/30 dark:to-pink-950/30',
   'from-cyan-50 to-blue-50 dark:from-cyan-950/30 dark:to-blue-950/30',
-  'from-slate-50 to-zinc-100 dark:from-slate-950/30 dark:to-zinc-950/30',
+  'from-neutral-50 to-zinc-100 dark:from-neutral-950/30 dark:to-zinc-950/30',
 ];
 
 const ICON_COLORS = [
@@ -205,7 +199,7 @@ const ICON_COLORS = [
   'text-amber-500 dark:text-amber-400',
   'text-rose-500 dark:text-rose-400',
   'text-cyan-500 dark:text-cyan-400',
-  'text-slate-500 dark:text-slate-400',
+  'text-neutral-500 dark:text-neutral-400',
 ];
 
 function ManualCard({ manual, index, onClick }: { manual: Manual; index: number; onClick: () => void }) {

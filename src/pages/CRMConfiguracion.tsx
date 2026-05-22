@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, ArrowLeft, Tag, Layers, Globe, Sliders, Save } from 'lucide-react';
+import { Plus, Trash2, Tag, Layers, Globe, Sliders, Save, Settings } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { obtenerPreferenciasUsuarioCRM, guardarPreferenciasUsuarioCRM } from '../lib/crmUtils';
 import { useAuth } from '../contexts/AuthContext';
 import type { CRMCampoPersonalizado, CRMEtiqueta, CRMFuenteOrigen } from '../lib/crmTypes';
+import { PageHeader } from '@/components/ui/page-header';
 
 type TabKey = 'preferencias' | 'campos' | 'etiquetas' | 'fuentes';
 
@@ -17,7 +17,6 @@ const DASHBOARD_BLOCKS = [
 ];
 
 export default function CRMConfiguracion() {
-  const navigate = useNavigate();
   const { usuario } = useAuth();
   const [tab, setTab] = useState<TabKey>('preferencias');
   const [campos, setCampos] = useState<CRMCampoPersonalizado[]>([]);
@@ -176,21 +175,17 @@ export default function CRMConfiguracion() {
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="mb-5">
-        <button
-          onClick={() => navigate('/mi-crm')}
-          className="flex items-center text-sm text-gray-500 hover:text-gray-700 mb-3 transition"
-        >
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          Mi CRM
-        </button>
-        <h1 className="text-xl md:text-2xl font-bold text-gray-900">Configuracion</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Personaliza tu CRM</p>
-      </div>
+      <PageHeader
+        title="Configuracion"
+        description="Personaliza tu CRM"
+        icon={Settings}
+        backTo="/mi-crm"
+        backLabel="Mi CRM"
+      />
 
       {/* Tabs */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="border-b border-gray-100 px-1">
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden mt-5">
+        <div className="border-b border-neutral-100 dark:border-neutral-800 px-1">
           <div className="flex gap-0.5 overflow-x-auto">
             {tabs.map((t) => (
               <button
@@ -198,8 +193,8 @@ export default function CRMConfiguracion() {
                 onClick={() => setTab(t.key)}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition ${
                   tab === t.key
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    ? 'border-accent text-accent'
+                    : 'border-transparent text-neutral-500 dark:text-white/50 hover:text-neutral-700 dark:hover:text-white/70'
                 }`}
               >
                 {t.icon}
@@ -214,29 +209,29 @@ export default function CRMConfiguracion() {
           {tab === 'preferencias' && (
             <div className="space-y-6">
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Bloques del Dashboard</h3>
-                <p className="text-xs text-gray-500 mb-3">Selecciona que secciones mostrar en tu dashboard de CRM</p>
+                <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-3">Bloques del Dashboard</h3>
+                <p className="text-xs text-neutral-500 dark:text-white/50 mb-3">Selecciona que secciones mostrar en tu dashboard de CRM</p>
                 <div className="space-y-2">
                   {DASHBOARD_BLOCKS.map((block) => (
                     <label
                       key={block.key}
-                      className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition"
+                      className="flex items-center gap-3 p-3 rounded-lg border border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer transition"
                     >
                       <input
                         type="checkbox"
                         checked={prefs.dashboard_blocks.includes(block.key)}
                         onChange={() => toggleDashboardBlock(block.key)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-accent/20"
                       />
-                      <span className="text-sm text-gray-700">{block.label}</span>
+                      <span className="text-sm text-neutral-700 dark:text-white/70">{block.label}</span>
                     </label>
                   ))}
                 </div>
               </div>
 
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Tiempo sin contacto</h3>
-                <p className="text-xs text-gray-500 mb-3">Despues de cuantas horas se considera un lead "sin seguimiento"</p>
+                <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-3">Tiempo sin contacto</h3>
+                <p className="text-xs text-neutral-500 dark:text-white/50 mb-3">Despues de cuantas horas se considera un lead "sin seguimiento"</p>
                 <div className="flex items-center gap-3">
                   <input
                     type="number"
@@ -244,17 +239,17 @@ export default function CRMConfiguracion() {
                     max="168"
                     value={prefs.no_contact_hours}
                     onChange={(e) => setPrefs((p) => ({ ...p, no_contact_hours: parseInt(e.target.value) || 24 }))}
-                    className="w-24 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-24 px-3 py-2 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
                   />
-                  <span className="text-sm text-gray-500">horas</span>
+                  <span className="text-sm text-neutral-500 dark:text-white/50">horas</span>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-gray-100">
+              <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800">
                 <button
                   onClick={guardarPreferencias}
                   disabled={savingPrefs}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium disabled:opacity-50"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition text-sm font-medium disabled:opacity-50"
                 >
                   <Save className="h-4 w-4" />
                   {savingPrefs ? 'Guardando...' : prefsSaved ? 'Guardado' : 'Guardar Preferencias'}
@@ -267,11 +262,11 @@ export default function CRMConfiguracion() {
           {tab === 'campos' && (
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-gray-900">Campos Personalizados</h3>
+                <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Campos Personalizados</h3>
                 <button
                   onClick={agregarCampo}
                   disabled={loading}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg hover:bg-accent/90 text-sm font-medium transition disabled:opacity-50"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Agregar
@@ -279,15 +274,15 @@ export default function CRMConfiguracion() {
               </div>
               <div className="space-y-2">
                 {campos.length === 0 && (
-                  <p className="text-sm text-gray-400 text-center py-6">No hay campos personalizados</p>
+                  <p className="text-sm text-neutral-400 dark:text-white/40 text-center py-6">No hay campos personalizados</p>
                 )}
                 {campos.map((campo) => (
-                  <div key={campo.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div key={campo.id} className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
                     <div>
-                      <p className="text-sm font-medium text-gray-800">{campo.etiqueta}</p>
-                      <p className="text-xs text-gray-500">{campo.nombre_campo} - {campo.tipo_campo}</p>
+                      <p className="text-sm font-medium text-neutral-800 dark:text-white/80">{campo.etiqueta}</p>
+                      <p className="text-xs text-neutral-500 dark:text-white/50">{campo.nombre_campo} - {campo.tipo_campo}</p>
                     </div>
-                    <button onClick={() => eliminarCampo(campo.id)} className="p-1.5 text-gray-400 hover:text-red-600 transition">
+                    <button onClick={() => eliminarCampo(campo.id)} className="p-1.5 text-neutral-400 dark:text-white/40 hover:text-red-600 transition">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
@@ -300,11 +295,11 @@ export default function CRMConfiguracion() {
           {tab === 'etiquetas' && (
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-gray-900">Etiquetas de Segmentacion</h3>
+                <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Etiquetas de Segmentacion</h3>
                 <button
                   onClick={agregarEtiqueta}
                   disabled={loading}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg hover:bg-accent/90 text-sm font-medium transition disabled:opacity-50"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Agregar
@@ -312,12 +307,12 @@ export default function CRMConfiguracion() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {etiquetas.length === 0 && (
-                  <p className="text-sm text-gray-400 text-center py-6 w-full">No hay etiquetas</p>
+                  <p className="text-sm text-neutral-400 dark:text-white/40 text-center py-6 w-full">No hay etiquetas</p>
                 )}
                 {etiquetas.map((etiqueta) => (
                   <div
                     key={etiqueta.id}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-sm border border-blue-200"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-accent/10 text-accent rounded-full text-sm border border-accent/20"
                   >
                     <span>{etiqueta.nombre}</span>
                     <button onClick={() => eliminarEtiqueta(etiqueta.id)} className="hover:text-red-600 transition">
@@ -333,11 +328,11 @@ export default function CRMConfiguracion() {
           {tab === 'fuentes' && (
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-gray-900">Fuentes de Origen</h3>
+                <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Fuentes de Origen</h3>
                 <button
                   onClick={agregarFuente}
                   disabled={loading}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg hover:bg-accent/90 text-sm font-medium transition disabled:opacity-50"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Agregar
@@ -345,12 +340,12 @@ export default function CRMConfiguracion() {
               </div>
               <div className="space-y-2">
                 {fuentes.length === 0 && (
-                  <p className="text-sm text-gray-400 text-center py-6">No hay fuentes de origen</p>
+                  <p className="text-sm text-neutral-400 dark:text-white/40 text-center py-6">No hay fuentes de origen</p>
                 )}
                 {fuentes.map((fuente) => (
-                  <div key={fuente.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <p className="text-sm font-medium text-gray-800">{fuente.nombre}</p>
-                    <button onClick={() => eliminarFuente(fuente.id)} className="p-1.5 text-gray-400 hover:text-red-600 transition">
+                  <div key={fuente.id} className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
+                    <p className="text-sm font-medium text-neutral-800 dark:text-white/80">{fuente.nombre}</p>
+                    <button onClick={() => eliminarFuente(fuente.id)} className="p-1.5 text-neutral-400 dark:text-white/40 hover:text-red-600 transition">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>

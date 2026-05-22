@@ -10,8 +10,7 @@ import {
   Play,
   FileText,
   TrendingUp,
-  Lock,
-  ArrowLeft
+  Lock
 } from 'lucide-react';
 import {
   obtenerModulosConProgreso,
@@ -19,6 +18,7 @@ import {
   formatearTiempoEstudio
 } from '../lib/cedulaAUtils';
 import type { ModuloConProgreso, EstadisticasCurso } from '../lib/cedulaATypes';
+import { PageHeader } from '@/components/ui/page-header';
 
 export default function CursoCedulaA() {
   const { usuario } = useAuth();
@@ -96,24 +96,14 @@ export default function CursoCedulaA() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-        <div className="mb-6 sm:mb-8">
-          <button
-            onClick={() => navigate('/seguros-education')}
-            className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 mb-4 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm sm:text-base">Volver a Seguros Education</span>
-          </button>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-accent rounded-ios-xl flex items-center justify-center flex-shrink-0">
-              <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900">Curso de Cédula A</h1>
-              <p className="text-sm sm:text-base text-neutral-600">Preparación completa para examen CNSF</p>
-            </div>
-          </div>
-        </div>
+        <PageHeader
+          title="Curso de Cédula A"
+          description="Preparación completa para examen CNSF"
+          icon={GraduationCap}
+          backTo="/seguros-education"
+          backLabel="Volver a Seguros Education"
+          className="mb-6 sm:mb-8"
+        />
 
         {estadisticas && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">

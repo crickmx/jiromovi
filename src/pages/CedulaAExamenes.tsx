@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  ArrowLeft,
   BookOpen,
   FileText,
+  ClipboardCheck,
   Award,
   Clock,
   TrendingUp,
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { obtenerExamenes } from '../lib/cedulaAUtils';
 import type { CedulaAExamen } from '../lib/cedulaATypes';
+import { PageHeader } from '@/components/ui/page-header';
 
 export default function CedulaAExamenes() {
   const { usuario } = useAuth();
@@ -78,24 +79,14 @@ export default function CedulaAExamenes() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-        <div className="mb-6 sm:mb-8">
-          <button
-            onClick={() => navigate('/seguros-education/cedula-a')}
-            className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 mb-4 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm sm:text-base">Volver al curso</span>
-          </button>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-accent rounded-ios-xl flex items-center justify-center flex-shrink-0">
-              <FileText className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900">Exámenes de Cédula A</h1>
-              <p className="text-sm sm:text-base text-neutral-600">Pon a prueba tus conocimientos</p>
-            </div>
-          </div>
-        </div>
+        <PageHeader
+          title="Exámenes de Cédula A"
+          description="Pon a prueba tus conocimientos"
+          icon={ClipboardCheck}
+          backTo="/seguros-education/cedula-a"
+          backLabel="Volver al curso"
+          className="mb-6 sm:mb-8"
+        />
 
         {examenes.length === 0 ? (
           <div className="bg-white rounded-ios-xl shadow-ios p-8 text-center">

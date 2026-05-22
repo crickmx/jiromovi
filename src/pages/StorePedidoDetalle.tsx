@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CheckCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CheckCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus } from '../lib/storeUtils';
 import type { StorePedidoCompleto, StoreEstatusPedido, FormaPagoOC, MetodoPagoOC, StorePedidoGasto, StorePedidoDetalleGasto } from '../lib/storeTypes';
 import { TIPO_GASTO_OPTIONS } from '../lib/storeTypes';
@@ -372,7 +373,7 @@ export default function StorePedidoDetalle() {
       'Entregado': 'bg-green-100 text-green-800',
       'Cancelado': 'bg-red-100 text-red-800'
     };
-    return colors[estatusNombre] || 'bg-gray-100 text-gray-800';
+    return colors[estatusNombre] || 'bg-neutral-100 dark:bg-white/10 text-neutral-800 dark:text-white/80';
   };
 
   if (loading) {
@@ -389,7 +390,7 @@ export default function StorePedidoDetalle() {
     return (
       <Layout>
         <div className="text-center py-12">
-          <p className="text-gray-500">Pedido no encontrado</p>
+          <p className="text-neutral-500 dark:text-white/50">Pedido no encontrado</p>
         </div>
       </Layout>
     );
@@ -404,47 +405,37 @@ export default function StorePedidoDetalle() {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <button
-          onClick={() => navigate(isAdmin ? '/store/pedidos' : '/store/mis-pedidos')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">{isAdmin ? 'Volver a Pedidos' : 'Volver a Mis Pedidos'}</span>
-        </button>
-
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Detalle de Pedido</h1>
-            <p className="text-gray-600 mt-1">
-              Folio: {pedido.folio_oc ? (
-                <span className="font-semibold text-accent">{pedido.folio_oc}</span>
-              ) : (
-                <span className="text-gray-400 italic">Pendiente de asignacion</span>
-              )}
-            </p>
-          </div>
-          <span className={`inline-flex px-4 py-2 text-sm font-semibold rounded-full ${getEstatusColor(pedido.estatus?.nombre || 'Pendiente')}`}>
-            {pedido.estatus?.nombre || 'Pendiente'}
-          </span>
-        </div>
+        <PageHeader
+          title="Detalle de Pedido"
+          description={`Folio: ${pedido.folio_oc || 'Pendiente de asignación'}`}
+          icon={Package}
+          backTo={isAdmin ? '/store/pedidos' : '/store/mis-pedidos'}
+          backLabel={isAdmin ? 'Volver a Pedidos' : 'Volver a Mis Pedidos'}
+          badge={
+            <span className={`inline-flex px-4 py-2 text-sm font-semibold rounded-full ${getEstatusColor(pedido.estatus?.nombre || 'Pendiente')}`}>
+              {pedido.estatus?.nombre || 'Pendiente'}
+            </span>
+          }
+          className="mb-8"
+        />
 
         {/* Profitability KPIs - Admin only */}
         {isAdmin && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <p className="text-xs font-medium text-gray-500 uppercase">Ingresos</p>
-              <p className="text-xl font-bold text-gray-900 mt-1">${ingresos.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
+            <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-4">
+              <p className="text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Ingresos</p>
+              <p className="text-xl font-bold text-neutral-900 dark:text-white mt-1">${ingresos.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <p className="text-xs font-medium text-gray-500 uppercase">Costo Productos</p>
-              <p className="text-xl font-bold text-gray-900 mt-1">${costoProductos.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
+            <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-4">
+              <p className="text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Costo Productos</p>
+              <p className="text-xl font-bold text-neutral-900 dark:text-white mt-1">${costoProductos.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <p className="text-xs font-medium text-gray-500 uppercase">Gastos</p>
+            <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-4">
+              <p className="text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Gastos</p>
               <p className="text-xl font-bold text-amber-600 mt-1">${gastosTotales.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
             </div>
             <div className={`rounded-xl border p-4 ${gananciaNeta >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-              <p className="text-xs font-medium text-gray-500 uppercase">Ganancia Neta</p>
+              <p className="text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Ganancia Neta</p>
               <p className={`text-xl font-bold mt-1 ${gananciaNeta >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                 ${gananciaNeta.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
               </p>
@@ -456,8 +447,8 @@ export default function StorePedidoDetalle() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             {/* Products section */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4 flex items-center gap-2">
                 <Package className="w-5 h-5" />
                 Productos
               </h2>
@@ -468,7 +459,7 @@ export default function StorePedidoDetalle() {
                   const costoUnit = item.costo_unitario_override ?? item.producto?.costo_base ?? 0;
 
                   return (
-                    <div key={item.id} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
+                    <div key={item.id} className="border-b border-neutral-100 dark:border-white/5 pb-4 last:border-0 last:pb-0">
                       <div className="flex gap-4">
                         <img
                           src={item.producto?.imagen_url}
@@ -476,11 +467,11 @@ export default function StorePedidoDetalle() {
                           className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
                         />
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-gray-900">{item.producto?.titulo}</h3>
-                          <p className="text-sm text-gray-600 mt-0.5">Cantidad: {item.cantidad} x ${item.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
+                          <h3 className="font-semibold text-neutral-900 dark:text-white">{item.producto?.titulo}</h3>
+                          <p className="text-sm text-neutral-600 dark:text-white/60 mt-0.5">Cantidad: {item.cantidad} x ${item.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
                           {isAdmin && (
                             <div className="flex items-center gap-2 mt-1.5">
-                              <label className="text-xs text-gray-500">Costo unit.:</label>
+                              <label className="text-xs text-neutral-500 dark:text-white/50">Costo unit.:</label>
                               <input
                                 type="number"
                                 step="0.01"
@@ -491,10 +482,10 @@ export default function StorePedidoDetalle() {
                                   setCostoOverrideSaved(prev => ({ ...prev, [item.id]: false }));
                                 }}
                                 onBlur={() => handleSaveCostoOverride(item.id)}
-                                className="w-24 px-2 py-1 text-xs border border-gray-200 rounded-md"
+                                className="w-24 px-2 py-1 text-xs border border-neutral-200 dark:border-white/10 rounded-md"
                               />
                               {savingCostoOverride[item.id] && (
-                                <Loader2 className="w-3 h-3 animate-spin text-gray-400" />
+                                <Loader2 className="w-3 h-3 animate-spin text-neutral-400 dark:text-white/40" />
                               )}
                               {costoOverrideSaved[item.id] && !savingCostoOverride[item.id] && (
                                 <CheckCircle className="w-3 h-3 text-green-500" />
@@ -503,11 +494,11 @@ export default function StorePedidoDetalle() {
                           )}
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <p className="font-semibold text-gray-900">
+                          <p className="font-semibold text-neutral-900 dark:text-white">
                             ${(item.precio_unitario * item.cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                           </p>
                           {isAdmin && costoUnit > 0 && (
-                            <p className="text-xs text-gray-400">Costo: ${(costoUnit * item.cantidad).toFixed(2)}</p>
+                            <p className="text-xs text-neutral-400 dark:text-white/40">Costo: ${(costoUnit * item.cantidad).toFixed(2)}</p>
                           )}
                         </div>
                       </div>
@@ -537,9 +528,9 @@ export default function StorePedidoDetalle() {
                   );
                 })}
               </div>
-              <div className="mt-6 pt-4 border-t border-gray-200">
+              <div className="mt-6 pt-4 border-t border-neutral-200 dark:border-white/10">
                 <div className="flex justify-between items-center">
-                  <span className="text-lg font-semibold text-gray-900">Total</span>
+                  <span className="text-lg font-semibold text-neutral-900 dark:text-white">Total</span>
                   <span className="text-2xl font-bold text-accent">
                     ${ingresos.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                   </span>
@@ -549,18 +540,18 @@ export default function StorePedidoDetalle() {
 
             {/* Order-level expenses - Admin only */}
             {isAdmin && (
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4 flex items-center gap-2">
                   <DollarSign className="w-5 h-5" />
                   Gastos generales del pedido
                 </h2>
                 {pedidoGastos.length > 0 && (
                   <ul className="space-y-2 mb-4">
                     {pedidoGastos.map(g => (
-                      <li key={g.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                      <li key={g.id} className="flex items-center justify-between bg-neutral-50 dark:bg-white/5 rounded-lg px-3 py-2">
                         <div>
                           <span className="text-sm font-medium">{g.concepto}</span>
-                          <span className="text-xs text-gray-400 ml-2">({TIPO_GASTO_OPTIONS.find(t => t.value === g.tipo)?.label})</span>
+                          <span className="text-xs text-neutral-400 dark:text-white/40 ml-2">({TIPO_GASTO_OPTIONS.find(t => t.value === g.tipo)?.label})</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-semibold">${g.monto.toFixed(2)}</span>
@@ -579,12 +570,12 @@ export default function StorePedidoDetalle() {
                     value={newGastoConcepto}
                     onChange={e => { setNewGastoConcepto(e.target.value); setGastoError(null); }}
                     placeholder="Concepto"
-                    className="flex-1 px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg"
+                    className="flex-1 px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg"
                   />
                   <select
                     value={newGastoTipo}
                     onChange={e => setNewGastoTipo(e.target.value)}
-                    className="px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg"
+                    className="px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg"
                   >
                     {TIPO_GASTO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
@@ -595,7 +586,7 @@ export default function StorePedidoDetalle() {
                     value={newGastoMonto}
                     onChange={e => { setNewGastoMonto(e.target.value); setGastoError(null); }}
                     placeholder="$0.00"
-                    className="w-24 px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg"
+                    className="w-24 px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg"
                     onKeyDown={e => e.key === 'Enter' && handleAddPedidoGasto()}
                   />
                   <button
@@ -615,23 +606,23 @@ export default function StorePedidoDetalle() {
 
             {/* History */}
             {pedido.historial && pedido.historial.length > 0 && (
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4 flex items-center gap-2">
                   <History className="w-5 h-5" />
                   Historial de Cambios
                 </h2>
                 <div className="space-y-3">
                   {pedido.historial.map(item => (
-                    <div key={item.id} className="flex gap-3 pb-3 border-b border-gray-100 last:border-0">
-                      <Clock className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                    <div key={item.id} className="flex gap-3 pb-3 border-b border-neutral-100 dark:border-white/5 last:border-0">
+                      <Clock className="w-5 h-5 text-neutral-400 dark:text-white/40 mt-0.5 flex-shrink-0" />
                       <div className="flex-1">
-                        <p className="text-sm text-gray-900">
+                        <p className="text-sm text-neutral-900 dark:text-white">
                           Cambio a: <span className="font-semibold">{item.estatus?.nombre}</span>
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-neutral-500 dark:text-white/50">
                           {format(new Date(item.created_at), "d 'de' MMMM, yyyy 'a las' HH:mm", { locale: es })}
                         </p>
-                        {item.usuario && <p className="text-xs text-gray-500">Por: {item.usuario.nombre}</p>}
+                        {item.usuario && <p className="text-xs text-neutral-500 dark:text-white/50">Por: {item.usuario.nombre}</p>}
                       </div>
                     </div>
                   ))}
@@ -643,30 +634,30 @@ export default function StorePedidoDetalle() {
           {/* Right sidebar */}
           <div className="space-y-6">
             {/* Client info */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4 flex items-center gap-2">
                 <User className="w-5 h-5" />
                 Cliente
               </h2>
               <div className="space-y-3 text-sm">
                 <div>
-                  <p className="font-medium text-gray-900 mb-0.5">Nombre</p>
-                  <p className="text-gray-700 font-semibold">{pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A'}</p>
+                  <p className="font-medium text-neutral-900 dark:text-white mb-0.5">Nombre</p>
+                  <p className="text-neutral-700 dark:text-white/70 font-semibold">{pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A'}</p>
                 </div>
                 {pedido.usuario?.nombre_sicas && (
                   <div>
-                    <p className="font-medium text-gray-900 mb-0.5">SICAS</p>
-                    <p className="text-gray-700">{pedido.usuario.nombre_sicas}</p>
+                    <p className="font-medium text-neutral-900 dark:text-white mb-0.5">SICAS</p>
+                    <p className="text-neutral-700 dark:text-white/70">{pedido.usuario.nombre_sicas}</p>
                   </div>
                 )}
                 {pedido.usuario?.oficina && (
                   <div>
-                    <p className="font-medium text-gray-900 mb-0.5">Oficina</p>
-                    <p className="text-gray-700">{pedido.usuario.oficina}</p>
+                    <p className="font-medium text-neutral-900 dark:text-white mb-0.5">Oficina</p>
+                    <p className="text-neutral-700 dark:text-white/70">{pedido.usuario.oficina}</p>
                   </div>
                 )}
-                <div className="pt-2 border-t border-gray-200">
-                  <p className="text-xs text-gray-500">
+                <div className="pt-2 border-t border-neutral-200 dark:border-white/10">
+                  <p className="text-xs text-neutral-500 dark:text-white/50">
                     {format(new Date(pedido.created_at), "d 'de' MMMM, yyyy", { locale: es })}
                   </p>
                 </div>
@@ -674,35 +665,35 @@ export default function StorePedidoDetalle() {
             </div>
 
             {pedido.direccion_entrega && (
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-3 flex items-center gap-2">
                   <MapPin className="w-5 h-5" />
                   Direccion de Entrega
                 </h2>
-                <p className="text-sm text-gray-600">{pedido.direccion_entrega}</p>
+                <p className="text-sm text-neutral-600 dark:text-white/60">{pedido.direccion_entrega}</p>
               </div>
             )}
 
             {pedido.notas_usuario && (
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-3 flex items-center gap-2">
                   <FileText className="w-5 h-5" />
                   Notas del Cliente
                 </h2>
-                <p className="text-sm text-gray-600">{pedido.notas_usuario}</p>
+                <p className="text-sm text-neutral-600 dark:text-white/60">{pedido.notas_usuario}</p>
               </div>
             )}
 
             {/* Review & Collection - Admin only */}
             {isAdmin && (
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4 flex items-center gap-2">
                   <CheckCircle className="w-5 h-5" />
                   Revision y Cobro
                 </h2>
                 <div className="space-y-4">
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-2">Revisado por:</p>
+                    <p className="text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">Revisado por:</p>
                     <div className="flex flex-col gap-2">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input type="radio" name="revisado" value="mesa_control" checked={revisadoPor === 'mesa_control'} onChange={e => setRevisadoPor(e.target.value)} className="text-accent" />
@@ -714,24 +705,24 @@ export default function StorePedidoDetalle() {
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input type="radio" name="revisado" value="" checked={revisadoPor === ''} onChange={() => setRevisadoPor('')} className="text-accent" />
-                        <span className="text-sm text-gray-400">Sin revision</span>
+                        <span className="text-sm text-neutral-400 dark:text-white/40">Sin revision</span>
                       </label>
                     </div>
                   </div>
                   <div>
                     <label className="flex items-center gap-3 cursor-pointer">
                       <input type="checkbox" checked={cobrado} onChange={e => setCobrado(e.target.checked)} className="w-4 h-4 text-accent rounded" />
-                      <span className="text-sm font-medium text-gray-700">Cobrado</span>
+                      <span className="text-sm font-medium text-neutral-700 dark:text-white/70">Cobrado</span>
                     </label>
                     {pedido.cobrado && pedido.cobrado_en && (
-                      <p className="text-xs text-gray-400 mt-1 ml-7">
+                      <p className="text-xs text-neutral-400 dark:text-white/40 mt-1 ml-7">
                         {format(new Date(pedido.cobrado_en), "d MMM yyyy HH:mm", { locale: es })}
                       </p>
                     )}
                   </div>
                   <button
                     onClick={handleGuardarRevision}
-                    className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                    className="w-full bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 px-4 py-2 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/15 transition-colors text-sm font-medium"
                   >
                     Guardar revision
                   </button>
@@ -741,13 +732,13 @@ export default function StorePedidoDetalle() {
 
             {/* Status change - Admin only */}
             {isAdmin && (
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Cambiar Estatus</h2>
+              <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Cambiar Estatus</h2>
                 <select
                   value={pedido.estatus_id}
                   onChange={(e) => handleCambiarEstatus(e.target.value)}
                   disabled={actualizandoEstatus}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50"
+                  className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg disabled:opacity-50"
                 >
                   {estatus.map(est => <option key={est.id} value={est.id}>{est.nombre}</option>)}
                 </select>
@@ -756,8 +747,8 @@ export default function StorePedidoDetalle() {
 
             {/* Payment Info - Admin only */}
             {isAdmin && (
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4 flex items-center gap-2">
                   <CreditCard className="w-5 h-5" />
                   Informacion de Pago
                 </h2>
@@ -770,16 +761,16 @@ export default function StorePedidoDetalle() {
                 <div className="space-y-3 mb-4">
                   {usuariosOficina.length > 0 && (
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Responsable de Pago</label>
-                      <select value={responsablePagoId} onChange={e => setResponsablePagoId(e.target.value)} className="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg">
+                      <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Responsable de Pago</label>
+                      <select value={responsablePagoId} onChange={e => setResponsablePagoId(e.target.value)} className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg">
                         <option value="">Seleccionar...</option>
                         {usuariosOficina.map(u => <option key={u.id} value={u.id}>{u.nombre_completo || u.nombre}</option>)}
                       </select>
                     </div>
                   )}
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Forma de Pago *</label>
-                    <select value={formaPago} onChange={e => setFormaPago(e.target.value as FormaPagoOC)} className="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg">
+                    <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Forma de Pago *</label>
+                    <select value={formaPago} onChange={e => setFormaPago(e.target.value as FormaPagoOC)} className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg">
                       <option value="">Seleccionar...</option>
                       <option value="Contado">Contado</option>
                       <option value="Mensual">Mensual</option>
@@ -788,8 +779,8 @@ export default function StorePedidoDetalle() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Metodo de Pago *</label>
-                    <select value={metodoPago} onChange={e => setMetodoPago(e.target.value as MetodoPagoOC)} className="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg">
+                    <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Metodo de Pago *</label>
+                    <select value={metodoPago} onChange={e => setMetodoPago(e.target.value as MetodoPagoOC)} className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg">
                       <option value="">Seleccionar...</option>
                       <option value="Cargo a Oficina">Cargo a Oficina</option>
                       <option value="Cargo a Bono de Agente">Cargo a Bono de Agente</option>
@@ -800,9 +791,9 @@ export default function StorePedidoDetalle() {
                     </select>
                   </div>
                   {metodoPago === 'Otro' && (
-                    <input type="text" value={metodoPagoOtroDetalle} onChange={e => setMetodoPagoOtroDetalle(e.target.value)} placeholder="Especificar..." className="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg" />
+                    <input type="text" value={metodoPagoOtroDetalle} onChange={e => setMetodoPagoOtroDetalle(e.target.value)} placeholder="Especificar..." className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg" />
                   )}
-                  <textarea value={observacionesOC} onChange={e => setObservacionesOC(e.target.value)} placeholder="Observaciones..." className="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg" rows={2} />
+                  <textarea value={observacionesOC} onChange={e => setObservacionesOC(e.target.value)} placeholder="Observaciones..." className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg" rows={2} />
                 </div>
                 <div className="flex flex-col gap-2">
                   <button onClick={handleGuardarPago} disabled={guardandoPago || !formaPago || !metodoPago} className="w-full bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2">
@@ -817,24 +808,24 @@ export default function StorePedidoDetalle() {
 
             {/* Internal Notes - Admin only */}
             {isAdmin && (
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4 flex items-center gap-2">
                   <MessageSquare className="w-5 h-5" />
                   Notas Internas
                 </h2>
                 {pedido.notas && pedido.notas.length > 0 && (
                   <div className="space-y-2 mb-4">
                     {pedido.notas.map(nota => (
-                      <div key={nota.id} className="bg-gray-50 rounded-lg p-3">
-                        <p className="text-sm text-gray-900">{nota.nota}</p>
-                        <p className="text-xs text-gray-500 mt-1">
+                      <div key={nota.id} className="bg-neutral-50 dark:bg-white/5 rounded-lg p-3">
+                        <p className="text-sm text-neutral-900 dark:text-white">{nota.nota}</p>
+                        <p className="text-xs text-neutral-500 dark:text-white/50 mt-1">
                           {nota.admin?.nombre} - {format(new Date(nota.created_at), "d MMM yyyy HH:mm", { locale: es })}
                         </p>
                       </div>
                     ))}
                   </div>
                 )}
-                <textarea value={nuevaNota} onChange={e => setNuevaNota(e.target.value)} placeholder="Agregar nota interna..." className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2 text-sm" rows={2} />
+                <textarea value={nuevaNota} onChange={e => setNuevaNota(e.target.value)} placeholder="Agregar nota interna..." className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg mb-2 text-sm" rows={2} />
                 <button onClick={handleAgregarNota} disabled={agregandoNota || !nuevaNota.trim()} className="w-full bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover text-sm font-medium disabled:opacity-50">
                   {agregandoNota ? 'Agregando...' : 'Agregar Nota'}
                 </button>
@@ -880,19 +871,19 @@ function LineGastosEditor({ gastos, detalleId, cantidad, onAdd, onRemove }: {
   };
 
   return (
-    <div className="mt-2 space-y-1.5 pl-2 border-l-2 border-gray-100">
+    <div className="mt-2 space-y-1.5 pl-2 border-l-2 border-neutral-100 dark:border-white/10">
       {gastos.map(g => {
         const unitCost = g.monto_unitario || g.monto;
         const total = unitCost * cantidad;
         return (
-          <div key={g.id} className="flex items-center justify-between text-xs bg-gray-50 rounded px-2 py-1.5">
+          <div key={g.id} className="flex items-center justify-between text-xs bg-neutral-50 dark:bg-white/5 rounded px-2 py-1.5">
             <div>
               <span>{g.concepto}</span>
-              <span className="text-gray-400 ml-1">({TIPO_GASTO_OPTIONS.find(t => t.value === g.tipo)?.label})</span>
+              <span className="text-neutral-400 dark:text-white/40 ml-1">({TIPO_GASTO_OPTIONS.find(t => t.value === g.tipo)?.label})</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-gray-400">${unitCost.toFixed(2)}/pza x {cantidad}</span>
-              <span className="font-medium text-gray-800">= ${total.toFixed(2)}</span>
+              <span className="text-neutral-400 dark:text-white/40">${unitCost.toFixed(2)}/pza x {cantidad}</span>
+              <span className="font-medium text-neutral-800 dark:text-white/80">= ${total.toFixed(2)}</span>
               <button onClick={() => onRemove(detalleId, g.id)} className="text-red-400 hover:text-red-600 ml-0.5"><X className="w-3 h-3" /></button>
             </div>
           </div>
@@ -905,9 +896,9 @@ function LineGastosEditor({ gastos, detalleId, cantidad, onAdd, onRemove }: {
           value={concepto}
           onChange={e => { setConcepto(e.target.value); setError(null); }}
           placeholder="Concepto"
-          className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded"
+          className="flex-1 px-2 py-1 text-xs border border-neutral-200 dark:border-white/10 rounded"
         />
-        <select value={tipo} onChange={e => setTipo(e.target.value)} className="px-1.5 py-1 text-xs border border-gray-200 rounded">
+        <select value={tipo} onChange={e => setTipo(e.target.value)} className="px-1.5 py-1 text-xs border border-neutral-200 dark:border-white/10 rounded">
           {TIPO_GASTO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
         <div className="flex flex-col items-end gap-0.5">
@@ -918,11 +909,11 @@ function LineGastosEditor({ gastos, detalleId, cantidad, onAdd, onRemove }: {
             value={montoUnit}
             onChange={e => { setMontoUnit(e.target.value); setError(null); }}
             placeholder="$/pza"
-            className="w-20 px-2 py-1 text-xs border border-gray-200 rounded"
+            className="w-20 px-2 py-1 text-xs border border-neutral-200 dark:border-white/10 rounded"
             onKeyDown={e => e.key === 'Enter' && handleAdd()}
           />
           {parsedUnit > 0 && cantidad > 1 && (
-            <span className="text-[10px] text-gray-400">= ${totalPreview.toFixed(2)}</span>
+            <span className="text-[10px] text-neutral-400 dark:text-white/40">= ${totalPreview.toFixed(2)}</span>
           )}
         </div>
         <button
@@ -934,7 +925,7 @@ function LineGastosEditor({ gastos, detalleId, cantidad, onAdd, onRemove }: {
         </button>
       </div>
       {cantidad > 1 && (
-        <p className="text-[10px] text-gray-400 pl-0.5">Ingresa el costo por pieza — se multiplica por {cantidad} piezas</p>
+        <p className="text-[10px] text-neutral-400 dark:text-white/40 pl-0.5">Ingresa el costo por pieza — se multiplica por {cantidad} piezas</p>
       )}
     </div>
   );

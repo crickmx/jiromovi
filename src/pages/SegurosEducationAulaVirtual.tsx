@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import {
   Calendar, Clock, Plus, Users, Video, AlertCircle,
   Play, Pause, Link as LinkIcon, Copy, CheckCircle,
-  Trash2, Settings, BarChart3, Download, FileVideo, ArrowLeft, Upload
+  Trash2, Settings, BarChart3, Download, FileVideo, Upload
 } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { BaseModal } from '../components/BaseModal';
@@ -30,7 +30,6 @@ import { analyticsTracker } from '../lib/analyticsTracker';
 
 export function SegurosEducationAulaVirtual() {
   const { usuario } = useAuth();
-  const navigate = useNavigate();
   const [sessions, setSessions] = useState<AulaSession[]>([]);
   const [grabaciones, setGrabaciones] = useState<AulaGrabacion[]>([]);
   const [activeSessions, setActiveSessions] = useState<AulaSession[]>([]);
@@ -259,7 +258,7 @@ export function SegurosEducationAulaVirtual() {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
-          <div className="text-slate-600">Cargando...</div>
+          <div className="text-neutral-600 dark:text-white/50">Cargando...</div>
         </div>
       </Layout>
     );
@@ -268,42 +267,33 @@ export function SegurosEducationAulaVirtual() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/seguros-education')}
-              className="p-2 text-slate-600 hover:text-accent hover:bg-slate-100 rounded-lg transition-colors"
-              title="Volver a Seguros Education"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <Video className="w-6 h-6 text-accent" />
-                Aula Virtual
-              </h1>
-              <p className="text-slate-600 mt-1">Capacitaciones en vivo con WebRTC</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowGrabacionesModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-all text-sm font-medium"
-            >
-              <FileVideo className="w-4 h-4" />
-              Grabaciones ({grabaciones.length})
-            </button>
-            {isAdmin && (
+        <PageHeader
+          title="Aula Virtual"
+          description="Capacitaciones en vivo con WebRTC"
+          icon={Video}
+          backTo="/seguros-education"
+          backLabel="Volver a Seguros Education"
+          actions={
+            <div className="flex gap-2">
               <button
-                onClick={() => setShowCreateModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-all text-sm font-medium"
+                onClick={() => setShowGrabacionesModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-neutral-100 dark:bg-white/8 text-neutral-700 dark:text-white/70 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/12 transition-all text-sm font-medium"
               >
-                <Plus className="w-4 h-4" />
-                Nueva Sesión
+                <FileVideo className="w-4 h-4" />
+                Grabaciones ({grabaciones.length})
               </button>
-            )}
-          </div>
-        </div>
+              {isAdmin && (
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-all text-sm font-medium"
+                >
+                  <Plus className="w-4 h-4" />
+                  Nueva Sesión
+                </button>
+              )}
+            </div>
+          }
+        />
 
         {activeSessions.length > 0 && (
           <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-6 text-white">
@@ -391,9 +381,9 @@ export function SegurosEducationAulaVirtual() {
           </div>
         )}
 
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-          <div className="p-4 border-b border-slate-200">
-            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 dark:border-white/10">
+          <div className="p-4 border-b border-neutral-200 dark:border-white/10">
+            <h2 className="text-lg font-bold text-neutral-800 dark:text-white flex items-center gap-2">
               <Calendar className="w-5 h-5 text-accent" />
               Próximas Sesiones
             </h2>
@@ -401,15 +391,15 @@ export function SegurosEducationAulaVirtual() {
           <div className="p-4">
             {upcomingSessions.length === 0 ? (
               <div className="text-center py-12">
-                <Calendar className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500">No hay sesiones programadas</p>
+                <Calendar className="w-16 h-16 text-neutral-300 dark:text-white/20 mx-auto mb-4" />
+                <p className="text-neutral-500 dark:text-white/40">No hay sesiones programadas</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {upcomingSessions.map((session) => (
                   <div
                     key={session.id}
-                    className="flex items-start gap-4 p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-all"
+                    className="flex items-start gap-4 p-4 bg-neutral-50 dark:bg-white/5 rounded-lg hover:bg-neutral-100 dark:bg-white/8 transition-all"
                   >
                     <div className="w-16 h-16 bg-primary-100 rounded-lg flex flex-col items-center justify-center flex-shrink-0">
                       <span className="text-xs font-medium text-accent">
@@ -420,9 +410,9 @@ export function SegurosEducationAulaVirtual() {
                       </span>
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-slate-900 mb-1">{session.titulo}</h3>
-                      <p className="text-slate-600 text-sm mb-2">{session.descripcion}</p>
-                      <div className="flex items-center gap-4 text-sm text-slate-500">
+                      <h3 className="font-semibold text-neutral-900 dark:text-white mb-1">{session.titulo}</h3>
+                      <p className="text-neutral-600 dark:text-white/50 text-sm mb-2">{session.descripcion}</p>
+                      <div className="flex items-center gap-4 text-sm text-neutral-500 dark:text-white/40">
                         <span className="flex items-center gap-1">
                           <Clock className="w-4 h-4" />
                           {format(new Date(session.fecha_inicio), 'HH:mm', { locale: es })}
@@ -443,7 +433,7 @@ export function SegurosEducationAulaVirtual() {
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleCopiarEnlace(session, 'invitado')}
-                          className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-all text-sm"
+                          className="px-3 py-2 bg-neutral-200 dark:bg-white/10 hover:bg-neutral-300 dark:hover:bg-white/15 text-neutral-700 dark:text-white/70 rounded-lg transition-all text-sm"
                           title="Copiar enlace para invitados"
                         >
                           {copiedLink === `${session.id}-invitado` ? (
@@ -569,7 +559,7 @@ function CrearSesionModal({ onClose, onSuccess }: { onClose: () => void; onSucce
         type="button"
         onClick={onClose}
         disabled={loading}
-        className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+        className="px-4 py-2 text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:bg-white/8 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
       >
         Cancelar
       </button>
@@ -593,74 +583,74 @@ function CrearSesionModal({ onClose, onSuccess }: { onClose: () => void; onSucce
       )}
       <form onSubmit={handleSubmit} className="space-y-3" id="crear-sesion-form">
         <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">Título *</label>
+          <label className="block text-xs font-medium text-neutral-700 dark:text-white/70 mb-1">Título *</label>
           <input
             type="text"
             value={formData.titulo}
             onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
             required
-            className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Ej: Introducción a Seguros de Vida"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">Descripción</label>
+          <label className="block text-xs font-medium text-neutral-700 dark:text-white/70 mb-1">Descripción</label>
           <textarea
             value={formData.descripcion}
             onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
             rows={2}
-            className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             placeholder="Descripción de la sesión"
           />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Fecha *</label>
+            <label className="block text-xs font-medium text-neutral-700 dark:text-white/70 mb-1">Fecha *</label>
             <input
               type="date"
               value={formData.fecha_inicio}
               onChange={(e) => setFormData({ ...formData, fecha_inicio: e.target.value })}
               required
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Hora *</label>
+            <label className="block text-xs font-medium text-neutral-700 dark:text-white/70 mb-1">Hora *</label>
             <input
               type="time"
               value={formData.hora_inicio}
               onChange={(e) => setFormData({ ...formData, hora_inicio: e.target.value })}
               required
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Duración (minutos)</label>
+            <label className="block text-xs font-medium text-neutral-700 dark:text-white/70 mb-1">Duración (minutos)</label>
             <input
               type="number"
               value={formData.duracion_minutos}
               onChange={(e) => setFormData({ ...formData, duracion_minutos: parseInt(e.target.value) })}
               min="15"
               max="480"
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Máx. Participantes</label>
+            <label className="block text-xs font-medium text-neutral-700 dark:text-white/70 mb-1">Máx. Participantes</label>
             <input
               type="number"
               value={formData.max_participantes}
               onChange={(e) => setFormData({ ...formData, max_participantes: parseInt(e.target.value) })}
               min="2"
               max="100"
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
@@ -671,9 +661,9 @@ function CrearSesionModal({ onClose, onSuccess }: { onClose: () => void; onSucce
             id="grabar"
             checked={formData.grabar_sesion}
             onChange={(e) => setFormData({ ...formData, grabar_sesion: e.target.checked })}
-            className="w-4 h-4 text-accent border-slate-300 rounded focus:ring-blue-500"
+            className="w-4 h-4 text-accent border-neutral-300 dark:border-white/15 rounded focus:ring-blue-500"
           />
-          <label htmlFor="grabar" className="text-sm text-slate-700">
+          <label htmlFor="grabar" className="text-sm text-neutral-700 dark:text-white/70">
             Grabar sesión automáticamente
           </label>
         </div>
@@ -698,18 +688,18 @@ function GrabacionesModal({
       <div className="space-y-3">
         {grabaciones.length === 0 ? (
           <div className="text-center py-12">
-            <FileVideo className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-            <p className="text-slate-500">No hay grabaciones disponibles</p>
+            <FileVideo className="w-16 h-16 text-neutral-300 dark:text-white/20 mx-auto mb-4" />
+            <p className="text-neutral-500 dark:text-white/40">No hay grabaciones disponibles</p>
           </div>
         ) : (
           grabaciones.map((grabacion) => (
-            <div key={grabacion.id} className="p-4 bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition-colors">
+            <div key={grabacion.id} className="p-4 bg-white rounded-lg border border-neutral-200 dark:border-white/10 hover:border-neutral-300 dark:border-white/15 transition-colors">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-slate-900 mb-1">
+                  <h3 className="font-semibold text-neutral-900 dark:text-white mb-1">
                     {grabacion.sesion?.titulo || 'Grabación de sesión'}
                   </h3>
-                  <div className="flex items-center gap-3 text-xs text-slate-500 mb-2 flex-wrap">
+                  <div className="flex items-center gap-3 text-xs text-neutral-500 dark:text-white/40 mb-2 flex-wrap">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {grabacion.duracion_segundos ? `${Math.floor(grabacion.duracion_segundos / 60)} min` : 'N/A'}
@@ -732,7 +722,7 @@ function GrabacionesModal({
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-slate-400">
+                  <div className="text-xs text-neutral-400 dark:text-white/30">
                     ID: {grabacion.id.substring(0, 8)}...
                   </div>
                 </div>
@@ -748,7 +738,7 @@ function GrabacionesModal({
                       Descargar
                     </a>
                   ) : (
-                    <div className="px-4 py-2 bg-slate-100 text-slate-400 rounded-lg text-sm font-medium cursor-not-allowed">
+                    <div className="px-4 py-2 bg-neutral-100 dark:bg-white/8 text-neutral-400 dark:text-white/30 rounded-lg text-sm font-medium cursor-not-allowed">
                       Sin archivo
                     </div>
                   )}
@@ -763,7 +753,7 @@ function GrabacionesModal({
                     </button>
                   )}
                   {!isAdmin && (
-                    <div className="text-xs text-slate-400 text-center">
+                    <div className="text-xs text-neutral-400 dark:text-white/30 text-center">
                       Requiere permisos de administrador
                     </div>
                   )}

@@ -368,12 +368,12 @@ export default function GamificacionAdmin() {
         <PageHeader
           title="Administración de Gamificación"
           description="Gestiona el sistema de XP, Jiro Coins y misiones"
-          icon={Settings}
+          icon={Trophy}
         />
         <Card className="p-8 mt-6">
           <div className="text-center">
             <div className="text-red-600 mb-2">Error al cargar los datos</div>
-            <p className="text-sm text-gray-600 mb-4">{error}</p>
+            <p className="text-sm text-neutral-600 mb-4">{error}</p>
             <Button onClick={() => cargarDatos()}>Reintentar</Button>
           </div>
         </Card>
@@ -394,7 +394,7 @@ export default function GamificacionAdmin() {
         <Card className="p-6">
           <div className="flex items-center gap-3 mb-2">
             <Users className="w-5 h-5 text-blue-600" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">Total Agentes</p>
+            <p className="text-sm text-neutral-500 dark:text-white/50">Total Agentes</p>
           </div>
           <p className="text-3xl font-bold">{estadisticas?.total_agentes || 0}</p>
         </Card>
@@ -402,7 +402,7 @@ export default function GamificacionAdmin() {
         <Card className="p-6">
           <div className="flex items-center gap-3 mb-2">
             <Zap className="w-5 h-5 text-yellow-600" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">XP Total Otorgado</p>
+            <p className="text-sm text-neutral-500 dark:text-white/50">XP Total Otorgado</p>
           </div>
           <p className="text-3xl font-bold">{(estadisticas?.total_xp_otorgado || 0).toLocaleString()}</p>
         </Card>
@@ -410,7 +410,7 @@ export default function GamificacionAdmin() {
         <Card className="p-6">
           <div className="flex items-center gap-3 mb-2">
             <Trophy className="w-5 h-5 text-purple-600" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">JC en Circulación</p>
+            <p className="text-sm text-neutral-500 dark:text-white/50">JC en Circulación</p>
           </div>
           <p className="text-3xl font-bold">{(estadisticas?.total_jc_circulacion || 0).toLocaleString()}</p>
         </Card>
@@ -418,10 +418,10 @@ export default function GamificacionAdmin() {
         <Card className="p-6">
           <div className="flex items-center gap-3 mb-2">
             <Target className="w-5 h-5 text-green-600" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">Misiones Completadas</p>
+            <p className="text-sm text-neutral-500 dark:text-white/50">Misiones Completadas</p>
           </div>
           <p className="text-3xl font-bold">{estadisticas?.misiones_completadas_mes || 0}</p>
-          <p className="text-xs text-gray-500">Este mes</p>
+          <p className="text-xs text-neutral-500">Este mes</p>
         </Card>
       </div>
 
@@ -436,34 +436,34 @@ export default function GamificacionAdmin() {
         {/* Ranking */}
         <TabsContent value="ranking">
           <Card>
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="p-6 border-b border-neutral-200 dark:border-white/10">
               <h3 className="text-lg font-semibold">Top 100 Agentes</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-800">
+                <thead className="bg-neutral-50 dark:bg-white/5">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
                       Posición
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
                       Agente
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
                       Oficina
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
                       XP
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
                       Nivel
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
                       JC
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody className="divide-y divide-neutral-200 dark:divide-white/10">
                   {ranking.length > 0 ? (
                     ranking.map((entry) => (
                       <tr key={entry.user_id}>
@@ -472,7 +472,7 @@ export default function GamificacionAdmin() {
                             className={cn(
                               'font-bold',
                               entry.posicion === 1 && 'text-yellow-500',
-                              entry.posicion === 2 && 'text-gray-400',
+                              entry.posicion === 2 && 'text-neutral-400',
                               entry.posicion === 3 && 'text-orange-600'
                             )}
                           >
@@ -482,7 +482,7 @@ export default function GamificacionAdmin() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <p className="font-medium">{entry.nombre_completo}</p>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600">
                           {entry.oficina_nombre || '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap font-medium">
@@ -498,7 +498,7 @@ export default function GamificacionAdmin() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                      <td colSpan={6} className="px-6 py-8 text-center text-neutral-500">
                         No hay agentes registrados en el sistema de gamificación
                       </td>
                     </tr>
@@ -525,7 +525,7 @@ export default function GamificacionAdmin() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <h4 className="font-semibold text-lg mb-2">{mision.nombre}</h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    <p className="text-sm text-neutral-500 dark:text-white/50 mb-3">
                       {mision.descripcion}
                     </p>
                     <div className="flex gap-2 flex-wrap">
@@ -562,7 +562,7 @@ export default function GamificacionAdmin() {
               </Card>
             ))
           ) : (
-            <Card className="p-8 text-center text-gray-500">
+            <Card className="p-8 text-center text-neutral-500">
               No hay misiones configuradas. Crea tu primera misión.
             </Card>
           )}
@@ -589,11 +589,11 @@ export default function GamificacionAdmin() {
                         Factor {mult.factor}x - {mult.referencia || 'Global'}
                       </h4>
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                    <p className="text-sm text-neutral-500 dark:text-white/50 mb-2">
                       {mult.descripcion}
                     </p>
                     {mult.fecha_inicio && mult.fecha_fin && (
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-neutral-500">
                         Vigente del {new Date(mult.fecha_inicio).toLocaleDateString()} al{' '}
                         {new Date(mult.fecha_fin).toLocaleDateString()}
                       </p>
@@ -626,7 +626,7 @@ export default function GamificacionAdmin() {
               </Card>
             ))
           ) : (
-            <Card className="p-8 text-center text-gray-500">
+            <Card className="p-8 text-center text-neutral-500">
               No hay multiplicadores configurados. Crea tu primer multiplicador.
             </Card>
           )}
@@ -887,7 +887,7 @@ export default function GamificacionAdmin() {
                 onChange={(e) => setMultForm({ ...multForm, referencia: e.target.value })}
                 placeholder="UUID de oficina, rol o usuario (si aplica)"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-neutral-500 mt-1">
                 Deja vacío para multiplicadores globales
               </p>
             </div>

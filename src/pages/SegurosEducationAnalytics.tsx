@@ -5,8 +5,9 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import {
   BarChart3, TrendingUp, Users, Clock, Award, Download,
-  Calendar, Filter, Search, Eye, Play, CheckCircle, ArrowLeft
+  Calendar, Filter, Search, Eye, Play, CheckCircle
 } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -308,61 +309,50 @@ export function SegurosEducationAnalytics() {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto p-6 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/seguros-education')}
-              className="p-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div>
-              <h1 className="text-3xl font-bold text-neutral-800 flex items-center gap-2">
-                <BarChart3 className="w-8 h-8 text-accent" />
-                Analytics
-              </h1>
-              <p className="text-neutral-600 mt-1">Métricas de Seguros Education</p>
+        <PageHeader
+          title="Analytics"
+          description="Métricas de Seguros Education"
+          icon={BarChart3}
+          backTo="/seguros-education"
+          backLabel="Volver a Seguros Education"
+          actions={
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-neutral-500 dark:text-white/40" />
+              <select
+                value={dateRange}
+                onChange={(e) => setDateRange(e.target.value as DateRange)}
+                className="px-4 py-2 border border-neutral-300 dark:border-white/15 rounded-lg text-sm bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+              >
+                <option value="7d">Últimos 7 días</option>
+                <option value="30d">Últimos 30 días</option>
+                <option value="90d">Últimos 90 días</option>
+                <option value="custom">Personalizado</option>
+              </select>
+              {dateRange === 'custom' && (
+                <>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="px-3 py-2 border border-neutral-300 dark:border-white/15 rounded-lg text-sm bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+                  />
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="px-3 py-2 border border-neutral-300 dark:border-white/15 rounded-lg text-sm bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+                  />
+                </>
+              )}
+              <button
+                onClick={fetchData}
+                className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium"
+              >
+                Aplicar
+              </button>
             </div>
-          </div>
-
-          {/* Date Range Selector */}
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-neutral-500" />
-            <select
-              value={dateRange}
-              onChange={(e) => setDateRange(e.target.value as DateRange)}
-              className="px-4 py-2 border border-neutral-300 rounded-lg text-sm"
-            >
-              <option value="7d">Últimos 7 días</option>
-              <option value="30d">Últimos 30 días</option>
-              <option value="90d">Últimos 90 días</option>
-              <option value="custom">Personalizado</option>
-            </select>
-            {dateRange === 'custom' && (
-              <>
-                <input
-                  type="date"
-                  value={customStartDate}
-                  onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="px-3 py-2 border border-neutral-300 rounded-lg text-sm"
-                />
-                <input
-                  type="date"
-                  value={customEndDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="px-3 py-2 border border-neutral-300 rounded-lg text-sm"
-                />
-              </>
-            )}
-            <button
-              onClick={fetchData}
-              className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium"
-            >
-              Aplicar
-            </button>
-          </div>
-        </div>
+          }
+        />
 
         {/* Tabs */}
         <div className="border-b border-neutral-200">

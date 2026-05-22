@@ -3,9 +3,10 @@ import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, TrendingUp, TrendingDown, DollarSign, Package,
+  TrendingUp, TrendingDown, DollarSign, Package,
   Receipt, Target, Plus, Trash2, Calendar, BarChart3, PieChart
 } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import { supabase } from '../lib/supabase';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
 import type { StoreGastoGeneral, StoreMetaUtilidad } from '../lib/storeTypes';
@@ -364,25 +365,19 @@ export default function StorePedidosReporte() {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <button
-          onClick={() => navigate('/store/pedidos')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Volver a Pedidos</span>
-        </button>
-
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-accent">Reporte de Ganancias</h1>
-            <p className="text-gray-600 mt-1">Analisis financiero de MOVI Store</p>
-          </div>
-        </div>
+        <PageHeader
+          title="Reporte de Ganancias"
+          description="Análisis financiero de MOVI Store"
+          icon={BarChart3}
+          backTo="/store/pedidos"
+          backLabel="Volver a Pedidos"
+          className="mb-6"
+        />
 
         {/* Filtros de periodo */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+        <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-4 mb-6">
           <div className="flex flex-wrap items-center gap-3">
-            <Calendar className="w-5 h-5 text-gray-500" />
+            <Calendar className="w-5 h-5 text-neutral-500 dark:text-white/50" />
             {(['este_mes', 'mes_anterior', 'anio', 'personalizado'] as PeriodoFiltro[]).map(p => (
               <button
                 key={p}
@@ -390,7 +385,7 @@ export default function StorePedidosReporte() {
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   periodo === p
                     ? 'bg-accent text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    : 'bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/15'
                 }`}
               >
                 {p === 'este_mes' ? 'Este Mes' : p === 'mes_anterior' ? 'Mes Anterior' : p === 'anio' ? 'Este Anio' : 'Personalizado'}
@@ -402,14 +397,14 @@ export default function StorePedidosReporte() {
                   type="date"
                   value={fechaInicio}
                   onChange={e => setFechaInicio(e.target.value)}
-                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                  className="px-3 py-1.5 border border-neutral-300 dark:border-white/20 rounded-lg text-sm"
                 />
-                <span className="text-gray-500">a</span>
+                <span className="text-neutral-500 dark:text-white/50">a</span>
                 <input
                   type="date"
                   value={fechaFin}
                   onChange={e => setFechaFin(e.target.value)}
-                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                  className="px-3 py-1.5 border border-neutral-300 dark:border-white/20 rounded-lg text-sm"
                 />
               </div>
             )}
@@ -418,40 +413,40 @@ export default function StorePedidosReporte() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-500">Ingresos Totales</p>
+              <p className="text-sm font-medium text-neutral-500 dark:text-white/50">Ingresos Totales</p>
               <DollarSign className="w-5 h-5 text-green-600" />
             </div>
-            <p className="text-2xl font-bold text-gray-900">{formatMoney(resumen.ingresosTotales)}</p>
-            <p className="text-xs text-gray-500 mt-1">{resumen.pedidosCount} pedidos | {resumen.pedidosCobrados} cobrados</p>
+            <p className="text-2xl font-bold text-neutral-900 dark:text-white">{formatMoney(resumen.ingresosTotales)}</p>
+            <p className="text-xs text-neutral-500 dark:text-white/50 mt-1">{resumen.pedidosCount} pedidos | {resumen.pedidosCobrados} cobrados</p>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-500">Costo de Productos</p>
+              <p className="text-sm font-medium text-neutral-500 dark:text-white/50">Costo de Productos</p>
               <Package className="w-5 h-5 text-orange-600" />
             </div>
-            <p className="text-2xl font-bold text-gray-900">{formatMoney(resumen.costoProductos)}</p>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-2xl font-bold text-neutral-900 dark:text-white">{formatMoney(resumen.costoProductos)}</p>
+            <p className="text-xs text-neutral-500 dark:text-white/50 mt-1">
               {resumen.ingresosTotales > 0 ? ((resumen.costoProductos / resumen.ingresosTotales) * 100).toFixed(1) : 0}% de ingresos
             </p>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-500">Gastos Totales</p>
+              <p className="text-sm font-medium text-neutral-500 dark:text-white/50">Gastos Totales</p>
               <Receipt className="w-5 h-5 text-red-600" />
             </div>
-            <p className="text-2xl font-bold text-gray-900">{formatMoney(resumen.gastosOperativos + resumen.gastosGenerales)}</p>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-2xl font-bold text-neutral-900 dark:text-white">{formatMoney(resumen.gastosOperativos + resumen.gastosGenerales)}</p>
+            <p className="text-xs text-neutral-500 dark:text-white/50 mt-1">
               Operativos: {formatMoney(resumen.gastosOperativos)} | Generales: {formatMoney(resumen.gastosGenerales)}
             </p>
           </div>
 
           <div className={`bg-white rounded-xl border p-6 ${resumen.gananciaNeta >= 0 ? 'border-green-200' : 'border-red-200'}`}>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-500">Ganancia Neta</p>
+              <p className="text-sm font-medium text-neutral-500 dark:text-white/50">Ganancia Neta</p>
               {resumen.gananciaNeta >= 0
                 ? <TrendingUp className="w-5 h-5 text-green-600" />
                 : <TrendingDown className="w-5 h-5 text-red-600" />
@@ -460,40 +455,40 @@ export default function StorePedidosReporte() {
             <p className={`text-2xl font-bold ${resumen.gananciaNeta >= 0 ? 'text-green-700' : 'text-red-700'}`}>
               {formatMoney(resumen.gananciaNeta)}
             </p>
-            <p className="text-xs text-gray-500 mt-1">Margen: {resumen.margen.toFixed(1)}%</p>
+            <p className="text-xs text-neutral-500 dark:text-white/50 mt-1">Margen: {resumen.margen.toFixed(1)}%</p>
           </div>
         </div>
 
         {/* P&L Breakdown */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
             <div className="flex items-center gap-2 mb-5">
               <BarChart3 className="w-5 h-5 text-accent" />
-              <h2 className="text-lg font-semibold text-gray-900">Estado de Resultados</h2>
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Estado de Resultados</h2>
             </div>
             <div className="space-y-3">
-              <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                <span className="text-sm text-gray-700 font-medium">Ingresos por Ventas</span>
-                <span className="text-sm font-semibold text-gray-900">{formatMoney(resumen.ingresosTotales)}</span>
+              <div className="flex justify-between items-center py-2 border-b border-neutral-100 dark:border-white/5">
+                <span className="text-sm text-neutral-700 dark:text-white/70 font-medium">Ingresos por Ventas</span>
+                <span className="text-sm font-semibold text-neutral-900 dark:text-white">{formatMoney(resumen.ingresosTotales)}</span>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-100 pl-4">
-                <span className="text-sm text-gray-500">(-) Costo de Productos Vendidos</span>
+              <div className="flex justify-between items-center py-2 border-b border-neutral-100 dark:border-white/5 pl-4">
+                <span className="text-sm text-neutral-500 dark:text-white/50">(-) Costo de Productos Vendidos</span>
                 <span className="text-sm text-red-600">{formatMoney(resumen.costoProductos)}</span>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-200 bg-gray-50 px-3 rounded">
-                <span className="text-sm font-semibold text-gray-700">= Utilidad Bruta</span>
-                <span className="text-sm font-bold text-gray-900">{formatMoney(resumen.ingresosTotales - resumen.costoProductos)}</span>
+              <div className="flex justify-between items-center py-2 border-b border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 px-3 rounded">
+                <span className="text-sm font-semibold text-neutral-700 dark:text-white/70">= Utilidad Bruta</span>
+                <span className="text-sm font-bold text-neutral-900 dark:text-white">{formatMoney(resumen.ingresosTotales - resumen.costoProductos)}</span>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-100 pl-4">
-                <span className="text-sm text-gray-500">(-) Gastos por Pedido</span>
+              <div className="flex justify-between items-center py-2 border-b border-neutral-100 dark:border-white/5 pl-4">
+                <span className="text-sm text-neutral-500 dark:text-white/50">(-) Gastos por Pedido</span>
                 <span className="text-sm text-red-600">{formatMoney(resumen.gastosOperativos)}</span>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-100 pl-4">
-                <span className="text-sm text-gray-500">(-) Gastos Generales del Negocio</span>
+              <div className="flex justify-between items-center py-2 border-b border-neutral-100 dark:border-white/5 pl-4">
+                <span className="text-sm text-neutral-500 dark:text-white/50">(-) Gastos Generales del Negocio</span>
                 <span className="text-sm text-red-600">{formatMoney(resumen.gastosGenerales)}</span>
               </div>
               <div className={`flex justify-between items-center py-3 px-3 rounded-lg ${resumen.gananciaNeta >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-                <span className="text-sm font-bold text-gray-900">= GANANCIA NETA</span>
+                <span className="text-sm font-bold text-neutral-900 dark:text-white">= GANANCIA NETA</span>
                 <span className={`text-base font-bold ${resumen.gananciaNeta >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                   {formatMoney(resumen.gananciaNeta)}
                 </span>
@@ -502,14 +497,14 @@ export default function StorePedidosReporte() {
           </div>
 
           {/* Gastos por Tipo */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
             <div className="flex items-center gap-2 mb-5">
               <PieChart className="w-5 h-5 text-accent" />
-              <h2 className="text-lg font-semibold text-gray-900">Desglose de Gastos</h2>
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Desglose de Gastos</h2>
             </div>
             {Object.keys(gastosPorTipo).length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Receipt className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+              <div className="text-center py-8 text-neutral-500 dark:text-white/50">
+                <Receipt className="w-10 h-10 mx-auto mb-2 text-neutral-300 dark:text-white/30" />
                 <p className="text-sm">Sin gastos en este periodo</p>
               </div>
             ) : (
@@ -523,16 +518,16 @@ export default function StorePedidosReporte() {
                     return (
                       <div key={tipo}>
                         <div className="flex justify-between items-center mb-1">
-                          <span className="text-sm text-gray-700">{label}</span>
-                          <span className="text-sm font-medium text-gray-900">{formatMoney(monto)}</span>
+                          <span className="text-sm text-neutral-700 dark:text-white/70">{label}</span>
+                          <span className="text-sm font-medium text-neutral-900 dark:text-white">{formatMoney(monto)}</span>
                         </div>
-                        <div className="w-full bg-gray-100 rounded-full h-2">
+                        <div className="w-full bg-neutral-100 dark:bg-white/10 rounded-full h-2">
                           <div
                             className="bg-accent rounded-full h-2 transition-all duration-300"
                             style={{ width: `${Math.min(porcentaje, 100)}%` }}
                           />
                         </div>
-                        <p className="text-xs text-gray-400 mt-0.5">{porcentaje.toFixed(1)}%</p>
+                        <p className="text-xs text-neutral-400 dark:text-white/40 mt-0.5">{porcentaje.toFixed(1)}%</p>
                       </div>
                     );
                   })}
@@ -542,35 +537,35 @@ export default function StorePedidosReporte() {
         </div>
 
         {/* Top Productos */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Productos por Ganancia</h2>
+        <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6 mb-8">
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Top Productos por Ganancia</h2>
           {topProductos.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Package className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+            <div className="text-center py-8 text-neutral-500 dark:text-white/50">
+              <Package className="w-10 h-10 mx-auto mb-2 text-neutral-300 dark:text-white/30" />
               <p className="text-sm">Sin datos de productos en este periodo</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-neutral-200 dark:divide-white/10">
+                <thead className="bg-neutral-50 dark:bg-white/5">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoria</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Uds</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ingresos</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Costos</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ganancia</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Margen</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Producto</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Categoria</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Uds</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Ingresos</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Costos</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Ganancia</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Margen</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-neutral-200 dark:divide-white/10">
                   {topProductos.map((prod, i) => (
-                    <tr key={i} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{prod.titulo}</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{prod.categoria}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700 text-right">{prod.unidadesVendidas}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700 text-right">{formatMoney(prod.ingresos)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700 text-right">{formatMoney(prod.costos)}</td>
+                    <tr key={i} className="hover:bg-neutral-50 dark:bg-white/5">
+                      <td className="px-4 py-3 text-sm font-medium text-neutral-900 dark:text-white">{prod.titulo}</td>
+                      <td className="px-4 py-3 text-sm text-neutral-500 dark:text-white/50">{prod.categoria}</td>
+                      <td className="px-4 py-3 text-sm text-neutral-700 dark:text-white/70 text-right">{prod.unidadesVendidas}</td>
+                      <td className="px-4 py-3 text-sm text-neutral-700 dark:text-white/70 text-right">{formatMoney(prod.ingresos)}</td>
+                      <td className="px-4 py-3 text-sm text-neutral-700 dark:text-white/70 text-right">{formatMoney(prod.costos)}</td>
                       <td className={`px-4 py-3 text-sm font-semibold text-right ${prod.ganancia >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                         {formatMoney(prod.ganancia)}
                       </td>
@@ -592,9 +587,9 @@ export default function StorePedidosReporte() {
         </div>
 
         {/* Gastos Generales */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+        <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6 mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Gastos Generales del Negocio</h2>
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Gastos Generales del Negocio</h2>
             <button
               onClick={() => setShowNuevoGasto(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-sm font-medium hover:bg-primary-800 transition-colors"
@@ -604,21 +599,21 @@ export default function StorePedidosReporte() {
             </button>
           </div>
           {gastosGenerales.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-6">Sin gastos generales en este periodo</p>
+            <p className="text-sm text-neutral-500 dark:text-white/50 text-center py-6">Sin gastos generales en este periodo</p>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-neutral-100 dark:divide-white/5">
               {gastosGenerales.map(g => (
                 <div key={g.id} className="flex items-center justify-between py-3">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{g.concepto}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-sm font-medium text-neutral-900 dark:text-white">{g.concepto}</p>
+                    <p className="text-xs text-neutral-500 dark:text-white/50">
                       {TIPO_GASTO_OPTIONS.find(o => o.value === g.tipo)?.label || g.tipo}
                       {g.descripcion && ` - ${g.descripcion}`}
                       {' | '}{format(new Date(g.fecha), 'd MMM yyyy', { locale: es })}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-semibold text-gray-900">{formatMoney(g.monto)}</span>
+                    <span className="text-sm font-semibold text-neutral-900 dark:text-white">{formatMoney(g.monto)}</span>
                     <button
                       onClick={() => eliminarGasto(g.id)}
                       className="text-red-500 hover:text-red-700 p-1"
@@ -633,11 +628,11 @@ export default function StorePedidosReporte() {
         </div>
 
         {/* Metas de Utilidad */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+        <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6 mb-8">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
               <Target className="w-5 h-5 text-accent" />
-              <h2 className="text-lg font-semibold text-gray-900">Metas de Utilidad</h2>
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Metas de Utilidad</h2>
             </div>
             <button
               onClick={() => setShowNuevaMeta(true)}
@@ -648,8 +643,8 @@ export default function StorePedidosReporte() {
             </button>
           </div>
           {metas.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Target className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+            <div className="text-center py-8 text-neutral-500 dark:text-white/50">
+              <Target className="w-10 h-10 mx-auto mb-2 text-neutral-300 dark:text-white/30" />
               <p className="text-sm">Sin metas activas. Define una meta de utilidad para dar seguimiento.</p>
             </div>
           ) : (
@@ -659,10 +654,10 @@ export default function StorePedidosReporte() {
                 const dias = diasRestantes(meta.fecha_fin);
                 const completada = progreso >= 100;
                 return (
-                  <div key={meta.id} className={`border rounded-lg p-4 ${completada ? 'border-green-300 bg-green-50' : 'border-gray-200'}`}>
+                  <div key={meta.id} className={`border rounded-lg p-4 ${completada ? 'border-green-300 bg-green-50' : 'border-neutral-200 dark:border-white/10'}`}>
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                        <h3 className="font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
                           {meta.nombre}
                           {completada && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-200 text-green-800">
@@ -670,27 +665,27 @@ export default function StorePedidosReporte() {
                             </span>
                           )}
                         </h3>
-                        {meta.descripcion && <p className="text-xs text-gray-500 mt-0.5">{meta.descripcion}</p>}
+                        {meta.descripcion && <p className="text-xs text-neutral-500 dark:text-white/50 mt-0.5">{meta.descripcion}</p>}
                       </div>
-                      <button onClick={() => eliminarMeta(meta.id)} className="text-gray-400 hover:text-red-600 p-1">
+                      <button onClick={() => eliminarMeta(meta.id)} className="text-neutral-400 dark:text-white/40 hover:text-red-600 p-1">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-                    <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                    <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-white/50 mb-2">
                       <span>
                         {format(new Date(meta.fecha_inicio), 'd MMM', { locale: es })} - {format(new Date(meta.fecha_fin), 'd MMM yyyy', { locale: es })}
                       </span>
                       <span>{dias > 0 ? `${dias} dias restantes` : 'Periodo finalizado'}</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3 mb-1">
+                    <div className="w-full bg-neutral-200 dark:bg-white/15 rounded-full h-3 mb-1">
                       <div
                         className={`h-3 rounded-full transition-all duration-500 ${completada ? 'bg-green-500' : 'bg-accent'}`}
                         style={{ width: `${Math.min(progreso, 100)}%` }}
                       />
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">{formatMoney(resumen.gananciaNeta)} actual</span>
-                      <span className="font-medium text-gray-700">Meta: {formatMoney(meta.monto_objetivo)}</span>
+                      <span className="text-neutral-600 dark:text-white/60">{formatMoney(resumen.gananciaNeta)} actual</span>
+                      <span className="font-medium text-neutral-700 dark:text-white/70">Meta: {formatMoney(meta.monto_objetivo)}</span>
                     </div>
                   </div>
                 );
@@ -704,25 +699,25 @@ export default function StorePedidosReporte() {
       {showNuevoGasto && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Nuevo Gasto General</h3>
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Nuevo Gasto General</h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Concepto</label>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">Concepto</label>
                 <input
                   type="text"
                   value={nuevoGasto.concepto}
                   onChange={e => setNuevoGasto(prev => ({ ...prev, concepto: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent"
+                  className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-accent"
                   placeholder="Ej: Renta de bodega"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">Tipo</label>
                   <select
                     value={nuevoGasto.tipo}
                     onChange={e => setNuevoGasto(prev => ({ ...prev, tipo: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-accent"
                   >
                     {TIPO_GASTO_OPTIONS.map(o => (
                       <option key={o.value} value={o.value}>{o.label}</option>
@@ -730,33 +725,33 @@ export default function StorePedidosReporte() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Monto</label>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">Monto</label>
                   <input
                     type="number"
                     min={0}
                     step="0.01"
                     value={nuevoGasto.monto || ''}
                     onChange={e => setNuevoGasto(prev => ({ ...prev, monto: parseFloat(e.target.value) || 0 }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-accent"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">Fecha</label>
                 <input
                   type="date"
                   value={nuevoGasto.fecha}
                   onChange={e => setNuevoGasto(prev => ({ ...prev, fecha: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent"
+                  className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-accent"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descripcion (opcional)</label>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">Descripcion (opcional)</label>
                 <input
                   type="text"
                   value={nuevoGasto.descripcion}
                   onChange={e => setNuevoGasto(prev => ({ ...prev, descripcion: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent"
+                  className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-accent"
                   placeholder="Detalle adicional"
                 />
               </div>
@@ -764,7 +759,7 @@ export default function StorePedidosReporte() {
             <div className="flex gap-3 mt-5">
               <button
                 onClick={() => setShowNuevoGasto(false)}
-                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+                className="flex-1 px-4 py-2 bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/15 font-medium"
               >
                 Cancelar
               </button>
@@ -784,57 +779,57 @@ export default function StorePedidosReporte() {
       {showNuevaMeta && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Nueva Meta de Utilidad</h3>
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Nueva Meta de Utilidad</h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">Nombre</label>
                 <input
                   type="text"
                   value={nuevaMeta.nombre}
                   onChange={e => setNuevaMeta(prev => ({ ...prev, nombre: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent"
+                  className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-accent"
                   placeholder="Ej: Meta Mayo 2026"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Monto Objetivo</label>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">Monto Objetivo</label>
                 <input
                   type="number"
                   min={0}
                   step="0.01"
                   value={nuevaMeta.monto_objetivo || ''}
                   onChange={e => setNuevaMeta(prev => ({ ...prev, monto_objetivo: parseFloat(e.target.value) || 0 }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent"
+                  className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-accent"
                   placeholder="$0.00"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio</label>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">Fecha Inicio</label>
                   <input
                     type="date"
                     value={nuevaMeta.fecha_inicio}
                     onChange={e => setNuevaMeta(prev => ({ ...prev, fecha_inicio: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-accent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Fin</label>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">Fecha Fin</label>
                   <input
                     type="date"
                     value={nuevaMeta.fecha_fin}
                     onChange={e => setNuevaMeta(prev => ({ ...prev, fecha_fin: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-accent"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descripcion (opcional)</label>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">Descripcion (opcional)</label>
                 <input
                   type="text"
                   value={nuevaMeta.descripcion}
                   onChange={e => setNuevaMeta(prev => ({ ...prev, descripcion: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent"
+                  className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-accent"
                   placeholder="Descripcion de la meta"
                 />
               </div>
@@ -842,7 +837,7 @@ export default function StorePedidosReporte() {
             <div className="flex gap-3 mt-5">
               <button
                 onClick={() => setShowNuevaMeta(false)}
-                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+                className="flex-1 px-4 py-2 bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/15 font-medium"
               >
                 Cancelar
               </button>

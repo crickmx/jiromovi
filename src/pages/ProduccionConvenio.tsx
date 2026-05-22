@@ -2,7 +2,8 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Award, Download, Filter, Settings } from 'lucide-react';
+import { TrendingUp, Download, Filter, Settings } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import * as XLSX from 'xlsx';
 import GraficaColumnas from '../components/comisiones/GraficaColumnas';
 import GraficaCircular from '../components/comisiones/GraficaCircular';
@@ -406,24 +407,14 @@ export default function ProduccionConvenio() {
 
   return (
     <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
-      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+      <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 dark:border-neutral-800 p-4 sm:p-6">
         <div className="mb-4 sm:mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div className="flex-1">
-              <h1 className="text-2xl sm:text-3xl font-display font-bold text-neutral-900 mb-1 sm:mb-2">
-                Producción Convenio
-              </h1>
-              <p className="text-sm sm:text-base text-neutral-600">
-                Métrica base: Prima de convenio (solo registros en convenio)
-              </p>
-              {lastImport && (
-                <p className="text-xs sm:text-sm text-neutral-500 mt-1">
-                  Datos actualizados: {new Date(lastImport.imported_at).toLocaleDateString('es-MX')}
-                </p>
-              )}
-            </div>
-            <div className="flex items-center gap-2 sm:gap-3">
-              {isAdmin && (
+          <PageHeader
+            title="Producción Convenio"
+            description={`Métrica base: Prima de convenio (solo registros en convenio)${lastImport ? ` | Datos actualizados: ${new Date(lastImport.imported_at).toLocaleDateString('es-MX')}` : ''}`}
+            icon={TrendingUp}
+            actions={
+              isAdmin ? (
                 <button
                   onClick={() => navigate('/produccion/configuracion')}
                   className="flex items-center space-x-2 bg-accent text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-accent-hover transition-colors font-medium text-sm sm:text-base"
@@ -432,10 +423,9 @@ export default function ProduccionConvenio() {
                   <span className="hidden sm:inline">Configuración</span>
                   <span className="sm:hidden">Config</span>
                 </button>
-              )}
-              <Award className="w-10 h-10 sm:w-12 sm:h-12 text-accent flex-shrink-0" />
-            </div>
-          </div>
+              ) : undefined
+            }
+          />
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">

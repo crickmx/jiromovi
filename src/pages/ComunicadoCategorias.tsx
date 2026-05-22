@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Edit2, Trash2, FolderOpen } from 'lucide-react';
+import { ArrowLeft, Plus, CreditCard as Edit2, Trash2, FolderOpen } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { PageHeader } from '@/components/ui/page-header';
 
 interface Categoria {
   id: string;
@@ -133,11 +134,11 @@ export default function ComunicadoCategorias() {
     return (
       <Layout hideHeader>
         <div className="max-w-4xl mx-auto py-12">
-          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          <div className="bg-white rounded-xl border border-neutral-200 dark:border-white/10 p-12 text-center">
+            <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
               Acceso Denegado
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-neutral-600 dark:text-white/60 mb-6">
               No tienes permisos para gestionar categorías.
             </p>
             <button
@@ -166,42 +167,32 @@ export default function ComunicadoCategorias() {
     <Layout hideHeader>
       <div className="max-w-5xl mx-auto">
         {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <button
-            onClick={() => navigate('/comunicados')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition text-sm"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Volver
-          </button>
-
-          <button
-            onClick={handleNueva}
-            className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover transition-colors font-medium shadow-sm"
-          >
-            <Plus className="w-5 h-5" />
-            Nueva Categoría
-          </button>
-        </div>
-
-        {/* Título */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-accent mb-2">
-            Gestión de Categorías
-          </h1>
-          <p className="text-gray-600">
-            Administra las categorías para organizar los comunicados
-          </p>
+          <PageHeader
+            title="Gestión de Categorías"
+            description="Administra las categorías para organizar los comunicados"
+            icon={FolderOpen}
+            backTo="/comunicados"
+            actions={
+              <button
+                onClick={handleNueva}
+                className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover transition-colors font-medium shadow-sm"
+              >
+                <Plus className="w-5 h-5" />
+                Nueva Categoría
+              </button>
+            }
+          />
         </div>
 
         {/* Lista de categorías */}
         {categorias.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-            <FolderOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">
+          <div className="bg-white rounded-xl border border-neutral-200 dark:border-white/10 p-12 text-center">
+            <FolderOpen className="w-16 h-16 text-neutral-400 dark:text-white/40 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-neutral-700 dark:text-white/70 mb-2">
               No hay categorías creadas
             </h3>
-            <p className="text-gray-500 mb-6">
+            <p className="text-neutral-500 dark:text-white/50 mb-6">
               Comienza creando tu primera categoría
             </p>
             <button
@@ -213,32 +204,32 @@ export default function ComunicadoCategorias() {
             </button>
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-xl border border-neutral-200 dark:border-white/10 overflow-hidden">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-neutral-50 dark:bg-white/5 border-b border-neutral-200 dark:border-white/10">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase tracking-wider">
                     Nombre
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase tracking-wider">
                     Descripción
                   </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-center text-xs font-medium text-neutral-500 dark:text-white/50 uppercase tracking-wider">
                     Estado
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 dark:text-white/50 uppercase tracking-wider">
                     Acciones
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-neutral-200 dark:divide-white/10">
                 {categorias.map((categoria) => (
-                  <tr key={categoria.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={categoria.id} className="hover:bg-neutral-50 dark:bg-white/5 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="font-medium text-gray-900">{categoria.nombre}</div>
+                      <div className="font-medium text-neutral-900 dark:text-white">{categoria.nombre}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-600 max-w-md truncate">
+                      <div className="text-sm text-neutral-600 dark:text-white/60 max-w-md truncate">
                         {categoria.descripcion || '-'}
                       </div>
                     </td>
@@ -282,33 +273,33 @@ export default function ComunicadoCategorias() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-6">
                 {editando ? 'Editar Categoría' : 'Nueva Categoría'}
               </h2>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">
                     Nombre *
                   </label>
                   <input
                     type="text"
                     value={formData.nombre}
                     onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Ej: Noticias, Eventos, Comunicados"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">
                     Descripción
                   </label>
                   <textarea
                     value={formData.descripcion}
                     onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     rows={3}
                     placeholder="Descripción opcional de la categoría"
                   />
@@ -320,9 +311,9 @@ export default function ComunicadoCategorias() {
                     id="activo"
                     checked={formData.activo}
                     onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
-                    className="h-4 w-4 text-accent focus:ring-blue-500 border-gray-300 rounded"
+                    className="h-4 w-4 text-accent focus:ring-blue-500 border-neutral-300 dark:border-white/20 rounded"
                   />
-                  <label htmlFor="activo" className="ml-2 block text-sm text-gray-700">
+                  <label htmlFor="activo" className="ml-2 block text-sm text-neutral-700 dark:text-white/70">
                     Categoría activa
                   </label>
                 </div>
@@ -335,7 +326,7 @@ export default function ComunicadoCategorias() {
                       setEditando(null);
                       setFormData({ nombre: '', descripcion: '', activo: true });
                     }}
-                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                    className="flex-1 px-4 py-2 border border-neutral-300 dark:border-white/20 text-neutral-700 dark:text-white/70 rounded-lg hover:bg-neutral-50 dark:bg-white/5 transition-colors font-medium"
                   >
                     Cancelar
                   </button>

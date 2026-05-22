@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Send, Users, Building2, UserCheck, Megaphone, Bell, CheckCircle, MessageCircle } from 'lucide-react';
 import { crearNotificacionGlobal } from '../lib/notificationHelpers';
+import { PageHeader } from '@/components/ui/page-header';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -178,18 +179,14 @@ export function CentroNotificacionesContent() {
   return (
     <div className="space-y-6 p-6 overflow-y-auto h-full">
       {/* Header */}
-      <div className="bg-gradient-to-r from-accent to-accent-dark rounded-2xl p-8 text-white">
-        <div className="flex items-center gap-3 mb-2">
-          <Megaphone className="w-8 h-8" />
-          <h1 className="text-3xl font-bold text-white">Centro de Notificaciones Global</h1>
-        </div>
-        <p className="text-primary-100">
-          Envia notificaciones personalizadas a usuarios, oficinas o roles especificos
-        </p>
-      </div>
+      <PageHeader
+        title="Centro de Notificaciones Global"
+        description="Envia notificaciones personalizadas a usuarios, oficinas o roles especificos"
+        icon={Megaphone}
+      />
 
       {/* Send Notification Form */}
-      <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-700 p-6">
+      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-6">
         <h2 className="text-xl font-bold text-neutral-800 dark:text-white mb-6 flex items-center gap-2">
           <Send className="w-5 h-5 text-accent" />
           Enviar Nueva Notificacion
@@ -204,7 +201,7 @@ export function CentroNotificacionesContent() {
               type="text"
               value={formData.titulo}
               onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-              className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
+              className="w-full px-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
               placeholder="Ej: Nueva politica interna"
             />
           </div>
@@ -217,7 +214,7 @@ export function CentroNotificacionesContent() {
               value={formData.mensaje}
               onChange={(e) => setFormData({ ...formData, mensaje: e.target.value })}
               rows={4}
-              className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
+              className="w-full px-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
               placeholder="Escribe el mensaje de la notificacion..."
             />
           </div>
@@ -230,7 +227,7 @@ export function CentroNotificacionesContent() {
               type="text"
               value={formData.accion_url}
               onChange={(e) => setFormData({ ...formData, accion_url: e.target.value })}
-              className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
+              className="w-full px-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
               placeholder="/vacaciones, /seguros-education, etc."
             />
           </div>
@@ -294,7 +291,7 @@ export function CentroNotificacionesContent() {
               <select
                 value={formData.oficina_id}
                 onChange={(e) => setFormData({ ...formData, oficina_id: e.target.value })}
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent"
               >
                 <option value="">Seleccionar oficina</option>
                 {oficinas.map((ofi) => (
@@ -309,7 +306,7 @@ export function CentroNotificacionesContent() {
               <select
                 value={formData.rol}
                 onChange={(e) => setFormData({ ...formData, rol: e.target.value })}
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent"
               >
                 <option value="">Seleccionar rol</option>
                 {roles.map((rol) => (
@@ -328,7 +325,7 @@ export function CentroNotificacionesContent() {
           </div>
 
           {/* Canales de Envio */}
-          <div className="border-t border-neutral-200 dark:border-neutral-700 pt-4">
+          <div className="border-t border-neutral-200 dark:border-white/8 pt-4">
             <label className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-3">
               Canales de Envio
             </label>
@@ -402,8 +399,8 @@ export function CentroNotificacionesContent() {
       </div>
 
       {/* Notification History */}
-      <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-700">
-        <div className="p-6 border-b border-neutral-200 dark:border-neutral-700">
+      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8">
+        <div className="p-6 border-b border-neutral-200 dark:border-white/8">
           <h2 className="text-xl font-bold text-neutral-800 dark:text-white flex items-center gap-2">
             <CheckCircle className="w-5 h-5 text-accent" />
             Historial de Notificaciones Enviadas
@@ -422,7 +419,7 @@ export function CentroNotificacionesContent() {
               {historial.map((notif) => (
                 <div
                   key={notif.id}
-                  className="p-4 bg-neutral-50 dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-700"
+                  className="p-4 bg-neutral-50 dark:bg-neutral-900 rounded-lg border border-neutral-200/60 dark:border-white/8"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="font-semibold text-neutral-800 dark:text-white">{notif.titulo}</h3>

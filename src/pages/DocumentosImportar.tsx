@@ -5,13 +5,14 @@ import {
   FileSpreadsheet,
   CheckCircle2,
   AlertCircle,
-  ArrowLeft,
   Clock,
   Users,
   FileText,
   Trash2,
   ArrowRight,
+  FileUp,
 } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import {
@@ -302,30 +303,23 @@ export default function DocumentosImportar() {
   if (selectedBatch) {
     return (
       <div className="p-4 sm:p-6 lg:p-8">
-        <button
-          onClick={() => setSelectedBatch(null)}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 sm:mb-6 transition min-h-[44px]"
-        >
-          <ArrowLeft className="h-5 w-5" />
-          <span className="font-medium">Volver a la lista</span>
-        </button>
-
-        <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft p-4 sm:p-6 mb-4 sm:mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-            <div className="flex-1 min-w-0">
-              <h2 className="text-xl sm:text-2xl font-bold text-accent break-words">Detalle del lote</h2>
-              <p className="text-sm sm:text-base text-gray-600 mt-1 break-words">{selectedBatch.file_name}</p>
-            </div>
-            {getStatusBadge(selectedBatch.status)}
-          </div>
+        <div className="bg-white dark:bg-neutral-900 rounded-xl sm:rounded-2xl shadow-soft p-4 sm:p-6 mb-4 sm:mb-6">
+          <PageHeader
+            title="Detalle del lote"
+            description={selectedBatch.file_name}
+            icon={FileUp}
+            onBack={() => setSelectedBatch(null)}
+            backLabel="Volver a la lista"
+            badge={getStatusBadge(selectedBatch.status)}
+          />
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-            <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+            <div className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
               <div className="flex items-center gap-3">
-                <FileText className="h-6 h-6 sm:h-8 sm:w-8 text-gray-600 flex-shrink-0" />
+                <FileText className="h-6 h-6 sm:h-8 sm:w-8 text-neutral-600 dark:text-neutral-400 flex-shrink-0" />
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-600">Total</p>
-                  <p className="text-xl sm:text-2xl font-bold text-gray-900">
+                  <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">Total</p>
+                  <p className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white">
                     {selectedBatch.records_total}
                   </p>
                 </div>
@@ -357,7 +351,7 @@ export default function DocumentosImportar() {
             </div>
           </div>
 
-          <div className="mt-4 text-sm text-gray-600">
+          <div className="mt-4 text-sm text-neutral-600 dark:text-neutral-400">
             <p>
               Importado el{' '}
               {new Date(selectedBatch.imported_at).toLocaleString('es-MX', {
@@ -370,12 +364,12 @@ export default function DocumentosImportar() {
 
         {diagnostics && diagnostics.counts && (
           <div className="bg-white rounded-xl shadow-soft p-4 sm:p-6 mb-4 sm:mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Estado de validación</h3>
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Estado de validación</h3>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
-              <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center">
-                <p className="text-xs text-gray-600 mb-1">Total</p>
-                <p className="text-2xl font-bold text-gray-900">{diagnostics.counts.total || 0}</p>
+              <div className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 text-center">
+                <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-1">Total</p>
+                <p className="text-2xl font-bold text-neutral-900 dark:text-white">{diagnostics.counts.total || 0}</p>
               </div>
               <div className="p-4 bg-green-50 rounded-xl border border-green-200 text-center">
                 <p className="text-xs text-green-700 mb-1">Válidas</p>
@@ -392,8 +386,8 @@ export default function DocumentosImportar() {
             </div>
 
             {diagnostics.top_discard_reasons && diagnostics.top_discard_reasons.length > 0 && (
-              <div className="border-t border-gray-200 pt-4">
-                <h4 className="text-base font-semibold text-gray-900 mb-3">Motivos de descarte principales</h4>
+              <div className="border-t border-neutral-200 dark:border-neutral-700 pt-4">
+                <h4 className="text-base font-semibold text-neutral-900 dark:text-white mb-3">Motivos de descarte principales</h4>
                 <div className="space-y-2">
                   {diagnostics.top_discard_reasons.map((reason: any, idx: number) => (
                     <div key={idx} className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-100">
@@ -406,15 +400,15 @@ export default function DocumentosImportar() {
             )}
 
             {diagnostics.sample_discard_rows && diagnostics.sample_discard_rows.length > 0 && (
-              <div className="border-t border-gray-200 pt-4 mt-4">
-                <h4 className="text-base font-semibold text-gray-900 mb-3">Ejemplos de filas descartadas</h4>
+              <div className="border-t border-neutral-200 dark:border-neutral-700 pt-4 mt-4">
+                <h4 className="text-base font-semibold text-neutral-900 dark:text-white mb-3">Ejemplos de filas descartadas</h4>
                 <div className="space-y-3">
                   {diagnostics.sample_discard_rows.slice(0, 5).map((row: any, idx: number) => (
                     <div key={idx} className="border-l-4 border-red-300 pl-4 py-2 bg-red-50 rounded-r">
                       <p className="text-sm font-bold text-red-900 mb-1">Fila {row.row_index}</p>
                       <p className="text-xs text-red-700 mb-1"><span className="font-semibold">Motivo:</span> {row.discard_reason}</p>
-                      {row.agent_name_raw && <p className="text-xs text-gray-700">Vendedor: {row.agent_name_raw}</p>}
-                      {row.documento && <p className="text-xs text-gray-700">Documento: {row.documento}</p>}
+                      {row.agent_name_raw && <p className="text-xs text-neutral-700 dark:text-neutral-300">Vendedor: {row.agent_name_raw}</p>}
+                      {row.documento && <p className="text-xs text-neutral-700 dark:text-neutral-300">Documento: {row.documento}</p>}
                     </div>
                   ))}
                 </div>
@@ -545,14 +539,14 @@ export default function DocumentosImportar() {
                     <tbody className="divide-y divide-green-100">
                       {conversionResult.batches.map((batch: any) => (
                         <tr key={batch.id}>
-                          <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                          <td className="px-4 py-3 text-sm font-medium text-neutral-900 dark:text-white">
                             Semana {batch.week_number}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-600">
+                          <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400">
                             {new Date(batch.period_start).toLocaleDateString('es-MX')} -{' '}
                             {new Date(batch.period_end).toLocaleDateString('es-MX')}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-600">
+                          <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400">
                             {batch.document_count}
                           </td>
                           <td className="px-4 py-3">
@@ -665,21 +659,14 @@ export default function DocumentosImportar() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <button
-        onClick={() => navigate('/comisiones')}
-        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 sm:mb-6 transition min-h-[44px]"
-      >
-        <ArrowLeft className="h-5 w-5" />
-        <span className="font-medium">Volver a Comisiones</span>
-      </button>
-
       <div className="mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-accent">
-          Importar documentos desde Excel
-        </h1>
-        <p className="text-sm sm:text-base text-gray-600 mt-1">
-          Sube un archivo Excel para procesar documentos y asignar vendedores automáticamente
-        </p>
+        <PageHeader
+          title="Importar documentos desde Excel"
+          description="Sube un archivo Excel para procesar documentos y asignar vendedores automáticamente"
+          icon={FileUp}
+          backTo="/comisiones"
+          backLabel="Volver a Comisiones"
+        />
       </div>
 
       <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft p-4 sm:p-6 mb-4 sm:mb-6">
@@ -688,17 +675,17 @@ export default function DocumentosImportar() {
             <Upload className="h-5 h-5 sm:h-6 sm:w-6 text-accent" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-base sm:text-lg font-semibold text-gray-900">Cargar archivo</h3>
-            <p className="text-xs sm:text-sm text-gray-600">Selecciona un archivo Excel (.xlsx o .xls)</p>
+            <h3 className="text-base sm:text-lg font-semibold text-neutral-900 dark:text-white">Cargar archivo</h3>
+            <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">Selecciona un archivo Excel (.xlsx o .xls)</p>
           </div>
         </div>
 
         <div
-          className="border-2 border-dashed border-gray-300 rounded-xl p-6 sm:p-8"
+          className="border-2 border-dashed border-neutral-300 dark:border-neutral-600 rounded-xl p-6 sm:p-8"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="text-center">
-            <FileSpreadsheet className="h-10 h-10 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+            <FileSpreadsheet className="h-10 h-10 sm:h-12 sm:w-12 text-neutral-400 dark:text-neutral-500 mx-auto mb-3 sm:mb-4" />
             <div>
               <label
                 htmlFor="file-upload"
@@ -717,7 +704,7 @@ export default function DocumentosImportar() {
                 disabled={loading}
               />
             </div>
-            <p className="text-xs sm:text-sm text-gray-500 mt-2">o arrastra y suelta aquí</p>
+            <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-2">o arrastra y suelta aquí</p>
           </div>
 
           {selectedFile && (
@@ -726,8 +713,8 @@ export default function DocumentosImportar() {
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <FileSpreadsheet className="h-6 h-6 sm:h-8 sm:w-8 text-accent flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm sm:text-base font-medium text-gray-900 truncate">{selectedFile.name}</p>
-                    <p className="text-xs sm:text-sm text-gray-600">
+                    <p className="text-sm sm:text-base font-medium text-neutral-900 dark:text-white truncate">{selectedFile.name}</p>
+                    <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">
                       {(selectedFile.size / 1024).toFixed(2)} KB
                     </p>
                   </div>
@@ -756,12 +743,12 @@ export default function DocumentosImportar() {
       </div>
 
       <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-6 border-b border-neutral-200 dark:border-neutral-700">
           <div className="flex items-center gap-3">
-            <Clock className="h-6 w-6 text-gray-600" />
+            <Clock className="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Historial de importaciones</h3>
-              <p className="text-sm text-gray-600">Lotes procesados recientemente</p>
+              <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Historial de importaciones</h3>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">Lotes procesados recientemente</p>
             </div>
           </div>
         </div>
@@ -772,52 +759,52 @@ export default function DocumentosImportar() {
           </div>
         ) : batches.length === 0 ? (
           <div className="text-center py-12">
-            <FileSpreadsheet className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg mb-2">No hay importaciones</p>
-            <p className="text-gray-400 text-sm">Sube tu primer archivo Excel para comenzar</p>
+            <FileSpreadsheet className="h-16 w-16 text-neutral-300 dark:text-neutral-600 mx-auto mb-4" />
+            <p className="text-neutral-500 dark:text-neutral-400 text-lg mb-2">No hay importaciones</p>
+            <p className="text-neutral-400 dark:text-neutral-500 text-sm">Sube tu primer archivo Excel para comenzar</p>
           </div>
         ) : (
           <div className="overflow-x-auto -mx-4 sm:mx-0">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
                 <tr>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
                     Archivo
                   </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
                     Estado
                   </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase hidden sm:table-cell">
                     Total
                   </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase hidden md:table-cell">
                     Reconocidos
                   </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase hidden md:table-cell">
                     Pendientes
                   </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase hidden lg:table-cell">
                     Fecha
                   </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
                     Acciones
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
                 {batches.map((batch) => (
-                  <tr key={batch.id} className="hover:bg-gray-50 transition">
+                  <tr key={batch.id} className="hover:bg-neutral-50 dark:bg-neutral-800 transition">
                     <td className="px-4 sm:px-6 py-4">
                       <div className="flex items-center gap-2 min-w-0">
                         <FileSpreadsheet className="h-5 w-5 text-green-600 flex-shrink-0" />
-                        <span className="text-sm font-medium text-gray-900 truncate">
+                        <span className="text-sm font-medium text-neutral-900 dark:text-white truncate">
                           {batch.file_name}
                         </span>
                       </div>
                     </td>
                     <td className="px-4 sm:px-6 py-4">{getStatusBadge(batch.status)}</td>
                     <td className="px-4 sm:px-6 py-4 hidden sm:table-cell">
-                      <span className="text-sm font-semibold text-gray-900">
+                      <span className="text-sm font-semibold text-neutral-900 dark:text-white">
                         {batch.records_total}
                       </span>
                     </td>
@@ -832,11 +819,11 @@ export default function DocumentosImportar() {
                           {batch.records_unmatched}
                         </span>
                       ) : (
-                        <span className="text-sm text-gray-400">0</span>
+                        <span className="text-sm text-neutral-400 dark:text-neutral-500">0</span>
                       )}
                     </td>
                     <td className="px-4 sm:px-6 py-4 hidden lg:table-cell">
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm text-neutral-600 dark:text-neutral-400">
                         {new Date(batch.imported_at).toLocaleDateString('es-MX', {
                           day: 'numeric',
                           month: 'short',

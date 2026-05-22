@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import { trackCourseStart } from '../lib/activityLogger';
-import { Search, Plus, Video, Filter, Play, Clock, Award, Upload, X, Settings, ArrowLeft, Trash2, CreditCard as Edit2, FileText } from 'lucide-react';
+import { Search, Plus, Video, Filter, Play, Clock, Award, Upload, X, Settings, Trash2, CreditCard as Edit2, FileText, PlayCircle } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import { VideoPlayer } from '../components/VideoPlayer';
 import { LessonDocuments } from '../components/segurosEducation/LessonDocuments';
 import { analyticsTracker } from '../lib/analyticsTracker';
@@ -36,7 +36,6 @@ interface Lesson {
 
 export function SegurosEducationOnDemand() {
   const { usuario } = useAuth();
-  const navigate = useNavigate();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [filteredLessons, setFilteredLessons] = useState<Lesson[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -885,52 +884,40 @@ export function SegurosEducationOnDemand() {
   return (
     <Layout>
       <div className="space-y-5">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/seguros-education')}
-              className="p-2.5 text-ios-gray-600 hover:text-ios-gray-900 hover:bg-ios-gray-100 rounded-ios-lg transition-colors active:scale-95"
-              title="Volver a Seguros Education"
-            >
-              <ArrowLeft className="w-5 h-5 stroke-[1.5]" />
-            </button>
-            <div>
-              <h1 className="text-[28px] font-bold text-ios-gray-900 flex items-center gap-2 tracking-tight">
-                <Video className="w-7 h-7 text-accent stroke-[1.5]" />
-                On Demand
-              </h1>
-              <p className="text-ios-gray-600 mt-1 text-[15px]">Biblioteca de lecciones grabadas</p>
-            </div>
-          </div>
-          {isAdmin && (
+        <PageHeader
+          title="On Demand"
+          description="Biblioteca de lecciones grabadas"
+          icon={PlayCircle}
+          backTo="/seguros-education"
+          backLabel="Volver a Seguros Education"
+          actions={isAdmin ? (
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => setShowCategoryModal(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-ios-gray-100 text-ios-gray-900 rounded-ios-lg hover:bg-ios-gray-200 transition-colors text-[15px] font-medium active:scale-95"
+                className="flex items-center gap-2 px-4 py-2.5 bg-neutral-100 dark:bg-white/8 text-neutral-900 dark:text-white rounded-lg hover:bg-neutral-200 dark:hover:bg-white/12 transition-colors text-sm font-medium"
               >
-                <Settings className="w-4 h-4 stroke-[2]" />
+                <Settings className="w-4 h-4" />
                 Categorías
               </button>
               <button
                 onClick={recalculateAllDurations}
                 disabled={recalculatingDurations || lessons.filter(l => !l.duracion || l.duracion === 0).length === 0}
-                className="flex items-center gap-2 px-4 py-2.5 bg-ios-gray-100 text-ios-gray-900 rounded-ios-lg hover:bg-ios-gray-200 transition-colors text-[15px] font-medium active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2.5 bg-neutral-100 dark:bg-white/8 text-neutral-900 dark:text-white rounded-lg hover:bg-neutral-200 dark:hover:bg-white/12 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Recalcular duraciones de videos sin duración"
               >
-                <Clock className="w-4 h-4 stroke-[2]" />
+                <Clock className="w-4 h-4" />
                 {recalculatingDurations ? `${recalcProgress.current}/${recalcProgress.total}` : 'Recalc. Duraciones'}
               </button>
               <button
                 onClick={() => setShowUploadModal(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-accent text-white rounded-ios-lg hover:bg-accent-dark transition-colors text-[15px] font-medium active:scale-95 shadow-ios"
+                className="flex items-center gap-2 px-4 py-2.5 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium"
               >
-                <Plus className="w-4 h-4 stroke-[2]" />
+                <Plus className="w-4 h-4" />
                 Subir Lección
               </button>
             </div>
-          )}
-        </div>
+          ) : undefined}
+        />
 
         {/* Filters */}
         <div className="bg-white rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 p-5">

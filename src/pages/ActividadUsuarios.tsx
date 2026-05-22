@@ -7,6 +7,7 @@ import {
   UserCheck, UserX, TrendingUp, Megaphone, BookOpen, BarChart3,
   Eye, X, Shield, Monitor
 } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import { cn } from '@/lib/utils';
 
 interface ActivityLog {
@@ -322,21 +323,21 @@ export function ActividadUsuarios() {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Actividad de Usuarios</h1>
-          <p className="text-sm text-neutral-500 dark:text-white/40 mt-0.5">Auditoria y trazabilidad de acciones</p>
-        </div>
-        <button
-          onClick={exportCSV}
-          disabled={logs.length === 0}
-          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-neutral-100 dark:bg-white/8 hover:bg-neutral-200 dark:hover:bg-white/12 text-sm font-medium text-neutral-700 dark:text-white/70 transition-colors disabled:opacity-40"
-        >
-          <Download className="w-4 h-4" />
-          Exportar
-        </button>
-      </div>
+      <PageHeader
+        title="Actividad de Usuarios"
+        description="Auditoria y trazabilidad de acciones"
+        icon={Activity}
+        actions={
+          <button
+            onClick={exportCSV}
+            disabled={logs.length === 0}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-neutral-100 dark:bg-white/8 hover:bg-neutral-200 dark:hover:bg-white/12 text-sm font-medium text-neutral-700 dark:text-white/70 transition-colors disabled:opacity-40"
+          >
+            <Download className="w-4 h-4" />
+            Exportar
+          </button>
+        }
+      />
 
       {/* KPIs */}
       {kpis && (

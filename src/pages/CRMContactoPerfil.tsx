@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit, Phone, Mail, Calendar, Tag, Plus, Trash2, CheckCircle, Download, ExternalLink } from 'lucide-react';
+import { CreditCard as Edit, Phone, Mail, Calendar, Tag, Plus, Trash2, CheckCircle, Download, ExternalLink, User } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import {
   obtenerContactoPorId,
   obtenerCotizacionesPorContacto,
@@ -135,7 +136,7 @@ export default function CRMContactoPerfil() {
       Cliente: 'bg-green-100 text-green-800',
       Perdido: 'bg-red-100 text-red-800',
     };
-    return colors[estatus] || 'bg-gray-100 text-gray-800';
+    return colors[estatus] || 'bg-neutral-100 text-neutral-800';
   };
 
   if (loading) {
@@ -162,48 +163,49 @@ export default function CRMContactoPerfil() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
-      <div className="mb-6">
-        <button
-          onClick={() => navigate('/mi-crm/contactos')}
-          className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition"
-        >
-          <ArrowLeft className="h-5 w-5 mr-2" />
-          Volver a Contactos
-        </button>
-      </div>
+      <PageHeader
+        title={contacto.nombre_completo}
+        description={contacto.tipo_contacto}
+        icon={User}
+        backTo="/mi-crm/contactos"
+        backLabel="Volver a Contactos"
+        badge={
+          <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getEstatusColor(contacto.estatus)}`}>
+            {contacto.estatus}
+          </span>
+        }
+        actions={
+          <button
+            onClick={() => setShowEditModal(true)}
+            className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover flex items-center gap-2"
+          >
+            <Edit className="h-4 w-4" />
+            Editar
+          </button>
+        }
+      />
 
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
+      <div className="bg-white dark:bg-neutral-800 rounded-lg shadow p-6 mb-6 mt-6">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div className="flex-1">
-            <div className="flex items-center gap-3 mb-3 flex-wrap">
-              <h1 className="text-2xl font-bold text-accent">{contacto.nombre_completo}</h1>
-              <span
-                className={`px-3 py-1 rounded-full text-sm font-semibold ${getEstatusColor(contacto.estatus)}`}
-              >
-                {contacto.estatus}
-              </span>
-              <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
-                {contacto.tipo_contacto}
-              </span>
-            </div>
             <div className="space-y-2">
-              <div className="flex items-center text-gray-600">
+              <div className="flex items-center text-neutral-600 dark:text-neutral-400">
                 <Phone className="h-4 w-4 mr-2" />
                 {contacto.celular}
               </div>
               {contacto.email && (
-                <div className="flex items-center text-gray-600">
+                <div className="flex items-center text-neutral-600 dark:text-neutral-400">
                   <Mail className="h-4 w-4 mr-2" />
                   {contacto.email}
                 </div>
               )}
-              <div className="flex items-center text-gray-600">
+              <div className="flex items-center text-neutral-600 dark:text-neutral-400">
                 <Calendar className="h-4 w-4 mr-2" />
                 Creado: {new Date(contacto.fecha_creacion).toLocaleDateString('es-MX')}
               </div>
               {contacto.fecha_nacimiento && contacto.tipo_contacto === 'Persona' && (
                 <div className="flex items-center gap-2">
-                  <div className="flex items-center text-gray-600">
+                  <div className="flex items-center text-neutral-600 dark:text-neutral-400">
                     <Calendar className="h-4 w-4 mr-2" />
                     Cumpleaños: {formatearFechaNacimiento(contacto.fecha_nacimiento)}
                     {calcularEdad(contacto.fecha_nacimiento) && (
@@ -220,13 +222,13 @@ export default function CRMContactoPerfil() {
                 </div>
               )}
               {contacto.fuente_origen && (
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-neutral-600 dark:text-neutral-400">
                   Fuente: <span className="font-medium">{contacto.fuente_origen}</span>
                 </div>
               )}
               {contacto.etiquetas_segmentacion.length > 0 && (
                 <div className="flex items-center gap-2 flex-wrap mt-2">
-                  <Tag className="h-4 w-4 text-gray-600" />
+                  <Tag className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
                   {contacto.etiquetas_segmentacion.map((tag) => (
                     <span
                       key={tag}
@@ -239,13 +241,6 @@ export default function CRMContactoPerfil() {
               )}
             </div>
           </div>
-          <button
-            onClick={() => setShowEditModal(true)}
-            className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover flex items-center gap-2"
-          >
-            <Edit className="h-4 w-4" />
-            Editar
-          </button>
         </div>
       </div>
 
@@ -259,7 +254,7 @@ export default function CRMContactoPerfil() {
                 className={`px-6 py-3 font-medium text-sm whitespace-nowrap ${
                   tab === t
                     ? 'text-accent border-b-2 border-accent'
-                    : 'text-gray-600 hover:text-gray-900'
+                    : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:text-white'
                 }`}
               >
                 {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -272,7 +267,7 @@ export default function CRMContactoPerfil() {
           {tab === 'historial' && (
             <div className="space-y-4">
               {timeline.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No hay actividades registradas</p>
+                <p className="text-neutral-500 dark:text-white/50 text-center py-8">No hay actividades registradas</p>
               ) : (
                 timeline.map((item) => (
                   <div key={item.id} className="flex gap-4 pb-4 border-b last:border-0">
@@ -280,9 +275,9 @@ export default function CRMContactoPerfil() {
                       <span className="text-lg">{item.icono === 'FileText' ? '📄' : item.icono === 'Shield' ? '🛡️' : item.icono === 'CheckCircle' ? '✅' : '📝'}</span>
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-medium text-gray-900">{item.titulo}</h3>
-                      <p className="text-sm text-gray-600 mt-1">{item.descripcion}</p>
-                      <p className="text-xs text-gray-500 mt-2">
+                      <h3 className="font-medium text-neutral-900 dark:text-white">{item.titulo}</h3>
+                      <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">{item.descripcion}</p>
+                      <p className="text-xs text-neutral-500 dark:text-white/50 mt-2">
                         {new Date(item.fecha).toLocaleDateString('es-MX')}
                       </p>
                     </div>
@@ -295,7 +290,7 @@ export default function CRMContactoPerfil() {
           {tab === 'cotizaciones' && (
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Cotizaciones</h3>
+                <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Cotizaciones</h3>
                 <button
                   onClick={handleAgregarCotizacion}
                   className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover flex items-center gap-2"
@@ -306,21 +301,21 @@ export default function CRMContactoPerfil() {
               </div>
               <div className="space-y-4">
                 {cotizaciones.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">No hay cotizaciones registradas</p>
+                  <p className="text-neutral-500 dark:text-white/50 text-center py-8">No hay cotizaciones registradas</p>
                 ) : (
                   cotizaciones.map((cot) => (
-                    <div key={cot.id} className="p-4 bg-gray-50 rounded-lg">
+                    <div key={cot.id} className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <h3 className="font-medium text-gray-900">{cot.nombre_documento}</h3>
-                          <p className="text-sm text-gray-600 mt-1">
+                          <h3 className="font-medium text-neutral-900 dark:text-white">{cot.nombre_documento}</h3>
+                          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
                             Estatus: {cot.estatus_cotizacion}
                           </p>
-                          <p className="text-sm text-gray-500 mt-1">
+                          <p className="text-sm text-neutral-500 dark:text-white/50 mt-1">
                             {new Date(cot.fecha_presentacion).toLocaleDateString('es-MX')}
                           </p>
                           {cot.observaciones && (
-                            <p className="text-sm text-gray-600 mt-2">{cot.observaciones}</p>
+                            <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-2">{cot.observaciones}</p>
                           )}
                           {cot.archivo_url && (
                             <div className="flex items-center gap-3 mt-3">
@@ -343,7 +338,7 @@ export default function CRMContactoPerfil() {
                         </div>
                         <div className="flex items-center gap-2">
                           {cot.monto_cotizado && (
-                            <p className="text-lg font-bold text-gray-900 mr-4">
+                            <p className="text-lg font-bold text-neutral-900 dark:text-white mr-4">
                               ${cot.monto_cotizado.toLocaleString('es-MX')}
                             </p>
                           )}
@@ -365,7 +360,7 @@ export default function CRMContactoPerfil() {
           {tab === 'polizas' && (
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Pólizas</h3>
+                <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Pólizas</h3>
                 <button
                   onClick={handleAgregarPoliza}
                   className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
@@ -376,22 +371,22 @@ export default function CRMContactoPerfil() {
               </div>
               <div className="space-y-4">
                 {polizas.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">No hay pólizas registradas</p>
+                  <p className="text-neutral-500 dark:text-white/50 text-center py-8">No hay pólizas registradas</p>
                 ) : (
                   polizas.map((pol) => (
-                    <div key={pol.id} className="p-4 bg-gray-50 rounded-lg">
+                    <div key={pol.id} className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <h3 className="font-medium text-gray-900">Póliza #{pol.numero_poliza}</h3>
-                          <p className="text-sm text-gray-600 mt-1">
+                          <h3 className="font-medium text-neutral-900 dark:text-white">Póliza #{pol.numero_poliza}</h3>
+                          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
                             {pol.tipo_ramo} - {pol.compania_aseguradora}
                           </p>
-                          <p className="text-sm text-gray-500 mt-1">
+                          <p className="text-sm text-neutral-500 dark:text-white/50 mt-1">
                             Vigencia: {new Date(pol.fecha_emision).toLocaleDateString('es-MX')} -{' '}
                             {new Date(pol.fecha_vencimiento).toLocaleDateString('es-MX')}
                           </p>
                           {pol.observaciones && (
-                            <p className="text-sm text-gray-600 mt-2">{pol.observaciones}</p>
+                            <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-2">{pol.observaciones}</p>
                           )}
                           {pol.archivo_url && (
                             <div className="flex items-center gap-3 mt-3">
@@ -434,7 +429,7 @@ export default function CRMContactoPerfil() {
           {tab === 'tareas' && (
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Tareas</h3>
+                <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Tareas</h3>
                 <button
                   onClick={handleAgregarTarea}
                   className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center gap-2"
@@ -445,27 +440,27 @@ export default function CRMContactoPerfil() {
               </div>
               <div className="space-y-4">
                 {tareas.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">No hay tareas registradas</p>
+                  <p className="text-neutral-500 dark:text-white/50 text-center py-8">No hay tareas registradas</p>
                 ) : (
                   tareas.map((tarea) => (
                     <div
                       key={tarea.id}
-                      className="p-4 bg-gray-50 rounded-lg flex items-start gap-3"
+                      className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg flex items-start gap-3"
                     >
                       <button
                         onClick={() => handleToggleTarea(tarea)}
-                        className={`mt-1 flex-shrink-0 ${tarea.completada ? 'text-green-600' : 'text-gray-400'}`}
+                        className={`mt-1 flex-shrink-0 ${tarea.completada ? 'text-green-600' : 'text-neutral-400 dark:text-neutral-500'}`}
                       >
                         <CheckCircle className="h-6 w-6" />
                       </button>
                       <div className="flex-1">
                         <h3
-                          className={`font-medium ${tarea.completada ? 'line-through text-gray-500' : 'text-gray-900'}`}
+                          className={`font-medium ${tarea.completada ? 'line-through text-neutral-500 dark:text-white/50' : 'text-neutral-900 dark:text-white'}`}
                         >
                           {tarea.tipo_actividad}
                         </h3>
-                        <p className="text-sm text-gray-600 mt-1">{tarea.descripcion}</p>
-                        <p className="text-sm text-gray-500 mt-1">
+                        <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">{tarea.descripcion}</p>
+                        <p className="text-sm text-neutral-500 dark:text-white/50 mt-1">
                           Vencimiento: {new Date(tarea.fecha_vencimiento).toLocaleDateString('es-MX')}{' '}
                           {new Date(tarea.fecha_vencimiento).toLocaleTimeString('es-MX', {
                             hour: '2-digit',

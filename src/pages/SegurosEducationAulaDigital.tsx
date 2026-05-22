@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Video } from 'lucide-react';
+import { GraduationCap, Video } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import {
@@ -18,7 +18,6 @@ import { type PermisosSeleccionados } from '../components/eventos/SelectorPermis
 
 export function SegurosEducationAulaDigital() {
   const { usuario } = useAuth();
-  const navigate = useNavigate();
 
   // Estados para eventos
   const [eventos, setEventos] = useState<AulaEvento[]>([]);
@@ -160,38 +159,26 @@ export function SegurosEducationAulaDigital() {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        {/* Botón de regreso */}
-        <button
-          onClick={() => navigate('/seguros-education')}
-          className="flex items-center space-x-2 text-neutral-600 hover:text-neutral-900 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Volver a Seguros Education</span>
-        </button>
-
-        <div className="bg-gradient-to-r from-accent to-accent-dark rounded-2xl shadow-lg p-8 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold mb-2 text-white">Aula Digital - Eventos</h1>
-              <p className="text-white/90">
-                Capacitaciones y eventos en vivo
-              </p>
-            </div>
-            {isAdmin && (
-              <button
-                onClick={() => {
-                  setEventoSeleccionado(null);
-                  setPermisosSeleccionados(undefined);
-                  setShowEventoModal(true);
-                }}
-                className="flex items-center space-x-2 bg-white text-primary-700 px-6 py-3 rounded-xl font-semibold hover:bg-primary-50 transition"
-              >
-                <Video className="w-5 h-5" />
-                <span>Nuevo Evento</span>
-              </button>
-            )}
-          </div>
-        </div>
+        <PageHeader
+          title="Aula Digital - Eventos"
+          description="Capacitaciones y eventos en vivo"
+          icon={GraduationCap}
+          backTo="/seguros-education"
+          backLabel="Volver a Seguros Education"
+          actions={isAdmin ? (
+            <button
+              onClick={() => {
+                setEventoSeleccionado(null);
+                setPermisosSeleccionados(undefined);
+                setShowEventoModal(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium"
+            >
+              <Video className="w-4 h-4" />
+              <span>Nuevo Evento</span>
+            </button>
+          ) : undefined}
+        />
 
         {/* Contenido de Eventos */}
         <div className="space-y-6">

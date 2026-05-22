@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Trash2, Plus, Minus, ArrowLeft, Package } from 'lucide-react';
+import { ShoppingCart, Trash2, Plus, Minus, Package } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import {
   obtenerCarrito,
   actualizarCantidadCarrito,
@@ -97,26 +98,22 @@ export default function StoreCarrito() {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-        <button
-          onClick={() => navigate('/store')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 sm:mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Volver al catálogo</span>
-        </button>
-
-        <div className="flex items-center gap-3 mb-6 sm:mb-8">
-          <ShoppingCart className="w-6 h-6 sm:w-8 sm:h-8 text-accent" />
-          <h1 className="text-2xl sm:text-3xl font-bold text-accent">Mi Carrito</h1>
-        </div>
+        <PageHeader
+          title="Mi Carrito"
+          description="Revisa y confirma los productos de tu pedido"
+          icon={ShoppingCart}
+          backTo="/store"
+          backLabel="Volver al catálogo"
+          className="mb-6 sm:mb-8"
+        />
 
         {carrito.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-            <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">
+          <div className="text-center py-12 bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10">
+            <Package className="w-16 h-16 text-neutral-400 dark:text-white/40 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-neutral-700 dark:text-white/70 mb-2">
               Tu carrito está vacío
             </h3>
-            <p className="text-gray-500 mb-6">Agrega productos para comenzar tu pedido</p>
+            <p className="text-neutral-500 dark:text-white/50 mb-6">Agrega productos para comenzar tu pedido</p>
             <button
               onClick={() => navigate('/store')}
               className="bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium"
@@ -128,7 +125,7 @@ export default function StoreCarrito() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-3 sm:space-y-4">
               {carrito.map(item => (
-                <div key={item.id} className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4">
+                <div key={item.id} className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-3 sm:p-4">
                   <div className="flex gap-3 sm:gap-4">
                     <img
                       src={item.producto!.imagen_url}
@@ -137,10 +134,10 @@ export default function StoreCarrito() {
                     />
 
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1 truncate">
+                      <h3 className="text-base sm:text-lg font-semibold text-neutral-900 dark:text-white mb-1 truncate">
                         {item.producto!.titulo}
                       </h3>
-                      <p className="text-sm text-gray-600 mb-2 sm:mb-3">
+                      <p className="text-sm text-neutral-600 dark:text-white/60 mb-2 sm:mb-3">
                         ${item.producto!.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                       </p>
 
@@ -149,18 +146,18 @@ export default function StoreCarrito() {
                           <button
                             onClick={() => handleActualizarCantidad(item.id, item.cantidad - 1)}
                             disabled={item.cantidad <= 1}
-                            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 transition-colors disabled:opacity-50"
+                            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center border border-neutral-300 dark:border-white/20 rounded hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50"
                           >
                             <Minus className="w-3 h-3 sm:w-4 sm:h-4" />
                           </button>
 
-                          <span className="text-base sm:text-lg font-medium text-gray-900 w-7 sm:w-8 text-center">
+                          <span className="text-base sm:text-lg font-medium text-neutral-900 dark:text-white w-7 sm:w-8 text-center">
                             {item.cantidad}
                           </span>
 
                           <button
                             onClick={() => handleActualizarCantidad(item.id, item.cantidad + 1)}
-                            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+                            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center border border-neutral-300 dark:border-white/20 rounded hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors"
                           >
                             <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
                           </button>
@@ -175,14 +172,14 @@ export default function StoreCarrito() {
                       </div>
 
                       <div className="mt-2 sm:hidden">
-                        <p className="text-base font-bold text-gray-900">
+                        <p className="text-base font-bold text-neutral-900 dark:text-white">
                           ${(item.producto!.precio * item.cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                         </p>
                       </div>
                     </div>
 
                     <div className="text-right hidden sm:block">
-                      <p className="text-lg font-bold text-gray-900">
+                      <p className="text-lg font-bold text-neutral-900 dark:text-white">
                         ${(item.producto!.precio * item.cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                       </p>
                     </div>
@@ -192,46 +189,46 @@ export default function StoreCarrito() {
             </div>
 
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 lg:sticky lg:top-4">
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6">Resumen del Pedido</h2>
+              <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-4 sm:p-6 lg:sticky lg:top-4">
+                <h2 className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-white mb-4 sm:mb-6">Resumen del Pedido</h2>
 
                 <div className="space-y-4 mb-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                       Notas (opcional)
                     </label>
                     <textarea
                       value={notasUsuario}
                       onChange={(e) => setNotasUsuario(e.target.value)}
                       placeholder="Instrucciones especiales..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500"
                       rows={3}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                       Dirección de entrega (opcional)
                     </label>
                     <textarea
                       value={direccionEntrega}
                       onChange={(e) => setDireccionEntrega(e.target.value)}
                       placeholder="Ingresa tu dirección..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500"
                       rows={3}
                     />
                   </div>
                 </div>
 
-                <div className="border-t border-gray-200 pt-4 mb-6">
+                <div className="border-t border-neutral-200 dark:border-white/10 pt-4 mb-6">
                   <div className="flex justify-between mb-2">
-                    <span className="text-gray-600">Subtotal:</span>
-                    <span className="font-medium text-gray-900">
+                    <span className="text-neutral-600 dark:text-white/60">Subtotal:</span>
+                    <span className="font-medium text-neutral-900 dark:text-white">
                       ${calcularTotal().toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="flex justify-between text-xl font-bold">
-                    <span className="text-gray-900">Total:</span>
+                    <span className="text-neutral-900 dark:text-white">Total:</span>
                     <span className="text-accent">
                       ${calcularTotal().toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                     </span>
@@ -246,7 +243,7 @@ export default function StoreCarrito() {
                   {procesando ? 'Procesando...' : 'Realizar Pedido'}
                 </button>
 
-                <p className="text-xs text-gray-500 mt-4 text-center">
+                <p className="text-xs text-neutral-500 dark:text-white/50 mt-4 text-center">
                   Los pedidos son procesados internamente
                 </p>
               </div>

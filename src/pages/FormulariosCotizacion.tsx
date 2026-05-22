@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  FileText, Search, Clock, ArrowRight, Loader2, ArrowLeft,
+  FileText, Search, Clock, ArrowRight, Loader2,
   Home, Building2, Factory, Shield, Truck, Wrench, Heart,
   GraduationCap, Car, Store, Flame, Fuel, Briefcase, BadgeCheck,
   Baby, Leaf, Bus, Plane, Ship, HardHat, Cog, Settings, Thermometer, Monitor,
@@ -9,6 +9,7 @@ import {
   Banknote, Eye, Smile, CalendarDays, PawPrint, KeyRound, Building, Frame,
   Cpu, DollarSign, Scale, AlertTriangle, Share2, Copy, Check, X,
   ExternalLink, RefreshCw, ToggleLeft, MessageCircle, Link2, List,
+  ClipboardList,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchQuoteFormTemplates } from '../lib/quoteFormUtils';
@@ -19,6 +20,7 @@ import {
   deactivateSharedLink, regenerateSharedLink,
 } from '../lib/sharedQuoteFormUtils';
 import type { SharedQuoteFormLink } from '../lib/sharedQuoteFormUtils';
+import { PageHeader } from '@/components/ui/page-header';
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Home, Building2, Factory, Shield, Truck, Wrench, Heart,
@@ -163,29 +165,22 @@ export default function FormulariosCotizacion() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate('/tramites')}
-          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          title="Volver a Tramites"
-        >
-          <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Formularios de Cotizacion</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Selecciona un tipo de seguro para iniciar tu solicitud de cotizacion</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Formularios de Cotizacion"
+        description="Selecciona un tipo de seguro para iniciar tu solicitud de cotizacion"
+        icon={ClipboardList}
+        backTo="/tramites"
+        backLabel="Volver a Tramites"
+      />
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 w-fit">
+      <div className="flex gap-1 bg-neutral-100 dark:bg-white/10 rounded-xl p-1 w-fit">
         <button
           onClick={() => setActiveTab('catalogo')}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
             activeTab === 'catalogo'
-              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              ? 'bg-white dark:bg-white/10 text-neutral-900 dark:text-white shadow-sm'
+              : 'text-neutral-500 dark:text-white/50 hover:text-neutral-700 dark:hover:text-white/70'
           }`}
         >
           <FileText className="w-4 h-4" /> Catalogo
@@ -194,8 +189,8 @@ export default function FormulariosCotizacion() {
           onClick={() => setActiveTab('compartidos')}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
             activeTab === 'compartidos'
-              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              ? 'bg-white dark:bg-white/10 text-neutral-900 dark:text-white shadow-sm'
+              : 'text-neutral-500 dark:text-white/50 hover:text-neutral-700 dark:hover:text-white/70'
           }`}
         >
           <List className="w-4 h-4" /> Formularios compartidos
@@ -208,25 +203,25 @@ export default function FormulariosCotizacion() {
           {/* Search and Filters */}
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
               <input
                 type="text"
                 placeholder="Buscar tipo de seguro..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             <div className="relative">
               <select
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
-                className="appearance-none pl-4 pr-10 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500"
+                className="appearance-none pl-4 pr-10 py-2.5 bg-white dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Todas las categorias</option>
                 {CATEGORY_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
             </div>
           </div>
 
@@ -242,7 +237,7 @@ export default function FormulariosCotizacion() {
                   <div key={category}>
                     <div className="flex items-center gap-2 mb-4">
                       <span className={`text-sm font-semibold ${catConfig.color}`}>{category}</span>
-                      <span className="text-xs text-gray-400">({items.length})</span>
+                      <span className="text-xs text-neutral-400">({items.length})</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {items.map(template => {
@@ -250,28 +245,28 @@ export default function FormulariosCotizacion() {
                         return (
                           <div
                             key={template.form_type}
-                            className="group bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all"
+                            className="group bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-5 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all"
                           >
                             <div className="flex items-start gap-3">
                               <div className={`p-2.5 rounded-xl ${catConfig.bg} ${catConfig.border} border`}>
                                 <Icon className={`w-5 h-5 ${catConfig.color}`} />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                                <h3 className="text-sm font-semibold text-neutral-900 dark:text-white truncate">
                                   {template.title}
                                 </h3>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{template.description}</p>
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2">{template.description}</p>
                               </div>
                             </div>
-                            <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
-                              <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                            <div className="flex items-center justify-between mt-4 pt-3 border-t border-neutral-100 dark:border-white/10">
+                              <div className="flex items-center gap-1.5 text-xs text-neutral-400">
                                 <Clock className="w-3.5 h-3.5" />
                                 <span>~{template.estimated_minutes} min</span>
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <button
                                   onClick={() => openShare(template)}
-                                  className="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                  className="flex items-center gap-1 text-xs text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
                                   title="Compartir formulario"
                                 >
                                   <Share2 className="w-3.5 h-3.5" />
@@ -293,7 +288,7 @@ export default function FormulariosCotizacion() {
                 );
               })}
               {groupedTemplates.length === 0 && (
-                <div className="text-center py-16 text-gray-500 dark:text-gray-400">
+                <div className="text-center py-16 text-neutral-500 dark:text-neutral-400">
                   <FileText className="w-12 h-12 mx-auto mb-3 opacity-40" />
                   <p className="text-sm">No se encontraron formularios con los filtros aplicados.</p>
                 </div>
@@ -371,25 +366,25 @@ function ShareModal({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div
-        className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-md"
+        className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl w-full max-w-md"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-white/10">
           <div className="flex items-center gap-2">
             <Share2 className="w-5 h-5 text-blue-600" />
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Compartir formulario</h2>
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-white">Compartir formulario</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-            <X className="w-4 h-4 text-gray-500" />
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors">
+            <X className="w-4 h-4 text-neutral-500" />
           </button>
         </div>
 
         <div className="p-6 space-y-5">
           {/* Form name */}
-          <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+          <div className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-white/5 rounded-xl">
             <FileText className="w-4 h-4 text-blue-600 shrink-0" />
-            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{template.title}</span>
+            <span className="text-sm font-medium text-neutral-800 dark:text-white/80">{template.title}</span>
           </div>
 
           {loading && !link ? (
@@ -398,8 +393,8 @@ function ShareModal({
             </div>
           ) : !link ? (
             <div className="text-center py-4">
-              <Link2 className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-sm text-gray-500 mb-4">No existe un link activo para este formulario.</p>
+              <Link2 className="w-10 h-10 text-neutral-300 mx-auto mb-3" />
+              <p className="text-sm text-neutral-500 mb-4">No existe un link activo para este formulario.</p>
               <button
                 onClick={onGenerate}
                 disabled={loading}
@@ -414,19 +409,19 @@ function ShareModal({
               {/* Status badge */}
               <div className="flex items-center justify-between">
                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                  isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'
+                  isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-neutral-100 text-neutral-600'
                 }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                  <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-neutral-400'}`} />
                   {isActive ? 'Activo' : 'Inactivo'}
                 </span>
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-neutral-400">
                   {link.submissions_count} {link.submissions_count === 1 ? 'respuesta' : 'respuestas'}
                 </span>
               </div>
 
               {/* URL display */}
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3">
-                <p className="text-xs text-gray-500 mb-1">Link publico</p>
+              <div className="bg-neutral-50 dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-3">
+                <p className="text-xs text-neutral-500 mb-1">Link publico</p>
                 <p className="text-sm font-mono text-blue-700 dark:text-blue-400 break-all leading-snug">{link.public_url}</p>
               </div>
 
@@ -435,7 +430,7 @@ function ShareModal({
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => onCopy(link.public_url)}
-                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium text-neutral-700 dark:text-white/80 bg-white dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-xl hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors"
                   >
                     {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                     {copied ? 'Copiado' : 'Copiar link'}
@@ -455,7 +450,7 @@ function ShareModal({
                   <button
                     onClick={onDeactivate}
                     disabled={loading}
-                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium text-red-600 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-60"
+                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium text-red-600 bg-white dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-60"
                   >
                     <ToggleLeft className="w-4 h-4" /> Desactivar
                   </button>
@@ -466,14 +461,14 @@ function ShareModal({
               <button
                 onClick={onRegenerate}
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors disabled:opacity-60"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-xs text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors disabled:opacity-60"
               >
                 {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                 Regenerar link (invalida el link anterior)
               </button>
 
               {link.last_submission_at && (
-                <p className="text-xs text-gray-400 text-center">
+                <p className="text-xs text-neutral-400 text-center">
                   Ultima respuesta: {new Date(link.last_submission_at).toLocaleDateString('es-MX')}
                 </p>
               )}
@@ -513,7 +508,7 @@ function SharedLinksPanel({
 
   if (links.length === 0) {
     return (
-      <div className="text-center py-16 text-gray-500 dark:text-gray-400">
+      <div className="text-center py-16 text-neutral-500 dark:text-neutral-400">
         <Share2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
         <p className="text-sm font-medium mb-1">Sin formularios compartidos</p>
         <p className="text-xs">Ve al catalogo y haz clic en "Compartir" para generar tu primer link.</p>
@@ -531,44 +526,44 @@ function SharedLinksPanel({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-3">
           <p className="text-lg font-bold text-emerald-700">{activeLinks.length}</p>
-          <p className="text-xs text-gray-500">Links activos</p>
+          <p className="text-xs text-neutral-500">Links activos</p>
         </div>
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3">
           <p className="text-lg font-bold text-blue-700">{links.length}</p>
-          <p className="text-xs text-gray-500">Links totales</p>
+          <p className="text-xs text-neutral-500">Links totales</p>
         </div>
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3">
-          <p className="text-lg font-bold text-gray-700 dark:text-gray-300">{links.reduce((s, l) => s + l.submissions_count, 0)}</p>
-          <p className="text-xs text-gray-500">Respuestas totales</p>
+        <div className="bg-neutral-50 dark:bg-white/5 rounded-xl p-3">
+          <p className="text-lg font-bold text-neutral-700 dark:text-white/70">{links.reduce((s, l) => s + l.submissions_count, 0)}</p>
+          <p className="text-xs text-neutral-500">Respuestas totales</p>
         </div>
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3">
-          <p className="text-sm font-bold text-gray-700 dark:text-gray-300">
+        <div className="bg-neutral-50 dark:bg-white/5 rounded-xl p-3">
+          <p className="text-sm font-bold text-neutral-700 dark:text-white/70">
             {lastSubmission ? new Date(lastSubmission.last_submission_at!).toLocaleDateString('es-MX') : '—'}
           </p>
-          <p className="text-xs text-gray-500">Ultimo envio</p>
+          <p className="text-xs text-neutral-500">Ultimo envio</p>
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Formulario</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Slug</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Resp.</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Creado</th>
+              <tr className="border-b border-neutral-100 dark:border-white/10 bg-neutral-50 dark:bg-neutral-900/50">
+                <th className="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wider">Formulario</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wider hidden md:table-cell">Slug</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wider">Estado</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wider hidden sm:table-cell">Resp.</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wider hidden lg:table-cell">Creado</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+            <tbody className="divide-y divide-neutral-100 dark:divide-white/10">
               {[...activeLinks, ...inactiveLinks].map(link => (
-                <tr key={link.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                <tr key={link.id} className="hover:bg-neutral-50 dark:hover:bg-white/5/30 transition-colors">
                   <td className="px-4 py-3">
-                    <p className="font-medium text-gray-900 dark:text-white text-sm">{link.form_title}</p>
-                    <p className="text-xs text-gray-400">{link.form_type}</p>
+                    <p className="font-medium text-neutral-900 dark:text-white text-sm">{link.form_title}</p>
+                    <p className="text-xs text-neutral-400">{link.form_type}</p>
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell">
                     <p className="text-xs font-mono text-blue-600 dark:text-blue-400 truncate max-w-[200px]">
@@ -578,21 +573,21 @@ function SharedLinksPanel({
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
                       link.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
-                      link.status === 'inactive' ? 'bg-gray-100 text-gray-600' :
+                      link.status === 'inactive' ? 'bg-neutral-100 text-neutral-600' :
                       'bg-red-50 text-red-600'
                     }`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${
                         link.status === 'active' ? 'bg-emerald-500' :
-                        link.status === 'inactive' ? 'bg-gray-400' : 'bg-red-400'
+                        link.status === 'inactive' ? 'bg-neutral-400' : 'bg-red-400'
                       }`} />
                       {link.status === 'active' ? 'Activo' : link.status === 'inactive' ? 'Inactivo' : 'Vencido'}
                     </span>
                   </td>
                   <td className="px-4 py-3 hidden sm:table-cell">
-                    <span className="text-gray-700 dark:text-gray-300 font-medium">{link.submissions_count}</span>
+                    <span className="text-neutral-700 dark:text-white/70 font-medium">{link.submissions_count}</span>
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell">
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-neutral-400">
                       {new Date(link.created_at).toLocaleDateString('es-MX')}
                     </span>
                   </td>
@@ -602,10 +597,10 @@ function SharedLinksPanel({
                         <>
                           <button
                             onClick={() => onCopy(link.public_url)}
-                            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors"
                             title="Copiar link"
                           >
-                            {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-gray-500" />}
+                            {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-neutral-500" />}
                           </button>
                           <button
                             onClick={() => onWhatsapp(link.public_url, link.form_title)}
@@ -625,10 +620,10 @@ function SharedLinksPanel({
                       )}
                       <button
                         onClick={() => onShare(link)}
-                        className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors"
                         title="Ver opciones"
                       >
-                        <Settings className="w-3.5 h-3.5 text-gray-500" />
+                        <Settings className="w-3.5 h-3.5 text-neutral-500" />
                       </button>
                     </div>
                   </td>

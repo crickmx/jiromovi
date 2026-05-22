@@ -22,6 +22,7 @@ import {
   CalendarClock,
   UserX,
   Zap,
+  LayoutGrid,
 } from 'lucide-react';
 import {
   obtenerKPIsDashboard,
@@ -37,6 +38,7 @@ import {
 import type { DashboardStats, FunnelData, CRMContacto } from '../lib/crmTypes';
 import TablerosSeccion from '../components/crm/TablerosSeccion';
 import { useAuth } from '../contexts/AuthContext';
+import { PageHeader } from '@/components/ui/page-header';
 
 interface CRMDashboardKPIs {
   leadsNuevos: number;
@@ -121,8 +123,8 @@ export default function MiCRM() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-blue-600 border-t-transparent mx-auto mb-3"></div>
-          <p className="text-sm text-gray-500">Cargando tu CRM...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-accent border-t-transparent mx-auto mb-3"></div>
+          <p className="text-sm text-neutral-500 dark:text-white/50">Cargando tu CRM...</p>
         </div>
       </div>
     );
@@ -131,84 +133,83 @@ export default function MiCRM() {
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Mi CRM</h1>
-          <p className="text-gray-500 mt-0.5 text-sm">
-            {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </p>
-        </div>
-        <button
-          onClick={() => cargarDatos(true)}
-          disabled={refreshing}
-          className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
-        >
-          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-          <span className="hidden sm:inline">Actualizar</span>
-        </button>
-      </div>
+      <PageHeader
+        title="Mi CRM"
+        description={new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
+        icon={LayoutGrid}
+        actions={
+          <button
+            onClick={() => cargarDatos(true)}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-neutral-600 dark:text-white/60 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 transition disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Actualizar</span>
+          </button>
+        }
+      />
 
       {/* Navigation Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6 mt-6">
         <Link
           to="/mi-crm/contactos"
-          className="group flex flex-col items-center p-3 bg-white border border-gray-200 rounded-xl hover:border-blue-300 hover:shadow-md transition-all"
+          className="group flex flex-col items-center p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:border-blue-300 hover:shadow-md transition-all"
         >
           <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-100 transition mb-2">
             <Users className="h-5 w-5" />
           </div>
-          <span className="text-xs font-medium text-gray-700 text-center">Contactos</span>
+          <span className="text-xs font-medium text-neutral-700 dark:text-white/70 text-center">Contactos</span>
         </Link>
 
         <Link
           to="/mi-crm/tareas"
-          className="group flex flex-col items-center p-3 bg-white border border-gray-200 rounded-xl hover:border-orange-300 hover:shadow-md transition-all"
+          className="group flex flex-col items-center p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:border-orange-300 hover:shadow-md transition-all"
         >
           <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-orange-50 text-orange-600 group-hover:bg-orange-100 transition mb-2">
             <CheckCircle className="h-5 w-5" />
           </div>
-          <span className="text-xs font-medium text-gray-700 text-center">Tareas</span>
+          <span className="text-xs font-medium text-neutral-700 dark:text-white/70 text-center">Tareas</span>
         </Link>
 
         <Link
           to="/mi-crm/contactos?view=kanban"
-          className="group flex flex-col items-center p-3 bg-white border border-gray-200 rounded-xl hover:border-teal-300 hover:shadow-md transition-all"
+          className="group flex flex-col items-center p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:border-teal-300 hover:shadow-md transition-all"
         >
           <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-teal-50 text-teal-600 group-hover:bg-teal-100 transition mb-2">
             <Kanban className="h-5 w-5" />
           </div>
-          <span className="text-xs font-medium text-gray-700 text-center">Embudo</span>
+          <span className="text-xs font-medium text-neutral-700 dark:text-white/70 text-center">Embudo</span>
         </Link>
 
         <Link
           to="/mi-crm/reportes"
-          className="group flex flex-col items-center p-3 bg-white border border-gray-200 rounded-xl hover:border-emerald-300 hover:shadow-md transition-all"
+          className="group flex flex-col items-center p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:border-emerald-300 hover:shadow-md transition-all"
         >
           <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100 transition mb-2">
             <BarChart3 className="h-5 w-5" />
           </div>
-          <span className="text-xs font-medium text-gray-700 text-center">Reportes</span>
+          <span className="text-xs font-medium text-neutral-700 dark:text-white/70 text-center">Reportes</span>
         </Link>
 
         <Link
           to="/mi-crm/configuracion"
-          className="group flex flex-col items-center p-3 bg-white border border-gray-200 rounded-xl hover:border-gray-400 hover:shadow-md transition-all"
+          className="group flex flex-col items-center p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:border-neutral-400 hover:shadow-md transition-all"
         >
-          <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 group-hover:bg-gray-200 transition mb-2">
+          <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-white/60 group-hover:bg-neutral-200 dark:group-hover:bg-neutral-700 transition mb-2">
             <Settings className="h-5 w-5" />
           </div>
-          <span className="text-xs font-medium text-gray-700 text-center">Config</span>
+          <span className="text-xs font-medium text-neutral-700 dark:text-white/70 text-center">Config</span>
         </Link>
 
         <Link
           to="/mi-crm/contactos"
           state={{ openNew: true }}
-          className="group flex flex-col items-center p-3 bg-blue-50 border border-blue-200 rounded-xl hover:border-blue-400 hover:shadow-md transition-all"
+          className="group flex flex-col items-center p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-xl hover:border-blue-400 hover:shadow-md transition-all"
         >
           <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-blue-100 text-blue-700 group-hover:bg-blue-200 transition mb-2">
             <UserPlus className="h-5 w-5" />
           </div>
-          <span className="text-xs font-medium text-blue-700 text-center">Nuevo Lead</span>
+          <span className="text-xs font-medium text-blue-700 dark:text-blue-400 text-center">Nuevo Lead</span>
         </Link>
       </div>
 
@@ -260,18 +261,18 @@ export default function MiCRM() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Que hacer hoy - 2/3 */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+            <div className="px-5 py-4 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Zap className="h-5 w-5 text-orange-500" />
-                <h2 className="font-semibold text-gray-900">Que hacer hoy</h2>
+                <h2 className="font-semibold text-neutral-900 dark:text-white">Que hacer hoy</h2>
               </div>
-              <Link to="/mi-crm/tareas" className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+              <Link to="/mi-crm/tareas" className="text-xs text-accent hover:text-accent/80 font-medium">
                 Ver todas
               </Link>
             </div>
 
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-neutral-50 dark:divide-neutral-800">
               {/* Tareas Vencidas */}
               {tareasVencidas.length > 0 && (
                 <div className="p-4">
@@ -280,7 +281,7 @@ export default function MiCRM() {
                       <AlertTriangle className="h-3 w-3 mr-1" />
                       Vencidas
                     </span>
-                    <span className="text-xs text-gray-400">{tareasVencidas.length} pendientes</span>
+                    <span className="text-xs text-neutral-400 dark:text-white/40">{tareasVencidas.length} pendientes</span>
                   </div>
                   <div className="space-y-2">
                     {tareasVencidas.map((tarea) => (
@@ -305,7 +306,7 @@ export default function MiCRM() {
                       <Clock className="h-3 w-3 mr-1" />
                       Hoy
                     </span>
-                    <span className="text-xs text-gray-400">{tareasHoy.length} programadas</span>
+                    <span className="text-xs text-neutral-400 dark:text-white/40">{tareasHoy.length} programadas</span>
                   </div>
                   <div className="space-y-2">
                     {tareasHoy.map((tarea) => (
@@ -330,7 +331,7 @@ export default function MiCRM() {
                       <UserX className="h-3 w-3 mr-1" />
                       Sin seguimiento
                     </span>
-                    <span className="text-xs text-gray-400">{leadsSinSeguimiento.length} leads</span>
+                    <span className="text-xs text-neutral-400 dark:text-white/40">{leadsSinSeguimiento.length} leads</span>
                   </div>
                   <div className="space-y-2">
                     {leadsSinSeguimiento.map((lead) => (
@@ -352,7 +353,7 @@ export default function MiCRM() {
                       <UserPlus className="h-3 w-3 mr-1" />
                       Nuevos
                     </span>
-                    <span className="text-xs text-gray-400">{leadsNuevos.length} leads recientes</span>
+                    <span className="text-xs text-neutral-400 dark:text-white/40">{leadsNuevos.length} leads recientes</span>
                   </div>
                   <div className="space-y-2">
                     {leadsNuevos.map((lead) => (
@@ -374,8 +375,8 @@ export default function MiCRM() {
                 leadsNuevos.length === 0 && (
                 <div className="py-12 text-center">
                   <CheckCircle2 className="h-10 w-10 text-green-400 mx-auto mb-3" />
-                  <p className="text-sm font-medium text-gray-700">Todo al dia</p>
-                  <p className="text-xs text-gray-400 mt-1">No tienes pendientes urgentes</p>
+                  <p className="text-sm font-medium text-neutral-700 dark:text-white/70">Todo al dia</p>
+                  <p className="text-xs text-neutral-400 dark:text-white/40 mt-1">No tienes pendientes urgentes</p>
                 </div>
               )}
             </div>
@@ -384,10 +385,10 @@ export default function MiCRM() {
 
         {/* Embudo de Ventas - 1/3 */}
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-gray-900 text-sm">Embudo de Ventas</h2>
-              <Link to="/mi-crm/contactos?view=kanban" className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+              <h2 className="font-semibold text-neutral-900 dark:text-white text-sm">Embudo de Ventas</h2>
+              <Link to="/mi-crm/contactos?view=kanban" className="text-xs text-accent hover:text-accent/80 font-medium">
                 Ver kanban
               </Link>
             </div>
@@ -418,23 +419,23 @@ export default function MiCRM() {
               />
             </div>
 
-            <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-3">
+            <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800 grid grid-cols-2 gap-3">
               <div className="text-center">
-                <p className="text-lg font-bold text-gray-900">{stats?.tasaConversion.toFixed(0)}%</p>
-                <p className="text-xs text-gray-500">Conversion</p>
+                <p className="text-lg font-bold text-neutral-900 dark:text-white">{stats?.tasaConversion.toFixed(0)}%</p>
+                <p className="text-xs text-neutral-500 dark:text-white/50">Conversion</p>
               </div>
               <div className="text-center">
-                <p className="text-lg font-bold text-gray-900">
+                <p className="text-lg font-bold text-neutral-900 dark:text-white">
                   ${((stats?.primaTotal || 0) / 1000).toFixed(0)}k
                 </p>
-                <p className="text-xs text-gray-500">Prima Total</p>
+                <p className="text-xs text-neutral-500 dark:text-white/50">Prima Total</p>
               </div>
             </div>
           </div>
 
           {/* Quick Stats */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h2 className="font-semibold text-gray-900 text-sm mb-3">Resumen</h2>
+          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5">
+            <h2 className="font-semibold text-neutral-900 dark:text-white text-sm mb-3">Resumen</h2>
             <div className="space-y-2.5">
               <StatRow icon={<Users className="h-4 w-4 text-blue-500" />} label="Total Contactos" value={stats?.totalContactos || 0} />
               <StatRow icon={<FileText className="h-4 w-4 text-orange-500" />} label="Cotizaciones" value={stats?.totalCotizaciones || 0} />
@@ -491,9 +492,9 @@ function KPICard({
         {icon}
       </div>
       <p className={`text-2xl font-bold ${c.text}`}>{value}</p>
-      <p className="text-xs font-medium text-gray-600 mt-0.5">{label}</p>
-      {subtitle && <p className="text-[10px] text-gray-400 mt-0.5">{subtitle}</p>}
-      <ChevronRight className="absolute top-3 right-3 h-3.5 w-3.5 text-gray-300 group-hover:text-gray-500 transition" />
+      <p className="text-xs font-medium text-neutral-600 dark:text-white/60 mt-0.5">{label}</p>
+      {subtitle && <p className="text-[10px] text-neutral-400 dark:text-white/40 mt-0.5">{subtitle}</p>}
+      <ChevronRight className="absolute top-3 right-3 h-3.5 w-3.5 text-neutral-300 dark:text-white/20 group-hover:text-neutral-500 dark:group-hover:text-white/50 transition" />
     </button>
   );
 }
@@ -517,18 +518,18 @@ function TaskRow({
   };
 
   return (
-    <div className={`flex items-center gap-3 p-2.5 rounded-lg border ${variant === 'overdue' ? 'border-red-100 bg-red-50/50' : 'border-gray-100 bg-gray-50/50'} group`}>
+    <div className={`flex items-center gap-3 p-2.5 rounded-lg border ${variant === 'overdue' ? 'border-red-100 bg-red-50/50' : 'border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50'} group`}>
       <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${variant === 'overdue' ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
         {getActivityIcon(tarea.tipo_actividad)}
       </div>
       <div className="flex-1 min-w-0 cursor-pointer" onClick={onNavigate}>
-        <p className="text-sm font-medium text-gray-800 truncate">
+        <p className="text-sm font-medium text-neutral-800 dark:text-white/80 truncate">
           {tarea.descripcion || tarea.tipo_actividad}
         </p>
-        <p className="text-xs text-gray-500 truncate">
+        <p className="text-xs text-neutral-500 dark:text-white/50 truncate">
           {tarea.crm_contactos?.nombre_completo || 'Sin contacto'}
           {tarea.fecha_vencimiento && (
-            <span className={`ml-2 ${variant === 'overdue' ? 'text-red-500' : 'text-gray-400'}`}>
+            <span className={`ml-2 ${variant === 'overdue' ? 'text-red-500' : 'text-neutral-400 dark:text-white/40'}`}>
               {new Date(tarea.fecha_vencimiento).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
             </span>
           )}
@@ -572,19 +573,19 @@ function LeadRow({
   return (
     <div
       onClick={onNavigate}
-      className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-blue-200 cursor-pointer transition group"
+      className="flex items-center gap-3 p-2.5 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 hover:bg-white dark:hover:bg-neutral-800 hover:border-accent/30 cursor-pointer transition group"
     >
       <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${isNew ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'}`}>
         <Users className="h-3.5 w-3.5" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-800 truncate">{lead.nombre_completo}</p>
-        <p className="text-xs text-gray-500">
+        <p className="text-sm font-medium text-neutral-800 dark:text-white/80 truncate">{lead.nombre_completo}</p>
+        <p className="text-xs text-neutral-500 dark:text-white/50">
           {lead.celular || lead.email || 'Sin contacto'}
-          <span className="ml-2 text-gray-400">{timeSince(lead.fecha_creacion)}</span>
+          <span className="ml-2 text-neutral-400 dark:text-white/40">{timeSince(lead.fecha_creacion)}</span>
         </p>
       </div>
-      <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-blue-500 transition" />
+      <ChevronRight className="h-4 w-4 text-neutral-300 dark:text-white/20 group-hover:text-accent transition" />
     </div>
   );
 }
@@ -602,10 +603,10 @@ function FunnelStage({
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-xs font-medium text-gray-600">{label}</span>
-        <span className="text-xs font-bold text-gray-800">{count}</span>
+        <span className="text-xs font-medium text-neutral-600 dark:text-white/60">{label}</span>
+        <span className="text-xs font-bold text-neutral-800 dark:text-white/80">{count}</span>
       </div>
-      <div className="w-full bg-gray-100 rounded-full h-2">
+      <div className="w-full bg-neutral-100 dark:bg-neutral-800 rounded-full h-2">
         <div
           className={`${color} h-2 rounded-full transition-all duration-500`}
           style={{ width: `${Math.max(pct, 2)}%` }}
@@ -626,9 +627,9 @@ function StatRow({
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">
         {icon}
-        <span className="text-xs text-gray-600">{label}</span>
+        <span className="text-xs text-neutral-600 dark:text-white/60">{label}</span>
       </div>
-      <span className="text-sm font-bold text-gray-800">{value}</span>
+      <span className="text-sm font-bold text-neutral-800 dark:text-white/80">{value}</span>
     </div>
   );
 }

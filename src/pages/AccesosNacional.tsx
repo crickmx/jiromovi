@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, Plus, Edit2, Trash2, ExternalLink, Eye, Copy, Check, ChevronDown, ChevronRight } from 'lucide-react';
+import { Search, Plus, CreditCard as Edit2, Trash2, ExternalLink, Eye, Copy, Check, ChevronDown, ChevronRight, Key } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -325,19 +326,20 @@ export function AccesosNacional() {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
-          <div className="flex-1">
-            <h1 className="text-xl sm:text-2xl font-bold text-accent">Accesos Nacional</h1>
-            <p className="text-sm sm:text-base text-neutral-600 mt-1">Credenciales compartidas de acceso nacional</p>
-          </div>
-          <button
-            onClick={() => openModal()}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors min-h-[44px] w-full sm:w-auto text-sm sm:text-base font-semibold"
-          >
-            <Plus className="w-4 h-4" />
-            Agregar Acceso
-          </button>
-        </div>
+        <PageHeader
+          title="Accesos Nacional"
+          description="Credenciales compartidas de acceso nacional"
+          icon={Key}
+          actions={
+            <button
+              onClick={() => openModal()}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors min-h-[44px] w-full sm:w-auto text-sm font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              Agregar Acceso
+            </button>
+          }
+        />
 
         <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-3 sm:p-4">
           <div className="flex flex-col sm:flex-row gap-3">

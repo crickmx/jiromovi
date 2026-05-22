@@ -7,6 +7,7 @@ import { ConfiguracionWhatsApp } from '../components/notificaciones/Configuracio
 import { TiposNotificaciones } from '../components/notificaciones/TiposNotificaciones';
 import { HistorialEnvios } from '../components/notificaciones/HistorialEnvios';
 import { EmailGlobalLayout } from '../components/notificaciones/EmailGlobalLayout';
+import { PageHeader } from '@/components/ui/page-header';
 
 type Tab = 'configuracion' | 'whatsapp' | 'notificaciones' | 'layout' | 'historial';
 
@@ -125,27 +126,23 @@ export function NotificacionesTransaccionales() {
     <div className="h-full overflow-y-auto">
     <div className="space-y-6 p-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-accent to-accent-dark rounded-2xl shadow-lg p-8 text-white">
-        <div className="flex items-center gap-3 mb-2">
-          <Mail className="w-8 h-8 text-white" />
-          <h1 className="text-3xl font-bold text-white">Notificaciones Transaccionales</h1>
-        </div>
-        <p className="text-white opacity-90">
-          Administra correos automáticos, plantillas y configuración SMTP
-        </p>
-      </div>
+      <PageHeader
+        title="Notificaciones Transaccionales"
+        description="Administra correos automáticos, plantillas y configuración SMTP"
+        icon={Mail}
+      />
 
       {/* Estado de Configuración */}
       {!loading && (
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className={`w-3 h-3 rounded-full ${config?.activo ? 'bg-emerald-500' : 'bg-neutral-300'}`} />
+              <div className={`w-3 h-3 rounded-full ${config?.activo ? 'bg-emerald-500' : 'bg-neutral-300 dark:bg-neutral-600'}`} />
               <div>
-                <h3 className="font-semibold text-neutral-800">
+                <h3 className="font-semibold text-neutral-800 dark:text-white">
                   {config?.activo ? 'Sistema Activo' : 'Sistema Inactivo'}
                 </h3>
-                <p className="text-sm text-neutral-600">
+                <p className="text-sm text-neutral-600 dark:text-white/60">
                   {config
                     ? `${config.tipo_integracion.toUpperCase()} - ${config.remitente_email}`
                     : 'No hay configuración activa'
@@ -163,8 +160,8 @@ export function NotificacionesTransaccionales() {
           </div>
 
           {config?.estado_ultima_prueba && (
-            <div className="mt-4 pt-4 border-t border-neutral-200">
-              <p className="text-sm text-neutral-600">
+            <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-white/8">
+              <p className="text-sm text-neutral-600 dark:text-white/60">
                 <span className="font-medium">Última prueba:</span>{' '}
                 {config.estado_ultima_prueba}
               </p>
@@ -175,40 +172,40 @@ export function NotificacionesTransaccionales() {
 
       {/* Estadísticas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-neutral-600 mb-1">Enviados</p>
+              <p className="text-sm text-neutral-600 dark:text-white/60 mb-1">Enviados</p>
               <p className="text-2xl font-bold text-emerald-600">{stats.total_enviados}</p>
             </div>
             <CheckCircle2 className="w-10 h-10 text-emerald-500 opacity-20" />
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-neutral-600 mb-1">Fallidos</p>
+              <p className="text-sm text-neutral-600 dark:text-white/60 mb-1">Fallidos</p>
               <p className="text-2xl font-bold text-accent-600">{stats.total_fallidos}</p>
             </div>
             <XCircle className="w-10 h-10 text-accent-500 opacity-20" />
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-neutral-600 mb-1">Pendientes</p>
+              <p className="text-sm text-neutral-600 dark:text-white/60 mb-1">Pendientes</p>
               <p className="text-2xl font-bold text-amber-600">{stats.total_pendientes}</p>
             </div>
             <Clock className="w-10 h-10 text-amber-500 opacity-20" />
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-neutral-600 mb-1">Tipos Activos</p>
+              <p className="text-sm text-neutral-600 dark:text-white/60 mb-1">Tipos Activos</p>
               <p className="text-2xl font-bold text-accent">{stats.tipos_activos}</p>
             </div>
             <Send className="w-10 h-10 text-accent opacity-20" />
@@ -217,15 +214,15 @@ export function NotificacionesTransaccionales() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-xl shadow-sm border border-neutral-200">
-        <div className="border-b border-neutral-200">
+      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8">
+        <div className="border-b border-neutral-200 dark:border-white/8">
           <div className="flex overflow-x-auto">
             <button
               onClick={() => setActiveTab('configuracion')}
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'configuracion'
                   ? 'text-accent border-b-2 border-accent'
-                  : 'text-neutral-600 hover:text-neutral-800'
+                  : 'text-neutral-600 dark:text-white/50 hover:text-neutral-800 dark:hover:text-white/70'
               }`}
             >
               <Settings className="w-5 h-5" />
@@ -236,7 +233,7 @@ export function NotificacionesTransaccionales() {
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'whatsapp'
                   ? 'text-accent border-b-2 border-accent'
-                  : 'text-neutral-600 hover:text-neutral-800'
+                  : 'text-neutral-600 dark:text-white/50 hover:text-neutral-800 dark:hover:text-white/70'
               }`}
             >
               <Send className="w-5 h-5" />
@@ -247,7 +244,7 @@ export function NotificacionesTransaccionales() {
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'notificaciones'
                   ? 'text-accent border-b-2 border-accent'
-                  : 'text-neutral-600 hover:text-neutral-800'
+                  : 'text-neutral-600 dark:text-white/50 hover:text-neutral-800 dark:hover:text-white/70'
               }`}
             >
               <FileText className="w-5 h-5" />
@@ -258,7 +255,7 @@ export function NotificacionesTransaccionales() {
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'layout'
                   ? 'text-accent border-b-2 border-accent'
-                  : 'text-neutral-600 hover:text-neutral-800'
+                  : 'text-neutral-600 dark:text-white/50 hover:text-neutral-800 dark:hover:text-white/70'
               }`}
             >
               <Layout className="w-5 h-5" />
@@ -269,7 +266,7 @@ export function NotificacionesTransaccionales() {
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'historial'
                   ? 'text-accent border-b-2 border-accent'
-                  : 'text-neutral-600 hover:text-neutral-800'
+                  : 'text-neutral-600 dark:text-white/50 hover:text-neutral-800 dark:hover:text-white/70'
               }`}
             >
               <Clock className="w-5 h-5" />
