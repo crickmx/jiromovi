@@ -95,6 +95,7 @@ import ManualesAdmin from './pages/ManualesAdmin';
 import CentroContactoAsistentes from './pages/CentroContactoAsistentes';
 import AsistenteEntrenamiento from './pages/AsistenteEntrenamiento';
 import PublicQuoteForm from './pages/PublicQuoteForm';
+import AdminDigital from './pages/AdminDigital';
 
 function App() {
   return (
@@ -202,6 +203,7 @@ function App() {
               <Route path="/chatgpt-test" element={<ProtectedRoute><Layout><ChatGPTTest /></Layout></ProtectedRoute>} />
               <Route path="/carga-masiva-usuarios" element={<ProtectedRoute requireAdmin><Layout><CargaMasivaUsuarios /></Layout></ProtectedRoute>} />
               <Route path="/actividad-usuarios" element={<ProtectedRoute requireAdmin><Layout><ActividadUsuarios /></Layout></ProtectedRoute>} />
+              <Route path="/admin-digital" element={<ProtectedRoute requireAdmin><Layout><AdminDigital /></Layout></ProtectedRoute>} />
               <Route path="/comisiones/regimen-fiscal" element={<ProtectedRoute requireAdmin><Layout><RegimenFiscalAdmin /></Layout></ProtectedRoute>} />
               <Route path="/comisiones/regimen-fiscal/:id" element={<ProtectedRoute requireAdmin><Layout><RegimenFiscalEditor /></Layout></ProtectedRoute>} />
 

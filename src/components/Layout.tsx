@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, LayoutDashboard, Calendar, MapPin, Menu, Palette, Key, GraduationCap, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, Car, FolderOpen, Trophy, X, Headphones, Send, BookOpen, FormInput } from 'lucide-react';
+import { LogOut, User, Users, Settings, LayoutDashboard, Calendar, MapPin, Menu, Palette, Key, GraduationCap, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, Car, FolderOpen, Trophy, X, Headphones, Send, BookOpen, FormInput, CreditCard } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
 import { FloatingAssistantButton } from './FloatingAssistantButton';
@@ -103,6 +103,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: isNotAgent },
     { path: '/directorio', label: 'Usuarios', icon: Users, show: isAdminOrGerente },
     { path: '/actividad-usuarios', label: 'Actividad Usuarios', icon: Activity, show: isAdmin },
+    { path: '/admin-digital', label: 'Admin Digital', icon: CreditCard, show: isAdmin },
     { path: '/configuracion', label: 'Configuracion', icon: Settings, show: isAdmin },
   ];
 
