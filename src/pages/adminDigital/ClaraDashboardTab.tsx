@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
-import { Wallet, ListChecks, FileSpreadsheet, Calendar } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Wallet, ListChecks, FileSpreadsheet, Calendar, Check, Pencil } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import type { DBTransaction, ClaraPeriod } from './claraService';
-import { fetchTransactions, fetchPeriods } from './claraService';
+import { fetchTransactions, fetchPeriods, fetchCostCenters, fetchSimpleConcepts, updateTransaction } from './claraService';
 import { formatMXN } from './claraUtils';
 
 const CHART_COLORS = [
@@ -92,6 +92,11 @@ function SummaryTable({ rows }: { rows: { name: string; amount: number; count: n
 
 type FilterMode = 'period' | 'dates';
 
+interface EditingCell {
+  rowId: string;
+  field: 'cost_center' | 'simple_concept' | 'description';
+}
+
 export function ClaraDashboardTab() {
   const today = new Date().toISOString().split('T')[0];
   const firstOfMonth = today.substring(0, 8) + '01';
@@ -105,6 +110,10 @@ export function ClaraDashboardTab() {
   const [loading, setLoading] = useState(false);
   const [filterCC, setFilterCC] = useState('Todos');
   const [filterConcept, setFilterConcept] = useState('Todos');
+  const [costCenters, setCostCenters] = useState<string[]>([]);
+  const [simpleConcepts, setSimpleConcepts] = useState<string[]>([]);
+  const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
+  const [editValue, setEditValue] = useState('');
 
   const loadPeriods = async () => {
     try {
@@ -115,6 +124,38 @@ export function ClaraDashboardTab() {
       }
     } catch { /* ignore */ }
   };
+
+  const loadCatalogs = async () => {
+    try {
+      const [ccs, concepts] = await Promise.all([fetchCostCenters(), fetchSimpleConcepts()]);
+      setCostCenters(ccs);
+      setSimpleConcepts(concepts);
+    } catch { /* ignore */ }
+  };
+
+  const startEditing = (rowId: string, field: EditingCell['field'], currentValue: string) => {
+    setEditingCell({ rowId, field });
+    setEditValue(currentValue || '');
+  };
+
+  const commitEdit = useCallback(async () => {
+    if (!editingCell) return;
+    const { rowId, field } = editingCell;
+    const prev = transactions.find((t) => t.id === rowId);
+    if (prev && prev[field] !== editValue) {
+      setTransactions((txns) =>
+        txns.map((t) => (t.id === rowId ? { ...t, [field]: editValue } : t))
+      );
+      try {
+        await updateTransaction(rowId, field, editValue);
+      } catch {
+        setTransactions((txns) =>
+          txns.map((t) => (t.id === rowId ? { ...t, [field]: prev[field] } : t))
+        );
+      }
+    }
+    setEditingCell(null);
+  }, [editingCell, editValue, transactions]);
 
   const load = async () => {
     setLoading(true);
@@ -133,7 +174,7 @@ export function ClaraDashboardTab() {
     }
   };
 
-  useEffect(() => { loadPeriods(); }, []);
+  useEffect(() => { loadPeriods(); loadCatalogs(); }, []);
   useEffect(() => { load(); }, [selectedPeriodId, filterMode]);
 
   const totalGasto = transactions.reduce((s, t) => s + Number(t.amount_mxn), 0);
@@ -352,28 +393,112 @@ export function ClaraDashboardTab() {
               <tr className="bg-gray-50 dark:bg-gray-700/50">
                 <th className="px-3 py-2.5 text-left font-semibold text-gray-600 dark:text-gray-300">Fecha</th>
                 <th className="px-3 py-2.5 text-left font-semibold text-gray-600 dark:text-gray-300">Proveedor</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-gray-600 dark:text-gray-300">Norm.</th>
                 <th className="px-3 py-2.5 text-right font-semibold text-gray-600 dark:text-gray-300">Monto MXN</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-gray-600 dark:text-gray-300">Centro de Costo</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-gray-600 dark:text-gray-300">Concepto</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-gray-600 dark:text-gray-300">Detalles</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-600 dark:text-gray-300">
+                  <span className="flex items-center gap-1">Centro de Costo <Pencil className="w-3 h-3 text-blue-400" /></span>
+                </th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-600 dark:text-gray-300">
+                  <span className="flex items-center gap-1">Concepto <Pencil className="w-3 h-3 text-teal-400" /></span>
+                </th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-600 dark:text-gray-300">
+                  <span className="flex items-center gap-1">Detalles <Pencil className="w-3 h-3 text-gray-400" /></span>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {drillData.slice(0, 100).map((t) => (
-                <tr key={t.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/30">
-                  <td className="px-3 py-2 text-gray-700 dark:text-gray-300">{t.transaction_date}</td>
-                  <td className="px-3 py-2 text-gray-900 dark:text-white truncate max-w-[160px]">{t.original_vendor}</td>
-                  <td className="px-3 py-2 text-gray-500 dark:text-gray-400 truncate max-w-[140px]">{t.normalized_vendor}</td>
-                  <td className="px-3 py-2 text-right font-medium text-gray-900 dark:text-white">$ {formatMXN(Number(t.amount_mxn))}</td>
-                  <td className="px-3 py-2 text-gray-700 dark:text-gray-300">{t.cost_center}</td>
-                  <td className="px-3 py-2 text-gray-700 dark:text-gray-300">{t.simple_concept}</td>
-                  <td className="px-3 py-2 text-gray-500 dark:text-gray-400">{t.description || '-'}</td>
+                <tr key={t.id} className="hover:bg-blue-50/30 dark:hover:bg-gray-700/30 group">
+                  <td className="px-3 py-2 text-gray-700 dark:text-gray-300 whitespace-nowrap">{t.transaction_date}</td>
+                  <td className="px-3 py-2 text-gray-900 dark:text-white truncate max-w-[180px]" title={t.original_vendor}>{t.normalized_vendor || t.original_vendor}</td>
+                  <td className="px-3 py-2 text-right font-medium text-gray-900 dark:text-white whitespace-nowrap">$ {formatMXN(Number(t.amount_mxn))}</td>
+                  {/* Editable: Centro de Costo */}
+                  <td className="px-1 py-1">
+                    {editingCell?.rowId === t.id && editingCell.field === 'cost_center' ? (
+                      <div className="flex items-center gap-1">
+                        <select
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={commitEdit}
+                          onKeyDown={(e) => e.key === 'Enter' && commitEdit()}
+                          autoFocus
+                          className="w-full text-xs border border-blue-400 rounded px-1.5 py-1 bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="">-- Sin asignar --</option>
+                          {costCenters.map((cc) => <option key={cc} value={cc}>{cc}</option>)}
+                        </select>
+                        <button onClick={commitEdit} className="text-blue-600 hover:text-blue-800 flex-shrink-0">
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <span
+                        onClick={() => startEditing(t.id, 'cost_center', t.cost_center)}
+                        className="cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 text-gray-700 dark:text-gray-300 transition-colors"
+                      >
+                        {t.cost_center || <span className="text-gray-400 italic">Sin asignar</span>}
+                      </span>
+                    )}
+                  </td>
+                  {/* Editable: Concepto */}
+                  <td className="px-1 py-1">
+                    {editingCell?.rowId === t.id && editingCell.field === 'simple_concept' ? (
+                      <div className="flex items-center gap-1">
+                        <select
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={commitEdit}
+                          onKeyDown={(e) => e.key === 'Enter' && commitEdit()}
+                          autoFocus
+                          className="w-full text-xs border border-teal-400 rounded px-1.5 py-1 bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                        >
+                          <option value="">-- Sin asignar --</option>
+                          {simpleConcepts.map((c) => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        <button onClick={commitEdit} className="text-teal-600 hover:text-teal-800 flex-shrink-0">
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <span
+                        onClick={() => startEditing(t.id, 'simple_concept', t.simple_concept)}
+                        className="cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-teal-100 dark:hover:bg-teal-900/30 text-gray-700 dark:text-gray-300 transition-colors"
+                      >
+                        {t.simple_concept || <span className="text-gray-400 italic">Sin asignar</span>}
+                      </span>
+                    )}
+                  </td>
+                  {/* Editable: Detalles */}
+                  <td className="px-1 py-1">
+                    {editingCell?.rowId === t.id && editingCell.field === 'description' ? (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={commitEdit}
+                          onKeyDown={(e) => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditingCell(null); }}
+                          autoFocus
+                          placeholder="Descripcion..."
+                          className="w-full text-xs border border-gray-400 rounded px-1.5 py-1 bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-1 focus:ring-gray-500"
+                        />
+                        <button onClick={commitEdit} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 flex-shrink-0">
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <span
+                        onClick={() => startEditing(t.id, 'description', t.description)}
+                        className="cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
+                      >
+                        {t.description || <span className="italic">-</span>}
+                      </span>
+                    )}
+                  </td>
                 </tr>
               ))}
               {drillData.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-3 py-8 text-center text-gray-400 italic">
+                  <td colSpan={6} className="px-3 py-8 text-center text-gray-400 italic">
                     Sin transacciones en este periodo
                   </td>
                 </tr>

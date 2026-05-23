@@ -267,6 +267,19 @@ export async function saveTransactions(
   return { saved: newRows.length, skipped, periodId };
 }
 
+// Update single transaction field
+export async function updateTransaction(
+  id: string,
+  field: 'cost_center' | 'simple_concept' | 'description',
+  value: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('clara_transactions')
+    .update({ [field]: value })
+    .eq('id', id);
+  if (error) throw error;
+}
+
 // Transactions
 export interface DBTransaction {
   id: string;
