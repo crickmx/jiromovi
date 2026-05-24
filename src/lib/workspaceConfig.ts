@@ -44,7 +44,6 @@ export const WORKSPACES: WorkspaceDefinition[] = [
     items: [
       { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visibleTo: ALL_ROLES },
       { path: '/comunicados', label: 'Comunicados', icon: FileText, visibleTo: ALL_ROLES, matchPrefix: true },
-      { path: '/mi-progreso', label: 'Mi Progreso', icon: Trophy, visibleTo: NO_EMPLEADO_AGENTE },
       { path: '/store', label: 'MOVI Store', icon: ShoppingBag, visibleTo: ALL_ROLES },
     ],
   },
@@ -62,6 +61,7 @@ export const WORKSPACES: WorkspaceDefinition[] = [
       { path: '/entrega-polizas', label: 'Entrega Polizas', icon: Send, visibleTo: NOT_AGENT },
       { path: '/mis-polizas', label: 'Mis Polizas', icon: FileText, visibleTo: ALL_ROLES },
       { path: '/lector-qualitas', label: 'Lector Qualitas', icon: FileText, visibleTo: NOT_AGENT },
+      { path: '/mi-progreso', label: 'Mi Progreso', icon: Trophy, visibleTo: NO_EMPLEADO_AGENTE },
     ],
   },
   {
@@ -91,6 +91,7 @@ export const WORKSPACES: WorkspaceDefinition[] = [
       { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, visibleTo: ALL_ROLES },
       { path: '/directorio-jiro', label: 'Directorio JIRO', icon: BookUser, visibleTo: NOT_AGENT },
       { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, visibleTo: NOT_AGENT },
+      { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, visibleTo: NOT_AGENT },
     ],
   },
   {
@@ -126,7 +127,6 @@ export const WORKSPACES: WorkspaceDefinition[] = [
     items: [
       { path: '/directorio', label: 'Usuarios', icon: Users, visibleTo: ADMIN_GERENTE },
       { path: '/configuracion', label: 'Configuracion', icon: Settings, visibleTo: ADMIN_ONLY, matchPrefix: true },
-      { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, visibleTo: NOT_AGENT },
       { path: '/actividad-usuarios', label: 'Actividad', icon: Activity, visibleTo: ADMIN_ONLY },
       { path: '/carga-masiva-usuarios', label: 'Carga Masiva', icon: Users, visibleTo: ADMIN_ONLY },
       { path: '/admin-digital', label: 'Admin Digital', icon: CreditCard, visibleTo: ADMIN_ONLY },
