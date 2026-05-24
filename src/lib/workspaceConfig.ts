@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, Palette, TrendingUp, Brain, GraduationCap, Settings, ClipboardList, FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Palette, TrendingUp, Brain, GraduationCap, Settings, ClipboardList, FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
@@ -144,6 +144,7 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/comisiones/mapeo-vendedores', label: 'Mapeo Vendedores', icon: Users, visibleTo: ADMIN_ONLY },
     { path: '/produccion/configuracion', label: 'Config Produccion', icon: Settings, visibleTo: ADMIN_ONLY },
     { path: '/sicas/salud', label: 'SICAS Salud', icon: Activity, visibleTo: ADMIN_ONLY },
+    { path: '/seguwallet-admin', label: 'Seguwallet', icon: Wallet, visibleTo: ALL_ROLES },
   ],
 };
 

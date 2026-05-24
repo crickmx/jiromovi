@@ -96,6 +96,16 @@ import CentroContactoAsistentes from './pages/CentroContactoAsistentes';
 import AsistenteEntrenamiento from './pages/AsistenteEntrenamiento';
 import PublicQuoteForm from './pages/PublicQuoteForm';
 import AdminDigital from './pages/AdminDigital';
+import { SeguwalletAdmin } from './pages/SeguwalletAdmin';
+import { SeguwalletLogin } from './seguwallet/pages/SeguwalletLogin';
+import { SeguwalletDashboard } from './seguwallet/pages/SeguwalletDashboard';
+import { SeguwalletPolizas } from './seguwallet/pages/SeguwalletPolizas';
+import { SeguwalletDescargas } from './seguwallet/pages/SeguwalletDescargas';
+import { SeguwalletPerfil } from './seguwallet/pages/SeguwalletPerfil';
+import { SeguwalletProvider } from './seguwallet/lib/SeguwalletContext';
+import { SeguwalletLayout } from './seguwallet/components/SeguwalletLayout';
+import { SeguwalletProtectedRoute } from './seguwallet/components/SeguwalletProtectedRoute';
+import { isSeguwallet } from './seguwallet/lib/seguwalletAuth';
 
 function App() {
   return (
@@ -206,9 +216,17 @@ function App() {
               <Route path="/admin-digital" element={<ProtectedRoute requireAdmin><Layout><AdminDigital /></Layout></ProtectedRoute>} />
               <Route path="/comisiones/regimen-fiscal" element={<ProtectedRoute requireAdmin><Layout><RegimenFiscalAdmin /></Layout></ProtectedRoute>} />
               <Route path="/comisiones/regimen-fiscal/:id" element={<ProtectedRoute requireAdmin><Layout><RegimenFiscalEditor /></Layout></ProtectedRoute>} />
+              <Route path="/seguwallet-admin" element={<ProtectedRoute><Layout><SeguwalletAdmin /></Layout></ProtectedRoute>} />
+
+              {/* Seguwallet Portal */}
+              <Route path="/seguwallet/login" element={<SeguwalletLogin />} />
+              <Route path="/seguwallet/dashboard" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletDashboard /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
+              <Route path="/seguwallet/polizas" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletPolizas /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
+              <Route path="/seguwallet/descargas" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletDescargas /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
+              <Route path="/seguwallet/perfil" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletPerfil /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
 
               {/* Redirect raíz */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/" element={<Navigate to={isSeguwallet() ? '/seguwallet/dashboard' : '/dashboard'} replace />} />
 
               {/* Manuales */}
               <Route path="/manuales" element={<ProtectedRoute><Layout><Manuales /></Layout></ProtectedRoute>} />
