@@ -111,7 +111,7 @@ export const WORKSPACES: WorkspaceDefinition[] = [
     visibleTo: ALL_ROLES,
     items: [
       { path: '/seguros-education', label: 'Inicio', icon: GraduationCap, visibleTo: ALL_ROLES },
-      { path: '/seguros-education/on-demand', label: 'Cursos', icon: GraduationCap, visibleTo: ALL_ROLES },
+      { path: '/seguros-education/on-demand', label: 'On Demand', icon: GraduationCap, visibleTo: ALL_ROLES },
       { path: '/seguros-education/aula-virtual', label: 'Aula Virtual', icon: GraduationCap, visibleTo: ALL_ROLES },
       { path: '/seguros-education/cedula-a', label: 'Cedula A', icon: GraduationCap, visibleTo: ALL_ROLES, matchPrefix: true },
       { path: '/manuales', label: 'Manuales', icon: BookOpen, visibleTo: ALL_ROLES, matchPrefix: true },
