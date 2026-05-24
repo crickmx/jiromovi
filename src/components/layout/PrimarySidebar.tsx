@@ -31,9 +31,9 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex flex-col h-full w-[68px] items-center bg-neutral-900 dark:bg-neutral-950 border-r border-neutral-800 dark:border-white/5">
+      <div className="flex flex-col h-full w-[68px] items-center bg-neutral-900 dark:bg-[#0f0f11] border-r border-neutral-800/60 dark:border-white/5">
         {/* Logo */}
-        <div className="flex items-center justify-center h-14 w-full border-b border-neutral-800 dark:border-white/5">
+        <div className="flex items-center justify-center h-14 w-full border-b border-neutral-800/60 dark:border-white/5">
           <button
             onClick={() => navigate('/dashboard')}
             className="transition-transform hover:scale-105 active:scale-95"
@@ -41,7 +41,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
             <img
               src="/movirecurso_7.png"
               alt="MOVI"
-              className="h-7 w-7 object-contain brightness-0 invert opacity-90"
+              className="h-7 w-7 object-contain brightness-0 invert opacity-95"
             />
           </button>
         </div>
@@ -109,7 +109,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
         </div>
 
         {/* Profile */}
-        <div className="flex flex-col items-center gap-2 pb-3 pt-2 border-t border-neutral-800 dark:border-white/5 w-full">
+        <div className="flex flex-col items-center gap-2 pb-3 pt-2 border-t border-neutral-800/60 dark:border-white/5 w-full">
           <Tooltip>
             <TooltipTrigger asChild>
               <button

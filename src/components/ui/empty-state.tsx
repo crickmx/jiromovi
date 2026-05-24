@@ -30,21 +30,21 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center py-16 px-4 text-center",
+        "flex flex-col items-center justify-center py-16 sm:py-20 px-4 text-center",
         "animate-fade-in",
         className
       )}
     >
       {Icon && (
-        <div className="mb-5 p-4 rounded-2xl bg-neutral-50 dark:bg-white/5 border border-neutral-100 dark:border-white/8">
-          <Icon className="h-10 w-10 text-neutral-400 dark:text-white/30" strokeWidth={1.5} />
+        <div className="mb-5 p-4 rounded-2xl bg-gradient-to-br from-neutral-50 to-neutral-100/50 dark:from-white/5 dark:to-white/3 border border-neutral-100 dark:border-white/8">
+          <Icon className="h-8 w-8 text-neutral-400 dark:text-white/30" strokeWidth={1.5} />
         </div>
       )}
-      <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-2">
+      <h3 className="text-base font-semibold text-neutral-900 dark:text-white mb-1.5">
         {title}
       </h3>
       {description && (
-        <p className="text-sm text-neutral-500 dark:text-white/50 max-w-sm mb-6 leading-relaxed">
+        <p className="text-sm text-neutral-500 dark:text-white/50 max-w-xs mb-6 leading-relaxed">
           {description}
         </p>
       )}

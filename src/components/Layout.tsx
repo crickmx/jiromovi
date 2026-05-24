@@ -261,11 +261,11 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
               </header>
 
               {/* Desktop header */}
-              <header className="hidden lg:flex sticky top-0 z-20 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl border-b border-neutral-200/60 dark:border-white/5">
-                <div className="w-full px-6 lg:px-8 flex items-center justify-between h-12">
+              <header className="hidden lg:flex sticky top-0 z-20 bg-white/85 dark:bg-neutral-900/85 backdrop-blur-xl border-b border-neutral-100 dark:border-white/5">
+                <div className="w-full px-6 lg:px-8 flex items-center justify-between h-14">
                   <Breadcrumbs items={breadcrumbs} />
-                  <div className="flex items-center gap-2">
-                    <InstallAppButton variant="outline" size="sm" />
+                  <div className="flex items-center gap-1.5">
+                    <InstallAppButton variant="ghost" size="sm" />
                     <ThemeToggle />
                     <NotificationBell />
                   </div>

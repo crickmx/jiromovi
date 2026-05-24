@@ -28,25 +28,25 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center py-12 text-sm text-neutral-400 dark:text-white/30">
+      <div className="flex items-center justify-center py-16 text-sm text-neutral-400 dark:text-white/30">
         {emptyMessage}
       </div>
     );
   }
 
   return (
-    <div className={cn("overflow-x-auto", className)}>
+    <div className={cn("overflow-x-auto rounded-xl", className)}>
       <table className="w-full text-sm">
         <thead>
           <tr className={cn(
             "border-b border-neutral-100 dark:border-white/5",
-            stickyHeader && "sticky top-0 bg-white dark:bg-neutral-900 z-10"
+            stickyHeader && "sticky top-0 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-sm z-10"
           )}>
             {columns.map((col) => (
               <th
                 key={col.key}
                 className={cn(
-                  "text-left text-xs font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider px-4 py-3",
+                  "text-left text-xs font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider px-4 py-3.5",
                   col.headerClassName
                 )}
               >
@@ -61,14 +61,14 @@ export function DataTable<T>({
               key={idx}
               onClick={() => onRowClick?.(item)}
               className={cn(
-                "transition-colors",
-                onRowClick && "cursor-pointer hover:bg-neutral-50 dark:hover:bg-white/3"
+                "transition-colors duration-150",
+                onRowClick && "cursor-pointer hover:bg-neutral-50/80 dark:hover:bg-white/3"
               )}
             >
               {columns.map((col) => (
                 <td
                   key={col.key}
-                  className={cn("px-4 py-3 text-neutral-700 dark:text-white/70", col.className)}
+                  className={cn("px-4 py-3.5 text-neutral-700 dark:text-white/70", col.className)}
                 >
                   {col.render(item, idx)}
                 </td>
