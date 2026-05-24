@@ -2,7 +2,6 @@ import { LayoutDashboard, Briefcase, Palette, TrendingUp, Brain, GraduationCap, 
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
-  | 'dashboard'
   | 'comercial'
   | 'mercadotecnia'
   | 'operaciones'
@@ -29,24 +28,27 @@ export interface WorkspaceDefinition {
   items: WorkspaceNavItem[];
 }
 
+export interface TopLevelNavItem {
+  path: string;
+  label: string;
+  icon: LucideIcon;
+  visibleTo: UserRole[];
+  matchPrefix?: boolean;
+}
+
 const ALL_ROLES: UserRole[] = [];
 const NOT_AGENT: UserRole[] = ['Administrador', 'Gerente', 'Empleado', 'Ejecutivo'];
 const ADMIN_ONLY: UserRole[] = ['Administrador'];
 const ADMIN_GERENTE: UserRole[] = ['Administrador', 'Gerente'];
 const NO_EMPLEADO_AGENTE: UserRole[] = ['Administrador', 'Gerente', 'Ejecutivo'];
 
+export const TOP_LEVEL_ITEMS: TopLevelNavItem[] = [
+  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visibleTo: ALL_ROLES },
+  { path: '/comunicados', label: 'Comunicados', icon: FileText, visibleTo: ALL_ROLES, matchPrefix: true },
+  { path: '/store', label: 'MOVI Store', icon: ShoppingBag, visibleTo: ALL_ROLES },
+];
+
 export const WORKSPACES: WorkspaceDefinition[] = [
-  {
-    id: 'dashboard',
-    label: 'Inicio',
-    icon: LayoutDashboard,
-    visibleTo: ALL_ROLES,
-    items: [
-      { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visibleTo: ALL_ROLES },
-      { path: '/comunicados', label: 'Comunicados', icon: FileText, visibleTo: ALL_ROLES, matchPrefix: true },
-      { path: '/store', label: 'MOVI Store', icon: ShoppingBag, visibleTo: ALL_ROLES },
-    ],
-  },
   {
     id: 'comercial',
     label: 'Comercial',
@@ -62,6 +64,7 @@ export const WORKSPACES: WorkspaceDefinition[] = [
       { path: '/mis-polizas', label: 'Mis Polizas', icon: FileText, visibleTo: ALL_ROLES },
       { path: '/lector-qualitas', label: 'Lector Qualitas', icon: FileText, visibleTo: NOT_AGENT },
       { path: '/mi-progreso', label: 'Mi Progreso', icon: Trophy, visibleTo: NO_EMPLEADO_AGENTE },
+      { path: '/gmm/cotizador', label: 'GMM BX+', icon: Activity, visibleTo: ADMIN_ONLY },
     ],
   },
   {
@@ -102,7 +105,6 @@ export const WORKSPACES: WorkspaceDefinition[] = [
     items: [
       { path: '/centro-contacto/asistentes', label: 'Asistentes IA', icon: Brain, visibleTo: ADMIN_GERENTE, matchPrefix: true },
       { path: '/chatgpt-test', label: 'Asistente', icon: Brain, visibleTo: ALL_ROLES },
-      { path: '/gmm/cotizador', label: 'GMM BX+', icon: Activity, visibleTo: ADMIN_ONLY },
     ],
   },
   {
@@ -138,7 +140,19 @@ export const WORKSPACES: WorkspaceDefinition[] = [
   },
 ];
 
+export function isTopLevelItemVisible(item: TopLevelNavItem, userRole: UserRole): boolean {
+  if (item.visibleTo.length === 0) return true;
+  return item.visibleTo.includes(userRole);
+}
+
 export function resolveWorkspace(pathname: string, userRole: UserRole): { workspace: WorkspaceDefinition | null; activeItem: WorkspaceNavItem | null } {
+  // Check if it's a top-level item (no workspace context)
+  for (const item of TOP_LEVEL_ITEMS) {
+    if (pathname === item.path) return { workspace: null, activeItem: null };
+    if (item.matchPrefix && pathname.startsWith(item.path)) return { workspace: null, activeItem: null };
+  }
+
+  // Exact match in workspaces
   for (const ws of WORKSPACES) {
     for (const item of ws.items) {
       if (pathname === item.path) {
@@ -147,6 +161,7 @@ export function resolveWorkspace(pathname: string, userRole: UserRole): { worksp
     }
   }
 
+  // Prefix match in workspaces
   for (const ws of WORKSPACES) {
     for (const item of ws.items) {
       if (!item.matchPrefix) continue;
@@ -157,8 +172,7 @@ export function resolveWorkspace(pathname: string, userRole: UserRole): { worksp
     }
   }
 
-  const dashboard = WORKSPACES.find(w => w.id === 'dashboard')!;
-  return { workspace: dashboard, activeItem: dashboard.items[0] };
+  return { workspace: null, activeItem: null };
 }
 
 export function isItemVisible(item: WorkspaceNavItem, userRole: UserRole): boolean {
@@ -173,7 +187,7 @@ export function isWorkspaceVisible(ws: WorkspaceDefinition, userRole: UserRole):
 
 export function buildBreadcrumbs(workspace: WorkspaceDefinition | null, activeItem: WorkspaceNavItem | null): { label: string; path?: string }[] {
   const crumbs: { label: string; path?: string }[] = [];
-  if (workspace && workspace.id !== 'dashboard') {
+  if (workspace) {
     crumbs.push({ label: workspace.label, path: workspace.items[0]?.path });
   }
   if (activeItem) {

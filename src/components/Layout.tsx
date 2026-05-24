@@ -13,7 +13,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { PrimarySidebar } from './layout/PrimarySidebar';
 import { SecondarySidebar } from './layout/SecondarySidebar';
 import { Breadcrumbs } from './layout/Breadcrumbs';
-import { WORKSPACES, resolveWorkspace, isWorkspaceVisible, isItemVisible, buildBreadcrumbs } from '@/lib/workspaceConfig';
+import { WORKSPACES, TOP_LEVEL_ITEMS, resolveWorkspace, isWorkspaceVisible, isItemVisible, isTopLevelItemVisible, buildBreadcrumbs } from '@/lib/workspaceConfig';
 import type { WorkspaceId, UserRole } from '@/lib/workspaceConfig';
 
 interface LayoutProps {
@@ -48,6 +48,12 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     setMobileOpen(false);
   }, [location.pathname]);
 
+  const userRole: UserRole = (usuario?.rol as UserRole) || 'Agente';
+  const isAdmin = usuario?.rol === 'Administrador';
+
+  const { workspace, activeItem } = resolveWorkspace(location.pathname, userRole);
+  const breadcrumbs = buildBreadcrumbs(workspace, activeItem);
+
   useEffect(() => {
     if (mobileOpen && workspace) {
       setMobileExpandedWorkspace(workspace.id);
@@ -68,11 +74,12 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     navigate('/login');
   };
 
-  const userRole: UserRole = (usuario?.rol as UserRole) || 'Agente';
-  const isAdmin = usuario?.rol === 'Administrador';
+  const hasSecondary = workspace !== null;
 
-  const { workspace, activeItem } = resolveWorkspace(location.pathname, userRole);
-  const breadcrumbs = buildBreadcrumbs(workspace, activeItem);
+  const getMainMargin = () => {
+    if (!hasSecondary) return "lg:ml-[68px]";
+    return secondaryCollapsed ? "lg:ml-[120px]" : "lg:ml-[268px]";
+  };
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
@@ -87,13 +94,13 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
       </aside>
 
       {/* Desktop: Secondary Sidebar */}
-      <aside
-        className={cn(
-          "hidden lg:flex fixed inset-y-0 z-30 transition-all duration-200 ease-out",
-          "left-[68px]"
-        )}
-      >
-        {workspace && (
+      {hasSecondary && (
+        <aside
+          className={cn(
+            "hidden lg:flex fixed inset-y-0 z-30 transition-all duration-200 ease-out",
+            "left-[68px]"
+          )}
+        >
           <SecondarySidebar
             workspace={workspace}
             activeItem={activeItem}
@@ -101,9 +108,8 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
             collapsed={secondaryCollapsed}
             onToggleCollapse={() => setSecondaryCollapsed(!secondaryCollapsed)}
           />
-        )}
-      </aside>
-
+        </aside>
+      )}
 
       {/* Mobile Drawer - Vertical enterprise sidebar */}
       {mobileOpen && (
@@ -124,9 +130,38 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
               </button>
             </div>
 
-            {/* Vertical workspace accordion */}
+            {/* Vertical navigation */}
             <ScrollArea className="flex-1">
               <nav className="py-2">
+                {/* Top-level items */}
+                <div className="px-2 mb-1">
+                  {TOP_LEVEL_ITEMS.filter(item => isTopLevelItemVisible(item, userRole)).map((item) => {
+                    const Icon = item.icon;
+                    const isActive = location.pathname === item.path ||
+                      (item.matchPrefix && location.pathname.startsWith(item.path));
+
+                    return (
+                      <button
+                        key={item.path}
+                        onClick={() => { navigate(item.path); setMobileOpen(false); }}
+                        className={cn(
+                          "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all",
+                          isActive
+                            ? "bg-neutral-100 dark:bg-white/10 text-neutral-900 dark:text-white"
+                            : "text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-white/5"
+                        )}
+                      >
+                        <Icon className={cn("w-4 h-4", isActive ? "text-neutral-900 dark:text-white" : "text-neutral-400 dark:text-white/40")} />
+                        <span>{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Separator */}
+                <div className="mx-4 h-px bg-neutral-100 dark:bg-white/8 my-1.5" />
+
+                {/* Workspaces */}
                 {WORKSPACES.filter(ws => isWorkspaceVisible(ws, userRole)).map((ws) => {
                   const WsIcon = ws.icon;
                   const isActiveWs = ws.id === workspace?.id;
@@ -203,7 +238,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
       <div
         className={cn(
           "min-h-screen transition-all duration-200 ease-out",
-          secondaryCollapsed ? "lg:ml-[120px]" : "lg:ml-[268px]"
+          getMainMargin()
         )}
       >
 

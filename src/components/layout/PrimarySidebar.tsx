@@ -1,7 +1,7 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { WORKSPACES, isWorkspaceVisible } from '@/lib/workspaceConfig';
+import { WORKSPACES, TOP_LEVEL_ITEMS, isWorkspaceVisible, isTopLevelItemVisible } from '@/lib/workspaceConfig';
 import type { WorkspaceId, UserRole } from '@/lib/workspaceConfig';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
@@ -15,11 +15,18 @@ interface Props {
 
 export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut }: Props) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const getInitials = () => {
     const n = usuario?.nombre?.[0] || '';
     const a = usuario?.apellidos?.[0] || '';
     return `${n}${a}`.toUpperCase();
+  };
+
+  const isTopLevelActive = (path: string, matchPrefix?: boolean) => {
+    if (location.pathname === path) return true;
+    if (matchPrefix && location.pathname.startsWith(path)) return true;
+    return false;
   };
 
   return (
@@ -39,8 +46,40 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
           </button>
         </div>
 
-        {/* Workspace Icons */}
-        <div className="flex-1 flex flex-col items-center gap-1 py-3 overflow-y-auto">
+        {/* Navigation */}
+        <div className="flex-1 flex flex-col items-center gap-1 py-3 overflow-y-auto w-full px-2">
+          {/* Top-level items (Dashboard, Comunicados, Store) */}
+          {TOP_LEVEL_ITEMS.filter(item => isTopLevelItemVisible(item, userRole)).map((item) => {
+            const Icon = item.icon;
+            const isActive = isTopLevelActive(item.path, item.matchPrefix);
+
+            return (
+              <Tooltip key={item.path}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => navigate(item.path)}
+                    className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
+                      "hover:bg-white/10 active:scale-95",
+                      isActive
+                        ? "bg-white/15 text-white shadow-sm shadow-white/5"
+                        : "text-neutral-400 hover:text-white"
+                    )}
+                  >
+                    <Icon className="w-5 h-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="text-xs font-medium">
+                  {item.label}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+
+          {/* Separator */}
+          <div className="w-6 h-px bg-neutral-700/60 my-1.5" />
+
+          {/* Workspace icons */}
           {WORKSPACES.filter(ws => isWorkspaceVisible(ws, userRole)).map((ws) => {
             const Icon = ws.icon;
             const isActive = ws.id === activeWorkspaceId;
