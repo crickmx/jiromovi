@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Menu, X, ChevronRight } from 'lucide-react';
+import { Menu, X, ChevronDown, LogOut } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
 import { FloatingAssistantButton } from './FloatingAssistantButton';
@@ -14,7 +14,7 @@ import { PrimarySidebar } from './layout/PrimarySidebar';
 import { SecondarySidebar } from './layout/SecondarySidebar';
 import { Breadcrumbs } from './layout/Breadcrumbs';
 import { WORKSPACES, resolveWorkspace, isWorkspaceVisible, isItemVisible, buildBreadcrumbs } from '@/lib/workspaceConfig';
-import type { UserRole } from '@/lib/workspaceConfig';
+import type { WorkspaceId, UserRole } from '@/lib/workspaceConfig';
 
 interface LayoutProps {
   children: ReactNode;
@@ -29,6 +29,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
   const location = useLocation();
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileExpandedWorkspace, setMobileExpandedWorkspace] = useState<WorkspaceId | null>(null);
   const [secondaryCollapsed, setSecondaryCollapsed] = useState(() => {
     if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
       const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
@@ -46,6 +47,12 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (mobileOpen && workspace) {
+      setMobileExpandedWorkspace(workspace.id);
+    }
+  }, [mobileOpen]);
 
   useEffect(() => {
     if (mobileOpen && window.innerWidth < 1024) {
@@ -97,25 +104,15 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
         )}
       </aside>
 
-      {/* Desktop: Expand button when secondary is collapsed */}
-      {secondaryCollapsed && workspace && workspace.id !== 'dashboard' && (
-        <button
-          onClick={() => setSecondaryCollapsed(false)}
-          className="hidden lg:flex fixed top-[72px] z-30 items-center justify-center w-5 h-5 rounded-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-white/10 shadow-sm hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all"
-          style={{ left: 63 }}
-        >
-          <ChevronRight className="w-3 h-3 text-neutral-500" />
-        </button>
-      )}
 
-      {/* Mobile Drawer */}
+      {/* Mobile Drawer - Vertical enterprise sidebar */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50">
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="absolute inset-y-0 left-0 w-[300px] bg-white dark:bg-neutral-900 shadow-2xl flex flex-col">
+          <div className="absolute inset-y-0 left-0 w-[280px] bg-white dark:bg-neutral-900 shadow-2xl flex flex-col animate-in slide-in-from-left duration-200">
             {/* Mobile header */}
             <div className="flex items-center justify-between h-14 px-4 border-b border-neutral-100 dark:border-white/8">
               <img src="/movirecurso_7.png" alt="MOVI" className="h-7 object-contain" />
@@ -127,64 +124,74 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
               </button>
             </div>
 
-            {/* Mobile workspace selector */}
-            <div className="flex items-center gap-1 px-3 py-2 border-b border-neutral-100 dark:border-white/8 overflow-x-auto">
-              {WORKSPACES.filter(ws => isWorkspaceVisible(ws, userRole)).map((ws) => {
-                const Icon = ws.icon;
-                const isActive = ws.id === workspace?.id;
-                return (
-                  <button
-                    key={ws.id}
-                    onClick={() => navigate(ws.items[0]?.path || '/dashboard')}
-                    className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all",
-                      isActive
-                        ? "bg-accent/10 text-accent-foreground"
-                        : "text-neutral-500 hover:bg-neutral-50 dark:hover:bg-white/5"
-                    )}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    {ws.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Mobile workspace items */}
+            {/* Vertical workspace accordion */}
             <ScrollArea className="flex-1">
-              {workspace && (
-                <nav className="px-3 py-2 space-y-0.5">
-                  {workspace.items.filter(item => isItemVisible(item, userRole)).map((item) => {
-                    const Icon = item.icon;
-                    const isActive = location.pathname === item.path ||
-                      (item.matchPrefix && !item.excludePrefixes?.some(ex => location.pathname.startsWith(ex)) && location.pathname.startsWith(item.path));
+              <nav className="py-2">
+                {WORKSPACES.filter(ws => isWorkspaceVisible(ws, userRole)).map((ws) => {
+                  const WsIcon = ws.icon;
+                  const isActiveWs = ws.id === workspace?.id;
+                  const isExpanded = mobileExpandedWorkspace === ws.id;
+                  const visibleItems = ws.items.filter(item => isItemVisible(item, userRole));
 
-                    return (
+                  return (
+                    <div key={ws.id} className="px-2">
                       <button
-                        key={item.path}
-                        onClick={() => { navigate(item.path); setMobileOpen(false); }}
+                        onClick={() => setMobileExpandedWorkspace(isExpanded ? null : ws.id)}
                         className={cn(
-                          "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all",
-                          isActive
-                            ? "bg-accent/10 text-accent-foreground"
-                            : "text-neutral-600 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/8"
+                          "w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all",
+                          isActiveWs
+                            ? "text-neutral-900 dark:text-white"
+                            : "text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-white/5"
                         )}
                       >
-                        <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-                        <span className="truncate">{item.label}</span>
+                        <div className="flex items-center gap-2.5">
+                          <WsIcon className={cn("w-4 h-4", isActiveWs ? "text-neutral-900 dark:text-white" : "text-neutral-400 dark:text-white/40")} />
+                          <span>{ws.label}</span>
+                        </div>
+                        <ChevronDown className={cn(
+                          "w-3.5 h-3.5 text-neutral-400 transition-transform duration-200",
+                          isExpanded && "rotate-180"
+                        )} />
                       </button>
-                    );
-                  })}
-                </nav>
-              )}
+
+                      {isExpanded && (
+                        <div className="ml-3 pl-3 border-l border-neutral-100 dark:border-white/8 mt-0.5 mb-2 space-y-0.5">
+                          {visibleItems.map((item) => {
+                            const Icon = item.icon;
+                            const isActive = location.pathname === item.path ||
+                              (item.matchPrefix && !item.excludePrefixes?.some(ex => location.pathname.startsWith(ex)) && location.pathname.startsWith(item.path));
+
+                            return (
+                              <button
+                                key={item.path}
+                                onClick={() => { navigate(item.path); setMobileOpen(false); }}
+                                className={cn(
+                                  "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all",
+                                  isActive
+                                    ? "bg-neutral-100 dark:bg-white/10 text-neutral-900 dark:text-white"
+                                    : "text-neutral-500 dark:text-white/55 hover:bg-neutral-50 dark:hover:bg-white/5 hover:text-neutral-800 dark:hover:text-white/80"
+                                )}
+                              >
+                                <Icon className={cn("w-4 h-4 flex-shrink-0", isActive ? "text-neutral-700 dark:text-white/80" : "text-neutral-400 dark:text-white/35")} />
+                                <span className="truncate">{item.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </nav>
             </ScrollArea>
 
             {/* Mobile footer */}
             <div className="border-t border-neutral-100 dark:border-white/8 p-3">
               <button
                 onClick={handleSignOut}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-[13px] font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all"
               >
+                <LogOut className="w-4 h-4" />
                 <span>Cerrar Sesion</span>
               </button>
             </div>
@@ -196,7 +203,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
       <div
         className={cn(
           "min-h-screen transition-all duration-200 ease-out",
-          secondaryCollapsed ? "lg:ml-[68px]" : "lg:ml-[268px]"
+          secondaryCollapsed ? "lg:ml-[120px]" : "lg:ml-[268px]"
         )}
       >
 

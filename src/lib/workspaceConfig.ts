@@ -45,7 +45,6 @@ export const WORKSPACES: WorkspaceDefinition[] = [
       { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visibleTo: ALL_ROLES },
       { path: '/comunicados', label: 'Comunicados', icon: FileText, visibleTo: ALL_ROLES, matchPrefix: true },
       { path: '/mi-progreso', label: 'Mi Progreso', icon: Trophy, visibleTo: NO_EMPLEADO_AGENTE },
-      { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, visibleTo: ALL_ROLES },
       { path: '/store', label: 'MOVI Store', icon: ShoppingBag, visibleTo: ALL_ROLES },
     ],
   },
@@ -89,6 +88,8 @@ export const WORKSPACES: WorkspaceDefinition[] = [
       { path: '/produccion/convenio', label: 'Produccion Convenio', icon: TrendingUp, visibleTo: ADMIN_GERENTE },
       { path: '/mis-comisiones', label: 'Mis Comisiones', icon: DollarSign, visibleTo: NO_EMPLEADO_AGENTE },
       { path: '/comisiones', label: 'Comisiones Admin', icon: DollarSign, visibleTo: ADMIN_ONLY, matchPrefix: true, excludePrefixes: ['/comisiones/regimen-fiscal', '/comisiones/mapeo-vendedores'] },
+      { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, visibleTo: ALL_ROLES },
+      { path: '/directorio-jiro', label: 'Directorio JIRO', icon: BookUser, visibleTo: NOT_AGENT },
       { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, visibleTo: NOT_AGENT },
     ],
   },
@@ -105,7 +106,7 @@ export const WORKSPACES: WorkspaceDefinition[] = [
   },
   {
     id: 'seguros-education',
-    label: 'Educacion',
+    label: 'Seguros Education',
     icon: GraduationCap,
     visibleTo: ALL_ROLES,
     items: [
@@ -124,7 +125,6 @@ export const WORKSPACES: WorkspaceDefinition[] = [
     visibleTo: ADMIN_GERENTE,
     items: [
       { path: '/directorio', label: 'Usuarios', icon: Users, visibleTo: ADMIN_GERENTE },
-      { path: '/directorio-jiro', label: 'Directorio JIRO', icon: BookUser, visibleTo: NOT_AGENT },
       { path: '/configuracion', label: 'Configuracion', icon: Settings, visibleTo: ADMIN_ONLY, matchPrefix: true },
       { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, visibleTo: NOT_AGENT },
       { path: '/actividad-usuarios', label: 'Actividad', icon: Activity, visibleTo: ADMIN_ONLY },
