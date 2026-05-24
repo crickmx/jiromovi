@@ -31,23 +31,26 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex flex-col h-full w-[68px] items-center bg-neutral-900 dark:bg-[#0f0f11] border-r border-neutral-800/60 dark:border-white/5">
+      <div className="flex flex-col h-full w-[72px] items-center bg-[#0f1117] dark:bg-[#0a0a0c]">
         {/* Logo */}
-        <div className="flex items-center justify-center h-14 w-full border-b border-neutral-800/60 dark:border-white/5">
+        <div className="flex items-center justify-center h-16 w-full">
           <button
             onClick={() => navigate('/dashboard')}
-            className="transition-transform hover:scale-105 active:scale-95"
+            className="w-11 h-11 rounded-2xl bg-white/[0.06] flex items-center justify-center transition-all duration-200 hover:bg-white/[0.1] hover:scale-105 active:scale-95"
           >
             <img
               src="/movirecurso_7.png"
               alt="MOVI"
-              className="h-7 w-7 object-contain brightness-0 invert opacity-95"
+              className="h-6 w-6 object-contain brightness-0 invert opacity-90"
             />
           </button>
         </div>
 
+        {/* Separator */}
+        <div className="w-8 h-px bg-white/[0.06] mb-2" />
+
         {/* Navigation - ordered list */}
-        <div className="flex-1 flex flex-col items-center gap-1 py-3 overflow-y-auto w-full px-2">
+        <div className="flex-1 flex flex-col items-center gap-1.5 py-2 overflow-y-auto w-full px-2.5">
           {NAV_ORDER.map((entry, idx) => {
             if (entry.type === 'link') {
               const item = entry.item;
@@ -61,17 +64,17 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                     <button
                       onClick={() => navigate(item.path)}
                       className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
-                        "hover:bg-white/10 active:scale-95",
+                        "w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200",
+                        "hover:bg-white/[0.08] active:scale-90",
                         isActive
-                          ? "bg-white/15 text-white shadow-sm shadow-white/5"
-                          : "text-neutral-400 hover:text-white"
+                          ? "bg-accent/20 text-accent shadow-[0_0_12px_rgba(var(--movi-accent-rgb)/0.2)] ring-1 ring-accent/30"
+                          : "text-neutral-500 hover:text-white"
                       )}
                     >
-                      <Icon className="w-5 h-5" />
+                      <Icon className="w-[18px] h-[18px]" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="right" className="text-xs font-medium">
+                  <TooltipContent side="right" sideOffset={8} className="text-xs font-medium bg-neutral-800 border-neutral-700">
                     {item.label}
                   </TooltipContent>
                 </Tooltip>
@@ -90,17 +93,17 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                   <button
                     onClick={() => navigate(firstPath)}
                     className={cn(
-                      "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
-                      "hover:bg-white/10 active:scale-95",
+                      "w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200",
+                      "hover:bg-white/[0.08] active:scale-90",
                       isActive
-                        ? "bg-white/15 text-white shadow-sm shadow-white/5"
-                        : "text-neutral-400 hover:text-white"
+                        ? "bg-accent/20 text-accent shadow-[0_0_12px_rgba(var(--movi-accent-rgb)/0.2)] ring-1 ring-accent/30"
+                        : "text-neutral-500 hover:text-white"
                     )}
                   >
-                    <Icon className="w-5 h-5" />
+                    <Icon className="w-[18px] h-[18px]" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="text-xs font-medium">
+                <TooltipContent side="right" sideOffset={8} className="text-xs font-medium bg-neutral-800 border-neutral-700">
                   {ws.label}
                 </TooltipContent>
               </Tooltip>
@@ -109,22 +112,23 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
         </div>
 
         {/* Profile */}
-        <div className="flex flex-col items-center gap-2 pb-3 pt-2 border-t border-neutral-800/60 dark:border-white/5 w-full">
+        <div className="flex flex-col items-center gap-2.5 pb-4 pt-3 w-full">
+          <div className="w-8 h-px bg-white/[0.06] mb-1" />
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={() => navigate('/perfil')}
-                className="rounded-full transition-transform hover:scale-105 active:scale-95"
+                className="rounded-2xl transition-all duration-200 hover:scale-105 active:scale-95 ring-2 ring-white/[0.06] hover:ring-accent/30"
               >
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} />
-                  <AvatarFallback className="bg-white/10 text-white text-xs font-semibold">
+                <Avatar className="h-9 w-9 rounded-xl">
+                  <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} className="rounded-xl" />
+                  <AvatarFallback className="bg-accent/20 text-accent text-xs font-bold rounded-xl">
                     {getInitials()}
                   </AvatarFallback>
                 </Avatar>
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="text-xs">
+            <TooltipContent side="right" sideOffset={8} className="text-xs bg-neutral-800 border-neutral-700">
               {usuario?.nombre} {usuario?.apellidos}
             </TooltipContent>
           </Tooltip>
@@ -133,12 +137,12 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
             <TooltipTrigger asChild>
               <button
                 onClick={onSignOut}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-neutral-500 hover:text-red-400 hover:bg-red-500/10 transition-colors active:scale-95"
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-neutral-600 hover:text-red-400 hover:bg-red-500/10 transition-all active:scale-90"
               >
                 <LogOut className="w-4 h-4" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="text-xs">
+            <TooltipContent side="right" sideOffset={8} className="text-xs bg-neutral-800 border-neutral-700">
               Cerrar Sesion
             </TooltipContent>
           </Tooltip>

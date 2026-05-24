@@ -40,16 +40,16 @@ function QuickAction({ icon: Icon, iconColor, label, sublabel, onClick }: QuickA
   return (
     <button
       onClick={onClick}
-      className="bg-white dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-4 shadow-card hover:shadow-card-hover hover:border-neutral-300 dark:hover:border-white/15 transition-all duration-200 ease-smooth group cursor-pointer text-left hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] w-full"
+      className="bg-white dark:bg-white/[0.03] rounded-3xl border border-neutral-200/50 dark:border-white/[0.06] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:border-accent/20 dark:hover:border-accent/20 transition-all duration-300 ease-smooth group cursor-pointer text-left hover:-translate-y-1 active:translate-y-0 active:scale-[0.97] w-full"
     >
-      <div className="flex items-center justify-between mb-3">
-        <div className={cn("p-2 rounded-xl", iconColor)}>
+      <div className="flex items-center justify-between mb-4">
+        <div className={cn("p-2.5 rounded-2xl", iconColor)}>
           <Icon className="w-5 h-5" />
         </div>
-        <ChevronRight className="w-4 h-4 text-neutral-300 dark:text-white/20 group-hover:text-neutral-400 dark:group-hover:text-white/40 group-hover:translate-x-0.5 transition-all duration-200" />
+        <ChevronRight className="w-4 h-4 text-neutral-300 dark:text-white/15 group-hover:text-accent group-hover:translate-x-1 transition-all duration-300" />
       </div>
-      <p className="text-sm font-semibold text-neutral-900 dark:text-white">{label}</p>
-      <p className="text-xs text-neutral-500 dark:text-white/40 mt-0.5">{sublabel}</p>
+      <p className="text-sm font-bold text-neutral-900 dark:text-white tracking-tight">{label}</p>
+      <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">{sublabel}</p>
     </button>
   );
 }
@@ -67,15 +67,15 @@ function KPICard({ value, label, icon: Icon, iconColor, onClick }: KPICardProps)
     <div
       onClick={onClick}
       className={cn(
-        "bg-white dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-4 shadow-card transition-all duration-200 ease-smooth",
-        onClick && "cursor-pointer hover:shadow-card-hover hover:border-neutral-300 dark:hover:border-white/15 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]"
+        "bg-white dark:bg-white/[0.03] rounded-3xl border border-neutral-200/50 dark:border-white/[0.06] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all duration-300 ease-smooth",
+        onClick && "cursor-pointer hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:border-accent/20 hover:-translate-y-1 active:translate-y-0 active:scale-[0.97]"
       )}
     >
-      <div className={cn("inline-flex p-2 rounded-xl mb-3", iconColor)}>
+      <div className={cn("inline-flex p-3 rounded-2xl mb-4", iconColor)}>
         <Icon className="w-5 h-5" />
       </div>
-      <p className="text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">{value}</p>
-      <p className="text-xs text-neutral-500 dark:text-white/40 mt-0.5 font-medium">{label}</p>
+      <p className="text-3xl font-bold text-neutral-900 dark:text-white tracking-tighter">{value}</p>
+      <p className="text-xs text-neutral-500 dark:text-white/40 mt-1 font-medium">{label}</p>
     </div>
   );
 }
@@ -292,21 +292,26 @@ export function Dashboard() {
 
   // Welcome banner shared by both views
   const WelcomeBanner = () => (
-    <div className="bg-white dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-5">
-      <div className="flex items-center justify-between mb-4">
+    <div className="relative overflow-hidden bg-gradient-to-br from-white via-white to-accent/[0.02] dark:from-white/[0.04] dark:via-white/[0.02] dark:to-accent/[0.04] rounded-3xl border border-neutral-200/50 dark:border-white/[0.06] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6 sm:p-8">
+      {/* Decorative gradient blob */}
+      <div className="absolute -top-20 -right-20 w-48 h-48 bg-accent/[0.04] rounded-full blur-3xl pointer-events-none" />
+
+      <div className="relative flex items-center justify-between mb-5">
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-white tracking-tight">
             Hola, <span className="text-accent">{currentUser?.nombre}</span>
           </h1>
-          <p className="text-sm text-neutral-500 dark:text-white/40 mt-0.5 font-medium">
+          <p className="text-sm text-neutral-500 dark:text-white/40 mt-1 font-medium">
             {officeName}
           </p>
         </div>
-        <img
-          src={officeLogo}
-          alt="Logo oficina"
-          className="h-10 w-auto object-contain flex-shrink-0 ml-4"
-        />
+        <div className="w-12 h-12 rounded-2xl bg-white dark:bg-white/10 shadow-sm border border-neutral-100 dark:border-white/10 flex items-center justify-center flex-shrink-0 ml-4">
+          <img
+            src={officeLogo}
+            alt="Logo oficina"
+            className="h-8 w-8 object-contain"
+          />
+        </div>
       </div>
 
       <SmartAnalysisCard
@@ -317,12 +322,12 @@ export function Dashboard() {
       />
 
       {currentUser?.web_slug && (
-        <div className="mt-4">
+        <div className="mt-5">
           <a
             href={getMiPaginaWebFull(currentUser.web_slug)}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-accent text-accent-foreground px-4 py-2 rounded-xl font-medium text-sm hover:bg-accent-hover transition-all duration-200 shadow-sm hover:shadow-md"
+            className="inline-flex items-center gap-2 bg-accent text-accent-foreground px-5 py-2.5 rounded-2xl font-semibold text-sm hover:bg-accent-hover transition-all duration-300 shadow-[0_2px_8px_rgba(var(--movi-accent-rgb)/0.25)] hover:shadow-[0_4px_16px_rgba(var(--movi-accent-rgb)/0.35)] hover:-translate-y-0.5"
           >
             Mi Pagina Web
             <ExternalLink className="w-3.5 h-3.5" />
@@ -335,10 +340,10 @@ export function Dashboard() {
   // Non-admin/gerente view
   if (!isAdminOrGerente) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-5">
         <WelcomeBanner />
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <QuickAction
             icon={ClipboardList}
             iconColor="bg-accent/8 dark:bg-accent/15 text-accent"
@@ -375,12 +380,12 @@ export function Dashboard() {
 
         <UltimoComunicado />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <CalendarioEventos />
           <ProximasCapacitaciones />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <TramitesWidget />
           <ResumenVacaciones />
           <ProximasReservas />
@@ -399,11 +404,11 @@ export function Dashboard() {
         logoIconUrl="/logojiro.png"
         minDurationMs={800}
       />
-      <div className="space-y-4">
+      <div className="space-y-5">
         <WelcomeBanner />
 
         {/* KPI cards */}
-        <div className={cn("grid gap-3", isGerente ? "grid-cols-2 md:grid-cols-3" : "grid-cols-2 md:grid-cols-4")}>
+        <div className={cn("grid gap-4", isGerente ? "grid-cols-2 md:grid-cols-3" : "grid-cols-2 md:grid-cols-4")}>
           <KPICard
             value={totalUsuarios}
             label={isGerente ? 'Usuarios' : 'Total usuarios'}
@@ -435,7 +440,7 @@ export function Dashboard() {
         </div>
 
         {/* Quick actions */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <QuickAction
             icon={ClipboardList}
             iconColor="bg-accent/8 dark:bg-accent/15 text-accent"
@@ -470,7 +475,7 @@ export function Dashboard() {
 
         {/* Admin-only config shortcuts */}
         {currentUser?.rol === 'Administrador' && (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <QuickAction
               icon={Settings}
               iconColor="bg-accent/8 dark:bg-accent/15 text-accent"
@@ -499,12 +504,12 @@ export function Dashboard() {
 
         <UltimoComunicado />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <CalendarioEventos />
           <ProximasCapacitaciones />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <TramitesWidget />
           <ResumenVacaciones />
           <ProximasReservas />
@@ -513,23 +518,23 @@ export function Dashboard() {
         {currentUser?.rol === 'Administrador' && <UsuariosPendientes />}
 
         {/* Birthdays & Anniversaries */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Birthdays */}
-          <div className="bg-white dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card overflow-hidden">
-            <div className="px-5 py-4 border-b border-neutral-100 dark:border-white/8">
+          <div className="bg-white dark:bg-white/[0.03] rounded-3xl border border-neutral-200/50 dark:border-white/[0.06] shadow-[0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden">
+            <div className="px-6 py-5 border-b border-neutral-100/80 dark:border-white/[0.06]">
               <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-500/15">
-                    <Cake className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-2xl bg-rose-50 dark:bg-rose-500/15">
+                    <Cake className="w-4.5 h-4.5 text-rose-600 dark:text-rose-400" />
                   </div>
-                  <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">Proximos Cumpleanos</h2>
+                  <h2 className="text-sm font-bold text-neutral-900 dark:text-white tracking-tight">Proximos Cumpleanos</h2>
                 </div>
               </div>
               <div className="flex gap-2">
                 <select
                   value={birthdayFilter}
                   onChange={(e) => setBirthdayFilter(e.target.value as 'next_month' | 'custom')}
-                  className="bg-neutral-50 dark:bg-white/5 rounded-lg px-3 py-1.5 text-xs font-medium border border-neutral-200 dark:border-white/10 text-neutral-700 dark:text-white/70 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
+                  className="bg-neutral-50 dark:bg-white/5 rounded-xl px-3 py-2 text-xs font-medium border border-neutral-200/60 dark:border-white/10 text-neutral-700 dark:text-white/70 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
                 >
                   <option value="next_month">Siguiente mes</option>
                   <option value="custom">Personalizado</option>
@@ -539,7 +544,7 @@ export function Dashboard() {
                     type="month"
                     value={customBirthdayDate}
                     onChange={(e) => setCustomBirthdayDate(e.target.value)}
-                    className="bg-neutral-50 dark:bg-white/5 rounded-lg px-3 py-1.5 text-xs border border-neutral-200 dark:border-white/10 text-neutral-700 dark:text-white/70 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
+                    className="bg-neutral-50 dark:bg-white/5 rounded-xl px-3 py-2 text-xs border border-neutral-200/60 dark:border-white/10 text-neutral-700 dark:text-white/70 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
                   />
                 )}
               </div>
@@ -548,26 +553,26 @@ export function Dashboard() {
               {proximosCumpleanos.length === 0 ? (
                 <p className="text-neutral-400 dark:text-white/30 text-center py-8 text-sm">No hay cumpleanos proximos</p>
               ) : (
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   {proximosCumpleanos.map((usuario) => (
                     <button
                       key={usuario.id}
-                      className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors text-left group"
+                      className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-neutral-50 dark:hover:bg-white/[0.04] transition-all duration-200 text-left group"
                       onClick={() => navigate(`/usuario/${usuario.id}`)}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-rose-400 to-rose-500 flex items-center justify-center text-white font-semibold text-xs flex-shrink-0">
+                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-rose-400 to-rose-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0 shadow-sm">
                           {usuario.nombre[0]}{usuario.apellidos[0]}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium text-neutral-900 dark:text-white text-sm truncate">
+                          <p className="font-semibold text-neutral-900 dark:text-white text-sm truncate">
                             {usuario.nombre} {usuario.apellidos}
                           </p>
                           <p className="text-xs text-neutral-500 dark:text-white/40 truncate">{usuario.puesto}</p>
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0 ml-3">
-                        <p className="text-sm font-semibold text-rose-600 dark:text-rose-400">
+                        <p className="text-sm font-bold text-rose-600 dark:text-rose-400">
                           {formatDate(usuario.fecha_nacimiento!)}
                         </p>
                         <p className="text-xs text-neutral-500 dark:text-white/40">
@@ -582,15 +587,15 @@ export function Dashboard() {
           </div>
 
           {/* Anniversaries */}
-          <div className="bg-white dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card overflow-hidden">
-            <div className="px-5 py-4 border-b border-neutral-100 dark:border-white/8">
-              <div className="flex items-center gap-2.5">
-                <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-500/15">
-                  <Award className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+          <div className="bg-white dark:bg-white/[0.03] rounded-3xl border border-neutral-200/50 dark:border-white/[0.06] shadow-[0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden">
+            <div className="px-6 py-5 border-b border-neutral-100/80 dark:border-white/[0.06]">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-amber-50 dark:bg-amber-500/15">
+                  <Award className="w-4.5 h-4.5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">Aniversarios Laborales</h2>
-                  <p className="text-xs text-neutral-500 dark:text-white/40">Siguiente mes</p>
+                  <h2 className="text-sm font-bold text-neutral-900 dark:text-white tracking-tight">Aniversarios Laborales</h2>
+                  <p className="text-xs text-neutral-500 dark:text-white/40 mt-0.5">Siguiente mes</p>
                 </div>
               </div>
             </div>
@@ -598,26 +603,26 @@ export function Dashboard() {
               {proximosAniversarios.length === 0 ? (
                 <p className="text-neutral-400 dark:text-white/30 text-center py-8 text-sm">No hay aniversarios proximos</p>
               ) : (
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   {proximosAniversarios.map((usuario: any) => (
                     <button
                       key={usuario.id}
-                      className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors text-left group"
+                      className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-neutral-50 dark:hover:bg-white/[0.04] transition-all duration-200 text-left group"
                       onClick={() => navigate(`/usuario/${usuario.id}`)}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center text-white font-semibold text-xs flex-shrink-0">
+                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0 shadow-sm">
                           {usuario.nombre[0]}{usuario.apellidos[0]}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium text-neutral-900 dark:text-white text-sm truncate">
+                          <p className="font-semibold text-neutral-900 dark:text-white text-sm truncate">
                             {usuario.nombre} {usuario.apellidos}
                           </p>
                           <p className="text-xs text-neutral-500 dark:text-white/40 truncate">{usuario.puesto}</p>
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0 ml-3">
-                        <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+                        <p className="text-sm font-bold text-amber-600 dark:text-amber-400">
                           {formatDate(usuario.fecha_ingreso!)}
                         </p>
                         <p className="text-xs text-neutral-500 dark:text-white/40">

@@ -77,12 +77,12 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
   const hasSecondary = workspace !== null;
 
   const getMainMargin = () => {
-    if (!hasSecondary) return "lg:ml-[68px]";
-    return secondaryCollapsed ? "lg:ml-[120px]" : "lg:ml-[268px]";
+    if (!hasSecondary) return "lg:ml-[72px]";
+    return secondaryCollapsed ? "lg:ml-[124px]" : "lg:ml-[280px]";
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50/80 to-blue-50/30 dark:from-[#09090b] dark:via-[#09090b] dark:to-[#09090b]">
       {/* Desktop: Primary Sidebar (icon rail) */}
       <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40">
         <PrimarySidebar
@@ -97,8 +97,8 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
       {hasSecondary && (
         <aside
           className={cn(
-            "hidden lg:flex fixed inset-y-0 z-30 transition-all duration-200 ease-out",
-            "left-[68px]"
+            "hidden lg:flex fixed inset-y-0 z-30 transition-all duration-300 ease-smooth",
+            "left-[72px]"
           )}
         >
           <SecondarySidebar
@@ -111,20 +111,20 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
         </aside>
       )}
 
-      {/* Mobile Drawer - Vertical enterprise sidebar */}
+      {/* Mobile Drawer */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50">
           <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="absolute inset-y-0 left-0 w-[280px] bg-white dark:bg-neutral-900 shadow-2xl flex flex-col animate-in slide-in-from-left duration-200">
+          <div className="absolute inset-y-0 left-0 w-[300px] bg-white dark:bg-[#111113] shadow-2xl flex flex-col animate-slide-in-left">
             {/* Mobile header */}
-            <div className="flex items-center justify-between h-14 px-4 border-b border-neutral-100 dark:border-white/8">
-              <img src="/movirecurso_7.png" alt="MOVI" className="h-7 object-contain" />
+            <div className="flex items-center justify-between h-16 px-5 border-b border-neutral-100/80 dark:border-white/6">
+              <img src="/movirecurso_7.png" alt="MOVI" className="h-8 object-contain" />
               <button
                 onClick={() => setMobileOpen(false)}
-                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:text-white dark:hover:bg-white/10 transition-colors"
+                className="p-2 rounded-xl text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:text-white dark:hover:bg-white/8 transition-all"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -132,7 +132,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
 
             {/* Vertical navigation */}
             <ScrollArea className="flex-1">
-              <nav className="py-2">
+              <nav className="py-3 px-3">
                 {NAV_ORDER.map((entry, idx) => {
                   if (entry.type === 'link') {
                     const item = entry.item;
@@ -142,17 +142,22 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
                       (item.matchPrefix && location.pathname.startsWith(item.path));
 
                     return (
-                      <div key={`link-${idx}`} className="px-2">
+                      <div key={`link-${idx}`} className="mb-0.5">
                         <button
                           onClick={() => { navigate(item.path); setMobileOpen(false); }}
                           className={cn(
-                            "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all",
+                            "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[13px] font-semibold transition-all duration-200",
                             isActive
-                              ? "bg-neutral-100 dark:bg-white/10 text-neutral-900 dark:text-white"
+                              ? "bg-accent/8 text-accent dark:bg-accent/12 dark:text-white shadow-sm"
                               : "text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-white/5"
                           )}
                         >
-                          <Icon className={cn("w-4 h-4", isActive ? "text-neutral-900 dark:text-white" : "text-neutral-400 dark:text-white/40")} />
+                          <div className={cn(
+                            "w-8 h-8 rounded-xl flex items-center justify-center transition-colors",
+                            isActive ? "bg-accent/12 dark:bg-accent/20" : "bg-neutral-100 dark:bg-white/8"
+                          )}>
+                            <Icon className={cn("w-4 h-4", isActive ? "text-accent" : "text-neutral-500 dark:text-white/50")} />
+                          </div>
                           <span>{item.label}</span>
                         </button>
                       </div>
@@ -167,28 +172,33 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
                   const visibleItems = ws.items.filter(item => isItemVisible(item, userRole));
 
                   return (
-                    <div key={ws.id} className="px-2">
+                    <div key={ws.id} className="mb-0.5">
                       <button
                         onClick={() => setMobileExpandedWorkspace(isExpanded ? null : ws.id)}
                         className={cn(
-                          "w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all",
+                          "w-full flex items-center justify-between px-4 py-3 rounded-2xl text-[13px] font-semibold transition-all duration-200",
                           isActiveWs
                             ? "text-neutral-900 dark:text-white"
                             : "text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-white/5"
                         )}
                       >
-                        <div className="flex items-center gap-2.5">
-                          <WsIcon className={cn("w-4 h-4", isActiveWs ? "text-neutral-900 dark:text-white" : "text-neutral-400 dark:text-white/40")} />
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-8 h-8 rounded-xl flex items-center justify-center transition-colors",
+                            isActiveWs ? "bg-accent/12 dark:bg-accent/20" : "bg-neutral-100 dark:bg-white/8"
+                          )}>
+                            <WsIcon className={cn("w-4 h-4", isActiveWs ? "text-accent" : "text-neutral-500 dark:text-white/50")} />
+                          </div>
                           <span>{ws.label}</span>
                         </div>
                         <ChevronDown className={cn(
-                          "w-3.5 h-3.5 text-neutral-400 transition-transform duration-200",
+                          "w-4 h-4 text-neutral-400 transition-transform duration-300 ease-smooth",
                           isExpanded && "rotate-180"
                         )} />
                       </button>
 
                       {isExpanded && (
-                        <div className="ml-3 pl-3 border-l border-neutral-100 dark:border-white/8 mt-0.5 mb-2 space-y-0.5">
+                        <div className="ml-5 pl-4 border-l-2 border-accent/10 dark:border-accent/20 mt-1 mb-2 space-y-0.5 animate-fade-in">
                           {visibleItems.map((item) => {
                             const Icon = item.icon;
                             const isActive = location.pathname === item.path ||
@@ -199,13 +209,13 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
                                 key={item.path}
                                 onClick={() => { navigate(item.path); setMobileOpen(false); }}
                                 className={cn(
-                                  "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all",
+                                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200",
                                   isActive
-                                    ? "bg-neutral-100 dark:bg-white/10 text-neutral-900 dark:text-white"
-                                    : "text-neutral-500 dark:text-white/55 hover:bg-neutral-50 dark:hover:bg-white/5 hover:text-neutral-800 dark:hover:text-white/80"
+                                    ? "bg-accent/8 text-accent dark:bg-accent/12 dark:text-white"
+                                    : "text-neutral-500 dark:text-white/50 hover:bg-neutral-50 dark:hover:bg-white/5 hover:text-neutral-800 dark:hover:text-white/80"
                                 )}
                               >
-                                <Icon className={cn("w-4 h-4 flex-shrink-0", isActive ? "text-neutral-700 dark:text-white/80" : "text-neutral-400 dark:text-white/35")} />
+                                <Icon className={cn("w-4 h-4 flex-shrink-0", isActive ? "text-accent" : "text-neutral-400 dark:text-white/35")} />
                                 <span className="truncate">{item.label}</span>
                               </button>
                             );
@@ -219,10 +229,10 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
             </ScrollArea>
 
             {/* Mobile footer */}
-            <div className="border-t border-neutral-100 dark:border-white/8 p-3">
+            <div className="border-t border-neutral-100 dark:border-white/6 p-4">
               <button
                 onClick={handleSignOut}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-[13px] font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all"
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[13px] font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all"
               >
                 <LogOut className="w-4 h-4" />
                 <span>Cerrar Sesion</span>
@@ -235,7 +245,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
       {/* Main content area */}
       <div
         className={cn(
-          "min-h-screen transition-all duration-200 ease-out",
+          "min-h-screen transition-all duration-300 ease-smooth",
           getMainMargin()
         )}
       >
@@ -243,16 +253,16 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
           {!hideHeader && (
             <>
               {/* Mobile header */}
-              <header className="lg:hidden sticky top-0 z-30 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-b border-neutral-200/60 dark:border-white/8">
-                <div className="flex items-center justify-between h-14 px-4">
+              <header className="lg:hidden sticky top-0 z-30 bg-white/80 dark:bg-[#111113]/80 backdrop-blur-2xl border-b border-neutral-200/30 dark:border-white/5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+                <div className="flex items-center justify-between h-16 px-5">
                   <button
                     onClick={() => setMobileOpen(true)}
-                    className="p-2 -ml-2 text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white rounded-lg hover:bg-neutral-100 dark:hover:bg-white/8 transition-colors active:scale-95"
+                    className="p-2.5 -ml-2 text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white rounded-xl hover:bg-neutral-100 dark:hover:bg-white/8 transition-all active:scale-95"
                   >
                     <Menu className="w-5 h-5" />
                   </button>
                   <img src="/movirecurso_7.png" alt="MOVI" className="h-7 object-contain" />
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <InstallAppButton variant="ghost" size="sm" showText={false} />
                     <ThemeToggle />
                     <NotificationBell />
@@ -261,10 +271,10 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
               </header>
 
               {/* Desktop header */}
-              <header className="hidden lg:flex sticky top-0 z-20 bg-white/85 dark:bg-neutral-900/85 backdrop-blur-xl border-b border-neutral-100 dark:border-white/5">
-                <div className="w-full px-6 lg:px-8 flex items-center justify-between h-14">
+              <header className="hidden lg:flex sticky top-0 z-20 bg-white/70 dark:bg-[#111113]/70 backdrop-blur-2xl border-b border-neutral-100/50 dark:border-white/4 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                <div className="w-full px-8 lg:px-10 flex items-center justify-between h-16">
                   <Breadcrumbs items={breadcrumbs} />
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     <InstallAppButton variant="ghost" size="sm" />
                     <ThemeToggle />
                     <NotificationBell />
@@ -277,12 +287,12 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
           <main className={cn(
             ['/multicotizador-digital', '/centro-contacto'].includes(location.pathname)
               ? 'h-screen overflow-hidden'
-              : 'w-full py-5 lg:py-6',
+              : 'w-full py-6 lg:py-8',
             ['/espacio-jiro'].includes(location.pathname)
-              ? 'px-4 sm:px-6 lg:px-8'
+              ? 'px-4 sm:px-6 lg:px-10'
               : ['/multicotizador-digital', '/centro-contacto'].includes(location.pathname)
               ? ''
-              : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'
+              : 'max-w-[1400px] mx-auto px-5 sm:px-6 lg:px-10'
           )}>
             {children}
           </main>
