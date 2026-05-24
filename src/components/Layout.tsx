@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, LayoutDashboard, Calendar, MapPin, Menu, Palette, Key, GraduationCap, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, Car, FolderOpen, Trophy, X, Headphones, Send, BookOpen, FormInput, CreditCard } from 'lucide-react';
+import { Menu, X, ChevronRight } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
 import { FloatingAssistantButton } from './FloatingAssistantButton';
@@ -10,7 +10,11 @@ import InstallAppButton from './InstallAppButton';
 import InstallBanner from './InstallBanner';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from './ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { PrimarySidebar } from './layout/PrimarySidebar';
+import { SecondarySidebar } from './layout/SecondarySidebar';
+import { Breadcrumbs } from './layout/Breadcrumbs';
+import { WORKSPACES, resolveWorkspace, isWorkspaceVisible, isItemVisible, buildBreadcrumbs } from '@/lib/workspaceConfig';
+import type { UserRole } from '@/lib/workspaceConfig';
 
 interface LayoutProps {
   children: ReactNode;
@@ -24,9 +28,8 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(() => {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [secondaryCollapsed, setSecondaryCollapsed] = useState(() => {
     if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
       const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
       return stored === 'true';
@@ -36,315 +39,217 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
-      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(desktopSidebarCollapsed));
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(secondaryCollapsed));
     }
-  }, [desktopSidebarCollapsed]);
+  }, [secondaryCollapsed]);
 
   useEffect(() => {
-    setSidebarOpen(false);
+    setMobileOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && sidebarOpen) {
-        setSidebarOpen(false);
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [sidebarOpen]);
-
-  useEffect(() => {
-    if (sidebarOpen && window.innerWidth < 1024) {
+    if (mobileOpen && window.innerWidth < 1024) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
     return () => { document.body.style.overflow = ''; };
-  }, [sidebarOpen]);
+  }, [mobileOpen]);
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/login');
   };
 
+  const userRole: UserRole = (usuario?.rol as UserRole) || 'Agente';
   const isAdmin = usuario?.rol === 'Administrador';
-  const isGerente = usuario?.rol === 'Gerente';
-  const isEmpleado = usuario?.rol === 'Empleado';
-  const isAgente = usuario?.rol === 'Agente';
-  const isAdminOrGerente = isAdmin || isGerente;
-  const canAccessDirectorio = isAdmin || isEmpleado || isGerente;
-  const isNotAgent = usuario?.rol !== 'Agente';
 
-  const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, show: true },
-    { path: '/tramites', label: 'Tramites', icon: ClipboardList, show: true },
-    { path: '/tramites/formularios', label: 'Formularios Cotizacion', icon: FormInput, show: true },
-    { path: '/centro-contacto', label: 'Centro de Contacto', icon: Headphones, show: isNotAgent },
-    { path: '/entrega-polizas', label: 'Entrega Polizas', icon: Send, show: isAdmin || isGerente || isEmpleado },
-    { path: isAdmin ? '/comisiones' : '/mis-comisiones', label: 'Comisiones', icon: DollarSign, show: !isEmpleado && !isAgente },
-    { path: '/mi-produccion', label: 'Mi Produccion', icon: TrendingUp, show: false },
-    { path: '/mi-produccion-sicas-live', label: 'Produccion SICAS', icon: Activity, show: true },
-    { path: '/produccion/total', label: 'Produccion Oficina', icon: Building, show: isAdminOrGerente },
-    { path: '/mi-crm', label: 'Mi CRM', icon: Briefcase, show: true },
-    { path: '/mi-progreso', label: 'Mi Progreso', icon: Trophy, show: !isEmpleado && !isAgente },
-    { path: '/comunicados', label: 'Comunicados', icon: FileText, show: true },
-    { path: '/centro-digital', label: 'Centro Digital', icon: FolderOpen, show: true },
-    { path: '/seguros-education', label: 'Seguros Education', icon: GraduationCap, show: true },
-    { path: '/mercadotecnia/mi-marca', label: 'Mercadotecnia', icon: Palette, show: true },
-    { path: '/multicotizador-digital', label: 'Multicotizador', icon: Car, show: true },
-    { path: '/lector-qualitas', label: 'Lector Qualitas', icon: FileText, show: isAdmin || isGerente || isEmpleado },
-    { path: '/gmm/cotizador', label: 'GMM BX+', icon: Activity, show: isAdmin },
-    { path: '/manuales', label: 'Manuales', icon: BookOpen, show: true },
-    { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },
-    { path: '/store', label: 'MOVI Store', icon: ShoppingBag, show: true },
-    { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, show: isNotAgent },
-    { path: '/directorio-jiro', label: 'Directorio JIRO', icon: BookUser, show: canAccessDirectorio },
-    { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: isNotAgent },
-    { path: '/directorio', label: 'Usuarios', icon: Users, show: isAdminOrGerente },
-    { path: '/actividad-usuarios', label: 'Actividad Usuarios', icon: Activity, show: isAdmin },
-    { path: '/admin-digital', label: 'Admin Digital', icon: CreditCard, show: isAdmin },
-    { path: '/configuracion', label: 'Configuracion', icon: Settings, show: isAdmin },
-  ];
-
-  const getInitials = () => {
-    const nombre = usuario?.nombre?.[0] || '';
-    const apellido = usuario?.apellidos?.[0] || '';
-    return `${nombre}${apellido}`.toUpperCase();
-  };
-
-  const handleNavClick = (path: string) => {
-    setSidebarOpen(false);
-    navigate(path);
-  };
-
-  const NavItem = ({ item, isCollapsed = false }: { item: typeof navItems[0]; isCollapsed?: boolean }) => {
-    const Icon = item.icon;
-    const isActive = location.pathname === item.path ||
-      (item.label === 'Tramites' && location.pathname.startsWith('/tramites') && !location.pathname.startsWith('/tramites/formularios')) ||
-      (item.label === 'Formularios Cotizacion' && location.pathname.startsWith('/tramites/formularios')) ||
-      (item.label === 'Comisiones' && (location.pathname.startsWith('/comisiones') || location.pathname.startsWith('/mis-comisiones'))) ||
-      (item.label === 'Mi Produccion' && location.pathname === '/mi-produccion') ||
-      (item.label === 'Mercadotecnia' && location.pathname.startsWith('/mercadotecnia')) ||
-      (item.label === 'Centro de Contacto' && (location.pathname.startsWith('/centro-contacto') || location.pathname === '/chat' || location.pathname === '/centro-notificaciones' || location.pathname === '/notificaciones-transaccionales')) ||
-      (item.label === 'Configuracion' && (location.pathname.startsWith('/configuracion') || location.pathname === '/oficinas' || location.pathname === '/catalogos-web' || location.pathname === '/sicas' || location.pathname.startsWith('/gamificacion') || location.pathname === '/gmm/tarifas')) ||
-      (item.path === '/produccion/total' && location.pathname === '/produccion/total');
-
-    return (
-      <button
-        onClick={() => handleNavClick(item.path)}
-        title={isCollapsed ? item.label : undefined}
-        className={cn(
-          "w-full flex items-center gap-3 rounded-xl text-[13px] font-medium transition-all duration-200 ease-smooth",
-          isCollapsed ? "justify-center p-2.5" : "px-3 py-2.5",
-          "active:scale-[0.97]",
-          isActive
-            ? "bg-accent text-accent-foreground shadow-sm"
-            : "text-neutral-600 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/8 hover:text-neutral-900 dark:hover:text-white"
-        )}
-      >
-        <Icon className={cn(
-          "flex-shrink-0 transition-colors duration-200",
-          isCollapsed ? "w-5 h-5" : "w-[18px] h-[18px]"
-        )} />
-        {!isCollapsed && (
-          <span className="truncate">{item.label}</span>
-        )}
-      </button>
-    );
-  };
-
-  const SidebarContent = ({ isMobile = false, isCollapsed = false }: { isMobile?: boolean; isCollapsed?: boolean }) => (
-    <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div className={cn(
-        "flex items-center flex-shrink-0 border-b border-neutral-100 dark:border-white/8",
-        isCollapsed ? "justify-center px-2 h-14" : "justify-between px-5 h-14"
-      )}>
-        <button
-          onClick={() => handleNavClick('/dashboard')}
-          className="flex items-center transition-transform duration-200 hover:scale-[1.02] active:scale-95 focus:outline-none rounded-lg"
-          aria-label="Ir al Dashboard"
-        >
-          <img
-            src="/movirecurso_7.png"
-            alt="MOVI Digital"
-            className={cn(
-              "object-contain",
-              isCollapsed ? "h-8 w-8" : "h-8"
-            )}
-          />
-        </button>
-        {isMobile && (
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        )}
-      </div>
-
-      {/* Navigation */}
-      <ScrollArea className="flex-1 py-3">
-        <nav className={cn("space-y-0.5", isCollapsed ? "px-2" : "px-3")}>
-          {navItems.filter(item => item.show).map((item) => (
-            <NavItem key={item.path} item={item} isCollapsed={isCollapsed} />
-          ))}
-        </nav>
-      </ScrollArea>
-
-      {/* Footer - Profile */}
-      <div className={cn(
-        "flex-shrink-0 border-t border-neutral-100 dark:border-white/8",
-        isCollapsed ? "p-2" : "p-3"
-      )}>
-        <button
-          className={cn(
-            "w-full flex items-center gap-3 rounded-xl transition-all duration-200 ease-smooth",
-            "hover:bg-neutral-100 dark:hover:bg-white/8 active:scale-[0.97]",
-            isCollapsed ? "justify-center p-2" : "px-3 py-2.5"
-          )}
-          onClick={() => handleNavClick('/perfil')}
-          title={isCollapsed ? `${usuario?.nombre} ${usuario?.apellidos}` : undefined}
-        >
-          <Avatar className={cn("flex-shrink-0", isCollapsed ? "h-8 w-8" : "h-8 w-8")}>
-            <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} />
-            <AvatarFallback className="bg-accent text-accent-foreground font-semibold text-xs">
-              {getInitials()}
-            </AvatarFallback>
-          </Avatar>
-          {!isCollapsed && (
-            <div className="flex-1 text-left min-w-0">
-              <p className="text-[13px] font-semibold text-neutral-900 dark:text-white truncate">
-                {usuario?.nombre} {usuario?.apellidos}
-              </p>
-              <p className="text-[11px] text-neutral-500 dark:text-white/50 truncate">{usuario?.rol}</p>
-            </div>
-          )}
-        </button>
-
-        <button
-          className={cn(
-            "w-full flex items-center gap-2 rounded-xl text-[13px] font-medium mt-1",
-            "text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200 active:scale-[0.97]",
-            isCollapsed ? "justify-center p-2.5" : "justify-center px-3 py-2"
-          )}
-          onClick={handleSignOut}
-          title={isCollapsed ? "Cerrar Sesion" : undefined}
-        >
-          <LogOut className="w-4 h-4" />
-          {!isCollapsed && <span>Cerrar Sesion</span>}
-        </button>
-      </div>
-    </div>
-  );
+  const { workspace, activeItem } = resolveWorkspace(location.pathname, userRole);
+  const breadcrumbs = buildBreadcrumbs(workspace, activeItem);
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
-      {/* Desktop Sidebar */}
-      <aside
-        className={cn(
-          "hidden lg:flex fixed inset-y-0 left-0 z-40 bg-white dark:bg-neutral-900 border-r border-neutral-200/70 dark:border-white/8 transition-all duration-250 ease-smooth",
-          desktopSidebarCollapsed ? "w-[68px]" : "w-[264px]"
-        )}
-      >
-        <div className="flex flex-col w-full relative">
-          <SidebarContent isCollapsed={desktopSidebarCollapsed} />
-
-          {/* Collapse toggle */}
-          <button
-            onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
-            className={cn(
-              "absolute top-[60px] -right-3 z-50 w-6 h-6 rounded-full",
-              "bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-white/10",
-              "flex items-center justify-center shadow-sm",
-              "hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all duration-200",
-              "focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1",
-              "active:scale-90"
-            )}
-            aria-label={desktopSidebarCollapsed ? "Expandir menu" : "Colapsar menu"}
-          >
-            <ChevronLeft className={cn(
-              "w-3.5 h-3.5 text-neutral-500 dark:text-white/60 transition-transform duration-200",
-              desktopSidebarCollapsed && "rotate-180"
-            )} />
-          </button>
-        </div>
+      {/* Desktop: Primary Sidebar (icon rail) */}
+      <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40">
+        <PrimarySidebar
+          activeWorkspaceId={workspace?.id || null}
+          userRole={userRole}
+          usuario={usuario}
+          onSignOut={handleSignOut}
+        />
       </aside>
 
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div className="lg:hidden fixed inset-0 z-50">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/30 backdrop-blur-[2px] animate-fade-in"
-            onClick={() => setSidebarOpen(false)}
+      {/* Desktop: Secondary Sidebar */}
+      <aside
+        className={cn(
+          "hidden lg:flex fixed inset-y-0 z-30 transition-all duration-200 ease-out",
+          "left-[68px]"
+        )}
+      >
+        {workspace && (
+          <SecondarySidebar
+            workspace={workspace}
+            activeItem={activeItem}
+            userRole={userRole}
+            collapsed={secondaryCollapsed}
+            onToggleCollapse={() => setSecondaryCollapsed(!secondaryCollapsed)}
           />
-          {/* Drawer */}
-          <div className="absolute inset-y-0 left-0 w-[280px] bg-white dark:bg-neutral-900 shadow-xl animate-slide-in-left">
-            <SidebarContent isMobile />
+        )}
+      </aside>
+
+      {/* Desktop: Expand button when secondary is collapsed */}
+      {secondaryCollapsed && workspace && workspace.id !== 'dashboard' && (
+        <button
+          onClick={() => setSecondaryCollapsed(false)}
+          className="hidden lg:flex fixed top-[72px] z-30 items-center justify-center w-5 h-5 rounded-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-white/10 shadow-sm hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all"
+          style={{ left: 63 }}
+        >
+          <ChevronRight className="w-3 h-3 text-neutral-500" />
+        </button>
+      )}
+
+      {/* Mobile Drawer */}
+      {mobileOpen && (
+        <div className="lg:hidden fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            onClick={() => setMobileOpen(false)}
+          />
+          <div className="absolute inset-y-0 left-0 w-[300px] bg-white dark:bg-neutral-900 shadow-2xl flex flex-col">
+            {/* Mobile header */}
+            <div className="flex items-center justify-between h-14 px-4 border-b border-neutral-100 dark:border-white/8">
+              <img src="/movirecurso_7.png" alt="MOVI" className="h-7 object-contain" />
+              <button
+                onClick={() => setMobileOpen(false)}
+                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:text-white dark:hover:bg-white/10 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Mobile workspace selector */}
+            <div className="flex items-center gap-1 px-3 py-2 border-b border-neutral-100 dark:border-white/8 overflow-x-auto">
+              {WORKSPACES.filter(ws => isWorkspaceVisible(ws, userRole)).map((ws) => {
+                const Icon = ws.icon;
+                const isActive = ws.id === workspace?.id;
+                return (
+                  <button
+                    key={ws.id}
+                    onClick={() => navigate(ws.items[0]?.path || '/dashboard')}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all",
+                      isActive
+                        ? "bg-accent/10 text-accent-foreground"
+                        : "text-neutral-500 hover:bg-neutral-50 dark:hover:bg-white/5"
+                    )}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {ws.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Mobile workspace items */}
+            <ScrollArea className="flex-1">
+              {workspace && (
+                <nav className="px-3 py-2 space-y-0.5">
+                  {workspace.items.filter(item => isItemVisible(item, userRole)).map((item) => {
+                    const Icon = item.icon;
+                    const isActive = location.pathname === item.path ||
+                      (item.matchPrefix && !item.excludePrefixes?.some(ex => location.pathname.startsWith(ex)) && location.pathname.startsWith(item.path));
+
+                    return (
+                      <button
+                        key={item.path}
+                        onClick={() => { navigate(item.path); setMobileOpen(false); }}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all",
+                          isActive
+                            ? "bg-accent/10 text-accent-foreground"
+                            : "text-neutral-600 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/8"
+                        )}
+                      >
+                        <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </nav>
+              )}
+            </ScrollArea>
+
+            {/* Mobile footer */}
+            <div className="border-t border-neutral-100 dark:border-white/8 p-3">
+              <button
+                onClick={handleSignOut}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all"
+              >
+                <span>Cerrar Sesion</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Main content area */}
-      <div className={cn(
-        "min-h-screen transition-all duration-250 ease-smooth",
-        desktopSidebarCollapsed ? "lg:ml-[68px]" : "lg:ml-[264px]"
-      )}>
-        {!hideHeader && (
-          <>
-            {/* Mobile header */}
-            <header className="lg:hidden sticky top-0 z-30 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-b border-neutral-200/60 dark:border-white/8">
-              <div className="flex items-center justify-between h-14 px-4">
-                <button
-                  onClick={() => setSidebarOpen(true)}
-                  className="p-2 -ml-2 text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white rounded-lg hover:bg-neutral-100 dark:hover:bg-white/8 transition-colors active:scale-95"
-                  aria-label="Abrir menu"
-                >
-                  <Menu className="w-5 h-5" />
-                </button>
-                <img
-                  src="/movirecurso_7.png"
-                  alt="MOVI Digital"
-                  className="h-7 object-contain"
-                />
-                <div className="flex items-center gap-1">
-                  <InstallAppButton variant="ghost" size="sm" showText={false} />
-                  <ThemeToggle />
-                  <NotificationBell />
-                </div>
-              </div>
-            </header>
-
-            {/* Desktop header */}
-            <header className="hidden lg:flex sticky top-0 z-30 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-b border-neutral-200/60 dark:border-white/8">
-              <div className="w-full px-6 lg:px-8 flex items-center justify-end gap-2 h-14">
-                <InstallAppButton variant="outline" size="sm" />
-                <ThemeToggle />
-                <NotificationBell />
-              </div>
-            </header>
-          </>
+      <div
+        className={cn(
+          "min-h-screen transition-all duration-200 ease-out",
+          secondaryCollapsed ? "lg:ml-[68px]" : "lg:ml-[268px]"
         )}
+      >
 
-        <main className={cn(
-          ['/multicotizador-digital', '/centro-contacto'].includes(location.pathname)
-            ? 'h-screen overflow-hidden'
-            : 'w-full py-5 lg:py-8',
-          ['/espacio-jiro'].includes(location.pathname)
-            ? 'px-4 sm:px-6 lg:px-8'
-            : ['/multicotizador-digital', '/centro-contacto'].includes(location.pathname)
-            ? ''
-            : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'
-        )}>
-          {children}
-        </main>
+          {!hideHeader && (
+            <>
+              {/* Mobile header */}
+              <header className="lg:hidden sticky top-0 z-30 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-b border-neutral-200/60 dark:border-white/8">
+                <div className="flex items-center justify-between h-14 px-4">
+                  <button
+                    onClick={() => setMobileOpen(true)}
+                    className="p-2 -ml-2 text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white rounded-lg hover:bg-neutral-100 dark:hover:bg-white/8 transition-colors active:scale-95"
+                  >
+                    <Menu className="w-5 h-5" />
+                  </button>
+                  <img src="/movirecurso_7.png" alt="MOVI" className="h-7 object-contain" />
+                  <div className="flex items-center gap-1">
+                    <InstallAppButton variant="ghost" size="sm" showText={false} />
+                    <ThemeToggle />
+                    <NotificationBell />
+                  </div>
+                </div>
+              </header>
 
-        {isAdmin && <FloatingAssistantButton />}
-        {isAdmin && <AssistantModal />}
-        <InstallBanner />
+              {/* Desktop header */}
+              <header className="hidden lg:flex sticky top-0 z-20 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl border-b border-neutral-200/60 dark:border-white/5">
+                <div className="w-full px-6 lg:px-8 flex items-center justify-between h-12">
+                  <Breadcrumbs items={breadcrumbs} />
+                  <div className="flex items-center gap-2">
+                    <InstallAppButton variant="outline" size="sm" />
+                    <ThemeToggle />
+                    <NotificationBell />
+                  </div>
+                </div>
+              </header>
+            </>
+          )}
+
+          <main className={cn(
+            ['/multicotizador-digital', '/centro-contacto'].includes(location.pathname)
+              ? 'h-screen overflow-hidden'
+              : 'w-full py-5 lg:py-6',
+            ['/espacio-jiro'].includes(location.pathname)
+              ? 'px-4 sm:px-6 lg:px-8'
+              : ['/multicotizador-digital', '/centro-contacto'].includes(location.pathname)
+              ? ''
+              : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'
+          )}>
+            {children}
+          </main>
+
+          {isAdmin && <FloatingAssistantButton />}
+          {isAdmin && <AssistantModal />}
+          <InstallBanner />
       </div>
     </div>
   );
