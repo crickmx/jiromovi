@@ -290,6 +290,11 @@ export function Dashboard() {
     );
   }
 
+  const toTitleCase = (str: string) => {
+    if (!str) return '';
+    return str.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  };
+
   // Welcome banner shared by both views
   const WelcomeBanner = () => (
     <div className="relative overflow-hidden bg-gradient-to-br from-white via-white to-accent/[0.02] dark:from-white/[0.04] dark:via-white/[0.02] dark:to-accent/[0.04] rounded-3xl border border-neutral-200/50 dark:border-white/[0.06] shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6 sm:p-8">
@@ -299,19 +304,17 @@ export function Dashboard() {
       <div className="relative flex items-center justify-between mb-5">
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-white tracking-tight">
-            Hola, <span className="text-accent">{currentUser?.nombre}</span>
+            Hola, <span className="text-accent">{toTitleCase(currentUser?.nombre || '')}</span>
           </h1>
           <p className="text-sm text-neutral-500 dark:text-white/40 mt-1 font-medium">
             {officeName}
           </p>
         </div>
-        <div className="w-12 h-12 rounded-2xl bg-white dark:bg-white/10 shadow-sm border border-neutral-100 dark:border-white/10 flex items-center justify-center flex-shrink-0 ml-4">
-          <img
-            src={officeLogo}
-            alt="Logo oficina"
-            className="h-8 w-8 object-contain"
-          />
-        </div>
+        <img
+          src={officeLogo}
+          alt="Logo oficina"
+          className="h-12 sm:h-14 w-auto object-contain flex-shrink-0 ml-4"
+        />
       </div>
 
       <SmartAnalysisCard
