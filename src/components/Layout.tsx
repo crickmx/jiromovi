@@ -13,7 +13,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { PrimarySidebar } from './layout/PrimarySidebar';
 import { SecondarySidebar } from './layout/SecondarySidebar';
 import { Breadcrumbs } from './layout/Breadcrumbs';
-import { WORKSPACES, TOP_LEVEL_ITEMS, resolveWorkspace, isWorkspaceVisible, isItemVisible, isTopLevelItemVisible, buildBreadcrumbs } from '@/lib/workspaceConfig';
+import { WORKSPACES, NAV_ORDER, TOP_LEVEL_ITEMS, resolveWorkspace, isWorkspaceVisible, isItemVisible, isTopLevelItemVisible, buildBreadcrumbs } from '@/lib/workspaceConfig';
 import type { WorkspaceId, UserRole } from '@/lib/workspaceConfig';
 
 interface LayoutProps {
@@ -133,36 +133,34 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
             {/* Vertical navigation */}
             <ScrollArea className="flex-1">
               <nav className="py-2">
-                {/* Top-level items */}
-                <div className="px-2 mb-1">
-                  {TOP_LEVEL_ITEMS.filter(item => isTopLevelItemVisible(item, userRole)).map((item) => {
+                {NAV_ORDER.map((entry, idx) => {
+                  if (entry.type === 'link') {
+                    const item = entry.item;
+                    if (!isTopLevelItemVisible(item, userRole)) return null;
                     const Icon = item.icon;
                     const isActive = location.pathname === item.path ||
                       (item.matchPrefix && location.pathname.startsWith(item.path));
 
                     return (
-                      <button
-                        key={item.path}
-                        onClick={() => { navigate(item.path); setMobileOpen(false); }}
-                        className={cn(
-                          "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all",
-                          isActive
-                            ? "bg-neutral-100 dark:bg-white/10 text-neutral-900 dark:text-white"
-                            : "text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-white/5"
-                        )}
-                      >
-                        <Icon className={cn("w-4 h-4", isActive ? "text-neutral-900 dark:text-white" : "text-neutral-400 dark:text-white/40")} />
-                        <span>{item.label}</span>
-                      </button>
+                      <div key={`link-${idx}`} className="px-2">
+                        <button
+                          onClick={() => { navigate(item.path); setMobileOpen(false); }}
+                          className={cn(
+                            "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all",
+                            isActive
+                              ? "bg-neutral-100 dark:bg-white/10 text-neutral-900 dark:text-white"
+                              : "text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-white/5"
+                          )}
+                        >
+                          <Icon className={cn("w-4 h-4", isActive ? "text-neutral-900 dark:text-white" : "text-neutral-400 dark:text-white/40")} />
+                          <span>{item.label}</span>
+                        </button>
+                      </div>
                     );
-                  })}
-                </div>
+                  }
 
-                {/* Separator */}
-                <div className="mx-4 h-px bg-neutral-100 dark:bg-white/8 my-1.5" />
-
-                {/* Workspaces */}
-                {WORKSPACES.filter(ws => isWorkspaceVisible(ws, userRole)).map((ws) => {
+                  const ws = entry.workspace;
+                  if (!isWorkspaceVisible(ws, userRole)) return null;
                   const WsIcon = ws.icon;
                   const isActiveWs = ws.id === workspace?.id;
                   const isExpanded = mobileExpandedWorkspace === ws.id;

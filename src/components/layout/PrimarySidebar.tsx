@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { WORKSPACES, TOP_LEVEL_ITEMS, isWorkspaceVisible, isTopLevelItemVisible } from '@/lib/workspaceConfig';
+import { NAV_ORDER, isWorkspaceVisible, isTopLevelItemVisible } from '@/lib/workspaceConfig';
 import type { WorkspaceId, UserRole } from '@/lib/workspaceConfig';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
@@ -46,41 +46,40 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
           </button>
         </div>
 
-        {/* Navigation */}
+        {/* Navigation - ordered list */}
         <div className="flex-1 flex flex-col items-center gap-1 py-3 overflow-y-auto w-full px-2">
-          {/* Top-level items (Dashboard, Comunicados, Store) */}
-          {TOP_LEVEL_ITEMS.filter(item => isTopLevelItemVisible(item, userRole)).map((item) => {
-            const Icon = item.icon;
-            const isActive = isTopLevelActive(item.path, item.matchPrefix);
+          {NAV_ORDER.map((entry, idx) => {
+            if (entry.type === 'link') {
+              const item = entry.item;
+              if (!isTopLevelItemVisible(item, userRole)) return null;
+              const Icon = item.icon;
+              const isActive = isTopLevelActive(item.path, item.matchPrefix);
 
-            return (
-              <Tooltip key={item.path}>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => navigate(item.path)}
-                    className={cn(
-                      "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
-                      "hover:bg-white/10 active:scale-95",
-                      isActive
-                        ? "bg-white/15 text-white shadow-sm shadow-white/5"
-                        : "text-neutral-400 hover:text-white"
-                    )}
-                  >
-                    <Icon className="w-5 h-5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="text-xs font-medium">
-                  {item.label}
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
+              return (
+                <Tooltip key={`link-${idx}`}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => navigate(item.path)}
+                      className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
+                        "hover:bg-white/10 active:scale-95",
+                        isActive
+                          ? "bg-white/15 text-white shadow-sm shadow-white/5"
+                          : "text-neutral-400 hover:text-white"
+                      )}
+                    >
+                      <Icon className="w-5 h-5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="text-xs font-medium">
+                    {item.label}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
 
-          {/* Separator */}
-          <div className="w-6 h-px bg-neutral-700/60 my-1.5" />
-
-          {/* Workspace icons */}
-          {WORKSPACES.filter(ws => isWorkspaceVisible(ws, userRole)).map((ws) => {
+            const ws = entry.workspace;
+            if (!isWorkspaceVisible(ws, userRole)) return null;
             const Icon = ws.icon;
             const isActive = ws.id === activeWorkspaceId;
             const firstPath = ws.items[0]?.path || '/dashboard';
