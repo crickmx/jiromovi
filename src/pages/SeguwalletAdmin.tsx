@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Shield, Plus, Search, Eye, CreditCard as Edit, RotateCcw, Users, X, Check, UserPlus, Loader2, FileText, AlertCircle, CheckCircle2, Clock, Building2, ToggleLeft, ToggleRight, Trash2, Phone, Upload, Link, ImageOff, Camera, User } from 'lucide-react';
+import { Shield, Plus, Search, Eye, CreditCard as Edit, RotateCcw, Users, X, Check, UserPlus, Loader2, FileText, AlertCircle, CheckCircle2, Clock, Building2, ToggleLeft, ToggleRight, Trash2, Phone, Upload, Link, ImageOff, Camera, User, FileStack, Download, Copy, ExternalLink, Calendar, Hash } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAgentSicasClients, searchSicasClientsAdmin, type SicasClientResult } from '@/seguwallet/lib/seguwalletAuth';
@@ -82,7 +82,7 @@ interface EditFormData {
   agent_user_id: string;
 }
 
-type ModalType = 'create' | 'edit' | 'sicas' | 'reset' | 'terms_create' | 'terms_view' | null;
+type ModalType = 'create' | 'edit' | 'sicas' | 'reset' | 'terms_create' | 'terms_view' | 'polizas_externas' | null;
 
 const toTitleCase = (str: string) => {
   if (!str) return '';
@@ -165,6 +165,10 @@ export function SeguwalletAdmin() {
   const [logoImportLoading, setLogoImportLoading] = useState(false);
   const [logoLocalPath, setLogoLocalPath] = useState<string | null>(null);
   const logoFileInputRef = useRef<HTMLInputElement>(null);
+
+  // External policies viewer
+  const [extPolicies, setExtPolicies] = useState<ExternalPolicy[]>([]);
+  const [extPoliciesLoading, setExtPoliciesLoading] = useState(false);
 
   useEffect(() => {
     loadCustomers();
@@ -676,6 +680,24 @@ export function SeguwalletAdmin() {
     }
   };
 
+  const openPolizasExternas = async (customer: SeguwalletCustomer) => {
+    setSelectedCustomer(customer);
+    setExtPolicies([]);
+    setActiveModal('polizas_externas');
+    setExtPoliciesLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('get_customer_external_policies', {
+        p_customer_id: customer.id,
+      });
+      if (error) throw error;
+      setExtPolicies((data || []) as ExternalPolicy[]);
+    } catch (err) {
+      console.error('Error loading external policies:', err);
+    } finally {
+      setExtPoliciesLoading(false);
+    }
+  };
+
   const closeModal = () => {
     setActiveModal(null);
     setSelectedCustomer(null);
@@ -849,6 +871,7 @@ export function SeguwalletAdmin() {
                           <button onClick={() => openEdit(c)} className="p-1.5 rounded-lg text-neutral-400 hover:text-amber-600 hover:bg-amber-50 transition-colors" title="Editar"><Edit className="w-3.5 h-3.5" /></button>
                           <button onClick={() => openSicas(c)} className="p-1.5 rounded-lg text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Asignar SICAS"><UserPlus className="w-3.5 h-3.5" /></button>
                           <button onClick={() => openReset(c)} className="p-1.5 rounded-lg text-neutral-400 hover:text-teal-600 hover:bg-teal-50 transition-colors" title="Cambiar contrasena"><RotateCcw className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => openPolizasExternas(c)} className="p-1.5 rounded-lg text-neutral-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Ver polizas externas"><FileStack className="w-3.5 h-3.5" /></button>
                         </div>
                       </td>
                     </tr>
@@ -1446,6 +1469,16 @@ export function SeguwalletAdmin() {
         </ModalWrap>
       )}
 
+      {/* POLIZAS EXTERNAS MODAL */}
+      {activeModal === 'polizas_externas' && selectedCustomer && (
+        <PolizasExternasModal
+          customer={selectedCustomer}
+          policies={extPolicies}
+          loading={extPoliciesLoading}
+          onClose={closeModal}
+        />
+      )}
+
       {/* RESET MODAL */}
       {activeModal === 'reset' && selectedCustomer && (
         <ModalWrap title={`Cambiar Contrasena`} onClose={closeModal}>
@@ -1465,6 +1498,271 @@ export function SeguwalletAdmin() {
           )}
         </ModalWrap>
       )}
+    </div>
+  );
+}
+
+// ─── External Policies Types & Modal ─────────────────────────────────────────
+
+interface ExternalPolicyDocument {
+  id: string;
+  document_type: string;
+  document_name: string;
+  file_path: string | null;
+  file_size: number | null;
+  mime_type: string | null;
+  created_at: string;
+}
+
+interface ExternalPolicy {
+  id: string;
+  insurer_name: string | null;
+  ramo: string | null;
+  subramo: string | null;
+  policy_number: string | null;
+  contractor_name: string | null;
+  insured_name: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  status: string | null;
+  total_premium: number | null;
+  currency: string | null;
+  notes: string | null;
+  created_at: string;
+  documents: ExternalPolicyDocument[];
+}
+
+const SUPABASE_URL_EXT = import.meta.env.VITE_SUPABASE_URL as string;
+
+function getSignedDocUrl(filePath: string): string {
+  return `${SUPABASE_URL_EXT}/storage/v1/object/authenticated/seguwallet-external-policies/${filePath}`;
+}
+
+function formatFileSize(bytes: number | null): string {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDateMX(d: string | null): string {
+  if (!d) return '—';
+  return new Date(d + 'T00:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+const RAMO_COLORS: Record<string, string> = {
+  Vehiculos: '#f59e0b', Salud: '#10b981', Vida: '#ef4444', Hogar: '#3b82f6',
+  Danos: '#8b5cf6', Viaje: '#14b8a6', Otro: '#6b7280',
+};
+
+function PolizasExternasModal({ customer, policies, loading, onClose }: {
+  customer: SeguwalletCustomer;
+  policies: ExternalPolicy[];
+  loading: boolean;
+  onClose: () => void;
+}) {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const copyPolicy = (p: ExternalPolicy) => {
+    const lines = [
+      `Aseguradora: ${p.insurer_name || '—'}`,
+      `Tipo: ${[p.ramo, p.subramo].filter(Boolean).join(' / ') || '—'}`,
+      `Poliza: ${p.policy_number || '—'}`,
+      p.start_date ? `Inicio: ${formatDateMX(p.start_date)}` : null,
+      p.end_date ? `Fin: ${formatDateMX(p.end_date)}` : null,
+      p.contractor_name ? `Contratante: ${p.contractor_name}` : null,
+      p.insured_name ? `Asegurado: ${p.insured_name}` : null,
+      p.total_premium ? `Prima: $${p.total_premium.toLocaleString('es-MX')} ${p.currency || 'MXN'}` : null,
+    ].filter(Boolean).join('\n');
+    navigator.clipboard.writeText(lines).then(() => {
+      setCopiedId(p.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
+  };
+
+  const statusBadge = (status: string | null) => {
+    const s = (status || '').toLowerCase();
+    if (s === 'active' || s === 'activa' || s === 'vigente') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    if (s === 'expired' || s === 'vencida') return 'bg-red-50 text-red-700 border-red-200';
+    return 'bg-neutral-100 text-neutral-600 border-neutral-200';
+  };
+
+  const statusLabel = (status: string | null) => {
+    const s = (status || '').toLowerCase();
+    if (s === 'active') return 'Vigente';
+    if (s === 'expired') return 'Vencida';
+    return status || '—';
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-neutral-100 dark:border-white/[0.06]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+              <FileStack className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-neutral-900 dark:text-white">Polizas externas</h2>
+              <p className="text-xs text-neutral-500 dark:text-white/40 mt-0.5">
+                {toTitleCase(customer.full_name)}
+                {customer.email && <span className="ml-1">· {customer.email}</span>}
+                {customer.phone && <span className="ml-1">· {customer.phone}</span>}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {!loading && (
+              <span className="px-2.5 py-1 rounded-xl bg-neutral-100 dark:bg-white/[0.06] text-xs font-bold text-neutral-600 dark:text-white/50">
+                {policies.length} poliza{policies.length !== 1 ? 's' : ''}
+              </span>
+            )}
+            <button onClick={onClose} className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/[0.06] text-neutral-400 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="w-8 h-8 border-[3px] border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+            </div>
+          ) : policies.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-neutral-50 dark:bg-white/[0.03] border border-neutral-100 dark:border-white/[0.06] flex items-center justify-center mb-4">
+                <FileStack className="w-8 h-8 text-neutral-300" />
+              </div>
+              <p className="text-sm font-semibold text-neutral-500 dark:text-white/40">Sin polizas externas</p>
+              <p className="text-xs text-neutral-400 dark:text-white/30 mt-1 max-w-xs">
+                Este cliente aun no ha cargado polizas externas en Seguwallet.
+              </p>
+            </div>
+          ) : (
+            policies.map(p => {
+              const ramoColor = RAMO_COLORS[p.ramo || ''] || '#6b7280';
+              const docs = p.documents || [];
+              return (
+                <div key={p.id} className="rounded-2xl border border-neutral-200/70 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                  {/* Policy header row */}
+                  <div className="flex items-start gap-4 px-5 pt-4 pb-3">
+                    {/* Ramo color tag */}
+                    <div
+                      className="w-1 h-full rounded-full flex-shrink-0 self-stretch min-h-[48px]"
+                      style={{ backgroundColor: ramoColor }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                        <p className="font-bold text-neutral-900 dark:text-white text-sm">
+                          {p.insurer_name || 'Aseguradora no indicada'}
+                        </p>
+                        {p.ramo && (
+                          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold border" style={{ backgroundColor: ramoColor + '15', color: ramoColor, borderColor: ramoColor + '40' }}>
+                            {p.ramo}{p.subramo ? ` · ${p.subramo}` : ''}
+                          </span>
+                        )}
+                        <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border ${statusBadge(p.status)}`}>
+                          {statusLabel(p.status)}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500 dark:text-white/40">
+                        {p.policy_number && (
+                          <span className="flex items-center gap-1"><Hash className="w-3 h-3" />{p.policy_number}</span>
+                        )}
+                        {p.start_date && (
+                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{formatDateMX(p.start_date)} → {formatDateMX(p.end_date)}</span>
+                        )}
+                        {p.total_premium && (
+                          <span className="font-semibold text-neutral-700 dark:text-white/60">
+                            ${p.total_premium.toLocaleString('es-MX')} {p.currency || 'MXN'}
+                          </span>
+                        )}
+                      </div>
+                      {(p.contractor_name || p.insured_name) && (
+                        <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1 text-xs text-neutral-400 dark:text-white/30">
+                          {p.contractor_name && <span>Contratante: {p.contractor_name}</span>}
+                          {p.insured_name && <span>Asegurado: {p.insured_name}</span>}
+                        </div>
+                      )}
+                      {p.notes && (
+                        <p className="mt-1.5 text-xs text-neutral-500 dark:text-white/40 italic leading-relaxed">{p.notes}</p>
+                      )}
+                    </div>
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => copyPolicy(p)}
+                        className="p-1.5 rounded-lg text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
+                        title="Copiar datos"
+                      >
+                        {copiedId === p.id ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Documents */}
+                  {docs.length > 0 && (
+                    <div className="px-5 pb-4 pt-1 space-y-1.5">
+                      <p className="text-[10px] font-bold text-neutral-400 dark:text-white/30 uppercase tracking-wider mb-2">
+                        Documentos adjuntos ({docs.length})
+                      </p>
+                      {docs.map(doc => (
+                        <div key={doc.id} className="flex items-center gap-3 px-3 py-2 rounded-xl bg-neutral-50 dark:bg-white/[0.03] border border-neutral-100 dark:border-white/[0.04]">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-neutral-700 dark:text-white/70 truncate">{doc.document_name || doc.document_type}</p>
+                            <p className="text-[10px] text-neutral-400 dark:text-white/30">
+                              {doc.document_type}{doc.file_size ? ` · ${formatFileSize(doc.file_size)}` : ''}
+                            </p>
+                          </div>
+                          {doc.file_path && (
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <a
+                                href={getSignedDocUrl(doc.file_path)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 rounded-lg text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
+                                title="Ver archivo"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+                              <a
+                                href={getSignedDocUrl(doc.file_path)}
+                                download
+                                className="p-1.5 rounded-lg text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
+                                title="Descargar"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Footer: uploaded date */}
+                  <div className="px-5 pb-3 flex items-center justify-between">
+                    <p className="text-[10px] text-neutral-300 dark:text-white/20">
+                      Cargada el {new Date(p.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </p>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-neutral-100 dark:border-white/[0.06] flex justify-end">
+          <button onClick={onClose} className="px-4 py-2.5 rounded-xl bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-white/60 text-sm font-medium hover:bg-neutral-200 dark:hover:bg-white/10 transition-colors">
+            Cerrar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
