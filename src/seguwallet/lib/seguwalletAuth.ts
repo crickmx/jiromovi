@@ -21,40 +21,28 @@ export async function seguwalletSignIn(email: string, password: string) {
 
   if (authError) throw authError;
 
+  // Verify this auth user has a Seguwallet customer record
   const { data: customer, error: customerError } = await supabase
     .from('seguwallet_customers')
-    .select('*')
+    .select('id, status, email, full_name, auth_user_id, agent_user_id, phone, last_login_at, created_at, updated_at')
     .eq('auth_user_id', authData.user.id)
     .maybeSingle();
 
-  if (customerError) throw customerError;
+  if (customerError) {
+    await supabase.auth.signOut();
+    throw new Error('Error al verificar tu cuenta. Intenta de nuevo.');
+  }
   if (!customer) {
     await supabase.auth.signOut();
     throw new Error('Esta cuenta no tiene acceso a Seguwallet.');
   }
-
   if (customer.status === 'blocked') {
     await supabase.auth.signOut();
-    throw new Error('Tu cuenta está bloqueada. Contacta a tu agente.');
+    throw new Error('Tu cuenta esta bloqueada. Contacta a tu agente.');
   }
-
   if (customer.status === 'inactive') {
     await supabase.auth.signOut();
-    throw new Error('Tu cuenta está inactiva. Contacta a tu agente.');
-  }
-
-  await supabase
-    .from('seguwallet_customers')
-    .update({ last_login_at: new Date().toISOString() })
-    .eq('id', customer.id);
-
-  try {
-    await supabase.from('seguwallet_access_logs').insert({
-      seguwallet_customer_id: customer.id,
-      event_type: 'login_success',
-    });
-  } catch {
-    // non-critical
+    throw new Error('Tu cuenta esta inactiva. Contacta a tu agente.');
   }
 
   return { user: authData.user, customer };

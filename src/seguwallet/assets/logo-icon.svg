@@ -1,17 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 175" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 185" fill="none">
   <!-- WiFi dot -->
-  <circle cx="100" cy="14" r="4.5" fill="#1228B8"/>
+  <circle cx="100" cy="14" r="5" fill="#1C37E0"/>
   <!-- WiFi arc small -->
-  <path d="M84 30 Q100 18 116 30" stroke="#1228B8" stroke-width="5.5" stroke-linecap="round" fill="none"/>
+  <path d="M83 34 Q100 22 117 34" stroke="#1C37E0" stroke-width="5" stroke-linecap="round" fill="none"/>
   <!-- WiFi arc large -->
-  <path d="M68 16 Q100 -6 132 16" stroke="#1228B8" stroke-width="5.5" stroke-linecap="round" fill="none"/>
+  <path d="M65 20 Q100 -6 135 20" stroke="#1C37E0" stroke-width="5" stroke-linecap="round" fill="none"/>
 
-  <!-- Envelope body (rounded rect) -->
-  <rect x="8" y="58" width="184" height="130" rx="16" fill="#2B3FE6"/>
+  <!-- Envelope body -->
+  <rect x="10" y="56" width="180" height="126" rx="14" fill="#1C37E0"/>
 
-  <!-- Dark inner triangle -->
-  <path d="M8 124 L100 178 L192 124 L192 188 Q192 188 100 188 Q8 188 8 188 Z" fill="#1228B8"/>
+  <!-- Envelope bottom-left fold -->
+  <path d="M10 170 L10 182 Q10 182 24 182 L82 138 Z" fill="#0E2BB8"/>
+  <!-- Envelope bottom-right fold -->
+  <path d="M190 170 L190 182 Q190 182 176 182 L118 138 Z" fill="#0E2BB8"/>
 
-  <!-- Top flap V shape -->
-  <path d="M8 58 L100 134 L192 58 Z" fill="#4D65FF"/>
+  <!-- Center seam (V fold on closed envelope front) -->
+  <path d="M10 56 L100 126 L190 56" stroke="#4D65FF" stroke-width="2" fill="none" opacity="0.8"/>
 </svg>

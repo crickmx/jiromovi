@@ -1,20 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 250" fill="none">
   <!-- WiFi dot -->
-  <circle cx="100" cy="28" r="4.5" fill="#1228B8"/>
+  <circle cx="100" cy="26" r="5" fill="#1C37E0"/>
   <!-- WiFi arc small -->
-  <path d="M84 44 Q100 32 116 44" stroke="#1228B8" stroke-width="5.5" stroke-linecap="round" fill="none"/>
+  <path d="M83 46 Q100 34 117 46" stroke="#1C37E0" stroke-width="5" stroke-linecap="round" fill="none"/>
   <!-- WiFi arc large -->
-  <path d="M68 30 Q100 8 132 30" stroke="#1228B8" stroke-width="5.5" stroke-linecap="round" fill="none"/>
+  <path d="M65 32 Q100 6 135 32" stroke="#1C37E0" stroke-width="5" stroke-linecap="round" fill="none"/>
 
-  <!-- Envelope body (rounded rect) -->
-  <rect x="8" y="72" width="184" height="130" rx="16" fill="#2B3FE6"/>
+  <!-- Envelope body -->
+  <rect x="10" y="68" width="180" height="126" rx="14" fill="#1C37E0"/>
 
-  <!-- Dark inner shadow area (bottom of envelope) -->
-  <path d="M8 138 L100 192 L192 138 L192 202 Q192 202 100 202 Q8 202 8 202 Z" fill="#1228B8"/>
+  <!-- Envelope bottom-left fold -->
+  <path d="M10 182 L10 194 Q10 194 24 194 L82 150 Z" fill="#0E2BB8"/>
+  <!-- Envelope bottom-right fold -->
+  <path d="M190 182 L190 194 Q190 194 176 194 L118 150 Z" fill="#0E2BB8"/>
 
-  <!-- Top flap V shape (lighter blue) -->
-  <path d="M8 72 L100 148 L192 72 Z" fill="#4D65FF"/>
+  <!-- Center seam (V fold on closed envelope front) -->
+  <path d="M10 68 L100 138 L190 68" stroke="#4D65FF" stroke-width="2" fill="none" opacity="0.8"/>
 
-  <!-- "seguwallet" text -->
-  <text x="100" y="238" font-family="'Inter','Segoe UI',Arial,sans-serif" font-weight="800" font-size="28" fill="#1C37E0" text-anchor="middle" letter-spacing="-0.5">seguwallet</text>
+  <!-- "seguwallet" wordmark -->
+  <text x="100" y="244" font-family="'Inter','Segoe UI',Arial,sans-serif" font-weight="800" font-size="25" fill="#1C37E0" text-anchor="middle" letter-spacing="-0.3">seguwallet</text>
 </svg>
