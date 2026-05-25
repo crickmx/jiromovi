@@ -1,179 +1,183 @@
 import { useState } from 'react';
-import { User, Mail, Phone, Shield, Lock, Check } from 'lucide-react';
+import { User, Lock, Phone, Mail, CheckCircle } from 'lucide-react';
 import { useSeguwallet } from '../lib/SeguwalletContext';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
 export function SeguwalletPerfil() {
   const { customer } = useSeguwallet();
-  const [changingPassword, setChangingPassword] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-  const [passwordSuccess, setPasswordSuccess] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' });
+  const [pwLoading, setPwLoading] = useState(false);
+  const [pwError, setPwError] = useState('');
+  const [pwSuccess, setPwSuccess] = useState(false);
 
-  const handleChangePassword = async (e: React.FormEvent) => {
+  const toTitleCase = (s: string) => s ? s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : '';
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPasswordError('');
-    setPasswordSuccess(false);
+    setPwError('');
+    setPwSuccess(false);
 
-    if (newPassword.length < 6) {
-      setPasswordError('La contrasena debe tener al menos 6 caracteres.');
+    if (!passwordForm.current || !passwordForm.next || !passwordForm.confirm) {
+      setPwError('Completa todos los campos.');
       return;
     }
-    if (newPassword !== confirmPassword) {
-      setPasswordError('Las contrasenas no coinciden.');
+    if (passwordForm.next.length < 8) {
+      setPwError('La nueva contrasena debe tener al menos 8 caracteres.');
+      return;
+    }
+    if (passwordForm.next !== passwordForm.confirm) {
+      setPwError('Las contrasenas no coinciden.');
       return;
     }
 
-    setSaving(true);
+    setPwLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) throw error;
-
-      if (customer) {
-        await supabase
-          .from('seguwallet_customers')
-          .update({ password_updated_at: new Date().toISOString() })
-          .eq('id', customer.id);
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: customer?.email || '',
+        password: passwordForm.current,
+      });
+      if (signInError) {
+        setPwError('La contrasena actual es incorrecta.');
+        return;
       }
 
-      setPasswordSuccess(true);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      setChangingPassword(false);
-    } catch (err: any) {
-      setPasswordError(err.message || 'Error al cambiar contrasena.');
-    } finally {
-      setSaving(false);
-    }
-  };
+      const { error: updateError } = await supabase.auth.updateUser({ password: passwordForm.next });
+      if (updateError) throw updateError;
 
-  const toTitleCase = (str: string) => {
-    if (!str) return '';
-    return str.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+      setPwSuccess(true);
+      setPasswordForm({ current: '', next: '', confirm: '' });
+    } catch (err: any) {
+      setPwError(err.message || 'Error al cambiar la contrasena.');
+    } finally {
+      setPwLoading(false);
+    }
   };
 
   return (
     <div className="space-y-5 max-w-2xl">
       <div>
         <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">Mi Perfil</h1>
-        <p className="text-sm text-neutral-500 mt-1">Informacion de tu cuenta</p>
+        <p className="text-sm text-neutral-500 mt-1">Informacion de tu cuenta Seguwallet</p>
       </div>
 
-      {/* Profile info */}
+      {/* Info card */}
       <div className="bg-white rounded-2xl border border-neutral-200/50 shadow-sm p-6">
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-lg font-bold">
-            {customer?.full_name?.[0]?.toUpperCase() || 'S'}
+          <div className="w-14 h-14 rounded-2xl bg-[#1C37E0] flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
+            {customer?.full_name ? ((customer.full_name.split(' ')[0]?.[0] || '') + (customer.full_name.split(' ')[1]?.[0] || '')).toUpperCase() : 'SW'}
           </div>
           <div>
-            <p className="text-lg font-bold text-neutral-900">{toTitleCase(customer?.full_name || '')}</p>
-            <p className="text-xs text-neutral-500">Cliente Seguwallet</p>
+            <p className="font-bold text-neutral-900 text-lg">{toTitleCase(customer?.full_name || '')}</p>
+            <p className="text-sm text-neutral-500">Cliente Seguwallet</p>
           </div>
         </div>
 
         <div className="space-y-4">
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-neutral-50/80">
-            <Mail className="w-4 h-4 text-neutral-400" />
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-neutral-50">
+            <Mail className="w-4 h-4 text-neutral-400 flex-shrink-0" />
             <div>
-              <p className="text-xs text-neutral-500">Correo electronico</p>
-              <p className="text-sm font-medium text-neutral-900">{customer?.email}</p>
+              <p className="text-xs text-neutral-400">Correo electronico</p>
+              <p className="text-sm font-medium text-neutral-900">{customer?.email || '-'}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-neutral-50/80">
-            <Phone className="w-4 h-4 text-neutral-400" />
-            <div>
-              <p className="text-xs text-neutral-500">Telefono</p>
-              <p className="text-sm font-medium text-neutral-900">{customer?.phone || 'No registrado'}</p>
+
+          {customer?.phone && (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-neutral-50">
+              <Phone className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+              <div>
+                <p className="text-xs text-neutral-400">Telefono</p>
+                <p className="text-sm font-medium text-neutral-900">{customer.phone}</p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-neutral-50/80">
-            <Shield className="w-4 h-4 text-neutral-400" />
+          )}
+
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-neutral-50">
+            <User className="w-4 h-4 text-neutral-400 flex-shrink-0" />
             <div>
-              <p className="text-xs text-neutral-500">Estado de cuenta</p>
-              <p className="text-sm font-medium text-emerald-600 capitalize">{customer?.status}</p>
+              <p className="text-xs text-neutral-400">Estatus de cuenta</p>
+              <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-lg border",
+                customer?.status === 'active' ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-neutral-100 text-neutral-600 border-neutral-200"
+              )}>
+                {customer?.status === 'active' ? 'Activa' : customer?.status || '-'}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Change password */}
+      {/* Password change */}
       <div className="bg-white rounded-2xl border border-neutral-200/50 shadow-sm p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Lock className="w-4 h-4 text-neutral-500" />
-            <h2 className="text-sm font-bold text-neutral-900">Seguridad</h2>
-          </div>
-          {!changingPassword && (
-            <button
-              onClick={() => setChangingPassword(true)}
-              className="text-xs font-semibold text-blue-600 hover:text-blue-700"
-            >
-              Cambiar contrasena
-            </button>
-          )}
+        <div className="flex items-center gap-2 mb-5">
+          <Lock className="w-4 h-4 text-neutral-700" />
+          <h2 className="font-bold text-neutral-900">Cambiar Contrasena</h2>
         </div>
 
-        {passwordSuccess && (
-          <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center gap-2">
-            <Check className="w-4 h-4 text-emerald-600" />
+        {pwSuccess && (
+          <div className="mb-5 p-4 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center gap-3">
+            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
             <p className="text-sm text-emerald-700 font-medium">Contrasena actualizada correctamente.</p>
           </div>
         )}
 
-        {changingPassword && (
-          <form onSubmit={handleChangePassword} className="space-y-4">
-            {passwordError && (
-              <div className="p-3 rounded-xl bg-red-50 border border-red-100 text-sm text-red-700">
-                {passwordError}
-              </div>
-            )}
-            <div>
-              <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Nueva contrasena</label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-sky-300"
-                placeholder="Minimo 6 caracteres"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Confirmar contrasena</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-sky-300"
-                placeholder="Repite tu nueva contrasena"
-              />
-            </div>
-            <div className="flex gap-3">
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-4 py-2.5 rounded-xl bg-blue-500 text-white text-sm font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50"
-              >
-                {saving ? 'Guardando...' : 'Guardar'}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setChangingPassword(false); setPasswordError(''); }}
-                className="px-4 py-2.5 rounded-xl bg-neutral-100 text-neutral-700 text-sm font-medium hover:bg-neutral-200 transition-colors"
-              >
-                Cancelar
-              </button>
-            </div>
-          </form>
+        {pwError && (
+          <div className="mb-5 p-4 rounded-2xl bg-red-50 border border-red-100 text-sm text-red-700 font-medium">
+            {pwError}
+          </div>
         )}
 
-        {!changingPassword && !passwordSuccess && (
-          <p className="text-xs text-neutral-400">Tu contrasena esta protegida. Puedes cambiarla en cualquier momento.</p>
-        )}
+        <form onSubmit={handlePasswordChange} className="space-y-4" noValidate>
+          <div>
+            <label className="block text-sm font-semibold text-neutral-700 mb-2">Contrasena actual</label>
+            <input
+              type="password"
+              value={passwordForm.current}
+              onChange={e => setPasswordForm(f => ({ ...f, current: e.target.value }))}
+              placeholder="Tu contrasena actual"
+              className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+              autoComplete="current-password"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-neutral-700 mb-2">Nueva contrasena</label>
+            <input
+              type="password"
+              value={passwordForm.next}
+              onChange={e => setPasswordForm(f => ({ ...f, next: e.target.value }))}
+              placeholder="Minimo 8 caracteres"
+              className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+              autoComplete="new-password"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-neutral-700 mb-2">Confirmar nueva contrasena</label>
+            <input
+              type="password"
+              value={passwordForm.confirm}
+              onChange={e => setPasswordForm(f => ({ ...f, confirm: e.target.value }))}
+              placeholder="Repite tu nueva contrasena"
+              className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+              autoComplete="new-password"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={pwLoading}
+            className={cn(
+              "w-full flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl text-sm font-bold text-white transition-all duration-200",
+              "bg-[#1C37E0] hover:bg-[#1630C8]",
+              "shadow-lg shadow-blue-600/20 hover:shadow-xl hover:shadow-blue-600/25",
+              "disabled:opacity-60 disabled:cursor-not-allowed"
+            )}
+          >
+            {pwLoading ? (
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : 'Actualizar contrasena'}
+          </button>
+        </form>
       </div>
     </div>
   );

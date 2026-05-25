@@ -48,10 +48,14 @@ export async function seguwalletSignIn(email: string, password: string) {
     .update({ last_login_at: new Date().toISOString() })
     .eq('id', customer.id);
 
-  await supabase.from('seguwallet_access_logs').insert({
-    seguwallet_customer_id: customer.id,
-    event_type: 'login_success',
-  });
+  try {
+    await supabase.from('seguwallet_access_logs').insert({
+      seguwallet_customer_id: customer.id,
+      event_type: 'login_success',
+    });
+  } catch {
+    // non-critical
+  }
 
   return { user: authData.user, customer };
 }
@@ -83,11 +87,62 @@ export async function getSeguwalletSicasClients(customerId: string) {
 export async function getAgentInfo(agentUserId: string) {
   const { data } = await supabase
     .from('usuarios')
-    .select('id, nombre, apellidos, email, celular_laboral, nombre_publico, imagen_perfil_url, oficina_id, oficinas(nombre)')
+    .select('id, nombre, apellidos, celular_laboral, nombre_publico, imagen_perfil_url, oficina_id, oficinas(nombre)')
     .eq('id', agentUserId)
     .maybeSingle();
 
   return data;
+}
+
+// Get SICAS clients available for an agent's portfolio
+// Queries sicas_mapeo_vendedor_usuario to find the agent's vend_ids,
+// then gets distinct clients from sicas_documents
+export async function getAgentSicasClients(agentUserId: string): Promise<Array<{
+  sicas_client_id: string;
+  client_name: string;
+  rfc: string;
+  vend_id: string;
+}>> {
+  // Get the agent's SICAS vendor IDs
+  const { data: mappings } = await supabase
+    .from('sicas_mapeo_vendedor_usuario')
+    .select('id_sicas_vendedor')
+    .eq('movi_user_id', agentUserId);
+
+  if (!mappings || mappings.length === 0) {
+    // If no mapping found, try querying all vendors for admin use
+    // Return distinct clients from all documents scoped to agent
+    return [];
+  }
+
+  const vendIds = mappings.map(m => m.id_sicas_vendedor);
+
+  // Get distinct clients from sicas_documents by vend_id
+  const { data: docs } = await supabase
+    .from('sicas_documents')
+    .select('cliente, vend_id, desp_id')
+    .in('vend_id', vendIds)
+    .not('cliente', 'is', null)
+    .order('cliente');
+
+  if (!docs) return [];
+
+  // Deduplicate by cliente name
+  const seen = new Set<string>();
+  const clients: Array<{ sicas_client_id: string; client_name: string; rfc: string; vend_id: string }> = [];
+
+  for (const doc of docs) {
+    if (!doc.cliente || seen.has(doc.cliente)) continue;
+    seen.add(doc.cliente);
+    clients.push({
+      sicas_client_id: doc.cliente, // use client name as ID since no numeric client ID
+      client_name: doc.cliente,
+      rfc: '',
+      vend_id: doc.vend_id,
+    });
+  }
+
+  return clients;
 }
 
 export async function logDownload(customerId: string, doc: {

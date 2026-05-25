@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 175" fill="none">
+  <!-- WiFi dot -->
+  <circle cx="100" cy="14" r="4.5" fill="#1228B8"/>
+  <!-- WiFi arc small -->
+  <path d="M84 30 Q100 18 116 30" stroke="#1228B8" stroke-width="5.5" stroke-linecap="round" fill="none"/>
+  <!-- WiFi arc large -->
+  <path d="M68 16 Q100 -6 132 16" stroke="#1228B8" stroke-width="5.5" stroke-linecap="round" fill="none"/>
+
+  <!-- Envelope body (rounded rect) -->
+  <rect x="8" y="58" width="184" height="130" rx="16" fill="#2B3FE6"/>
+
+  <!-- Dark inner triangle -->
+  <path d="M8 124 L100 178 L192 124 L192 188 Q192 188 100 188 Q8 188 8 188 Z" fill="#1228B8"/>
+
+  <!-- Top flap V shape -->
+  <path d="M8 58 L100 134 L192 58 Z" fill="#4D65FF"/>
+</svg>

@@ -27,13 +27,8 @@ export function SeguwalletProvider({ children }: { children: ReactNode }) {
         setCustomer(null);
         return;
       }
-
       const cust = await getSeguwalletCustomer(user.id);
-      if (cust && cust.status === 'active') {
-        setCustomer(cust);
-      } else {
-        setCustomer(null);
-      }
+      setCustomer(cust && cust.status === 'active' ? cust : null);
     } catch {
       setCustomer(null);
     } finally {
@@ -46,7 +41,7 @@ export function SeguwalletProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') {
-        loadCustomer();
+        (async () => { await loadCustomer(); })();
       } else if (event === 'SIGNED_OUT') {
         setCustomer(null);
         setLoading(false);
@@ -57,12 +52,7 @@ export function SeguwalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <SeguwalletContext.Provider value={{
-      customer,
-      loading,
-      isAuthenticated: !!customer,
-      refresh: loadCustomer,
-    }}>
+    <SeguwalletContext.Provider value={{ customer, loading, isAuthenticated: !!customer, refresh: loadCustomer }}>
       {children}
     </SeguwalletContext.Provider>
   );

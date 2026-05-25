@@ -107,7 +107,33 @@ import { SeguwalletLayout } from './seguwallet/components/SeguwalletLayout';
 import { SeguwalletProtectedRoute } from './seguwallet/components/SeguwalletProtectedRoute';
 import { isSeguwallet } from './seguwallet/lib/seguwalletAuth';
 
+// Seguwallet portal — fully independent, no MOVI auth providers
+function SeguwalletApp() {
+  return (
+    <Routes>
+      <Route path="/seguwallet/login" element={<SeguwalletLogin />} />
+      <Route path="/seguwallet/dashboard" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletDashboard /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
+      <Route path="/seguwallet/polizas" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletPolizas /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
+      <Route path="/seguwallet/descargas" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletDescargas /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
+      <Route path="/seguwallet/perfil" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletPerfil /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
+      <Route path="*" element={<Navigate to="/seguwallet/login" replace />} />
+    </Routes>
+  );
+}
+
 function App() {
+  // On app.seguwallet.mx, render only the Seguwallet portal
+  if (isSeguwallet()) {
+    return (
+      <HelmetProvider>
+        <BrowserRouter>
+          {/* SeguwalletLogin needs SeguwalletProvider for login route */}
+          <SeguwalletApp />
+        </BrowserRouter>
+      </HelmetProvider>
+    );
+  }
+
   return (
     <HelmetProvider>
       <BrowserRouter>
@@ -218,7 +244,7 @@ function App() {
               <Route path="/comisiones/regimen-fiscal/:id" element={<ProtectedRoute requireAdmin><Layout><RegimenFiscalEditor /></Layout></ProtectedRoute>} />
               <Route path="/seguwallet-admin" element={<ProtectedRoute><Layout><SeguwalletAdmin /></Layout></ProtectedRoute>} />
 
-              {/* Seguwallet Portal */}
+              {/* Seguwallet Portal - also accessible from MOVI domain */}
               <Route path="/seguwallet/login" element={<SeguwalletLogin />} />
               <Route path="/seguwallet/dashboard" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletDashboard /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
               <Route path="/seguwallet/polizas" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletPolizas /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
@@ -226,7 +252,7 @@ function App() {
               <Route path="/seguwallet/perfil" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletPerfil /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
 
               {/* Redirect raíz */}
-              <Route path="/" element={<Navigate to={isSeguwallet() ? '/seguwallet/login' : '/dashboard'} replace />} />
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
               {/* Manuales */}
               <Route path="/manuales" element={<ProtectedRoute><Layout><Manuales /></Layout></ProtectedRoute>} />
