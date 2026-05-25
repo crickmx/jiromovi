@@ -78,7 +78,9 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
 
   const getMainMargin = () => {
     if (!hasSecondary) return "lg:ml-[72px]";
-    return secondaryCollapsed ? "lg:ml-[124px]" : "lg:ml-[280px]";
+    // collapsed: primary rail (72px) + thin expand tab (8px) = 80px
+    // expanded: primary rail (72px) + secondary panel (208px) = 280px
+    return secondaryCollapsed ? "lg:ml-[80px]" : "lg:ml-[280px]";
   };
 
   return (

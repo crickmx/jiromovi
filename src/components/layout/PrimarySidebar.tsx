@@ -13,6 +13,8 @@ interface Props {
   onSignOut: () => void;
 }
 
+const TOOLTIP_CLS = "text-xs font-semibold bg-slate-900 text-white border-slate-700/60 shadow-xl rounded-xl px-3 py-1.5";
+
 export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -69,7 +71,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                       <Icon className="w-[18px] h-[18px]" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={8} className="text-xs font-medium bg-neutral-800 border-neutral-700">
+                  <TooltipContent side="right" sideOffset={10} className={TOOLTIP_CLS}>
                     {item.label}
                   </TooltipContent>
                 </Tooltip>
@@ -92,7 +94,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                     <Icon className="w-[18px] h-[18px]" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={8} className="text-xs font-medium bg-neutral-800 border-neutral-700">
+                <TooltipContent side="right" sideOffset={10} className={TOOLTIP_CLS}>
                   {ws.label}
                 </TooltipContent>
               </Tooltip>
@@ -118,7 +120,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                 </Avatar>
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={8} className="text-xs bg-neutral-800 border-neutral-700">
+            <TooltipContent side="right" sideOffset={10} className={TOOLTIP_CLS}>
               {usuario?.nombre} {usuario?.apellidos}
             </TooltipContent>
           </Tooltip>
@@ -132,8 +134,8 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                 <LogOut className="w-4 h-4" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={8} className="text-xs bg-neutral-800 border-neutral-700">
-              Cerrar Sesion
+            <TooltipContent side="right" sideOffset={10} className={TOOLTIP_CLS}>
+              Cerrar Sesión
             </TooltipContent>
           </Tooltip>
         </div>
