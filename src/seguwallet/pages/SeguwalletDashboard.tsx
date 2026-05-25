@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { FileText, Calculator, Clock, AlertTriangle, Phone, Mail, Globe, MessageCircle, ChevronRight } from 'lucide-react';
 import { useSeguwallet } from '../lib/SeguwalletContext';
 import { useAgentBrand } from '../lib/AgentBrandContext';
-import { getSeguwalletSicasClients } from '../lib/seguwalletAuth';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
@@ -136,27 +135,15 @@ export function SeguwalletDashboard() {
   const loadData = async () => {
     if (!customer) return;
     try {
-      const clients = await getSeguwalletSicasClients(customer.id);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setLoading(false); return; }
 
-      if (clients.length > 0) {
-        const clientNames = clients.map((c: any) => c.sicas_client_id);
+      const { data, error } = await supabase.rpc('get_seguwallet_poliza_counts', { p_auth_id: user.id });
+      if (error) throw error;
 
-        const [{ count }, { count: expCount }] = await Promise.all([
-          supabase
-            .from('sicas_documents')
-            .select('id', { count: 'exact', head: true })
-            .in('cliente', clientNames)
-            .eq('is_vigente', true),
-          supabase
-            .from('sicas_documents')
-            .select('id', { count: 'exact', head: true })
-            .in('cliente', clientNames)
-            .eq('is_vigente', true)
-            .lte('vigencia_hasta', new Date(Date.now() + 30 * 86400_000).toISOString()),
-        ]);
-
-        setPolicyCount(count || 0);
-        setExpiringCount(expCount || 0);
+      if (data && data.length > 0) {
+        setPolicyCount(Number(data[0].total_vigentes) || 0);
+        setExpiringCount(Number(data[0].proximas_vencer) || 0);
       }
     } catch (err) {
       console.error('Error loading dashboard:', err);

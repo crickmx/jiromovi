@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { FileText, Search, Calendar, Building2, Shield, X, Download, ChevronRight, ExternalLink, FileCheck, Receipt, Tag, BookOpen, Award } from 'lucide-react';
 import { useSeguwallet } from '../lib/SeguwalletContext';
-import { getSeguwalletSicasClients, logDownload } from '../lib/seguwalletAuth';
+import { logDownload } from '../lib/seguwalletAuth';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
@@ -11,7 +11,6 @@ interface Policy {
   aseguradora_nombre: string;
   ramo: string;
   cliente: string;
-  contratante: string;
   vigencia_desde: string;
   vigencia_hasta: string;
   is_vigente: boolean;
@@ -78,21 +77,15 @@ export function SeguwalletPolizas() {
   const loadPolicies = async () => {
     if (!customer) return;
     try {
-      const clients = await getSeguwalletSicasClients(customer.id);
-      if (clients.length === 0) { setPolicies([]); setLoading(false); return; }
-      const clientNames = clients.map((c: any) => c.sicas_client_id);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setLoading(false); return; }
 
-      const { data } = await supabase
-        .from('sicas_documents')
-        .select('id, poliza, aseguradora_nombre, ramo, cliente, contratante, vigencia_desde, vigencia_hasta, is_vigente, is_cancelada, prima_total, moneda')
-        .in('cliente', clientNames)
-        .eq('is_poliza', true)
-        .order('vigencia_hasta', { ascending: false })
-        .limit(300);
+      const { data, error } = await supabase.rpc('get_seguwallet_polizas', { p_auth_id: user.id });
+      if (error) throw error;
 
       const pols = (data || []) as Policy[];
       setPolicies(pols);
-      setAseguradoras([...new Set(pols.map(p => p.aseguradora_nombre).filter(Boolean))]);
+      setAseguradoras([...new Set(pols.map((p: Policy) => p.aseguradora_nombre).filter(Boolean))]);
     } catch (err) {
       console.error(err);
     } finally {
@@ -338,7 +331,7 @@ export function SeguwalletPolizas() {
                   {[
                     { label: 'Aseguradora', val: selected.aseguradora_nombre },
                     { label: 'Ramo', val: selected.ramo },
-                    { label: 'Contratante', val: selected.contratante || selected.cliente },
+                    { label: 'Cliente', val: selected.cliente },
                     { label: 'Prima total', val: selected.prima_total ? `$${selected.prima_total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}${selected.moneda ? ' ' + selected.moneda : ''}` : null },
                   ].filter(r => r.val).map(row => (
                     <div key={row.label} className="bg-neutral-50 rounded-xl p-3">
