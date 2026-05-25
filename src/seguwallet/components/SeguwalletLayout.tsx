@@ -5,6 +5,7 @@ import { useSeguwallet } from '../lib/SeguwalletContext';
 import { useAgentBrand, SEGUWALLET_LOGO } from '../lib/AgentBrandContext';
 import { seguwalletSignOut } from '../lib/seguwalletAuth';
 import { cn } from '@/lib/utils';
+import { FloatingSiniestroButton } from './FloatingSiniestroButton';
 
 const NAV_ITEMS = [
   { path: '/seguwallet/dashboard', label: 'Inicio', icon: LayoutDashboard },
@@ -234,6 +235,9 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-24 lg:pb-8">
         {children}
       </main>
+
+      {/* ── Floating siniestro button ── */}
+      <FloatingSiniestroButton />
 
       {/* ── Footer ── */}
       <footer className="hidden lg:block border-t border-neutral-100 py-4 mt-2">

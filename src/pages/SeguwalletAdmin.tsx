@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Shield, Plus, Search, Eye, CreditCard as Edit, RotateCcw, Users, X, Check, UserPlus, Loader2, FileText, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import { Shield, Plus, Search, Eye, CreditCard as Edit, RotateCcw, Users, X, Check, UserPlus, Loader2, FileText, AlertCircle, CheckCircle2, Clock, Building2, ToggleLeft, ToggleRight, Trash2, GripVertical, Phone, Globe, Smartphone } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAgentSicasClients, searchSicasClientsAdmin, type SicasClientResult } from '@/seguwallet/lib/seguwalletAuth';
 import { cn } from '@/lib/utils';
+import { type SeguwalletInsurer, type InsurerFormData, emptyInsurerForm, sanitizePhone, formatPhoneDisplay } from '@/seguwallet/lib/insurerTypes';
 
 interface SeguwalletCustomer {
   id: string;
@@ -73,7 +74,7 @@ export function SeguwalletAdmin() {
   const isAdmin = usuario?.rol === 'Administrador';
   const isAgent = usuario?.rol === 'Agente';
 
-  const [activeTab, setActiveTab] = useState<'customers' | 'terms'>('customers');
+  const [activeTab, setActiveTab] = useState<'customers' | 'terms' | 'insurers'>('customers');
   const [customers, setCustomers] = useState<SeguwalletCustomer[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -119,10 +120,22 @@ export function SeguwalletAdmin() {
   const [termError, setTermError] = useState('');
   const [publishingId, setPublishingId] = useState<string | null>(null);
 
+  // Insurers
+  const [insurers, setInsurers] = useState<SeguwalletInsurer[]>([]);
+  const [insurersLoading, setInsurersLoading] = useState(false);
+  const [insurerSearch, setInsurerSearch] = useState('');
+  const [insurerFilter, setInsurerFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [selectedInsurer, setSelectedInsurer] = useState<SeguwalletInsurer | null>(null);
+  const [insurerModalMode, setInsurerModalMode] = useState<'create' | 'edit' | null>(null);
+  const [insurerForm, setInsurerForm] = useState<InsurerFormData>(emptyInsurerForm);
+  const [insurerSaving, setInsurerSaving] = useState(false);
+  const [insurerError, setInsurerError] = useState('');
+  const [deletingInsurerId, setDeletingInsurerId] = useState<string | null>(null);
+
   useEffect(() => {
     loadCustomers();
     loadAgents();
-    if (isAdmin) loadTerms();
+    if (isAdmin) { loadTerms(); loadInsurers(); }
   }, []);
 
   const loadCustomers = async () => {
@@ -401,6 +414,111 @@ export function SeguwalletAdmin() {
     }
   };
 
+  // ── Insurers ──────────────────────────────────────────────────────
+  const loadInsurers = async () => {
+    setInsurersLoading(true);
+    try {
+      const { data } = await supabase
+        .from('seguwallet_insurers')
+        .select('*')
+        .is('deleted_at', null)
+        .order('display_order');
+      setInsurers(data || []);
+    } finally {
+      setInsurersLoading(false);
+    }
+  };
+
+  const openCreateInsurer = () => {
+    setInsurerForm({ ...emptyInsurerForm, display_order: insurers.length + 1 });
+    setInsurerError('');
+    setSelectedInsurer(null);
+    setInsurerModalMode('create');
+  };
+
+  const openEditInsurer = (ins: SeguwalletInsurer) => {
+    setSelectedInsurer(ins);
+    setInsurerForm({
+      name: ins.name,
+      logo_url: ins.logo_url || '',
+      primary_color: ins.primary_color || '',
+      website_url: ins.website_url || '',
+      customer_service_phone: ins.customer_service_phone || '',
+      payment_phone: ins.payment_phone || '',
+      claims_phone: ins.claims_phone || '',
+      customer_service_whatsapp: ins.customer_service_whatsapp || '',
+      claims_whatsapp: ins.claims_whatsapp || '',
+      payment_url: ins.payment_url || '',
+      ios_app_url: ins.ios_app_url || '',
+      android_app_url: ins.android_app_url || '',
+      general_conditions_url: ins.general_conditions_url || '',
+      claims_instructions: ins.claims_instructions || '',
+      is_active: ins.is_active,
+      show_in_directory: ins.show_in_directory,
+      show_in_claims: ins.show_in_claims,
+      display_order: ins.display_order,
+    });
+    setInsurerError('');
+    setInsurerModalMode('edit');
+  };
+
+  const handleSaveInsurer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setInsurerError('');
+    if (!insurerForm.name.trim()) { setInsurerError('El nombre es obligatorio.'); return; }
+    setInsurerSaving(true);
+    try {
+      const payload = {
+        ...insurerForm,
+        name: insurerForm.name.trim(),
+        customer_service_phone: insurerForm.customer_service_phone ? sanitizePhone(insurerForm.customer_service_phone) : null,
+        payment_phone: insurerForm.payment_phone ? sanitizePhone(insurerForm.payment_phone) : null,
+        claims_phone: insurerForm.claims_phone ? sanitizePhone(insurerForm.claims_phone) : null,
+        customer_service_whatsapp: insurerForm.customer_service_whatsapp ? sanitizePhone(insurerForm.customer_service_whatsapp) : null,
+        claims_whatsapp: insurerForm.claims_whatsapp ? sanitizePhone(insurerForm.claims_whatsapp) : null,
+        logo_url: insurerForm.logo_url || null,
+        primary_color: insurerForm.primary_color || null,
+        website_url: insurerForm.website_url || null,
+        payment_url: insurerForm.payment_url || null,
+        ios_app_url: insurerForm.ios_app_url || null,
+        android_app_url: insurerForm.android_app_url || null,
+        general_conditions_url: insurerForm.general_conditions_url || null,
+        claims_instructions: insurerForm.claims_instructions || null,
+      };
+      if (insurerModalMode === 'create') {
+        const { error } = await supabase.from('seguwallet_insurers').insert(payload);
+        if (error) throw error;
+      } else if (selectedInsurer) {
+        const { error } = await supabase.from('seguwallet_insurers').update(payload).eq('id', selectedInsurer.id);
+        if (error) throw error;
+      }
+      setInsurerModalMode(null);
+      loadInsurers();
+    } catch (err: any) {
+      setInsurerError(err.message || 'Error al guardar aseguradora.');
+    } finally {
+      setInsurerSaving(false);
+    }
+  };
+
+  const handleToggleInsurerActive = async (ins: SeguwalletInsurer) => {
+    try {
+      await supabase.from('seguwallet_insurers').update({ is_active: !ins.is_active }).eq('id', ins.id);
+      setInsurers(prev => prev.map(i => i.id === ins.id ? { ...i, is_active: !ins.is_active } : i));
+    } catch (err) { console.error(err); }
+  };
+
+  const handleDeleteInsurer = async (ins: SeguwalletInsurer) => {
+    if (!confirm(`¿Eliminar "${ins.name}"? Esta accion no se puede deshacer.`)) return;
+    setDeletingInsurerId(ins.id);
+    try {
+      await supabase.from('seguwallet_insurers').update({ deleted_at: new Date().toISOString() }).eq('id', ins.id);
+      setInsurers(prev => prev.filter(i => i.id !== ins.id));
+    } finally {
+      setDeletingInsurerId(null);
+    }
+  };
+
   const closeModal = () => {
     setActiveModal(null);
     setSelectedCustomer(null);
@@ -450,6 +568,15 @@ export function SeguwalletAdmin() {
               Nueva versión
             </button>
           )}
+          {isAdmin && activeTab === 'insurers' && (
+            <button
+              onClick={openCreateInsurer}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-accent-foreground text-sm font-semibold hover:bg-accent-hover transition-all shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Nueva aseguradora
+            </button>
+          )}
           {activeTab === 'customers' && (
             <button
               onClick={() => { setCreateForm(p => ({ ...p, agent_user_id: isAdmin ? '' : (usuario?.id || '') })); setCreateError(''); setActiveModal('create'); }}
@@ -465,7 +592,7 @@ export function SeguwalletAdmin() {
       {/* Tabs (admin only) */}
       {isAdmin && (
         <div className="flex gap-1 p-1 bg-neutral-100 dark:bg-white/[0.04] rounded-2xl w-fit">
-          {(['customers', 'terms'] as const).map(tab => (
+          {(['customers', 'insurers', 'terms'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -476,7 +603,7 @@ export function SeguwalletAdmin() {
                   : "text-neutral-500 dark:text-white/40 hover:text-neutral-700"
               )}
             >
-              {tab === 'customers' ? 'Clientes' : 'Términos'}
+              {tab === 'customers' ? 'Clientes' : tab === 'insurers' ? 'Aseguradoras' : 'Términos'}
             </button>
           ))}
         </div>
@@ -577,6 +704,115 @@ export function SeguwalletAdmin() {
 
       </>)}
 
+      {/* ── INSURERS TAB ──────────────────────────────────────────── */}
+      {activeTab === 'insurers' && isAdmin && (
+        <div className="space-y-4">
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+              <input type="text" value={insurerSearch} onChange={e => setInsurerSearch(e.target.value)} placeholder="Buscar aseguradora..." className="w-full pl-11 pr-4 py-3 rounded-2xl border border-neutral-200/60 dark:border-white/10 bg-white dark:bg-white/[0.03] text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all" />
+            </div>
+            <div className="flex gap-1 p-1 bg-neutral-100 dark:bg-white/[0.04] rounded-2xl h-fit">
+              {(['all', 'active', 'inactive'] as const).map(f => (
+                <button key={f} onClick={() => setInsurerFilter(f)}
+                  className={cn("px-3 py-1.5 rounded-xl text-xs font-semibold transition-all",
+                    insurerFilter === f ? "bg-white dark:bg-white/10 text-neutral-900 dark:text-white shadow-sm" : "text-neutral-500 dark:text-white/40")}>
+                  {f === 'all' ? 'Todas' : f === 'active' ? 'Activas' : 'Inactivas'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* List */}
+          {insurersLoading ? (
+            <div className="flex justify-center py-10"><div className="w-8 h-8 border-[3px] border-blue-200 border-t-[#1C37E0] rounded-full animate-spin" /></div>
+          ) : (() => {
+            const filtered = insurers.filter(ins => {
+              const matchSearch = !insurerSearch.trim() || ins.name.toLowerCase().includes(insurerSearch.toLowerCase());
+              const matchFilter = insurerFilter === 'all' || (insurerFilter === 'active' ? ins.is_active : !ins.is_active);
+              return matchSearch && matchFilter;
+            });
+            return filtered.length === 0 ? (
+              <div className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] p-12 text-center">
+                <Building2 className="w-10 h-10 text-neutral-300 mx-auto mb-3" />
+                <p className="text-sm text-neutral-500">No hay aseguradoras{insurerSearch ? ` para "${insurerSearch}"` : ''}</p>
+              </div>
+            ) : (
+              <div className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-neutral-100 dark:border-white/[0.06]">
+                        <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40">Aseguradora</th>
+                        <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40 hidden sm:table-cell">Tel. Siniestros</th>
+                        <th className="text-center px-4 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40 hidden md:table-cell">Directorio</th>
+                        <th className="text-center px-4 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40 hidden md:table-cell">Siniestros</th>
+                        <th className="text-center px-4 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40">Estatus</th>
+                        <th className="text-right px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map(ins => (
+                        <tr key={ins.id} className="border-b border-neutral-50 dark:border-white/[0.03] hover:bg-neutral-50/50 dark:hover:bg-white/[0.02] transition-colors">
+                          <td className="px-5 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl overflow-hidden border border-neutral-100 bg-white flex-shrink-0 shadow-sm">
+                                {ins.logo_url ? (
+                                  <img src={ins.logo_url} alt={ins.name} className="w-full h-full object-contain p-0.5" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-neutral-100">
+                                    <span className="text-xs font-bold text-neutral-400">{ins.name.slice(0, 2).toUpperCase()}</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-neutral-900 dark:text-white text-sm">{ins.name}</p>
+                                <p className="text-xs text-neutral-400">Orden: {ins.display_order}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-5 py-3 hidden sm:table-cell">
+                            <p className="text-xs text-neutral-600 dark:text-white/50 font-mono">{ins.claims_phone ? formatPhoneDisplay(ins.claims_phone) : <span className="text-neutral-300">—</span>}</p>
+                          </td>
+                          <td className="px-4 py-3 text-center hidden md:table-cell">
+                            {ins.show_in_directory
+                              ? <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" />
+                              : <X className="w-4 h-4 text-neutral-300 mx-auto" />}
+                          </td>
+                          <td className="px-4 py-3 text-center hidden md:table-cell">
+                            {ins.show_in_claims
+                              ? <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" />
+                              : <X className="w-4 h-4 text-neutral-300 mx-auto" />}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={cn("px-2 py-0.5 rounded-lg text-[10px] font-bold border",
+                              ins.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-neutral-100 text-neutral-500 border-neutral-200")}>
+                              {ins.is_active ? 'Activa' : 'Inactiva'}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3">
+                            <div className="flex items-center justify-end gap-1">
+                              <button onClick={() => openEditInsurer(ins)} className="p-1.5 rounded-lg text-neutral-400 hover:text-amber-600 hover:bg-amber-50 transition-colors" title="Editar"><Edit className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => handleToggleInsurerActive(ins)} className="p-1.5 rounded-lg text-neutral-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title={ins.is_active ? 'Desactivar' : 'Activar'}>
+                                {ins.is_active ? <ToggleRight className="w-4 h-4 text-emerald-500" /> : <ToggleLeft className="w-4 h-4" />}
+                              </button>
+                              <button onClick={() => handleDeleteInsurer(ins)} disabled={deletingInsurerId === ins.id} className="p-1.5 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Eliminar">
+                                {deletingInsurerId === ins.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       {/* ── TERMS TAB ─────────────────────────────────────────────── */}
       {activeTab === 'terms' && isAdmin && (
         <div className="space-y-3">
@@ -627,6 +863,90 @@ export function SeguwalletAdmin() {
             </div>
           )}
         </div>
+      )}
+
+      {/* INSURER MODAL */}
+      {insurerModalMode && (
+        <ModalWrap title={insurerModalMode === 'create' ? 'Nueva Aseguradora' : `Editar: ${selectedInsurer?.name}`} onClose={() => setInsurerModalMode(null)} wide>
+          {insurerError && <ErrBox>{insurerError}</ErrBox>}
+          <form onSubmit={handleSaveInsurer} className="space-y-5">
+            {/* Datos generales */}
+            <div>
+              <p className="text-xs font-bold text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-3">Datos Generales</p>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <F label="Nombre *"><input type="text" value={insurerForm.name} onChange={e => setInsurerForm(p => ({ ...p, name: e.target.value }))} placeholder="Ej. Qualitas" className={inp} /></F>
+                  <F label="Orden"><input type="number" value={insurerForm.display_order} onChange={e => setInsurerForm(p => ({ ...p, display_order: +e.target.value }))} className={inp} min={0} /></F>
+                </div>
+                <F label="URL del logotipo"><input type="url" value={insurerForm.logo_url || ''} onChange={e => setInsurerForm(p => ({ ...p, logo_url: e.target.value }))} placeholder="https://..." className={inp} /></F>
+                <div className="grid grid-cols-2 gap-3">
+                  <F label="Sitio web"><input type="url" value={insurerForm.website_url || ''} onChange={e => setInsurerForm(p => ({ ...p, website_url: e.target.value }))} placeholder="https://..." className={inp} /></F>
+                  <F label="Color principal"><input type="text" value={insurerForm.primary_color || ''} onChange={e => setInsurerForm(p => ({ ...p, primary_color: e.target.value }))} placeholder="#1C37E0" className={inp} /></F>
+                </div>
+              </div>
+            </div>
+
+            {/* Telefonos */}
+            <div>
+              <p className="text-xs font-bold text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-3">Telefonos y WhatsApp</p>
+              <div className="grid grid-cols-2 gap-3">
+                <F label="Tel. Atencion a Clientes"><input type="tel" value={insurerForm.customer_service_phone || ''} onChange={e => setInsurerForm(p => ({ ...p, customer_service_phone: e.target.value }))} placeholder="8001234567" className={inp} /></F>
+                <F label="Tel. Pago de Poliza"><input type="tel" value={insurerForm.payment_phone || ''} onChange={e => setInsurerForm(p => ({ ...p, payment_phone: e.target.value }))} placeholder="8001234567" className={inp} /></F>
+                <F label="Tel. Siniestros"><input type="tel" value={insurerForm.claims_phone || ''} onChange={e => setInsurerForm(p => ({ ...p, claims_phone: e.target.value }))} placeholder="8001234567" className={inp} /></F>
+                <F label="WhatsApp Atencion"><input type="tel" value={insurerForm.customer_service_whatsapp || ''} onChange={e => setInsurerForm(p => ({ ...p, customer_service_whatsapp: e.target.value }))} placeholder="5512345678" className={inp} /></F>
+                <F label="WhatsApp Siniestros"><input type="tel" value={insurerForm.claims_whatsapp || ''} onChange={e => setInsurerForm(p => ({ ...p, claims_whatsapp: e.target.value }))} placeholder="5512345678" className={inp} /></F>
+              </div>
+            </div>
+
+            {/* Links */}
+            <div>
+              <p className="text-xs font-bold text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-3">Links</p>
+              <div className="space-y-3">
+                <F label="Link de pago en linea"><input type="url" value={insurerForm.payment_url || ''} onChange={e => setInsurerForm(p => ({ ...p, payment_url: e.target.value }))} placeholder="https://..." className={inp} /></F>
+                <div className="grid grid-cols-2 gap-3">
+                  <F label="App iOS"><input type="url" value={insurerForm.ios_app_url || ''} onChange={e => setInsurerForm(p => ({ ...p, ios_app_url: e.target.value }))} placeholder="https://apps.apple.com/..." className={inp} /></F>
+                  <F label="App Android"><input type="url" value={insurerForm.android_app_url || ''} onChange={e => setInsurerForm(p => ({ ...p, android_app_url: e.target.value }))} placeholder="https://play.google.com/..." className={inp} /></F>
+                </div>
+                <F label="Condiciones Generales"><input type="url" value={insurerForm.general_conditions_url || ''} onChange={e => setInsurerForm(p => ({ ...p, general_conditions_url: e.target.value }))} placeholder="https://..." className={inp} /></F>
+              </div>
+            </div>
+
+            {/* Siniestros */}
+            <div>
+              <p className="text-xs font-bold text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-3">Siniestros</p>
+              <F label="Instrucciones para reportar siniestro">
+                <textarea value={insurerForm.claims_instructions || ''} onChange={e => setInsurerForm(p => ({ ...p, claims_instructions: e.target.value }))} rows={3} placeholder="Ej. Llama al 800 y ten a la mano tu numero de poliza y ubicacion." className={`${inp} resize-none`} />
+              </F>
+            </div>
+
+            {/* Visibilidad */}
+            <div>
+              <p className="text-xs font-bold text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-3">Visibilidad</p>
+              <div className="space-y-2">
+                {[
+                  { key: 'is_active' as const, label: 'Aseguradora activa' },
+                  { key: 'show_in_directory' as const, label: 'Mostrar en directorio' },
+                  { key: 'show_in_claims' as const, label: 'Mostrar en reporte de siniestros' },
+                ].map(({ key, label }) => (
+                  <label key={key} className="flex items-center gap-3 cursor-pointer">
+                    <div onClick={() => setInsurerForm(p => ({ ...p, [key]: !p[key] }))}
+                      className={cn("w-10 h-6 rounded-full transition-colors flex-shrink-0 cursor-pointer relative",
+                        insurerForm[key] ? "bg-[#1C37E0]" : "bg-neutral-200 dark:bg-white/10")}>
+                      <div className={cn("absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform",
+                        insurerForm[key] ? "translate-x-5" : "translate-x-1")} />
+                    </div>
+                    <span className="text-sm text-neutral-700 dark:text-white/70">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <Acts>
+              <button type="submit" disabled={insurerSaving} className={pri}>{insurerSaving ? 'Guardando...' : insurerModalMode === 'create' ? 'Crear Aseguradora' : 'Guardar Cambios'}</button>
+              <button type="button" onClick={() => setInsurerModalMode(null)} className={sec}>Cancelar</button>
+            </Acts>
+          </form>
+        </ModalWrap>
       )}
 
       {/* CREATE MODAL */}
