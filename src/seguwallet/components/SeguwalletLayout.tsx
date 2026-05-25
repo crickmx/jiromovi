@@ -8,11 +8,30 @@ import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
   { path: '/seguwallet/dashboard', label: 'Inicio', icon: LayoutDashboard },
-  { path: '/seguwallet/polizas', label: 'Polizas', icon: FileText },
+  { path: '/seguwallet/polizas', label: 'Pólizas', icon: FileText },
   { path: '/seguwallet/cotizar', label: 'Cotizar', icon: Calculator },
   { path: '/seguwallet/aseguradoras', label: 'Aseguradoras', icon: Building2 },
   { path: '/seguwallet/perfil', label: 'Perfil', icon: User },
 ];
+
+/** Returns white or near-black text color based on background luminance */
+function getContrastColor(hex: string): string {
+  const h = hex.replace('#', '').padEnd(6, '0');
+  const r = parseInt(h.substring(0, 2), 16) / 255;
+  const g = parseInt(h.substring(2, 4), 16) / 255;
+  const b = parseInt(h.substring(4, 6), 16) / 255;
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return lum > 0.45 ? '#1a1a1a' : '#ffffff';
+}
+
+/** Creates a very light tint of the hex color for active backgrounds */
+function tint(hex: string, opacity = 0.12): string {
+  const h = hex.replace('#', '').padEnd(6, '0');
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return `rgba(${r},${g},${b},${opacity})`;
+}
 
 export function SeguwalletLayout({ children }: { children: ReactNode }) {
   const { customer } = useSeguwallet();
@@ -33,22 +52,26 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
   };
 
   const primary = brand.primaryColor;
+  const contrastOnPrimary = getContrastColor(primary);
+  const activeTint = tint(primary, 0.10);
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 60%, #f0f4ff 100%)' }}>
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-neutral-100/80 shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+    <div className="min-h-screen bg-neutral-50">
+
+      {/* ── Desktop + tablet header ── */}
+      <header className="sticky top-0 z-40 bg-white border-b border-neutral-200/70 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center h-14 gap-4">
+
           {/* Logo */}
           <button
             onClick={() => navigate('/seguwallet/dashboard')}
-            className="flex items-center gap-2.5 flex-shrink-0 min-w-0"
+            className="flex items-center flex-shrink-0"
           >
             {!brandLoading && (
               <img
                 src={brand.displayLogo}
                 alt={brand.agentName}
-                className="h-9 w-auto object-contain max-w-[140px]"
+                className="h-8 w-auto object-contain max-w-[130px]"
                 onError={e => {
                   const img = e.target as HTMLImageElement;
                   if (img.src !== SEGUWALLET_LOGO) img.src = SEGUWALLET_LOGO;
@@ -58,7 +81,7 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
           </button>
 
           {/* Desktop nav */}
-          <nav className="hidden lg:flex items-center gap-0.5">
+          <nav className="hidden lg:flex items-center gap-0.5 flex-1 justify-center">
             {NAV_ITEMS.map(item => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
@@ -67,14 +90,14 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
                   key={item.path}
                   onClick={() => navigate(item.path)}
                   className={cn(
-                    "flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200",
-                    isActive
-                      ? "text-white shadow-sm"
-                      : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
+                    'flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-150',
+                    !isActive && 'text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100'
                   )}
-                  style={isActive ? { backgroundColor: primary } : undefined}
+                  style={isActive
+                    ? { backgroundColor: activeTint, color: primary }
+                    : undefined}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-3.5 h-3.5 flex-shrink-0" />
                   {item.label}
                 </button>
               );
@@ -82,71 +105,138 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
           </nav>
 
           {/* Right side */}
-          <div className="flex items-center gap-2">
-            <div className="hidden sm:flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl bg-neutral-50 border border-neutral-100">
+          <div className="flex items-center gap-1.5 ml-auto">
+            {/* User pill */}
+            <div className="hidden sm:flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-neutral-200 bg-neutral-50">
               <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                style={{ backgroundColor: primary }}
+                className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-bold flex-shrink-0"
+                style={{ backgroundColor: primary, color: contrastOnPrimary }}
               >
                 {getInitials()}
               </div>
-              <span className="text-sm font-medium text-neutral-700 max-w-[90px] truncate leading-none">
+              <span className="text-sm font-medium text-neutral-700 max-w-[80px] truncate leading-none">
                 {customer?.full_name?.split(' ')[0]}
               </span>
             </div>
+
             <button
               onClick={handleSignOut}
+              title="Cerrar sesión"
               className="p-2 rounded-xl text-neutral-400 hover:text-red-500 hover:bg-red-50 transition-all"
-              title="Cerrar sesion"
             >
               <LogOut className="w-4 h-4" />
             </button>
+
+            {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-xl text-neutral-600 hover:bg-neutral-100 transition-colors"
+              className="lg:hidden p-2 rounded-xl text-neutral-500 hover:bg-neutral-100 transition-colors"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
 
-        {/* Mobile menu */}
+        {/* Mobile dropdown menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-neutral-100 bg-white px-4 py-3 space-y-1 shadow-lg">
-            {NAV_ITEMS.map(item => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
-              return (
-                <button
-                  key={item.path}
-                  onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-left",
-                    isActive ? "text-white" : "text-neutral-600 hover:bg-neutral-50"
-                  )}
-                  style={isActive ? { backgroundColor: primary } : undefined}
+          <div className="lg:hidden border-t border-neutral-100 bg-white shadow-md">
+            <div className="max-w-6xl mx-auto px-4 py-3">
+              {/* User info */}
+              <div className="flex items-center gap-3 px-2 py-2.5 mb-2">
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0"
+                  style={{ backgroundColor: primary, color: contrastOnPrimary }}
                 >
-                  <Icon className="w-4 h-4" />
-                  {item.label}
-                </button>
-              );
-            })}
+                  {getInitials()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-neutral-900 truncate">{customer?.full_name}</p>
+                  <p className="text-[11px] text-neutral-400 truncate">{customer?.email}</p>
+                </div>
+              </div>
+
+              <div className="h-px bg-neutral-100 mb-2" />
+
+              {NAV_ITEMS.map(item => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+                return (
+                  <button
+                    key={item.path}
+                    onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
+                    className={cn(
+                      'w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-all text-left',
+                      !isActive && 'text-neutral-600 hover:bg-neutral-50'
+                    )}
+                    style={isActive ? { backgroundColor: activeTint, color: primary } : undefined}
+                  >
+                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    {item.label}
+                  </button>
+                );
+              })}
+
+              <div className="h-px bg-neutral-100 my-2" />
+
+              <button
+                onClick={handleSignOut}
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-red-500 hover:bg-red-50 transition-all text-left"
+              >
+                <LogOut className="w-4 h-4 flex-shrink-0" />
+                Cerrar sesión
+              </button>
+            </div>
           </div>
         )}
       </header>
 
-      {/* Page content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      {/* ── Mobile bottom tab bar ── */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-neutral-200 shadow-[0_-2px_12px_rgba(0,0,0,0.06)]">
+        <div className="flex items-stretch safe-area-bottom">
+          {NAV_ITEMS.map(item => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+            return (
+              <button
+                key={item.path}
+                onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
+                className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 px-1 relative transition-all"
+              >
+                {/* Active indicator dot */}
+                {isActive && (
+                  <span
+                    className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-b-full transition-all"
+                    style={{ backgroundColor: primary }}
+                  />
+                )}
+                <Icon
+                  className="w-5 h-5 transition-colors"
+                  style={{ color: isActive ? primary : '#9ca3af' }}
+                />
+                <span
+                  className="text-[10px] font-semibold transition-colors leading-none"
+                  style={{ color: isActive ? primary : '#9ca3af' }}
+                >
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
+      {/* ── Page content ── */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-24 lg:pb-8">
         {children}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-neutral-100/80 py-5 mt-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+      {/* ── Footer ── */}
+      <footer className="hidden lg:block border-t border-neutral-100 py-4 mt-2">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-4">
           <img
             src={brand.displayLogo}
             alt={brand.agentName}
-            className="h-6 w-auto object-contain opacity-40 max-w-[100px]"
+            className="h-5 w-auto object-contain opacity-25 max-w-[80px]"
             onError={e => {
               const img = e.target as HTMLImageElement;
               if (img.src !== SEGUWALLET_LOGO) img.src = SEGUWALLET_LOGO;

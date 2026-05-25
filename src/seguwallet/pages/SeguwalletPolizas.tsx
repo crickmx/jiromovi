@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { FileText, Search, Calendar, Building2, Shield, X, Download, ChevronRight, ExternalLink, FileCheck, BookOpen, Award, AlertTriangle, Clock, CheckCircle, XCircle, Car, Heart, Home, RefreshCw, User, DollarSign, Info, ChevronDown, ChevronUp, Folder, Plus, Upload, Trash2, CreditCard as Edit3, Check, ArrowLeft, ArrowRight } from 'lucide-react';
+import { FileText, Search, Calendar, Building2, Shield, X, Download, ChevronRight, ExternalLink, FileCheck, BookOpen, Award, AlertTriangle, Clock, CheckCircle, XCircle, Car, Heart, Home, RefreshCw, User, DollarSign, Info, ChevronDown, ChevronUp, Folder, Plus, Upload, Trash2, CreditCard as Edit3, Check } from 'lucide-react';
 import { useSeguwallet } from '../lib/SeguwalletContext';
 import { useAgentBrand } from '../lib/AgentBrandContext';
 import { logDownload } from '../lib/seguwalletAuth';
@@ -851,292 +851,274 @@ function ExternalPolicyDetail({ policy, onClose, primary, onEdit, onDelete }: {
   );
 }
 
-// ─── External Policy Wizard ───────────────────────────────────────────────────
+// ─── External Policy Form (simplified single step) ────────────────────────────
+
+interface SimpleForm {
+  insurer_name: string;
+  subramo: string;
+  notes: string;
+}
+
+const EMPTY_SIMPLE: SimpleForm = { insurer_name: '', subramo: '', notes: '' };
 
 function ExternalPolicyWizard({ onClose, onSaved, primary, customerId, agentUserId, editPolicy }: {
-  onClose: () => void; onSaved: () => void; primary: string;
+  onClose: () => void; onSaved: (policyId?: string) => void; primary: string;
   customerId: string; agentUserId: string | null; editPolicy?: ExternalPolicy;
 }) {
-  const [step, setStep] = useState(1);
-  const [form, setForm] = useState<ExternalPolicyForm>(() => {
-    if (editPolicy) {
-      return {
-        insurer_name: editPolicy.insurer_name || '',
-        ramo: editPolicy.ramo || '',
-        subramo: editPolicy.subramo || '',
-        policy_number: editPolicy.policy_number || '',
-        start_date: editPolicy.start_date || '',
-        end_date: editPolicy.end_date || '',
-        contractor_name: editPolicy.contractor_name || '',
-        insured_name: editPolicy.insured_name || '',
-        total_premium: editPolicy.total_premium ? String(editPolicy.total_premium) : '',
-        currency: editPolicy.currency || 'MXN',
-        payment_method: editPolicy.payment_method || '',
-        payment_frequency: editPolicy.payment_frequency || '',
-        notes: editPolicy.notes || '',
-        insurer_phone: editPolicy.insurer_phone || '',
-        insurer_website: editPolicy.insurer_website || '',
-        beneficiaries: editPolicy.beneficiaries || '',
-        vehicle_plates: editPolicy.vehicle_data?.plates || '',
-        vehicle_vin: editPolicy.vehicle_data?.vin || '',
-        vehicle_model: editPolicy.vehicle_data?.model || '',
-        vehicle_year: editPolicy.vehicle_data?.year || '',
-      };
-    }
-    return EMPTY_FORM;
-  });
+  const [form, setForm] = useState<SimpleForm>(() =>
+    editPolicy
+      ? { insurer_name: editPolicy.insurer_name || '', subramo: editPolicy.subramo || '', notes: editPolicy.notes || '' }
+      : EMPTY_SIMPLE
+  );
+  const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
-  const [errors, setErrors] = useState<Partial<Record<keyof ExternalPolicyForm, string>>>({});
-
-  const isVehicle = form.subramo.toLowerCase().includes('auto');
+  const [errors, setErrors] = useState<Partial<Record<keyof SimpleForm, string>>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const isEdit = !!editPolicy;
 
-  const set = (key: keyof ExternalPolicyForm, value: string) => {
+  const set = (key: keyof SimpleForm, value: string) => {
     setForm(f => ({ ...f, [key]: value }));
     if (errors[key]) setErrors(e => ({ ...e, [key]: undefined }));
   };
 
-  const validateStep1 = () => {
+  const addFiles = (incoming: FileList | null) => {
+    if (!incoming) return;
+    const allowed = Array.from(incoming).filter(f =>
+      ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(f.type) && f.size <= 20 * 1024 * 1024
+    );
+    setFiles(prev => [...prev, ...allowed]);
+  };
+
+  const removeFile = (idx: number) => setFiles(f => f.filter((_, i) => i !== idx));
+
+  const validate = () => {
     const e: typeof errors = {};
     if (!form.insurer_name.trim()) e.insurer_name = 'Requerido';
     if (!form.subramo) e.subramo = 'Requerido';
-    if (!form.policy_number.trim()) e.policy_number = 'Requerido';
-    if (!form.start_date) e.start_date = 'Requerido';
-    if (!form.end_date) e.end_date = 'Requerido';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleNext = () => {
-    if (step === 1 && !validateStep1()) return;
-    setStep(s => s + 1);
-  };
-
   const handleSave = async () => {
+    if (!validate()) return;
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      const vehicle_data = isVehicle ? {
-        plates: form.vehicle_plates, vin: form.vehicle_vin, model: form.vehicle_model, year: form.vehicle_year,
-      } : null;
-
       const payload = {
         seguwallet_customer_id: customerId,
         agent_user_id: agentUserId || user?.id,
         insurer_name: form.insurer_name.trim(),
         ramo: RAMO_BY_SUBRAMO[form.subramo] || form.subramo,
         subramo: form.subramo,
-        policy_number: form.policy_number.trim(),
-        contractor_name: form.contractor_name.trim() || null,
-        insured_name: form.insured_name.trim() || null,
-        start_date: form.start_date || null,
-        end_date: form.end_date || null,
-        total_premium: form.total_premium ? parseFloat(form.total_premium) : null,
-        currency: form.currency,
-        payment_method: form.payment_method || null,
-        payment_frequency: form.payment_frequency || null,
+        policy_number: `EXT-${Date.now()}`,
         notes: form.notes.trim() || null,
-        insurer_phone: form.insurer_phone.trim() || null,
-        insurer_website: form.insurer_website.trim() || null,
-        beneficiaries: form.beneficiaries.trim() || null,
-        vehicle_data,
         created_by: user?.id,
       };
 
+      let policyId: string;
+
       if (isEdit) {
-        await supabase.from('seguwallet_external_policies').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editPolicy!.id);
+        await supabase.from('seguwallet_external_policies')
+          .update({ insurer_name: payload.insurer_name, ramo: payload.ramo, subramo: payload.subramo, notes: payload.notes, updated_at: new Date().toISOString() })
+          .eq('id', editPolicy!.id);
+        policyId = editPolicy!.id;
         await supabase.from('seguwallet_external_policy_logs').insert({
-          external_policy_id: editPolicy!.id, seguwallet_customer_id: customerId,
+          external_policy_id: policyId, seguwallet_customer_id: customerId,
           actor_id: user?.id, actor_type: 'seguwallet_customer', event_type: 'updated',
         });
       } else {
         const { data: inserted } = await supabase.from('seguwallet_external_policies').insert(payload).select('id').single();
-        if (inserted) {
-          await supabase.from('seguwallet_external_policy_logs').insert({
-            external_policy_id: inserted.id, seguwallet_customer_id: customerId,
-            actor_id: user?.id, actor_type: 'seguwallet_customer', event_type: 'created',
-          });
-        }
+        if (!inserted) throw new Error('No se pudo crear la póliza');
+        policyId = inserted.id;
+        await supabase.from('seguwallet_external_policy_logs').insert({
+          external_policy_id: policyId, seguwallet_customer_id: customerId,
+          actor_id: user?.id, actor_type: 'seguwallet_customer', event_type: 'created',
+        });
       }
-      onSaved();
-    } catch (err: any) { console.error(err); alert('Error al guardar: ' + err.message); }
-    finally { setSaving(false); }
+
+      // Upload attached files
+      for (const file of files) {
+        const path = `seguwallet/${customerId}/external-policies/${policyId}/${Date.now()}_${file.name}`;
+        const { error: upErr } = await supabase.storage.from('seguwallet-external-policies').upload(path, file, { upsert: false });
+        if (upErr) continue;
+        const { data: { publicUrl } } = supabase.storage.from('seguwallet-external-policies').getPublicUrl(path);
+        await supabase.from('seguwallet_external_policy_documents').insert({
+          external_policy_id: policyId,
+          seguwallet_customer_id: customerId,
+          document_type: 'Póliza',
+          document_name: file.name,
+          file_url: publicUrl,
+          file_path: path,
+          file_size: file.size,
+          mime_type: file.type,
+          uploaded_by: user?.id,
+          uploaded_by_type: 'seguwallet_customer',
+        });
+        await supabase.from('seguwallet_external_policy_logs').insert({
+          external_policy_id: policyId, seguwallet_customer_id: customerId,
+          actor_id: user?.id, actor_type: 'seguwallet_customer', event_type: 'doc_uploaded',
+          metadata: { document_name: file.name },
+        });
+      }
+
+      onSaved(policyId);
+    } catch (err: any) {
+      console.error(err);
+      alert('Error al guardar: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const stepLabels = ['Datos de póliza', 'Información adicional', 'Confirmar'];
+  const inputCls = (err?: string) => cn(
+    'w-full px-3.5 py-3 rounded-2xl border text-sm focus:outline-none transition-all bg-white',
+    err ? 'border-red-300 bg-red-50/30 focus:border-red-400' : 'border-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100'
+  );
+
   const Field = ({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) => (
-    <div>
-      <label className="block text-xs font-semibold text-neutral-600 mb-1.5">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>
+    <div className="space-y-1.5">
+      <label className="block text-xs font-semibold text-neutral-600 tracking-wide">
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
       {children}
-      {error && <p className="text-[11px] text-red-500 mt-1">{error}</p>}
+      {error && <p className="text-[11px] text-red-500 font-medium">{error}</p>}
     </div>
   );
-  const inputCls = (err?: string) => cn('w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none transition-all', err ? 'border-red-300 focus:border-red-400' : 'border-neutral-200 focus:border-neutral-400');
+
+  const logoPreview = getInsurerLogo(form.insurer_name);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[95vh] flex flex-col overflow-hidden">
-        <div className="h-1" style={{ backgroundColor: primary }} />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+        {/* Color bar */}
+        <div className="h-1 w-full" style={{ backgroundColor: primary }} />
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-neutral-100 flex-shrink-0">
-          <div>
-            <h2 className="font-bold text-neutral-900 text-base">{isEdit ? 'Editar póliza externa' : 'Agregar póliza externa'}</h2>
-            <p className="text-xs text-neutral-400 mt-0.5">{stepLabels[step - 1]}</p>
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-neutral-100">
+          <div className="flex items-center gap-3">
+            {logoPreview && (
+              <div className="w-9 h-9 rounded-xl bg-white border border-neutral-100 shadow-sm flex items-center justify-center overflow-hidden flex-shrink-0">
+                <img src={logoPreview} alt="" className="w-full h-full object-contain p-1" />
+              </div>
+            )}
+            <div>
+              <h2 className="font-bold text-neutral-900 text-base leading-tight">
+                {isEdit ? 'Editar póliza' : 'Agregar póliza externa'}
+              </h2>
+              <p className="text-xs text-neutral-400 mt-0.5">Tu bóveda personal de seguros</p>
+            </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-all"><X className="w-5 h-5" /></button>
-        </div>
-
-        {/* Progress */}
-        <div className="px-5 pt-4 pb-2 flex-shrink-0">
-          <div className="flex gap-1.5">
-            {[1, 2, 3].map(s => (
-              <div key={s} className={cn('h-1.5 flex-1 rounded-full transition-all', s <= step ? '' : 'bg-neutral-200')}
-                style={{ backgroundColor: s <= step ? primary : undefined }} />
-            ))}
-          </div>
+          <button onClick={onClose} className="p-2 rounded-xl text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-all">
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Body */}
-        <div className="overflow-y-auto flex-1 px-5 py-4">
+        <div className="overflow-y-auto px-5 py-5 space-y-4" style={{ maxHeight: '70vh' }}>
 
-          {step === 1 && (
-            <div className="space-y-4">
-              <Field label="Aseguradora" required error={errors.insurer_name}>
-                <input type="text" value={form.insurer_name} onChange={e => set('insurer_name', e.target.value)}
-                  placeholder="Ej. Qualitas, GNP, ANA Seguros..." className={inputCls(errors.insurer_name)} />
-              </Field>
+          {/* Aseguradora */}
+          <Field label="Aseguradora" required error={errors.insurer_name}>
+            <input
+              type="text"
+              value={form.insurer_name}
+              onChange={e => set('insurer_name', e.target.value)}
+              placeholder="Ej. Qualitas, GNP, ANA Seguros..."
+              className={inputCls(errors.insurer_name)}
+              autoComplete="off"
+            />
+          </Field>
 
-              <Field label="Subramo / Tipo de seguro" required error={errors.subramo}>
-                <select value={form.subramo} onChange={e => set('subramo', e.target.value)} className={inputCls(errors.subramo)}>
-                  <option value="">Seleccionar...</option>
-                  {SUBRAMOS.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </Field>
+          {/* Subramo as visual chips */}
+          <Field label="Tipo de seguro" required error={errors.subramo}>
+            <div className="flex flex-wrap gap-2">
+              {SUBRAMOS.map(s => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => set('subramo', s)}
+                  className={cn(
+                    'px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all',
+                    form.subramo === s
+                      ? 'text-white border-transparent shadow-sm'
+                      : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50'
+                  )}
+                  style={form.subramo === s ? { backgroundColor: primary, borderColor: primary } : undefined}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </Field>
 
-              <Field label="Número de póliza" required error={errors.policy_number}>
-                <input type="text" value={form.policy_number} onChange={e => set('policy_number', e.target.value)}
-                  placeholder="Ej. 5735439" className={inputCls(errors.policy_number)} />
-              </Field>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Vigencia desde" required error={errors.start_date}>
-                  <input type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)} className={inputCls(errors.start_date)} />
-                </Field>
-                <Field label="Vigencia hasta" required error={errors.end_date}>
-                  <input type="date" value={form.end_date} onChange={e => set('end_date', e.target.value)} className={inputCls(errors.end_date)} />
-                </Field>
-              </div>
-
-              {isVehicle && (
-                <div className="rounded-2xl bg-neutral-50 border border-neutral-100 p-4 space-y-3">
-                  <p className="text-xs font-bold text-neutral-600 uppercase tracking-wide">Datos del vehículo</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="Placas"><input type="text" value={form.vehicle_plates} onChange={e => set('vehicle_plates', e.target.value)} placeholder="ABC-1234" className={inputCls()} /></Field>
-                    <Field label="Serie / VIN"><input type="text" value={form.vehicle_vin} onChange={e => set('vehicle_vin', e.target.value)} className={inputCls()} /></Field>
-                    <Field label="Modelo"><input type="text" value={form.vehicle_model} onChange={e => set('vehicle_model', e.target.value)} placeholder="Ej. Nissan Versa" className={inputCls()} /></Field>
-                    <Field label="Año"><input type="text" value={form.vehicle_year} onChange={e => set('vehicle_year', e.target.value)} placeholder="Ej. 2022" className={inputCls()} /></Field>
+          {/* Adjuntos */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-neutral-600 tracking-wide">Documentos adjuntos</label>
+            <div
+              className="border-2 border-dashed border-neutral-200 rounded-2xl p-4 text-center cursor-pointer hover:border-neutral-300 hover:bg-neutral-50/50 transition-all"
+              onClick={() => fileInputRef.current?.click()}
+              onDrop={e => { e.preventDefault(); addFiles(e.dataTransfer.files); }}
+              onDragOver={e => e.preventDefault()}
+            >
+              <Upload className="w-6 h-6 text-neutral-300 mx-auto mb-1.5" />
+              <p className="text-xs font-medium text-neutral-500">Arrastra o toca para subir</p>
+              <p className="text-[11px] text-neutral-400 mt-0.5">PDF, JPG, PNG, WEBP · máx. 20 MB</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.webp"
+                multiple
+                className="hidden"
+                onChange={e => { addFiles(e.target.files); e.target.value = ''; }}
+              />
+            </div>
+            {files.length > 0 && (
+              <div className="space-y-1.5 mt-2">
+                {files.map((f, idx) => (
+                  <div key={idx} className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-neutral-50 border border-neutral-100">
+                    <FileText className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                    <span className="text-xs font-medium text-neutral-700 truncate flex-1">{f.name}</span>
+                    <span className="text-[10px] text-neutral-400 flex-shrink-0">{Math.round(f.size / 1024)} KB</span>
+                    <button onClick={() => removeFile(idx)} className="p-0.5 text-neutral-400 hover:text-red-500 transition-colors flex-shrink-0">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
 
-          {step === 2 && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Contratante"><input type="text" value={form.contractor_name} onChange={e => set('contractor_name', e.target.value)} className={inputCls()} /></Field>
-                <Field label="Asegurado"><input type="text" value={form.insured_name} onChange={e => set('insured_name', e.target.value)} className={inputCls()} /></Field>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Prima total">
-                  <div className="flex gap-1.5">
-                    <input type="number" value={form.total_premium} onChange={e => set('total_premium', e.target.value)} placeholder="0.00" className={cn(inputCls(), 'flex-1 min-w-0')} />
-                    <select value={form.currency} onChange={e => set('currency', e.target.value)} className="px-2 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none bg-white">
-                      <option>MXN</option><option>USD</option>
-                    </select>
-                  </div>
-                </Field>
-                <Field label="Frecuencia de pago">
-                  <select value={form.payment_frequency} onChange={e => set('payment_frequency', e.target.value)} className={inputCls()}>
-                    <option value="">-</option>
-                    <option>Anual</option><option>Semestral</option><option>Trimestral</option><option>Mensual</option>
-                  </select>
-                </Field>
-              </div>
-              <Field label="Forma de pago">
-                <select value={form.payment_method} onChange={e => set('payment_method', e.target.value)} className={inputCls()}>
-                  <option value="">-</option>
-                  <option>Efectivo</option><option>Tarjeta</option><option>Transferencia</option><option>Domiciliación</option>
-                </select>
-              </Field>
-              <Field label="Beneficiarios"><input type="text" value={form.beneficiaries} onChange={e => set('beneficiaries', e.target.value)} placeholder="Opcional" className={inputCls()} /></Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Tel. aseguradora"><input type="tel" value={form.insurer_phone} onChange={e => set('insurer_phone', e.target.value)} className={inputCls()} /></Field>
-                <Field label="Sitio web"><input type="url" value={form.insurer_website} onChange={e => set('insurer_website', e.target.value)} placeholder="https://..." className={inputCls()} /></Field>
-              </div>
-              <Field label="Notas">
-                <textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={3} placeholder="Notas adicionales..." className={cn(inputCls(), 'resize-none')} />
-              </Field>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="space-y-4">
-              <div className="rounded-2xl bg-neutral-50 border border-neutral-100 p-4 space-y-3">
-                <p className="text-xs font-bold text-neutral-600 uppercase tracking-wide mb-2">Resumen</p>
-                <div className="space-y-2">
-                  {[
-                    ['Aseguradora', form.insurer_name],
-                    ['Subramo', form.subramo],
-                    ['Número de póliza', form.policy_number],
-                    ['Vigencia', form.start_date && form.end_date ? `${fmt(form.start_date)} — ${fmt(form.end_date)}` : '-'],
-                    form.total_premium ? ['Prima total', `$${parseFloat(form.total_premium).toLocaleString('es-MX', { minimumFractionDigits: 2 })} ${form.currency}`] : null,
-                    form.contractor_name ? ['Contratante', form.contractor_name] : null,
-                    form.insured_name ? ['Asegurado', form.insured_name] : null,
-                    isVehicle && form.vehicle_plates ? ['Placas', form.vehicle_plates] : null,
-                    isVehicle && form.vehicle_model ? ['Modelo', `${form.vehicle_model} ${form.vehicle_year}`] : null,
-                  ].filter(Boolean).map(([label, value]: any) => (
-                    <div key={label} className="flex justify-between items-start gap-2">
-                      <span className="text-xs text-neutral-500 flex-shrink-0">{label}</span>
-                      <span className="text-xs font-semibold text-neutral-900 text-right">{value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {!isEdit && (
-                <div className="rounded-2xl bg-blue-50 border border-blue-100 p-4">
-                  <p className="text-xs text-blue-700 font-medium">Después de guardar podrás subir documentos como la póliza, recibos y endosos desde el detalle.</p>
-                </div>
-              )}
-            </div>
-          )}
+          {/* Comentarios */}
+          <Field label="Comentarios">
+            <textarea
+              value={form.notes}
+              onChange={e => set('notes', e.target.value)}
+              rows={3}
+              placeholder="Notas, recordatorios o información adicional..."
+              className={cn(inputCls(), 'resize-none')}
+            />
+          </Field>
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-neutral-100 flex items-center gap-3 flex-shrink-0">
-          {step > 1 && (
-            <button onClick={() => setStep(s => s - 1)}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-neutral-200 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 transition-all">
-              <ArrowLeft className="w-4 h-4" /> Atrás
-            </button>
-          )}
-          <div className="flex-1" />
-          {step < 3 ? (
-            <button onClick={handleNext}
-              className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90"
-              style={{ backgroundColor: primary }}>
-              Siguiente <ArrowRight className="w-4 h-4" />
-            </button>
-          ) : (
-            <button onClick={handleSave} disabled={saving}
-              className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 disabled:opacity-60"
-              style={{ backgroundColor: primary }}>
-              {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Check className="w-4 h-4" />}
-              {isEdit ? 'Guardar cambios' : 'Guardar póliza'}
-            </button>
-          )}
+        <div className="px-5 py-4 border-t border-neutral-100 flex items-center gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2.5 rounded-2xl border border-neutral-200 text-sm font-semibold text-neutral-600 hover:bg-neutral-50 transition-all"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-2xl text-white text-sm font-semibold transition-all hover:opacity-90 disabled:opacity-60 shadow-sm"
+            style={{ backgroundColor: primary }}
+          >
+            {saving
+              ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              : <Check className="w-4 h-4" />}
+            {saving ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Agregar póliza'}
+          </button>
         </div>
       </div>
     </div>
@@ -1457,6 +1439,7 @@ export function SeguwalletPolizas() {
         <ExternalPolicyWizard
           onClose={() => { setShowWizard(false); setEditingExt(undefined); }}
           onSaved={() => { setShowWizard(false); setEditingExt(undefined); loadExternal(); setTab('externas'); }}
+
           primary={primary}
           customerId={customer.id}
           agentUserId={customer.agent_user_id}
