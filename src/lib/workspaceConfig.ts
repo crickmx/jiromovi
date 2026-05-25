@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, Palette, TrendingUp, Brain, GraduationCap, Settings, ClipboardList, FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Palette, TrendingUp, Brain, GraduationCap, Settings, ClipboardList, FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
@@ -144,6 +144,7 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/comisiones/mapeo-vendedores', label: 'Mapeo Vendedores', icon: Users, visibleTo: ADMIN_ONLY },
     { path: '/produccion/configuracion', label: 'Config Produccion', icon: Settings, visibleTo: ADMIN_ONLY },
     { path: '/sicas/salud', label: 'SICAS Salud', icon: Activity, visibleTo: ADMIN_ONLY },
+    { path: '/seguwallet-admin', label: 'Seguwallet', icon: Wallet, visibleTo: ALL_ROLES },
   ],
 };
 
@@ -158,47 +159,20 @@ export const WORKSPACES: WorkspaceDefinition[] = [
 
 // Ordered navigation: Dashboard, Comercial, Operaciones, Mercadotecnia, Seguros Education, MOVI Store, Comunicados, IA, Admin
 export const NAV_ORDER: NavEntry[] = [
-  { type: 'link', item: TOP_LEVEL_ITEMS[0] }, // Dashboard
+  { type: 'link', item: { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visibleTo: ALL_ROLES } },
   { type: 'workspace', workspace: WORKSPACE_COMERCIAL },
   { type: 'workspace', workspace: WORKSPACE_OPERACIONES },
   { type: 'workspace', workspace: WORKSPACE_MERCADOTECNIA },
   { type: 'workspace', workspace: WORKSPACE_SEGUROS_EDUCATION },
-  { type: 'link', item: TOP_LEVEL_ITEMS[1] }, // MOVI Store
-  { type: 'link', item: TOP_LEVEL_ITEMS[2] }, // Comunicados
+  { type: 'link', item: { path: '/store', label: 'MOVI Store', icon: ShoppingBag, visibleTo: ALL_ROLES } },
+  { type: 'link', item: { path: '/comunicados', label: 'Comunicados', icon: FileText, visibleTo: ALL_ROLES, matchPrefix: true } },
   { type: 'workspace', workspace: WORKSPACE_IA },
   { type: 'workspace', workspace: WORKSPACE_ADMIN },
 ];
 
-export function isTopLevelItemVisible(item: TopLevelNavItem, userRole: UserRole): boolean {
-  if (item.visibleTo.length === 0) return true;
-  return item.visibleTo.includes(userRole);
-}
-
-export function resolveWorkspace(pathname: string, userRole: UserRole): { workspace: WorkspaceDefinition | null; activeItem: WorkspaceNavItem | null } {
-  for (const item of TOP_LEVEL_ITEMS) {
-    if (pathname === item.path) return { workspace: null, activeItem: null };
-    if (item.matchPrefix && pathname.startsWith(item.path)) return { workspace: null, activeItem: null };
-  }
-
-  for (const ws of WORKSPACES) {
-    for (const item of ws.items) {
-      if (pathname === item.path) {
-        return { workspace: ws, activeItem: item };
-      }
-    }
-  }
-
-  for (const ws of WORKSPACES) {
-    for (const item of ws.items) {
-      if (!item.matchPrefix) continue;
-      if (item.excludePrefixes?.some(ex => pathname.startsWith(ex))) continue;
-      if (pathname.startsWith(item.path)) {
-        return { workspace: ws, activeItem: item };
-      }
-    }
-  }
-
-  return { workspace: null, activeItem: null };
+export function isWorkspaceVisible(ws: WorkspaceDefinition, userRole: UserRole): boolean {
+  if (ws.visibleTo.length === 0) return true;
+  return ws.visibleTo.includes(userRole);
 }
 
 export function isItemVisible(item: WorkspaceNavItem, userRole: UserRole): boolean {
@@ -206,18 +180,43 @@ export function isItemVisible(item: WorkspaceNavItem, userRole: UserRole): boole
   return item.visibleTo.includes(userRole);
 }
 
-export function isWorkspaceVisible(ws: WorkspaceDefinition, userRole: UserRole): boolean {
-  if (ws.visibleTo.length === 0) return true;
-  return ws.visibleTo.includes(userRole);
+export function isTopLevelItemVisible(item: TopLevelNavItem, userRole: UserRole): boolean {
+  if (item.visibleTo.length === 0) return true;
+  return item.visibleTo.includes(userRole);
 }
 
-export function buildBreadcrumbs(workspace: WorkspaceDefinition | null, activeItem: WorkspaceNavItem | null): { label: string; path?: string }[] {
-  const crumbs: { label: string; path?: string }[] = [];
+export function resolveWorkspace(
+  pathname: string,
+  userRole: UserRole
+): { workspace: WorkspaceDefinition | null; activeItem: WorkspaceNavItem | null } {
+  for (const ws of WORKSPACES) {
+    if (!isWorkspaceVisible(ws, userRole)) continue;
+    for (const item of ws.items) {
+      if (!isItemVisible(item, userRole)) continue;
+      if (pathname === item.path) {
+        return { workspace: ws, activeItem: item };
+      }
+      if (item.matchPrefix) {
+        if (item.excludePrefixes?.some(ex => pathname.startsWith(ex))) continue;
+        if (pathname.startsWith(item.path)) {
+          return { workspace: ws, activeItem: item };
+        }
+      }
+    }
+  }
+  return { workspace: null, activeItem: null };
+}
+
+export function buildBreadcrumbs(
+  workspace: WorkspaceDefinition | null,
+  activeItem: WorkspaceNavItem | null
+): Array<{ label: string; path?: string }> {
+  const crumbs: Array<{ label: string; path?: string }> = [];
   if (workspace) {
-    crumbs.push({ label: workspace.label, path: workspace.items[0]?.path });
+    crumbs.push({ label: workspace.label });
   }
   if (activeItem) {
-    crumbs.push({ label: activeItem.label });
+    crumbs.push({ label: activeItem.label, path: activeItem.path });
   }
   return crumbs;
 }

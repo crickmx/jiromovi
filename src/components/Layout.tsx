@@ -82,7 +82,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50/80 to-blue-50/30 dark:from-[#09090b] dark:via-[#09090b] dark:to-[#09090b]">
+    <div className="min-h-screen bg-[#f5f7fa] dark:bg-[#09090b]">
       {/* Desktop: Primary Sidebar (icon rail) */}
       <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40">
         <PrimarySidebar
@@ -148,13 +148,13 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
                           className={cn(
                             "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[13px] font-semibold transition-all duration-200",
                             isActive
-                              ? "bg-accent/8 text-accent dark:bg-accent/12 dark:text-white shadow-sm"
+                              ? "bg-accent/8 text-accent dark:bg-accent/12 dark:text-white"
                               : "text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-white/5"
                           )}
                         >
                           <div className={cn(
-                            "w-8 h-8 rounded-xl flex items-center justify-center transition-colors",
-                            isActive ? "bg-accent/12 dark:bg-accent/20" : "bg-neutral-100 dark:bg-white/8"
+                            "w-8 h-8 rounded-xl flex items-center justify-center",
+                            isActive ? "bg-accent/10 dark:bg-accent/20" : "bg-neutral-100 dark:bg-white/8"
                           )}>
                             <Icon className={cn("w-4 h-4", isActive ? "text-accent" : "text-neutral-500 dark:text-white/50")} />
                           </div>
@@ -184,8 +184,8 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
                       >
                         <div className="flex items-center gap-3">
                           <div className={cn(
-                            "w-8 h-8 rounded-xl flex items-center justify-center transition-colors",
-                            isActiveWs ? "bg-accent/12 dark:bg-accent/20" : "bg-neutral-100 dark:bg-white/8"
+                            "w-8 h-8 rounded-xl flex items-center justify-center",
+                            isActiveWs ? "bg-accent/10 dark:bg-accent/20" : "bg-neutral-100 dark:bg-white/8"
                           )}>
                             <WsIcon className={cn("w-4 h-4", isActiveWs ? "text-accent" : "text-neutral-500 dark:text-white/50")} />
                           </div>
@@ -198,7 +198,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
                       </button>
 
                       {isExpanded && (
-                        <div className="ml-5 pl-4 border-l-2 border-accent/10 dark:border-accent/20 mt-1 mb-2 space-y-0.5 animate-fade-in">
+                        <div className="ml-5 pl-4 border-l-2 border-neutral-100 dark:border-white/6 mt-1 mb-2 space-y-0.5 animate-fade-in">
                           {visibleItems.map((item) => {
                             const Icon = item.icon;
                             const isActive = location.pathname === item.path ||
@@ -253,7 +253,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
           {!hideHeader && (
             <>
               {/* Mobile header */}
-              <header className="lg:hidden sticky top-0 z-30 bg-white/80 dark:bg-[#111113]/80 backdrop-blur-2xl border-b border-neutral-200/30 dark:border-white/5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+              <header className="lg:hidden sticky top-0 z-30 bg-white/80 dark:bg-[#111113]/80 backdrop-blur-xl border-b border-neutral-200/40 dark:border-white/5">
                 <div className="flex items-center justify-between h-16 px-5">
                   <button
                     onClick={() => setMobileOpen(true)}
@@ -271,8 +271,8 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
               </header>
 
               {/* Desktop header */}
-              <header className="hidden lg:flex sticky top-0 z-20 bg-white/70 dark:bg-[#111113]/70 backdrop-blur-2xl border-b border-neutral-100/50 dark:border-white/4 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-                <div className="w-full px-8 lg:px-10 flex items-center justify-between h-16">
+              <header className="hidden lg:flex sticky top-0 z-20 bg-white/70 dark:bg-[#111113]/70 backdrop-blur-2xl border-b border-neutral-100/60 dark:border-white/4">
+                <div className="w-full px-8 flex items-center justify-between h-16">
                   <Breadcrumbs items={breadcrumbs} />
                   <div className="flex items-center gap-2">
                     <InstallAppButton variant="ghost" size="sm" />
@@ -289,7 +289,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
               ? 'h-screen overflow-hidden'
               : 'w-full py-6 lg:py-8',
             ['/espacio-jiro'].includes(location.pathname)
-              ? 'px-4 sm:px-6 lg:px-10'
+              ? 'px-4 sm:px-6 lg:px-8'
               : ['/multicotizador-digital', '/centro-contacto'].includes(location.pathname)
               ? ''
               : 'max-w-[1400px] mx-auto px-5 sm:px-6 lg:px-10'
