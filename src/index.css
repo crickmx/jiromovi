@@ -421,35 +421,36 @@
     background: rgb(var(--movi-accent-rgb));
   }
 
-  /* Inactive icons: high opacity white for legibility (≥4.5:1 contrast on dark bg) */
+  /* Inactive: full-opacity foreground so contrast ratio is always met */
   .sidebar-rail-btn {
-    color: rgba(var(--movi-accent-foreground-rgb) / 0.75);
-    transition: background 150ms, color 150ms;
+    color: rgb(var(--movi-accent-foreground-rgb));
+    opacity: 0.65;
+    transition: background 150ms, opacity 150ms;
   }
 
   .sidebar-rail-btn:hover {
-    background: rgba(var(--movi-accent-foreground-rgb) / 0.14);
-    color: rgb(var(--movi-accent-foreground-rgb));
+    background: rgba(var(--movi-accent-foreground-rgb) / 0.15);
+    opacity: 1;
   }
 
-  /* Active: solid white pill + full opacity icon */
+  /* Active: strong pill + full opacity */
   .sidebar-rail-btn.active {
-    background: rgba(var(--movi-accent-foreground-rgb) / 0.22);
-    color: rgb(var(--movi-accent-foreground-rgb));
-    box-shadow: inset 0 0 0 1px rgba(var(--movi-accent-foreground-rgb) / 0.20);
+    background: rgba(var(--movi-accent-foreground-rgb) / 0.20);
+    opacity: 1;
+    box-shadow: inset 0 0 0 1.5px rgba(var(--movi-accent-foreground-rgb) / 0.30);
   }
 
   .sidebar-rail-sep {
-    background: rgba(var(--movi-accent-foreground-rgb) / 0.18);
+    background: rgba(var(--movi-accent-foreground-rgb) / 0.20);
   }
 
   .sidebar-rail-logo-btn {
-    background: rgba(var(--movi-accent-foreground-rgb) / 0.12);
+    background: rgba(var(--movi-accent-foreground-rgb) / 0.14);
     transition: background 150ms, transform 150ms;
   }
 
   .sidebar-rail-logo-btn:hover {
-    background: rgba(var(--movi-accent-foreground-rgb) / 0.22);
+    background: rgba(var(--movi-accent-foreground-rgb) / 0.25);
     transform: scale(1.05);
   }
 
@@ -458,7 +459,7 @@
   }
 
   .sidebar-rail-avatar-ring {
-    outline: 2px solid rgba(var(--movi-accent-foreground-rgb) / 0.25);
+    outline: 2px solid rgba(var(--movi-accent-foreground-rgb) / 0.30);
   }
 
   .sidebar-rail-avatar-fallback {
@@ -466,15 +467,17 @@
     color: rgb(var(--movi-accent-foreground-rgb));
   }
 
-  /* Sign-out: clearly readable, muted but not invisible */
+  /* Sign-out: full foreground color, readable */
   .sidebar-rail-signout {
-    color: rgba(var(--movi-accent-foreground-rgb) / 0.60);
-    transition: background 150ms, color 150ms;
+    color: rgb(var(--movi-accent-foreground-rgb));
+    opacity: 0.55;
+    transition: background 150ms, opacity 150ms;
   }
 
   .sidebar-rail-signout:hover {
-    background: rgba(255 80 80 / 0.20);
+    background: rgba(255 80 80 / 0.22);
     color: #ff9090;
+    opacity: 1;
   }
 
   /* Subtle accent background */
