@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAgentSicasClients, searchSicasClientsAdmin, type SicasClientResult } from '@/seguwallet/lib/seguwalletAuth';
 import { cn } from '@/lib/utils';
-import { type SeguwalletInsurer, type InsurerFormData, emptyInsurerForm, sanitizePhone, formatPhoneDisplay, getInsurerLogoUrl } from '@/seguwallet/lib/insurerTypes';
+import { type SeguwalletInsurer, type InsurerFormData, emptyInsurerForm, sanitizePhone, formatPhoneDisplay, getInsurerLogoUrl, isBlockedLogoUrl } from '@/seguwallet/lib/insurerTypes';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
@@ -1057,7 +1057,8 @@ export function SeguwalletAdmin() {
                         const localPreview = logoLocalPath
                           ? `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/insurance-carriers-logos/${logoLocalPath}`
                           : null;
-                        const src = localPreview || insurerForm.logo_url || null;
+                        const externalUrl = insurerForm.logo_url && !isBlockedLogoUrl(insurerForm.logo_url) ? insurerForm.logo_url : null;
+                        const src = localPreview || externalUrl;
                         return src ? (
                           <img src={src} alt="logo" className="w-full h-full object-contain p-1" onError={e => { (e.target as HTMLImageElement).style.display='none'; }} />
                         ) : (
@@ -1109,6 +1110,12 @@ export function SeguwalletAdmin() {
 
                   <F label="URL logotipo externo (referencia)">
                     <input type="url" value={insurerForm.logo_url || ''} onChange={e => setInsurerForm(p => ({ ...p, logo_url: e.target.value }))} placeholder="https://..." className={inp} />
+                    {isBlockedLogoUrl(insurerForm.logo_url) && (
+                      <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-amber-600 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        Esta URL es de un servicio externo (Clearbit) que es detectado como rastreador por Brave. Importa el logo localmente usando el boton Importar de arriba.
+                      </p>
+                    )}
                   </F>
                 </div>
                 <div className="grid grid-cols-2 gap-3">

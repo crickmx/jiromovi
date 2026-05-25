@@ -53,12 +53,27 @@ export function callLink(phone: string): string {
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
-/** Returns the best available logo URL: local storage > external logo_url > null */
+const BLOCKED_LOGO_DOMAINS = ['logo.clearbit.com', 'clearbit.com'];
+
+export function isBlockedLogoUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+    return BLOCKED_LOGO_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d));
+  } catch {
+    return false;
+  }
+}
+
+/** Returns the best available logo URL: local storage > external logo_url (non-blocked) > null */
 export function getInsurerLogoUrl(ins: Pick<SeguwalletInsurer, 'logo_local_path' | 'logo_url'>): string | null {
   if (ins.logo_local_path) {
     return `${SUPABASE_URL}/storage/v1/object/public/insurance-carriers-logos/${ins.logo_local_path}`;
   }
-  return ins.logo_url || null;
+  if (ins.logo_url && !isBlockedLogoUrl(ins.logo_url)) {
+    return ins.logo_url;
+  }
+  return null;
 }
 
 export const emptyInsurerForm: InsurerFormData = {
