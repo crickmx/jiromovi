@@ -556,9 +556,6 @@ function ExternalPolicyDetail({ policy, onClose, primary, onEdit, onDelete }: {
   const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isVigente = policy.end_date ? getDaysRemaining(policy.end_date) >= 0 : true;
-  const isCancelada = policy.status === 'cancelled' || policy.status === 'cancelada';
-  const st = getStatusConfig(isVigente, isCancelada, policy.end_date);
   const isVehicle = (policy.subramo || '').toLowerCase().includes('auto');
 
   useEffect(() => { if (customer) loadDocs(); }, [customer, policy.id]);
@@ -647,14 +644,11 @@ function ExternalPolicyDetail({ policy, onClose, primary, onEdit, onDelete }: {
             <InsurerLogo name={policy.insurer_name || ''} size={44} />
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <p className="font-bold text-neutral-900 text-base">{policy.policy_number}</p>
-                <span className={cn('px-2 py-0.5 rounded-lg text-[10px] font-bold border flex items-center gap-1', st.badgeCls)}>
-                  <span className={cn('w-1.5 h-1.5 rounded-full', st.dot)} />{st.label}
-                </span>
+                <p className="font-bold text-neutral-900 text-base">{policy.insurer_name}</p>
                 <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold border bg-orange-50 text-orange-600 border-orange-200">Externa</span>
               </div>
               <p className="text-xs text-neutral-500 mt-0.5">
-                {policy.insurer_name}
+                {policy.policy_number}
                 {policy.subramo && <span className="text-neutral-300 mx-1.5">·</span>}
                 {policy.subramo}
               </p>
@@ -675,30 +669,12 @@ function ExternalPolicyDetail({ policy, onClose, primary, onEdit, onDelete }: {
         <div className="overflow-y-auto flex-1">
           <div className="p-5 space-y-4">
 
-            {/* Status banner */}
-            <div className={cn('rounded-2xl p-4 border', st.bannerCls)}>
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <st.icon className={cn('w-4 h-4', st.textCls)} />
-                  <span className={cn('text-sm font-bold', st.textCls)}>{st.label}</span>
-                </div>
-                {(st as any).alert && <span className={cn('text-xs font-semibold px-2.5 py-1 rounded-lg border', st.badgeCls)}>{(st as any).alert}</span>}
-              </div>
-              {(policy.start_date || policy.end_date) && (
-                <div className="flex items-center gap-2 mt-2 text-xs text-neutral-600">
-                  <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span>{fmt(policy.start_date)} — {fmt(policy.end_date)}</span>
-                </div>
-              )}
-            </div>
-
             {/* Datos generales */}
             <SectionCard title="Datos generales" icon={Info}>
-              <InfoRow label="Numero de póliza" value={policy.policy_number} />
+              <InfoRow label="Referencia" value={policy.policy_number} />
               <InfoRow label="Aseguradora" value={policy.insurer_name} />
               <InfoRow label="Ramo" value={policy.ramo} />
               <InfoRow label="Subramo" value={policy.subramo} />
-              <InfoRow label="Moneda" value={policy.currency} />
             </SectionCard>
 
             {/* Personas */}
@@ -861,6 +837,27 @@ interface SimpleForm {
 
 const EMPTY_SIMPLE: SimpleForm = { insurer_name: '', subramo: '', notes: '' };
 
+function wizardInputCls(err?: string) {
+  return cn(
+    'w-full px-3.5 py-3 rounded-2xl border text-sm focus:outline-none transition-all bg-white',
+    err ? 'border-red-300 bg-red-50/30 focus:border-red-400' : 'border-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100'
+  );
+}
+
+function WizardField({ label, required, error, children }: {
+  label: string; required?: boolean; error?: string; children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-xs font-semibold text-neutral-600 tracking-wide">
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+      {children}
+      {error && <p className="text-[11px] text-red-500 font-medium">{error}</p>}
+    </div>
+  );
+}
+
 function ExternalPolicyWizard({ onClose, onSaved, primary, customerId, agentUserId, editPolicy }: {
   onClose: () => void; onSaved: (policyId?: string) => void; primary: string;
   customerId: string; agentUserId: string | null; editPolicy?: ExternalPolicy;
@@ -970,21 +967,6 @@ function ExternalPolicyWizard({ onClose, onSaved, primary, customerId, agentUser
     }
   };
 
-  const inputCls = (err?: string) => cn(
-    'w-full px-3.5 py-3 rounded-2xl border text-sm focus:outline-none transition-all bg-white',
-    err ? 'border-red-300 bg-red-50/30 focus:border-red-400' : 'border-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100'
-  );
-
-  const Field = ({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) => (
-    <div className="space-y-1.5">
-      <label className="block text-xs font-semibold text-neutral-600 tracking-wide">
-        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      {children}
-      {error && <p className="text-[11px] text-red-500 font-medium">{error}</p>}
-    </div>
-  );
-
   const logoPreview = getInsurerLogo(form.insurer_name);
 
   return (
@@ -1018,19 +1000,19 @@ function ExternalPolicyWizard({ onClose, onSaved, primary, customerId, agentUser
         <div className="overflow-y-auto px-5 py-5 space-y-4" style={{ maxHeight: '70vh' }}>
 
           {/* Aseguradora */}
-          <Field label="Aseguradora" required error={errors.insurer_name}>
+          <WizardField label="Aseguradora" required error={errors.insurer_name}>
             <input
               type="text"
               value={form.insurer_name}
               onChange={e => set('insurer_name', e.target.value)}
               placeholder="Ej. Qualitas, GNP, ANA Seguros..."
-              className={inputCls(errors.insurer_name)}
+              className={wizardInputCls(errors.insurer_name)}
               autoComplete="off"
             />
-          </Field>
+          </WizardField>
 
           {/* Subramo as visual chips */}
-          <Field label="Tipo de seguro" required error={errors.subramo}>
+          <WizardField label="Tipo de seguro" required error={errors.subramo}>
             <div className="flex flex-wrap gap-2">
               {SUBRAMOS.map(s => (
                 <button
@@ -1049,7 +1031,7 @@ function ExternalPolicyWizard({ onClose, onSaved, primary, customerId, agentUser
                 </button>
               ))}
             </div>
-          </Field>
+          </WizardField>
 
           {/* Adjuntos */}
           <div className="space-y-1.5">
@@ -1089,15 +1071,15 @@ function ExternalPolicyWizard({ onClose, onSaved, primary, customerId, agentUser
           </div>
 
           {/* Comentarios */}
-          <Field label="Comentarios">
+          <WizardField label="Comentarios">
             <textarea
               value={form.notes}
               onChange={e => set('notes', e.target.value)}
               rows={3}
               placeholder="Notas, recordatorios o información adicional..."
-              className={cn(inputCls(), 'resize-none')}
+              className={cn(wizardInputCls(), 'resize-none')}
             />
-          </Field>
+          </WizardField>
         </div>
 
         {/* Footer */}
@@ -1165,30 +1147,22 @@ function SicasPolicyCard({ policy, primary, onClick }: { policy: Policy; primary
 }
 
 function ExternalPolicyCard({ policy, primary, onClick }: { policy: ExternalPolicy; primary: string; onClick: () => void }) {
-  const isVigente = policy.end_date ? getDaysRemaining(policy.end_date) >= 0 : true;
-  const isCancelada = policy.status === 'cancelled' || policy.status === 'cancelada';
-  const st = getStatusConfig(isVigente, isCancelada, policy.end_date);
   const days = policy.end_date ? getDaysRemaining(policy.end_date) : 999;
-  const isExpiringSoon = isVigente && !isCancelada && days >= 0 && days <= 30;
+  const isExpiringSoon = days >= 0 && days <= 30;
   return (
     <button
       onClick={onClick}
       className="w-full bg-white rounded-2xl border border-orange-100 shadow-sm p-4 hover:shadow-lg transition-all duration-200 text-left group hover:border-orange-200 hover:-translate-y-0.5 flex flex-col gap-3"
     >
-      {/* Top: logo + status + externa badge */}
+      {/* Top: logo + externa badge */}
       <div className="flex items-start justify-between gap-2">
         <InsurerLogo name={policy.insurer_name || ''} size={40} />
-        <div className="flex flex-col items-end gap-1">
-          <span className={cn('px-2 py-0.5 rounded-lg text-[10px] font-bold border flex items-center gap-1 leading-none flex-shrink-0', st.badgeCls)}>
-            <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', st.dot)} />{st.label}
-          </span>
-          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold border bg-orange-50 text-orange-600 border-orange-200 leading-none">Externa</span>
-        </div>
+        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold border bg-orange-50 text-orange-600 border-orange-200 leading-none">Externa</span>
       </div>
 
-      {/* Policy number */}
+      {/* Insurer name + subramo */}
       <div className="min-w-0">
-        <p className="font-bold text-neutral-900 text-sm truncate leading-tight">{policy.policy_number}</p>
+        <p className="font-bold text-neutral-900 text-sm truncate leading-tight">{policy.insurer_name || 'Sin aseguradora'}</p>
         <p className="text-[11px] text-neutral-500 mt-0.5 truncate">{policy.subramo}</p>
       </div>
 
