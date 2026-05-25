@@ -8,11 +8,27 @@ const corsHeaders = {
 };
 
 interface RequestBody {
-  insurer_id: string;
+  insurer_id?: string;
   insurer_name: string;
-  claims_phone: string | null;
+  claims_phone?: string | null;
   event_type: "call" | "whatsapp" | "view";
-  source: "modal" | "directory" | "dashboard";
+  source?: "modal" | "directory" | "dashboard";
+}
+
+function formatPhoneDisplay(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  return phone;
+}
+
+function formatDateTime(): string {
+  return new Date().toLocaleString("es-MX", {
+    timeZone: "America/Mexico_City",
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
 }
 
 Deno.serve(async (req: Request) => {
@@ -26,7 +42,7 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Verify the JWT and get the user
+    // Verify JWT
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -34,7 +50,6 @@ Deno.serve(async (req: Request) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
@@ -45,7 +60,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const body: RequestBody = await req.json();
-    const { insurer_id, insurer_name, claims_phone, event_type, source } = body;
+    const { insurer_id, insurer_name, claims_phone, event_type, source = "modal" } = body;
 
     if (!insurer_name || !event_type) {
       return new Response(JSON.stringify({ error: "insurer_name and event_type are required" }), {
@@ -54,7 +69,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Get the seguwallet customer for this auth user
+    // Get the seguwallet customer
     const { data: customer } = await supabase
       .from("seguwallet_customers")
       .select("id, full_name, agent_user_id")
@@ -70,7 +85,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Log the event
-    const { data: event, error: insertError } = await supabase
+    const { data: event } = await supabase
       .from("seguwallet_claims_events")
       .insert({
         seguwallet_customer_id: customer.id,
@@ -79,68 +94,46 @@ Deno.serve(async (req: Request) => {
         insurer_name,
         claims_phone: claims_phone || null,
         event_type,
-        source: source || "modal",
+        source,
       })
       .select("id")
-      .single();
+      .maybeSingle();
 
-    if (insertError) {
-      console.error("Failed to log claims event:", insertError);
-      // Don't fail the request if logging fails
-    }
+    let notifResult: Record<string, unknown> = { bell_sent: false, whatsapp_sent: false };
 
-    // Send notifications to the agent if we have one
-    let bellSent = false;
-    let whatsappSent = false;
-
+    // Send notifications to the agent via the notify() function
     if (customer.agent_user_id) {
-      const now = new Date();
-      const fechaHora = now.toLocaleString("es-MX", {
-        timeZone: "America/Mexico_City",
-        day: "2-digit", month: "2-digit", year: "numeric",
-        hour: "2-digit", minute: "2-digit",
-      });
-
-      const tipoContacto = event_type === "call" ? "Llamada telefonica" : event_type === "whatsapp" ? "WhatsApp" : "Vista";
+      const tipoContacto =
+        event_type === "call" ? "Llamada telefonica"
+        : event_type === "whatsapp" ? "WhatsApp"
+        : "Vista";
 
       const variables = {
         cliente_nombre: customer.full_name || "Cliente",
         aseguradora_nombre: insurer_name,
         telefono_siniestros: claims_phone ? formatPhoneDisplay(claims_phone) : "N/A",
         tipo_contacto: tipoContacto,
-        fecha_hora: fechaHora,
+        fecha_hora: formatDateTime(),
       };
 
-      // Send bell notification
-      try {
-        const { error: notifError } = await supabase
-          .from("notificaciones")
-          .insert({
-            usuario_id: customer.agent_user_id,
-            tipo: "seguwallet_siniestro_click",
-            titulo: `Alerta de siniestro - SeguWallet`,
-            cuerpo: `Tu cliente ${variables.cliente_nombre} contacto siniestros de ${insurer_name} (${tipoContacto})`,
-            leida: false,
-            metadata: { ...variables, insurer_id, event_id: event?.id },
-          });
+      // Call notify() — it looks up agent phone from usuarios table automatically
+      // and queues jobs for in_app + whatsapp channels
+      const { data: notifyResult, error: notifyError } = await supabase.rpc("notify", {
+        p_event_code: "seguwallet_siniestro_click",
+        p_user_ids: [customer.agent_user_id],
+        p_payload: variables,
+        p_entity_id: event?.id ?? null,
+      });
 
-        if (!notifError) bellSent = true;
-      } catch (e) {
-        console.error("Bell notification failed:", e);
-      }
-
-      // Send WhatsApp notification via the existing notification system
-      try {
-        const { error: waError } = await supabase.rpc("enviar_notificacion_completa", {
-          p_tipo_codigo: "seguwallet_siniestro_click",
-          p_usuario_id: customer.agent_user_id,
-          p_variables: variables,
-          p_solo_canales: ["whatsapp"],
-        });
-
-        if (!waError) whatsappSent = true;
-      } catch (e) {
-        console.error("WhatsApp notification failed:", e);
+      if (notifyError) {
+        console.error("notify() error:", notifyError);
+      } else {
+        const r = notifyResult as { jobs_created?: number };
+        notifResult = {
+          bell_sent: (r?.jobs_created ?? 0) > 0,
+          whatsapp_sent: (r?.jobs_created ?? 0) > 0,
+          notify_result: notifyResult,
+        };
       }
 
       // Update event with notification status
@@ -148,43 +141,22 @@ Deno.serve(async (req: Request) => {
         await supabase
           .from("seguwallet_claims_events")
           .update({
-            bell_notification_sent: bellSent,
-            whatsapp_notification_sent: whatsappSent,
+            bell_notification_sent: (notifResult.bell_sent as boolean) ?? false,
+            whatsapp_notification_sent: (notifResult.whatsapp_sent as boolean) ?? false,
           })
           .eq("id", event.id);
       }
     }
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        event_id: event?.id,
-        bell_sent: bellSent,
-        whatsapp_sent: whatsappSent,
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      JSON.stringify({ success: true, event_id: event?.id, ...notifResult }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
     console.error("Unexpected error:", err);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      JSON.stringify({ error: "Internal server error", detail: (err as Error).message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
-
-function formatPhoneDisplay(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length === 10) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-  }
-  if (digits.length === 11 && digits.startsWith("1")) {
-    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
-  }
-  return phone;
-}
