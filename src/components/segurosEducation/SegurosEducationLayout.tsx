@@ -63,10 +63,7 @@ export function SegurosEducationLayout({ children }: Props) {
                 Plataforma de Capacitacion
               </span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-emerald-400 text-[10px] font-semibold tracking-wide uppercase">En vivo</span>
-            </div>
+            <div />
           </div>
 
           {/* Nav tabs — sit flush at the bottom of the banner */}

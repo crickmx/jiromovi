@@ -3,11 +3,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import {
   FileText, RefreshCw, Filter, Search, X, TrendingUp, Clock, CheckCircle,
-  ChevronDown, ChevronUp, AlertCircle, FolderOpen, Download, Eye, Calendar,
+  ChevronDown, ChevronUp, AlertCircle, FolderOpen, Calendar,
   Shield,
 } from 'lucide-react';
-import { SicasPoliza, SicasArchivoCentroDigital } from '../lib/misPolizasTypes';
+import { SicasPoliza } from '../lib/misPolizasTypes';
 import { PageHeader } from '@/components/ui/page-header';
+import { SicasDigitalCenterViewer } from '@/components/sicasDigitalCenter/SicasDigitalCenterViewer';
 
 interface Filters {
   searchText: string;
@@ -39,8 +40,6 @@ export default function MisPolizas() {
   // Estado del Centro Digital
   const [showCentroDigital, setShowCentroDigital] = useState(false);
   const [selectedPoliza, setSelectedPoliza] = useState<SicasPoliza | null>(null);
-  const [centroDigitalFiles, setCentroDigitalFiles] = useState<SicasArchivoCentroDigital[]>([]);
-  const [loadingCentroDigital, setLoadingCentroDigital] = useState(false);
 
   const [filters, setFilters] = useState<Filters>({
     searchText: '',
@@ -166,47 +165,9 @@ export default function MisPolizas() {
     }
   };
 
-  const handleVerCentroDigital = async (poliza: SicasPoliza) => {
+  const handleVerCentroDigital = (poliza: SicasPoliza) => {
     setSelectedPoliza(poliza);
     setShowCentroDigital(true);
-    setLoadingCentroDigital(true);
-    setCentroDigitalFiles([]);
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sicas-centro-digital-files`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session?.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            id_docto: poliza.id_docto,
-            id_cont: poliza.id_cont,
-            identity_type: 'H02',
-          }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (result.success) {
-        setCentroDigitalFiles(result.archivos || []);
-      } else {
-        throw new Error(result.error || 'Error al cargar archivos');
-      }
-    } catch (error: any) {
-      console.error('[Centro Digital] Error:', error);
-      setSyncMessage({
-        type: 'error',
-        text: `Error al cargar Centro Digital: ${error.message}`
-      });
-    } finally {
-      setLoadingCentroDigital(false);
-    }
   };
 
   const applyFilters = () => {
@@ -647,94 +608,16 @@ export default function MisPolizas() {
       </div>
 
       {/* Modal Centro Digital */}
-      {showCentroDigital && selectedPoliza && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-white/5 rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
-            <div className="px-6 py-4 border-b border-neutral-200 dark:border-white/10 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
-                  <FolderOpen className="h-6 w-6 text-accent" />
-                  Centro Digital
-                </h2>
-                <p className="text-sm text-neutral-500 dark:text-white/50 mt-1">
-                  Póliza: {selectedPoliza.poliza} - {selectedPoliza.cliente}
-                </p>
-              </div>
-              <button
-                onClick={() => setShowCentroDigital(false)}
-                className="text-neutral-500 hover:text-neutral-700 dark:text-white/50 dark:hover:text-white/80"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)]">
-              {loadingCentroDigital ? (
-                <div className="flex items-center justify-center py-12">
-                  <RefreshCw className="h-8 w-8 animate-spin text-accent" />
-                  <span className="ml-3 text-neutral-500 dark:text-white/50">Cargando archivos...</span>
-                </div>
-              ) : centroDigitalFiles.length === 0 ? (
-                <div className="text-center py-12">
-                  <FolderOpen className="h-16 w-16 text-neutral-300 dark:text-white/20 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-2">
-                    No hay archivos disponibles
-                  </h3>
-                  <p className="text-neutral-500 dark:text-white/50">
-                    Esta póliza no tiene documentos en el Centro Digital
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {centroDigitalFiles.map((archivo) => (
-                    <div
-                      key={archivo.id}
-                      className="flex items-center justify-between p-4 border border-neutral-200 dark:border-white/10 rounded-lg hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-8 w-8 text-accent" />
-                        <div>
-                          <h4 className="text-sm font-medium text-neutral-900 dark:text-white">
-                            {archivo.nombre_archivo}
-                          </h4>
-                          <p className="text-xs text-neutral-500 dark:text-white/50">
-                            {archivo.tamanio_legible} • {archivo.extension.toUpperCase()}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          disabled={!archivo.es_descargable}
-                          className="px-3 py-1 text-sm text-accent hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <Eye className="h-4 w-4" />
-                          Ver
-                        </button>
-                        <button
-                          disabled={!archivo.es_descargable}
-                          className="px-3 py-1 text-sm text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <Download className="h-4 w-4" />
-                          Descargar
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="px-6 py-4 border-t border-neutral-200 dark:border-white/10 flex justify-end">
-              <button
-                onClick={() => setShowCentroDigital(false)}
-                className="px-4 py-2 bg-neutral-200 dark:bg-white/10 text-neutral-900 dark:text-white rounded-lg hover:bg-neutral-300 dark:hover:bg-white/15 transition-colors"
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
+      {selectedPoliza && (
+        <SicasDigitalCenterViewer
+          mode="modal"
+          open={showCentroDigital}
+          onClose={() => setShowCentroDigital(false)}
+          params={{ entityType: 'document', idDocto: selectedPoliza.id_docto }}
+          title={`${selectedPoliza.poliza || selectedPoliza.id_docto} — ${selectedPoliza.cliente || ''}`}
+        />
       )}
+
     </div>
   );
 }

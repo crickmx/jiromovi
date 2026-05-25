@@ -1,30 +1,18 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   X, FileText, User, Calendar, CreditCard, Building2,
   Hash, ChevronDown, ChevronUp, Loader2, AlertTriangle,
-  Shield, Clock, DollarSign, MapPin, FolderOpen, Download,
-  File, Image, FileSpreadsheet, FileType,
+  Shield, Clock, DollarSign, MapPin,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { formatDate, formatFullCurrency, daysUntilRenewal, renewalUrgencyColor } from '../../lib/sicasDashboardTypes';
 import type { SicasDocRow } from '../../lib/sicasDashboardTypes';
+import { SicasDigitalCenterViewer } from '../sicasDigitalCenter/SicasDigitalCenterViewer';
 
 interface Props {
   docId: string;
   isAdmin: boolean;
   onClose: () => void;
-}
-
-interface CentroDigitalArchivo {
-  id: string;
-  nombre: string;
-  nombre_archivo: string;
-  tipo_archivo: string;
-  extension: string;
-  tamanio_bytes: number;
-  tamanio_legible: string;
-  fecha_subida: string;
-  es_descargable: boolean;
 }
 
 export default function DocumentoModal({ docId, isAdmin, onClose }: Props) {
@@ -33,11 +21,6 @@ export default function DocumentoModal({ docId, isAdmin, onClose }: Props) {
   const [showRaw, setShowRaw] = useState(false);
   const [activeSection, setActiveSection] = useState<string>('resumen');
 
-  // Centro Digital state
-  const [archivos, setArchivos] = useState<CentroDigitalArchivo[]>([]);
-  const [loadingArchivos, setLoadingArchivos] = useState(false);
-  const [archivosError, setArchivosError] = useState<string | null>(null);
-  const [archivosFetched, setArchivosFetched] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -58,63 +41,6 @@ export default function DocumentoModal({ docId, isAdmin, onClose }: Props) {
     return () => window.removeEventListener('keydown', handleEsc);
   }, [onClose]);
 
-  const fetchCentroDigital = useCallback(async () => {
-    if (!doc?.id_docto || archivosFetched) return;
-    setLoadingArchivos(true);
-    setArchivosError(null);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No autenticado');
-
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sicas-get-digital-files`;
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          idDocto: doc.id_docto,
-          identity: 'H02',
-          valuePK: doc.id_docto,
-        }),
-      });
-
-      const result = await response.json();
-      if (result.success && result.files) {
-        const mapped: CentroDigitalArchivo[] = result.files.map((f: Record<string, unknown>, idx: number) => {
-          const fileName = (f.FileName || f.Nombre || 'Sin nombre') as string;
-          const ext = ((f.FileExtension || f.Extension || fileName.split('.').pop()) as string || 'bin').replace(/^\./, '');
-          const size = (f.FileSize || f.Tamanio || 0) as number;
-          return {
-            id: (f.IDFile || f.Id || `file_${idx}`) as string,
-            nombre: fileName,
-            nombre_archivo: fileName,
-            tipo_archivo: (f.FileType || f.Tipo || 'application/octet-stream') as string,
-            extension: ext,
-            tamanio_bytes: size,
-            tamanio_legible: formatFileSize(size),
-            fecha_subida: (f.UploadDate || f.DocumentDate || f.FechaSubida || '') as string,
-            es_descargable: f.IsDownloadable !== false,
-          };
-        });
-        setArchivos(mapped);
-      } else {
-        setArchivosError(result.error || 'No se pudieron obtener los archivos');
-      }
-    } catch (err) {
-      setArchivosError((err as Error).message);
-    } finally {
-      setLoadingArchivos(false);
-      setArchivosFetched(true);
-    }
-  }, [doc?.id_docto, archivosFetched]);
-
-  useEffect(() => {
-    if (activeSection === 'centro-digital' && doc && !archivosFetched) {
-      fetchCentroDigital();
-    }
-  }, [activeSection, doc, archivosFetched, fetchCentroDigital]);
 
   const days = doc ? daysUntilRenewal(doc.vigencia_hasta) : null;
 
@@ -201,12 +127,12 @@ export default function DocumentoModal({ docId, isAdmin, onClose }: Props) {
               {activeSection === 'importes' && <ImportesSection doc={doc} />}
               {activeSection === 'clasificacion' && <ClasificacionSection doc={doc} />}
               {activeSection === 'comercial' && <ComercialSection doc={doc} />}
-              {activeSection === 'centro-digital' && (
-                <CentroDigitalSection
-                  archivos={archivos}
-                  loading={loadingArchivos}
-                  error={archivosError}
-                  onRetry={() => { setArchivosFetched(false); }}
+              {activeSection === 'centro-digital' && doc?.id_docto && (
+                <SicasDigitalCenterViewer
+                  mode="embedded"
+                  params={{ entityType: 'document', idDocto: doc.id_docto }}
+                  title={doc.poliza || doc.id_docto}
+                  className="border-0 rounded-none"
                 />
               )}
             </>
@@ -427,89 +353,6 @@ function ComercialSection({ doc }: { doc: SicasDocRow }) {
   );
 }
 
-function CentroDigitalSection({ archivos, loading, error, onRetry }: {
-  archivos: CentroDigitalArchivo[];
-  loading: boolean;
-  error: string | null;
-  onRetry: () => void;
-}) {
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center gap-3 py-12">
-        <Loader2 className="w-7 h-7 text-blue-600 animate-spin" />
-        <p className="text-gray-500 text-sm">Consultando Centro Digital de SICAS...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-10">
-        <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-3" />
-        <p className="text-gray-700 dark:text-gray-300 font-medium text-sm">No se pudieron obtener los archivos</p>
-        <p className="text-gray-500 dark:text-gray-400 text-xs mt-1 max-w-md mx-auto">{error}</p>
-        <button
-          onClick={onRetry}
-          className="mt-3 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          Reintentar
-        </button>
-      </div>
-    );
-  }
-
-  if (archivos.length === 0) {
-    return (
-      <div className="text-center py-10">
-        <FolderOpen className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-        <p className="text-gray-700 dark:text-gray-300 font-medium text-sm">No hay archivos disponibles</p>
-        <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">Este documento no tiene archivos en el Centro Digital de SICAS</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-          <FolderOpen className="w-4 h-4 text-blue-600" />
-          Archivos ({archivos.length})
-        </h3>
-      </div>
-      <div className="divide-y divide-gray-100 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-        {archivos.map(archivo => (
-          <div key={archivo.id} className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-            <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
-              <FileIcon extension={archivo.extension} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{archivo.nombre || archivo.nombre_archivo}</p>
-              <div className="flex items-center gap-2 text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                <span className="uppercase font-medium">{archivo.extension}</span>
-                <span>{archivo.tamanio_legible}</span>
-                {archivo.fecha_subida && <span>{formatDate(archivo.fecha_subida)}</span>}
-              </div>
-            </div>
-            {archivo.es_descargable && (
-              <button className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors shrink-0">
-                <Download className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function FileIcon({ extension }: { extension: string }) {
-  const ext = (extension || '').toLowerCase();
-  if (['pdf'].includes(ext)) return <FileText className="w-4 h-4 text-red-500" />;
-  if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) return <Image className="w-4 h-4 text-emerald-500" />;
-  if (['xls', 'xlsx', 'csv'].includes(ext)) return <FileSpreadsheet className="w-4 h-4 text-green-600" />;
-  if (['doc', 'docx'].includes(ext)) return <FileType className="w-4 h-4 text-blue-600" />;
-  return <File className="w-4 h-4 text-gray-400" />;
-}
 
 function QuickStat({ label, value, icon: Icon, color }: { label: string; value: string; icon: React.ElementType; color?: string }) {
   return (
@@ -565,10 +408,3 @@ function Tag({ text, color }: { text: string; color: string }) {
   return <span className={`inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded ${color}`}>{text}</span>;
 }
 
-function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${Math.round((bytes / Math.pow(k, i)) * 100) / 100} ${sizes[i]}`;
-}
