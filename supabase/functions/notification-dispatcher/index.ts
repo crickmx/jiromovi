@@ -348,10 +348,23 @@ Deno.serve(async (req: Request) => {
               });
 
               if (res.ok) {
+                const resendBody = await res.json();
                 await supabase
                   .from("notification_jobs")
                   .update({ status: "sent", sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
                   .eq("id", job.id);
+                await supabase.from("correo_historial_envios").insert({
+                  tipo_codigo: job.event_code || null,
+                  canal_envio: "correo",
+                  destinatario_email: job.payload?.email || null,
+                  destinatario_nombre: job.payload?.nombre_usuario || null,
+                  usuario_id: job.user_id || null,
+                  asunto: subject,
+                  estado: "enviado",
+                  proveedor: "resend",
+                  provider_message_id: resendBody?.id || null,
+                  fecha_envio: new Date().toISOString(),
+                });
                 processed++;
               } else {
                 const errText = await res.text();
@@ -364,6 +377,18 @@ Deno.serve(async (req: Request) => {
                     updated_at: new Date().toISOString(),
                   })
                   .eq("id", job.id);
+                await supabase.from("correo_historial_envios").insert({
+                  tipo_codigo: job.event_code || null,
+                  canal_envio: "correo",
+                  destinatario_email: job.payload?.email || null,
+                  destinatario_nombre: job.payload?.nombre_usuario || null,
+                  usuario_id: job.user_id || null,
+                  asunto: subject,
+                  estado: "fallido",
+                  proveedor: "resend",
+                  error_mensaje: `Resend ${res.status}: ${errText}`,
+                  fecha_envio: new Date().toISOString(),
+                });
                 failed++;
               }
             } else {
@@ -424,6 +449,18 @@ Deno.serve(async (req: Request) => {
                   .from("notification_jobs")
                   .update({ status: "sent", sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
                   .eq("id", job.id);
+                await supabase.from("correo_historial_envios").insert({
+                  tipo_codigo: job.event_code || null,
+                  canal_envio: "whatsapp",
+                  destinatario_email: null,
+                  destinatario_nombre: job.payload?.nombre_usuario || null,
+                  numero_destino: chatId,
+                  usuario_id: job.user_id || null,
+                  asunto: null,
+                  estado: "enviado",
+                  proveedor: "wazzup24",
+                  fecha_envio: new Date().toISOString(),
+                });
                 processed++;
               } else {
                 const errText = await msgRes.text();
@@ -436,6 +473,19 @@ Deno.serve(async (req: Request) => {
                     updated_at: new Date().toISOString(),
                   })
                   .eq("id", job.id);
+                await supabase.from("correo_historial_envios").insert({
+                  tipo_codigo: job.event_code || null,
+                  canal_envio: "whatsapp",
+                  destinatario_email: null,
+                  destinatario_nombre: job.payload?.nombre_usuario || null,
+                  numero_destino: chatId,
+                  usuario_id: job.user_id || null,
+                  asunto: null,
+                  estado: "fallido",
+                  proveedor: "wazzup24",
+                  error_mensaje: `Wazzup ${msgRes.status}: ${errText}`,
+                  fecha_envio: new Date().toISOString(),
+                });
                 failed++;
               }
             } else {
