@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect } from 'react';
+import React, { useState, FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, EyeOff, Mail, Lock, ArrowRight, ChevronLeft } from 'lucide-react';
@@ -162,12 +162,15 @@ export function Login() {
   };
   // ── End of unchanged logic ──────────────────────────────────────────────────
 
-  // Shared input base style (glass on dark bg)
+  // Input style uses inline styles to guarantee rendering regardless of Tailwind purge
+  const inputStyle: React.CSSProperties = {
+    background: 'rgba(255,255,255,0.09)',
+    border: '1px solid rgba(255,255,255,0.16)',
+    color: 'white',
+  };
   const inputCls = [
-    'w-full h-12 px-4 text-sm text-white rounded-xl transition-all duration-200 outline-none',
-    'bg-white/8 border border-white/15',
-    'placeholder:text-white/35',
-    'focus:bg-white/12 focus:border-blue-400/60 focus:ring-2 focus:ring-blue-400/20',
+    'w-full h-12 px-4 text-sm rounded-xl transition-all duration-200 outline-none',
+    'placeholder:text-white/40',
   ].join(' ');
 
   return (
@@ -192,10 +195,9 @@ export function Login() {
             {/* Top: logo free-floating, no box */}
             <div>
               <img
-                src="/movirecurso_1.png"
+                src="https://movi.digital/wp-content/uploads/2025/12/moviRecurso-2.png"
                 alt="MOVI Digital"
                 className="h-16 xl:h-20 object-contain"
-                style={{ filter: 'drop-shadow(0 4px 24px rgba(96,165,250,0.25))' }}
               />
             </div>
 
@@ -248,10 +250,9 @@ export function Login() {
             {/* Mobile-only logo */}
             <div className="lg:hidden mb-10 text-center">
               <img
-                src="/movirecurso_1.png"
+                src="https://movi.digital/wp-content/uploads/2025/12/moviRecurso-2.png"
                 alt="MOVI Digital"
                 className="h-14 object-contain mx-auto"
-                style={{ filter: 'drop-shadow(0 4px 16px rgba(96,165,250,0.3))' }}
               />
             </div>
 
@@ -305,8 +306,11 @@ export function Login() {
                         required
                         placeholder="usuario@empresa.com"
                         className={`${inputCls} pl-10`}
+                        style={inputStyle}
                         autoComplete="email"
                         autoFocus
+                        onFocus={e => { e.currentTarget.style.border = '1px solid rgba(96,165,250,0.6)'; e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
+                        onBlur={e => { e.currentTarget.style.border = inputStyle.border as string; e.currentTarget.style.background = inputStyle.background as string; }}
                       />
                     </div>
                   </div>
@@ -326,7 +330,10 @@ export function Login() {
                         required
                         placeholder="Ingresa tu contraseña"
                         className={`${inputCls} pl-10 pr-11`}
+                        style={inputStyle}
                         autoComplete="current-password"
+                        onFocus={e => { e.currentTarget.style.border = '1px solid rgba(96,165,250,0.6)'; e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
+                        onBlur={e => { e.currentTarget.style.border = inputStyle.border as string; e.currentTarget.style.background = inputStyle.background as string; }}
                       />
                       <button
                         type="button"
@@ -425,7 +432,10 @@ export function Login() {
                         required
                         placeholder="usuario@empresa.com"
                         className={`${inputCls} pl-10`}
+                        style={inputStyle}
                         autoFocus
+                        onFocus={e => { e.currentTarget.style.border = '1px solid rgba(96,165,250,0.6)'; e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
+                        onBlur={e => { e.currentTarget.style.border = inputStyle.border as string; e.currentTarget.style.background = inputStyle.background as string; }}
                       />
                     </div>
                     <p className="text-xs text-white/35 mt-1">
