@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, ArrowRight, ChevronLeft } from 'lucide-react';
 import { seguwalletSignIn } from '../lib/seguwalletAuth';
-const logoDark = '/movirecurso_1.png';
+const logoDark = '/seguwallet-logo.png';
 
 // ─── Animated background ──────────────────────────────────────────────────────
 function BackgroundLayer() {

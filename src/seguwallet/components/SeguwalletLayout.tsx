@@ -15,14 +15,15 @@ const NAV_ITEMS = [
   { path: '/seguwallet/perfil', label: 'Perfil', icon: User },
 ];
 
-/** Returns white or near-black text color based on background luminance */
+/** Returns dark or white text color based on WCAG relative luminance */
 function getContrastColor(hex: string): string {
   const h = hex.replace('#', '').padEnd(6, '0');
   const r = parseInt(h.substring(0, 2), 16) / 255;
   const g = parseInt(h.substring(2, 4), 16) / 255;
   const b = parseInt(h.substring(4, 6), 16) / 255;
-  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  return lum > 0.45 ? '#1a1a1a' : '#ffffff';
+  const toLinear = (c: number) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  const lum = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+  return lum > 0.179 ? '#111827' : '#ffffff';
 }
 
 /** Creates a very light tint of the hex color for active backgrounds */

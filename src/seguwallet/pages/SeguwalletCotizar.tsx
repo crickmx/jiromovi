@@ -92,8 +92,8 @@ export function SeguwalletCotizar() {
           <div className="w-14 h-14 rounded-2xl bg-neutral-50 border border-neutral-100 flex items-center justify-center mx-auto mb-4">
             <Calculator className="w-7 h-7 text-neutral-300" />
           </div>
-          <p className="text-sm font-semibold text-neutral-500">Sin formularios disponibles</p>
-          <p className="text-xs text-neutral-400 mt-1">Tu agente aun no ha configurado formularios de cotizacion.</p>
+          <p className="text-sm font-semibold text-neutral-500">Formularios no disponibles</p>
+          <p className="text-xs text-neutral-400 mt-1">No encontramos formularios de cotizacion activos para tu agente. Intenta mas tarde o contacta directamente a tu agente.</p>
         </div>
       ) : (
         <>

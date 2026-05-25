@@ -8,7 +8,7 @@ import {
   ChevronDown, Users, UserCheck, TreePine, Wheat, Tractor, ShieldCheck, Lock,
   Banknote, Eye, Smile, CalendarDays, PawPrint, KeyRound, Building, Frame,
   Cpu, DollarSign, Scale, AlertTriangle, Share2, Copy, Check, X,
-  ExternalLink, RefreshCw, ToggleLeft, MessageCircle, Link2, List,
+  ExternalLink, ToggleLeft, MessageCircle, Link2, List,
   ClipboardList,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -17,7 +17,7 @@ import type { QuoteFormTemplate, FormCategory } from '../lib/quoteFormTypes';
 import { CATEGORY_CONFIG } from '../lib/quoteFormTypes';
 import {
   createSharedLink, fetchAgentSharedLinks, fetchSharedLinkByFormType,
-  deactivateSharedLink, regenerateSharedLink,
+  deactivateSharedLink,
 } from '../lib/sharedQuoteFormUtils';
 import type { SharedQuoteFormLink } from '../lib/sharedQuoteFormUtils';
 import { PageHeader } from '@/components/ui/page-header';
@@ -121,17 +121,6 @@ export default function FormulariosCotizacion() {
     } catch (err: any) {
       console.error('Error generating link:', err);
     } finally { setShareLoading(false); }
-  };
-
-  const handleRegenerate = async () => {
-    if (!user || !shareLink) return;
-    setShareLoading(true);
-    try {
-      const newLink = await regenerateSharedLink(shareLink.id, user.id);
-      setShareLink(newLink);
-      fetchAgentSharedLinks(user.id).then(setSharedLinks).catch(() => {});
-    } catch { /* ignore */ }
-    finally { setShareLoading(false); }
   };
 
   const handleDeactivate = async () => {
@@ -313,14 +302,6 @@ export default function FormulariosCotizacion() {
             await deactivateSharedLink(linkId);
             if (user) fetchAgentSharedLinks(user.id).then(setSharedLinks).catch(() => {});
           }}
-          onRegenerate={async (link) => {
-            if (!user) return;
-            const newLink = await regenerateSharedLink(link.id, user.id);
-            fetchAgentSharedLinks(user.id).then(setSharedLinks).catch(() => {});
-            setShareLink(newLink);
-            const tpl = templates.find(t => t.form_type === link.form_type);
-            if (tpl) setShareTemplate(tpl);
-          }}
           copied={copied}
         />
       )}
@@ -334,7 +315,6 @@ export default function FormulariosCotizacion() {
           copied={copied}
           onClose={closeShare}
           onGenerate={handleGenerateLink}
-          onRegenerate={handleRegenerate}
           onDeactivate={handleDeactivate}
           onCopy={copyLink}
           onWhatsapp={whatsappShare}
@@ -348,7 +328,7 @@ export default function FormulariosCotizacion() {
 // Share Modal
 
 function ShareModal({
-  template, link, loading, copied, onClose, onGenerate, onRegenerate, onDeactivate, onCopy, onWhatsapp,
+  template, link, loading, copied, onClose, onGenerate, onDeactivate, onCopy, onWhatsapp,
 }: {
   template: QuoteFormTemplate;
   link: SharedQuoteFormLink | null;
@@ -356,7 +336,6 @@ function ShareModal({
   copied: boolean;
   onClose: () => void;
   onGenerate: () => void;
-  onRegenerate: () => void;
   onDeactivate: () => void;
   onCopy: (url: string) => void;
   onWhatsapp: (url: string, title: string) => void;
@@ -457,16 +436,6 @@ function ShareModal({
                 </div>
               )}
 
-              {/* Regenerate */}
-              <button
-                onClick={onRegenerate}
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-xs text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors disabled:opacity-60"
-              >
-                {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                Regenerar link (invalida el link anterior)
-              </button>
-
               {link.last_submission_at && (
                 <p className="text-xs text-neutral-400 text-center">
                   Ultima respuesta: {new Date(link.last_submission_at).toLocaleDateString('es-MX')}
@@ -484,7 +453,7 @@ function ShareModal({
 // Shared Links Panel
 
 function SharedLinksPanel({
-  links, loading, onShare, onCopy, onWhatsapp, onDeactivate, onRegenerate, copied,
+  links, loading, onShare, onCopy, onWhatsapp, onDeactivate, copied,
 }: {
   links: SharedQuoteFormLink[];
   loading: boolean;
@@ -492,7 +461,6 @@ function SharedLinksPanel({
   onCopy: (url: string) => void;
   onWhatsapp: (url: string, title: string) => void;
   onDeactivate: (linkId: string) => Promise<void>;
-  onRegenerate: (link: SharedQuoteFormLink) => Promise<void>;
   copied: boolean;
 }) {
   const activeLinks = links.filter(l => l.status === 'active');

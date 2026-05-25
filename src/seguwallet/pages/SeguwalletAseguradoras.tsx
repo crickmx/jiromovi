@@ -2,8 +2,9 @@ import { useState, useMemo, useEffect } from 'react';
 import { Search, Phone, Globe, Smartphone, Shield, MessageCircle, AlertTriangle } from 'lucide-react';
 import { useAgentBrand } from '../lib/AgentBrandContext';
 import { supabase } from '@/lib/supabase';
-import { type SeguwalletInsurer, formatPhoneDisplay, callLink, whatsappLink } from '../lib/insurerTypes';
+import { type SeguwalletInsurer, formatPhoneDisplay, callLink, whatsappLink, getInsurerLogoUrl } from '../lib/insurerTypes';
 import { useSiniestroLogger } from '../lib/useSiniestroLogger';
+import { getContrastColor } from '../lib/contrastUtils';
 
 function LogoFallback({ nombre, size = 'md' }: { nombre: string; size?: 'sm' | 'md' }) {
   const initials = nombre.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
@@ -19,14 +20,15 @@ function AseguradoraCard({ ins, primary }: { ins: SeguwalletInsurer; primary: st
   const { logClick } = useSiniestroLogger('directory');
 
   const openLink = (url: string) => window.open(url, '_blank', 'noopener,noreferrer');
+  const logoSrc = getInsurerLogoUrl(ins);
 
   return (
     <div className="bg-white rounded-2xl border border-neutral-200/60 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden">
       {/* Logo + name */}
       <div className="px-6 pt-6 pb-4 flex items-center gap-4">
         <div className="w-16 h-16 rounded-2xl overflow-hidden border border-neutral-100 bg-white flex-shrink-0 shadow-sm">
-          {ins.logo_url && !logoError ? (
-            <img src={ins.logo_url} alt={ins.name} className="w-full h-full object-contain p-1" onError={() => setLogoError(true)} />
+          {logoSrc && !logoError ? (
+            <img src={logoSrc} alt={ins.name} className="w-full h-full object-contain p-1" onError={() => setLogoError(true)} />
           ) : (
             <LogoFallback nombre={ins.name} />
           )}
@@ -67,10 +69,13 @@ function AseguradoraCard({ ins, primary }: { ins: SeguwalletInsurer; primary: st
       <div className="px-5 py-4 space-y-2">
         {ins.payment_url && (
           <button onClick={() => openLink(ins.payment_url!)}
-            className="w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold transition-all shadow-sm hover:opacity-90"
-            style={{ backgroundColor: ins.primary_color || primary }}>
+            className="w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm hover:opacity-90"
+            style={{
+              backgroundColor: ins.primary_color || primary,
+              color: getContrastColor(ins.primary_color || primary),
+            }}>
             <div className="flex items-center gap-2"><Globe className="w-4 h-4 opacity-80" />Pagar en linea</div>
-            <span className="text-white/60 text-xs">→</span>
+            <span className="text-xs opacity-60">→</span>
           </button>
         )}
 

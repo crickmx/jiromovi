@@ -1,10 +1,10 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Shield, Plus, Search, Eye, CreditCard as Edit, RotateCcw, Users, X, Check, UserPlus, Loader2, FileText, AlertCircle, CheckCircle2, Clock, Building2, ToggleLeft, ToggleRight, Trash2, GripVertical, Phone, Globe, Smartphone } from 'lucide-react';
+import { Shield, Plus, Search, Eye, CreditCard as Edit, RotateCcw, Users, X, Check, UserPlus, Loader2, FileText, AlertCircle, CheckCircle2, Clock, Building2, ToggleLeft, ToggleRight, Trash2, GripVertical, Phone, Globe, Smartphone, Upload, Link, ImageOff } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAgentSicasClients, searchSicasClientsAdmin, type SicasClientResult } from '@/seguwallet/lib/seguwalletAuth';
 import { cn } from '@/lib/utils';
-import { type SeguwalletInsurer, type InsurerFormData, emptyInsurerForm, sanitizePhone, formatPhoneDisplay } from '@/seguwallet/lib/insurerTypes';
+import { type SeguwalletInsurer, type InsurerFormData, emptyInsurerForm, sanitizePhone, formatPhoneDisplay, getInsurerLogoUrl } from '@/seguwallet/lib/insurerTypes';
 
 interface SeguwalletCustomer {
   id: string;
@@ -131,6 +131,11 @@ export function SeguwalletAdmin() {
   const [insurerSaving, setInsurerSaving] = useState(false);
   const [insurerError, setInsurerError] = useState('');
   const [deletingInsurerId, setDeletingInsurerId] = useState<string | null>(null);
+  const [logoUploadLoading, setLogoUploadLoading] = useState(false);
+  const [logoImportUrl, setLogoImportUrl] = useState('');
+  const [logoImportLoading, setLogoImportLoading] = useState(false);
+  const [logoLocalPath, setLogoLocalPath] = useState<string | null>(null);
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadCustomers();
@@ -431,6 +436,8 @@ export function SeguwalletAdmin() {
 
   const openCreateInsurer = () => {
     setInsurerForm({ ...emptyInsurerForm, display_order: insurers.length + 1 });
+    setLogoLocalPath(null);
+    setLogoImportUrl('');
     setInsurerError('');
     setSelectedInsurer(null);
     setInsurerModalMode('create');
@@ -458,8 +465,66 @@ export function SeguwalletAdmin() {
       show_in_claims: ins.show_in_claims,
       display_order: ins.display_order,
     });
+    setLogoLocalPath(ins.logo_local_path || null);
+    setLogoImportUrl(ins.logo_original_source_url || '');
     setInsurerError('');
     setInsurerModalMode('edit');
+  };
+
+  const handleLogoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedInsurer) return;
+    setLogoUploadLoading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'png';
+      const storagePath = `logos/insurer-${selectedInsurer.id}-${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('insurance-carriers-logos')
+        .upload(storagePath, file, { contentType: file.type, upsert: true });
+      if (uploadError) throw uploadError;
+      await supabase.from('seguwallet_insurers').update({ logo_local_path: storagePath }).eq('id', selectedInsurer.id);
+      setLogoLocalPath(storagePath);
+      setInsurers(prev => prev.map(i => i.id === selectedInsurer.id ? { ...i, logo_local_path: storagePath } : i));
+    } catch (err: any) {
+      setInsurerError(err.message || 'Error al subir logo.');
+    } finally {
+      setLogoUploadLoading(false);
+      if (logoFileInputRef.current) logoFileInputRef.current.value = '';
+    }
+  };
+
+  const handleLogoImportFromUrl = async () => {
+    if (!logoImportUrl.trim() || !selectedInsurer) return;
+    setLogoImportLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/import-insurer-logo`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session?.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            insurer_id: selectedInsurer.id,
+            source_url: logoImportUrl.trim(),
+            file_name: `insurer-${selectedInsurer.id}`,
+          }),
+        }
+      );
+      const result = await res.json();
+      if (!res.ok || result.error) throw new Error(result.error || 'Error al importar');
+      setLogoLocalPath(result.storage_path);
+      setInsurers(prev => prev.map(i => i.id === selectedInsurer.id
+        ? { ...i, logo_local_path: result.storage_path, logo_original_source_url: logoImportUrl.trim() }
+        : i
+      ));
+    } catch (err: any) {
+      setInsurerError(err.message || 'Error al importar logo desde URL.');
+    } finally {
+      setLogoImportLoading(false);
+    }
   };
 
   const handleSaveInsurer = async (e: React.FormEvent) => {
@@ -758,17 +823,27 @@ export function SeguwalletAdmin() {
                           <td className="px-5 py-3">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-xl overflow-hidden border border-neutral-100 bg-white flex-shrink-0 shadow-sm">
-                                {ins.logo_url ? (
-                                  <img src={ins.logo_url} alt={ins.name} className="w-full h-full object-contain p-0.5" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center bg-neutral-100">
-                                    <span className="text-xs font-bold text-neutral-400">{ins.name.slice(0, 2).toUpperCase()}</span>
-                                  </div>
-                                )}
+                                {(() => {
+                                  const logoUrl = getInsurerLogoUrl(ins);
+                                  return logoUrl ? (
+                                    <img src={logoUrl} alt={ins.name} className="w-full h-full object-contain p-0.5" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-neutral-100">
+                                      <span className="text-xs font-bold text-neutral-400">{ins.name.slice(0, 2).toUpperCase()}</span>
+                                    </div>
+                                  );
+                                })()}
                               </div>
                               <div>
                                 <p className="font-semibold text-neutral-900 dark:text-white text-sm">{ins.name}</p>
-                                <p className="text-xs text-neutral-400">Orden: {ins.display_order}</p>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <p className="text-xs text-neutral-400">Orden: {ins.display_order}</p>
+                                  {ins.logo_local_path ? (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">local</span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-neutral-100 text-neutral-400 border border-neutral-200">externo</span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </td>
@@ -878,7 +953,71 @@ export function SeguwalletAdmin() {
                   <F label="Nombre *"><input type="text" value={insurerForm.name} onChange={e => setInsurerForm(p => ({ ...p, name: e.target.value }))} placeholder="Ej. Qualitas" className={inp} /></F>
                   <F label="Orden"><input type="number" value={insurerForm.display_order} onChange={e => setInsurerForm(p => ({ ...p, display_order: +e.target.value }))} className={inp} min={0} /></F>
                 </div>
-                <F label="URL del logotipo"><input type="url" value={insurerForm.logo_url || ''} onChange={e => setInsurerForm(p => ({ ...p, logo_url: e.target.value }))} placeholder="https://..." className={inp} /></F>
+                {/* Logo field with local upload + import from URL */}
+                <div>
+                  <p className="text-xs font-semibold text-neutral-600 dark:text-white/60 mb-2">Logotipo</p>
+
+                  {/* Preview */}
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-16 h-16 rounded-2xl border border-neutral-200 bg-neutral-50 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                      {(() => {
+                        const localPreview = logoLocalPath
+                          ? `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/insurance-carriers-logos/${logoLocalPath}`
+                          : null;
+                        const src = localPreview || insurerForm.logo_url || null;
+                        return src ? (
+                          <img src={src} alt="logo" className="w-full h-full object-contain p-1" onError={e => { (e.target as HTMLImageElement).style.display='none'; }} />
+                        ) : (
+                          <ImageOff className="w-6 h-6 text-neutral-300" />
+                        );
+                      })()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      {logoLocalPath ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
+                          <CheckCircle2 className="w-3 h-3" /> Logo local guardado
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-50 text-amber-600 text-[10px] font-bold border border-amber-200">
+                          <AlertCircle className="w-3 h-3" /> Sin logo local
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Upload file — only when editing */}
+                  {insurerModalMode === 'edit' && selectedInsurer && (
+                    <div className="space-y-2 mb-3">
+                      <input ref={logoFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoFileUpload} />
+                      <button type="button" disabled={logoUploadLoading}
+                        onClick={() => logoFileInputRef.current?.click()}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-neutral-300 hover:border-neutral-400 bg-neutral-50 hover:bg-neutral-100 text-sm font-medium text-neutral-600 transition-all disabled:opacity-50">
+                        {logoUploadLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                        {logoUploadLoading ? 'Subiendo...' : 'Subir archivo de imagen'}
+                      </button>
+
+                      <div className="flex gap-2">
+                        <input type="url" value={logoImportUrl} onChange={e => setLogoImportUrl(e.target.value)}
+                          placeholder="https://ejemplo.com/logo.png"
+                          className={`${inp} flex-1 text-xs`} />
+                        <button type="button" disabled={logoImportLoading || !logoImportUrl.trim()}
+                          onClick={handleLogoImportFromUrl}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#1C37E0] text-white text-xs font-semibold hover:bg-[#1630C8] transition-all disabled:opacity-40 flex-shrink-0">
+                          {logoImportLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link className="w-3.5 h-3.5" />}
+                          Importar
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-neutral-400">Pega la URL del logo externo y pulsa Importar para guardarlo localmente.</p>
+                    </div>
+                  )}
+                  {insurerModalMode === 'create' && (
+                    <p className="text-[10px] text-neutral-400 mb-2">Guarda la aseguradora primero, luego podras subir o importar el logo local.</p>
+                  )}
+
+                  <F label="URL logotipo externo (referencia)">
+                    <input type="url" value={insurerForm.logo_url || ''} onChange={e => setInsurerForm(p => ({ ...p, logo_url: e.target.value }))} placeholder="https://..." className={inp} />
+                  </F>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <F label="Sitio web"><input type="url" value={insurerForm.website_url || ''} onChange={e => setInsurerForm(p => ({ ...p, website_url: e.target.value }))} placeholder="https://..." className={inp} /></F>
                   <F label="Color principal"><input type="text" value={insurerForm.primary_color || ''} onChange={e => setInsurerForm(p => ({ ...p, primary_color: e.target.value }))} placeholder="#1C37E0" className={inp} /></F>

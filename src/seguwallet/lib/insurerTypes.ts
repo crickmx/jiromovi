@@ -2,6 +2,8 @@ export interface SeguwalletInsurer {
   id: string;
   name: string;
   logo_url: string | null;
+  logo_local_path: string | null;
+  logo_original_source_url: string | null;
   primary_color: string | null;
   website_url: string | null;
   customer_service_phone: string | null;
@@ -23,7 +25,7 @@ export interface SeguwalletInsurer {
   deleted_at: string | null;
 }
 
-export type InsurerFormData = Omit<SeguwalletInsurer, 'id' | 'created_at' | 'updated_at' | 'deleted_at'>;
+export type InsurerFormData = Omit<SeguwalletInsurer, 'id' | 'created_at' | 'updated_at' | 'deleted_at' | 'logo_local_path' | 'logo_original_source_url'>;
 
 export function sanitizePhone(raw: string): string {
   return raw.replace(/\D/g, '');
@@ -47,6 +49,16 @@ export function whatsappLink(phone: string): string {
 export function callLink(phone: string): string {
   const digits = sanitizePhone(phone);
   return `tel:${digits}`;
+}
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+
+/** Returns the best available logo URL: local storage > external logo_url > null */
+export function getInsurerLogoUrl(ins: Pick<SeguwalletInsurer, 'logo_local_path' | 'logo_url'>): string | null {
+  if (ins.logo_local_path) {
+    return `${SUPABASE_URL}/storage/v1/object/public/insurance-carriers-logos/${ins.logo_local_path}`;
+  }
+  return ins.logo_url || null;
 }
 
 export const emptyInsurerForm: InsurerFormData = {

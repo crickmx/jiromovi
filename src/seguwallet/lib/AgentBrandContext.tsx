@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { supabase } from '../../lib/supabase';
 import { useSeguwallet } from './SeguwalletContext';
 
-const SEGUWALLET_LOGO = '/movirecurso_1.png';
+const SEGUWALLET_LOGO = '/seguwallet-logo.png';
 const DEFAULT_PRIMARY = '#1C37E0';
 const DEFAULT_SECONDARY = '#1228B8';
 

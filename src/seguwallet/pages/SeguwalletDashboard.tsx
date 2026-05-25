@@ -5,6 +5,7 @@ import { useSeguwallet } from '../lib/SeguwalletContext';
 import { useAgentBrand } from '../lib/AgentBrandContext';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
+import { getContrastColor } from '../lib/contrastUtils';
 
 function AgentCard({ primary, secondary }: { primary: string; secondary: string }) {
   const { brand } = useAgentBrand();
@@ -15,6 +16,8 @@ function AgentCard({ primary, secondary }: { primary: string; secondary: string 
     const parts = brand.agentName.split(' ');
     return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase();
   };
+
+  const initialsContrast = getContrastColor(primary);
 
   return (
     <div className="bg-white rounded-3xl border border-neutral-200/50 shadow-[0_2px_16px_rgba(0,0,0,0.05)] overflow-hidden">
@@ -36,8 +39,11 @@ function AgentCard({ primary, secondary }: { primary: string; secondary: string 
             />
           ) : (
             <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-lg font-bold flex-shrink-0 shadow-md"
-              style={{ background: `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)` }}
+              className="w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-bold flex-shrink-0 shadow-md"
+              style={{
+                background: `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`,
+                color: initialsContrast,
+              }}
             >
               {getInitials()}
             </div>
@@ -126,6 +132,7 @@ export function SeguwalletDashboard() {
 
   const primary = brand.primaryColor;
   const secondary = brand.secondaryColor;
+  const contrastOnGradient = getContrastColor(primary);
 
   useEffect(() => {
     if (!customer) return;
@@ -171,23 +178,35 @@ export function SeguwalletDashboard() {
     <div className="space-y-5">
       {/* Welcome hero */}
       <div
-        className="relative rounded-3xl overflow-hidden p-6 sm:p-8 text-white shadow-xl"
-        style={{ background: `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)` }}
+        className="relative rounded-3xl overflow-hidden p-6 sm:p-8 shadow-xl"
+        style={{
+          background: `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`,
+          color: contrastOnGradient,
+        }}
       >
         {/* Decorative circles */}
-        <div className="absolute top-0 right-0 w-48 h-48 rounded-full opacity-[0.08] translate-x-16 -translate-y-16" style={{ backgroundColor: 'white' }} />
-        <div className="absolute bottom-0 left-16 w-32 h-32 rounded-full opacity-[0.05] translate-y-12" style={{ backgroundColor: 'white' }} />
+        <div className="absolute top-0 right-0 w-48 h-48 rounded-full opacity-[0.08] translate-x-16 -translate-y-16"
+          style={{ backgroundColor: contrastOnGradient }} />
+        <div className="absolute bottom-0 left-16 w-32 h-32 rounded-full opacity-[0.05] translate-y-12"
+          style={{ backgroundColor: contrastOnGradient }} />
 
         <div className="relative">
-          <p className="text-sm font-medium opacity-75 mb-1">Bienvenido de vuelta</p>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+          <p className="text-sm font-medium mb-1" style={{ color: contrastOnGradient, opacity: 0.75 }}>Bienvenido de vuelta</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ color: contrastOnGradient }}>
             {firstName ? `Hola, ${firstName}` : 'Tu wallet de seguros'}
           </h1>
-          <p className="text-sm opacity-70 mt-1.5">Gestiona tus polizas y solicita cotizaciones en segundos.</p>
+          <p className="text-sm mt-1.5" style={{ color: contrastOnGradient, opacity: 0.70 }}>Gestiona tus polizas y solicita cotizaciones en segundos.</p>
 
           <button
             onClick={() => navigate('/seguwallet/polizas')}
-            className="mt-5 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/20 text-sm font-semibold transition-all"
+            className="mt-5 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl backdrop-blur-sm text-sm font-semibold transition-all"
+            style={{
+              backgroundColor: `${contrastOnGradient}22`,
+              border: `1px solid ${contrastOnGradient}30`,
+              color: contrastOnGradient,
+            }}
+            onMouseEnter={e => (e.currentTarget.style.backgroundColor = `${contrastOnGradient}33`)}
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = `${contrastOnGradient}22`)}
           >
             Ver mis polizas
             <ChevronRight className="w-4 h-4" />
@@ -239,12 +258,15 @@ export function SeguwalletDashboard() {
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={() => navigate('/seguwallet/polizas')}
-          className="rounded-2xl p-5 text-white shadow-lg hover:shadow-xl hover:brightness-105 transition-all text-left"
-          style={{ background: `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)` }}
+          className="rounded-2xl p-5 shadow-lg hover:shadow-xl hover:brightness-105 transition-all text-left"
+          style={{
+            background: `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`,
+            color: contrastOnGradient,
+          }}
         >
-          <FileText className="w-6 h-6 mb-3 opacity-80" />
-          <p className="font-bold text-sm">Mis polizas</p>
-          <p className="text-xs opacity-65 mt-0.5">Consulta tus coberturas</p>
+          <FileText className="w-6 h-6 mb-3 opacity-80" style={{ color: contrastOnGradient }} />
+          <p className="font-bold text-sm" style={{ color: contrastOnGradient }}>Mis polizas</p>
+          <p className="text-xs mt-0.5" style={{ color: contrastOnGradient, opacity: 0.65 }}>Consulta tus coberturas</p>
         </button>
 
         <button
