@@ -6,6 +6,59 @@ import { logDownload } from '../lib/seguwalletAuth';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
+// ─── Insurer Logo Map ─────────────────────────────────────────────────────────
+
+const INSURER_LOGOS: Record<string, string> = {
+  qualitas: '/qualitas-compania-de-seguros-logo-png_seeklogo-329374-2.png',
+  ana: '/ana-seguros-logo-png_seeklogo-187684.png',
+  chubb: '/chubb-logo-png_seeklogo-299281.png',
+  aba: '/chubb-logo-png_seeklogo-299281.png',
+  allianz: '/allianz-seguros-logo-png_seeklogo-179147.png',
+  gnp: '/gnp-logo-png_seeklogo-61558.png',
+  mapfre: '/mapfre-seguros-logo-png_seeklogo-225013.png',
+  zurich: '/zurich-logo-png_seeklogo-156664.png',
+  afirme: '/afirme-logo-png_seeklogo-4173.png',
+  afirm: '/afirme-logo-png_seeklogo-4173.png',
+  inbursa: '/inbursa-logo-png_seeklogo-403106.png',
+  atlas: '/seguros-atlas-logo-png_seeklogo-251455.png',
+  'bx+': '/logo-bx.png',
+  bx: '/logo-bx.png',
+  bupa: '/logo-bupa.png',
+};
+
+function getInsurerLogo(name: string): string | null {
+  if (!name) return null;
+  const lower = name.toLowerCase();
+  for (const [key, logo] of Object.entries(INSURER_LOGOS)) {
+    if (lower.includes(key)) return logo;
+  }
+  return null;
+}
+
+function InsurerLogo({ name, size = 36 }: { name: string; size?: number }) {
+  const [err, setErr] = useState(false);
+  const logo = getInsurerLogo(name);
+  const initials = name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  if (!logo || err) {
+    return (
+      <div
+        className="rounded-xl bg-neutral-100 flex items-center justify-center font-bold text-neutral-500 flex-shrink-0"
+        style={{ width: size, height: size, fontSize: size * 0.35 }}
+      >
+        {initials}
+      </div>
+    );
+  }
+  return (
+    <div
+      className="rounded-xl bg-white border border-neutral-100 overflow-hidden flex-shrink-0 flex items-center justify-center shadow-sm"
+      style={{ width: size, height: size }}
+    >
+      <img src={logo} alt={name} className="w-full h-full object-contain p-1.5" onError={() => setErr(true)} />
+    </div>
+  );
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Policy {
@@ -288,7 +341,6 @@ function SicasPolicyDetail({ policy, onClose, primary }: {
   const [fileGroups, setFileGroups] = useState<Record<string, DigitalFile[]>>({});
 
   const st = getStatusConfig(policy.is_vigente, policy.is_cancelada, policy.vigencia_hasta);
-  const RamoIcon = getRamoIcon(policy.ramo);
 
   useEffect(() => { if (policy.id_docto) fetchFiles(); }, [policy.id_docto]);
 
@@ -342,9 +394,7 @@ function SicasPolicyDetail({ policy, onClose, primary }: {
         {/* Header */}
         <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-neutral-100 flex-shrink-0">
           <div className="flex items-start gap-3">
-            <div className="p-2.5 rounded-2xl flex-shrink-0" style={{ backgroundColor: primary + '15' }}>
-              <RamoIcon className="w-5 h-5" style={{ color: primary }} />
-            </div>
+            <InsurerLogo name={policy.aseguradora_nombre || policy.compania || ''} size={44} />
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-bold text-neutral-900 text-base">{policy.poliza || 'Sin numero'}</p>
@@ -509,7 +559,6 @@ function ExternalPolicyDetail({ policy, onClose, primary, onEdit, onDelete }: {
   const isVigente = policy.end_date ? getDaysRemaining(policy.end_date) >= 0 : true;
   const isCancelada = policy.status === 'cancelled' || policy.status === 'cancelada';
   const st = getStatusConfig(isVigente, isCancelada, policy.end_date);
-  const RamoIcon = getRamoIcon(policy.ramo || policy.subramo);
   const isVehicle = (policy.subramo || '').toLowerCase().includes('auto');
 
   useEffect(() => { if (customer) loadDocs(); }, [customer, policy.id]);
@@ -595,9 +644,7 @@ function ExternalPolicyDetail({ policy, onClose, primary, onEdit, onDelete }: {
         {/* Header */}
         <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-neutral-100 flex-shrink-0">
           <div className="flex items-start gap-3">
-            <div className="p-2.5 rounded-2xl flex-shrink-0" style={{ backgroundColor: primary + '15' }}>
-              <RamoIcon className="w-5 h-5" style={{ color: primary }} />
-            </div>
+            <InsurerLogo name={policy.insurer_name || ''} size={44} />
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-bold text-neutral-900 text-base">{policy.policy_number}</p>
@@ -1100,33 +1147,36 @@ function ExternalPolicyWizard({ onClose, onSaved, primary, customerId, agentUser
 
 function SicasPolicyCard({ policy, primary, onClick }: { policy: Policy; primary: string; onClick: () => void }) {
   const st = getStatusConfig(policy.is_vigente, policy.is_cancelada, policy.vigencia_hasta);
-  const RamoIcon = getRamoIcon(policy.ramo);
   const days = getDaysRemaining(policy.vigencia_hasta);
+  const isExpiringSoon = policy.is_vigente && !policy.is_cancelada && days >= 0 && days <= 30;
   return (
-    <button onClick={onClick}
-      className="w-full bg-white rounded-2xl border border-neutral-200/50 shadow-sm p-4 hover:shadow-md transition-all text-left group hover:border-neutral-300">
-      <div className="flex items-start gap-3">
-        <div className="p-2.5 rounded-xl flex-shrink-0 mt-0.5" style={{ backgroundColor: primary + '12' }}>
-          <RamoIcon className="w-4 h-4" style={{ color: primary }} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <p className="font-bold text-neutral-900 text-sm">{policy.poliza || 'Sin numero'}</p>
-            <span className={cn('px-2 py-0.5 rounded-lg text-[10px] font-bold border flex items-center gap-1 leading-none', st.badgeCls)}>
-              <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', st.dot)} />{st.label}
-            </span>
-            {policy.is_vigente && !policy.is_cancelada && days <= 30 && (
-              <span className="text-[10px] font-semibold text-amber-600">{days} dias</span>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-neutral-500">
-            {policy.aseguradora_nombre && <span className="flex items-center gap-1"><Building2 className="w-3 h-3 flex-shrink-0" />{policy.aseguradora_nombre}</span>}
-            {policy.subramo && <span className="text-neutral-400">{policy.subramo}</span>}
-            <span className="flex items-center gap-1 text-neutral-400"><Calendar className="w-3 h-3 flex-shrink-0" />{fmt(policy.vigencia_hasta)}</span>
-          </div>
-          {policy.prima_total && <p className="text-xs font-semibold text-neutral-700 mt-1.5">{fmtMoney(policy.prima_total, policy.moneda)} <span className="text-neutral-400 font-normal">prima total</span></p>}
-        </div>
-        <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-neutral-500 transition-colors flex-shrink-0 mt-1" />
+    <button
+      onClick={onClick}
+      className="w-full bg-white rounded-2xl border border-neutral-200/40 shadow-sm p-4 hover:shadow-lg transition-all duration-200 text-left group hover:border-neutral-300 hover:-translate-y-0.5 flex flex-col gap-3"
+    >
+      {/* Top: logo + status */}
+      <div className="flex items-start justify-between gap-2">
+        <InsurerLogo name={policy.aseguradora_nombre || policy.compania || ''} size={40} />
+        <span className={cn('px-2 py-0.5 rounded-lg text-[10px] font-bold border flex items-center gap-1 leading-none flex-shrink-0', st.badgeCls)}>
+          <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', st.dot)} />{st.label}
+        </span>
+      </div>
+
+      {/* Policy number */}
+      <div className="min-w-0">
+        <p className="font-bold text-neutral-900 text-sm truncate leading-tight">{policy.poliza || 'Sin numero'}</p>
+        <p className="text-[11px] text-neutral-500 mt-0.5 truncate">{policy.subramo || policy.ramo}</p>
+      </div>
+
+      {/* Bottom: date */}
+      <div className="flex items-center justify-between mt-auto">
+        <span className="text-[11px] text-neutral-400 flex items-center gap-1">
+          <Calendar className="w-3 h-3 flex-shrink-0" />
+          {fmt(policy.vigencia_hasta)}
+        </span>
+        {isExpiringSoon && (
+          <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md">{days}d</span>
+        )}
       </div>
     </button>
   );
@@ -1136,30 +1186,41 @@ function ExternalPolicyCard({ policy, primary, onClick }: { policy: ExternalPoli
   const isVigente = policy.end_date ? getDaysRemaining(policy.end_date) >= 0 : true;
   const isCancelada = policy.status === 'cancelled' || policy.status === 'cancelada';
   const st = getStatusConfig(isVigente, isCancelada, policy.end_date);
-  const RamoIcon = getRamoIcon(policy.ramo || policy.subramo);
+  const days = policy.end_date ? getDaysRemaining(policy.end_date) : 999;
+  const isExpiringSoon = isVigente && !isCancelada && days >= 0 && days <= 30;
   return (
-    <button onClick={onClick}
-      className="w-full bg-white rounded-2xl border border-orange-100 shadow-sm p-4 hover:shadow-md transition-all text-left group hover:border-orange-200">
-      <div className="flex items-start gap-3">
-        <div className="p-2.5 rounded-xl flex-shrink-0 mt-0.5 bg-orange-50">
-          <RamoIcon className="w-4 h-4 text-orange-500" />
+    <button
+      onClick={onClick}
+      className="w-full bg-white rounded-2xl border border-orange-100 shadow-sm p-4 hover:shadow-lg transition-all duration-200 text-left group hover:border-orange-200 hover:-translate-y-0.5 flex flex-col gap-3"
+    >
+      {/* Top: logo + status + externa badge */}
+      <div className="flex items-start justify-between gap-2">
+        <InsurerLogo name={policy.insurer_name || ''} size={40} />
+        <div className="flex flex-col items-end gap-1">
+          <span className={cn('px-2 py-0.5 rounded-lg text-[10px] font-bold border flex items-center gap-1 leading-none flex-shrink-0', st.badgeCls)}>
+            <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', st.dot)} />{st.label}
+          </span>
+          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold border bg-orange-50 text-orange-600 border-orange-200 leading-none">Externa</span>
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <p className="font-bold text-neutral-900 text-sm">{policy.policy_number}</p>
-            <span className={cn('px-2 py-0.5 rounded-lg text-[10px] font-bold border flex items-center gap-1 leading-none', st.badgeCls)}>
-              <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', st.dot)} />{st.label}
-            </span>
-            <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold border bg-orange-50 text-orange-600 border-orange-200">Externa</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-neutral-500">
-            <span className="flex items-center gap-1"><Building2 className="w-3 h-3 flex-shrink-0" />{policy.insurer_name}</span>
-            {policy.subramo && <span className="text-neutral-400">{policy.subramo}</span>}
-            {policy.end_date && <span className="flex items-center gap-1 text-neutral-400"><Calendar className="w-3 h-3 flex-shrink-0" />{fmt(policy.end_date)}</span>}
-          </div>
-          {policy.total_premium && <p className="text-xs font-semibold text-neutral-700 mt-1.5">{fmtMoney(policy.total_premium, policy.currency)} <span className="text-neutral-400 font-normal">prima total</span></p>}
-        </div>
-        <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-neutral-500 transition-colors flex-shrink-0 mt-1" />
+      </div>
+
+      {/* Policy number */}
+      <div className="min-w-0">
+        <p className="font-bold text-neutral-900 text-sm truncate leading-tight">{policy.policy_number}</p>
+        <p className="text-[11px] text-neutral-500 mt-0.5 truncate">{policy.subramo}</p>
+      </div>
+
+      {/* Bottom: date */}
+      <div className="flex items-center justify-between mt-auto">
+        {policy.end_date ? (
+          <span className="text-[11px] text-neutral-400 flex items-center gap-1">
+            <Calendar className="w-3 h-3 flex-shrink-0" />
+            {fmt(policy.end_date)}
+          </span>
+        ) : <span />}
+        {isExpiringSoon && (
+          <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md">{days}d</span>
+        )}
       </div>
     </button>
   );
@@ -1333,7 +1394,7 @@ export function SeguwalletPolizas() {
               <p className="text-xs text-neutral-400 mt-1">{policies.length === 0 ? 'Contacta a tu agente para más información' : 'Prueba con otros filtros'}</p>
             </div>
           ) : (
-            <div className="space-y-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {filtered.map(p => <SicasPolicyCard key={p.id} policy={p} primary={primary} onClick={() => setSelectedSicas(p)} />)}
             </div>
           )}
@@ -1372,7 +1433,7 @@ export function SeguwalletPolizas() {
               </button>
             </div>
           ) : (
-            <div className="space-y-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {extPolicies.map(p => <ExternalPolicyCard key={p.id} policy={p} primary={primary} onClick={() => setSelectedExt(p)} />)}
             </div>
           )}
