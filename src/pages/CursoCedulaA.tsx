@@ -18,6 +18,8 @@ import {
   formatearTiempoEstudio
 } from '../lib/cedulaAUtils';
 import type { ModuloConProgreso, EstadisticasCurso } from '../lib/cedulaATypes';
+
+const SE_LOGO = 'https://movi.digital/wp-content/uploads/elementor/thumbs/moviRecurso-10-rgqg5n2oyvobfmstl7md0o8mr5w7vjv6rsxrkauuio.png';
 import { PageHeader } from '@/components/ui/page-header';
 
 export default function CursoCedulaA() {
@@ -95,6 +97,11 @@ export default function CursoCedulaA() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50">
+      {/* Branded strip */}
+      <div className="bg-gradient-to-r from-[#0a1628] to-[#1a3a6e] px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between">
+        <img src={SE_LOGO} alt="Seguros Education" className="h-6 w-auto object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
+        <span className="text-white/40 text-[10px] font-semibold tracking-widest uppercase">Cedula A</span>
+      </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         <PageHeader
           title="Curso de Cédula A"

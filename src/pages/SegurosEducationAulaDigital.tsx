@@ -15,6 +15,7 @@ import {
 import { FormularioEvento, type EventoData } from '../components/eventos/FormularioEvento';
 import { TarjetaEvento } from '../components/eventos/TarjetaEvento';
 import { type PermisosSeleccionados } from '../components/eventos/SelectorPermisos';
+import { SegurosEducationLayout } from '../components/segurosEducation/SegurosEducationLayout';
 
 export function SegurosEducationAulaDigital() {
   const { usuario } = useAuth();
@@ -149,15 +150,18 @@ export function SegurosEducationAulaDigital() {
   if (loading) {
     return (
       <Layout>
-        <div className="flex justify-center items-center py-12">
-          <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-        </div>
+        <SegurosEducationLayout>
+          <div className="flex justify-center items-center py-12">
+            <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        </SegurosEducationLayout>
       </Layout>
     );
   }
 
   return (
     <Layout>
+      <SegurosEducationLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         <PageHeader
           title="Aula Digital - Eventos"
@@ -224,6 +228,7 @@ export function SegurosEducationAulaDigital() {
           />
         )}
       </div>
+      </SegurosEducationLayout>
     </Layout>
   );
 }

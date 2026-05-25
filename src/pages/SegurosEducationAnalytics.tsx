@@ -10,6 +10,7 @@ import {
 import { PageHeader } from '@/components/ui/page-header';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { SegurosEducationLayout } from '../components/segurosEducation/SegurosEducationLayout';
 
 interface LeccionStats {
   lesson_id: string;
@@ -299,15 +300,18 @@ export function SegurosEducationAnalytics() {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-neutral-600">Cargando...</div>
-        </div>
+        <SegurosEducationLayout>
+          <div className="flex items-center justify-center h-64">
+            <div className="text-neutral-600">Cargando...</div>
+          </div>
+        </SegurosEducationLayout>
       </Layout>
     );
   }
 
   return (
     <Layout>
+      <SegurosEducationLayout>
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         <PageHeader
           title="Analytics"
@@ -632,6 +636,7 @@ export function SegurosEducationAnalytics() {
           </div>
         )}
       </div>
+      </SegurosEducationLayout>
     </Layout>
   );
 }

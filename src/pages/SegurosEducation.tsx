@@ -10,6 +10,7 @@ import { obtenerSesiones } from '../lib/aulaVirtualUtils';
 import { PageHeader } from '@/components/ui/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
 import { Button } from '@/components/ui/button';
+import { SegurosEducationLayout } from '../components/segurosEducation/SegurosEducationLayout';
 
 interface Lesson {
   id: string;
@@ -191,13 +192,16 @@ export function SegurosEducation() {
   if (loading) {
     return (
       <Layout>
-        <LoadingState text="Cargando capacitacion..." />
+        <SegurosEducationLayout>
+          <LoadingState text="Cargando capacitacion..." />
+        </SegurosEducationLayout>
       </Layout>
     );
   }
 
   return (
     <Layout>
+      <SegurosEducationLayout>
       <div className="space-y-6">
         <PageHeader
           title="Seguros Education"
@@ -448,6 +452,7 @@ export function SegurosEducation() {
           </div>
         </div>
       </div>
+      </SegurosEducationLayout>
     </Layout>
   );
 }

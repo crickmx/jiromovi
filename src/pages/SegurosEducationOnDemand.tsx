@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { VideoPlayer } from '../components/VideoPlayer';
 import { LessonDocuments } from '../components/segurosEducation/LessonDocuments';
 import { analyticsTracker } from '../lib/analyticsTracker';
+import { SegurosEducationLayout } from '../components/segurosEducation/SegurosEducationLayout';
 
 interface Category {
   id: string;
@@ -874,15 +875,18 @@ export function SegurosEducationOnDemand() {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-neutral-600">Cargando...</div>
-        </div>
+        <SegurosEducationLayout>
+          <div className="flex items-center justify-center h-64">
+            <div className="text-neutral-600">Cargando...</div>
+          </div>
+        </SegurosEducationLayout>
       </Layout>
     );
   }
 
   return (
     <Layout>
+      <SegurosEducationLayout>
       <div className="space-y-5">
         <PageHeader
           title="On Demand"
@@ -1628,6 +1632,7 @@ export function SegurosEducationOnDemand() {
           </div>
         </div>
       )}
+      </SegurosEducationLayout>
     </Layout>
   );
 }
