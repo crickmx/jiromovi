@@ -1,9 +1,10 @@
 import { type ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useSeguwallet } from '../lib/SeguwalletContext';
 
 export function SeguwalletProtectedRoute({ children }: { children: ReactNode }) {
-  const { loading, isAuthenticated } = useSeguwallet();
+  const { loading, isAuthenticated, needsProfileCompletion, needsTermsAcceptance } = useSeguwallet();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -18,6 +19,12 @@ export function SeguwalletProtectedRoute({ children }: { children: ReactNode }) 
 
   if (!isAuthenticated) {
     return <Navigate to="/seguwallet/login" replace />;
+  }
+
+  const isCompleteProfileRoute = location.pathname === '/seguwallet/completa-perfil';
+
+  if ((needsProfileCompletion || needsTermsAcceptance) && !isCompleteProfileRoute) {
+    return <Navigate to="/seguwallet/completa-perfil" replace />;
   }
 
   return <>{children}</>;

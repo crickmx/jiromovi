@@ -103,6 +103,7 @@ import { SeguwalletPolizas } from './seguwallet/pages/SeguwalletPolizas';
 import { SeguwalletCotizar } from './seguwallet/pages/SeguwalletCotizar';
 import { SeguwalletAseguradoras } from './seguwallet/pages/SeguwalletAseguradoras';
 import { SeguwalletPerfil } from './seguwallet/pages/SeguwalletPerfil';
+import { SeguwalletCompleteProfile } from './seguwallet/pages/SeguwalletCompleteProfile';
 import { SeguwalletProvider } from './seguwallet/lib/SeguwalletContext';
 import { AgentBrandProvider } from './seguwallet/lib/AgentBrandContext';
 import { SeguwalletLayout } from './seguwallet/components/SeguwalletLayout';
@@ -126,6 +127,15 @@ function SeguwalletApp() {
   return (
     <Routes>
       <Route path="/seguwallet/login" element={<SeguwalletLogin />} />
+      <Route path="/seguwallet/completa-perfil" element={
+        <SeguwalletProvider>
+          <AgentBrandProvider>
+            <SeguwalletProtectedRoute>
+              <SeguwalletCompleteProfile />
+            </SeguwalletProtectedRoute>
+          </AgentBrandProvider>
+        </SeguwalletProvider>
+      } />
       <Route path="/seguwallet/dashboard" element={<SW><SeguwalletDashboard /></SW>} />
       <Route path="/seguwallet/polizas" element={<SW><SeguwalletPolizas /></SW>} />
       <Route path="/seguwallet/cotizar" element={<SW><SeguwalletCotizar /></SW>} />

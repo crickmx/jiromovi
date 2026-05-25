@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Shield, Plus, Search, Eye, CreditCard as Edit, RotateCcw, Users, X, Check, UserPlus, Loader2 } from 'lucide-react';
+import { Shield, Plus, Search, Eye, CreditCard as Edit, RotateCcw, Users, X, Check, UserPlus, Loader2, FileText, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAgentSicasClients, searchSicasClientsAdmin, type SicasClientResult } from '@/seguwallet/lib/seguwalletAuth';
@@ -15,8 +15,21 @@ interface SeguwalletCustomer {
   agent_user_id: string;
   last_login_at: string | null;
   created_at: string;
+  profile_completed: boolean;
+  terms_accepted: boolean;
+  terms_version_accepted: string | null;
   sicas_clients_count?: number;
   agent_name?: string;
+}
+
+interface SeguwalletTerm {
+  id: string;
+  title: string;
+  version: string;
+  content: string;
+  is_active: boolean;
+  created_at: string;
+  published_at: string | null;
 }
 
 interface Agent {
@@ -42,7 +55,7 @@ interface EditFormData {
   agent_user_id: string;
 }
 
-type ModalType = 'create' | 'edit' | 'sicas' | 'reset' | null;
+type ModalType = 'create' | 'edit' | 'sicas' | 'reset' | 'terms_create' | 'terms_view' | null;
 
 const toTitleCase = (str: string) => {
   if (!str) return '';
@@ -60,6 +73,7 @@ export function SeguwalletAdmin() {
   const isAdmin = usuario?.rol === 'Administrador';
   const isAgent = usuario?.rol === 'Agente';
 
+  const [activeTab, setActiveTab] = useState<'customers' | 'terms'>('customers');
   const [customers, setCustomers] = useState<SeguwalletCustomer[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,9 +110,19 @@ export function SeguwalletAdmin() {
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState(false);
 
+  // Terms
+  const [terms, setTerms] = useState<SeguwalletTerm[]>([]);
+  const [termsLoading, setTermsLoading] = useState(false);
+  const [selectedTerm, setSelectedTerm] = useState<SeguwalletTerm | null>(null);
+  const [termForm, setTermForm] = useState({ title: 'Términos y Condiciones', version: '', content: '' });
+  const [termSaving, setTermSaving] = useState(false);
+  const [termError, setTermError] = useState('');
+  const [publishingId, setPublishingId] = useState<string | null>(null);
+
   useEffect(() => {
     loadCustomers();
     loadAgents();
+    if (isAdmin) loadTerms();
   }, []);
 
   const loadCustomers = async () => {
@@ -323,13 +347,69 @@ export function SeguwalletAdmin() {
     }
   };
 
+  // ── Terms ─────────────────────────────────────────────────────────
+  const loadTerms = async () => {
+    setTermsLoading(true);
+    try {
+      const { data } = await supabase
+        .from('seguwallet_terms')
+        .select('*')
+        .order('created_at', { ascending: false });
+      setTerms(data || []);
+    } finally {
+      setTermsLoading(false);
+    }
+  };
+
+  const handleCreateTerm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTermError('');
+    if (!termForm.version.trim() || !termForm.content.trim()) {
+      setTermError('Versión y contenido son obligatorios.');
+      return;
+    }
+    setTermSaving(true);
+    try {
+      const { error } = await supabase.from('seguwallet_terms').insert({
+        title: termForm.title.trim(),
+        version: termForm.version.trim(),
+        content: termForm.content.trim(),
+        created_by: usuario?.id,
+      });
+      if (error) throw error;
+      setTermForm({ title: 'Términos y Condiciones', version: '', content: '' });
+      closeModal();
+      loadTerms();
+    } catch (err: any) {
+      setTermError(err.message || 'Error al crear términos.');
+    } finally {
+      setTermSaving(false);
+    }
+  };
+
+  const handlePublishTerm = async (termId: string) => {
+    setPublishingId(termId);
+    try {
+      const { error } = await supabase
+        .from('seguwallet_terms')
+        .update({ is_active: true, published_at: new Date().toISOString(), published_by: usuario?.id })
+        .eq('id', termId);
+      if (error) throw error;
+      loadTerms();
+    } finally {
+      setPublishingId(null);
+    }
+  };
+
   const closeModal = () => {
     setActiveModal(null);
     setSelectedCustomer(null);
+    setSelectedTerm(null);
     setCreateError('');
     setEditError('');
     setResetError('');
     setResetSuccess(false);
+    setTermError('');
   };
 
   const filteredCustomers = customers.filter(c => {
@@ -360,22 +440,56 @@ export function SeguwalletAdmin() {
             </p>
           </div>
         </div>
-        <button
-          onClick={() => { setCreateForm(p => ({ ...p, agent_user_id: isAdmin ? '' : (usuario?.id || '') })); setCreateError(''); setActiveModal('create'); }}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-accent-foreground text-sm font-semibold hover:bg-accent-hover transition-all shadow-sm"
-        >
-          <Plus className="w-4 h-4" />
-          Crear Cliente
-        </button>
+        <div className="flex items-center gap-2">
+          {isAdmin && activeTab === 'terms' && (
+            <button
+              onClick={() => { setTermForm({ title: 'Términos y Condiciones', version: '', content: '' }); setTermError(''); setActiveModal('terms_create'); }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 text-neutral-700 dark:text-white/70 text-sm font-semibold hover:bg-neutral-50 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              Nueva versión
+            </button>
+          )}
+          {activeTab === 'customers' && (
+            <button
+              onClick={() => { setCreateForm(p => ({ ...p, agent_user_id: isAdmin ? '' : (usuario?.id || '') })); setCreateError(''); setActiveModal('create'); }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-accent-foreground text-sm font-semibold hover:bg-accent-hover transition-all shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Crear Cliente
+            </button>
+          )}
+        </div>
       </div>
 
+      {/* Tabs (admin only) */}
+      {isAdmin && (
+        <div className="flex gap-1 p-1 bg-neutral-100 dark:bg-white/[0.04] rounded-2xl w-fit">
+          {(['customers', 'terms'] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={cn(
+                "px-4 py-2 rounded-xl text-sm font-semibold transition-all",
+                activeTab === tab
+                  ? "bg-white dark:bg-white/10 text-neutral-900 dark:text-white shadow-sm"
+                  : "text-neutral-500 dark:text-white/40 hover:text-neutral-700"
+              )}
+            >
+              {tab === 'customers' ? 'Clientes' : 'Términos'}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {activeTab === 'customers' && (<>
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { value: customers.length, label: 'Total clientes', color: 'text-neutral-900 dark:text-white' },
           { value: customers.filter(c => c.status === 'active').length, label: 'Activos', color: 'text-emerald-600' },
-          { value: customers.filter(c => c.status === 'blocked').length, label: 'Bloqueados', color: 'text-red-600' },
-          { value: customers.filter(c => !c.last_login_at).length, label: 'Nunca ingresaron', color: 'text-amber-600' },
+          { value: customers.filter(c => !c.profile_completed).length, label: 'Perfil incompleto', color: 'text-amber-600' },
+          { value: customers.filter(c => !c.last_login_at).length, label: 'Nunca ingresaron', color: 'text-neutral-500' },
         ].map(stat => (
           <div key={stat.label} className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] p-4">
             <p className={cn("text-2xl font-bold", stat.color)}>{stat.value}</p>
@@ -406,6 +520,8 @@ export function SeguwalletAdmin() {
                   <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40">Cliente</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40 hidden md:table-cell">Agente</th>
                   <th className="text-center px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40 hidden sm:table-cell">SICAS</th>
+                  <th className="text-center px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40 hidden lg:table-cell">Perfil</th>
+                  <th className="text-center px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40 hidden lg:table-cell">Términos</th>
                   <th className="text-center px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40">Estatus</th>
                   <th className="text-right px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40">Acciones</th>
                 </tr>
@@ -427,6 +543,18 @@ export function SeguwalletAdmin() {
                           {c.sicas_clients_count}<UserPlus className="w-3 h-3" />
                         </button>
                       </td>
+                      <td className="px-5 py-3 text-center hidden lg:table-cell">
+                        {c.profile_completed
+                          ? <span title="Perfil completo"><CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" /></span>
+                          : <span title="Perfil incompleto"><AlertCircle className="w-4 h-4 text-amber-400 mx-auto" /></span>
+                        }
+                      </td>
+                      <td className="px-5 py-3 text-center hidden lg:table-cell">
+                        {c.terms_accepted
+                          ? <span title={`v${c.terms_version_accepted}`}><CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" /></span>
+                          : <span title="Términos pendientes"><Clock className="w-4 h-4 text-neutral-400 mx-auto" /></span>
+                        }
+                      </td>
                       <td className="px-5 py-3 text-center">
                         <span className={cn("px-2 py-0.5 rounded-lg text-[10px] font-bold border", badge.class)}>{badge.label}</span>
                       </td>
@@ -444,6 +572,60 @@ export function SeguwalletAdmin() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      </>)}
+
+      {/* ── TERMS TAB ─────────────────────────────────────────────── */}
+      {activeTab === 'terms' && isAdmin && (
+        <div className="space-y-3">
+          {termsLoading ? (
+            <div className="flex justify-center py-10"><div className="w-8 h-8 border-[3px] border-blue-200 border-t-[#1C37E0] rounded-full animate-spin" /></div>
+          ) : terms.length === 0 ? (
+            <div className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] p-12 text-center">
+              <FileText className="w-10 h-10 text-neutral-300 mx-auto mb-3" />
+              <p className="text-sm text-neutral-500">No hay versiones de términos</p>
+              <p className="text-xs text-neutral-400 mt-1">Crea la primera versión para activarla</p>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] divide-y divide-neutral-100 dark:divide-white/[0.04]">
+              {terms.map(term => (
+                <div key={term.id} className="px-5 py-4 flex items-center justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-neutral-900 dark:text-white text-sm">{term.title}</p>
+                      {term.is_active && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">ACTIVO</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-neutral-400 mt-0.5">
+                      Versión {term.version} · {term.published_at ? `Publicado ${new Date(term.published_at).toLocaleDateString('es-MX')}` : 'No publicado'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => { setSelectedTerm(term); setActiveModal('terms_view'); }}
+                      className="p-1.5 rounded-lg text-neutral-400 hover:text-[#1C37E0] hover:bg-blue-50 transition-colors"
+                      title="Ver contenido"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                    {!term.is_active && (
+                      <button
+                        onClick={() => handlePublishTerm(term.id)}
+                        disabled={publishingId === term.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1C37E0] text-white text-xs font-semibold hover:bg-[#1630C8] transition-all disabled:opacity-50"
+                      >
+                        {publishingId === term.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                        Publicar
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -539,6 +721,56 @@ export function SeguwalletAdmin() {
           <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-white/[0.06] flex items-center justify-between">
             <p className="text-xs text-neutral-500">{assignedSicas.length} cliente{assignedSicas.length !== 1 ? 's' : ''} asignado{assignedSicas.length !== 1 ? 's' : ''}</p>
             <button onClick={closeModal} className={pri}>Listo</button>
+          </div>
+        </ModalWrap>
+      )}
+
+      {/* TERMS CREATE MODAL */}
+      {activeModal === 'terms_create' && (
+        <ModalWrap title="Nueva versión de Términos" onClose={closeModal} wide>
+          {termError && <ErrBox>{termError}</ErrBox>}
+          <form onSubmit={handleCreateTerm} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <F label="Título"><input type="text" value={termForm.title} onChange={e => setTermForm(p => ({ ...p, title: e.target.value }))} className={inp} /></F>
+              <F label="Versión *"><input type="text" value={termForm.version} onChange={e => setTermForm(p => ({ ...p, version: e.target.value }))} placeholder="Ej. 1.0, 2.1, 2026-05" className={inp} /></F>
+            </div>
+            <F label="Contenido *">
+              <textarea
+                value={termForm.content}
+                onChange={e => setTermForm(p => ({ ...p, content: e.target.value }))}
+                rows={12}
+                placeholder="Escribe o pega el texto completo de los términos y condiciones..."
+                className={`${inp} resize-none`}
+              />
+            </F>
+            <Acts>
+              <button type="submit" disabled={termSaving} className={pri}>{termSaving ? 'Guardando...' : 'Crear versión'}</button>
+              <button type="button" onClick={closeModal} className={sec}>Cancelar</button>
+            </Acts>
+          </form>
+        </ModalWrap>
+      )}
+
+      {/* TERMS VIEW MODAL */}
+      {activeModal === 'terms_view' && selectedTerm && (
+        <ModalWrap title={`${selectedTerm.title} — v${selectedTerm.version}`} onClose={closeModal} wide>
+          <div className="text-xs text-neutral-500 mb-3">
+            {selectedTerm.published_at ? `Publicado el ${new Date(selectedTerm.published_at).toLocaleDateString('es-MX')}` : 'Sin publicar'}
+            {selectedTerm.is_active && <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">ACTIVO</span>}
+          </div>
+          <div className="bg-neutral-50 dark:bg-white/[0.03] rounded-2xl p-4 max-h-80 overflow-y-auto text-sm text-neutral-700 dark:text-white/70 leading-relaxed whitespace-pre-wrap border border-neutral-100 dark:border-white/[0.06]">
+            {selectedTerm.content}
+          </div>
+          <div className="mt-4 flex gap-3">
+            {!selectedTerm.is_active && (
+              <button
+                onClick={() => { handlePublishTerm(selectedTerm.id); closeModal(); }}
+                className={pri}
+              >
+                Publicar esta versión
+              </button>
+            )}
+            <button onClick={closeModal} className={sec}>Cerrar</button>
           </div>
         </ModalWrap>
       )}

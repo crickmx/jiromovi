@@ -11,6 +11,32 @@ export interface SeguwalletCustomer {
   last_login_at: string | null;
   created_at: string;
   updated_at: string;
+  // Profile completion
+  state: string | null;
+  municipality: string | null;
+  birth_date: string | null;
+  gender: 'masculino' | 'femenino' | 'no_binario' | 'prefiero_no_decir' | null;
+  profile_completed: boolean;
+  profile_completed_at: string | null;
+  // Terms acceptance
+  terms_accepted: boolean;
+  terms_accepted_at: string | null;
+  terms_version_accepted: string | null;
+  terms_id_accepted: string | null;
+}
+
+export interface SeguwalletTerms {
+  id: string;
+  title: string;
+  version: string;
+  content: string;
+  published_at: string | null;
+}
+
+export async function getActiveSeguwalletTerms(): Promise<SeguwalletTerms | null> {
+  const { data } = await supabase.rpc('get_active_seguwallet_terms');
+  if (!data || data.length === 0) return null;
+  return data[0] as SeguwalletTerms;
 }
 
 export async function seguwalletSignIn(email: string, password: string) {
@@ -24,7 +50,7 @@ export async function seguwalletSignIn(email: string, password: string) {
   // Verify this auth user has a Seguwallet customer record
   const { data: customer, error: customerError } = await supabase
     .from('seguwallet_customers')
-    .select('id, status, email, full_name, auth_user_id, agent_user_id, phone, last_login_at, created_at, updated_at')
+    .select('*')
     .eq('auth_user_id', authData.user.id)
     .maybeSingle();
 
