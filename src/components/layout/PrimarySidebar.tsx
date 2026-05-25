@@ -42,7 +42,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
             <img
               src="/movirecurso_7.png"
               alt="MOVI"
-              className="h-6 w-6 object-contain brightness-0 invert opacity-90"
+              className="h-6 w-6 object-contain brightness-0 invert"
             />
           </button>
         </div>

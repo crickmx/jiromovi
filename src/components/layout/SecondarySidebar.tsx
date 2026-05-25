@@ -56,7 +56,7 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
                         "active:scale-[0.92]",
                         active
                           ? "bg-accent/10 text-accent dark:bg-accent/15 shadow-[0_0_8px_rgba(var(--movi-accent-rgb)/0.08)]"
-                          : "text-neutral-400 dark:text-white/35 hover:bg-neutral-100 dark:hover:bg-white/5 hover:text-neutral-700 dark:hover:text-white/70"
+                          : "text-neutral-500 dark:text-white/55 hover:bg-neutral-100 dark:hover:bg-white/5 hover:text-neutral-700 dark:hover:text-white/80"
                       )}
                     >
                       <Icon className="w-[18px] h-[18px]" />
@@ -112,16 +112,16 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
                 "active:scale-[0.97]",
                 active
                   ? "bg-accent/8 text-accent dark:bg-accent/12 shadow-[0_0_0_1px_rgba(var(--movi-accent-rgb)/0.1)]"
-                  : "text-neutral-600 dark:text-white/55 hover:bg-neutral-100/70 dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white"
+                  : "text-neutral-700 dark:text-white/65 hover:bg-neutral-100 dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white"
               )}
             >
               <div className={cn(
                 "w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
-                active ? "bg-accent/10 dark:bg-accent/20" : "bg-neutral-100/80 dark:bg-white/[0.06]"
+                active ? "bg-accent/10 dark:bg-accent/20" : "bg-neutral-100 dark:bg-white/[0.08]"
               )}>
                 <Icon className={cn(
                   "w-3.5 h-3.5",
-                  active ? "text-accent" : "text-neutral-500 dark:text-white/40"
+                  active ? "text-accent" : "text-neutral-600 dark:text-white/60"
                 )} />
               </div>
               <span className="truncate">{item.label}</span>
