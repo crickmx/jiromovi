@@ -1,10 +1,12 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Shield, Plus, Search, Eye, CreditCard as Edit, RotateCcw, Users, X, Check, UserPlus, Loader2, FileText, AlertCircle, CheckCircle2, Clock, Building2, ToggleLeft, ToggleRight, Trash2, GripVertical, Phone, Globe, Smartphone, Upload, Link, ImageOff } from 'lucide-react';
+import { Shield, Plus, Search, Eye, CreditCard as Edit, RotateCcw, Users, X, Check, UserPlus, Loader2, FileText, AlertCircle, CheckCircle2, Clock, Building2, ToggleLeft, ToggleRight, Trash2, Phone, Upload, Link, ImageOff, Camera, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAgentSicasClients, searchSicasClientsAdmin, type SicasClientResult } from '@/seguwallet/lib/seguwalletAuth';
 import { cn } from '@/lib/utils';
 import { type SeguwalletInsurer, type InsurerFormData, emptyInsurerForm, sanitizePhone, formatPhoneDisplay, getInsurerLogoUrl } from '@/seguwallet/lib/insurerTypes';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
 interface SeguwalletCustomer {
   id: string;
@@ -12,15 +14,34 @@ interface SeguwalletCustomer {
   email: string;
   full_name: string;
   phone: string;
+  whatsapp: string | null;
   status: 'active' | 'inactive' | 'blocked';
   agent_user_id: string;
   last_login_at: string | null;
   created_at: string;
   profile_completed: boolean;
+  profile_completed_at: string | null;
+  profile_photo_url: string | null;
+  profile_photo_path: string | null;
+  profile_updated_at: string | null;
+  state: string | null;
+  municipality: string | null;
+  birth_date: string | null;
+  gender: 'masculino' | 'femenino' | 'no_binario' | 'prefiero_no_decir' | null;
   terms_accepted: boolean;
   terms_version_accepted: string | null;
+  terms_accepted_at: string | null;
   sicas_clients_count?: number;
   agent_name?: string;
+}
+
+function getPhotoUrl(path: string | null | undefined, fallback = ''): string {
+  if (!path) return fallback;
+  return `${SUPABASE_URL}/storage/v1/object/public/seguwallet-profile-photos/${path}`;
+}
+
+function getInitials(name: string): string {
+  return name.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() || '').join('');
 }
 
 interface SeguwalletTerm {
@@ -52,6 +73,11 @@ interface CreateFormData {
 interface EditFormData {
   full_name: string;
   phone: string;
+  whatsapp: string;
+  state: string;
+  municipality: string;
+  birth_date: string;
+  gender: string;
   status: 'active' | 'inactive' | 'blocked';
   agent_user_id: string;
 }
@@ -93,8 +119,11 @@ export function SeguwalletAdmin() {
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState('');
   const [editForm, setEditForm] = useState<EditFormData>({
-    full_name: '', phone: '', status: 'active', agent_user_id: '',
+    full_name: '', phone: '', whatsapp: '', state: '', municipality: '', birth_date: '', gender: '', status: 'active', agent_user_id: '',
   });
+  const [editPhotoPath, setEditPhotoPath] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const editPhotoRef = useRef<HTMLInputElement>(null);
 
   // SICAS
   const [sicasLoading, setSicasLoading] = useState(false);
@@ -266,9 +295,45 @@ export function SeguwalletAdmin() {
   // ── Edit ──────────────────────────────────────────────────────────
   const openEdit = (customer: SeguwalletCustomer) => {
     setSelectedCustomer(customer);
-    setEditForm({ full_name: customer.full_name, phone: customer.phone || '', status: customer.status, agent_user_id: customer.agent_user_id });
+    setEditForm({
+      full_name: customer.full_name,
+      phone: customer.phone || '',
+      whatsapp: customer.whatsapp || '',
+      state: customer.state || '',
+      municipality: customer.municipality || '',
+      birth_date: customer.birth_date || '',
+      gender: customer.gender || '',
+      status: customer.status,
+      agent_user_id: customer.agent_user_id,
+    });
+    setEditPhotoPath(customer.profile_photo_path || null);
     setEditError('');
     setActiveModal('edit');
+  };
+
+  const handleEditPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedCustomer) return;
+    setPhotoUploading(true);
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const storagePath = `seguwallet/customers/${selectedCustomer.id}/profile-photo.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from('seguwallet-profile-photos')
+        .upload(storagePath, file, { contentType: file.type, upsert: true });
+      if (uploadErr) throw uploadErr;
+      const publicUrl = getPhotoUrl(storagePath);
+      await supabase.from('seguwallet_customers')
+        .update({ profile_photo_path: storagePath, profile_photo_url: publicUrl, profile_updated_at: new Date().toISOString() })
+        .eq('id', selectedCustomer.id);
+      setEditPhotoPath(storagePath);
+      setSelectedCustomer(prev => prev ? { ...prev, profile_photo_path: storagePath, profile_photo_url: publicUrl } : prev);
+    } catch (err: any) {
+      setEditError(err.message || 'Error al subir foto.');
+    } finally {
+      setPhotoUploading(false);
+      if (editPhotoRef.current) editPhotoRef.current.value = '';
+    }
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
@@ -278,11 +343,38 @@ export function SeguwalletAdmin() {
     if (!editForm.full_name.trim()) { setEditError('El nombre es obligatorio.'); return; }
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('seguwallet_customers')
-        .update({ full_name: editForm.full_name.trim(), phone: editForm.phone.trim(), status: editForm.status, agent_user_id: editForm.agent_user_id })
-        .eq('id', selectedCustomer.id);
+      const updates: Record<string, any> = {
+        full_name: editForm.full_name.trim(),
+        phone: editForm.phone.trim() || null,
+        whatsapp: editForm.whatsapp.trim() || null,
+        state: editForm.state.trim() || null,
+        municipality: editForm.municipality.trim() || null,
+        birth_date: editForm.birth_date || null,
+        gender: editForm.gender || null,
+        status: editForm.status,
+        agent_user_id: editForm.agent_user_id,
+        profile_updated_at: new Date().toISOString(),
+      };
+      const { error } = await supabase.from('seguwallet_customers').update(updates).eq('id', selectedCustomer.id);
       if (error) throw error;
+
+      // Audit log
+      const actorType = isAdmin ? 'admin' : 'agent';
+      const changedFields = Object.keys(updates).filter(k => {
+        const prev = (selectedCustomer as any)[k];
+        const next = updates[k];
+        return prev !== next;
+      });
+      if (changedFields.length > 0) {
+        await supabase.from('seguwallet_profile_audit_logs').insert({
+          customer_id: selectedCustomer.id,
+          actor_id: usuario?.id,
+          actor_type: actorType,
+          action: 'profile_update',
+          changed_fields: changedFields,
+        });
+      }
+
       closeModal();
       loadCustomers();
     } catch (err: any) {
@@ -593,6 +685,7 @@ export function SeguwalletAdmin() {
     setResetError('');
     setResetSuccess(false);
     setTermError('');
+    setEditPhotoPath(null);
   };
 
   const filteredCustomers = customers.filter(c => {
@@ -1112,27 +1205,139 @@ export function SeguwalletAdmin() {
 
       {/* EDIT MODAL */}
       {activeModal === 'edit' && selectedCustomer && (
-        <ModalWrap title={`Editar: ${toTitleCase(selectedCustomer.full_name)}`} onClose={closeModal}>
+        <ModalWrap title={`Editar perfil: ${toTitleCase(selectedCustomer.full_name)}`} onClose={closeModal} wide>
           {editError && <ErrBox>{editError}</ErrBox>}
+
+          {/* Photo section */}
+          <div className="flex items-center gap-4 mb-5 pb-5 border-b border-neutral-100 dark:border-white/[0.06]">
+            <div className="relative flex-shrink-0">
+              <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-neutral-200 dark:border-white/10 bg-neutral-100 dark:bg-white/5">
+                {editPhotoPath ? (
+                  <img src={getPhotoUrl(editPhotoPath)} alt="foto" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#1C37E0]/10 to-[#1C37E0]/20">
+                    <span className="text-lg font-bold text-[#1C37E0]">{getInitials(selectedCustomer.full_name)}</span>
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => editPhotoRef.current?.click()}
+                disabled={photoUploading}
+                className="absolute -bottom-1 -right-1 w-7 h-7 rounded-xl bg-[#1C37E0] text-white flex items-center justify-center shadow-md hover:bg-[#1630C8] transition-colors disabled:opacity-50"
+                title="Cambiar foto"
+              >
+                {photoUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+              </button>
+              <input ref={editPhotoRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleEditPhotoUpload} />
+            </div>
+            <div>
+              <p className="font-semibold text-sm text-neutral-900 dark:text-white">{toTitleCase(selectedCustomer.full_name)}</p>
+              <p className="text-xs text-neutral-400 mt-0.5">{selectedCustomer.email}</p>
+              <div className="flex items-center gap-2 mt-1">
+                {selectedCustomer.profile_completed
+                  ? <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600"><CheckCircle2 className="w-3 h-3" /> Perfil completo</span>
+                  : <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600"><AlertCircle className="w-3 h-3" /> Perfil incompleto</span>
+                }
+                {selectedCustomer.terms_accepted && (
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600"><Check className="w-3 h-3" /> Términos v{selectedCustomer.terms_version_accepted}</span>
+                )}
+              </div>
+            </div>
+          </div>
+
           <form onSubmit={handleSaveEdit} className="space-y-4">
-            <F label="Nombre completo *"><input type="text" value={editForm.full_name} onChange={e => setEditForm(p => ({ ...p, full_name: e.target.value }))} className={inp} /></F>
-            <F label="Telefono"><input type="tel" value={editForm.phone} onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))} className={inp} /></F>
-            <F label="Estatus">
-              <select value={editForm.status} onChange={e => setEditForm(p => ({ ...p, status: e.target.value as EditFormData['status'] }))} className={inp}>
-                <option value="active">Activo</option>
-                <option value="inactive">Inactivo</option>
-                <option value="blocked">Bloqueado</option>
-              </select>
-            </F>
-            {isAdmin && (
-              <F label="Agente responsable">
-                <select value={editForm.agent_user_id} onChange={e => setEditForm(p => ({ ...p, agent_user_id: e.target.value }))} className={inp}>
-                  <option value="">Sin asignar</option>
-                  {agents.map(a => <option key={a.id} value={a.id}>{a.nombre} {a.apellidos}</option>)}
-                </select>
-              </F>
-            )}
-            <Acts><button type="submit" disabled={saving} className={pri}>{saving ? 'Guardando...' : 'Guardar Cambios'}</button><button type="button" onClick={closeModal} className={sec}>Cancelar</button></Acts>
+            {/* Datos personales */}
+            <div>
+              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-3">Datos personales</p>
+              <div className="space-y-3">
+                <F label="Nombre completo *">
+                  <input type="text" value={editForm.full_name} onChange={e => setEditForm(p => ({ ...p, full_name: e.target.value }))} className={inp} />
+                </F>
+                <div className="grid grid-cols-2 gap-3">
+                  <F label="Fecha de nacimiento">
+                    <input type="date" value={editForm.birth_date} onChange={e => setEditForm(p => ({ ...p, birth_date: e.target.value }))} className={inp} />
+                  </F>
+                  <F label="Genero">
+                    <select value={editForm.gender} onChange={e => setEditForm(p => ({ ...p, gender: e.target.value }))} className={inp}>
+                      <option value="">No especificado</option>
+                      <option value="masculino">Masculino</option>
+                      <option value="femenino">Femenino</option>
+                      <option value="no_binario">No binario</option>
+                      <option value="prefiero_no_decir">Prefiero no decir</option>
+                    </select>
+                  </F>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <F label="Estado">
+                    <input type="text" value={editForm.state} onChange={e => setEditForm(p => ({ ...p, state: e.target.value }))} placeholder="Ej. Ciudad de Mexico" className={inp} />
+                  </F>
+                  <F label="Municipio / Alcaldia">
+                    <input type="text" value={editForm.municipality} onChange={e => setEditForm(p => ({ ...p, municipality: e.target.value }))} placeholder="Ej. Cuauhtemoc" className={inp} />
+                  </F>
+                </div>
+              </div>
+            </div>
+
+            {/* Contacto */}
+            <div>
+              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-3">Contacto</p>
+              <div className="grid grid-cols-2 gap-3">
+                <F label="Telefono">
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400 pointer-events-none" />
+                    <input type="tel" value={editForm.phone} onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))} placeholder="55 1234 5678" className={`${inp} pl-9`} />
+                  </div>
+                </F>
+                <F label="WhatsApp">
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400 pointer-events-none" />
+                    <input type="tel" value={editForm.whatsapp} onChange={e => setEditForm(p => ({ ...p, whatsapp: e.target.value }))} placeholder="55 1234 5678" className={`${inp} pl-9`} />
+                  </div>
+                </F>
+              </div>
+            </div>
+
+            {/* Cuenta */}
+            <div>
+              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-3">Cuenta</p>
+              <div className="grid grid-cols-2 gap-3">
+                <F label="Estatus">
+                  <select value={editForm.status} onChange={e => setEditForm(p => ({ ...p, status: e.target.value as EditFormData['status'] }))} className={inp}>
+                    <option value="active">Activo</option>
+                    <option value="inactive">Inactivo</option>
+                    <option value="blocked">Bloqueado</option>
+                  </select>
+                </F>
+                {isAdmin && (
+                  <F label="Agente responsable">
+                    <select value={editForm.agent_user_id} onChange={e => setEditForm(p => ({ ...p, agent_user_id: e.target.value }))} className={inp}>
+                      <option value="">Sin asignar</option>
+                      {agents.map(a => <option key={a.id} value={a.id}>{a.nombre} {a.apellidos}</option>)}
+                    </select>
+                  </F>
+                )}
+              </div>
+            </div>
+
+            {/* Info readonly */}
+            <div className="bg-neutral-50 dark:bg-white/[0.02] rounded-2xl p-3 space-y-1.5 text-xs text-neutral-500">
+              {selectedCustomer.last_login_at && (
+                <p><span className="font-semibold text-neutral-700 dark:text-white/50">Ultimo acceso:</span> {new Date(selectedCustomer.last_login_at).toLocaleString('es-MX')}</p>
+              )}
+              {selectedCustomer.terms_accepted_at && (
+                <p><span className="font-semibold text-neutral-700 dark:text-white/50">Terminos aceptados:</span> {new Date(selectedCustomer.terms_accepted_at).toLocaleDateString('es-MX')} (v{selectedCustomer.terms_version_accepted})</p>
+              )}
+              {selectedCustomer.profile_updated_at && (
+                <p><span className="font-semibold text-neutral-700 dark:text-white/50">Perfil actualizado:</span> {new Date(selectedCustomer.profile_updated_at).toLocaleString('es-MX')}</p>
+              )}
+              <p><span className="font-semibold text-neutral-700 dark:text-white/50">Creado:</span> {new Date(selectedCustomer.created_at).toLocaleDateString('es-MX')}</p>
+            </div>
+
+            <Acts>
+              <button type="submit" disabled={saving} className={pri}>{saving ? 'Guardando...' : 'Guardar Cambios'}</button>
+              <button type="button" onClick={closeModal} className={sec}>Cancelar</button>
+            </Acts>
           </form>
         </ModalWrap>
       )}

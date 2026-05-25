@@ -7,10 +7,15 @@ export interface SeguwalletCustomer {
   email: string;
   full_name: string;
   phone: string;
+  whatsapp: string | null;
   status: 'active' | 'inactive' | 'blocked';
   last_login_at: string | null;
   created_at: string;
   updated_at: string;
+  profile_updated_at: string | null;
+  // Profile photo
+  profile_photo_url: string | null;
+  profile_photo_path: string | null;
   // Profile completion
   state: string | null;
   municipality: string | null;
