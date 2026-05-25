@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Search, Phone, Globe, Smartphone, Shield } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useAgentBrand } from '../lib/AgentBrandContext';
 
 interface Aseguradora {
   id: string;
@@ -109,15 +109,20 @@ function LogoFallback({ nombre }: { nombre: string }) {
   );
 }
 
-function AseguradoraCard({ a }: { a: Aseguradora }) {
+function AseguradoraCard({ a, primary }: { a: Aseguradora; primary: string }) {
   const [logoError, setLogoError] = useState(false);
+  const [phoneHover, setPhoneHover] = useState(false);
+  const [condHover, setCondHover] = useState(false);
 
   const openLink = (url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-neutral-200/60 shadow-sm hover:shadow-lg hover:border-blue-100 transition-all duration-300 overflow-hidden group">
+    <div
+      className="bg-white rounded-2xl border border-neutral-200/60 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group"
+      style={{ ['--hover-border-color' as any]: primary + '30' }}
+    >
       {/* Logo area */}
       <div className="px-6 pt-6 pb-4 flex items-center gap-4">
         <div className="w-16 h-16 rounded-2xl overflow-hidden border border-neutral-100 bg-white flex-shrink-0 shadow-sm">
@@ -136,11 +141,19 @@ function AseguradoraCard({ a }: { a: Aseguradora }) {
           <h3 className="font-bold text-neutral-900 text-base leading-tight">{a.nombre}</h3>
           <a
             href={`tel:${a.telefono.replace(/\s/g, '')}`}
-            className="flex items-center gap-1.5 mt-1.5 group/phone"
+            className="flex items-center gap-1.5 mt-1.5"
             onClick={e => e.stopPropagation()}
+            onMouseEnter={() => setPhoneHover(true)}
+            onMouseLeave={() => setPhoneHover(false)}
           >
-            <Phone className="w-3.5 h-3.5 text-neutral-400 group-hover/phone:text-[#1C37E0] transition-colors" />
-            <span className="text-sm text-neutral-600 group-hover/phone:text-[#1C37E0] transition-colors font-medium">
+            <Phone
+              className="w-3.5 h-3.5 transition-colors"
+              style={{ color: phoneHover ? primary : '#a3a3a3' }}
+            />
+            <span
+              className="text-sm font-medium transition-colors"
+              style={{ color: phoneHover ? primary : '#525252' }}
+            >
               {a.telefono}
             </span>
           </a>
@@ -155,7 +168,8 @@ function AseguradoraCard({ a }: { a: Aseguradora }) {
         {a.pagoOnline && (
           <button
             onClick={() => openLink(a.pagoOnline!)}
-            className="w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl bg-[#1C37E0] hover:bg-[#1630C8] text-white text-sm font-semibold transition-all shadow-sm shadow-blue-600/20 hover:shadow-md hover:shadow-blue-600/25"
+            className="w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold transition-all shadow-sm hover:opacity-90 hover:shadow-md"
+            style={{ backgroundColor: primary }}
           >
             <div className="flex items-center gap-2">
               <Globe className="w-4 h-4 opacity-80" />
@@ -168,7 +182,14 @@ function AseguradoraCard({ a }: { a: Aseguradora }) {
         {a.condicionesGenerales && (
           <button
             onClick={() => openLink(a.condicionesGenerales!)}
-            className="w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl bg-neutral-50 hover:bg-blue-50 border border-neutral-200 hover:border-blue-200 text-neutral-700 hover:text-[#1C37E0] text-sm font-medium transition-all"
+            onMouseEnter={() => setCondHover(true)}
+            onMouseLeave={() => setCondHover(false)}
+            className="w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all"
+            style={{
+              backgroundColor: condHover ? primary + '08' : '#fafafa',
+              borderColor: condHover ? primary + '40' : '#e5e5e5',
+              color: condHover ? primary : '#404040',
+            }}
           >
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4 opacity-60" />
@@ -207,6 +228,9 @@ function AseguradoraCard({ a }: { a: Aseguradora }) {
 
 export function SeguwalletAseguradoras() {
   const [search, setSearch] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
+  const { brand } = useAgentBrand();
+  const primary = brand.primaryColor;
 
   const filtered = useMemo(() => {
     if (!search.trim()) return ASEGURADORAS;
@@ -224,13 +248,22 @@ export function SeguwalletAseguradoras() {
 
       {/* Search */}
       <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+        <Search
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors"
+          style={{ color: searchFocused ? primary : '#a3a3a3' }}
+        />
         <input
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setSearchFocused(false)}
           placeholder="Buscar aseguradora..."
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-neutral-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all shadow-sm"
+          className="w-full pl-10 pr-4 py-2.5 rounded-xl border bg-white text-sm focus:outline-none transition-all shadow-sm"
+          style={{
+            borderColor: searchFocused ? primary + '80' : '#e5e5e5',
+            boxShadow: searchFocused ? `0 0 0 3px ${primary}15` : undefined,
+          }}
         />
       </div>
 
@@ -243,7 +276,7 @@ export function SeguwalletAseguradoras() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(a => (
-            <AseguradoraCard key={a.id} a={a} />
+            <AseguradoraCard key={a.id} a={a} primary={primary} />
           ))}
         </div>
       )}
