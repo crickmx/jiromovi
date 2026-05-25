@@ -1,12 +1,58 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ArrowRight, ChevronLeft } from 'lucide-react';
 import { seguwalletSignIn } from '../lib/seguwalletAuth';
-import { cn } from '@/lib/utils';
+import logoDark from '../assets/logo-dark.svg';
 
-const LOGO_URL = 'https://movi.digital/wp-content/uploads/2025/12/moviRecurso-5.png';
+// ─── Animated background ──────────────────────────────────────────────────────
+function BackgroundLayer() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      {/* Base gradient */}
+      <div className="absolute inset-0" style={{
+        background: 'linear-gradient(135deg, #050e24 0%, #0a2260 35%, #0d2e80 55%, #091a50 80%, #030810 100%)',
+      }} />
+      {/* Animated glow orbs */}
+      <div
+        className="absolute -top-48 -left-48 w-[650px] h-[650px] rounded-full"
+        style={{
+          background: 'radial-gradient(circle, #1c37e0 0%, transparent 65%)',
+          opacity: 0.22,
+          animation: 'sw-pulse-slow 9s ease-in-out infinite',
+        }}
+      />
+      <div
+        className="absolute top-1/3 -right-56 w-[550px] h-[550px] rounded-full"
+        style={{
+          background: 'radial-gradient(circle, #3b58f0 0%, transparent 65%)',
+          opacity: 0.17,
+          animation: 'sw-pulse-slower 13s ease-in-out infinite',
+        }}
+      />
+      <div
+        className="absolute -bottom-40 left-1/3 w-[480px] h-[480px] rounded-full"
+        style={{
+          background: 'radial-gradient(circle, #1e40af 0%, transparent 65%)',
+          opacity: 0.14,
+          animation: 'sw-pulse-slow 10s ease-in-out infinite 2s',
+        }}
+      />
+      {/* Subtle grid */}
+      <div className="absolute inset-0" style={{
+        backgroundImage: `linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                          linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)`,
+        backgroundSize: '64px 64px',
+      }} />
+      {/* Top edge highlight */}
+      <div className="absolute top-0 left-0 right-0 h-px" style={{
+        background: 'linear-gradient(90deg, transparent, rgba(91,120,255,0.4), transparent)',
+      }} />
+    </div>
+  );
+}
 
 export function SeguwalletLogin() {
+  // ── Auth logic — untouched ──────────────────────────────────────────────────
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,12 +65,10 @@ export function SeguwalletLogin() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
     if (!email.trim() || !password.trim()) {
       setError('Ingresa tu correo y contraseña.');
       return;
     }
-
     setLoading(true);
     try {
       await seguwalletSignIn(email.trim(), password);
@@ -55,324 +99,319 @@ export function SeguwalletLogin() {
     setLoading(false);
     setForgotSent(true);
   };
+  // ── End of untouched logic ──────────────────────────────────────────────────
+
+  // Shared input style — inline to guarantee rendering
+  const inputBase: React.CSSProperties = {
+    background: 'rgba(255,255,255,0.08)',
+    border: '1px solid rgba(255,255,255,0.14)',
+    color: 'white',
+  };
+  const inputFocusOn = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.currentTarget.style.border = '1px solid rgba(91,120,255,0.6)';
+    e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
+    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59,88,240,0.15)';
+  };
+  const inputFocusOff = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.currentTarget.style.border = inputBase.border as string;
+    e.currentTarget.style.background = inputBase.background as string;
+    e.currentTarget.style.boxShadow = 'none';
+  };
+  const inputCls = 'w-full h-12 rounded-2xl text-sm outline-none transition-all duration-200 placeholder:text-[rgba(148,185,255,0.35)]';
 
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-between relative overflow-hidden"
-      style={{
-        background: 'linear-gradient(160deg, #0a1628 0%, #0e2050 40%, #0d1f4a 70%, #07101f 100%)',
-      }}
-    >
-      {/* Background decorative blobs */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div
-          className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full opacity-20"
-          style={{ background: 'radial-gradient(circle, #1a56db 0%, transparent 70%)' }}
-        />
-        <div
-          className="absolute -bottom-32 -left-32 w-[400px] h-[400px] rounded-full opacity-15"
-          style={{ background: 'radial-gradient(circle, #0ea5e9 0%, transparent 70%)' }}
-        />
-        <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-5"
-          style={{ background: 'radial-gradient(circle, #38bdf8 0%, transparent 70%)' }}
-        />
-      </div>
+    <>
+      <div className="relative min-h-screen flex flex-col overflow-hidden">
+        <BackgroundLayer />
 
-      {/* Spacer top */}
-      <div className="flex-1" />
+        {/* ── Two-column layout ── */}
+        <div className="relative z-10 flex flex-1 min-h-screen">
 
-      {/* ── Main card ── */}
-      <main className="relative z-10 w-full flex flex-col items-center px-5 py-8">
+          {/* ── LEFT COLUMN: brand ── */}
+          <div className="hidden lg:flex lg:w-[52%] xl:w-[55%] flex-col items-start justify-between px-16 xl:px-24 py-14">
 
-        {/* Logo */}
-        <div className="mb-8 flex flex-col items-center">
-          <div
-            className="rounded-2xl p-3 mb-1"
-            style={{ background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(8px)' }}
-          >
+            {/* Logo — free-floating, no container */}
             <img
-              src={LOGO_URL}
-              alt="MOVI Digital"
-              className="h-14 w-auto object-contain"
-              style={{ maxWidth: '160px' }}
-              onError={e => {
-                (e.currentTarget as HTMLImageElement).style.display = 'none';
-              }}
+              src={logoDark}
+              alt="Seguwallet"
+              className="h-20 xl:h-24 w-auto object-contain"
             />
-          </div>
-        </div>
 
-        {/* Heading */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-extrabold text-white tracking-tight leading-tight">
-            Bienvenido
-          </h1>
-          <p className="mt-2 text-sm font-medium" style={{ color: 'rgba(148,185,255,0.8)' }}>
-            Accede a tu wallet de seguros
-          </p>
-        </div>
-
-        {/* Card */}
-        <div
-          className="w-full max-w-sm rounded-3xl p-7 shadow-2xl"
-          style={{
-            background: 'rgba(255,255,255,0.06)',
-            backdropFilter: 'blur(24px)',
-            border: '1px solid rgba(255,255,255,0.10)',
-            boxShadow: '0 25px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)',
-          }}
-        >
-          {/* Error */}
-          {error && (
-            <div
-              className="mb-5 px-4 py-3 rounded-2xl text-sm font-medium"
-              style={{
-                background: 'rgba(239,68,68,0.15)',
-                border: '1px solid rgba(239,68,68,0.3)',
-                color: '#fca5a5',
-              }}
-            >
-              {error}
+            {/* Center: copy */}
+            <div className="max-w-md">
+              <p className="text-[11px] font-semibold tracking-[0.2em] uppercase mb-4"
+                style={{ color: 'rgba(91,120,255,0.8)' }}>
+                Portal de clientes
+              </p>
+              <h1 className="text-4xl xl:text-5xl font-extrabold text-white leading-[1.12] tracking-tight">
+                Tu cartera<br />digital de<br />
+                <span style={{ color: '#5b78ff' }}>seguros</span>
+              </h1>
+              <p className="mt-5 text-base leading-relaxed max-w-sm"
+                style={{ color: 'rgba(255,255,255,0.45)' }}>
+                Consulta, organiza y protege tus pólizas en un solo lugar.
+              </p>
             </div>
-          )}
 
-          {forgotMode ? (
-            forgotSent ? (
-              <div className="text-center py-4">
-                <div
-                  className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                  style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)' }}
-                >
-                  <Mail className="w-7 h-7" style={{ color: '#86efac' }} />
-                </div>
-                <h3 className="text-lg font-bold text-white mb-2">Revisa tu correo</h3>
-                <p className="text-sm mb-6" style={{ color: 'rgba(148,185,255,0.75)' }}>
-                  Si tu correo está registrado, recibirás un enlace para restablecer tu contraseña.
-                </p>
-                <button
-                  onClick={() => { setForgotMode(false); setForgotSent(false); setError(''); }}
-                  className="w-full py-3.5 rounded-2xl text-sm font-bold transition-all duration-200 active:scale-[0.98]"
-                  style={{
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    color: 'white',
-                  }}
-                >
-                  Volver al inicio de sesión
-                </button>
+            {/* Footer links */}
+            <div className="flex items-center gap-5 text-[11px]" style={{ color: 'rgba(255,255,255,0.28)' }}>
+              <a href="https://movi.digital" target="_blank" rel="noopener noreferrer"
+                className="hover:text-white/70 transition-colors">movi.digital</a>
+              <span className="w-px h-3" style={{ background: 'rgba(255,255,255,0.15)' }} />
+              <a href="https://grupojiro.com" target="_blank" rel="noopener noreferrer"
+                className="hover:text-white/70 transition-colors">grupojiro.com</a>
+              <span className="w-px h-3" style={{ background: 'rgba(255,255,255,0.15)' }} />
+              <span>© {new Date().getFullYear()} Seguwallet</span>
+            </div>
+          </div>
+
+          {/* Vertical divider */}
+          <div className="hidden lg:block w-px self-stretch my-12" style={{
+            background: 'linear-gradient(180deg, transparent, rgba(255,255,255,0.09) 20%, rgba(255,255,255,0.09) 80%, transparent)',
+          }} />
+
+          {/* ── RIGHT COLUMN: form ── */}
+          <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 lg:px-14 xl:px-20">
+
+            {/* Mobile logo */}
+            <div className="lg:hidden mb-10 text-center">
+              <img
+                src={logoDark}
+                alt="Seguwallet"
+                className="h-16 w-auto object-contain mx-auto"
+              />
+            </div>
+
+            <div className="w-full max-w-[380px]">
+
+              {/* Heading */}
+              <div className="mb-8">
+                {forgotMode ? (
+                  <>
+                    <h2 className="text-2xl font-extrabold text-white tracking-tight">
+                      {forgotSent ? 'Revisa tu correo' : 'Recuperar contraseña'}
+                    </h2>
+                    <p className="mt-1.5 text-sm" style={{ color: 'rgba(148,185,255,0.55)' }}>
+                      {forgotSent
+                        ? 'Si tu correo está registrado recibirás el enlace.'
+                        : 'Te enviaremos un enlace para restablecerla.'}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="text-2xl font-extrabold text-white tracking-tight">
+                      Iniciar sesión
+                    </h2>
+                    <p className="mt-1.5 text-sm" style={{ color: 'rgba(148,185,255,0.55)' }}>
+                      Accede a tu wallet de seguros
+                    </p>
+                  </>
+                )}
               </div>
-            ) : (
-              <form onSubmit={handleForgotSubmit} className="space-y-5" noValidate>
-                <div>
-                  <h3 className="text-lg font-bold text-white mb-1">Recuperar contraseña</h3>
-                  <p className="text-xs mb-4" style={{ color: 'rgba(148,185,255,0.7)' }}>
-                    Ingresa tu correo y te enviaremos un enlace para restablecerla.
-                  </p>
-                  <div className="relative">
-                    <Mail
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-                      style={{ color: 'rgba(148,185,255,0.5)' }}
-                    />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      placeholder="tu@correo.com"
-                      className="w-full pl-10 pr-4 py-3.5 rounded-2xl text-sm text-white placeholder:text-[rgba(148,185,255,0.35)] outline-none transition-all duration-200 focus:ring-1"
-                      style={{
-                        background: 'rgba(255,255,255,0.07)',
-                        border: '1px solid rgba(255,255,255,0.12)',
-                      }}
-                      autoComplete="email"
-                      autoFocus
-                    />
+
+              {/* Error */}
+              {error && (
+                <div className="mb-5 px-4 py-3 rounded-2xl text-sm font-medium" style={{
+                  background: 'rgba(239,68,68,0.13)',
+                  border: '1px solid rgba(239,68,68,0.28)',
+                  color: '#fca5a5',
+                }}>
+                  {error}
+                </div>
+              )}
+
+              {/* ── FORGOT SENT ── */}
+              {forgotMode && forgotSent ? (
+                <div className="space-y-4">
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{
+                    background: 'rgba(34,197,94,0.13)',
+                    border: '1px solid rgba(34,197,94,0.28)',
+                  }}>
+                    <Mail className="w-7 h-7" style={{ color: '#86efac' }} />
                   </div>
-                </div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-bold text-white transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
-                  style={{
-                    background: loading ? 'rgba(59,130,246,0.5)' : 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)',
-                    boxShadow: loading ? 'none' : '0 4px 20px rgba(29,78,216,0.4)',
-                  }}
-                >
-                  {loading ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    'Enviar enlace'
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setForgotMode(false); setError(''); }}
-                  className="w-full py-3 rounded-2xl text-sm font-semibold transition-all duration-200"
-                  style={{ color: 'rgba(148,185,255,0.7)' }}
-                >
-                  Cancelar
-                </button>
-              </form>
-            )
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-              {/* Email */}
-              <div>
-                <label className="block text-xs font-semibold mb-2 tracking-wide" style={{ color: 'rgba(148,185,255,0.7)' }}>
-                  Correo electrónico
-                </label>
-                <div className="relative">
-                  <Mail
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-                    style={{ color: 'rgba(148,185,255,0.4)' }}
-                  />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="tu@correo.com"
-                    className="w-full pl-10 pr-4 py-3.5 rounded-2xl text-sm text-white placeholder:text-[rgba(148,185,255,0.3)] outline-none transition-all duration-200 focus:ring-1"
-                    style={{
-                      background: 'rgba(255,255,255,0.07)',
-                      border: '1px solid rgba(255,255,255,0.10)',
-                    }}
-                    onFocus={e => {
-                      e.currentTarget.style.border = '1px solid rgba(59,130,246,0.5)';
-                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.12)';
-                    }}
-                    onBlur={e => {
-                      e.currentTarget.style.border = '1px solid rgba(255,255,255,0.10)';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                    autoComplete="email"
-                    autoFocus
-                  />
-                </div>
-              </div>
-
-              {/* Password */}
-              <div>
-                <label className="block text-xs font-semibold mb-2 tracking-wide" style={{ color: 'rgba(148,185,255,0.7)' }}>
-                  Contraseña
-                </label>
-                <div className="relative">
-                  <Lock
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-                    style={{ color: 'rgba(148,185,255,0.4)' }}
-                  />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full pl-10 pr-11 py-3.5 rounded-2xl text-sm text-white placeholder:text-[rgba(148,185,255,0.3)] outline-none transition-all duration-200"
-                    style={{
-                      background: 'rgba(255,255,255,0.07)',
-                      border: '1px solid rgba(255,255,255,0.10)',
-                    }}
-                    onFocus={e => {
-                      e.currentTarget.style.border = '1px solid rgba(59,130,246,0.5)';
-                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.12)';
-                    }}
-                    onBlur={e => {
-                      e.currentTarget.style.border = '1px solid rgba(255,255,255,0.10)';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                    autoComplete="current-password"
-                  />
                   <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 transition-colors"
-                    style={{ color: 'rgba(148,185,255,0.45)' }}
-                    onMouseEnter={e => (e.currentTarget.style.color = 'rgba(148,185,255,0.85)')}
-                    onMouseLeave={e => (e.currentTarget.style.color = 'rgba(148,185,255,0.45)')}
+                    onClick={() => { setForgotMode(false); setForgotSent(false); setError(''); }}
+                    className="w-full flex items-center justify-center gap-1.5 py-3 rounded-2xl text-sm font-semibold transition-all"
+                    style={{ color: 'rgba(148,185,255,0.7)' }}
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    <ChevronLeft className="w-4 h-4" />
+                    Volver al inicio de sesión
                   </button>
                 </div>
-              </div>
 
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={loading}
-                className={cn(
-                  'w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-sm font-bold text-white mt-2',
-                  'transition-all duration-200 active:scale-[0.98]',
-                  'disabled:opacity-60 disabled:cursor-not-allowed'
-                )}
-                style={{
-                  background: loading
-                    ? 'rgba(59,130,246,0.5)'
-                    : 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)',
-                  boxShadow: loading ? 'none' : '0 4px 24px rgba(29,78,216,0.45)',
-                }}
-              >
-                {loading ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  'Iniciar sesión'
-                )}
-              </button>
-            </form>
-          )}
+              ) : forgotMode ? (
+                /* ── FORGOT FORM ── */
+                <form onSubmit={handleForgotSubmit} className="space-y-4" noValidate>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold tracking-wide uppercase"
+                      style={{ color: 'rgba(148,185,255,0.6)' }}>
+                      Correo electrónico
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+                        style={{ color: 'rgba(148,185,255,0.4)' }} />
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        placeholder="tu@correo.com"
+                        className={`${inputCls} pl-10 pr-4`}
+                        style={inputBase}
+                        onFocus={inputFocusOn}
+                        onBlur={inputFocusOff}
+                        autoComplete="email"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl text-sm font-bold text-white transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                    style={{
+                      background: loading ? 'rgba(59,88,240,0.5)' : 'linear-gradient(135deg, #1c37e0 0%, #1e40af 100%)',
+                      boxShadow: loading ? 'none' : '0 4px 20px rgba(28,55,224,0.4)',
+                    }}
+                  >
+                    {loading
+                      ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      : 'Enviar enlace'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setForgotMode(false); setError(''); }}
+                    className="w-full flex items-center justify-center gap-1.5 py-3 rounded-2xl text-sm font-semibold transition-all"
+                    style={{ color: 'rgba(148,185,255,0.6)' }}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Volver al inicio de sesión
+                  </button>
+                </form>
 
-          {/* Forgot password link */}
-          {!forgotMode && (
-            <div className="mt-5 text-center">
-              <button
-                type="button"
-                onClick={() => { setForgotMode(true); setError(''); }}
-                className="text-xs font-semibold transition-colors"
-                style={{ color: 'rgba(148,185,255,0.65)' }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'rgba(148,185,255,1)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(148,185,255,0.65)')}
-              >
-                Olvidé mi contraseña
-              </button>
+              ) : (
+                /* ── LOGIN FORM ── */
+                <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+                  {/* Email */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold tracking-wide uppercase"
+                      style={{ color: 'rgba(148,185,255,0.6)' }}>
+                      Correo electrónico
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+                        style={{ color: 'rgba(148,185,255,0.4)' }} />
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        placeholder="tu@correo.com"
+                        className={`${inputCls} pl-10 pr-4`}
+                        style={inputBase}
+                        onFocus={inputFocusOn}
+                        onBlur={inputFocusOff}
+                        autoComplete="email"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  {/* Password */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold tracking-wide uppercase"
+                      style={{ color: 'rgba(148,185,255,0.6)' }}>
+                      Contraseña
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+                        style={{ color: 'rgba(148,185,255,0.4)' }} />
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className={`${inputCls} pl-10 pr-12`}
+                        style={inputBase}
+                        onFocus={inputFocusOn}
+                        onBlur={inputFocusOff}
+                        autoComplete="current-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(p => !p)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 transition-colors"
+                        style={{ color: 'rgba(148,185,255,0.45)' }}
+                        onMouseEnter={e => (e.currentTarget.style.color = 'rgba(148,185,255,0.9)')}
+                        onMouseLeave={e => (e.currentTarget.style.color = 'rgba(148,185,255,0.45)')}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Forgot link */}
+                  <div className="flex justify-end pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => { setForgotMode(true); setError(''); }}
+                      className="text-xs font-semibold transition-colors"
+                      style={{ color: 'rgba(148,185,255,0.6)' }}
+                      onMouseEnter={e => (e.currentTarget.style.color = 'rgba(148,185,255,1)')}
+                      onMouseLeave={e => (e.currentTarget.style.color = 'rgba(148,185,255,0.6)')}
+                    >
+                      Olvidé mi contraseña
+                    </button>
+                  </div>
+
+                  {/* Submit */}
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl text-sm font-bold text-[#0a1e5e] transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed mt-1"
+                    style={{
+                      background: loading ? 'rgba(255,255,255,0.65)' : 'white',
+                      boxShadow: loading ? 'none' : '0 4px 24px rgba(0,0,0,0.28)',
+                    }}
+                  >
+                    {loading ? (
+                      <div className="w-5 h-5 border-2 border-blue-900/30 border-t-blue-900 rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <span>Iniciar sesión</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
             </div>
-          )}
+
+            {/* Mobile footer */}
+            <div className="lg:hidden mt-12 flex items-center gap-4 text-[11px]"
+              style={{ color: 'rgba(255,255,255,0.25)' }}>
+              <a href="https://movi.digital" target="_blank" rel="noopener noreferrer"
+                className="hover:text-white/60 transition-colors">movi.digital</a>
+              <span className="w-px h-3" style={{ background: 'rgba(255,255,255,0.15)' }} />
+              <a href="https://grupojiro.com" target="_blank" rel="noopener noreferrer"
+                className="hover:text-white/60 transition-colors">grupojiro.com</a>
+            </div>
+          </div>
         </div>
+      </div>
 
-        {/* Bottom note */}
-        <p className="mt-6 text-center text-[11px]" style={{ color: 'rgba(148,185,255,0.35)' }}>
-          Portal exclusivo para clientes asegurados.
-        </p>
-      </main>
-
-      {/* Spacer bottom */}
-      <div className="flex-1" />
-
-      {/* ── Footer ── */}
-      <footer className="relative z-10 w-full py-5 px-6 text-center">
-        <p className="text-[11px]" style={{ color: 'rgba(148,185,255,0.35)' }}>
-          Powered by{' '}
-          <a
-            href="https://movi.digital"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-semibold transition-colors"
-            style={{ color: 'rgba(148,185,255,0.55)' }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'rgba(148,185,255,0.9)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'rgba(148,185,255,0.55)')}
-          >
-            MOVI Digital
-          </a>
-          {' · '}
-          <a
-            href="https://grupojiro.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-semibold transition-colors"
-            style={{ color: 'rgba(148,185,255,0.55)' }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'rgba(148,185,255,0.9)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'rgba(148,185,255,0.55)')}
-          >
-            Grupo JIRO
-          </a>
-        </p>
-      </footer>
-    </div>
+      {/* Keyframe animations */}
+      <style>{`
+        @keyframes sw-pulse-slow {
+          0%, 100% { opacity: 0.22; transform: scale(1); }
+          50%       { opacity: 0.32; transform: scale(1.07); }
+        }
+        @keyframes sw-pulse-slower {
+          0%, 100% { opacity: 0.17; transform: scale(1); }
+          50%       { opacity: 0.26; transform: scale(1.09); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .sw-pulse-slow, .sw-pulse-slower { animation: none !important; }
+        }
+      `}</style>
+    </>
   );
 }
