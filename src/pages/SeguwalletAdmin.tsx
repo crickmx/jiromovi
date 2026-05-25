@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
-import { Shield, Plus, Search, Eye, CreditCard as Edit, RotateCcw, Users, X, Check, UserPlus } from 'lucide-react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { Shield, Plus, Search, Eye, CreditCard as Edit, RotateCcw, Users, X, Check, UserPlus, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { getAgentSicasClients } from '@/seguwallet/lib/seguwalletAuth';
+import { getAgentSicasClients, searchSicasClientsAdmin, type SicasClientResult } from '@/seguwallet/lib/seguwalletAuth';
 import { cn } from '@/lib/utils';
 
 interface SeguwalletCustomer {
@@ -25,12 +25,7 @@ interface Agent {
   apellidos: string;
 }
 
-interface SicasClient {
-  sicas_client_id: string;
-  client_name: string;
-  rfc: string;
-  vend_id?: string;
-}
+type SicasClient = SicasClientResult;
 
 interface CreateFormData {
   full_name: string;
@@ -91,6 +86,8 @@ export function SeguwalletAdmin() {
   const [assignedSicas, setAssignedSicas] = useState<any[]>([]);
   const [sicasSearch, setSicasSearch] = useState('');
   const [sicasSaving, setSicasSaving] = useState(false);
+  const sicasDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sicasAgentIdRef = useRef<string>('');
 
   // Reset password
   const [newPassword, setNewPassword] = useState('');
@@ -148,25 +145,37 @@ export function SeguwalletAdmin() {
     setAgents(data || []);
   };
 
-  const loadSicasClients = async (agentUserId: string, customerId: string) => {
+  const fetchSicasAvailable = useCallback(async (agentUserId: string, query: string) => {
     setSicasLoading(true);
     try {
-      const [available, assignedRes] = await Promise.all([
-        getAgentSicasClients(agentUserId),
-        supabase
-          .from('seguwallet_customer_sicas_clients')
-          .select('*')
-          .eq('seguwallet_customer_id', customerId),
-      ]);
-      setAvailableSicas(available);
-      setAssignedSicas(assignedRes.data || []);
+      const results = isAdmin
+        ? await searchSicasClientsAdmin(query, 200, 0)
+        : await getAgentSicasClients(agentUserId, query, 200, 0);
+      setAvailableSicas(results);
     } catch (err) {
-      console.error('Error loading SICAS clients:', err);
+      console.error('Error searching SICAS clients:', err);
       setAvailableSicas([]);
-      setAssignedSicas([]);
     } finally {
       setSicasLoading(false);
     }
+  }, [isAdmin]);
+
+  const loadSicasClients = async (agentUserId: string, customerId: string) => {
+    sicasAgentIdRef.current = agentUserId;
+    const assignedRes = await supabase
+      .from('seguwallet_customer_sicas_clients')
+      .select('*')
+      .eq('seguwallet_customer_id', customerId);
+    setAssignedSicas(assignedRes.data || []);
+    await fetchSicasAvailable(agentUserId, '');
+  };
+
+  const handleSicasSearchChange = (value: string) => {
+    setSicasSearch(value);
+    if (sicasDebounceRef.current) clearTimeout(sicasDebounceRef.current);
+    sicasDebounceRef.current = setTimeout(() => {
+      fetchSicasAvailable(sicasAgentIdRef.current, value);
+    }, 350);
   };
 
   // ── Create ────────────────────────────────────────────────────────
@@ -237,6 +246,7 @@ export function SeguwalletAdmin() {
   const openSicas = (customer: SeguwalletCustomer) => {
     setSelectedCustomer(customer);
     setSicasSearch('');
+    setAvailableSicas([]);
     setActiveModal('sicas');
     loadSicasClients(customer.agent_user_id, customer.id);
   };
@@ -320,11 +330,8 @@ export function SeguwalletAdmin() {
     return c.full_name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || (c.agent_name || '').toLowerCase().includes(q);
   });
 
-  const filteredSicas = availableSicas.filter(c => {
-    if (!sicasSearch.trim()) return true;
-    const q = sicasSearch.toLowerCase();
-    return c.client_name?.toLowerCase().includes(q) || c.rfc?.toLowerCase().includes(q);
-  });
+  // Server-side search — availableSicas is already filtered
+  const filteredSicas = availableSicas;
 
   if (loading) {
     return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-[3px] border-accent/30 border-t-accent rounded-full animate-spin" /></div>;
@@ -484,10 +491,13 @@ export function SeguwalletAdmin() {
         <ModalWrap title={`Clientes SICAS: ${toTitleCase(selectedCustomer.full_name)}`} onClose={closeModal} wide>
           <p className="text-xs text-neutral-500 mb-4">Selecciona los clientes SICAS del agente que este cliente podra visualizar en su portal.</p>
           <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
-            <input type="text" value={sicasSearch} onChange={e => setSicasSearch(e.target.value)} placeholder="Buscar cliente SICAS..." className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50/50 dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+            {sicasLoading
+              ? <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#1C37E0] animate-spin" />
+              : <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+            }
+            <input type="text" value={sicasSearch} onChange={e => handleSicasSearchChange(e.target.value)} placeholder="Buscar cliente SICAS..." className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50/50 dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
           </div>
-          {sicasLoading ? (
+          {sicasLoading && availableSicas.length === 0 ? (
             <div className="flex items-center justify-center py-8"><div className="w-6 h-6 border-2 border-blue-200 border-t-[#1C37E0] rounded-full animate-spin" /></div>
           ) : filteredSicas.length === 0 ? (
             <div className="text-center py-8 text-sm text-neutral-400">

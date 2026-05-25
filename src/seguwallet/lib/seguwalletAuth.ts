@@ -82,55 +82,66 @@ export async function getAgentInfo(agentUserId: string) {
   return data;
 }
 
-// Get SICAS clients available for an agent's portfolio
-// Queries sicas_mapeo_vendedor_usuario to find the agent's vend_ids,
-// then gets distinct clients from sicas_documents
-export async function getAgentSicasClients(agentUserId: string): Promise<Array<{
+export interface SicasClientResult {
   sicas_client_id: string;
   client_name: string;
   rfc: string;
   vend_id: string;
-}>> {
-  // Get the agent's SICAS vendor IDs
-  const { data: mappings } = await supabase
-    .from('sicas_mapeo_vendedor_usuario')
-    .select('id_sicas_vendedor')
-    .eq('movi_user_id', agentUserId);
+  poliza_count?: number;
+}
 
-  if (!mappings || mappings.length === 0) {
-    // If no mapping found, try querying all vendors for admin use
-    // Return distinct clients from all documents scoped to agent
+// Get SICAS clients for an agent using the server-side RPC (fast, server-side dedup)
+export async function getAgentSicasClients(
+  agentUserId: string,
+  query = '',
+  limit = 200,
+  offset = 0,
+): Promise<SicasClientResult[]> {
+  const { data, error } = await supabase.rpc('search_sicas_clients_for_agent', {
+    p_agent_user_id: agentUserId,
+    p_query: query,
+    p_limit: limit,
+    p_offset: offset,
+  });
+
+  if (error) {
+    console.error('search_sicas_clients_for_agent error:', error);
     return [];
   }
 
-  const vendIds = mappings.map(m => m.id_sicas_vendedor);
+  return (data || []).map((row: any) => ({
+    sicas_client_id: row.sicas_client_id,
+    client_name: row.client_name,
+    rfc: '',
+    vend_id: row.vend_id,
+    poliza_count: Number(row.poliza_count),
+  }));
+}
 
-  // Get distinct clients from sicas_documents by vend_id
-  const { data: docs } = await supabase
-    .from('sicas_documents')
-    .select('cliente, vend_id, desp_id')
-    .in('vend_id', vendIds)
-    .not('cliente', 'is', null)
-    .order('cliente');
+// Search SICAS clients (admin, all vendors) using server-side RPC
+export async function searchSicasClientsAdmin(
+  query = '',
+  limit = 200,
+  offset = 0,
+): Promise<SicasClientResult[]> {
+  const { data, error } = await supabase.rpc('search_sicas_clients_admin', {
+    p_query: query,
+    p_limit: limit,
+    p_offset: offset,
+  });
 
-  if (!docs) return [];
-
-  // Deduplicate by cliente name
-  const seen = new Set<string>();
-  const clients: Array<{ sicas_client_id: string; client_name: string; rfc: string; vend_id: string }> = [];
-
-  for (const doc of docs) {
-    if (!doc.cliente || seen.has(doc.cliente)) continue;
-    seen.add(doc.cliente);
-    clients.push({
-      sicas_client_id: doc.cliente, // use client name as ID since no numeric client ID
-      client_name: doc.cliente,
-      rfc: '',
-      vend_id: doc.vend_id,
-    });
+  if (error) {
+    console.error('search_sicas_clients_admin error:', error);
+    return [];
   }
 
-  return clients;
+  return (data || []).map((row: any) => ({
+    sicas_client_id: row.sicas_client_id,
+    client_name: row.client_name,
+    rfc: '',
+    vend_id: row.vend_id,
+    poliza_count: Number(row.poliza_count),
+  }));
 }
 
 export async function logDownload(customerId: string, doc: {
