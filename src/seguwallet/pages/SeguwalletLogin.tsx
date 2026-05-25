@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { seguwalletSignIn } from '../lib/seguwalletAuth';
 import { cn } from '@/lib/utils';
-import logoLight from '../assets/logo-light.svg';
+const LOGO_URL = 'https://movi.digital/wp-content/uploads/2025/12/moviRecurso-6.png';
 
 export function SeguwalletLogin() {
   const navigate = useNavigate();
@@ -49,7 +49,7 @@ export function SeguwalletLogin() {
       <div className="relative w-full max-w-md">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <img src={logoLight} alt="Seguwallet" className="h-32 w-auto object-contain" />
+          <img src={LOGO_URL} alt="Seguwallet" className="h-20 w-auto object-contain" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
           <p className="text-sm text-neutral-500 mt-2">Tu wallet de seguros</p>
         </div>
 

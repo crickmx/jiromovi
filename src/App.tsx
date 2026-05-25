@@ -101,6 +101,7 @@ import { SeguwalletLogin } from './seguwallet/pages/SeguwalletLogin';
 import { SeguwalletDashboard } from './seguwallet/pages/SeguwalletDashboard';
 import { SeguwalletPolizas } from './seguwallet/pages/SeguwalletPolizas';
 import { SeguwalletCotizar } from './seguwallet/pages/SeguwalletCotizar';
+import { SeguwalletAseguradoras } from './seguwallet/pages/SeguwalletAseguradoras';
 import { SeguwalletPerfil } from './seguwallet/pages/SeguwalletPerfil';
 import { SeguwalletProvider } from './seguwallet/lib/SeguwalletContext';
 import { SeguwalletLayout } from './seguwallet/components/SeguwalletLayout';
@@ -115,6 +116,7 @@ function SeguwalletApp() {
       <Route path="/seguwallet/dashboard" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletDashboard /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
       <Route path="/seguwallet/polizas" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletPolizas /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
       <Route path="/seguwallet/cotizar" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletCotizar /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
+      <Route path="/seguwallet/aseguradoras" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletAseguradoras /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
       <Route path="/seguwallet/perfil" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletPerfil /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
       <Route path="*" element={<Navigate to="/seguwallet/login" replace />} />
     </Routes>
@@ -249,6 +251,7 @@ function App() {
               <Route path="/seguwallet/dashboard" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletDashboard /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
               <Route path="/seguwallet/polizas" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletPolizas /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
               <Route path="/seguwallet/cotizar" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletCotizar /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
+              <Route path="/seguwallet/aseguradoras" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletAseguradoras /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
               <Route path="/seguwallet/perfil" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletPerfil /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
 
               {/* Redirect raíz */}
