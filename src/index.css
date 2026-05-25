@@ -416,6 +416,63 @@
     box-shadow: var(--shadow-sm);
   }
 
+  /* ── Primary Sidebar (office-colored rail) ── */
+  .sidebar-rail {
+    background: rgb(var(--movi-accent-rgb));
+  }
+
+  .sidebar-rail-btn {
+    color: rgba(var(--movi-accent-foreground-rgb) / 0.55);
+    transition: background 150ms, color 150ms;
+  }
+
+  .sidebar-rail-btn:hover {
+    background: rgba(var(--movi-accent-foreground-rgb) / 0.10);
+    color: rgb(var(--movi-accent-foreground-rgb));
+  }
+
+  .sidebar-rail-btn.active {
+    background: rgba(var(--movi-accent-foreground-rgb) / 0.18);
+    color: rgb(var(--movi-accent-foreground-rgb));
+  }
+
+  .sidebar-rail-sep {
+    background: rgba(var(--movi-accent-foreground-rgb) / 0.14);
+  }
+
+  .sidebar-rail-logo-btn {
+    background: rgba(var(--movi-accent-foreground-rgb) / 0.10);
+    transition: background 150ms, transform 150ms;
+  }
+
+  .sidebar-rail-logo-btn:hover {
+    background: rgba(var(--movi-accent-foreground-rgb) / 0.18);
+    transform: scale(1.05);
+  }
+
+  .sidebar-rail-logo-btn:active {
+    transform: scale(0.95);
+  }
+
+  .sidebar-rail-avatar-ring {
+    outline: 2px solid rgba(var(--movi-accent-foreground-rgb) / 0.18);
+  }
+
+  .sidebar-rail-avatar-fallback {
+    background: rgba(var(--movi-accent-foreground-rgb) / 0.18);
+    color: rgb(var(--movi-accent-foreground-rgb));
+  }
+
+  .sidebar-rail-signout {
+    color: rgba(var(--movi-accent-foreground-rgb) / 0.45);
+    transition: background 150ms, color 150ms;
+  }
+
+  .sidebar-rail-signout:hover {
+    background: rgba(255 80 80 / 0.18);
+    color: #ff8080;
+  }
+
   /* Subtle accent background */
   .accent-surface {
     background: linear-gradient(135deg, rgb(var(--movi-accent-rgb) / 0.03), rgb(var(--movi-accent-rgb) / 0.06));

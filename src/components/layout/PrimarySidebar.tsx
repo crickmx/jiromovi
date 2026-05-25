@@ -31,12 +31,13 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex flex-col h-full w-[72px] items-center bg-[#0f1117] dark:bg-[#0a0a0c]">
+      <div className="sidebar-rail flex flex-col h-full w-[72px] items-center">
+
         {/* Logo */}
         <div className="flex items-center justify-center h-16 w-full">
           <button
             onClick={() => navigate('/dashboard')}
-            className="w-11 h-11 rounded-2xl bg-white/[0.06] flex items-center justify-center transition-all duration-200 hover:bg-white/[0.1] hover:scale-105 active:scale-95"
+            className="sidebar-rail-logo-btn w-11 h-11 rounded-2xl flex items-center justify-center"
           >
             <img
               src="/movirecurso_7.png"
@@ -47,9 +48,9 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
         </div>
 
         {/* Separator */}
-        <div className="w-8 h-px bg-white/[0.06] mb-2" />
+        <div className="sidebar-rail-sep w-8 h-px mb-2" />
 
-        {/* Navigation - ordered list */}
+        {/* Navigation */}
         <div className="flex-1 flex flex-col items-center gap-1.5 py-2 overflow-y-auto w-full px-2.5">
           {NAV_ORDER.map((entry, idx) => {
             if (entry.type === 'link') {
@@ -63,13 +64,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => navigate(item.path)}
-                      className={cn(
-                        "w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200",
-                        "hover:bg-white/[0.08] active:scale-90",
-                        isActive
-                          ? "bg-accent/20 text-accent shadow-[0_0_12px_rgba(var(--movi-accent-rgb)/0.2)] ring-1 ring-accent/30"
-                          : "text-neutral-500 hover:text-white"
-                      )}
+                      className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90', isActive && 'active')}
                     >
                       <Icon className="w-[18px] h-[18px]" />
                     </button>
@@ -92,13 +87,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => navigate(firstPath)}
-                    className={cn(
-                      "w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200",
-                      "hover:bg-white/[0.08] active:scale-90",
-                      isActive
-                        ? "bg-accent/20 text-accent shadow-[0_0_12px_rgba(var(--movi-accent-rgb)/0.2)] ring-1 ring-accent/30"
-                        : "text-neutral-500 hover:text-white"
-                    )}
+                    className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90', isActive && 'active')}
                   >
                     <Icon className="w-[18px] h-[18px]" />
                   </button>
@@ -113,16 +102,17 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
 
         {/* Profile */}
         <div className="flex flex-col items-center gap-2.5 pb-4 pt-3 w-full">
-          <div className="w-8 h-px bg-white/[0.06] mb-1" />
+          <div className="sidebar-rail-sep w-8 h-px mb-1" />
+
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={() => navigate('/perfil')}
-                className="rounded-2xl transition-all duration-200 hover:scale-105 active:scale-95 ring-2 ring-white/[0.06] hover:ring-accent/30"
+                className="sidebar-rail-avatar-ring rounded-2xl transition-all duration-200 hover:scale-105 active:scale-95"
               >
                 <Avatar className="h-9 w-9 rounded-xl">
                   <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} className="rounded-xl" />
-                  <AvatarFallback className="bg-accent/20 text-accent text-xs font-bold rounded-xl">
+                  <AvatarFallback className="sidebar-rail-avatar-fallback text-xs font-bold rounded-xl">
                     {getInitials()}
                   </AvatarFallback>
                 </Avatar>
@@ -137,7 +127,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
             <TooltipTrigger asChild>
               <button
                 onClick={onSignOut}
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-neutral-600 hover:text-red-400 hover:bg-red-500/10 transition-all active:scale-90"
+                className="sidebar-rail-signout w-9 h-9 rounded-xl flex items-center justify-center active:scale-90"
               >
                 <LogOut className="w-4 h-4" />
               </button>
