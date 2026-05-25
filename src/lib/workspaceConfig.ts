@@ -68,6 +68,7 @@ const WORKSPACE_COMERCIAL: WorkspaceDefinition = {
     { path: '/lector-qualitas', label: 'Lector Qualitas', icon: FileText, visibleTo: NOT_AGENT },
     { path: '/mi-progreso', label: 'Mi Progreso', icon: Trophy, visibleTo: NO_EMPLEADO_AGENTE },
     { path: '/gmm/cotizador', label: 'GMM BX+', icon: Activity, visibleTo: ADMIN_ONLY },
+    { path: '/seguwallet-admin', label: 'Seguwallet', icon: Wallet, visibleTo: ALL_ROLES },
   ],
 };
 
@@ -144,7 +145,6 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/comisiones/mapeo-vendedores', label: 'Mapeo Vendedores', icon: Users, visibleTo: ADMIN_ONLY },
     { path: '/produccion/configuracion', label: 'Config Produccion', icon: Settings, visibleTo: ADMIN_ONLY },
     { path: '/sicas/salud', label: 'SICAS Salud', icon: Activity, visibleTo: ADMIN_ONLY },
-    { path: '/seguwallet-admin', label: 'Seguwallet', icon: Wallet, visibleTo: ALL_ROLES },
   ],
 };
 

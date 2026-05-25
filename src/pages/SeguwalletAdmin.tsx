@@ -58,6 +58,7 @@ const STATUS_LABELS: Record<string, { label: string; class: string }> = {
 export function SeguwalletAdmin() {
   const { usuario } = useAuth();
   const isAdmin = usuario?.rol === 'Administrador';
+  const isAgent = usuario?.rol === 'Agente';
 
   const [customers, setCustomers] = useState<SeguwalletCustomer[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -102,10 +103,17 @@ export function SeguwalletAdmin() {
 
   const loadCustomers = async () => {
     try {
-      const { data } = await supabase
+      let query = supabase
         .from('seguwallet_customers')
         .select('*')
         .order('created_at', { ascending: false });
+
+      // Agents and Ejecutivos only see customers they are responsible for
+      if (!isAdmin && usuario?.id) {
+        query = query.eq('agent_user_id', usuario.id);
+      }
+
+      const { data } = await query;
 
       if (data) {
         const enriched = await Promise.all(data.map(async (c) => {
@@ -347,7 +355,9 @@ export function SeguwalletAdmin() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-neutral-900 dark:text-white tracking-tight">Seguwallet</h1>
-            <p className="text-xs text-neutral-500 dark:text-white/40">Administracion de clientes</p>
+            <p className="text-xs text-neutral-500 dark:text-white/40">
+              {isAgent ? 'Mis clientes Seguwallet' : 'Administracion de clientes'}
+            </p>
           </div>
         </div>
         <button
