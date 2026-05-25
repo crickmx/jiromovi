@@ -104,20 +104,33 @@ import { SeguwalletCotizar } from './seguwallet/pages/SeguwalletCotizar';
 import { SeguwalletAseguradoras } from './seguwallet/pages/SeguwalletAseguradoras';
 import { SeguwalletPerfil } from './seguwallet/pages/SeguwalletPerfil';
 import { SeguwalletProvider } from './seguwallet/lib/SeguwalletContext';
+import { AgentBrandProvider } from './seguwallet/lib/AgentBrandContext';
 import { SeguwalletLayout } from './seguwallet/components/SeguwalletLayout';
 import { SeguwalletProtectedRoute } from './seguwallet/components/SeguwalletProtectedRoute';
 import { isSeguwallet } from './seguwallet/lib/seguwalletAuth';
+
+function SW({ children }: { children: React.ReactNode }) {
+  return (
+    <SeguwalletProvider>
+      <AgentBrandProvider>
+        <SeguwalletProtectedRoute>
+          <SeguwalletLayout>{children}</SeguwalletLayout>
+        </SeguwalletProtectedRoute>
+      </AgentBrandProvider>
+    </SeguwalletProvider>
+  );
+}
 
 // Seguwallet portal — fully independent, no MOVI auth providers
 function SeguwalletApp() {
   return (
     <Routes>
       <Route path="/seguwallet/login" element={<SeguwalletLogin />} />
-      <Route path="/seguwallet/dashboard" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletDashboard /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
-      <Route path="/seguwallet/polizas" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletPolizas /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
-      <Route path="/seguwallet/cotizar" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletCotizar /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
-      <Route path="/seguwallet/aseguradoras" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletAseguradoras /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
-      <Route path="/seguwallet/perfil" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletPerfil /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
+      <Route path="/seguwallet/dashboard" element={<SW><SeguwalletDashboard /></SW>} />
+      <Route path="/seguwallet/polizas" element={<SW><SeguwalletPolizas /></SW>} />
+      <Route path="/seguwallet/cotizar" element={<SW><SeguwalletCotizar /></SW>} />
+      <Route path="/seguwallet/aseguradoras" element={<SW><SeguwalletAseguradoras /></SW>} />
+      <Route path="/seguwallet/perfil" element={<SW><SeguwalletPerfil /></SW>} />
       <Route path="*" element={<Navigate to="/seguwallet/login" replace />} />
     </Routes>
   );
@@ -248,11 +261,11 @@ function App() {
 
               {/* Seguwallet Portal - also accessible from MOVI domain */}
               <Route path="/seguwallet/login" element={<SeguwalletLogin />} />
-              <Route path="/seguwallet/dashboard" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletDashboard /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
-              <Route path="/seguwallet/polizas" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletPolizas /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
-              <Route path="/seguwallet/cotizar" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletCotizar /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
-              <Route path="/seguwallet/aseguradoras" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletAseguradoras /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
-              <Route path="/seguwallet/perfil" element={<SeguwalletProvider><SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletPerfil /></SeguwalletLayout></SeguwalletProtectedRoute></SeguwalletProvider>} />
+              <Route path="/seguwallet/dashboard" element={<SW><SeguwalletDashboard /></SW>} />
+              <Route path="/seguwallet/polizas" element={<SW><SeguwalletPolizas /></SW>} />
+              <Route path="/seguwallet/cotizar" element={<SW><SeguwalletCotizar /></SW>} />
+              <Route path="/seguwallet/aseguradoras" element={<SW><SeguwalletAseguradoras /></SW>} />
+              <Route path="/seguwallet/perfil" element={<SW><SeguwalletPerfil /></SW>} />
 
               {/* Redirect raíz */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />

@@ -1,17 +1,27 @@
 import { useState } from 'react';
 import { User, Lock, Phone, Mail, CheckCircle } from 'lucide-react';
 import { useSeguwallet } from '../lib/SeguwalletContext';
+import { useAgentBrand } from '../lib/AgentBrandContext';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
 export function SeguwalletPerfil() {
   const { customer } = useSeguwallet();
+  const { brand } = useAgentBrand();
   const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' });
   const [pwLoading, setPwLoading] = useState(false);
   const [pwError, setPwError] = useState('');
   const [pwSuccess, setPwSuccess] = useState(false);
 
+  const primary = brand.primaryColor;
+
   const toTitleCase = (s: string) => s ? s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : '';
+
+  const getInitials = () => {
+    if (!customer?.full_name) return 'SW';
+    const parts = customer.full_name.split(' ');
+    return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase();
+  };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,54 +72,73 @@ export function SeguwalletPerfil() {
       </div>
 
       {/* Info card */}
-      <div className="bg-white rounded-2xl border border-neutral-200/50 shadow-sm p-6">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-[#1C37E0] flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
-            {customer?.full_name ? ((customer.full_name.split(' ')[0]?.[0] || '') + (customer.full_name.split(' ')[1]?.[0] || '')).toUpperCase() : 'SW'}
-          </div>
-          <div>
-            <p className="font-bold text-neutral-900 text-lg">{toTitleCase(customer?.full_name || '')}</p>
-            <p className="text-sm text-neutral-500">Cliente Seguwallet</p>
-          </div>
-        </div>
+      <div className="bg-white rounded-3xl border border-neutral-200/50 shadow-sm overflow-hidden">
+        {/* Color strip */}
+        <div className="h-1.5" style={{ backgroundColor: primary }} />
 
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-neutral-50">
-            <Mail className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+        <div className="p-6">
+          <div className="flex items-center gap-4 mb-6">
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-xl font-bold flex-shrink-0 shadow-sm"
+              style={{ backgroundColor: primary }}
+            >
+              {getInitials()}
+            </div>
             <div>
-              <p className="text-xs text-neutral-400">Correo electronico</p>
-              <p className="text-sm font-medium text-neutral-900">{customer?.email || '-'}</p>
+              <p className="font-bold text-neutral-900 text-lg">{toTitleCase(customer?.full_name || '')}</p>
+              <p className="text-sm text-neutral-500">Cliente Seguwallet</p>
             </div>
           </div>
 
-          {customer?.phone && (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-neutral-50">
-              <Phone className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-neutral-50 border border-neutral-100">
+              <div className="p-2 rounded-xl bg-white border border-neutral-100 flex-shrink-0">
+                <Mail className="w-3.5 h-3.5 text-neutral-400" />
+              </div>
               <div>
-                <p className="text-xs text-neutral-400">Telefono</p>
-                <p className="text-sm font-medium text-neutral-900">{customer.phone}</p>
+                <p className="text-[11px] text-neutral-400 font-medium">Correo electronico</p>
+                <p className="text-sm font-semibold text-neutral-900">{customer?.email || '-'}</p>
               </div>
             </div>
-          )}
 
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-neutral-50">
-            <User className="w-4 h-4 text-neutral-400 flex-shrink-0" />
-            <div>
-              <p className="text-xs text-neutral-400">Estatus de cuenta</p>
-              <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-lg border",
-                customer?.status === 'active' ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-neutral-100 text-neutral-600 border-neutral-200"
-              )}>
-                {customer?.status === 'active' ? 'Activa' : customer?.status || '-'}
-              </span>
+            {customer?.phone && (
+              <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-neutral-50 border border-neutral-100">
+                <div className="p-2 rounded-xl bg-white border border-neutral-100 flex-shrink-0">
+                  <Phone className="w-3.5 h-3.5 text-neutral-400" />
+                </div>
+                <div>
+                  <p className="text-[11px] text-neutral-400 font-medium">Telefono</p>
+                  <p className="text-sm font-semibold text-neutral-900">{customer.phone}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-neutral-50 border border-neutral-100">
+              <div className="p-2 rounded-xl bg-white border border-neutral-100 flex-shrink-0">
+                <User className="w-3.5 h-3.5 text-neutral-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-[11px] text-neutral-400 font-medium">Estatus de cuenta</p>
+                <span className={cn(
+                  "inline-block text-xs font-bold px-2.5 py-0.5 rounded-lg border mt-0.5",
+                  customer?.status === 'active'
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-neutral-100 text-neutral-600 border-neutral-200"
+                )}>
+                  {customer?.status === 'active' ? 'Activa' : customer?.status || '-'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Password change */}
-      <div className="bg-white rounded-2xl border border-neutral-200/50 shadow-sm p-6">
+      <div className="bg-white rounded-3xl border border-neutral-200/50 shadow-sm p-6">
         <div className="flex items-center gap-2 mb-5">
-          <Lock className="w-4 h-4 text-neutral-700" />
+          <div className="p-2 rounded-xl" style={{ backgroundColor: primary + '12' }}>
+            <Lock className="w-3.5 h-3.5" style={{ color: primary }} />
+          </div>
           <h2 className="font-bold text-neutral-900">Cambiar Contrasena</h2>
         </div>
 
@@ -127,51 +156,28 @@ export function SeguwalletPerfil() {
         )}
 
         <form onSubmit={handlePasswordChange} className="space-y-4" noValidate>
-          <div>
-            <label className="block text-sm font-semibold text-neutral-700 mb-2">Contrasena actual</label>
-            <input
-              type="password"
-              value={passwordForm.current}
-              onChange={e => setPasswordForm(f => ({ ...f, current: e.target.value }))}
-              placeholder="Tu contrasena actual"
-              className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
-              autoComplete="current-password"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-neutral-700 mb-2">Nueva contrasena</label>
-            <input
-              type="password"
-              value={passwordForm.next}
-              onChange={e => setPasswordForm(f => ({ ...f, next: e.target.value }))}
-              placeholder="Minimo 8 caracteres"
-              className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
-              autoComplete="new-password"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-neutral-700 mb-2">Confirmar nueva contrasena</label>
-            <input
-              type="password"
-              value={passwordForm.confirm}
-              onChange={e => setPasswordForm(f => ({ ...f, confirm: e.target.value }))}
-              placeholder="Repite tu nueva contrasena"
-              className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
-              autoComplete="new-password"
-            />
-          </div>
+          {(['current', 'next', 'confirm'] as const).map((field, i) => (
+            <div key={field}>
+              <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                {i === 0 ? 'Contrasena actual' : i === 1 ? 'Nueva contrasena' : 'Confirmar nueva contrasena'}
+              </label>
+              <input
+                type="password"
+                value={passwordForm[field]}
+                onChange={e => setPasswordForm(f => ({ ...f, [field]: e.target.value }))}
+                placeholder={i === 0 ? 'Tu contrasena actual' : i === 1 ? 'Minimo 8 caracteres' : 'Repite tu nueva contrasena'}
+                className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50/50 text-sm focus:outline-none focus:border-current transition-all"
+                style={{ '--tw-ring-color': primary } as any}
+                autoComplete={i === 0 ? 'current-password' : 'new-password'}
+              />
+            </div>
+          ))}
 
           <button
             type="submit"
             disabled={pwLoading}
-            className={cn(
-              "w-full flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl text-sm font-bold text-white transition-all duration-200",
-              "bg-[#1C37E0] hover:bg-[#1630C8]",
-              "shadow-lg shadow-blue-600/20 hover:shadow-xl hover:shadow-blue-600/25",
-              "disabled:opacity-60 disabled:cursor-not-allowed"
-            )}
+            className="w-full flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl text-sm font-bold text-white transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed hover:brightness-105"
+            style={{ backgroundColor: primary }}
           >
             {pwLoading ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
