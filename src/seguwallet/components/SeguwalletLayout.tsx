@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FileText, Calculator, User, LogOut, Menu, X, LayoutDashboard, Building2 } from 'lucide-react';
 import { useSeguwallet } from '../lib/SeguwalletContext';
@@ -54,6 +54,11 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
   const primary = brand.primaryColor;
   const contrastOnPrimary = getContrastColor(primary);
   const activeTint = tint(primary, 0.10);
+
+  useEffect(() => {
+    const name = brand.agentName && brand.agentName !== 'Tu Agente' ? brand.agentName : 'Seguwallet';
+    document.title = `Seguwallet - ${name}`;
+  }, [brand.agentName]);
 
   return (
     <div className="min-h-screen bg-neutral-50">
