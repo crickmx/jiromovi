@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Download, Clock, AlertTriangle, User } from 'lucide-react';
+import { FileText, Calculator, Clock, AlertTriangle, User } from 'lucide-react';
 import { useSeguwallet } from '../lib/SeguwalletContext';
 import { getSeguwalletSicasClients, getAgentInfo } from '../lib/seguwalletAuth';
 import { supabase } from '@/lib/supabase';
@@ -99,9 +99,9 @@ export function SeguwalletDashboard() {
           <p className="text-xs text-neutral-500 mt-0.5">Proximas a vencer</p>
         </button>
 
-        <button onClick={() => navigate('/seguwallet/descargas')} className="bg-white rounded-2xl border border-neutral-200/50 p-5 shadow-sm hover:shadow-md hover:border-blue-200 transition-all group text-left">
+        <button onClick={() => navigate('/seguwallet/cotizar')} className="bg-white rounded-2xl border border-neutral-200/50 p-5 shadow-sm hover:shadow-md hover:border-blue-200 transition-all group text-left">
           <div className="p-2.5 rounded-xl bg-blue-50 w-fit mb-3 group-hover:bg-blue-100 transition-colors">
-            <Download className="w-5 h-5 text-[#1C37E0]" />
+            <Calculator className="w-5 h-5 text-[#1C37E0]" />
           </div>
           <p className="text-2xl font-bold text-neutral-900">{sicasClients.length}</p>
           <p className="text-xs text-neutral-500 mt-0.5">Clientes vinculados</p>
@@ -142,10 +142,10 @@ export function SeguwalletDashboard() {
           <p className="font-bold text-sm">Ver mis polizas</p>
           <p className="text-xs opacity-70 mt-0.5">Consulta tus coberturas</p>
         </button>
-        <button onClick={() => navigate('/seguwallet/descargas')} className="bg-[#3B58F0] rounded-2xl p-5 text-white shadow-lg shadow-blue-500/20 hover:bg-[#2A47DF] hover:shadow-xl transition-all text-left">
-          <Download className="w-6 h-6 mb-3 opacity-80" />
-          <p className="font-bold text-sm">Centro de descargas</p>
-          <p className="text-xs opacity-70 mt-0.5">Documentos y recibos</p>
+        <button onClick={() => navigate('/seguwallet/cotizar')} className="bg-[#3B58F0] rounded-2xl p-5 text-white shadow-lg shadow-blue-500/20 hover:bg-[#2A47DF] hover:shadow-xl transition-all text-left">
+          <Calculator className="w-6 h-6 mb-3 opacity-80" />
+          <p className="font-bold text-sm">Cotizar seguro</p>
+          <p className="text-xs opacity-70 mt-0.5">Solicita una cotizacion</p>
         </button>
       </div>
     </div>

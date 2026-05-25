@@ -1,6 +1,6 @@
 import { type ReactNode, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FileText, Download, User, LogOut, Menu, X, LayoutDashboard } from 'lucide-react';
+import { FileText, Calculator, User, LogOut, Menu, X, LayoutDashboard } from 'lucide-react';
 import { useSeguwallet } from '../lib/SeguwalletContext';
 import { seguwalletSignOut } from '../lib/seguwalletAuth';
 import { cn } from '@/lib/utils';
@@ -8,9 +8,9 @@ import logoLight from '../assets/logo-light.svg';
 
 const NAV_ITEMS = [
   { path: '/seguwallet/dashboard', label: 'Inicio', icon: LayoutDashboard },
-  { path: '/seguwallet/polizas', label: 'Mis Polizas', icon: FileText },
-  { path: '/seguwallet/descargas', label: 'Descargas', icon: Download },
-  { path: '/seguwallet/perfil', label: 'Mi Perfil', icon: User },
+  { path: '/seguwallet/polizas', label: 'Polizas', icon: FileText },
+  { path: '/seguwallet/cotizar', label: 'Cotizar', icon: Calculator },
+  { path: '/seguwallet/perfil', label: 'Perfil', icon: User },
 ];
 
 export function SeguwalletLayout({ children }: { children: ReactNode }) {
@@ -41,7 +41,7 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
           <nav className="hidden md:flex items-center gap-1">
             {NAV_ITEMS.map(item => {
               const Icon = item.icon;
-              const isActive = location.pathname === item.path;
+              const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
               return (
                 <button key={item.path} onClick={() => navigate(item.path)}
                   className={cn("flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200",
@@ -79,7 +79,7 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
               return (
                 <button key={item.path} onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
                   className={cn("w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all",
-                    isActive ? "bg-blue-50 text-[#1C37E0]" : "text-neutral-600 hover:bg-neutral-50")}>
+                    (location.pathname === item.path || location.pathname.startsWith(item.path + '/')) ? "bg-blue-50 text-[#1C37E0]" : "text-neutral-600 hover:bg-neutral-50")}>
                   <Icon className="w-4 h-4" />
                   {item.label}
                 </button>
