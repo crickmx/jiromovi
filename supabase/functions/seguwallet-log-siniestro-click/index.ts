@@ -101,7 +101,7 @@ Deno.serve(async (req: Request) => {
 
     let notifResult: Record<string, unknown> = { bell_sent: false, whatsapp_sent: false };
 
-    // Send notifications to the agent via the notify() function
+    // Send notifications to the agent
     if (customer.agent_user_id) {
       const tipoContacto =
         event_type === "call" ? "Llamada telefonica"
@@ -116,8 +116,7 @@ Deno.serve(async (req: Request) => {
         fecha_hora: formatDateTime(),
       };
 
-      // Call notify() — it looks up agent phone from usuarios table automatically
-      // and queues jobs for in_app + whatsapp channels
+      // Call notify() to create in_app + whatsapp jobs
       const { data: notifyResult, error: notifyError } = await supabase.rpc("notify", {
         p_event_code: "seguwallet_siniestro_click",
         p_user_ids: [customer.agent_user_id],
@@ -134,6 +133,50 @@ Deno.serve(async (req: Request) => {
           whatsapp_sent: (r?.jobs_created ?? 0) > 0,
           notify_result: notifyResult,
         };
+      }
+
+      // Fetch agent data for historial logging
+      const { data: agente } = await supabase
+        .from("usuarios")
+        .select("nombre, nombre_completo, celular_laboral, email_laboral")
+        .eq("id", customer.agent_user_id)
+        .maybeSingle();
+
+      const agenteNombre = agente?.nombre_completo || agente?.nombre || "Agente";
+      const agentePhone = agente?.celular_laboral || null;
+      const agenteEmail = agente?.email_laboral || null;
+
+      const asunto = `Tu cliente ${variables.cliente_nombre} contactó siniestros de ${insurer_name}`;
+      const cuerpoHtml = `<p>Tu cliente <strong>${variables.cliente_nombre}</strong> contactó a siniestros de <strong>${insurer_name}</strong> el ${variables.fecha_hora} mediante ${tipoContacto} desde SeguWallet.</p>`;
+      const whatsappMsg = `Tu cliente *${variables.cliente_nombre}* contactó a siniestros de *${insurer_name}* el ${variables.fecha_hora} desde SeguWallet.`;
+
+      // Log in-app notification to historial
+      await supabase.rpc("registrar_envio_notificacion", {
+        p_tipo_notificacion_codigo: "seguwallet_siniestro_click",
+        p_canal_envio: "notificacion",
+        p_usuario_id: customer.agent_user_id,
+        p_destinatario_nombre: agenteNombre,
+        p_asunto: asunto,
+        p_cuerpo_html: `<p>${variables.notificacion_cuerpo || cuerpoHtml}</p>`,
+        p_estado: notifResult.bell_sent ? "enviado" : "fallido",
+        p_evento_id: event?.id ?? null,
+        p_enviado_por: null,
+      });
+
+      // Log whatsapp notification to historial (only if phone available)
+      if (agentePhone) {
+        await supabase.rpc("registrar_envio_notificacion", {
+          p_tipo_notificacion_codigo: "seguwallet_siniestro_click",
+          p_canal_envio: "whatsapp",
+          p_usuario_id: customer.agent_user_id,
+          p_destinatario_nombre: agenteNombre,
+          p_numero_destino: agentePhone,
+          p_asunto: asunto,
+          p_cuerpo_html: whatsappMsg,
+          p_estado: notifResult.whatsapp_sent ? "enviado" : "fallido",
+          p_evento_id: event?.id ?? null,
+          p_enviado_por: null,
+        });
       }
 
       // Update event with notification status

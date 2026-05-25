@@ -18,8 +18,8 @@ const FORM_TYPE_CONFIG: Record<string, { icon: React.ElementType; bg: string }> 
   vida:            { icon: Heart,       bg: '#ef4444' },
   autos:           { icon: Car,         bg: '#f59e0b' },
   auto:            { icon: Car,         bg: '#f59e0b' },
-  danos:           { icon: Home,        bg: '#8b5cf6' },
-  hogar:           { icon: Home,        bg: '#8b5cf6' },
+  danos:           { icon: Home,        bg: '#10b981' },
+  hogar:           { icon: Home,        bg: '#10b981' },
   flotilla:        { icon: Briefcase,   bg: '#6366f1' },
   empresa:         { icon: Briefcase,   bg: '#6366f1' },
   negocio:         { icon: Briefcase,   bg: '#6366f1' },
@@ -49,11 +49,65 @@ export function SeguwalletCotizar() {
 
   useEffect(() => {
     if (customer) loadLinks();
-  }, [customer]);
+  }, [customer, brand.webSlug]);
 
   const loadLinks = async () => {
     if (!customer) return;
+    setLoading(true);
     try {
+      // Prefer using the public page RPC (same source as PaginaPublicaAsesor)
+      // which returns all auto-provisioned form templates for the agent
+      if (brand.webSlug) {
+        const { data: pageData } = await supabase.rpc('get_public_web_page_by_slug', {
+          p_slug: brand.webSlug,
+        });
+
+        if (pageData) {
+          // form_templates is the comprehensive list (70+ templates provisioned per agent)
+          const templates = (pageData as any).form_templates as Array<{
+            id: string;
+            slug: string;
+            form_type: string;
+            form_title: string;
+            status: string;
+            public_url: string | null;
+          }> | null;
+
+          if (templates && templates.length > 0) {
+            const active = templates
+              .filter(t => t.status === 'active')
+              .map(t => ({
+                id: t.id,
+                slug: t.slug,
+                form_type: t.form_type,
+                form_title: t.form_title,
+                status: t.status,
+                public_url: t.public_url,
+              }));
+            setLinks(active);
+            setLoading(false);
+            return;
+          }
+
+          // Fallback: use form_links from the same RPC
+          const formLinks = (pageData as any).form_links as Array<{
+            id: string;
+            slug: string;
+            form_type: string;
+            form_title: string;
+            status: string;
+            public_url: string | null;
+          }> | null;
+
+          if (formLinks && formLinks.length > 0) {
+            setLinks(formLinks.filter(l => l.status === 'active'));
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
+      // Final fallback: direct query on shared_quote_form_links
       const { data } = await supabase
         .from('shared_quote_form_links')
         .select('id, slug, form_type, form_title, status, public_url')

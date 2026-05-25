@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { X, Phone, MessageCircle, Search, AlertTriangle, Shield } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { type SeguwalletInsurer, formatPhoneDisplay, callLink, whatsappLink } from '../lib/insurerTypes';
+import { type SeguwalletInsurer, formatPhoneDisplay, callLink, whatsappLink, getInsurerLogoUrl } from '../lib/insurerTypes';
 import { useSiniestroLogger } from '../lib/useSiniestroLogger';
 
 interface Props {
@@ -120,14 +120,15 @@ export function ReportarSiniestroModal({ onClose }: Props) {
 function InsurerClaimsCard({ ins }: { ins: SeguwalletInsurer }) {
   const [logoError, setLogoError] = useState(false);
   const { logClick } = useSiniestroLogger('modal');
+  const logoSrc = getInsurerLogoUrl(ins);
 
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white overflow-hidden hover:border-red-200 hover:shadow-md transition-all">
       {/* Top row */}
       <div className="flex items-center gap-3 px-4 pt-4 pb-3">
         <div className="w-10 h-10 rounded-xl overflow-hidden border border-neutral-100 bg-white flex-shrink-0 shadow-sm">
-          {ins.logo_url && !logoError ? (
-            <img src={ins.logo_url} alt={ins.name} className="w-full h-full object-contain p-0.5" onError={() => setLogoError(true)} />
+          {logoSrc && !logoError ? (
+            <img src={logoSrc} alt={ins.name} className="w-full h-full object-contain p-0.5" onError={() => setLogoError(true)} />
           ) : (
             <LogoFallback nombre={ins.name} />
           )}
