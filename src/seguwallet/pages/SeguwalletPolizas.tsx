@@ -1112,18 +1112,36 @@ function ExternalPolicyWizard({ onClose, onSaved, primary, customerId, agentUser
 function SicasPolicyCard({ policy, primary, onClick }: { policy: Policy; primary: string; onClick: () => void }) {
   const st = getStatusConfig(policy.is_vigente, policy.is_cancelada, policy.vigencia_hasta);
   const days = getDaysRemaining(policy.vigencia_hasta);
-  const isExpiringSoon = policy.is_vigente && !policy.is_cancelada && days >= 0 && days <= 30;
+  const isRenewable = policy.is_vigente && !policy.is_cancelada && days >= 0 && days <= 30;
   return (
     <button
       onClick={onClick}
-      className="w-full bg-white rounded-2xl border border-neutral-200/40 shadow-sm p-4 hover:shadow-lg transition-all duration-200 text-left group hover:border-neutral-300 hover:-translate-y-0.5 flex flex-col gap-3"
+      className={cn(
+        'w-full bg-white rounded-2xl shadow-sm p-4 hover:shadow-lg transition-all duration-200 text-left group hover:-translate-y-0.5 flex flex-col gap-3 relative overflow-hidden',
+        isRenewable
+          ? 'border-2 border-amber-400 hover:border-amber-500'
+          : 'border border-neutral-200/40 hover:border-neutral-300'
+      )}
     >
+      {/* Renewal top accent strip */}
+      {isRenewable && (
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-400" />
+      )}
+
       {/* Top: logo + status */}
       <div className="flex items-start justify-between gap-2">
         <InsurerLogo name={policy.aseguradora_nombre || policy.compania || ''} size={40} />
-        <span className={cn('px-2 py-0.5 rounded-lg text-[10px] font-bold border flex items-center gap-1 leading-none flex-shrink-0', st.badgeCls)}>
-          <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', st.dot)} />{st.label}
-        </span>
+        <div className="flex flex-col items-end gap-1">
+          <span className={cn('px-2 py-0.5 rounded-lg text-[10px] font-bold border flex items-center gap-1 leading-none flex-shrink-0', st.badgeCls)}>
+            <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', st.dot)} />{st.label}
+          </span>
+          {isRenewable && (
+            <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-lg leading-none">
+              <RefreshCw className="w-2.5 h-2.5" />
+              {days}d
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Policy number */}
@@ -1132,14 +1150,17 @@ function SicasPolicyCard({ policy, primary, onClick }: { policy: Policy; primary
         <p className="text-[11px] text-neutral-500 mt-0.5 truncate">{policy.subramo || policy.ramo}</p>
       </div>
 
-      {/* Bottom: date */}
+      {/* Bottom: date + renewal cta */}
       <div className="flex items-center justify-between mt-auto">
         <span className="text-[11px] text-neutral-400 flex items-center gap-1">
           <Calendar className="w-3 h-3 flex-shrink-0" />
           {fmt(policy.vigencia_hasta)}
         </span>
-        {isExpiringSoon && (
-          <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md">{days}d</span>
+        {isRenewable && (
+          <span className="text-[10px] font-bold text-amber-700 flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            Por renovar
+          </span>
         )}
       </div>
     </button>
@@ -1218,6 +1239,7 @@ export function SeguwalletPolizas() {
       r = r.filter(p => p.poliza?.toLowerCase().includes(q) || p.aseguradora_nombre?.toLowerCase().includes(q) || p.subramo?.toLowerCase().includes(q));
     }
     if (statusFilter === 'vigente') r = r.filter(p => p.is_vigente && !p.is_cancelada);
+    else if (statusFilter === 'por_renovar') r = r.filter(p => p.is_vigente && !p.is_cancelada && getDaysRemaining(p.vigencia_hasta) >= 0 && getDaysRemaining(p.vigencia_hasta) <= 30);
     else if (statusFilter === 'vencida') r = r.filter(p => !p.is_vigente && !p.is_cancelada);
     else if (statusFilter === 'cancelada') r = r.filter(p => p.is_cancelada);
     if (aseguradoraFilter !== 'all') r = r.filter(p => p.aseguradora_nombre === aseguradoraFilter);
@@ -1265,10 +1287,16 @@ export function SeguwalletPolizas() {
   }
 
   const vigentesCount = policies.filter(p => p.is_vigente && !p.is_cancelada).length;
+  const porRenovarCount = policies.filter(p => p.is_vigente && !p.is_cancelada && getDaysRemaining(p.vigencia_hasta) >= 0 && getDaysRemaining(p.vigencia_hasta) <= 30).length;
   const extVigentesCount = extPolicies.filter(p => {
     const v = p.end_date ? getDaysRemaining(p.end_date) >= 0 : true;
     return v && p.status !== 'cancelled';
   }).length;
+
+  // Stat filter: 'all' | 'vigente' | 'por_renovar'
+  const handleStatFilter = (key: string) => {
+    setStatusFilter(prev => prev === key ? 'all' : key);
+  };
 
   return (
     <div className="space-y-5">
@@ -1308,16 +1336,50 @@ export function SeguwalletPolizas() {
         <>
           {policies.length > 0 && (
             <div className="grid grid-cols-3 gap-2">
-              {[
-                { label: 'Total', value: policies.length, color: 'text-neutral-900' },
-                { label: 'Vigentes', value: vigentesCount, color: 'text-emerald-600' },
-                { label: 'Por vencer', value: policies.filter(p => p.is_vigente && !p.is_cancelada && getDaysRemaining(p.vigencia_hasta) <= 30).length, color: 'text-amber-600' },
-              ].map(s => (
-                <div key={s.label} className="bg-white rounded-2xl border border-neutral-200/50 shadow-sm p-3.5 text-center">
-                  <p className={cn('text-2xl font-bold', s.color)}>{s.value}</p>
-                  <p className="text-[10px] text-neutral-400 font-medium mt-0.5">{s.label}</p>
-                </div>
-              ))}
+              {/* Total */}
+              <button
+                onClick={() => handleStatFilter('all')}
+                className={cn(
+                  'rounded-2xl border shadow-sm p-3.5 text-center transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none',
+                  statusFilter === 'all'
+                    ? 'bg-neutral-900 border-neutral-900 ring-2 ring-neutral-900/20'
+                    : 'bg-white border-neutral-200/50 hover:border-neutral-300'
+                )}
+              >
+                <p className={cn('text-2xl font-bold', statusFilter === 'all' ? 'text-white' : 'text-neutral-900')}>{policies.length}</p>
+                <p className={cn('text-[10px] font-medium mt-0.5', statusFilter === 'all' ? 'text-neutral-300' : 'text-neutral-400')}>Total</p>
+              </button>
+
+              {/* Vigentes */}
+              <button
+                onClick={() => handleStatFilter('vigente')}
+                className={cn(
+                  'rounded-2xl border shadow-sm p-3.5 text-center transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none',
+                  statusFilter === 'vigente'
+                    ? 'bg-emerald-600 border-emerald-600 ring-2 ring-emerald-600/20'
+                    : 'bg-white border-neutral-200/50 hover:border-emerald-200'
+                )}
+              >
+                <p className={cn('text-2xl font-bold', statusFilter === 'vigente' ? 'text-white' : 'text-emerald-600')}>{vigentesCount}</p>
+                <p className={cn('text-[10px] font-medium mt-0.5', statusFilter === 'vigente' ? 'text-emerald-100' : 'text-neutral-400')}>Vigentes</p>
+              </button>
+
+              {/* Por renovar */}
+              <button
+                onClick={() => handleStatFilter('por_renovar')}
+                className={cn(
+                  'rounded-2xl border shadow-sm p-3.5 text-center transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none relative',
+                  statusFilter === 'por_renovar'
+                    ? 'bg-amber-500 border-amber-500 ring-2 ring-amber-500/25'
+                    : 'bg-white border-neutral-200/50 hover:border-amber-200'
+                )}
+              >
+                {porRenovarCount > 0 && statusFilter !== 'por_renovar' && (
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-amber-500 border-2 border-white" />
+                )}
+                <p className={cn('text-2xl font-bold', statusFilter === 'por_renovar' ? 'text-white' : 'text-amber-600')}>{porRenovarCount}</p>
+                <p className={cn('text-[10px] font-medium mt-0.5', statusFilter === 'por_renovar' ? 'text-amber-100' : 'text-neutral-400')}>Por renovar</p>
+              </button>
             </div>
           )}
 
