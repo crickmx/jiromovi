@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, ArrowRight, ChevronLeft } from 'lucide-react';
 import { seguwalletSignIn } from '../lib/seguwalletAuth';
-const logoDark = 'https://movi.digital/wp-content/uploads/2025/12/moviRecurso-6.png';
+const logoDark = '/movirecurso_1.png';
 
 // ─── Animated background ──────────────────────────────────────────────────────
 function BackgroundLayer() {
