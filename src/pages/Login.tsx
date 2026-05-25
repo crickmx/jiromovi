@@ -204,28 +204,14 @@ export function Login() {
             {/* Center: headline */}
             <div className="max-w-md">
               <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-blue-300/70 mb-4">
-                Plataforma institucional
+                movi.digital
               </p>
               <h1 className="text-4xl xl:text-5xl font-extrabold text-white leading-[1.12] tracking-tight">
-                Tu oficina<br />digital de<br />
-                <span style={{ color: '#60a5fa' }}>seguros</span>
+                Mi Oficina Virtual
               </h1>
               <p className="mt-5 text-base text-white/50 leading-relaxed max-w-sm">
-                Tecnología, gestión y crecimiento para agentes de seguros en México.
+                Grupo JIRO
               </p>
-
-              {/* Feature pills */}
-              <div className="mt-8 flex flex-wrap gap-2.5">
-                {['CRM Integrado', 'Producción SICAS', 'Comisiones', 'Trámites', 'Cotizador GMM'].map(f => (
-                  <span
-                    key={f}
-                    className="text-[11px] font-medium px-3 py-1.5 rounded-full text-blue-200/80"
-                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)' }}
-                  >
-                    {f}
-                  </span>
-                ))}
-              </div>
             </div>
 
             {/* Bottom: footer links */}
