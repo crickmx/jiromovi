@@ -7,7 +7,6 @@ import {
   BarChart3, TrendingUp, Users, Clock, Award, Download,
   Calendar, Filter, Search, Eye, Play, CheckCircle
 } from 'lucide-react';
-import { PageHeader } from '@/components/ui/page-header';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { SegurosEducationLayout } from '../components/segurosEducation/SegurosEducationLayout';
@@ -300,9 +299,9 @@ export function SegurosEducationAnalytics() {
   if (loading) {
     return (
       <Layout>
-        <SegurosEducationLayout>
-          <div className="flex items-center justify-center h-64">
-            <div className="text-neutral-600">Cargando...</div>
+        <SegurosEducationLayout sectionTitle="Analytics" sectionDescription="Métricas de Seguros Education">
+          <div className="flex justify-center items-center py-16">
+            <div className="w-8 h-8 border-[3px] border-[#1C37E0]/20 border-t-[#1C37E0] rounded-full animate-spin" />
           </div>
         </SegurosEducationLayout>
       </Layout>
@@ -311,52 +310,52 @@ export function SegurosEducationAnalytics() {
 
   return (
     <Layout>
-      <SegurosEducationLayout>
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
-        <PageHeader
-          title="Analytics"
-          description="Métricas de Seguros Education"
-          icon={BarChart3}
-          backTo="/seguros-education"
-          backLabel="Volver a Seguros Education"
-          actions={
-            <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-neutral-500 dark:text-white/40" />
+      <SegurosEducationLayout sectionTitle="Analytics" sectionDescription="Métricas de Seguros Education">
+      <div className="space-y-5">
+        {/* Section header */}
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h2 className="text-base font-bold text-neutral-900 dark:text-white">Metricas de uso</h2>
+            <p className="text-xs text-neutral-500 dark:text-white/40 mt-0.5">Actividad de la plataforma</p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 bg-white dark:bg-white/[0.04] border border-neutral-200 dark:border-white/[0.08] rounded-xl px-3 py-2">
+              <Calendar className="w-4 h-4 text-neutral-400" />
               <select
                 value={dateRange}
                 onChange={(e) => setDateRange(e.target.value as DateRange)}
-                className="px-4 py-2 border border-neutral-300 dark:border-white/15 rounded-lg text-sm bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+                className="bg-transparent text-xs font-medium text-neutral-700 dark:text-white focus:outline-none"
               >
                 <option value="7d">Últimos 7 días</option>
                 <option value="30d">Últimos 30 días</option>
                 <option value="90d">Últimos 90 días</option>
                 <option value="custom">Personalizado</option>
               </select>
-              {dateRange === 'custom' && (
-                <>
-                  <input
-                    type="date"
-                    value={customStartDate}
-                    onChange={(e) => setCustomStartDate(e.target.value)}
-                    className="px-3 py-2 border border-neutral-300 dark:border-white/15 rounded-lg text-sm bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
-                  />
-                  <input
-                    type="date"
-                    value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
-                    className="px-3 py-2 border border-neutral-300 dark:border-white/15 rounded-lg text-sm bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
-                  />
-                </>
-              )}
-              <button
-                onClick={fetchData}
-                className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium"
-              >
-                Aplicar
-              </button>
             </div>
-          }
-        />
+            {dateRange === 'custom' && (
+              <>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="px-3 py-2 bg-white dark:bg-white/[0.04] border border-neutral-200 dark:border-white/[0.08] rounded-xl text-xs text-neutral-700 dark:text-white focus:outline-none"
+                />
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="px-3 py-2 bg-white dark:bg-white/[0.04] border border-neutral-200 dark:border-white/[0.08] rounded-xl text-xs text-neutral-700 dark:text-white focus:outline-none"
+                />
+              </>
+            )}
+            <button
+              onClick={fetchData}
+              className="px-4 py-2 rounded-xl bg-[#1C37E0] text-white text-xs font-semibold hover:bg-[#1630C8] transition-all shadow-sm"
+            >
+              Aplicar
+            </button>
+          </div>
+        </div>
 
         {/* Tabs */}
         <div className="border-b border-neutral-200">

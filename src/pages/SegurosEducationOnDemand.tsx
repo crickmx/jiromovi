@@ -3,8 +3,7 @@ import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { trackCourseStart } from '../lib/activityLogger';
-import { Search, Plus, Video, Filter, Play, Clock, Award, Upload, X, Settings, Trash2, CreditCard as Edit2, FileText, PlayCircle } from 'lucide-react';
-import { PageHeader } from '@/components/ui/page-header';
+import { Search, Plus, Video, Filter, Play, Clock, Award, Upload, X, Settings, Trash2, CreditCard as Edit2, FileText } from 'lucide-react';
 import { VideoPlayer } from '../components/VideoPlayer';
 import { LessonDocuments } from '../components/segurosEducation/LessonDocuments';
 import { analyticsTracker } from '../lib/analyticsTracker';
@@ -875,9 +874,9 @@ export function SegurosEducationOnDemand() {
   if (loading) {
     return (
       <Layout>
-        <SegurosEducationLayout>
-          <div className="flex items-center justify-center h-64">
-            <div className="text-neutral-600">Cargando...</div>
+        <SegurosEducationLayout sectionTitle="On Demand" sectionDescription="Biblioteca de lecciones grabadas">
+          <div className="flex justify-center items-center py-16">
+            <div className="w-8 h-8 border-[3px] border-[#1C37E0]/20 border-t-[#1C37E0] rounded-full animate-spin" />
           </div>
         </SegurosEducationLayout>
       </Layout>
@@ -886,85 +885,82 @@ export function SegurosEducationOnDemand() {
 
   return (
     <Layout>
-      <SegurosEducationLayout>
+      <SegurosEducationLayout sectionTitle="On Demand" sectionDescription="Biblioteca de lecciones grabadas">
       <div className="space-y-5">
-        <PageHeader
-          title="On Demand"
-          description="Biblioteca de lecciones grabadas"
-          icon={PlayCircle}
-          backTo="/seguros-education"
-          backLabel="Volver a Seguros Education"
-          actions={isAdmin ? (
+        {/* Section header */}
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h2 className="text-base font-bold text-neutral-900 dark:text-white">Lecciones disponibles</h2>
+            <p className="text-xs text-neutral-500 dark:text-white/40 mt-0.5">{filteredLessons.length} lección{filteredLessons.length !== 1 ? 'es' : ''}</p>
+          </div>
+          {isAdmin && (
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => setShowCategoryModal(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-neutral-100 dark:bg-white/8 text-neutral-900 dark:text-white rounded-lg hover:bg-neutral-200 dark:hover:bg-white/12 transition-colors text-sm font-medium"
+                className="flex items-center gap-2 px-3 py-2 bg-neutral-100 dark:bg-white/8 text-neutral-700 dark:text-white/70 rounded-xl hover:bg-neutral-200 dark:hover:bg-white/12 transition-colors text-xs font-semibold"
               >
-                <Settings className="w-4 h-4" />
+                <Settings className="w-3.5 h-3.5" />
                 Categorías
               </button>
               <button
                 onClick={recalculateAllDurations}
                 disabled={recalculatingDurations || lessons.filter(l => !l.duracion || l.duracion === 0).length === 0}
-                className="flex items-center gap-2 px-4 py-2.5 bg-neutral-100 dark:bg-white/8 text-neutral-900 dark:text-white rounded-lg hover:bg-neutral-200 dark:hover:bg-white/12 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-3 py-2 bg-neutral-100 dark:bg-white/8 text-neutral-700 dark:text-white/70 rounded-xl hover:bg-neutral-200 dark:hover:bg-white/12 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Recalcular duraciones de videos sin duración"
               >
-                <Clock className="w-4 h-4" />
-                {recalculatingDurations ? `${recalcProgress.current}/${recalcProgress.total}` : 'Recalc. Duraciones'}
+                <Clock className="w-3.5 h-3.5" />
+                {recalculatingDurations ? `${recalcProgress.current}/${recalcProgress.total}` : 'Recalc. duraciones'}
               </button>
               <button
                 onClick={() => setShowUploadModal(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1C37E0] text-white text-xs font-semibold hover:bg-[#1630C8] transition-all shadow-sm"
               >
-                <Plus className="w-4 h-4" />
-                Subir Lección
+                <Plus className="w-3.5 h-3.5" />
+                Subir lección
               </button>
             </div>
-          ) : undefined}
-        />
+          )}
+        </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 p-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-ios-gray-500 stroke-[1.5]" />
-              <input
-                type="text"
-                placeholder="Buscar lecciones..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-ios-gray-300 rounded-ios-lg focus:outline-none focus:border-accent transition-colors text-[15px]"
-              />
-            </div>
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-ios-gray-500 stroke-[1.5]" />
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-ios-gray-300 rounded-ios-lg focus:outline-none focus:border-accent transition-colors appearance-none text-[15px]"
-              >
-                <option value="all">Todas las categorías</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+            <input
+              type="text"
+              placeholder="Buscar lecciones..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-white/[0.04] border border-neutral-200 dark:border-white/[0.08] rounded-xl text-sm text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#1C37E0]/30 focus:border-[#1C37E0] transition-all"
+            />
+          </div>
+          <div className="relative">
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-white/[0.04] border border-neutral-200 dark:border-white/[0.08] rounded-xl text-sm text-neutral-900 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#1C37E0]/30 focus:border-[#1C37E0] transition-all"
+            >
+              <option value="all">Todas las categorias</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+              ))}
+            </select>
           </div>
         </div>
 
         {/* Lessons Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredLessons.length === 0 ? (
-            <div className="col-span-full text-center py-16">
-              <div className="w-20 h-20 rounded-full bg-ios-gray-100 flex items-center justify-center mx-auto mb-4">
-                <Video className="w-10 h-10 text-ios-gray-400 stroke-[1.5]" />
+            <div className="col-span-full bg-white dark:bg-white/[0.03] rounded-2xl border-2 border-dashed border-neutral-200 dark:border-white/10 p-14 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-neutral-100 dark:bg-white/5 flex items-center justify-center mx-auto mb-4">
+                <Video className="w-6 h-6 text-neutral-400" />
               </div>
-              <p className="text-ios-gray-500 text-[15px]">
+              <h3 className="text-base font-bold text-neutral-700 dark:text-white/70 mb-1">Sin lecciones</h3>
+              <p className="text-sm text-neutral-400">
                 {searchTerm || selectedCategory !== 'all'
-                  ? 'No se encontraron lecciones'
-                  : 'No hay lecciones disponibles'}
+                  ? 'No se encontraron lecciones con estos filtros'
+                  : 'No hay lecciones disponibles en este momento'}
               </p>
             </div>
           ) : (
@@ -972,43 +968,40 @@ export function SegurosEducationOnDemand() {
               <div
                 key={lesson.id}
                 onClick={() => handleLessonClick(lesson)}
-                className="bg-white rounded-ios-xl border border-ios-gray-200/50 overflow-hidden hover:shadow-ios-lg transition-all duration-200 cursor-pointer group active:scale-[0.98]"
+                className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200/60 dark:border-white/[0.07] overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
               >
                 {/* Thumbnail */}
-                <div className="aspect-video bg-ios-gray-100 relative overflow-hidden">
+                <div className="aspect-video bg-neutral-100 dark:bg-white/5 relative overflow-hidden">
                   {lesson.miniatura_url ? (
                     <img
                       src={lesson.miniatura_url}
                       alt={lesson.titulo}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Video className="w-16 h-16 text-ios-gray-300 stroke-[1.5]" />
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-neutral-100 to-neutral-200 dark:from-white/5 dark:to-white/10">
+                      <Video className="w-12 h-12 text-neutral-300 dark:text-white/20" />
                     </div>
                   )}
 
-                  {/* Play Button Overlay */}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
-                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all transform scale-75 group-hover:scale-100 shadow-ios-lg">
-                      <Play className="w-8 h-8 text-accent ml-1" fill="currentColor" />
+                  {/* Play overlay */}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-all flex items-center justify-center">
+                    <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 shadow-xl">
+                      <Play className="w-6 h-6 text-[#1C37E0] ml-0.5" fill="currentColor" />
                     </div>
                   </div>
 
-                  {/* Progress Bar */}
+                  {/* Progress bar */}
                   {lesson.progreso > 0 && (
                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
-                      <div
-                        className="h-full bg-accent"
-                        style={{ width: `${lesson.progreso}%` }}
-                      />
+                      <div className="h-full bg-[#1C37E0]" style={{ width: `${lesson.progreso}%` }} />
                     </div>
                   )}
 
-                  {/* Completed Badge */}
+                  {/* Completed badge */}
                   {lesson.completado && (
-                    <div className="absolute top-3 right-3 bg-ios-green text-white px-2.5 py-1 rounded-ios text-[11px] font-semibold flex items-center gap-1 shadow-ios">
-                      <Award className="w-3 h-3 stroke-[2]" />
+                    <div className="absolute top-2.5 right-2.5 bg-emerald-500 text-white px-2 py-0.5 rounded-lg text-[10px] font-semibold flex items-center gap-1">
+                      <Award className="w-3 h-3" />
                       Completado
                     </div>
                   )}
@@ -1016,21 +1009,21 @@ export function SegurosEducationOnDemand() {
 
                 {/* Content */}
                 <div className="p-4">
-                  <div className="flex items-center justify-between gap-2 text-[11px] mb-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {lesson.categorias && lesson.categorias.length > 0 && lesson.categorias.map(cat => (
-                        <span key={cat.id} className="px-2 py-1 bg-accent/10 text-accent rounded-ios font-semibold">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
+                      {lesson.categorias && lesson.categorias.length > 0 && lesson.categorias.slice(0, 2).map(cat => (
+                        <span key={cat.id} className="px-2 py-0.5 bg-[#1C37E0]/10 text-[#1C37E0] dark:text-blue-400 rounded-md text-[10px] font-semibold">
                           {cat.nombre}
                         </span>
                       ))}
                       {lesson.duracion && lesson.duracion > 0 ? (
-                        <span className="flex items-center gap-1 text-ios-gray-600 font-medium">
-                          <Clock className="w-3.5 h-3.5 stroke-[1.5]" />
+                        <span className="flex items-center gap-1 text-neutral-500 dark:text-white/40 text-[10px] font-medium">
+                          <Clock className="w-3 h-3" />
                           {formatDuration(lesson.duracion)}
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-ios font-medium">
-                          <Clock className="w-3.5 h-3.5 stroke-[1.5]" />
+                        <span className="flex items-center gap-1 text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 px-1.5 py-0.5 rounded-md text-[10px] font-medium">
+                          <Clock className="w-3 h-3" />
                           Sin duración
                         </span>
                       )}
@@ -1039,35 +1032,41 @@ export function SegurosEducationOnDemand() {
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <button
                           onClick={(e) => handleEditLesson(lesson, e)}
-                          className="p-1.5 text-accent hover:bg-accent/10 rounded-ios transition-colors"
+                          className="p-1.5 text-neutral-400 hover:text-[#1C37E0] hover:bg-[#1C37E0]/10 rounded-lg transition-colors"
                           title="Editar lección"
                         >
-                          <Edit2 className="w-3.5 h-3.5 stroke-[2]" />
+                          <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={(e) => handleDeleteLesson(lesson, e)}
-                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-ios transition-colors"
+                          className="p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
                           title="Eliminar lección"
                         >
-                          <Trash2 className="w-3.5 h-3.5 stroke-[2]" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     )}
                   </div>
 
-                  <h3 className="font-semibold text-ios-gray-900 mb-2 line-clamp-2 group-hover:text-accent transition-colors text-[15px]">
+                  <h3 className="font-semibold text-neutral-900 dark:text-white mb-1.5 line-clamp-2 group-hover:text-[#1C37E0] transition-colors text-sm">
                     {lesson.titulo}
                   </h3>
 
                   {lesson.descripcion && (
-                    <p className="text-[13px] text-ios-gray-600 line-clamp-2 mb-3">
+                    <p className="text-xs text-neutral-500 dark:text-white/40 line-clamp-2 mb-2">
                       {lesson.descripcion}
                     </p>
                   )}
 
                   {lesson.progreso > 0 && !lesson.completado && (
-                    <div className="text-[13px] text-ios-gray-600">
-                      <span className="font-semibold">{Math.floor(lesson.progreso)}% visto</span>
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] text-neutral-500 dark:text-white/40">Progreso</span>
+                        <span className="text-[10px] font-semibold text-[#1C37E0]">{Math.floor(lesson.progreso)}%</span>
+                      </div>
+                      <div className="h-1 bg-neutral-100 dark:bg-white/10 rounded-full overflow-hidden">
+                        <div className="h-full bg-[#1C37E0] rounded-full" style={{ width: `${lesson.progreso}%` }} />
+                      </div>
                     </div>
                   )}
                 </div>

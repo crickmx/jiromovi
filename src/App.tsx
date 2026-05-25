@@ -25,6 +25,7 @@ import { SegurosEducationOnDemand } from './pages/SegurosEducationOnDemand';
 import { SegurosEducationAulaVirtual } from './pages/SegurosEducationAulaVirtual';
 import { SegurosEducationAulaDigital } from './pages/SegurosEducationAulaDigital';
 import { SegurosEducationAnalytics } from './pages/SegurosEducationAnalytics';
+import { SegurosEducationManuales } from './pages/SegurosEducationManuales';
 import { Tramites } from './pages/Tramites';
 import TramitesReportes from './pages/TramitesReportes';
 import { TramiteDetalle } from './pages/TramiteDetalle';
@@ -200,6 +201,7 @@ function App() {
               <Route path="/seguros-education/on-demand" element={<ProtectedRoute><SegurosEducationOnDemand /></ProtectedRoute>} />
               <Route path="/seguros-education/aula-virtual" element={<ProtectedRoute><SegurosEducationAulaDigital /></ProtectedRoute>} />
               <Route path="/seguros-education/analytics" element={<ProtectedRoute><SegurosEducationAnalytics /></ProtectedRoute>} />
+              <Route path="/seguros-education/manuales" element={<ProtectedRoute><SegurosEducationManuales /></ProtectedRoute>} />
               <Route path="/seguros-education/aula-virtual-old" element={<ProtectedRoute><SegurosEducationAulaVirtual /></ProtectedRoute>} />
               <Route path="/aula-virtual/sala/:roomId" element={<ProtectedRoute><AulaVirtualSala /></ProtectedRoute>} />
               <Route path="/seguros-education/cedula-a" element={<ProtectedRoute><Layout><CursoCedulaA /></Layout></ProtectedRoute>} />
