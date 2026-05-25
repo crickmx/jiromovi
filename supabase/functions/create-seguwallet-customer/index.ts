@@ -47,7 +47,7 @@ Deno.serve(async (req: Request) => {
       const { data: customer, error: customerError } = await supabaseAdmin
         .from("seguwallet_customers")
         .insert({
-          id: userId,
+          auth_user_id: userId,
           email,
           full_name,
           phone: phone || null,
