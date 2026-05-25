@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { X, Phone, MessageCircle, Search, AlertTriangle, Shield } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { type SeguwalletInsurer, formatPhoneDisplay, callLink, whatsappLink } from '../lib/insurerTypes';
+import { useSiniestroLogger } from '../lib/useSiniestroLogger';
 
 interface Props {
   onClose: () => void;
@@ -118,6 +119,7 @@ export function ReportarSiniestroModal({ onClose }: Props) {
 
 function InsurerClaimsCard({ ins }: { ins: SeguwalletInsurer }) {
   const [logoError, setLogoError] = useState(false);
+  const { logClick } = useSiniestroLogger('modal');
 
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white overflow-hidden hover:border-red-200 hover:shadow-md transition-all">
@@ -143,6 +145,7 @@ function InsurerClaimsCard({ ins }: { ins: SeguwalletInsurer }) {
         {ins.claims_phone && (
           <a
             href={callLink(ins.claims_phone)}
+            onClick={() => logClick(ins, 'call')}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-all shadow-sm"
           >
             <Phone className="w-4 h-4" />
@@ -154,6 +157,7 @@ function InsurerClaimsCard({ ins }: { ins: SeguwalletInsurer }) {
             href={whatsappLink(ins.claims_whatsapp)}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => logClick(ins, 'whatsapp')}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold transition-all shadow-sm"
           >
             <MessageCircle className="w-4 h-4" />

@@ -3,6 +3,7 @@ import { Search, Phone, Globe, Smartphone, Shield, MessageCircle, AlertTriangle 
 import { useAgentBrand } from '../lib/AgentBrandContext';
 import { supabase } from '@/lib/supabase';
 import { type SeguwalletInsurer, formatPhoneDisplay, callLink, whatsappLink } from '../lib/insurerTypes';
+import { useSiniestroLogger } from '../lib/useSiniestroLogger';
 
 function LogoFallback({ nombre, size = 'md' }: { nombre: string; size?: 'sm' | 'md' }) {
   const initials = nombre.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
@@ -15,6 +16,7 @@ function LogoFallback({ nombre, size = 'md' }: { nombre: string; size?: 'sm' | '
 
 function AseguradoraCard({ ins, primary }: { ins: SeguwalletInsurer; primary: string }) {
   const [logoError, setLogoError] = useState(false);
+  const { logClick } = useSiniestroLogger('directory');
 
   const openLink = (url: string) => window.open(url, '_blank', 'noopener,noreferrer');
 
@@ -48,7 +50,11 @@ function AseguradoraCard({ ins, primary }: { ins: SeguwalletInsurer; primary: st
           <AlertTriangle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Siniestros</p>
-            <a href={callLink(ins.claims_phone)} className="text-sm font-semibold text-red-700 hover:text-red-800 transition-colors">
+            <a
+              href={callLink(ins.claims_phone)}
+              onClick={() => logClick(ins, 'call')}
+              className="text-sm font-semibold text-red-700 hover:text-red-800 transition-colors"
+            >
               {formatPhoneDisplay(ins.claims_phone)}
             </a>
           </div>
