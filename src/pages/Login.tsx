@@ -1,7 +1,7 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ArrowRight, ChevronLeft } from 'lucide-react';
 import { Checkbox } from '../components/ui/checkbox';
 import { Label } from '../components/ui/label';
 import MoviPreloader from '../components/MoviPreloader';
@@ -9,7 +9,36 @@ import { supabase } from '../lib/supabase';
 
 const REMEMBER_KEY = 'movi-remember-email';
 
+// ─── Animated background blobs ────────────────────────────────────────────────
+function BackgroundLayer() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      {/* Base gradient */}
+      <div className="absolute inset-0" style={{
+        background: 'linear-gradient(135deg, #051530 0%, #0b2d6b 35%, #0d3680 55%, #0a2258 80%, #040d1f 100%)',
+      }} />
+      {/* Animated glow orbs */}
+      <div className="absolute -top-48 -left-48 w-[700px] h-[700px] rounded-full opacity-25 animate-pulse-slow"
+        style={{ background: 'radial-gradient(circle, #1a56db 0%, transparent 65%)' }} />
+      <div className="absolute top-1/3 -right-64 w-[600px] h-[600px] rounded-full opacity-20 animate-pulse-slower"
+        style={{ background: 'radial-gradient(circle, #0ea5e9 0%, transparent 65%)' }} />
+      <div className="absolute -bottom-32 left-1/4 w-[500px] h-[500px] rounded-full opacity-15 animate-pulse-slow"
+        style={{ background: 'radial-gradient(circle, #2563eb 0%, transparent 65%)' }} />
+      {/* Grid overlay */}
+      <div className="absolute inset-0 opacity-[0.035]" style={{
+        backgroundImage: `linear-gradient(rgba(255,255,255,0.4) 1px, transparent 1px),
+                          linear-gradient(90deg, rgba(255,255,255,0.4) 1px, transparent 1px)`,
+        backgroundSize: '60px 60px',
+      }} />
+      {/* Top edge light */}
+      <div className="absolute top-0 left-0 right-0 h-px opacity-30"
+        style={{ background: 'linear-gradient(90deg, transparent, #60a5fa, transparent)' }} />
+    </div>
+  );
+}
+
 export function Login() {
+  // ── All state and logic unchanged ──────────────────────────────────────────
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -131,6 +160,15 @@ export function Login() {
       setLoading(false);
     }
   };
+  // ── End of unchanged logic ──────────────────────────────────────────────────
+
+  // Shared input base style (glass on dark bg)
+  const inputCls = [
+    'w-full h-12 px-4 text-sm text-white rounded-xl transition-all duration-200 outline-none',
+    'bg-white/8 border border-white/15',
+    'placeholder:text-white/35',
+    'focus:bg-white/12 focus:border-blue-400/60 focus:ring-2 focus:ring-blue-400/20',
+  ].join(' ');
 
   return (
     <>
@@ -141,197 +179,316 @@ export function Login() {
         logoIconUrl="/movirecurso_1.png"
         minDurationMs={3000}
       />
-      <div className="min-h-screen bg-gradient-to-b from-[#0f1b3d] via-[#162350] to-[#1a2a5e] flex flex-col items-center justify-center p-4 relative overflow-hidden">
-        {/* Subtle radial glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Header: Logo centered as protagonist */}
-        <div className="text-center mb-8 relative z-10">
-          <div className="flex justify-center mb-5">
-            <img
-              src="/movirecurso_1.png"
-              alt="MOVI Digital"
-              className="h-20 object-contain drop-shadow-lg"
-            />
+      {/* Full-screen wrapper */}
+      <div className="relative min-h-screen flex flex-col overflow-hidden">
+        <BackgroundLayer />
+
+        {/* ── Two-column layout ── */}
+        <div className="relative z-10 flex flex-1 min-h-screen">
+
+          {/* ── LEFT COLUMN: brand ── */}
+          <div className="hidden lg:flex lg:w-[52%] xl:w-[55%] flex-col items-start justify-between px-16 xl:px-24 py-14">
+            {/* Top: logo free-floating, no box */}
+            <div>
+              <img
+                src="/movirecurso_1.png"
+                alt="MOVI Digital"
+                className="h-16 xl:h-20 object-contain"
+                style={{ filter: 'drop-shadow(0 4px 24px rgba(96,165,250,0.25))' }}
+              />
+            </div>
+
+            {/* Center: headline */}
+            <div className="max-w-md">
+              <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-blue-300/70 mb-4">
+                Plataforma institucional
+              </p>
+              <h1 className="text-4xl xl:text-5xl font-extrabold text-white leading-[1.12] tracking-tight">
+                Tu oficina<br />digital de<br />
+                <span style={{ color: '#60a5fa' }}>seguros</span>
+              </h1>
+              <p className="mt-5 text-base text-white/50 leading-relaxed max-w-sm">
+                Tecnología, gestión y crecimiento para agentes de seguros en México.
+              </p>
+
+              {/* Feature pills */}
+              <div className="mt-8 flex flex-wrap gap-2.5">
+                {['CRM Integrado', 'Producción SICAS', 'Comisiones', 'Trámites', 'Cotizador GMM'].map(f => (
+                  <span
+                    key={f}
+                    className="text-[11px] font-medium px-3 py-1.5 rounded-full text-blue-200/80"
+                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)' }}
+                  >
+                    {f}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Bottom: footer links */}
+            <div className="flex items-center gap-5 text-[11px] text-white/30">
+              <a href="https://movi.digital" target="_blank" rel="noopener noreferrer"
+                className="hover:text-white/70 transition-colors">movi.digital</a>
+              <span className="w-px h-3 bg-white/15" />
+              <a href="https://grupojiro.com" target="_blank" rel="noopener noreferrer"
+                className="hover:text-white/70 transition-colors">grupojiro.com</a>
+              <span className="w-px h-3 bg-white/15" />
+              <span>© {new Date().getFullYear()} MOVI Digital</span>
+            </div>
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight mb-1">MOVI Digital</h1>
-          <p className="text-blue-100/60 text-sm">
-            {showForgotPassword ? 'Te ayudaremos a recuperar el acceso' : 'Ingresa a tu cuenta para continuar'}
-          </p>
-        </div>
 
-        {/* Card */}
-        <div className="w-full max-w-[420px] relative z-10">
-          <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 p-8 sm:p-10">
-            <h2 className="text-xl font-bold text-neutral-900 mb-6">
-              {showForgotPassword ? 'Recuperar contrasena' : 'Iniciar sesion'}
-            </h2>
+          {/* Vertical divider */}
+          <div className="hidden lg:block w-px self-stretch my-12"
+            style={{ background: 'linear-gradient(180deg, transparent, rgba(255,255,255,0.10) 20%, rgba(255,255,255,0.10) 80%, transparent)' }} />
 
-            {!showForgotPassword ? (
-              <form onSubmit={handleSubmit} className="space-y-5">
-                {error && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
-                    {error}
-                  </div>
+          {/* ── RIGHT COLUMN: form ── */}
+          <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 lg:px-14 xl:px-20">
+
+            {/* Mobile-only logo */}
+            <div className="lg:hidden mb-10 text-center">
+              <img
+                src="/movirecurso_1.png"
+                alt="MOVI Digital"
+                className="h-14 object-contain mx-auto"
+                style={{ filter: 'drop-shadow(0 4px 16px rgba(96,165,250,0.3))' }}
+              />
+            </div>
+
+            <div className="w-full max-w-[380px]">
+
+              {/* Heading */}
+              <div className="mb-8">
+                {showForgotPassword ? (
+                  <>
+                    <h2 className="text-2xl font-extrabold text-white tracking-tight">
+                      Recuperar acceso
+                    </h2>
+                    <p className="mt-1.5 text-sm text-white/45">
+                      Te ayudaremos a restablecer tu contraseña
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="text-2xl font-extrabold text-white tracking-tight">
+                      Iniciar sesión
+                    </h2>
+                    <p className="mt-1.5 text-sm text-white/45">
+                      Accede a tu cuenta de MOVI Digital
+                    </p>
+                  </>
                 )}
+              </div>
 
-                <div className="space-y-2">
-                  <label htmlFor="email" className="block text-sm font-medium text-neutral-700">
-                    Correo electronico
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    placeholder="usuario@empresa.com"
-                    className="w-full h-12 px-4 text-sm bg-white border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-neutral-400"
-                  />
-                </div>
+              {/* ── LOGIN FORM ── */}
+              {!showForgotPassword ? (
+                <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+                  {error && (
+                    <div className="px-4 py-3 rounded-xl text-sm text-red-300 font-medium"
+                      style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                      {error}
+                    </div>
+                  )}
 
-                <div className="space-y-2">
-                  <label htmlFor="password" className="block text-sm font-medium text-neutral-700">
-                    Contrasena
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      placeholder="Ingresa tu contrasena"
-                      className="w-full h-12 px-4 pr-11 text-sm bg-white border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-neutral-400"
-                    />
+                  {/* Email */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="email" className="block text-xs font-semibold text-white/55 tracking-wide uppercase">
+                      Correo electrónico
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+                      <input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        placeholder="usuario@empresa.com"
+                        className={`${inputCls} pl-10`}
+                        autoComplete="email"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  {/* Password */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="password" className="block text-xs font-semibold text-white/55 tracking-wide uppercase">
+                      Contraseña
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+                      <input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        placeholder="Ingresa tu contraseña"
+                        className={`${inputCls} pl-10 pr-11`}
+                        autoComplete="current-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Remember + Forgot */}
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="remember"
+                        checked={rememberMe}
+                        onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                        className="border-white/25 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
+                      />
+                      <Label htmlFor="remember" className="text-sm text-white/50 cursor-pointer select-none font-normal">
+                        Recordarme
+                      </Label>
+                    </div>
                     <button
                       type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
+                      onClick={() => { setShowForgotPassword(true); setError(''); }}
+                      className="text-sm text-blue-300/80 hover:text-blue-200 font-medium transition-colors"
                     >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      Olvidé mi contraseña
                     </button>
                   </div>
-                </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="remember"
-                      checked={rememberMe}
-                      onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                    />
-                    <Label
-                      htmlFor="remember"
-                      className="text-sm font-normal text-neutral-600 cursor-pointer select-none"
+                  {/* Submit */}
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-12 flex items-center justify-center gap-2 rounded-xl font-bold text-sm text-[#0b2d6b] transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                    style={{
+                      background: loading ? 'rgba(255,255,255,0.7)' : 'white',
+                      boxShadow: '0 4px 24px rgba(0,0,0,0.25), 0 1px 0 rgba(255,255,255,0.1)',
+                    }}
+                  >
+                    {loading ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-blue-800/30 border-t-blue-800 rounded-full animate-spin" />
+                        <span>Iniciando sesión...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Ingresar</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+
+                  {/* Register link */}
+                  <div className="pt-4 text-center">
+                    <span className="text-sm text-white/35">¿No tienes cuenta? </span>
+                    <button
+                      type="button"
+                      onClick={() => window.location.href = '/registro'}
+                      className="text-sm text-blue-300/80 hover:text-blue-200 font-semibold transition-colors"
                     >
-                      Recordarme
-                    </Label>
+                      Regístrate
+                    </button>
                   </div>
+                </form>
+              ) : (
+                /* ── FORGOT PASSWORD FORM ── */
+                <form onSubmit={handlePasswordReset} className="space-y-4" noValidate>
+                  {error && (
+                    <div className="px-4 py-3 rounded-xl text-sm text-red-300 font-medium"
+                      style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                      {error}
+                    </div>
+                  )}
+                  {success && (
+                    <div className="px-4 py-3 rounded-xl text-sm text-emerald-300 font-medium"
+                      style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)' }}>
+                      {success}
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="resetEmail" className="block text-xs font-semibold text-white/55 tracking-wide uppercase">
+                      Correo electrónico
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+                      <input
+                        id="resetEmail"
+                        type="email"
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        required
+                        placeholder="usuario@empresa.com"
+                        className={`${inputCls} pl-10`}
+                        autoFocus
+                      />
+                    </div>
+                    <p className="text-xs text-white/35 mt-1">
+                      Te enviaremos un enlace para restablecer tu contraseña
+                    </p>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-12 flex items-center justify-center gap-2 rounded-xl font-bold text-sm text-[#0b2d6b] transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{
+                      background: loading ? 'rgba(255,255,255,0.7)' : 'white',
+                      boxShadow: '0 4px 24px rgba(0,0,0,0.25)',
+                    }}
+                  >
+                    {loading ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-blue-800/30 border-t-blue-800 rounded-full animate-spin" />
+                        <span>Enviando...</span>
+                      </>
+                    ) : (
+                      'Enviar enlace de recuperación'
+                    )}
+                  </button>
+
                   <button
                     type="button"
-                    onClick={() => setShowForgotPassword(true)}
-                    className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                    onClick={() => { setShowForgotPassword(false); setError(''); setSuccess(''); }}
+                    className="w-full flex items-center justify-center gap-1.5 text-sm text-white/40 hover:text-white/70 font-medium py-2 transition-colors"
                   >
-                    Olvide mi contrasena
+                    <ChevronLeft className="w-4 h-4" />
+                    Volver al inicio de sesión
                   </button>
-                </div>
+                </form>
+              )}
+            </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full h-12 bg-[#1e3a8a] hover:bg-[#1e40af] text-white font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-900/20"
-                >
-                  {loading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Iniciando sesion...
-                    </span>
-                  ) : (
-                    'Ingresar'
-                  )}
-                </button>
-
-                <div className="pt-4 border-t border-neutral-100 text-center">
-                  <span className="text-sm text-neutral-500">No tienes cuenta?{' '}</span>
-                  <button
-                    type="button"
-                    onClick={() => window.location.href = '/registro'}
-                    className="text-sm text-blue-600 hover:text-blue-800 font-semibold hover:underline transition-colors"
-                  >
-                    Registrate
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={handlePasswordReset} className="space-y-5">
-                {error && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
-                    {error}
-                  </div>
-                )}
-
-                {success && (
-                  <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm">
-                    {success}
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <label htmlFor="resetEmail" className="block text-sm font-medium text-neutral-700">
-                    Correo electronico
-                  </label>
-                  <input
-                    id="resetEmail"
-                    type="email"
-                    value={resetEmail}
-                    onChange={(e) => setResetEmail(e.target.value)}
-                    required
-                    placeholder="usuario@empresa.com"
-                    className="w-full h-12 px-4 text-sm bg-white border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-neutral-400"
-                  />
-                  <p className="text-xs text-neutral-500 mt-1">
-                    Te enviaremos un enlace para restablecer tu contrasena
-                  </p>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full h-12 bg-[#1e3a8a] hover:bg-[#1e40af] text-white font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-900/20"
-                >
-                  {loading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Enviando...
-                    </span>
-                  ) : (
-                    'Enviar enlace de recuperacion'
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowForgotPassword(false);
-                    setError('');
-                    setSuccess('');
-                  }}
-                  className="w-full text-sm text-neutral-500 hover:text-neutral-700 font-medium py-2 transition-colors"
-                >
-                  Volver al inicio de sesion
-                </button>
-              </form>
-            )}
+            {/* Mobile footer */}
+            <div className="lg:hidden mt-12 flex items-center gap-4 text-[11px] text-white/25">
+              <a href="https://movi.digital" target="_blank" rel="noopener noreferrer"
+                className="hover:text-white/60 transition-colors">movi.digital</a>
+              <span className="w-px h-3 bg-white/15" />
+              <a href="https://grupojiro.com" target="_blank" rel="noopener noreferrer"
+                className="hover:text-white/60 transition-colors">grupojiro.com</a>
+            </div>
           </div>
         </div>
-
-        {/* Footer */}
-        <div className="text-center mt-8 relative z-10">
-          <p className="text-sm font-medium text-blue-100/70">MOVI Digital</p>
-          <p className="text-xs text-blue-200/40 mt-0.5">Tu plataforma integral de seguros</p>
-        </div>
       </div>
+
+      {/* Keyframe animations injected once */}
+      <style>{`
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 0.25; transform: scale(1); }
+          50% { opacity: 0.35; transform: scale(1.06); }
+        }
+        @keyframes pulse-slower {
+          0%, 100% { opacity: 0.18; transform: scale(1); }
+          50% { opacity: 0.28; transform: scale(1.08); }
+        }
+        .animate-pulse-slow { animation: pulse-slow 8s ease-in-out infinite; }
+        .animate-pulse-slower { animation: pulse-slower 12s ease-in-out infinite; }
+      `}</style>
     </>
   );
 }
