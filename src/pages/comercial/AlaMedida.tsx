@@ -1,117 +1,160 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Car, HeartPulse, Compass, ArrowRight, Sparkles } from 'lucide-react';
+import { Car, HeartPulse, ArrowRight, Sparkles, Shield, Users } from 'lucide-react';
 
-const DESIGNERS = [
-  {
-    id: 'auto',
-    title: 'Seguro de Auto Individual',
-    description: 'Selecciona coberturas y encuentra la aseguradora que mejor se adapta al perfil de tu cliente.',
-    icon: Car,
-    coverageCount: 38,
-    insurerCount: 7,
-    categories: ['RC', 'Danos Materiales', 'Robo', 'Asistencia Vial', 'Coberturas Especiales'],
-    gradient: 'from-sky-500 to-blue-600',
-    bgLight: 'bg-sky-50',
-    path: '/a-la-medida/auto',
-  },
-  {
-    id: 'gmm',
-    title: 'Gastos Medicos Mayores',
-    description: 'Configura el perfil del asegurado y encuentra el plan medico ideal entre las principales aseguradoras.',
-    icon: HeartPulse,
-    coverageCount: 22,
-    insurerCount: 6,
-    categories: ['Hospitalizacion', 'Ambulatorio', 'Maternidad', 'Dental', 'Internacional'],
-    gradient: 'from-teal-500 to-emerald-600',
-    bgLight: 'bg-teal-50',
-    path: '/a-la-medida/gmm',
-  },
+const AUTO_LOGOS = [
+  '/qualitas-compania-de-seguros-logo-png_seeklogo-329374-2.png',
+  '/zurich-logo-png_seeklogo-156664.png',
+  '/chubb-logo-png_seeklogo-299281.png',
+  '/mapfre-seguros-logo-png_seeklogo-225013.png',
+  '/gnp-seguros.png',
+];
+
+const GMM_LOGOS = [
+  '/gnp-seguros.png',
+  '/logo-bupa.png',
+  '/mapfre-seguros-logo-png_seeklogo-225013.png',
+  '/logo-bx.png',
 ];
 
 export default function AlaMedida() {
   const navigate = useNavigate();
-  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
-      <div className="text-center mb-10">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-sky-50 text-sky-700 text-sm font-medium mb-4">
-          <Compass className="w-4 h-4" />
-          Disenador Inteligente
+      {/* Hero Section */}
+      <div className="text-center mb-12">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-sky-50 to-teal-50 dark:from-sky-900/20 dark:to-teal-900/20 border border-sky-100 dark:border-sky-800/30 mb-5">
+          <Sparkles className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+          <span className="text-sm font-medium text-sky-700 dark:text-sky-300">Disenador Inteligente de Seguros</span>
         </div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
-          A la medida
+        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4 tracking-tight">
+          Encuentra el seguro ideal,{' '}
+          <span className="bg-gradient-to-r from-sky-600 to-teal-600 bg-clip-text text-transparent">a la medida</span>
         </h1>
-        <p className="text-gray-500 dark:text-gray-400 max-w-2xl mx-auto text-base leading-relaxed">
-          Selecciona las coberturas que necesita tu cliente y descubre que aseguradoras ofrecen la mejor compatibilidad.
-          Compara opciones de forma visual e inteligente.
+        <p className="text-gray-500 dark:text-gray-400 max-w-xl mx-auto text-base leading-relaxed">
+          Selecciona las coberturas que tu cliente necesita y te mostramos que aseguradoras
+          ofrecen la mejor compatibilidad. Rapido, visual e inteligente.
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {DESIGNERS.map((designer) => {
-          const Icon = designer.icon;
-          const isHovered = hoveredCard === designer.id;
+      {/* Cards */}
+      <div className="grid md:grid-cols-2 gap-8">
+        {/* Auto Card */}
+        <button
+          onClick={() => navigate('/a-la-medida/auto')}
+          className="group relative text-left rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-sky-100/40 dark:hover:shadow-sky-900/20 hover:-translate-y-1.5 hover:border-sky-200 dark:hover:border-sky-700"
+        >
+          {/* Gradient accent top bar */}
+          <div className="h-1.5 bg-gradient-to-r from-sky-500 to-blue-600" />
 
-          return (
-            <button
-              key={designer.id}
-              onClick={() => navigate(designer.path)}
-              onMouseEnter={() => setHoveredCard(designer.id)}
-              onMouseLeave={() => setHoveredCard(null)}
-              className="group relative text-left rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 transition-all duration-300 hover:shadow-xl hover:shadow-gray-200/50 dark:hover:shadow-gray-900/30 hover:-translate-y-1 hover:border-gray-300 dark:hover:border-gray-600"
-            >
-              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${designer.gradient} flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-110`}>
-                <Icon className="w-6 h-6 text-white" />
+          <div className="p-6">
+            <div className="flex items-start justify-between mb-5">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shadow-lg shadow-sky-200/50 dark:shadow-sky-900/30 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+                <Car className="w-7 h-7 text-white" />
               </div>
-
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                {designer.title}
-              </h2>
-              <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed mb-4">
-                {designer.description}
-              </p>
-
-              <div className="flex items-center gap-4 mb-4">
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2.5 py-1 rounded-full">
-                  {designer.coverageCount} coberturas
-                </span>
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2.5 py-1 rounded-full">
-                  {designer.insurerCount} aseguradoras
-                </span>
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <span className="text-sm font-medium text-sky-600 dark:text-sky-400">Iniciar</span>
+                <ArrowRight className="w-4 h-4 text-sky-600 dark:text-sky-400 transition-transform duration-300 group-hover:translate-x-1" />
               </div>
+            </div>
 
-              <div className="flex flex-wrap gap-1.5 mb-5">
-                {designer.categories.map((cat) => (
-                  <span
-                    key={cat}
-                    className={`text-xs px-2 py-0.5 rounded ${designer.bgLight} text-gray-700 dark:bg-gray-700 dark:text-gray-300`}
-                  >
-                    {cat}
-                  </span>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              Seguro de Auto
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-5">
+              Compara 7 aseguradoras con 38 coberturas. Desde RC basica hasta coberturas premium como auto sustituto o reparacion en agencia.
+            </p>
+
+            {/* Stats */}
+            <div className="flex items-center gap-4 mb-5">
+              <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
+                <Shield className="w-3.5 h-3.5 text-sky-500" />
+                <span className="font-medium">38 coberturas</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
+                <Users className="w-3.5 h-3.5 text-sky-500" />
+                <span className="font-medium">7 aseguradoras</span>
+              </div>
+            </div>
+
+            {/* Insurer logos */}
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide">Incluye:</span>
+              <div className="flex items-center -space-x-1">
+                {AUTO_LOGOS.map((logo, i) => (
+                  <div key={i} className="w-8 h-8 rounded-full bg-white dark:bg-gray-700 border-2 border-white dark:border-gray-800 shadow-sm flex items-center justify-center overflow-hidden">
+                    <img src={logo} alt="" className="w-6 h-6 object-contain" />
+                  </div>
                 ))}
-              </div>
-
-              <div className={`flex items-center gap-2 text-sm font-medium transition-all duration-300 ${isHovered ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                <span>Iniciar disenador</span>
-                <ArrowRight className={`w-4 h-4 transition-transform duration-300 ${isHovered ? 'translate-x-1' : ''}`} />
-              </div>
-
-              {isHovered && (
-                <div className="absolute top-4 right-4">
-                  <Sparkles className="w-5 h-5 text-amber-400 animate-pulse" />
+                <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 border-2 border-white dark:border-gray-800 shadow-sm flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">+2</span>
                 </div>
-              )}
-            </button>
-          );
-        })}
+              </div>
+            </div>
+          </div>
+        </button>
+
+        {/* GMM Card */}
+        <button
+          onClick={() => navigate('/a-la-medida/gmm')}
+          className="group relative text-left rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-teal-100/40 dark:hover:shadow-teal-900/20 hover:-translate-y-1.5 hover:border-teal-200 dark:hover:border-teal-700"
+        >
+          {/* Gradient accent top bar */}
+          <div className="h-1.5 bg-gradient-to-r from-teal-500 to-emerald-600" />
+
+          <div className="p-6">
+            <div className="flex items-start justify-between mb-5">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-teal-200/50 dark:shadow-teal-900/30 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+                <HeartPulse className="w-7 h-7 text-white" />
+              </div>
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <span className="text-sm font-medium text-teal-600 dark:text-teal-400">Iniciar</span>
+                <ArrowRight className="w-4 h-4 text-teal-600 dark:text-teal-400 transition-transform duration-300 group-hover:translate-x-1" />
+              </div>
+            </div>
+
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              Gastos Medicos Mayores
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-5">
+              Configura edad, suma asegurada, nivel hospitalario y coberturas. Encuentra el plan ideal entre 6 aseguradoras lideres.
+            </p>
+
+            {/* Stats */}
+            <div className="flex items-center gap-4 mb-5">
+              <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
+                <Shield className="w-3.5 h-3.5 text-teal-500" />
+                <span className="font-medium">22 coberturas</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
+                <Users className="w-3.5 h-3.5 text-teal-500" />
+                <span className="font-medium">6 aseguradoras</span>
+              </div>
+            </div>
+
+            {/* Insurer logos */}
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide">Incluye:</span>
+              <div className="flex items-center -space-x-1">
+                {GMM_LOGOS.map((logo, i) => (
+                  <div key={i} className="w-8 h-8 rounded-full bg-white dark:bg-gray-700 border-2 border-white dark:border-gray-800 shadow-sm flex items-center justify-center overflow-hidden">
+                    <img src={logo} alt="" className="w-6 h-6 object-contain" />
+                  </div>
+                ))}
+                <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 border-2 border-white dark:border-gray-800 shadow-sm flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">+2</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </button>
       </div>
 
-      <div className="mt-10 text-center">
-        <p className="text-xs text-gray-400 dark:text-gray-500">
-          Los datos mostrados son referenciales y se actualizan periodicamente.
-          Confirma siempre condiciones con la aseguradora antes de emitir.
+      {/* Footer hint */}
+      <div className="mt-12 text-center">
+        <p className="text-xs text-gray-400 dark:text-gray-500 max-w-md mx-auto">
+          Los datos de coberturas son referenciales y se actualizan periodicamente.
+          Confirma condiciones directamente con cada aseguradora antes de emitir.
         </p>
       </div>
     </div>

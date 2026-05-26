@@ -2,17 +2,28 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Check, X, ChevronDown, ChevronUp, BarChart3, Table2,
-  Building2, Stethoscope, Baby, Smile, Globe, Heart, Info, RotateCcw
+  Building2, Stethoscope, Baby, Smile, Globe, Heart, Info, RotateCcw,
+  Award, Building, UserRound
 } from 'lucide-react';
 import {
   GMM_COVERAGES, GMM_CATEGORY_LABELS, DEFAULT_GMM_COVERAGES,
   SUM_ASSURED_OPTIONS, DEDUCTIBLE_OPTIONS, COINSURANCE_OPTIONS,
-  type GmmCoverageCategory
+  HOSPITAL_LEVELS,
+  type GmmCoverageCategory, type HospitalLevel
 } from '../../../data/insuranceDesigner/gmmCoverages';
 import { calculateGmmMatch, getGmmStatusLabel, getGmmStatusColor, type GmmMatchResult } from '../../../lib/insuranceDesigner/calculateGmmMatch';
 
 const ICON_MAP: Record<string, React.FC<{ className?: string }>> = {
   Building2, Stethoscope, Baby, Smile, Globe, Heart,
+};
+
+const INSURER_LOGOS: Record<string, string> = {
+  gnp: '/gnp-seguros.png',
+  axa: '/allianz-seguros-logo-png_seeklogo-179147.png',
+  bupa: '/logo-bupa.png',
+  metlife: '/seguros-atlas-logo-png_seeklogo-251455.png',
+  mapfre: '/mapfre-seguros-logo-png_seeklogo-225013.png',
+  bxplus: '/logo-bx.png',
 };
 
 type ViewMode = 'cards' | 'table';
@@ -29,6 +40,7 @@ export default function DisenadorGMM() {
   const [deductible, setDeductible] = useState(10_000);
   const [coinsurance, setCoinsurance] = useState(10);
   const [age, setAge] = useState(35);
+  const [hospitalLevel, setHospitalLevel] = useState<HospitalLevel | 'all'>('all');
 
   const results = useMemo(() => calculateGmmMatch(selectedCoverages), [selectedCoverages]);
 
@@ -36,9 +48,10 @@ export default function DisenadorGMM() {
     return results.filter(r => {
       if (age > r.insurer.maxAge || age < r.insurer.minAge) return false;
       if (sumAssured > r.insurer.maxSumAssured) return false;
+      if (hospitalLevel !== 'all' && !r.insurer.hospitalLevels.includes(hospitalLevel)) return false;
       return true;
     });
-  }, [results, age, sumAssured]);
+  }, [results, age, sumAssured, hospitalLevel]);
 
   const toggleCoverage = (id: string) => {
     setSelectedCoverages(prev =>
@@ -68,6 +81,7 @@ export default function DisenadorGMM() {
     setDeductible(10_000);
     setCoinsurance(10);
     setAge(35);
+    setHospitalLevel('all');
   };
 
   const coveragesByCategory = useMemo(() => {
@@ -82,20 +96,27 @@ export default function DisenadorGMM() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => navigate('/a-la-medida')}
-          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          className="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-700"
         >
-          <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          <ArrowLeft className="w-4 h-4 text-gray-600 dark:text-gray-400" />
         </button>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Disenador de Gastos Medicos Mayores
+        <div className="flex-1">
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+            Gastos Medicos Mayores
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Configura el perfil y compara aseguradoras
+            Configura el perfil de tu cliente y encuentra el plan ideal
           </p>
+        </div>
+        <div className="hidden sm:flex items-center -space-x-2">
+          {Object.entries(INSURER_LOGOS).slice(0, 4).map(([id, logo]) => (
+            <div key={id} className="w-8 h-8 rounded-full bg-white dark:bg-gray-700 border-2 border-white dark:border-gray-800 shadow-sm flex items-center justify-center overflow-hidden">
+              <img src={logo} alt="" className="w-5 h-5 object-contain" />
+            </div>
+          ))}
         </div>
       </div>
 
@@ -103,28 +124,34 @@ export default function DisenadorGMM() {
         {/* Left Panel */}
         <div className="space-y-4">
           {/* Profile Configuration */}
-          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
-              Perfil del Asegurado
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-7 h-7 rounded-lg bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center">
+                <UserRound className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+              </div>
+              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                Perfil del Asegurado
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-4">
               <div>
-                <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Edad</label>
+                <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1.5 font-medium">Edad</label>
                 <input
                   type="number"
                   value={age}
                   onChange={(e) => setAge(Number(e.target.value))}
                   min={0}
                   max={99}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-all"
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Suma Asegurada</label>
+                <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1.5 font-medium">Suma Asegurada</label>
                 <select
                   value={sumAssured}
                   onChange={(e) => setSumAssured(Number(e.target.value))}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-all"
                 >
                   {SUM_ASSURED_OPTIONS.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -132,11 +159,11 @@ export default function DisenadorGMM() {
                 </select>
               </div>
               <div>
-                <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Deducible</label>
+                <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1.5 font-medium">Deducible</label>
                 <select
                   value={deductible}
                   onChange={(e) => setDeductible(Number(e.target.value))}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-all"
                 >
                   {DEDUCTIBLE_OPTIONS.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -144,11 +171,11 @@ export default function DisenadorGMM() {
                 </select>
               </div>
               <div>
-                <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Coaseguro</label>
+                <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1.5 font-medium">Coaseguro</label>
                 <select
                   value={coinsurance}
                   onChange={(e) => setCoinsurance(Number(e.target.value))}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-all"
                 >
                   {COINSURANCE_OPTIONS.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -156,42 +183,93 @@ export default function DisenadorGMM() {
                 </select>
               </div>
             </div>
+
+            {/* Hospital Level Filter */}
+            <div>
+              <div className="flex items-center gap-2 mb-2.5">
+                <Building className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Nivel Hospitalario</label>
+              </div>
+              <div className="grid grid-cols-5 gap-1.5">
+                <button
+                  onClick={() => setHospitalLevel('all')}
+                  className={`px-2 py-2 rounded-lg text-[11px] font-medium text-center transition-all ${
+                    hospitalLevel === 'all'
+                      ? 'bg-teal-600 text-white shadow-sm'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  Todos
+                </button>
+                {(Object.entries(HOSPITAL_LEVELS) as [HospitalLevel, { label: string; description: string }][]).map(([level, info]) => (
+                  <button
+                    key={level}
+                    onClick={() => setHospitalLevel(level)}
+                    title={info.description}
+                    className={`px-2 py-2 rounded-lg text-[11px] font-medium text-center transition-all ${
+                      hospitalLevel === level
+                        ? 'bg-teal-600 text-white shadow-sm'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {info.label}
+                  </button>
+                ))}
+              </div>
+              {hospitalLevel !== 'all' && (
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1.5 ml-0.5">
+                  {HOSPITAL_LEVELS[hospitalLevel].description}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Coverage Selection */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {selectedCoverages.length} de {GMM_COVERAGES.length} coberturas
-            </span>
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {selectedCoverages.length} coberturas
+              </span>
+            </div>
             <button
               onClick={resetSelections}
-              className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-teal-600 dark:text-gray-400 dark:hover:text-teal-400 transition-colors px-2 py-1 rounded-md hover:bg-teal-50 dark:hover:bg-teal-900/20"
             >
               <RotateCcw className="w-3 h-3" />
-              Reset
+              Restablecer
             </button>
           </div>
 
-          <div className="max-h-[calc(100vh-480px)] overflow-y-auto space-y-2 pr-1">
+          <div className="max-h-[calc(100vh-560px)] overflow-y-auto space-y-2 pr-1 scrollbar-thin">
             {(Object.entries(coveragesByCategory) as [GmmCoverageCategory, typeof GMM_COVERAGES][]).map(([cat, coverages]) => {
               const catLabel = GMM_CATEGORY_LABELS[cat];
               const IconComp = ICON_MAP[catLabel.icon] || Heart;
               const isExpanded = expandedCategories.includes(cat);
               const selectedInCat = coverages.filter(c => selectedCoverages.includes(c.id)).length;
+              const allSelected = selectedInCat === coverages.length;
 
               return (
-                <div key={cat} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
+                <div key={cat} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden transition-shadow hover:shadow-sm">
                   <button
                     onClick={() => toggleCategory(cat)}
                     className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
                   >
-                    <IconComp className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                    <div className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                      <IconComp className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" />
+                    </div>
                     <span className="text-sm font-medium text-gray-800 dark:text-gray-200 flex-1 text-left">
                       {catLabel.label}
                     </span>
-                    <span className="text-xs text-gray-400 mr-2">
+                    <div className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                      allSelected
+                        ? 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300'
+                        : selectedInCat > 0
+                        ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                        : 'bg-gray-50 dark:bg-gray-750 text-gray-400 dark:text-gray-500'
+                    }`}>
                       {selectedInCat}/{coverages.length}
-                    </span>
+                    </div>
                     {isExpanded ? (
                       <ChevronUp className="w-4 h-4 text-gray-400" />
                     ) : (
@@ -203,9 +281,9 @@ export default function DisenadorGMM() {
                     <div className="px-3 pb-3 space-y-1">
                       <button
                         onClick={() => selectAllInCategory(cat)}
-                        className="text-xs text-teal-600 dark:text-teal-400 hover:underline mb-1 ml-1"
+                        className="text-xs text-teal-600 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 font-medium mb-1.5 ml-1 transition-colors"
                       >
-                        {coverages.every(c => selectedCoverages.includes(c.id)) ? 'Deseleccionar todo' : 'Seleccionar todo'}
+                        {allSelected ? 'Quitar todas' : 'Agregar todas'}
                       </button>
                       {coverages.map(cov => {
                         const isSelected = selectedCoverages.includes(cov.id);
@@ -219,13 +297,15 @@ export default function DisenadorGMM() {
                                 : 'hover:bg-gray-50 dark:hover:bg-gray-700 border border-transparent'
                             }`}
                           >
-                            <div className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors ${
-                              isSelected ? 'bg-teal-600 text-white' : 'border border-gray-300 dark:border-gray-600'
+                            <div className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-all duration-150 ${
+                              isSelected ? 'bg-teal-600 text-white scale-110' : 'border-2 border-gray-300 dark:border-gray-600'
                             }`}>
                               {isSelected && <Check className="w-3 h-3" />}
                             </div>
                             <div className="min-w-0">
-                              <span className="text-sm text-gray-800 dark:text-gray-200 block leading-tight">
+                              <span className={`text-sm block leading-tight transition-colors ${
+                                isSelected ? 'text-teal-900 dark:text-teal-100 font-medium' : 'text-gray-700 dark:text-gray-300'
+                              }`}>
                                 {cov.name}
                               </span>
                               <span className="text-xs text-gray-400 dark:text-gray-500 line-clamp-1">
@@ -246,24 +326,31 @@ export default function DisenadorGMM() {
         {/* Right Panel - Results */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Compatibilidad de Aseguradoras
-              {filteredResults.length < results.length && (
-                <span className="ml-2 text-xs font-normal text-amber-600 dark:text-amber-400">
-                  ({results.length - filteredResults.length} excluidas por perfil)
-                </span>
-              )}
-            </h2>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Resultados
+                {filteredResults.length < results.length && (
+                  <span className="ml-2 text-xs font-normal text-amber-600 dark:text-amber-400">
+                    ({results.length - filteredResults.length} excluidas por filtros)
+                  </span>
+                )}
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Ordenados por compatibilidad con tu seleccion
+              </p>
+            </div>
             <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
               <button
                 onClick={() => setViewMode('cards')}
-                className={`p-1.5 rounded-md transition-colors ${viewMode === 'cards' ? 'bg-white dark:bg-gray-600 shadow-sm' : ''}`}
+                className={`p-1.5 rounded-md transition-all ${viewMode === 'cards' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'hover:bg-gray-200/50 dark:hover:bg-gray-600/50'}`}
+                title="Vista tarjetas"
               >
                 <BarChart3 className="w-4 h-4 text-gray-600 dark:text-gray-300" />
               </button>
               <button
                 onClick={() => setViewMode('table')}
-                className={`p-1.5 rounded-md transition-colors ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm' : ''}`}
+                className={`p-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'hover:bg-gray-200/50 dark:hover:bg-gray-600/50'}`}
+                title="Vista tabla"
               >
                 <Table2 className="w-4 h-4 text-gray-600 dark:text-gray-300" />
               </button>
@@ -271,18 +358,31 @@ export default function DisenadorGMM() {
           </div>
 
           {selectedCoverages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700">
               <Heart className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
-              <p className="text-gray-500 dark:text-gray-400">
-                Selecciona al menos una cobertura para ver resultados
+              <p className="text-gray-500 dark:text-gray-400 font-medium">
+                Selecciona coberturas para ver resultados
+              </p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                Usa el panel izquierdo para marcar las coberturas deseadas
               </p>
             </div>
           ) : filteredResults.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <Info className="w-12 h-12 text-amber-300 dark:text-amber-600 mb-3" />
-              <p className="text-gray-500 dark:text-gray-400">
-                Ninguna aseguradora cumple los criterios del perfil. Ajusta la edad o suma asegurada.
+            <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl border-2 border-dashed border-amber-200 dark:border-amber-900/30 bg-amber-50/30 dark:bg-amber-900/10">
+              <Info className="w-12 h-12 text-amber-400 dark:text-amber-600 mb-3" />
+              <p className="text-gray-600 dark:text-gray-400 font-medium">
+                Ninguna aseguradora cumple los filtros actuales
               </p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5 max-w-xs">
+                Intenta ajustar la edad, suma asegurada o nivel hospitalario para ver mas opciones
+              </p>
+              <button
+                onClick={resetSelections}
+                className="mt-4 flex items-center gap-1.5 text-sm text-teal-600 dark:text-teal-400 hover:underline font-medium"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Restablecer filtros
+              </button>
             </div>
           ) : viewMode === 'cards' ? (
             <GmmCardsView results={filteredResults} detailInsurer={detailInsurer} setDetailInsurer={setDetailInsurer} />
@@ -306,48 +406,56 @@ function GmmCardsView({ results, detailInsurer, setDetailInsurer }: {
         const isExpanded = detailInsurer === result.insurer.id;
         const isTop = idx === 0;
         const bestPlanObj = result.insurer.plans.find(p => p.id === result.bestPlan);
+        const logo = INSURER_LOGOS[result.insurer.id];
 
         return (
           <div
             key={result.insurer.id}
-            className={`rounded-xl border transition-all duration-200 ${
+            className={`rounded-xl border transition-all duration-200 overflow-hidden ${
               isTop
-                ? 'border-teal-200 dark:border-teal-800 bg-white dark:bg-gray-800 shadow-md'
-                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+                ? 'border-teal-200 dark:border-teal-800 bg-white dark:bg-gray-800 shadow-lg shadow-teal-50 dark:shadow-teal-900/10 ring-1 ring-teal-100 dark:ring-teal-900/20'
+                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:shadow-md'
             }`}
           >
+            {isTop && (
+              <div className="bg-gradient-to-r from-teal-50 to-emerald-50 dark:from-teal-900/20 dark:to-emerald-900/20 px-5 py-1.5 flex items-center gap-1.5">
+                <Award className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                <span className="text-[11px] font-semibold text-teal-700 dark:text-teal-300 uppercase tracking-wide">Mejor compatibilidad</span>
+              </div>
+            )}
+
             <div className="px-5 py-4 flex items-center gap-4">
-              <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-                style={{ backgroundColor: result.insurer.color }}
-              >
-                {result.insurer.shortName.slice(0, 2)}
+              {/* Logo */}
+              <div className="w-12 h-12 rounded-xl bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm">
+                {logo ? (
+                  <img src={logo} alt={result.insurer.name} className="w-9 h-9 object-contain" />
+                ) : (
+                  <div
+                    className="w-full h-full flex items-center justify-center text-white font-bold text-sm rounded-xl"
+                    style={{ backgroundColor: result.insurer.color }}
+                  >
+                    {result.insurer.shortName.slice(0, 2)}
+                  </div>
+                )}
               </div>
 
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-900 dark:text-white text-sm">
-                    {result.insurer.name}
-                  </span>
-                  {isTop && (
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 px-1.5 py-0.5 rounded">
-                      Mejor match
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <span className="font-semibold text-gray-900 dark:text-white text-sm block">
+                  {result.insurer.name}
+                </span>
+                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                   <span>{result.coveredCount}/{result.totalSelected} cubiertas</span>
                   {bestPlanObj && (
                     <>
-                      <span className="text-gray-300">|</span>
-                      <span>Plan recomendado: {bestPlanObj.name}</span>
+                      <span className="w-1 h-1 rounded-full bg-gray-300" />
+                      <span className="text-teal-600 dark:text-teal-400 font-medium">{bestPlanObj.name}</span>
                     </>
                   )}
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <span className={`text-xl font-bold ${
+                <span className={`text-2xl font-bold ${
                   result.matchPercent >= 80 ? 'text-emerald-600' :
                   result.matchPercent >= 60 ? 'text-teal-600' :
                   result.matchPercent >= 40 ? 'text-amber-600' :
@@ -357,7 +465,7 @@ function GmmCardsView({ results, detailInsurer, setDetailInsurer }: {
                 </span>
                 <button
                   onClick={() => setDetailInsurer(isExpanded ? null : result.insurer.id)}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
                   {isExpanded ? (
                     <ChevronUp className="w-4 h-4 text-gray-500" />
@@ -372,10 +480,10 @@ function GmmCardsView({ results, detailInsurer, setDetailInsurer }: {
             <div className="px-5 pb-3">
               <div className="w-full h-2 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    result.matchPercent >= 80 ? 'bg-emerald-500' :
-                    result.matchPercent >= 60 ? 'bg-teal-500' :
-                    result.matchPercent >= 40 ? 'bg-amber-500' :
+                  className={`h-full rounded-full transition-all duration-700 ease-out ${
+                    result.matchPercent >= 80 ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' :
+                    result.matchPercent >= 60 ? 'bg-gradient-to-r from-teal-500 to-teal-400' :
+                    result.matchPercent >= 40 ? 'bg-gradient-to-r from-amber-500 to-amber-400' :
                     'bg-gray-300'
                   }`}
                   style={{ width: `${result.matchPercent}%` }}
@@ -385,30 +493,37 @@ function GmmCardsView({ results, detailInsurer, setDetailInsurer }: {
 
             {/* Expanded detail */}
             {isExpanded && (
-              <div className="px-5 pb-4 border-t border-gray-100 dark:border-gray-700 pt-3">
-                <div className="grid grid-cols-3 gap-3 mb-3">
-                  <div className="text-center p-2 rounded-lg bg-gray-50 dark:bg-gray-750">
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400 block">Edad max</span>
-                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{result.insurer.maxAge} anos</span>
+              <div className="px-5 pb-4 border-t border-gray-100 dark:border-gray-700 pt-3 animate-in fade-in duration-200">
+                {/* Quick stats */}
+                <div className="grid grid-cols-4 gap-2 mb-4">
+                  <div className="text-center p-2.5 rounded-lg bg-gray-50 dark:bg-gray-750">
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">Edad max</span>
+                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{result.insurer.maxAge}</span>
                   </div>
-                  <div className="text-center p-2 rounded-lg bg-gray-50 dark:bg-gray-750">
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400 block">SA max</span>
+                  <div className="text-center p-2.5 rounded-lg bg-gray-50 dark:bg-gray-750">
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">SA max</span>
                     <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">${(result.insurer.maxSumAssured / 1_000_000)}M</span>
                   </div>
-                  <div className="text-center p-2 rounded-lg bg-gray-50 dark:bg-gray-750">
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400 block">Espera</span>
-                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{result.insurer.waitingPeriodMonths} meses</span>
+                  <div className="text-center p-2.5 rounded-lg bg-gray-50 dark:bg-gray-750">
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">Espera</span>
+                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{result.insurer.waitingPeriodMonths}m</span>
+                  </div>
+                  <div className="text-center p-2.5 rounded-lg bg-gray-50 dark:bg-gray-750">
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">Nivel Hosp.</span>
+                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 capitalize">
+                      {result.insurer.hospitalLevels[result.insurer.hospitalLevels.length - 1]}
+                    </span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   {result.breakdown.map(item => {
                     const coverage = GMM_COVERAGES.find(c => c.id === item.coverageId);
                     if (!coverage) return null;
                     return (
-                      <div key={item.coverageId} className="flex items-center gap-2 py-1.5">
+                      <div key={item.coverageId} className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-750">
                         {item.status === 'no' ? (
-                          <X className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
+                          <X className="w-3.5 h-3.5 text-red-300 dark:text-red-700 flex-shrink-0" />
                         ) : (
                           <Check className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
                         )}
@@ -424,14 +539,14 @@ function GmmCardsView({ results, detailInsurer, setDetailInsurer }: {
                 </div>
 
                 <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Planes disponibles:</span>
-                  <div className="flex flex-wrap gap-1.5 mt-1">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Planes disponibles:</span>
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
                     {result.insurer.plans.map(plan => (
                       <span
                         key={plan.id}
-                        className={`text-xs px-2 py-0.5 rounded ${
+                        className={`text-xs px-2.5 py-1 rounded-lg ${
                           plan.id === result.bestPlan
-                            ? 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 font-medium'
+                            ? 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 font-medium ring-1 ring-teal-200 dark:ring-teal-800'
                             : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                         }`}
                       >
@@ -454,29 +569,42 @@ function GmmTableView({ results, selectedCoverages }: {
   selectedCoverages: string[];
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
+    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shadow-sm">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-gray-50 dark:bg-gray-750">
+            <tr className="bg-gray-50 dark:bg-gray-750 border-b border-gray-200 dark:border-gray-700">
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky left-0 bg-gray-50 dark:bg-gray-750 z-10 min-w-[180px]">
                 Cobertura
               </th>
-              {results.map(r => (
-                <th key={r.insurer.id} className="text-center px-3 py-3 min-w-[100px]">
-                  <div className="flex flex-col items-center gap-1">
-                    <div
-                      className="w-7 h-7 rounded-md flex items-center justify-center text-white text-[10px] font-bold"
-                      style={{ backgroundColor: r.insurer.color }}
-                    >
-                      {r.insurer.shortName.slice(0, 2)}
+              {results.map(r => {
+                const logo = INSURER_LOGOS[r.insurer.id];
+                return (
+                  <th key={r.insurer.id} className="text-center px-3 py-3 min-w-[90px]">
+                    <div className="flex flex-col items-center gap-1.5">
+                      <div className="w-8 h-8 rounded-lg bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 flex items-center justify-center overflow-hidden">
+                        {logo ? (
+                          <img src={logo} alt={r.insurer.name} className="w-6 h-6 object-contain" />
+                        ) : (
+                          <div
+                            className="w-full h-full flex items-center justify-center text-white text-[9px] font-bold rounded-lg"
+                            style={{ backgroundColor: r.insurer.color }}
+                          >
+                            {r.insurer.shortName.slice(0, 2)}
+                          </div>
+                        )}
+                      </div>
+                      <span className={`text-[11px] font-bold ${
+                        r.matchPercent >= 80 ? 'text-emerald-600' :
+                        r.matchPercent >= 60 ? 'text-teal-600' :
+                        'text-gray-500'
+                      }`}>
+                        {r.matchPercent}%
+                      </span>
                     </div>
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">
-                      {r.matchPercent}%
-                    </span>
-                  </div>
-                </th>
-              ))}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -484,7 +612,7 @@ function GmmTableView({ results, selectedCoverages }: {
               const coverage = GMM_COVERAGES.find(c => c.id === covId);
               if (!coverage) return null;
               return (
-                <tr key={covId} className="hover:bg-gray-50/50 dark:hover:bg-gray-750/50">
+                <tr key={covId} className="hover:bg-gray-50/50 dark:hover:bg-gray-750/50 transition-colors">
                   <td className="px-4 py-2.5 text-xs text-gray-700 dark:text-gray-300 sticky left-0 bg-white dark:bg-gray-800 z-10">
                     <div className="flex items-center gap-2">
                       <span className="truncate">{coverage.name}</span>
