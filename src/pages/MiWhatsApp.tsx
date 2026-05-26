@@ -94,10 +94,32 @@ export default function MiWhatsApp() {
   const [showTemplates, setShowTemplates] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
   const [newTemplateContent, setNewTemplateContent] = useState('');
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [providerConfigured, setProviderConfigured] = useState(false);
+  const [providerMessage, setProviderMessage] = useState<string | null>(null);
+  const [polling, setPolling] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const callEdgeFunction = async (action: string, extra?: Record<string, unknown>) => {
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    if (!authSession?.access_token) return null;
+    const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-session`;
+    const resp = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authSession.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ action, ...extra }),
+    });
+    if (!resp.ok) return null;
+    return resp.json();
+  };
 
   useEffect(() => {
     if (usuario) loadSessionAndConversations();
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [usuario]);
 
   useEffect(() => {
@@ -108,26 +130,28 @@ export default function MiWhatsApp() {
     if (!usuario) return;
     setLoading(true);
 
-    const [{ data: sessionData }, { data: convsData }, { data: tplData }] = await Promise.all([
-      supabase.from('whatsapp_sessions').select('*').eq('user_id', usuario.id).maybeSingle(),
-      supabase.from('whatsapp_conversations').select('*').eq('user_id', usuario.id).order('last_message_at', { ascending: false, nullsFirst: false }),
+    const [statusResult, { data: tplData }] = await Promise.all([
+      callEdgeFunction('get-status'),
       supabase.from('whatsapp_quick_templates').select('*').eq('user_id', usuario.id).order('sort_order'),
     ]);
 
-    setSession(sessionData);
-    setConversations(convsData || []);
+    if (statusResult) {
+      setSession(statusResult.session);
+      setProviderConfigured(statusResult.provider_configured);
+      if (statusResult.session?.status === 'connected' || statusResult.session?.status === 'disconnected') {
+        setQrCode(null);
+      }
+    }
+
+    const convsResult = await callEdgeFunction('get-conversations');
+    setConversations(convsResult?.conversations || []);
     setTemplates(tplData || []);
     setLoading(false);
   };
 
   const loadMessages = useCallback(async (conversationId: string) => {
-    const { data } = await supabase
-      .from('whatsapp_messages')
-      .select('*')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true })
-      .limit(100);
-    setMessages(data || []);
+    const result = await callEdgeFunction('get-messages', { conversationId });
+    setMessages(result?.messages || []);
   }, []);
 
   const handleSelectConversation = (conv: Conversation) => {
@@ -135,7 +159,6 @@ export default function MiWhatsApp() {
     setShowMobileChat(true);
     loadMessages(conv.id);
     if (conv.unread_count > 0) {
-      supabase.from('whatsapp_conversations').update({ unread_count: 0 }).eq('id', conv.id).then();
       setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, unread_count: 0 } : c));
     }
   };
@@ -158,52 +181,62 @@ export default function MiWhatsApp() {
     };
     setMessages(prev => [...prev, newMsg]);
 
-    await supabase.from('whatsapp_messages').insert({
-      id: newMsg.id,
-      conversation_id: selectedConversation.id,
-      user_id: usuario.id,
-      direction: 'outbound',
-      message_type: 'text',
-      content: text,
-      status: 'pending',
+    const result = await callEdgeFunction('send-message', {
+      to: selectedConversation.remote_phone,
+      message: text,
     });
 
-    await supabase.from('whatsapp_conversations').update({
-      last_message_text: text,
-      last_message_at: new Date().toISOString(),
-    }).eq('id', selectedConversation.id);
+    if (result?.success) {
+      setMessages(prev => prev.map(m => m.id === newMsg.id ? { ...m, status: 'sent' } : m));
+      setConversations(prev => prev.map(c =>
+        c.id === selectedConversation.id ? { ...c, last_message_text: text, last_message_at: new Date().toISOString() } : c
+      ));
+    } else {
+      setMessages(prev => prev.map(m => m.id === newMsg.id ? { ...m, status: 'failed' } : m));
+    }
+  };
+
+  const startQrPolling = () => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    setPolling(true);
+    pollRef.current = setInterval(async () => {
+      const result = await callEdgeFunction('get-qr');
+      if (result) {
+        if (result.connected) {
+          setQrCode(null);
+          setPolling(false);
+          if (pollRef.current) clearInterval(pollRef.current);
+          loadSessionAndConversations();
+        } else if (result.qr_code) {
+          setQrCode(result.qr_code);
+        }
+      }
+    }, 5000);
   };
 
   const handleConnect = async () => {
     if (!usuario) return;
-    if (!session) {
-      await supabase.from('whatsapp_sessions').insert({
-        user_id: usuario.id,
-        status: 'qr_pending',
-      });
-    } else {
-      await supabase.from('whatsapp_sessions').update({ status: 'qr_pending', error_message: null }).eq('id', session.id);
+    const result = await callEdgeFunction('connect');
+    if (result) {
+      setProviderMessage(result.message || null);
+      if (result.qr_code) {
+        setQrCode(result.qr_code);
+      }
+      if (result.provider === 'evolution') {
+        startQrPolling();
+      }
+      // Reload session state
+      const status = await callEdgeFunction('get-status');
+      if (status?.session) setSession(status.session);
     }
-    await supabase.from('whatsapp_audit_log').insert({
-      user_id: usuario.id,
-      action: 'qr_generated',
-      details: { initiated_from: 'mi_whatsapp_ui' },
-    });
-    loadSessionAndConversations();
   };
 
   const handleDisconnect = async () => {
-    if (!session || !usuario) return;
-    await supabase.from('whatsapp_sessions').update({
-      status: 'disconnected',
-      disconnected_at: new Date().toISOString(),
-      session_data: null,
-    }).eq('id', session.id);
-    await supabase.from('whatsapp_audit_log').insert({
-      user_id: usuario.id,
-      action: 'disconnect',
-      details: { session_id: session.id },
-    });
+    if (!usuario) return;
+    if (pollRef.current) clearInterval(pollRef.current);
+    setPolling(false);
+    setQrCode(null);
+    await callEdgeFunction('disconnect');
     loadSessionAndConversations();
   };
 
@@ -322,6 +355,10 @@ export default function MiWhatsApp() {
         {activeView === 'connection' && (
           <ConnectionPanel
             session={session}
+            qrCode={qrCode}
+            providerConfigured={providerConfigured}
+            providerMessage={providerMessage}
+            polling={polling}
             onConnect={handleConnect}
             onDisconnect={handleDisconnect}
             onRefresh={loadSessionAndConversations}
@@ -605,8 +642,12 @@ export default function MiWhatsApp() {
 }
 
 // ── Connection Panel ─────────────────────────────────────────────
-function ConnectionPanel({ session, onConnect, onDisconnect, onRefresh }: {
+function ConnectionPanel({ session, qrCode, providerConfigured, providerMessage, polling, onConnect, onDisconnect, onRefresh }: {
   session: WhatsAppSession | null;
+  qrCode: string | null;
+  providerConfigured: boolean;
+  providerMessage: string | null;
+  polling: boolean;
   onConnect: () => void;
   onDisconnect: () => void;
   onRefresh: () => void;
@@ -619,6 +660,21 @@ function ConnectionPanel({ session, onConnect, onDisconnect, onRefresh }: {
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-lg mx-auto p-6 space-y-6">
+        {/* Provider status banner */}
+        {!providerConfigured && (
+          <div className="rounded-xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10 p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Servidor de WhatsApp no configurado</p>
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  {providerMessage || 'Se requiere configurar Evolution API (EVOLUTION_API_URL y EVOLUTION_API_KEY) para habilitar la conexion QR. Contacta al administrador del sistema.'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Status card */}
         <div className={cn(
           'rounded-2xl border p-6',
@@ -663,7 +719,8 @@ function ConnectionPanel({ session, onConnect, onDisconnect, onRefresh }: {
             {!isConnected && (
               <button
                 onClick={onConnect}
-                className="flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium transition-colors"
+                disabled={!providerConfigured}
+                className="flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-neutral-300 disabled:dark:bg-neutral-700 text-white disabled:text-neutral-500 rounded-xl text-sm font-medium transition-colors"
               >
                 <QrCode className="w-4 h-4" />
                 {isQrPending || isConnecting ? 'Reintentar' : 'Conectar WhatsApp'}
@@ -683,7 +740,7 @@ function ConnectionPanel({ session, onConnect, onDisconnect, onRefresh }: {
               className="p-3 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-xl transition-colors"
               title="Actualizar estado"
             >
-              <RefreshCw className="w-4 h-4 text-neutral-500" />
+              <RefreshCw className={cn('w-4 h-4 text-neutral-500', polling && 'animate-spin')} />
             </button>
           </div>
         </div>
@@ -691,14 +748,41 @@ function ConnectionPanel({ session, onConnect, onDisconnect, onRefresh }: {
         {/* QR code area */}
         {(isQrPending || isConnecting) && (
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-8 text-center">
-            <div className="w-52 h-52 mx-auto bg-neutral-100 dark:bg-white/5 rounded-2xl flex items-center justify-center mb-4 border-2 border-dashed border-neutral-300 dark:border-neutral-600">
-              <div className="text-center">
-                <QrCode className="w-16 h-16 text-neutral-300 dark:text-white/20 mx-auto mb-2" />
-                <p className="text-xs text-neutral-400 dark:text-white/30">
-                  El codigo QR aparecera aqui cuando el servidor de sesiones este disponible
-                </p>
-              </div>
+            <div className="w-64 h-64 mx-auto bg-white rounded-2xl flex items-center justify-center mb-4 border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+              {qrCode ? (
+                <img
+                  src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`}
+                  alt="WhatsApp QR Code"
+                  className="w-full h-full object-contain p-2"
+                />
+              ) : (
+                <div className="text-center p-4">
+                  {polling ? (
+                    <>
+                      <div className="w-10 h-10 border-[3px] border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mx-auto mb-3" />
+                      <p className="text-xs text-neutral-500 dark:text-white/40">Generando codigo QR...</p>
+                    </>
+                  ) : (
+                    <>
+                      <QrCode className="w-16 h-16 text-neutral-200 dark:text-white/10 mx-auto mb-2" />
+                      <p className="text-xs text-neutral-400 dark:text-white/30">
+                        Presiona "Conectar WhatsApp" para generar el codigo QR
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
+
+            {qrCode && (
+              <div className="mb-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-full">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Esperando escaneo...</span>
+                </div>
+              </div>
+            )}
+
             <h3 className="text-sm font-semibold text-neutral-800 dark:text-white mb-2">Escanea el codigo QR</h3>
             <ol className="text-left text-xs text-neutral-500 dark:text-white/40 space-y-1.5 max-w-xs mx-auto">
               <li>1. Abre WhatsApp en tu celular</li>
