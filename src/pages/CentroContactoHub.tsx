@@ -6,10 +6,11 @@ import { Chat } from './Chat';
 import CentroContacto from './CentroContacto';
 import { NotificacionesTransaccionales } from './NotificacionesTransaccionales';
 import { CentroNotificacionesContent } from './CentroNotificaciones';
+import MiWhatsApp from './MiWhatsApp';
 import { cn } from '@/lib/utils';
 import { supabase } from '../lib/supabase';
 
-type TabKey = 'chat' | 'bandeja' | 'notificaciones' | 'transaccionales' | 'diagnostico';
+type TabKey = 'chat' | 'bandeja' | 'mi-whatsapp' | 'notificaciones' | 'transaccionales' | 'diagnostico';
 
 interface TabDef {
   key: TabKey;
@@ -320,6 +321,7 @@ export default function CentroContactoHub() {
 
   const tabs: TabDef[] = useMemo(() => [
     { key: 'bandeja', label: 'Bandeja', icon: Headphones, show: isAdmin || isGerente || isEmpleado },
+    { key: 'mi-whatsapp', label: 'Mi WhatsApp', icon: Smartphone, show: true },
     { key: 'chat', label: 'Chat', icon: MessageSquare, show: isNotAgent },
     { key: 'notificaciones', label: 'Notificaciones', icon: Bell, show: isAdmin },
     { key: 'transaccionales', label: 'Transaccionales', icon: Mail, show: isAdmin },
@@ -356,16 +358,8 @@ export default function CentroContactoHub() {
             );
           })}
         </nav>
-        <div className="flex items-center gap-1 pb-px">
-          <Link
-            to="/centro-contacto/mi-whatsapp"
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-            title="Mi WhatsApp"
-          >
-            <Smartphone className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Mi WhatsApp</span>
-          </Link>
-          {(isAdmin || isGerente) && (
+        {(isAdmin || isGerente) && (
+          <div className="flex items-center pb-px">
             <Link
               to="/centro-contacto/asistentes"
               className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800"
@@ -374,13 +368,14 @@ export default function CentroContactoHub() {
               <Settings className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Asistentes</span>
             </Link>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Tab Content */}
       <div className="flex-1 overflow-hidden">
         {currentTab === 'chat' && <Chat />}
+        {currentTab === 'mi-whatsapp' && <MiWhatsApp />}
         {currentTab === 'bandeja' && <CentroContacto />}
         {currentTab === 'notificaciones' && <CentroNotificacionesContent />}
         {currentTab === 'transaccionales' && <NotificacionesTransaccionales />}

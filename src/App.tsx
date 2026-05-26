@@ -94,7 +94,6 @@ import Manuales from './pages/Manuales';
 import ManualViewer from './pages/ManualViewer';
 import ManualesAdmin from './pages/ManualesAdmin';
 import CentroContactoAsistentes from './pages/CentroContactoAsistentes';
-import MiWhatsApp from './pages/MiWhatsApp';
 import AsistenteEntrenamiento from './pages/AsistenteEntrenamiento';
 import PublicQuoteForm from './pages/PublicQuoteForm';
 import AdminDigital from './pages/AdminDigital';
@@ -181,8 +180,7 @@ function App() {
               <Route path="/configuracion" element={<ProtectedRoute requireAdmin><Layout><ConfiguracionHub /></Layout></ProtectedRoute>} />
               <Route path="/notificaciones-transaccionales" element={<Navigate to="/centro-contacto" replace />} />
               <Route path="/centro-correos" element={<ProtectedRoute requireAdminOrGerente><Layout><CentroCorreos /></Layout></ProtectedRoute>} />
-              <Route path="/centro-contacto" element={<ProtectedRoute excludeAgente><Layout><CentroContactoHub /></Layout></ProtectedRoute>} />
-              <Route path="/centro-contacto/mi-whatsapp" element={<ProtectedRoute><Layout><MiWhatsApp /></Layout></ProtectedRoute>} />
+              <Route path="/centro-contacto" element={<ProtectedRoute><Layout><CentroContactoHub /></Layout></ProtectedRoute>} />
               <Route path="/centro-contacto/asistentes" element={<ProtectedRoute requireAdminOrGerente><Layout><CentroContactoAsistentes /></Layout></ProtectedRoute>} />
               <Route path="/centro-contacto/asistentes/entrenamiento" element={<ProtectedRoute requireAdminOrGerente><Layout><AsistenteEntrenamiento /></Layout></ProtectedRoute>} />
               <Route path="/vacaciones" element={<ProtectedRoute excludeAgente><Layout><Vacaciones /></Layout></ProtectedRoute>} />
