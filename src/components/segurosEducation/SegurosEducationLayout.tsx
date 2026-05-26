@@ -15,6 +15,11 @@ export const NAV_ITEMS = [
   { label: 'Analytics', path: '/seguros-education/analytics', icon: BarChart3, adminOnly: true },
 ];
 
+// Also match /manuales as Manuales tab
+const ALIAS_MAP: Record<string, string> = {
+  '/manuales': '/seguros-education/manuales',
+};
+
 interface Props {
   children: ReactNode;
   sectionTitle?: string;
@@ -29,31 +34,32 @@ export function SegurosEducationLayout({ children, sectionTitle, sectionDescript
   const isGerente = usuario?.rol?.toLowerCase() === 'gerente';
   const hasAdminAccess = isAdmin || isGerente;
 
+  // Resolve alias so /manuales shows Manuales tab as active
+  const effectivePath = ALIAS_MAP[location.pathname] || location.pathname;
+
   const isActive = (item: typeof NAV_ITEMS[0]) => {
-    if (item.exact) return location.pathname === item.path;
-    return location.pathname.startsWith(item.path);
+    if (item.exact) return effectivePath === item.path;
+    return effectivePath.startsWith(item.path);
   };
 
   const visibleItems = NAV_ITEMS.filter(i => !i.adminOnly || hasAdminAccess);
 
   return (
-    <div className="flex flex-col gap-0">
+    <div className="flex flex-col gap-0 -mt-2">
       {/* ── Clean light header ─────────────────────────────────────── */}
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/[0.07] rounded-2xl shadow-sm overflow-hidden">
-        {/* Top bar with logo + section info */}
-        <div className="px-5 pt-4 pb-0">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <img
-                src={BRAND_LOGO}
-                alt="Seguros Education"
-                className="h-6 w-auto object-contain opacity-90 dark:brightness-0 dark:invert"
-              />
-              <div className="w-px h-4 bg-neutral-200 dark:bg-white/10" />
-              <span className="text-neutral-400 dark:text-white/30 text-[10px] font-semibold tracking-[0.16em] uppercase select-none">
-                Plataforma de Capacitación
-              </span>
-            </div>
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/[0.07] rounded-t-2xl shadow-sm overflow-hidden">
+        <div className="px-4 sm:px-5 pt-4 pb-0">
+          {/* Logo row */}
+          <div className="flex items-center gap-2.5 mb-3">
+            <img
+              src={BRAND_LOGO}
+              alt="Seguros Education"
+              className="h-5 w-auto object-contain opacity-90 dark:brightness-0 dark:invert"
+            />
+            <div className="w-px h-3.5 bg-neutral-200 dark:bg-white/10" />
+            <span className="text-neutral-400 dark:text-white/30 text-[10px] font-semibold tracking-[0.16em] uppercase select-none">
+              Plataforma de Capacitación
+            </span>
           </div>
 
           {sectionTitle && (
@@ -65,7 +71,7 @@ export function SegurosEducationLayout({ children, sectionTitle, sectionDescript
             </div>
           )}
 
-          {/* Tab nav */}
+          {/* Tab nav — flush at bottom of header */}
           <nav className="flex items-end gap-0 overflow-x-auto scrollbar-none -mx-1 px-1">
             {visibleItems.map(item => {
               const active = isActive(item);
@@ -75,7 +81,7 @@ export function SegurosEducationLayout({ children, sectionTitle, sectionDescript
                   onClick={() => navigate(item.path)}
                   aria-label={item.label}
                   className={cn(
-                    'relative flex items-center gap-1.5 px-4 py-2.5 text-[11px] font-semibold rounded-t-xl transition-all duration-150 whitespace-nowrap flex-shrink-0 focus:outline-none group',
+                    'relative flex items-center gap-1.5 px-3.5 py-2.5 text-[11px] font-semibold rounded-t-xl transition-all duration-150 whitespace-nowrap flex-shrink-0 focus:outline-none group',
                     active
                       ? 'text-[#1C37E0] dark:text-blue-400 bg-[#1C37E0]/5 dark:bg-blue-400/10'
                       : 'text-neutral-500 dark:text-white/40 hover:text-neutral-800 dark:hover:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/[0.05]'
@@ -98,8 +104,8 @@ export function SegurosEducationLayout({ children, sectionTitle, sectionDescript
         </div>
       </div>
 
-      {/* ── Content area ───────────────────────────────────────────── */}
-      <div className="bg-white/50 dark:bg-neutral-900/30 rounded-b-2xl border border-t-0 border-neutral-200/50 dark:border-white/[0.06] p-5">
+      {/* ── Content area — no extra horizontal padding, inherit from Layout ── */}
+      <div className="bg-neutral-50/60 dark:bg-neutral-900/20 rounded-b-2xl border border-t-0 border-neutral-200/50 dark:border-white/[0.06] pt-5 pb-2">
         {children}
       </div>
     </div>
