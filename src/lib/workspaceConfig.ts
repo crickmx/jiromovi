@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, Palette, TrendingUp, Brain, GraduationCap, Settings, ClipboardList, FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Mail, Bot, BarChart3, Video, BookMarked, BadgeCheck, Zap } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Palette, TrendingUp, Brain, GraduationCap, Settings, ClipboardList, FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Mail, Bot, BarChart3, Video, BookMarked, BadgeCheck, Zap, Smartphone } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
@@ -61,7 +61,8 @@ const WORKSPACE_COMERCIAL: WorkspaceDefinition = {
     { path: '/mi-crm', label: 'CRM', icon: Users, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/tramites', label: 'Tramites', icon: ClipboardList, visibleTo: ALL_ROLES, matchPrefix: true, excludePrefixes: ['/tramites/formularios'] },
     { path: '/tramites/formularios', label: 'Formularios', icon: FormInput, visibleTo: ALL_ROLES, matchPrefix: true },
-    { path: '/centro-contacto', label: 'Centro de Contacto', icon: Headphones, visibleTo: NOT_AGENT, matchPrefix: true },
+    { path: '/centro-contacto', label: 'Centro de Contacto', icon: Headphones, visibleTo: NOT_AGENT, matchPrefix: true, excludePrefixes: ['/centro-contacto/mi-whatsapp'] },
+    { path: '/centro-contacto/mi-whatsapp', label: 'Mi WhatsApp', icon: Smartphone, visibleTo: ALL_ROLES },
     { path: '/multicotizador-digital', label: 'Multicotizador', icon: Car, visibleTo: ALL_ROLES },
     { path: '/entrega-polizas', label: 'Entrega Polizas', icon: Send, visibleTo: NOT_AGENT },
     { path: '/mis-polizas', label: 'Mis Polizas', icon: FileText, visibleTo: ALL_ROLES },

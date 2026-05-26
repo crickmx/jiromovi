@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { MessageSquare, Headphones, Bell, Mail, Settings, Activity, CheckCircle2, XCircle, AlertCircle, RefreshCw, Webhook } from 'lucide-react';
+import { MessageSquare, Headphones, Bell, Mail, Settings, Activity, CheckCircle2, XCircle, AlertCircle, RefreshCw, Webhook, Smartphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Chat } from './Chat';
@@ -356,8 +356,16 @@ export default function CentroContactoHub() {
             );
           })}
         </nav>
-        {(isAdmin || isGerente) && (
-          <div className="flex items-center pb-px">
+        <div className="flex items-center gap-1 pb-px">
+          <Link
+            to="/centro-contacto/mi-whatsapp"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+            title="Mi WhatsApp"
+          >
+            <Smartphone className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Mi WhatsApp</span>
+          </Link>
+          {(isAdmin || isGerente) && (
             <Link
               to="/centro-contacto/asistentes"
               className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800"
@@ -366,8 +374,8 @@ export default function CentroContactoHub() {
               <Settings className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Asistentes</span>
             </Link>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Tab Content */}
