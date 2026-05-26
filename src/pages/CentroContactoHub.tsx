@@ -321,7 +321,7 @@ export default function CentroContactoHub() {
 
   const tabs: TabDef[] = useMemo(() => [
     { key: 'bandeja', label: 'Bandeja', icon: Headphones, show: isAdmin || isGerente || isEmpleado },
-    { key: 'mi-whatsapp', label: 'Mi WhatsApp', icon: Smartphone, show: true },
+    { key: 'mi-whatsapp', label: 'Mi WhatsApp', icon: Smartphone, show: isAdmin || isGerente || isEmpleado },
     { key: 'chat', label: 'Chat', icon: MessageSquare, show: isNotAgent },
     { key: 'notificaciones', label: 'Notificaciones', icon: Bell, show: isAdmin },
     { key: 'transaccionales', label: 'Transaccionales', icon: Mail, show: isAdmin },
