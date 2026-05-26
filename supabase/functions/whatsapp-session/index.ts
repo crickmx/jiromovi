@@ -164,7 +164,7 @@ Deno.serve(async (req: Request) => {
 
           if (connectResp.ok) {
             const connectData = await connectResp.json();
-            const qrCode = connectData.qr || connectData.qrBase64 || connectData.qr_code || connectData.qrCode || null;
+            const qrCode = connectData.qrBase64 || connectData.qr_code || connectData.qrCode || connectData.qr || null;
 
             if (qrCode) {
               await supabase
@@ -288,7 +288,7 @@ Deno.serve(async (req: Request) => {
 
           if (qrResp.ok) {
             const qrData = await qrResp.json();
-            const qrCode = qrData.qr || qrData.qrBase64 || qrData.qr_code || qrData.qrCode || null;
+            const qrCode = qrData.qrBase64 || qrData.qr_code || qrData.qrCode || qrData.qr || null;
 
             if (qrCode) {
               await supabase
