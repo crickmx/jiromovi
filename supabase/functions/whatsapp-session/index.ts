@@ -121,6 +121,24 @@ Deno.serve(async (req: Request) => {
           });
         }
 
+        // Force-disconnect any stale session first
+        try {
+          await fetch(
+            `${WHATSAPP_SERVER_URL}/session/${user.id}/disconnect`,
+            {
+              method: "POST",
+              headers: {
+                "x-api-key": WHATSAPP_SERVER_API_KEY,
+                "Content-Type": "application/json",
+              },
+              signal: AbortSignal.timeout(5000),
+            }
+          );
+          await new Promise(r => setTimeout(r, 1000));
+        } catch {
+          // Best effort - continue even if disconnect fails
+        }
+
         // Upsert session record
         const { data: existing } = await supabase
           .from("whatsapp_sessions")
