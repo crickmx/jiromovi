@@ -68,7 +68,7 @@ Deno.serve(async (req: Request) => {
         // Check real status from WhatsApp server
         try {
           const statusResp = await fetch(
-            `${WHATSAPP_SERVER_URL}/api/sessions/${user.id}/status`,
+            `${WHATSAPP_SERVER_URL}/session/${user.id}/status`,
             {
               headers: {
                 "x-api-key": WHATSAPP_SERVER_API_KEY,
@@ -83,7 +83,7 @@ Deno.serve(async (req: Request) => {
                 .from("whatsapp_sessions")
                 .update({
                   status: "connected",
-                  phone_number: statusData.phone_number || session.phone_number,
+                  phone_number: statusData.phone || statusData.phone_number || session.phone_number,
                   connected_at: session.connected_at || new Date().toISOString(),
                   last_activity_at: new Date().toISOString(),
                   updated_at: new Date().toISOString(),
@@ -151,7 +151,7 @@ Deno.serve(async (req: Request) => {
         // Request QR from WhatsApp server
         try {
           const connectResp = await fetch(
-            `${WHATSAPP_SERVER_URL}/api/sessions/${user.id}/start`,
+            `${WHATSAPP_SERVER_URL}/session/${user.id}/connect`,
             {
               method: "POST",
               headers: {
@@ -164,7 +164,7 @@ Deno.serve(async (req: Request) => {
 
           if (connectResp.ok) {
             const connectData = await connectResp.json();
-            const qrCode = connectData.qr || connectData.qr_code || connectData.qrCode || null;
+            const qrCode = connectData.qr || connectData.qrBase64 || connectData.qr_code || connectData.qrCode || null;
 
             if (qrCode) {
               await supabase
@@ -235,7 +235,7 @@ Deno.serve(async (req: Request) => {
         // First check if already connected
         try {
           const statusResp = await fetch(
-            `${WHATSAPP_SERVER_URL}/api/sessions/${user.id}/status`,
+            `${WHATSAPP_SERVER_URL}/session/${user.id}/status`,
             {
               headers: {
                 "x-api-key": WHATSAPP_SERVER_API_KEY,
@@ -252,8 +252,8 @@ Deno.serve(async (req: Request) => {
                 .from("whatsapp_sessions")
                 .update({
                   status: "connected",
-                  phone_number: statusData.phone_number || statusData.phoneNumber || null,
-                  device_name: statusData.device_name || statusData.deviceName || null,
+                  phone_number: statusData.phone || statusData.phone_number || null,
+                  device_name: statusData.name || statusData.device_name || null,
                   connected_at: new Date().toISOString(),
                   session_data: null,
                   error_message: null,
@@ -264,7 +264,7 @@ Deno.serve(async (req: Request) => {
               await supabase.from("whatsapp_audit_log").insert({
                 user_id: user.id,
                 action: "connected",
-                details: { phone: statusData.phone_number || statusData.phoneNumber },
+                details: { phone: statusData.phone || statusData.phone_number },
               });
 
               return json({ connected: true, qr_code: null });
@@ -277,7 +277,7 @@ Deno.serve(async (req: Request) => {
         // Try to get fresh QR
         try {
           const qrResp = await fetch(
-            `${WHATSAPP_SERVER_URL}/api/sessions/${user.id}/qr`,
+            `${WHATSAPP_SERVER_URL}/session/${user.id}/qr`,
             {
               headers: {
                 "x-api-key": WHATSAPP_SERVER_API_KEY,
@@ -288,7 +288,7 @@ Deno.serve(async (req: Request) => {
 
           if (qrResp.ok) {
             const qrData = await qrResp.json();
-            const qrCode = qrData.qr || qrData.qr_code || qrData.qrCode || null;
+            const qrCode = qrData.qr || qrData.qrBase64 || qrData.qr_code || qrData.qrCode || null;
 
             if (qrCode) {
               await supabase
@@ -325,7 +325,7 @@ Deno.serve(async (req: Request) => {
         if (serverConfigured) {
           try {
             await fetch(
-              `${WHATSAPP_SERVER_URL}/api/sessions/${user.id}/disconnect`,
+              `${WHATSAPP_SERVER_URL}/session/${user.id}/disconnect`,
               {
                 method: "POST",
                 headers: {
@@ -399,7 +399,7 @@ Deno.serve(async (req: Request) => {
 
         try {
           const sendResp = await fetch(
-            `${WHATSAPP_SERVER_URL}/api/sessions/${user.id}/send-message`,
+            `${WHATSAPP_SERVER_URL}/session/${user.id}/send-message`,
             {
               method: "POST",
               headers: {
@@ -471,7 +471,7 @@ Deno.serve(async (req: Request) => {
 
         try {
           const sendResp = await fetch(
-            `${WHATSAPP_SERVER_URL}/api/sessions/${user.id}/send-media`,
+            `${WHATSAPP_SERVER_URL}/session/${user.id}/send-media`,
             {
               method: "POST",
               headers: {
