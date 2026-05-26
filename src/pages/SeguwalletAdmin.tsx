@@ -32,7 +32,9 @@ interface SeguwalletCustomer {
   terms_version_accepted: string | null;
   terms_accepted_at: string | null;
   sicas_clients_count?: number;
+  sicas_primary_name?: string | null;
   agent_name?: string;
+  office_name?: string | null;
 }
 
 function getPhotoUrl(path: string | null | undefined, fallback = ''): string {
@@ -105,6 +107,8 @@ export function SeguwalletAdmin() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [filterOffice, setFilterOffice] = useState('all');
+  const [filterSicas, setFilterSicas] = useState<'all' | 'vinculado' | 'sin_vinculo'>('all');
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<SeguwalletCustomer | null>(null);
 
@@ -192,21 +196,31 @@ export function SeguwalletAdmin() {
 
       if (data) {
         const enriched = await Promise.all(data.map(async (c) => {
-          const [countRes, agentRes] = await Promise.all([
+          const [countRes, primarySicasRes, agentRes] = await Promise.all([
             supabase
               .from('seguwallet_customer_sicas_clients')
               .select('id', { count: 'exact', head: true })
               .eq('seguwallet_customer_id', c.id),
             supabase
+              .from('seguwallet_customer_sicas_clients')
+              .select('nombre_sicas')
+              .eq('seguwallet_customer_id', c.id)
+              .order('created_at', { ascending: true })
+              .limit(1)
+              .maybeSingle(),
+            supabase
               .from('usuarios')
-              .select('nombre, apellidos')
+              .select('nombre, apellidos, oficina_id, oficinas(nombre)')
               .eq('id', c.agent_user_id)
               .maybeSingle(),
           ]);
+          const agent = agentRes.data as any;
           return {
             ...c,
             sicas_clients_count: countRes.count || 0,
-            agent_name: agentRes.data ? `${agentRes.data.nombre} ${agentRes.data.apellidos}` : '-',
+            sicas_primary_name: primarySicasRes.data?.nombre_sicas || null,
+            agent_name: agent ? `${agent.nombre} ${agent.apellidos}` : '-',
+            office_name: agent?.oficinas?.nombre || null,
           };
         }));
         setCustomers(enriched);
@@ -710,10 +724,21 @@ export function SeguwalletAdmin() {
     setEditPhotoPath(null);
   };
 
+  const officeOptions = [...new Set(customers.map(c => c.office_name).filter(Boolean) as string[])].sort();
+
   const filteredCustomers = customers.filter(c => {
+    if (filterOffice !== 'all' && c.office_name !== filterOffice) return false;
+    if (filterSicas === 'vinculado' && (c.sicas_clients_count || 0) === 0) return false;
+    if (filterSicas === 'sin_vinculo' && (c.sicas_clients_count || 0) > 0) return false;
     if (!search.trim()) return true;
     const q = search.toLowerCase();
-    return c.full_name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || (c.agent_name || '').toLowerCase().includes(q);
+    return (
+      c.full_name.toLowerCase().includes(q) ||
+      c.email.toLowerCase().includes(q) ||
+      (c.agent_name || '').toLowerCase().includes(q) ||
+      (c.sicas_primary_name || '').toLowerCase().includes(q) ||
+      (c.office_name || '').toLowerCase().includes(q)
+    );
   });
 
   // Server-side search — availableSicas is already filtered
@@ -805,10 +830,31 @@ export function SeguwalletAdmin() {
         ))}
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre, correo o agente..." className="w-full pl-11 pr-4 py-3 rounded-2xl border border-neutral-200/60 dark:border-white/10 bg-white dark:bg-white/[0.03] text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all" />
+      {/* Search + Filters */}
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre, correo, agente u oficina..." className="w-full pl-11 pr-4 py-3 rounded-2xl border border-neutral-200/60 dark:border-white/10 bg-white dark:bg-white/[0.03] text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all" />
+        </div>
+        {isAdmin && officeOptions.length > 0 && (
+          <select
+            value={filterOffice}
+            onChange={e => setFilterOffice(e.target.value)}
+            className="px-4 py-3 rounded-2xl border border-neutral-200/60 dark:border-white/10 bg-white dark:bg-white/[0.03] text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/70"
+          >
+            <option value="all">Todas las oficinas</option>
+            {officeOptions.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+        )}
+        <select
+          value={filterSicas}
+          onChange={e => setFilterSicas(e.target.value as typeof filterSicas)}
+          className="px-4 py-3 rounded-2xl border border-neutral-200/60 dark:border-white/10 bg-white dark:bg-white/[0.03] text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/70"
+        >
+          <option value="all">Todos (SICAS)</option>
+          <option value="vinculado">Con SICAS</option>
+          <option value="sin_vinculo">Sin SICAS</option>
+        </select>
       </div>
 
       {/* Table */}
@@ -826,7 +872,8 @@ export function SeguwalletAdmin() {
                 <tr className="border-b border-neutral-100 dark:border-white/[0.06]">
                   <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40">Cliente</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40 hidden md:table-cell">Agente</th>
-                  <th className="text-center px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40 hidden sm:table-cell">SICAS</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40 hidden lg:table-cell">Oficina</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40 hidden sm:table-cell">SICAS</th>
                   <th className="text-center px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40 hidden lg:table-cell">Perfil</th>
                   <th className="text-center px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40 hidden lg:table-cell">Términos</th>
                   <th className="text-center px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40">Estatus</th>
@@ -845,9 +892,32 @@ export function SeguwalletAdmin() {
                       <td className="px-5 py-3 hidden md:table-cell">
                         <p className="text-xs text-neutral-600 dark:text-white/50">{toTitleCase(c.agent_name || '')}</p>
                       </td>
-                      <td className="px-5 py-3 text-center hidden sm:table-cell">
-                        <button onClick={() => openSicas(c)} className="inline-flex items-center gap-1 text-xs font-medium text-[#1C37E0] hover:underline">
-                          {c.sicas_clients_count}<UserPlus className="w-3 h-3" />
+                      <td className="px-5 py-3 hidden lg:table-cell">
+                        {c.office_name ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-neutral-600 dark:text-white/50">
+                            <Building2 className="w-3 h-3 text-neutral-400" />
+                            {c.office_name}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-neutral-300 dark:text-white/20">—</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3 hidden sm:table-cell">
+                        <button onClick={() => openSicas(c)} className="group text-left">
+                          {(c.sicas_clients_count || 0) > 0 ? (
+                            <div>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#1C37E0]/10 text-[#1C37E0] text-[10px] font-bold">
+                                {c.sicas_clients_count} vinculado{(c.sicas_clients_count || 0) !== 1 ? 's' : ''}
+                              </span>
+                              {c.sicas_primary_name && (
+                                <p className="text-[10px] text-neutral-500 dark:text-white/40 mt-0.5 truncate max-w-[120px]">{c.sicas_primary_name}</p>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-neutral-100 dark:bg-white/5 text-neutral-400 dark:text-white/30 text-[10px] font-medium">
+                              Sin vínculo
+                            </span>
+                          )}
                         </button>
                       </td>
                       <td className="px-5 py-3 text-center hidden lg:table-cell">

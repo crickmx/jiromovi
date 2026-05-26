@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
+import { SegurosEducationLayout } from '../components/segurosEducation/SegurosEducationLayout';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import {
   Calendar, Clock, Plus, Users, Video, AlertCircle,
   Play, Pause, Link as LinkIcon, Copy, CheckCircle,
-  Trash2, Settings, BarChart3, Download, FileVideo, Upload
+  Download, FileVideo, Upload
 } from 'lucide-react';
-import { PageHeader } from '@/components/ui/page-header';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { BaseModal } from '../components/BaseModal';
@@ -257,43 +257,43 @@ export function SegurosEducationAulaVirtual() {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-neutral-600 dark:text-white/50">Cargando...</div>
-        </div>
+        <SegurosEducationLayout sectionTitle="Aula Virtual" sectionDescription="Capacitaciones en vivo con WebRTC">
+          <div className="flex justify-center items-center py-16">
+            <div className="w-8 h-8 border-[3px] border-[#1C37E0]/20 border-t-[#1C37E0] rounded-full animate-spin" />
+          </div>
+        </SegurosEducationLayout>
       </Layout>
     );
   }
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <PageHeader
-          title="Aula Virtual"
-          description="Capacitaciones en vivo con WebRTC"
-          icon={Video}
-          backTo="/seguros-education"
-          backLabel="Volver a Seguros Education"
-          actions={
-            <div className="flex gap-2">
+      <SegurosEducationLayout sectionTitle="Aula Virtual" sectionDescription="Capacitaciones en vivo con WebRTC">
+      <div className="space-y-5">
+        {/* Section header with actions */}
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h2 className="text-base font-bold text-neutral-900 dark:text-white">Sesiones</h2>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowGrabacionesModal(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-neutral-100 dark:bg-white/[0.05] text-neutral-700 dark:text-white/70 rounded-xl hover:bg-neutral-200 dark:hover:bg-white/10 transition-all text-xs font-semibold"
+            >
+              <FileVideo className="w-3.5 h-3.5" />
+              Grabaciones ({grabaciones.length})
+            </button>
+            {isAdmin && (
               <button
-                onClick={() => setShowGrabacionesModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-neutral-100 dark:bg-white/8 text-neutral-700 dark:text-white/70 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/12 transition-all text-sm font-medium"
+                onClick={() => setShowCreateModal(true)}
+                className="flex items-center gap-2 px-3 py-2 bg-[#1C37E0] text-white rounded-xl hover:bg-[#1630c8] transition-all text-xs font-semibold"
               >
-                <FileVideo className="w-4 h-4" />
-                Grabaciones ({grabaciones.length})
+                <Plus className="w-3.5 h-3.5" />
+                Nueva Sesión
               </button>
-              {isAdmin && (
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-all text-sm font-medium"
-                >
-                  <Plus className="w-4 h-4" />
-                  Nueva Sesión
-                </button>
-              )}
-            </div>
-          }
-        />
+            )}
+          </div>
+        </div>
 
         {activeSessions.length > 0 && (
           <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-6 text-white">
@@ -486,6 +486,7 @@ export function SegurosEducationAulaVirtual() {
           grabacionTitulo={grabacionAPublicar.sesion?.titulo || 'Grabación de sesión'}
         />
       )}
+      </SegurosEducationLayout>
     </Layout>
   );
 }

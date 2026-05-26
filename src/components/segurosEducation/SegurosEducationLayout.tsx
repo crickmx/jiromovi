@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { GraduationCap, Video, Calendar, BarChart3, BookOpen, Home, ChevronRight } from 'lucide-react';
+import { GraduationCap, Video, Calendar, BarChart3, BookOpen, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -14,15 +14,6 @@ export const NAV_ITEMS = [
   { label: 'Manuales', path: '/seguros-education/manuales', icon: BookOpen },
   { label: 'Analytics', path: '/seguros-education/analytics', icon: BarChart3, adminOnly: true },
 ];
-
-function getActiveLabel(pathname: string, items: typeof NAV_ITEMS) {
-  for (const item of [...items].reverse()) {
-    if (item.exact ? pathname === item.path : pathname.startsWith(item.path)) {
-      return item.label;
-    }
-  }
-  return 'Inicio';
-}
 
 interface Props {
   children: ReactNode;
@@ -44,67 +35,37 @@ export function SegurosEducationLayout({ children, sectionTitle, sectionDescript
   };
 
   const visibleItems = NAV_ITEMS.filter(i => !i.adminOnly || hasAdminAccess);
-  const activeLabel = getActiveLabel(location.pathname, visibleItems);
 
   return (
-    <div className="flex flex-col gap-0 -mt-1">
-      {/* ── Branded sub-header ─────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl mb-0 bg-gradient-to-br from-[#071428] via-[#0c1e3e] to-[#142f5e] shadow-xl">
-        {/* Subtle grid */}
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)',
-            backgroundSize: '28px 28px',
-          }}
-        />
-        {/* Glow blobs */}
-        <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-blue-400/10 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-10 left-1/4 w-56 h-40 rounded-full bg-cyan-400/6 blur-3xl pointer-events-none" />
-
-        <div className="relative px-5 pt-5 pb-0">
-          {/* Top row */}
-          <div className="flex items-center justify-between mb-5">
+    <div className="flex flex-col gap-0">
+      {/* ── Clean light header ─────────────────────────────────────── */}
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/[0.07] rounded-2xl shadow-sm overflow-hidden">
+        {/* Top bar with logo + section info */}
+        <div className="px-5 pt-4 pb-0">
+          <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-3">
               <img
                 src={BRAND_LOGO}
                 alt="Seguros Education"
-                className="h-7 w-auto object-contain"
-                style={{ filter: 'brightness(0) invert(1)' }}
+                className="h-6 w-auto object-contain opacity-90 dark:brightness-0 dark:invert"
               />
-              <div className="hidden sm:flex items-center gap-3">
-                <div className="w-px h-4 bg-white/15" />
-                <span className="text-white/35 text-[10px] font-semibold tracking-[0.18em] uppercase select-none">
-                  Plataforma de Capacitación
-                </span>
-              </div>
-            </div>
-            {/* Breadcrumb */}
-            <div className="hidden md:flex items-center gap-1.5 text-[11px] text-white/35 font-medium">
-              <span>MOVI</span>
-              <ChevronRight className="w-3 h-3" />
-              <span>Seguros Education</span>
-              {activeLabel !== 'Inicio' && (
-                <>
-                  <ChevronRight className="w-3 h-3" />
-                  <span className="text-white/70">{activeLabel}</span>
-                </>
-              )}
+              <div className="w-px h-4 bg-neutral-200 dark:bg-white/10" />
+              <span className="text-neutral-400 dark:text-white/30 text-[10px] font-semibold tracking-[0.16em] uppercase select-none">
+                Plataforma de Capacitación
+              </span>
             </div>
           </div>
 
-          {/* Section info (optional override) */}
           {sectionTitle && (
-            <div className="mb-4">
-              <h1 className="text-white text-lg font-bold leading-tight">{sectionTitle}</h1>
+            <div className="mb-3">
+              <h1 className="text-neutral-900 dark:text-white text-lg font-bold leading-tight">{sectionTitle}</h1>
               {sectionDescription && (
-                <p className="text-white/40 text-xs mt-0.5">{sectionDescription}</p>
+                <p className="text-neutral-400 dark:text-white/40 text-xs mt-0.5">{sectionDescription}</p>
               )}
             </div>
           )}
 
-          {/* Tab nav — flush bottom */}
+          {/* Tab nav */}
           <nav className="flex items-end gap-0 overflow-x-auto scrollbar-none -mx-1 px-1">
             {visibleItems.map(item => {
               const active = isActive(item);
@@ -116,19 +77,19 @@ export function SegurosEducationLayout({ children, sectionTitle, sectionDescript
                   className={cn(
                     'relative flex items-center gap-1.5 px-4 py-2.5 text-[11px] font-semibold rounded-t-xl transition-all duration-150 whitespace-nowrap flex-shrink-0 focus:outline-none group',
                     active
-                      ? 'bg-white/[0.97] dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-sm'
-                      : 'text-white/50 hover:text-white/90 hover:bg-white/[0.07]'
+                      ? 'text-[#1C37E0] dark:text-blue-400 bg-[#1C37E0]/5 dark:bg-blue-400/10'
+                      : 'text-neutral-500 dark:text-white/40 hover:text-neutral-800 dark:hover:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/[0.05]'
                   )}
                 >
                   <item.icon
                     className={cn(
                       'w-3.5 h-3.5 flex-shrink-0 transition-colors',
-                      active ? 'text-[#1C37E0]' : 'text-white/40 group-hover:text-white/70'
+                      active ? 'text-[#1C37E0] dark:text-blue-400' : 'text-neutral-400 dark:text-white/30 group-hover:text-neutral-600 dark:group-hover:text-white/60'
                     )}
                   />
                   {item.label}
                   {active && (
-                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1C37E0] rounded-t" />
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1C37E0] dark:bg-blue-400 rounded-t" />
                   )}
                 </button>
               );
