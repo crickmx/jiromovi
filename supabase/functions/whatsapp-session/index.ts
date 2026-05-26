@@ -15,13 +15,18 @@ interface RequestBody {
     | "disconnect"
     | "get-qr"
     | "send-message"
+    | "send-media"
     | "get-conversations"
     | "get-messages";
-  sessionId?: string;
   conversationId?: string;
   to?: string;
   message?: string;
   messageType?: string;
+  mediaBase64?: string;
+  mimeType?: string;
+  filename?: string;
+  caption?: string;
+  quotedMessageId?: string;
 }
 
 Deno.serve(async (req: Request) => {
@@ -32,251 +37,151 @@ Deno.serve(async (req: Request) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "No authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return json({ error: "No authorization header" }, 401);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify the user from the JWT
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(token);
     if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Invalid token" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return json({ error: "Invalid token" }, 401);
     }
 
     const userId = user.id;
     const body: RequestBody = await req.json();
     const { action } = body;
 
-    const evolutionUrl = Deno.env.get("EVOLUTION_API_URL");
-    const evolutionKey = Deno.env.get("EVOLUTION_API_KEY");
-    const hasEvolution = Boolean(evolutionUrl && evolutionKey);
-
-    const instanceName = `movi_${userId.replace(/-/g, "").slice(0, 16)}`;
+    // WhatsApp server connection details
+    const waServerUrl = Deno.env.get("WHATSAPP_SERVER_URL");
+    const waServerKey = Deno.env.get("WHATSAPP_SERVER_API_KEY");
+    const serverConfigured = Boolean(waServerUrl && waServerKey);
 
     switch (action) {
       case "get-status": {
-        const { data: session } = await supabase
+        if (!serverConfigured) {
+          // Check DB directly for session record
+          const { data: session } = await supabase
+            .from("whatsapp_sessions")
+            .select("*")
+            .eq("user_id", userId)
+            .maybeSingle();
+          return json({
+            status: session?.status || "no_session",
+            session,
+            server_configured: false,
+          });
+        }
+
+        // Ask the WhatsApp server for real status
+        const resp = await callServer(waServerUrl!, waServerKey!, `session/${userId}/status`);
+        if (!resp) {
+          return json({ status: "server_unreachable", session: null, server_configured: true });
+        }
+
+        // Also fetch DB record for extra fields
+        const { data: dbSession } = await supabase
           .from("whatsapp_sessions")
           .select("*")
           .eq("user_id", userId)
           .maybeSingle();
 
-        if (!session) {
-          return json({ status: "no_session", session: null, provider_configured: hasEvolution });
-        }
-
-        // If Evolution API is configured, check real status
-        if (hasEvolution && session.status === "connected") {
-          try {
-            const resp = await fetch(
-              `${evolutionUrl}/instance/connectionState/${instanceName}`,
-              { headers: { apikey: evolutionKey! } }
-            );
-            if (resp.ok) {
-              const state = await resp.json();
-              const realStatus = state.instance?.state === "open" ? "connected" : "disconnected";
-              if (realStatus !== session.status) {
-                await supabase.from("whatsapp_sessions").update({
-                  status: realStatus,
-                  ...(realStatus === "disconnected" ? { disconnected_at: new Date().toISOString() } : {}),
-                }).eq("id", session.id);
-                session.status = realStatus;
-              }
-            }
-          } catch { /* ignore check errors */ }
-        }
-
-        return json({ status: session.status, session, provider_configured: hasEvolution });
+        return json({
+          status: resp.status || "no_session",
+          session: dbSession,
+          connected: resp.connected,
+          phone: resp.phone,
+          server_configured: true,
+        });
       }
 
       case "connect": {
-        // Create or update session
-        const { data: existing } = await supabase
-          .from("whatsapp_sessions")
-          .select("id")
-          .eq("user_id", userId)
-          .maybeSingle();
-
-        if (existing) {
-          await supabase.from("whatsapp_sessions").update({
-            status: "qr_pending",
-            error_message: null,
-          }).eq("id", existing.id);
-        } else {
-          await supabase.from("whatsapp_sessions").insert({
-            user_id: userId,
-            status: "qr_pending",
+        if (!serverConfigured) {
+          return json({
+            success: false,
+            server_configured: false,
+            error: "WhatsApp server no configurado. Configure WHATSAPP_SERVER_URL y WHATSAPP_SERVER_API_KEY.",
           });
         }
 
-        // Log audit
-        await supabase.from("whatsapp_audit_log").insert({
-          user_id: userId,
-          action: "qr_generated",
-          details: { provider: hasEvolution ? "evolution" : "demo" },
-        });
-
-        if (hasEvolution) {
-          // Create Evolution API instance
-          try {
-            // Check if instance exists
-            const checkResp = await fetch(
-              `${evolutionUrl}/instance/connectionState/${instanceName}`,
-              { headers: { apikey: evolutionKey! } }
-            );
-
-            if (!checkResp.ok || checkResp.status === 404) {
-              // Create instance
-              await fetch(`${evolutionUrl}/instance/create`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  apikey: evolutionKey!,
-                },
-                body: JSON.stringify({
-                  instanceName,
-                  qrcode: true,
-                  integration: "WHATSAPP-BAILEYS",
-                }),
-              });
-            }
-
-            // Connect instance to get QR
-            const connectResp = await fetch(
-              `${evolutionUrl}/instance/connect/${instanceName}`,
-              { headers: { apikey: evolutionKey! } }
-            );
-
-            if (connectResp.ok) {
-              const connectData = await connectResp.json();
-              const qrCode = connectData.base64 || connectData.qrcode?.base64 || null;
-              return json({
-                success: true,
-                qr_code: qrCode,
-                provider: "evolution",
-              });
-            }
-          } catch (err) {
-            await supabase.from("whatsapp_sessions").update({
-              status: "error",
-              error_message: `Error connecting to Evolution API: ${(err as Error).message}`,
-            }).eq("user_id", userId);
-            return json({ success: false, error: (err as Error).message }, 500);
-          }
+        const resp = await callServerPost(waServerUrl!, waServerKey!, `session/${userId}/connect`, {});
+        if (!resp) {
+          return json({ success: false, error: "No se pudo conectar al servidor WhatsApp" }, 500);
         }
 
-        // Demo mode: generate a placeholder QR
         return json({
           success: true,
-          qr_code: null,
-          provider: "demo",
-          message: "Evolution API no configurada. Configure EVOLUTION_API_URL y EVOLUTION_API_KEY para habilitar conexiones reales de WhatsApp.",
+          qr_code: resp.qrBase64 || null,
+          status: resp.status,
+          connected: resp.connected,
+          server_configured: true,
         });
       }
 
       case "get-qr": {
-        if (!hasEvolution) {
-          return json({
-            qr_code: null,
-            provider: "demo",
-            message: "Configure Evolution API para obtener codigo QR real",
-          });
+        if (!serverConfigured) {
+          return json({ qr_code: null, server_configured: false });
         }
 
-        try {
-          const resp = await fetch(
-            `${evolutionUrl}/instance/connect/${instanceName}`,
-            { headers: { apikey: evolutionKey! } }
-          );
-          if (resp.ok) {
-            const data = await resp.json();
-            const qrCode = data.base64 || data.qrcode?.base64 || null;
-
-            // Check if already connected (no QR means connected)
-            if (!qrCode) {
-              const stateResp = await fetch(
-                `${evolutionUrl}/instance/connectionState/${instanceName}`,
-                { headers: { apikey: evolutionKey! } }
-              );
-              if (stateResp.ok) {
-                const state = await stateResp.json();
-                if (state.instance?.state === "open") {
-                  // Update session as connected
-                  await supabase.from("whatsapp_sessions").update({
-                    status: "connected",
-                    connected_at: new Date().toISOString(),
-                    error_message: null,
-                  }).eq("user_id", userId);
-
-                  await supabase.from("whatsapp_audit_log").insert({
-                    user_id: userId,
-                    action: "connect",
-                    details: { provider: "evolution", instance: instanceName },
-                  });
-
-                  return json({ qr_code: null, connected: true });
-                }
-              }
-            }
-
-            return json({ qr_code: qrCode, connected: false });
-          }
-          return json({ qr_code: null, error: "Could not fetch QR" }, 500);
-        } catch (err) {
-          return json({ qr_code: null, error: (err as Error).message }, 500);
+        const resp = await callServer(waServerUrl!, waServerKey!, `session/${userId}/qr`);
+        if (!resp) {
+          return json({ qr_code: null, error: "Server unreachable" }, 500);
         }
+
+        return json({
+          qr_code: resp.qrBase64 || null,
+          connected: resp.connected || false,
+          status: resp.status,
+        });
       }
 
       case "disconnect": {
-        await supabase.from("whatsapp_sessions").update({
-          status: "disconnected",
-          disconnected_at: new Date().toISOString(),
-          session_data: null,
-        }).eq("user_id", userId);
-
-        await supabase.from("whatsapp_audit_log").insert({
-          user_id: userId,
-          action: "disconnect",
-          details: { instance: instanceName },
-        });
-
-        if (hasEvolution) {
-          try {
-            await fetch(`${evolutionUrl}/instance/logout/${instanceName}`, {
-              method: "DELETE",
-              headers: { apikey: evolutionKey! },
-            });
-          } catch { /* best effort */ }
+        if (serverConfigured) {
+          await callServerPost(waServerUrl!, waServerKey!, `session/${userId}/disconnect`, {});
         }
+
+        await supabase
+          .from("whatsapp_sessions")
+          .update({
+            status: "disconnected",
+            disconnected_at: new Date().toISOString(),
+          })
+          .eq("user_id", userId);
 
         return json({ success: true });
       }
 
       case "send-message": {
-        const { to, message, messageType = "text" } = body;
+        const { to, message, quotedMessageId } = body;
         if (!to || !message) {
           return json({ error: "Missing 'to' or 'message'" }, 400);
         }
 
-        // Normalize phone number
+        if (serverConfigured) {
+          const resp = await callServerPost(
+            waServerUrl!,
+            waServerKey!,
+            `session/${userId}/send-message`,
+            { to, message, quotedMessageId }
+          );
+          if (!resp || resp.error) {
+            return json({ success: false, error: resp?.error || "Send failed" }, 500);
+          }
+          return json({ success: true, messageId: resp.messageId });
+        }
+
+        // Fallback: save to DB without actually sending
         let phone = to.replace(/\D/g, "");
         if (phone.length === 10) phone = `52${phone}`;
-        if (!phone.startsWith("52")) phone = `52${phone}`;
 
-        // Save message to DB
-        // Find or create conversation
         let { data: conv } = await supabase
           .from("whatsapp_conversations")
-          .select("id, session_id")
+          .select("id")
           .eq("user_id", userId)
           .eq("remote_phone", phone)
           .maybeSingle();
@@ -287,12 +192,9 @@ Deno.serve(async (req: Request) => {
             .select("id")
             .eq("user_id", userId)
             .maybeSingle();
+          if (!session) return json({ error: "No session" }, 400);
 
-          if (!session) {
-            return json({ error: "No active session" }, 400);
-          }
-
-          const { data: newConv } = await supabase
+          const { data: nc } = await supabase
             .from("whatsapp_conversations")
             .insert({
               user_id: userId,
@@ -301,81 +203,63 @@ Deno.serve(async (req: Request) => {
               last_message_text: message,
               last_message_at: new Date().toISOString(),
             })
-            .select("id, session_id")
+            .select("id")
             .single();
-          conv = newConv;
+          conv = nc;
         } else {
-          await supabase.from("whatsapp_conversations").update({
-            last_message_text: message,
-            last_message_at: new Date().toISOString(),
-          }).eq("id", conv!.id);
+          await supabase
+            .from("whatsapp_conversations")
+            .update({ last_message_text: message, last_message_at: new Date().toISOString() })
+            .eq("id", conv!.id);
         }
 
-        const msgStatus = hasEvolution ? "pending" : "sent";
-        const { data: savedMsg } = await supabase
+        const { data: msg } = await supabase
           .from("whatsapp_messages")
           .insert({
             conversation_id: conv!.id,
             user_id: userId,
             direction: "outbound",
-            message_type: messageType,
+            message_type: "text",
             content: message,
-            status: msgStatus,
+            status: "pending",
           })
           .select("id")
           .single();
 
-        // Send via Evolution API if configured
-        if (hasEvolution) {
-          try {
-            const sendResp = await fetch(
-              `${evolutionUrl}/message/sendText/${instanceName}`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  apikey: evolutionKey!,
-                },
-                body: JSON.stringify({
-                  number: phone,
-                  text: message,
-                }),
-              }
-            );
+        return json({ success: true, messageId: msg?.id, delivered: false });
+      }
 
-            if (sendResp.ok) {
-              const sendData = await sendResp.json();
-              await supabase.from("whatsapp_messages").update({
-                status: "sent",
-                wa_message_id: sendData.key?.id || null,
-              }).eq("id", savedMsg!.id);
-            } else {
-              await supabase.from("whatsapp_messages").update({
-                status: "failed",
-              }).eq("id", savedMsg!.id);
-            }
-          } catch {
-            await supabase.from("whatsapp_messages").update({
-              status: "failed",
-            }).eq("id", savedMsg!.id);
-          }
+      case "send-media": {
+        const { to, mediaBase64, mimeType, filename, caption } = body;
+        if (!to || !mediaBase64 || !mimeType) {
+          return json({ error: "Missing required fields" }, 400);
         }
 
-        // Update session last activity
-        await supabase.from("whatsapp_sessions").update({
-          last_activity_at: new Date().toISOString(),
-        }).eq("user_id", userId);
+        if (!serverConfigured) {
+          return json({ error: "WhatsApp server required for media" }, 400);
+        }
 
-        await supabase.from("whatsapp_audit_log").insert({
-          user_id: userId,
-          action: "send_message",
-          details: { to: phone, message_id: savedMsg?.id },
-        });
-
-        return json({ success: true, message_id: savedMsg?.id });
+        const resp = await callServerPost(
+          waServerUrl!,
+          waServerKey!,
+          `session/${userId}/send-media`,
+          { to, mediaBase64, mimeType, filename, caption }
+        );
+        if (!resp || resp.error) {
+          return json({ success: false, error: resp?.error || "Send media failed" }, 500);
+        }
+        return json({ success: true, messageId: resp.messageId });
       }
 
       case "get-conversations": {
+        if (serverConfigured) {
+          const resp = await callServer(waServerUrl!, waServerKey!, `session/${userId}/conversations`);
+          if (resp?.conversations?.length) {
+            return json({ conversations: resp.conversations, source: "server" });
+          }
+        }
+
+        // Fallback: get from DB
         const { data: convs } = await supabase
           .from("whatsapp_conversations")
           .select("*")
@@ -384,7 +268,7 @@ Deno.serve(async (req: Request) => {
           .order("last_message_at", { ascending: false, nullsFirst: false })
           .limit(50);
 
-        return json({ conversations: convs || [] });
+        return json({ conversations: convs || [], source: "database" });
       }
 
       case "get-messages": {
@@ -393,6 +277,7 @@ Deno.serve(async (req: Request) => {
           return json({ error: "Missing conversationId" }, 400);
         }
 
+        // Get from DB (server syncs there)
         const { data: msgs } = await supabase
           .from("whatsapp_messages")
           .select("*")
@@ -401,10 +286,11 @@ Deno.serve(async (req: Request) => {
           .order("created_at", { ascending: true })
           .limit(100);
 
-        // Mark as read
-        await supabase.from("whatsapp_conversations").update({
-          unread_count: 0,
-        }).eq("id", conversationId).eq("user_id", userId);
+        await supabase
+          .from("whatsapp_conversations")
+          .update({ unread_count: 0 })
+          .eq("id", conversationId)
+          .eq("user_id", userId);
 
         return json({ messages: msgs || [] });
       }
@@ -413,22 +299,42 @@ Deno.serve(async (req: Request) => {
         return json({ error: `Unknown action: ${action}` }, 400);
     }
   } catch (err) {
-    return new Response(
-      JSON.stringify({ error: (err as Error).message }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    return json({ error: (err as Error).message }, 500);
   }
 });
+
+async function callServer(baseUrl: string, apiKey: string, path: string) {
+  try {
+    const resp = await fetch(`${baseUrl}/${path}`, {
+      headers: { "x-api-key": apiKey },
+    });
+    if (!resp.ok) return null;
+    return await resp.json();
+  } catch {
+    return null;
+  }
+}
+
+async function callServerPost(baseUrl: string, apiKey: string, path: string, body: unknown) {
+  try {
+    const resp = await fetch(`${baseUrl}/${path}`, {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) return null;
+    return await resp.json();
+  } catch {
+    return null;
+  }
+}
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: {
-      ...corsHeaders,
-      "Content-Type": "application/json",
-    },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }

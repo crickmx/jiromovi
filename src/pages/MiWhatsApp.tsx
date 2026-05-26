@@ -137,7 +137,7 @@ export default function MiWhatsApp() {
 
     if (statusResult) {
       setSession(statusResult.session);
-      setProviderConfigured(statusResult.provider_configured);
+      setProviderConfigured(statusResult.server_configured ?? statusResult.provider_configured ?? false);
       if (statusResult.session?.status === 'connected' || statusResult.session?.status === 'disconnected') {
         setQrCode(null);
       }
@@ -218,11 +218,16 @@ export default function MiWhatsApp() {
     if (!usuario) return;
     const result = await callEdgeFunction('connect');
     if (result) {
+      if (result.error && !result.success) {
+        setProviderMessage(result.error);
+        setProviderConfigured(result.server_configured ?? false);
+        return;
+      }
       setProviderMessage(result.message || null);
       if (result.qr_code) {
         setQrCode(result.qr_code);
       }
-      if (result.provider === 'evolution') {
+      if (result.server_configured || result.success) {
         startQrPolling();
       }
       // Reload session state
@@ -668,7 +673,7 @@ function ConnectionPanel({ session, qrCode, providerConfigured, providerMessage,
               <div>
                 <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Servidor de WhatsApp no configurado</p>
                 <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                  {providerMessage || 'Se requiere configurar Evolution API (EVOLUTION_API_URL y EVOLUTION_API_KEY) para habilitar la conexion QR. Contacta al administrador del sistema.'}
+                  {providerMessage || 'Se requiere desplegar el servidor de WhatsApp (whatsapp-server) y configurar WHATSAPP_SERVER_URL y WHATSAPP_SERVER_API_KEY. Contacta al administrador del sistema.'}
                 </p>
               </div>
             </div>
