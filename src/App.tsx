@@ -17,6 +17,9 @@ import { CentroCorreos } from './pages/CentroCorreos';
 import { Vacaciones } from './pages/Vacaciones';
 import { EspacioJiro } from './pages/EspacioJiro';
 import MulticotizadorDigital from './pages/MulticotizadorDigital';
+import AlaMedida from './pages/comercial/AlaMedida';
+import DisenadorAuto from './pages/comercial/disenadores/DisenadorAuto';
+import DisenadorGMM from './pages/comercial/disenadores/DisenadorGMM';
 import { GestorEmails } from './pages/GestorEmails';
 import { AccesosNacional } from './pages/AccesosNacional';
 import { DirectorioJiro } from './pages/DirectorioJiro';
@@ -186,6 +189,9 @@ function App() {
               <Route path="/vacaciones" element={<ProtectedRoute excludeAgente><Layout><Vacaciones /></Layout></ProtectedRoute>} />
               <Route path="/espacio-jiro" element={<ProtectedRoute><Layout><EspacioJiro /></Layout></ProtectedRoute>} />
               <Route path="/multicotizador-digital" element={<ProtectedRoute><Layout><MulticotizadorDigital /></Layout></ProtectedRoute>} />
+              <Route path="/a-la-medida" element={<ProtectedRoute><Layout><AlaMedida /></Layout></ProtectedRoute>} />
+              <Route path="/a-la-medida/auto" element={<ProtectedRoute><Layout><DisenadorAuto /></Layout></ProtectedRoute>} />
+              <Route path="/a-la-medida/gmm" element={<ProtectedRoute><Layout><DisenadorGMM /></Layout></ProtectedRoute>} />
               <Route path="/lector-qualitas" element={<ProtectedRoute excludeAgente><Layout><LectorQualitas /></Layout></ProtectedRoute>} />
               <Route path="/entrega-polizas" element={<ProtectedRoute excludeAgente><Layout><EntregaPolizas /></Layout></ProtectedRoute>} />
               <Route path="/publicidad" element={<Navigate to="/mercadotecnia/publicidad" replace />} />
