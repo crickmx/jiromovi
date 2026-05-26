@@ -494,6 +494,111 @@ Deno.serve(async (req: Request) => {
         }
       }
 
+      case "diagnose": {
+        const diagnostics: Record<string, unknown> = {
+          server_url: WHATSAPP_SERVER_URL ? `${WHATSAPP_SERVER_URL.slice(0, 30)}...` : "NOT SET",
+          api_key_set: !!WHATSAPP_SERVER_API_KEY,
+          server_configured: serverConfigured,
+          user_id: user.id,
+          timestamp: new Date().toISOString(),
+        };
+
+        if (!serverConfigured) {
+          diagnostics.conclusion = "Server NOT configured - env vars missing";
+          return json({ diagnostics });
+        }
+
+        // 1. Test health endpoint (no auth needed usually)
+        try {
+          const healthResp = await fetch(`${WHATSAPP_SERVER_URL}/health`, {
+            signal: AbortSignal.timeout(10000),
+          });
+          diagnostics.health_status = healthResp.status;
+          if (healthResp.ok) {
+            diagnostics.health_body = await healthResp.json();
+          } else {
+            diagnostics.health_body = await healthResp.text();
+          }
+        } catch (e: unknown) {
+          diagnostics.health_error = e instanceof Error ? e.message : "Unknown";
+        }
+
+        // 2. Test status endpoint
+        try {
+          const statusResp = await fetch(
+            `${WHATSAPP_SERVER_URL}/session/${user.id}/status`,
+            {
+              headers: {
+                "x-api-key": WHATSAPP_SERVER_API_KEY,
+                "Content-Type": "application/json",
+              },
+              signal: AbortSignal.timeout(10000),
+            }
+          );
+          diagnostics.status_http = statusResp.status;
+          if (statusResp.ok) {
+            diagnostics.status_body = await statusResp.json();
+          } else {
+            diagnostics.status_body = await statusResp.text();
+          }
+        } catch (e: unknown) {
+          diagnostics.status_error = e instanceof Error ? e.message : "Unknown";
+        }
+
+        // 3. Test QR endpoint
+        try {
+          const qrResp = await fetch(
+            `${WHATSAPP_SERVER_URL}/session/${user.id}/qr`,
+            {
+              headers: {
+                "x-api-key": WHATSAPP_SERVER_API_KEY,
+                "Content-Type": "application/json",
+              },
+              signal: AbortSignal.timeout(10000),
+            }
+          );
+          diagnostics.qr_http = qrResp.status;
+          if (qrResp.ok) {
+            const qrData = await qrResp.json();
+            diagnostics.qr_keys = Object.keys(qrData);
+            diagnostics.qr_has_qr = !!qrData.qr;
+            diagnostics.qr_has_qrBase64 = !!qrData.qrBase64;
+            diagnostics.qr_status = qrData.status;
+            diagnostics.qr_connected = qrData.connected;
+            if (qrData.qrBase64) {
+              diagnostics.qrBase64_length = qrData.qrBase64.length;
+              diagnostics.qrBase64_prefix = qrData.qrBase64.slice(0, 40);
+            }
+            if (qrData.qr) {
+              diagnostics.qr_length = qrData.qr.length;
+              diagnostics.qr_prefix = qrData.qr.slice(0, 40);
+            }
+          } else {
+            diagnostics.qr_body = await qrResp.text();
+          }
+        } catch (e: unknown) {
+          diagnostics.qr_error = e instanceof Error ? e.message : "Unknown";
+        }
+
+        // 4. Check DB session state
+        const { data: dbSession } = await supabase
+          .from("whatsapp_sessions")
+          .select("id, status, error_message, session_data, updated_at")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        diagnostics.db_session = dbSession ? {
+          id: dbSession.id,
+          status: dbSession.status,
+          error_message: dbSession.error_message,
+          has_session_data: !!dbSession.session_data,
+          has_qr_in_data: !!dbSession.session_data?.qr_code,
+          updated_at: dbSession.updated_at,
+        } : null;
+
+        return json({ diagnostics });
+      }
+
       default:
         return err(`Unknown action: ${action}`);
     }

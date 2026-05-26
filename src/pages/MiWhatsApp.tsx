@@ -448,6 +448,18 @@ export default function MiWhatsApp() {
     loadSessionAndConversations();
   };
 
+  const [diagResult, setDiagResult] = useState<Record<string, unknown> | null>(null);
+
+  const handleDiagnose = async () => {
+    setDiagResult(null);
+    const result = await callEdgeFunction('diagnose');
+    if (result?.diagnostics) {
+      setDiagResult(result.diagnostics);
+    } else {
+      setDiagResult({ error: 'No se pudo obtener diagnostico', raw: result });
+    }
+  };
+
   const filteredConversations = conversations.filter(c => {
     if (!searchQuery) return !c.is_archived;
     const q = searchQuery.toLowerCase();
@@ -532,7 +544,20 @@ export default function MiWhatsApp() {
       {/* Main content */}
       <div className="flex-1 overflow-hidden">
         {activeView === 'connection' && (
-          <ConnectionPanel session={session} qrCode={qrCode} providerConfigured={providerConfigured} providerMessage={providerMessage} polling={polling} onConnect={handleConnect} onDisconnect={handleDisconnect} onRefresh={loadSessionAndConversations} />
+          <div className="h-full overflow-y-auto">
+            <ConnectionPanel session={session} qrCode={qrCode} providerConfigured={providerConfigured} providerMessage={providerMessage} polling={polling} onConnect={handleConnect} onDisconnect={handleDisconnect} onRefresh={loadSessionAndConversations} onDiagnose={handleDiagnose} />
+            {diagResult && (
+              <div className="max-w-lg mx-auto px-6 pb-6">
+                <div className="rounded-xl border border-blue-200 dark:border-blue-800/40 bg-blue-50 dark:bg-blue-900/10 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-bold text-blue-800 dark:text-blue-200">Resultado del Diagnostico</h4>
+                    <button onClick={() => setDiagResult(null)} className="text-blue-400 hover:text-blue-600"><X className="w-4 h-4" /></button>
+                  </div>
+                  <pre className="text-[10px] leading-relaxed text-blue-900 dark:text-blue-100 font-mono whitespace-pre-wrap break-all max-h-80 overflow-y-auto">{JSON.stringify(diagResult, null, 2)}</pre>
+                </div>
+              </div>
+            )}
+          </div>
         )}
         {activeView === 'templates' && (
           <TemplatesPanel templates={templates} userId={usuario?.id || ''} onRefresh={loadSessionAndConversations} onUseTemplate={(body) => { setMessageInput(body); setActiveView('inbox'); }} />
@@ -943,7 +968,7 @@ function CreateTramiteModal({ selectedCount, conversationName, onClose, onSubmit
 
 // ── Connection Panel ──────────────────────────────────────────────
 
-function ConnectionPanel({ session, qrCode, providerConfigured, providerMessage, polling, onConnect, onDisconnect, onRefresh }: {
+function ConnectionPanel({ session, qrCode, providerConfigured, providerMessage, polling, onConnect, onDisconnect, onRefresh, onDiagnose }: {
   session: WhatsAppSession | null;
   qrCode: string | null;
   providerConfigured: boolean;
@@ -952,6 +977,7 @@ function ConnectionPanel({ session, qrCode, providerConfigured, providerMessage,
   onConnect: () => void;
   onDisconnect: () => void;
   onRefresh: () => void;
+  onDiagnose: () => void;
 }) {
   const isConnected = session?.status === 'connected';
   const isQrPending = session?.status === 'qr_pending';
@@ -959,7 +985,7 @@ function ConnectionPanel({ session, qrCode, providerConfigured, providerMessage,
   const isError = session?.status === 'error';
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div>
       <div className="max-w-lg mx-auto p-6 space-y-6">
         {!providerConfigured && (
           <div className="rounded-xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10 p-4">
@@ -999,6 +1025,7 @@ function ConnectionPanel({ session, qrCode, providerConfigured, providerMessage,
               <button onClick={onDisconnect} className="flex items-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium transition-colors"><WifiOff className="w-4 h-4" /> Desconectar</button>
             )}
             <button onClick={onRefresh} className="p-3 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-xl transition-colors" title="Actualizar estado"><RefreshCw className={cn('w-4 h-4 text-neutral-500', polling && 'animate-spin')} /></button>
+            <button onClick={onDiagnose} className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-neutral-500 hover:text-neutral-700 dark:text-white/40 dark:hover:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-lg transition-colors" title="Diagnosticar conexion"><AlertCircle className="w-3.5 h-3.5" /> Diagnosticar</button>
           </div>
         </div>
 
