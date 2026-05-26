@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Check, X, ChevronDown, ChevronUp, BarChart3, Table2,
   Building2, Stethoscope, Baby, Smile, Globe, Heart, Info, RotateCcw,
-  Award, Building, UserRound
+  Award, Building, UserRound, MapPin, Search, Cross, AlertTriangle
 } from 'lucide-react';
 import {
   GMM_COVERAGES, GMM_CATEGORY_LABELS, DEFAULT_GMM_COVERAGES,
@@ -11,7 +11,16 @@ import {
   HOSPITAL_LEVELS,
   type GmmCoverageCategory, type HospitalLevel
 } from '../../../data/insuranceDesigner/gmmCoverages';
-import { calculateGmmMatch, getGmmStatusLabel, getGmmStatusColor, type GmmMatchResult } from '../../../lib/insuranceDesigner/calculateGmmMatch';
+import {
+  GMM_HOSPITALS, MEXICAN_STATES, INSURER_LEVEL_NAMES,
+  type GmmHospital, type InsurerId,
+  numericToHospitalLevel,
+} from '../../../data/insuranceDesigner/gmmHospitals';
+import {
+  calculateGmmMatch, getGmmStatusLabel, getGmmStatusColor,
+  getHospitalStatusLabel, getHospitalStatusColor,
+  type GmmMatchResult,
+} from '../../../lib/insuranceDesigner/calculateGmmMatch';
 
 const ICON_MAP: Record<string, React.FC<{ className?: string }>> = {
   Building2, Stethoscope, Baby, Smile, Globe, Heart,
@@ -42,16 +51,63 @@ export default function DisenadorGMM() {
   const [age, setAge] = useState(35);
   const [hospitalLevel, setHospitalLevel] = useState<HospitalLevel | 'all'>('all');
 
-  const results = useMemo(() => calculateGmmMatch(selectedCoverages), [selectedCoverages]);
+  // Hospital selection state
+  const [selectedState, setSelectedState] = useState<string>('');
+  const [selectedHospitals, setSelectedHospitals] = useState<GmmHospital[]>([]);
+  const [hospitalSearch, setHospitalSearch] = useState('');
+  const [hospitalDropdownOpen, setHospitalDropdownOpen] = useState(false);
+  const hospitalDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (hospitalDropdownRef.current && !hospitalDropdownRef.current.contains(e.target as Node)) {
+        setHospitalDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const hospitalsInState = useMemo(() => {
+    if (!selectedState) return [];
+    return GMM_HOSPITALS.filter(h => h.estado === selectedState);
+  }, [selectedState]);
+
+  const filteredHospitalOptions = useMemo(() => {
+    const available = hospitalsInState.filter(
+      h => !selectedHospitals.some(sel => sel.id === h.id)
+    );
+    if (!hospitalSearch.trim()) return available;
+    const q = hospitalSearch.toLowerCase();
+    return available.filter(h => h.nombre.toLowerCase().includes(q) || h.ciudad.toLowerCase().includes(q));
+  }, [hospitalsInState, selectedHospitals, hospitalSearch]);
+
+  const autoCalculatedLevel = useMemo((): HospitalLevel | null => {
+    if (selectedHospitals.length === 0) return null;
+    let maxLevel = 0;
+    for (const h of selectedHospitals) {
+      for (const val of Object.values(h.niveles)) {
+        if (val && val > maxLevel) maxLevel = val;
+      }
+    }
+    return numericToHospitalLevel(maxLevel);
+  }, [selectedHospitals]);
+
+  const results = useMemo(
+    () => calculateGmmMatch(selectedCoverages, selectedHospitals),
+    [selectedCoverages, selectedHospitals]
+  );
 
   const filteredResults = useMemo(() => {
     return results.filter(r => {
       if (age > r.insurer.maxAge || age < r.insurer.minAge) return false;
       if (sumAssured > r.insurer.maxSumAssured) return false;
-      if (hospitalLevel !== 'all' && !r.insurer.hospitalLevels.includes(hospitalLevel)) return false;
+      if (selectedHospitals.length === 0 && hospitalLevel !== 'all') {
+        if (!r.insurer.hospitalLevels.includes(hospitalLevel)) return false;
+      }
       return true;
     });
-  }, [results, age, sumAssured, hospitalLevel]);
+  }, [results, age, sumAssured, hospitalLevel, selectedHospitals.length]);
 
   const toggleCoverage = (id: string) => {
     setSelectedCoverages(prev =>
@@ -75,6 +131,16 @@ export default function DisenadorGMM() {
     }
   };
 
+  const addHospital = (hospital: GmmHospital) => {
+    setSelectedHospitals(prev => [...prev, hospital]);
+    setHospitalSearch('');
+    setHospitalDropdownOpen(false);
+  };
+
+  const removeHospital = (hospitalId: string) => {
+    setSelectedHospitals(prev => prev.filter(h => h.id !== hospitalId));
+  };
+
   const resetSelections = () => {
     setSelectedCoverages(DEFAULT_GMM_COVERAGES);
     setSumAssured(10_000_000);
@@ -82,6 +148,9 @@ export default function DisenadorGMM() {
     setCoinsurance(10);
     setAge(35);
     setHospitalLevel('all');
+    setSelectedState('');
+    setSelectedHospitals([]);
+    setHospitalSearch('');
   };
 
   const coveragesByCategory = useMemo(() => {
@@ -184,42 +253,148 @@ export default function DisenadorGMM() {
               </div>
             </div>
 
-            {/* Hospital Level Filter */}
-            <div>
-              <div className="flex items-center gap-2 mb-2.5">
-                <Building className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Nivel Hospitalario</label>
+            {/* Hospital Selection */}
+            <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Cross className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Red Hospitalaria</label>
               </div>
-              <div className="grid grid-cols-5 gap-1.5">
-                <button
-                  onClick={() => setHospitalLevel('all')}
-                  className={`px-2 py-2 rounded-lg text-[11px] font-medium text-center transition-all ${
-                    hospitalLevel === 'all'
-                      ? 'bg-teal-600 text-white shadow-sm'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  Todos
-                </button>
-                {(Object.entries(HOSPITAL_LEVELS) as [HospitalLevel, { label: string; description: string }][]).map(([level, info]) => (
-                  <button
-                    key={level}
-                    onClick={() => setHospitalLevel(level)}
-                    title={info.description}
-                    className={`px-2 py-2 rounded-lg text-[11px] font-medium text-center transition-all ${
-                      hospitalLevel === level
-                        ? 'bg-teal-600 text-white shadow-sm'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    }`}
+
+              {/* State selector */}
+              <div className="mb-3">
+                <div className="relative">
+                  <MapPin className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <select
+                    value={selectedState}
+                    onChange={(e) => {
+                      setSelectedState(e.target.value);
+                      setSelectedHospitals([]);
+                      setHospitalSearch('');
+                    }}
+                    className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-all appearance-none"
                   >
-                    {info.label}
-                  </button>
-                ))}
+                    <option value="">Seleccionar estado...</option>
+                    {MEXICAN_STATES.filter(s => GMM_HOSPITALS.some(h => h.estado === s)).map(state => (
+                      <option key={state} value={state}>{state}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
               </div>
-              {hospitalLevel !== 'all' && (
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1.5 ml-0.5">
-                  {HOSPITAL_LEVELS[hospitalLevel].description}
-                </p>
+
+              {/* Hospital multi-select */}
+              {selectedState && (
+                <div className="mb-3" ref={hospitalDropdownRef}>
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={hospitalSearch}
+                      onChange={(e) => {
+                        setHospitalSearch(e.target.value);
+                        setHospitalDropdownOpen(true);
+                      }}
+                      onFocus={() => setHospitalDropdownOpen(true)}
+                      placeholder={`Buscar hospital en ${selectedState}...`}
+                      className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-all placeholder:text-gray-400"
+                    />
+                  </div>
+
+                  {/* Dropdown */}
+                  {hospitalDropdownOpen && filteredHospitalOptions.length > 0 && (
+                    <div className="mt-1 max-h-40 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg z-20 relative">
+                      {filteredHospitalOptions.map(h => (
+                        <button
+                          key={h.id}
+                          onClick={() => addHospital(h)}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors flex items-center gap-2 border-b border-gray-50 dark:border-gray-750 last:border-0"
+                        >
+                          <Cross className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <span className="text-gray-800 dark:text-gray-200 block truncate">{h.nombre}</span>
+                            <span className="text-[10px] text-gray-400">{h.ciudad}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {hospitalDropdownOpen && filteredHospitalOptions.length === 0 && hospitalSearch && (
+                    <div className="mt-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-xs text-gray-500">
+                      No se encontraron hospitales
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Selected hospitals chips */}
+              {selectedHospitals.length > 0 && (
+                <div className="space-y-1.5 mb-3">
+                  {selectedHospitals.map(h => (
+                    <div
+                      key={h.id}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800/40"
+                    >
+                      <Cross className="w-3 h-3 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+                      <span className="text-xs text-teal-800 dark:text-teal-200 flex-1 truncate">{h.nombre}</span>
+                      <button
+                        onClick={() => removeHospital(h.id)}
+                        className="p-0.5 rounded hover:bg-teal-200 dark:hover:bg-teal-800 transition-colors"
+                      >
+                        <X className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Auto-calculated level indicator */}
+              {autoCalculatedLevel && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-sky-50 dark:bg-sky-900/15 border border-sky-100 dark:border-sky-800/30">
+                  <Building className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                  <div className="flex-1">
+                    <span className="text-[10px] text-sky-600 dark:text-sky-400 font-medium block">Nivel requerido (auto)</span>
+                    <span className="text-xs font-semibold text-sky-800 dark:text-sky-200 capitalize">{HOSPITAL_LEVELS[autoCalculatedLevel].label}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Manual level fallback (only when no hospitals selected) */}
+              {selectedHospitals.length === 0 && (
+                <div className="mt-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Building className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+                    <label className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide">
+                      {selectedState ? 'O selecciona nivel manual' : 'Nivel hospitalario'}
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    <button
+                      onClick={() => setHospitalLevel('all')}
+                      className={`px-2 py-2 rounded-lg text-[11px] font-medium text-center transition-all ${
+                        hospitalLevel === 'all'
+                          ? 'bg-teal-600 text-white shadow-sm'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      Todos
+                    </button>
+                    {(Object.entries(HOSPITAL_LEVELS) as [HospitalLevel, { label: string; description: string }][]).map(([level, info]) => (
+                      <button
+                        key={level}
+                        onClick={() => setHospitalLevel(level)}
+                        title={info.description}
+                        className={`px-2 py-2 rounded-lg text-[11px] font-medium text-center transition-all ${
+                          hospitalLevel === level
+                            ? 'bg-teal-600 text-white shadow-sm'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }`}
+                      >
+                        {info.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -241,7 +416,7 @@ export default function DisenadorGMM() {
             </button>
           </div>
 
-          <div className="max-h-[calc(100vh-560px)] overflow-y-auto space-y-2 pr-1 scrollbar-thin">
+          <div className="max-h-[calc(100vh-700px)] overflow-y-auto space-y-2 pr-1 scrollbar-thin">
             {(Object.entries(coveragesByCategory) as [GmmCoverageCategory, typeof GMM_COVERAGES][]).map(([cat, coverages]) => {
               const catLabel = GMM_CATEGORY_LABELS[cat];
               const IconComp = ICON_MAP[catLabel.icon] || Heart;
@@ -321,6 +496,16 @@ export default function DisenadorGMM() {
               );
             })}
           </div>
+
+          {/* Disclaimer */}
+          {selectedHospitals.length > 0 && (
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <p className="text-[10px] text-amber-700 dark:text-amber-300 leading-relaxed">
+                Las redes hospitalarias se actualizan periodicamente. Confirma disponibilidad directamente con cada aseguradora antes de emitir.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Right Panel - Results */}
@@ -336,7 +521,10 @@ export default function DisenadorGMM() {
                 )}
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Ordenados por compatibilidad con tu seleccion
+                {selectedHospitals.length > 0
+                  ? `Compatibilidad con ${selectedHospitals.length} hospital${selectedHospitals.length > 1 ? 'es' : ''} seleccionado${selectedHospitals.length > 1 ? 's' : ''}`
+                  : 'Ordenados por compatibilidad con tu seleccion'
+                }
               </p>
             </div>
             <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
@@ -357,14 +545,14 @@ export default function DisenadorGMM() {
             </div>
           </div>
 
-          {selectedCoverages.length === 0 ? (
+          {selectedCoverages.length === 0 && selectedHospitals.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700">
               <Heart className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
               <p className="text-gray-500 dark:text-gray-400 font-medium">
-                Selecciona coberturas para ver resultados
+                Selecciona coberturas o hospitales para ver resultados
               </p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                Usa el panel izquierdo para marcar las coberturas deseadas
+                Usa el panel izquierdo para configurar tu busqueda
               </p>
             </div>
           ) : filteredResults.length === 0 ? (
@@ -385,7 +573,12 @@ export default function DisenadorGMM() {
               </button>
             </div>
           ) : viewMode === 'cards' ? (
-            <GmmCardsView results={filteredResults} detailInsurer={detailInsurer} setDetailInsurer={setDetailInsurer} />
+            <GmmCardsView
+              results={filteredResults}
+              detailInsurer={detailInsurer}
+              setDetailInsurer={setDetailInsurer}
+              selectedHospitals={selectedHospitals}
+            />
           ) : (
             <GmmTableView results={filteredResults} selectedCoverages={selectedCoverages} />
           )}
@@ -395,10 +588,11 @@ export default function DisenadorGMM() {
   );
 }
 
-function GmmCardsView({ results, detailInsurer, setDetailInsurer }: {
+function GmmCardsView({ results, detailInsurer, setDetailInsurer, selectedHospitals }: {
   results: GmmMatchResult[];
   detailInsurer: string | null;
   setDetailInsurer: (id: string | null) => void;
+  selectedHospitals: GmmHospital[];
 }) {
   return (
     <div className="space-y-3">
@@ -407,6 +601,9 @@ function GmmCardsView({ results, detailInsurer, setDetailInsurer }: {
         const isTop = idx === 0;
         const bestPlanObj = result.insurer.plans.find(p => p.id === result.bestPlan);
         const logo = INSURER_LOGOS[result.insurer.id];
+        const insurerId = result.insurer.id as InsurerId;
+        const hasHospitals = selectedHospitals.length > 0;
+        const coveredHospitals = result.hospitalDetails.filter(d => d.status === 'cubierto').length;
 
         return (
           <div
@@ -443,8 +640,18 @@ function GmmCardsView({ results, detailInsurer, setDetailInsurer }: {
                 <span className="font-semibold text-gray-900 dark:text-white text-sm block">
                   {result.insurer.name}
                 </span>
-                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  <span>{result.coveredCount}/{result.totalSelected} cubiertas</span>
+                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex-wrap">
+                  {result.totalSelected > 0 && (
+                    <span>{result.coveredCount}/{result.totalSelected} cubiertas</span>
+                  )}
+                  {hasHospitals && (
+                    <>
+                      {result.totalSelected > 0 && <span className="w-1 h-1 rounded-full bg-gray-300" />}
+                      <span className={coveredHospitals === selectedHospitals.length ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-amber-600 dark:text-amber-400'}>
+                        {coveredHospitals}/{selectedHospitals.length} hospitales
+                      </span>
+                    </>
+                  )}
                   {bestPlanObj && (
                     <>
                       <span className="w-1 h-1 rounded-full bg-gray-300" />
@@ -509,34 +716,71 @@ function GmmCardsView({ results, detailInsurer, setDetailInsurer }: {
                     <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{result.insurer.waitingPeriodMonths}m</span>
                   </div>
                   <div className="text-center p-2.5 rounded-lg bg-gray-50 dark:bg-gray-750">
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">Nivel Hosp.</span>
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">Nivel max</span>
                     <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 capitalize">
                       {result.insurer.hospitalLevels[result.insurer.hospitalLevels.length - 1]}
                     </span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                  {result.breakdown.map(item => {
-                    const coverage = GMM_COVERAGES.find(c => c.id === item.coverageId);
-                    if (!coverage) return null;
-                    return (
-                      <div key={item.coverageId} className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-750">
-                        {item.status === 'no' ? (
-                          <X className="w-3.5 h-3.5 text-red-300 dark:text-red-700 flex-shrink-0" />
-                        ) : (
-                          <Check className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                        )}
-                        <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1">
-                          {coverage.name}
-                        </span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${getGmmStatusColor(item.status)}`}>
-                          {getGmmStatusLabel(item.status)}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                {/* Hospital coverage details */}
+                {hasHospitals && (
+                  <div className="mb-4">
+                    <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1.5">
+                      <Cross className="w-3.5 h-3.5 text-teal-500" />
+                      Cobertura Hospitalaria
+                    </h4>
+                    <div className="space-y-1.5">
+                      {result.hospitalDetails.map(detail => {
+                        const levelName = INSURER_LEVEL_NAMES[insurerId]?.[detail.requiredLevel] || `Nivel ${detail.requiredLevel}`;
+                        return (
+                          <div key={detail.hospital.id} className="flex items-center gap-2 py-1.5 px-2.5 rounded-lg bg-gray-50 dark:bg-gray-750">
+                            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                              detail.status === 'cubierto' ? 'bg-emerald-500' :
+                              detail.status === 'requiere_nivel_superior' ? 'bg-amber-500' :
+                              detail.status === 'no_cubierto' ? 'bg-red-400' :
+                              'bg-gray-400'
+                            }`} />
+                            <span className="text-xs text-gray-700 dark:text-gray-300 flex-1 truncate">
+                              {detail.hospital.nombre}
+                            </span>
+                            <span className="text-[10px] text-gray-500 dark:text-gray-400 flex-shrink-0">
+                              {levelName}
+                            </span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium flex-shrink-0 ${getHospitalStatusColor(detail.status)}`}>
+                              {getHospitalStatusLabel(detail.status)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Coverage breakdown */}
+                {result.breakdown.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {result.breakdown.map(item => {
+                      const coverage = GMM_COVERAGES.find(c => c.id === item.coverageId);
+                      if (!coverage) return null;
+                      return (
+                        <div key={item.coverageId} className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-750">
+                          {item.status === 'no' ? (
+                            <X className="w-3.5 h-3.5 text-red-300 dark:text-red-700 flex-shrink-0" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                          )}
+                          <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1">
+                            {coverage.name}
+                          </span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${getGmmStatusColor(item.status)}`}>
+                            {getGmmStatusLabel(item.status)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
                 <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                   <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Planes disponibles:</span>
