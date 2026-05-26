@@ -159,28 +159,53 @@ Deno.serve(async (req: Request) => {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({ sessionId: user.id }),
+              signal: AbortSignal.timeout(20000),
             }
           );
 
           if (connectResp.ok) {
             const connectData = await connectResp.json();
-            const qrCode = connectData.qrBase64 || connectData.qr_code || connectData.qrCode || connectData.qr || null;
+            let qrCode = connectData.qrBase64 || connectData.qr_code || connectData.qrCode || connectData.qr || null;
+
+            // If no QR from connect response, the server might still be generating it
+            // Wait briefly and check the /qr endpoint
+            if (!qrCode && !connectData.connected) {
+              await new Promise(r => setTimeout(r, 3000));
+              try {
+                const qrResp = await fetch(
+                  `${WHATSAPP_SERVER_URL}/session/${user.id}/qr`,
+                  {
+                    headers: {
+                      "x-api-key": WHATSAPP_SERVER_API_KEY,
+                      "Content-Type": "application/json",
+                    },
+                    signal: AbortSignal.timeout(8000),
+                  }
+                );
+                if (qrResp.ok) {
+                  const qrData = await qrResp.json();
+                  qrCode = qrData.qrBase64 || qrData.qr_code || qrData.qrCode || qrData.qr || null;
+                }
+              } catch {
+                // Continue without QR
+              }
+            }
 
             if (qrCode) {
               await supabase
                 .from("whatsapp_sessions")
                 .update({
                   session_data: { qr_code: qrCode },
+                  status: "qr_pending",
                   updated_at: new Date().toISOString(),
                 })
                 .eq("id", sessionId);
             }
 
-            // Log audit
             await supabase.from("whatsapp_audit_log").insert({
               user_id: user.id,
               action: "qr_generated",
-              details: { initiated_from: "mi_whatsapp_ui" },
+              details: { initiated_from: "mi_whatsapp_ui", had_qr: !!qrCode },
             });
 
             return json({
@@ -232,78 +257,91 @@ Deno.serve(async (req: Request) => {
           return json({ qr_code: null, connected: false });
         }
 
-        // First check if already connected
-        try {
-          const statusResp = await fetch(
-            `${WHATSAPP_SERVER_URL}/session/${user.id}/status`,
-            {
-              headers: {
-                "x-api-key": WHATSAPP_SERVER_API_KEY,
-                "Content-Type": "application/json",
-              },
+        // Poll the server up to 3 times with 2s delay to catch QR generation
+        const MAX_ATTEMPTS = 3;
+        const DELAY_MS = 2000;
+
+        for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+          // Check if already connected
+          try {
+            const statusResp = await fetch(
+              `${WHATSAPP_SERVER_URL}/session/${user.id}/status`,
+              {
+                headers: {
+                  "x-api-key": WHATSAPP_SERVER_API_KEY,
+                  "Content-Type": "application/json",
+                },
+                signal: AbortSignal.timeout(8000),
+              }
+            );
+
+            if (statusResp.ok) {
+              const statusData = await statusResp.json();
+              if (statusData.connected) {
+                await supabase
+                  .from("whatsapp_sessions")
+                  .update({
+                    status: "connected",
+                    phone_number: statusData.phone || statusData.phone_number || null,
+                    device_name: statusData.name || statusData.device_name || null,
+                    connected_at: new Date().toISOString(),
+                    session_data: null,
+                    error_message: null,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("user_id", user.id);
+
+                await supabase.from("whatsapp_audit_log").insert({
+                  user_id: user.id,
+                  action: "connected",
+                  details: { phone: statusData.phone || statusData.phone_number },
+                });
+
+                return json({ connected: true, qr_code: null });
+              }
             }
-          );
-
-          if (statusResp.ok) {
-            const statusData = await statusResp.json();
-            if (statusData.connected) {
-              // Update session to connected
-              await supabase
-                .from("whatsapp_sessions")
-                .update({
-                  status: "connected",
-                  phone_number: statusData.phone || statusData.phone_number || null,
-                  device_name: statusData.name || statusData.device_name || null,
-                  connected_at: new Date().toISOString(),
-                  session_data: null,
-                  error_message: null,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq("user_id", user.id);
-
-              await supabase.from("whatsapp_audit_log").insert({
-                user_id: user.id,
-                action: "connected",
-                details: { phone: statusData.phone || statusData.phone_number },
-              });
-
-              return json({ connected: true, qr_code: null });
-            }
+          } catch {
+            // Server unreachable
           }
-        } catch {
-          // Server unreachable
-        }
 
-        // Try to get fresh QR
-        try {
-          const qrResp = await fetch(
-            `${WHATSAPP_SERVER_URL}/session/${user.id}/qr`,
-            {
-              headers: {
-                "x-api-key": WHATSAPP_SERVER_API_KEY,
-                "Content-Type": "application/json",
-              },
+          // Try to get fresh QR
+          try {
+            const qrResp = await fetch(
+              `${WHATSAPP_SERVER_URL}/session/${user.id}/qr`,
+              {
+                headers: {
+                  "x-api-key": WHATSAPP_SERVER_API_KEY,
+                  "Content-Type": "application/json",
+                },
+                signal: AbortSignal.timeout(8000),
+              }
+            );
+
+            if (qrResp.ok) {
+              const qrData = await qrResp.json();
+              const qrCode = qrData.qrBase64 || qrData.qr_code || qrData.qrCode || qrData.qr || null;
+
+              if (qrCode) {
+                await supabase
+                  .from("whatsapp_sessions")
+                  .update({
+                    session_data: { qr_code: qrCode },
+                    status: "qr_pending",
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("user_id", user.id);
+
+                return json({ qr_code: qrCode, connected: false });
+              }
             }
-          );
-
-          if (qrResp.ok) {
-            const qrData = await qrResp.json();
-            const qrCode = qrData.qrBase64 || qrData.qr_code || qrData.qrCode || qrData.qr || null;
-
-            if (qrCode) {
-              await supabase
-                .from("whatsapp_sessions")
-                .update({
-                  session_data: { qr_code: qrCode },
-                  updated_at: new Date().toISOString(),
-                })
-                .eq("user_id", user.id);
-
-              return json({ qr_code: qrCode, connected: false });
-            }
+          } catch {
+            // QR endpoint failed
           }
-        } catch {
-          // QR endpoint failed
+
+          // If no QR yet and we have retries left, wait before trying again
+          if (attempt < MAX_ATTEMPTS - 1) {
+            await new Promise(r => setTimeout(r, DELAY_MS));
+          }
         }
 
         // Fallback: return stored QR from session_data
