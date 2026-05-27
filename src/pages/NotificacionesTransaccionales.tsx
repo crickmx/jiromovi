@@ -4,12 +4,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { Mail, FileText, Send, CheckCircle2, XCircle, Clock, AlertCircle, RefreshCw, Radio } from 'lucide-react';
 import { TiposNotificaciones } from '../components/notificaciones/TiposNotificaciones';
 import { HistorialEnvios } from '../components/notificaciones/HistorialEnvios';
-import { EmailGlobalLayout } from '../components/notificaciones/EmailGlobalLayout';
 import { CanalesNotificacion } from '../components/notificaciones/CanalesNotificacion';
 import { PageHeader } from '@/components/ui/page-header';
-import { LayoutGrid as Layout } from 'lucide-react';
 
-type Tab = 'canales' | 'notificaciones' | 'layout' | 'historial';
+type Tab = 'canales' | 'notificaciones' | 'historial';
 
 interface Stats {
   total_enviados: number;
@@ -75,7 +73,6 @@ export function NotificacionesTransaccionales() {
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: 'canales', label: 'Canales', icon: Radio },
     { id: 'notificaciones', label: 'Plantillas y Notificaciones', icon: FileText },
-    { id: 'layout', label: 'Header y Footer', icon: Layout },
     { id: 'historial', label: 'Historial de Envíos', icon: Clock },
   ];
 
@@ -164,7 +161,6 @@ export function NotificacionesTransaccionales() {
           <div className="p-6">
             {activeTab === 'canales' && <CanalesNotificacion />}
             {activeTab === 'notificaciones' && <TiposNotificaciones onUpdate={fetchStats} />}
-            {activeTab === 'layout' && <EmailGlobalLayout />}
             {activeTab === 'historial' && <HistorialEnvios />}
           </div>
         </div>

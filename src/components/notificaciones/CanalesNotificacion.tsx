@@ -1,5 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Mail, MessageCircle, CreditCard as Edit2, Trash2, CheckCircle, XCircle, Star, StarOff, Send, Eye, EyeOff, ChevronDown, ChevronUp, Loader2, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Plus, Mail, MessageCircle, CreditCard as Edit2, Trash2, CheckCircle,
+  XCircle, Star, StarOff, Send, Eye, EyeOff, ChevronDown, ChevronUp,
+  Loader2, AlertTriangle, Code, RotateCcw, Save, Layout,
+} from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -19,6 +23,32 @@ interface NotificationChannel {
 }
 
 type ChannelType = 'email_resend' | 'whatsapp_wazzup24';
+
+const DEFAULT_HEADER = `<div style="background-color:#ffffff; border-bottom:2px solid #f0f0f0; padding:24px 32px; text-align:center; font-family:Arial,sans-serif;">
+  <a href="https://movi.digital/">
+    <img src="https://movi.digital/wp-content/uploads/2025/12/moviRecurso-1.png" alt="MOVI Digital" style="max-height:56px; max-width:200px; object-fit:contain;" />
+  </a>
+</div>
+<div style="background-color:#f8f9fa; height:4px; width:100%;"></div>`;
+
+const DEFAULT_FOOTER = `<div style="background-color:#f8f9fa; border-top:1px solid #e9ecef; padding:20px 32px; text-align:center; font-family:Arial,sans-serif; margin-top:0;">
+  <a href="https://grupojiro.com/">
+    <img src="https://movi.digital/wp-content/uploads/elementor/thumbs/JIRO-removebg-preview-q7jqo7rw54f9czhmjfhpfn83yk55ykwwarsblzb0u8.png" alt="Grupo JIRO" style="max-height:28px; max-width:120px; opacity:0.65; object-fit:contain; display:block; margin:0 auto 10px;" />
+  </a>
+  <p style="margin:0; font-size:11px; color:#9ca3af; line-height:1.6;">
+    Este mensaje fue enviado automaticamente por MOVI Digital.<br/>
+    Si tienes preguntas, contacta a tu gerente.
+  </p>
+  <p style="margin:6px 0 0; font-size:10px; color:#d1d5db;">
+    &copy; 2026 Grupo JIRO. Todos los derechos reservados.
+  </p>
+</div>`;
+
+const SAMPLE_BODY = `<h2 style="margin:0 0 12px; font-size:20px; color:#1a1a1a;">Notificacion de ejemplo</h2>
+<p style="margin:0 0 16px; font-size:15px; color:#374151; line-height:1.6;">
+  Este es el <strong>cuerpo del mensaje</strong> de una notificacion transaccional. El header y footer de arriba y abajo son los que configuras aqui.
+</p>
+<p style="margin:0; font-size:14px; color:#6b7280;">Saludos,<br/>El equipo de MOVI Digital</p>`;
 
 const EMPTY_EMAIL_CHANNEL: Omit<NotificationChannel, 'id' | 'created_at' | 'updated_at'> = {
   name: '',
@@ -53,6 +83,183 @@ function typeLabel(type: ChannelType) {
   return type === 'email_resend' ? 'Correo / Resend' : 'WhatsApp / Wazzup24';
 }
 
+function buildPreviewHtml(headerHtml: string, footerHtml: string): string {
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vista previa</title>
+</head>
+<body style="margin:0; padding:16px; background-color:#f4f4f4; font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td align="center">
+        <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px; width:100%; background-color:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+          <tr><td>${headerHtml}</td></tr>
+          <tr><td style="padding:32px;">${SAMPLE_BODY}</td></tr>
+          <tr><td>${footerHtml}</td></tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+// ─── HTML + Preview Editor ────────────────────────────────────────────────────
+
+type HtmlSection = 'header' | 'footer';
+type ViewMode = 'code' | 'preview';
+
+interface HtmlEditorProps {
+  headerHtml: string;
+  footerHtml: string;
+  onChange: (section: HtmlSection, value: string) => void;
+  onRestoreDefaults: () => void;
+}
+
+function HtmlEditor({ headerHtml, footerHtml, onChange, onRestoreDefaults }: HtmlEditorProps) {
+  const [section, setSection] = useState<HtmlSection>('header');
+  const [viewMode, setViewMode] = useState<ViewMode>('code');
+  const [previewOpen, setPreviewOpen] = useState(true);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  const currentValue = section === 'header' ? headerHtml : footerHtml;
+
+  useEffect(() => {
+    if (previewOpen && iframeRef.current) {
+      const doc = iframeRef.current.contentDocument;
+      if (doc) {
+        doc.open();
+        doc.write(buildPreviewHtml(headerHtml, footerHtml));
+        doc.close();
+      }
+    }
+  }, [headerHtml, footerHtml, previewOpen]);
+
+  return (
+    <div className="space-y-4">
+      {/* Info banner */}
+      <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-blue-500/8 border border-blue-500/20 text-blue-700 dark:text-blue-300 text-xs">
+        <Layout className="w-4 h-4 mt-0.5 shrink-0" />
+        <span>El header y footer se inyectan automaticamente en todos los correos enviados por este canal. Estructura: <strong>Header → Cuerpo → Footer</strong>.</span>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {/* Editor column */}
+        <div className="space-y-3">
+          {/* Section tabs */}
+          <div className="flex gap-1 bg-[var(--bg-secondary)] rounded-lg p-1">
+            {(['header', 'footer'] as const).map(s => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setSection(s)}
+                className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold transition-all ${section === s ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+              >
+                {s === 'header' ? 'Header (Encabezado)' : 'Footer (Pie de página)'}
+              </button>
+            ))}
+          </div>
+
+          {/* View mode toggle */}
+          <div className="flex gap-1 bg-[var(--bg-secondary)] rounded-lg p-1 w-fit">
+            <button
+              type="button"
+              onClick={() => setViewMode('code')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${viewMode === 'code' ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)]'}`}
+            >
+              <Code className="w-3.5 h-3.5" /> HTML
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('preview')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${viewMode === 'preview' ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)]'}`}
+            >
+              <Eye className="w-3.5 h-3.5" /> Vista fragmento
+            </button>
+          </div>
+
+          {viewMode === 'code' ? (
+            <div className="relative">
+              <textarea
+                value={currentValue}
+                onChange={e => onChange(section, e.target.value)}
+                rows={16}
+                spellCheck={false}
+                className="w-full font-mono text-xs border border-[var(--border)] rounded-xl p-3 focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent resize-y bg-neutral-950 text-emerald-400 leading-relaxed"
+                placeholder={`Escribe el HTML del ${section}...`}
+              />
+              <div className="absolute bottom-2 right-2 text-[10px] text-neutral-500 bg-neutral-800 px-2 py-0.5 rounded">
+                {currentValue.length} chars
+              </div>
+            </div>
+          ) : (
+            <div className="border border-[var(--border)] rounded-xl overflow-hidden bg-[var(--bg-secondary)] min-h-[200px]">
+              <div
+                className="p-2"
+                dangerouslySetInnerHTML={{ __html: currentValue }}
+              />
+              {!currentValue.trim() && (
+                <p className="text-xs text-[var(--text-tertiary)] text-center py-8">Sin contenido</p>
+              )}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={onRestoreDefaults}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] transition-colors"
+          >
+            <RotateCcw className="w-3.5 h-3.5" /> Restaurar valores MOVI por defecto
+          </button>
+        </div>
+
+        {/* Preview column */}
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={() => setPreviewOpen(o => !o)}
+            className="flex items-center justify-between w-full px-4 py-2.5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-sm font-semibold text-[var(--text-primary)] hover:bg-[var(--border)] transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-[var(--text-secondary)]" />
+              Vista previa del correo completo
+            </div>
+            {previewOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+
+          {previewOpen && (
+            <div className="border border-[var(--border)] rounded-xl overflow-hidden bg-neutral-100">
+              <div className="px-3 py-1.5 bg-neutral-200 flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
+                <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                <span className="ml-2 text-xs text-neutral-500">Vista previa — correo real</span>
+              </div>
+              <iframe
+                ref={iframeRef}
+                title="Email preview"
+                className="w-full border-0"
+                style={{ height: '420px' }}
+                onLoad={() => {
+                  const doc = iframeRef.current?.contentDocument;
+                  if (doc) {
+                    doc.open();
+                    doc.write(buildPreviewHtml(headerHtml, footerHtml));
+                    doc.close();
+                  }
+                }}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Channel Form ─────────────────────────────────────────────────────────────
 
 interface ChannelFormProps {
@@ -70,6 +277,17 @@ function ChannelForm({ channel, onChange, isNew }: ChannelFormProps) {
   const setBranding = (k: string, v: string) => onChange({ ...channel, branding: { ...channel.branding, [k]: v } });
 
   const isEmail = channel.type === 'email_resend';
+
+  function handleRestoreDefaults() {
+    onChange({
+      ...channel,
+      branding: {
+        ...channel.branding,
+        header_html: DEFAULT_HEADER,
+        footer_html: DEFAULT_FOOTER,
+      },
+    });
+  }
 
   return (
     <div className="space-y-5">
@@ -173,11 +391,12 @@ function ChannelForm({ channel, onChange, isNew }: ChannelFormProps) {
               onClick={() => setBrandingOpen(o => !o)}
               className="w-full flex items-center justify-between px-4 py-3 bg-[var(--bg-secondary)] text-sm font-semibold text-[var(--text-primary)]"
             >
-              <span>Branding del canal (logo, colores, header/footer)</span>
+              <span>Branding del canal (logo, colores, header/footer HTML)</span>
               {brandingOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
             {brandingOpen && (
-              <div className="p-4 space-y-4">
+              <div className="p-4 space-y-5">
+                {/* Logo + colors */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">URL del logo</label>
@@ -221,26 +440,8 @@ function ChannelForm({ channel, onChange, isNew }: ChannelFormProps) {
                     </div>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Header HTML (opcional)</label>
-                  <textarea
-                    rows={5}
-                    className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-primary)] text-[var(--text-primary)] text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[var(--accent)] resize-y"
-                    placeholder="<div style='background:#0b2d6b;padding:24px;text-align:center;'>...</div>"
-                    value={channel.branding.header_html || ''}
-                    onChange={e => setBranding('header_html', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Footer HTML (opcional)</label>
-                  <textarea
-                    rows={5}
-                    className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-primary)] text-[var(--text-primary)] text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[var(--accent)] resize-y"
-                    placeholder="<div style='padding:20px;text-align:center;color:#9ca3af;'>...</div>"
-                    value={channel.branding.footer_html || ''}
-                    onChange={e => setBranding('footer_html', e.target.value)}
-                  />
-                </div>
+
+                {/* Legal text */}
                 <div>
                   <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Texto legal (pie de página)</label>
                   <input
@@ -248,6 +449,17 @@ function ChannelForm({ channel, onChange, isNew }: ChannelFormProps) {
                     placeholder="© 2026 Grupo JIRO. Todos los derechos reservados."
                     value={channel.branding.legal_text || ''}
                     onChange={e => setBranding('legal_text', e.target.value)}
+                  />
+                </div>
+
+                {/* HTML editor */}
+                <div className="border-t border-[var(--border)] pt-4">
+                  <p className="text-xs font-semibold text-[var(--text-secondary)] mb-3">Header y Footer HTML del correo</p>
+                  <HtmlEditor
+                    headerHtml={channel.branding.header_html || ''}
+                    footerHtml={channel.branding.footer_html || ''}
+                    onChange={(section, value) => setBranding(section === 'header' ? 'header_html' : 'footer_html', value)}
+                    onRestoreDefaults={handleRestoreDefaults}
                   />
                 </div>
               </div>
@@ -345,15 +557,13 @@ function TestPanel({ channel, onClose }: { channel: NotificationChannel; onClose
     setSending(true);
     setResult(null);
     try {
-      const body = { channel_id: channel.id, target };
-
       const res = await fetch(`${SUPABASE_URL}/functions/v1/test-notification-channel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ channel_id: channel.id, target }),
       });
       const data = await res.json();
-      setResult({ ok: res.ok, msg: data.message || (res.ok ? 'Enviado correctamente' : data.error || 'Error desconocido') });
+      setResult({ ok: data.success ?? res.ok, msg: data.message || (res.ok ? 'Enviado correctamente' : data.error || 'Error desconocido') });
     } catch {
       setResult({ ok: false, msg: 'Error de conexión' });
     } finally {
@@ -420,10 +630,10 @@ function ChannelCard({
   const Icon = isEmail ? Mail : MessageCircle;
   const iconColor = isEmail ? 'text-blue-500' : 'text-green-500';
   const iconBg = isEmail ? 'bg-blue-500/10' : 'bg-green-500/10';
+  const hasHtmlBranding = isEmail && (channel.branding?.header_html || channel.branding?.footer_html);
 
   return (
     <div className={`relative rounded-2xl border p-5 transition-all ${channel.is_active ? 'border-[var(--border)] bg-[var(--bg-primary)]' : 'border-[var(--border)] bg-[var(--bg-secondary)] opacity-70'}`}>
-      {/* Default badge */}
       {channel.is_default && (
         <div className="absolute top-3 right-3">
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 text-[10px] font-semibold uppercase tracking-wide">
@@ -445,7 +655,6 @@ function ChannelCard({
         </div>
       </div>
 
-      {/* Config preview */}
       <div className="space-y-1 mb-4">
         {isEmail ? (
           <>
@@ -461,6 +670,12 @@ function ChannelCard({
                 <span className="font-mono">{maskSecret(channel.config.api_key)}</span>
               </div>
             )}
+            {hasHtmlBranding && (
+              <div className="flex items-center gap-1.5 text-xs text-emerald-600">
+                <Layout className="w-3 h-3" />
+                <span className="font-medium">Header/Footer HTML configurado</span>
+              </div>
+            )}
           </>
         ) : (
           <>
@@ -468,6 +683,12 @@ function ChannelCard({
               <div className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
                 <span className="text-[var(--text-tertiary)]">Número:</span>
                 <span className="font-medium">{channel.config.phone_label}</span>
+              </div>
+            )}
+            {channel.config.channel_id && (
+              <div className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
+                <span className="text-[var(--text-tertiary)]">Channel ID:</span>
+                <span className="font-mono truncate">{channel.config.channel_id.slice(0, 8)}...</span>
               </div>
             )}
             {channel.config.api_key && (
@@ -492,39 +713,26 @@ function ChannelCard({
         </div>
       </div>
 
-      {/* Actions */}
       <div className="flex flex-wrap gap-2 pt-3 border-t border-[var(--border)]">
-        <button
-          onClick={onTest}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 transition-colors"
-        >
+        <button onClick={onTest} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 transition-colors">
           <Send className="w-3.5 h-3.5" /> Probar
         </button>
-        <button
-          onClick={onEdit}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--border)] transition-colors"
-        >
+        <button onClick={onEdit} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--border)] transition-colors">
           <Edit2 className="w-3.5 h-3.5" /> Editar
         </button>
-        <button
-          onClick={onToggleActive}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--border)] transition-colors"
-        >
+        <button onClick={onToggleActive} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--border)] transition-colors">
           {channel.is_active ? <XCircle className="w-3.5 h-3.5" /> : <CheckCircle className="w-3.5 h-3.5" />}
           {channel.is_active ? 'Desactivar' : 'Activar'}
         </button>
         <button
           onClick={onToggleDefault}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${channel.is_default ? 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20' : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'}`}
           disabled={channel.is_default}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${channel.is_default ? 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20' : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'}`}
         >
           {channel.is_default ? <Star className="w-3.5 h-3.5" /> : <StarOff className="w-3.5 h-3.5" />}
           {channel.is_default ? 'Default' : 'Marcar default'}
         </button>
-        <button
-          onClick={onDelete}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-colors"
-        >
+        <button onClick={onDelete} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-colors">
           <Trash2 className="w-3.5 h-3.5" /> Eliminar
         </button>
       </div>
@@ -552,7 +760,7 @@ function ChannelModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-[var(--bg-primary)] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col">
+      <div className="bg-[var(--bg-primary)] rounded-2xl shadow-2xl w-full max-w-3xl max-h-[94vh] flex flex-col">
         <div className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between shrink-0">
           <div>
             <h2 className="text-base font-bold text-[var(--text-primary)]">
@@ -589,7 +797,7 @@ function ChannelModal({
             className="flex items-center gap-2 px-5 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold disabled:opacity-50 hover:opacity-90"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {isNew ? 'Crear canal' : 'Guardar cambios'}
+            {loading ? 'Guardando...' : isNew ? 'Crear canal' : 'Guardar cambios'}
           </button>
         </div>
       </div>
@@ -638,15 +846,11 @@ export function CanalesNotificacion() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>('all');
 
-  // Modal state
   const [modalData, setModalData] = useState<(Partial<NotificationChannel> & { config: Record<string, string>; branding: Record<string, string> }) | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
 
-  // New channel type selector
   const [showTypeSelector, setShowTypeSelector] = useState(false);
-
-  // Test & delete
   const [testChannel, setTestChannel] = useState<NotificationChannel | null>(null);
   const [deleteChannel, setDeleteChannel] = useState<NotificationChannel | null>(null);
 
@@ -706,11 +910,7 @@ export function CanalesNotificacion() {
         err = res.error;
       }
 
-      if (err) {
-        setModalError(err.message);
-        return;
-      }
-
+      if (err) { setModalError(err.message); return; }
       await loadChannels();
       setModalData(null);
     } finally {
@@ -758,10 +958,7 @@ export function CanalesNotificacion() {
           </button>
           {showTypeSelector && (
             <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-[var(--border)] bg-[var(--bg-primary)] shadow-xl z-20 overflow-hidden">
-              <button
-                onClick={() => openNew('email_resend')}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--bg-secondary)] transition-colors text-sm text-left"
-              >
+              <button onClick={() => openNew('email_resend')} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--bg-secondary)] transition-colors text-sm text-left">
                 <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center">
                   <Mail className="w-4 h-4 text-blue-500" />
                 </div>
@@ -771,10 +968,7 @@ export function CanalesNotificacion() {
                 </div>
               </button>
               <div className="h-px bg-[var(--border)]" />
-              <button
-                onClick={() => openNew('whatsapp_wazzup24')}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--bg-secondary)] transition-colors text-sm text-left"
-              >
+              <button onClick={() => openNew('whatsapp_wazzup24')} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--bg-secondary)] transition-colors text-sm text-left">
                 <div className="w-7 h-7 rounded-lg bg-green-500/10 flex items-center justify-center">
                   <MessageCircle className="w-4 h-4 text-green-500" />
                 </div>
@@ -870,7 +1064,6 @@ export function CanalesNotificacion() {
         />
       )}
 
-      {/* Click outside to close type selector */}
       {showTypeSelector && (
         <div className="fixed inset-0 z-10" onClick={() => setShowTypeSelector(false)} />
       )}
