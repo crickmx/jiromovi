@@ -345,9 +345,7 @@ function TestPanel({ channel, onClose }: { channel: NotificationChannel; onClose
     setSending(true);
     setResult(null);
     try {
-      const body = channel.type === 'email_resend'
-        ? { channel_id: channel.id, test_email: target }
-        : { channel_id: channel.id, test_phone: target };
+      const body = { channel_id: channel.id, target };
 
       const res = await fetch(`${SUPABASE_URL}/functions/v1/test-notification-channel`, {
         method: 'POST',
