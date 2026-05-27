@@ -667,15 +667,14 @@ export default function MiWhatsApp() {
                           selectionMode && selectedMessages.has(msg.id) && 'ring-2 ring-emerald-400'
                         )} onClick={() => { if (selectionMode) handleToggleSelection(msg.id); }}>
                           {msg.is_internal_note && <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wider block mb-1">Nota interna</span>}
-                          {msg.content && (
-                            <p className={cn('text-sm leading-relaxed whitespace-pre-wrap break-words', msg.direction === 'outbound' && !msg.is_internal_note ? 'text-white' : 'text-neutral-800 dark:text-white/80')}>
-                              {msg.content}
-                            </p>
-                          )}
                           {msg.media_url && (
-                            <div className="mt-1.5">
-                              {msg.message_type === 'image' ? (
-                                <img src={msg.media_url} alt="" className="rounded-lg max-w-full max-h-48 object-cover" />
+                            <div className="mb-1.5">
+                              {msg.message_type === 'image' || msg.message_type === 'sticker' ? (
+                                <img src={msg.media_url} alt="" className={cn('rounded-lg max-w-full object-cover', msg.message_type === 'sticker' ? 'max-h-32 w-32' : 'max-h-48')} />
+                              ) : msg.message_type === 'video' ? (
+                                <video src={msg.media_url} controls className="rounded-lg max-w-full max-h-48" />
+                              ) : msg.message_type === 'audio' ? (
+                                <audio src={msg.media_url} controls className="max-w-full h-10" />
                               ) : (
                                 <div className="flex items-center gap-2 p-2 bg-white/20 dark:bg-white/10 rounded-lg">
                                   <FileText className="w-4 h-4" />
@@ -683,6 +682,14 @@ export default function MiWhatsApp() {
                                 </div>
                               )}
                             </div>
+                          )}
+                          {msg.content && !(msg.message_type === 'sticker' && msg.content === '[Sticker]') && !(msg.message_type === 'image' && msg.content === '[Imagen]') && !(msg.message_type === 'audio' && msg.content === '[Audio]') && !(msg.message_type === 'video' && msg.content === '[Video]') && (
+                            <p className={cn('text-sm leading-relaxed whitespace-pre-wrap break-words', msg.direction === 'outbound' && !msg.is_internal_note ? 'text-white' : 'text-neutral-800 dark:text-white/80')}>
+                              {msg.message_type === 'sticker' && !msg.media_url ? '🏷️ Sticker' :
+                               msg.message_type === 'location' ? '📍 Ubicacion compartida' :
+                               msg.message_type === 'contact' ? '👤 Contacto compartido' :
+                               msg.content}
+                            </p>
                           )}
                           <div className={cn('flex items-center gap-1.5 mt-1', msg.direction === 'outbound' ? 'justify-end' : 'justify-start')}>
                             <span className={cn('text-[10px]', msg.direction === 'outbound' && !msg.is_internal_note ? 'text-white/60' : 'text-neutral-400 dark:text-white/30')}>

@@ -499,12 +499,21 @@ Deno.serve(async (req: Request) => {
         const conversationId = body.conversationId;
         if (!conversationId) return err("Missing conversationId");
 
-        const { data: msgs } = await supabase
+        // Get the conversation to know the remote phone
+        const { data: conv } = await supabase
+          .from("whatsapp_conversations")
+          .select("remote_phone")
+          .eq("id", conversationId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        // Get messages from DB
+        const { data: dbMsgs } = await supabase
           .from("whatsapp_messages")
           .select("*")
           .eq("conversation_id", conversationId)
           .order("created_at", { ascending: true })
-          .limit(100);
+          .limit(200);
 
         // Mark as read
         await supabase
@@ -513,7 +522,59 @@ Deno.serve(async (req: Request) => {
           .eq("id", conversationId)
           .eq("user_id", user.id);
 
-        return json({ messages: msgs || [] });
+        let allMessages = dbMsgs || [];
+
+        // If DB has few messages and server is connected, fetch from server memory
+        if (allMessages.length < 5 && serverConfigured && conv?.remote_phone) {
+          try {
+            const serverResp = await fetch(
+              `${WHATSAPP_SERVER_URL}/session/${user.id}/messages/${conv.remote_phone}?limit=100`,
+              {
+                headers: {
+                  "x-api-key": WHATSAPP_SERVER_API_KEY,
+                  "Content-Type": "application/json",
+                },
+                signal: AbortSignal.timeout(8000),
+              }
+            );
+
+            if (serverResp.ok) {
+              const serverData = await serverResp.json();
+              const serverMsgs = serverData.messages || [];
+
+              if (serverMsgs.length > 0) {
+                // Merge server messages with DB messages (avoid duplicates by ID)
+                const dbIds = new Set(allMessages.map((m: { id?: string; wa_message_id?: string }) => m.wa_message_id || m.id));
+
+                const newMsgs = serverMsgs
+                  .filter((m: { id: string }) => !dbIds.has(m.id))
+                  .map((m: { id: string; content: string; direction: string; mediaType?: string; timestamp: number; fromName?: string }) => ({
+                    id: m.id,
+                    conversation_id: conversationId,
+                    user_id: user.id,
+                    direction: m.direction || 'inbound',
+                    message_type: m.mediaType || 'text',
+                    content: m.content,
+                    media_url: null,
+                    media_filename: null,
+                    status: m.direction === 'outbound' ? 'sent' : 'delivered',
+                    is_internal_note: false,
+                    created_at: new Date(m.timestamp).toISOString(),
+                    wa_message_id: m.id,
+                  }));
+
+                allMessages = [...newMsgs, ...allMessages].sort(
+                  (a: { created_at: string }, b: { created_at: string }) =>
+                    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                );
+              }
+            }
+          } catch {
+            // Server unreachable, return DB messages only
+          }
+        }
+
+        return json({ messages: allMessages });
       }
 
       case "send-message": {

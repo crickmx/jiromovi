@@ -188,50 +188,109 @@ class SessionManager {
       }
     });
 
-    // Handle incoming messages
+    // Handle incoming messages (both new and historical)
     sock.ev.on('messages.upsert', async ({ messages: msgs, type }) => {
-      if (type !== 'notify') return;
-
       for (const msg of msgs) {
-        if (msg.key.fromMe) continue;
         if (!msg.message) continue;
 
         const remoteJid = msg.key.remoteJid;
         if (!remoteJid || remoteJid === 'status@broadcast') continue;
+        if (remoteJid.includes('@g.us')) continue; // Skip groups for now
 
         const phone = remoteJid.split('@')[0];
         const pushName = msg.pushName || phone;
+        const isFromMe = msg.key.fromMe || false;
 
         // Extract message content
         const content = this.extractMessageContent(msg);
         if (!content) continue;
 
+        const msgTimestamp = msg.messageTimestamp
+          ? (typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : Number(msg.messageTimestamp))
+          : Math.floor(Date.now() / 1000);
+
         // Store in memory
         if (!sessionData.messageStore[phone]) {
           sessionData.messageStore[phone] = [];
         }
-        sessionData.messageStore[phone].push({
-          id: msg.key.id,
-          from: phone,
-          fromName: pushName,
-          content: content.text,
-          mediaType: content.mediaType,
-          mediaUrl: content.mediaUrl,
-          timestamp: (msg.messageTimestamp || Date.now() / 1000) * 1000,
-          direction: 'inbound',
-        });
 
-        // Keep max 200 messages per conversation in memory
-        if (sessionData.messageStore[phone].length > 200) {
-          sessionData.messageStore[phone] = sessionData.messageStore[phone].slice(-200);
+        // Avoid duplicates
+        const existsInStore = sessionData.messageStore[phone].some(m => m.id === msg.key.id);
+        if (!existsInStore) {
+          sessionData.messageStore[phone].push({
+            id: msg.key.id,
+            from: isFromMe ? 'me' : phone,
+            fromName: isFromMe ? 'me' : pushName,
+            content: content.text,
+            mediaType: content.mediaType,
+            mediaUrl: content.mediaUrl,
+            timestamp: msgTimestamp * 1000,
+            direction: isFromMe ? 'outbound' : 'inbound',
+          });
+
+          // Sort by timestamp
+          sessionData.messageStore[phone].sort((a, b) => a.timestamp - b.timestamp);
+
+          // Keep max 500 messages per conversation in memory
+          if (sessionData.messageStore[phone].length > 500) {
+            sessionData.messageStore[phone] = sessionData.messageStore[phone].slice(-500);
+          }
         }
 
         // Update conversations list
-        this.updateConversationList(sessionData, phone, pushName, content.text);
+        this.updateConversationList(sessionData, phone, isFromMe ? null : pushName, content.text, isFromMe);
 
-        // Sync to Supabase
-        await supabaseSync.saveInboundMessage(userId, phone, pushName, content, msg.key.id);
+        // Only sync NEW messages to Supabase (not historical)
+        if (type === 'notify' && !isFromMe) {
+          await supabaseSync.saveInboundMessage(userId, phone, pushName, content, msg.key.id);
+        }
       }
+    });
+
+    // Handle historical messages batch
+    sock.ev.on('messaging-history.set', ({ messages: msgs }) => {
+      for (const msg of msgs) {
+        if (!msg.message) continue;
+
+        const remoteJid = msg.key.remoteJid;
+        if (!remoteJid || remoteJid === 'status@broadcast') continue;
+        if (remoteJid.includes('@g.us')) continue;
+
+        const phone = remoteJid.split('@')[0];
+        const isFromMe = msg.key.fromMe || false;
+        const content = this.extractMessageContent(msg);
+        if (!content) continue;
+
+        const msgTimestamp = msg.messageTimestamp
+          ? (typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : Number(msg.messageTimestamp))
+          : Math.floor(Date.now() / 1000);
+
+        if (!sessionData.messageStore[phone]) {
+          sessionData.messageStore[phone] = [];
+        }
+
+        const existsInStore = sessionData.messageStore[phone].some(m => m.id === msg.key.id);
+        if (!existsInStore) {
+          sessionData.messageStore[phone].push({
+            id: msg.key.id,
+            from: isFromMe ? 'me' : phone,
+            fromName: isFromMe ? 'me' : (msg.pushName || phone),
+            content: content.text,
+            mediaType: content.mediaType,
+            timestamp: msgTimestamp * 1000,
+            direction: isFromMe ? 'outbound' : 'inbound',
+          });
+        }
+      }
+
+      // Sort all conversation messages
+      for (const phone of Object.keys(sessionData.messageStore)) {
+        sessionData.messageStore[phone].sort((a, b) => a.timestamp - b.timestamp);
+        if (sessionData.messageStore[phone].length > 500) {
+          sessionData.messageStore[phone] = sessionData.messageStore[phone].slice(-500);
+        }
+      }
+      console.log(`[${userId}] Loaded historical messages for ${Object.keys(sessionData.messageStore).length} conversations`);
     });
 
     // Wait for first QR or connection
