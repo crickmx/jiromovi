@@ -25,7 +25,9 @@ Deno.serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     const body = await req.json() as {
       email?: string;
@@ -46,7 +48,6 @@ Deno.serve(async (req: Request) => {
     let token: any = null;
 
     if (magic_token) {
-      // Magic link flow: find by magic_token_hash
       const magicHash = await sha256(magic_token);
       const { data } = await supabase
         .from('passwordless_login_tokens')
@@ -57,7 +58,6 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
       token = data;
     } else if (email && code) {
-      // Code flow: find by email + platform
       const { data: tokens } = await supabase
         .from('passwordless_login_tokens')
         .select('*')
@@ -73,7 +73,6 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // ── Token not found ────────────────────────────────────────────────────────
     if (!token) {
       return new Response(JSON.stringify({
         error: 'Código inválido o no encontrado. Solicita un nuevo código.',
@@ -112,7 +111,6 @@ Deno.serve(async (req: Request) => {
     if (code) {
       const inputHash = await sha256(code.trim().toUpperCase());
       if (inputHash !== token.code_hash) {
-        // Increment attempts
         await supabase
           .from('passwordless_login_tokens')
           .update({ attempts: token.attempts + 1 })
@@ -137,13 +135,16 @@ Deno.serve(async (req: Request) => {
       .update({ used_at: new Date().toISOString() })
       .eq('id', token.id);
 
-    // ── Create a real session for the user using admin API ───────────────────
-    const { data: sessionData, error: sessionError } = await supabase.auth.admin.createSession({
-      user_id: token.user_id,
+    // ── Generate a one-time magic link and extract the hashed_token ───────────
+    // admin.generateLink returns properties.hashed_token which can be used
+    // with verifyOtp({ token_hash, type: 'email' }) on the client side.
+    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+      type: 'magiclink',
+      email: token.email,
     });
 
-    if (sessionError || !sessionData?.session) {
-      console.error('Error creating session:', sessionError);
+    if (linkError || !linkData?.properties?.hashed_token) {
+      console.error('Error generating link:', linkError, linkData);
       return new Response(JSON.stringify({ error: 'Error al crear sesión. Intenta de nuevo.' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -153,8 +154,7 @@ Deno.serve(async (req: Request) => {
       success: true,
       user_id: token.user_id,
       platform,
-      access_token: sessionData.session.access_token,
-      refresh_token: sessionData.session.refresh_token,
+      token_hash: linkData.properties.hashed_token,
       email: token.email,
     }), {
       status: 200,

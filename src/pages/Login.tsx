@@ -125,10 +125,10 @@ export function Login() {
         return;
       }
 
-      // Set the session directly using the tokens returned from the edge function
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
+      // Verify the token_hash returned from the edge function to create a session
+      const { error: sessionError } = await supabase.auth.verifyOtp({
+        token_hash: data.token_hash,
+        type: 'email',
       });
 
       if (sessionError) {
