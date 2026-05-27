@@ -219,7 +219,7 @@ export function SeguwalletLogin() {
           {/* LEFT COLUMN */}
           <div className="hidden lg:flex lg:w-[52%] xl:w-[55%] flex-col items-start justify-between px-16 xl:px-24 py-14">
             <div className="flex items-center gap-3">
-              <img src={SEGUWALLET_LOGO} alt="Seguwallet" className="h-8 w-auto" />
+              <img src={SEGUWALLET_LOGO} alt="Seguwallet" className="h-14 w-auto" />
             </div>
 
             <div className="max-w-md">
@@ -271,7 +271,7 @@ export function SeguwalletLogin() {
 
             {/* Mobile logo */}
             <div className="lg:hidden mb-10 text-center">
-              <img src={SEGUWALLET_LOGO} alt="Seguwallet" className="h-9 w-auto mx-auto" />
+              <img src={SEGUWALLET_LOGO} alt="Seguwallet" className="h-14 w-auto mx-auto" />
             </div>
 
             <div className="w-full max-w-[380px]">
