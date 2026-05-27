@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { RefreshCw, Users, Smartphone, MessageSquare, Globe, Info, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,6 +10,8 @@ import { ConversationList } from '@/components/contactCenter/ConversationList';
 import { ConversationThread } from '@/components/contactCenter/ConversationThread';
 import { ContactPanel } from '@/components/contactCenter/ContactPanel';
 
+const SYNC_INTERVAL_MS = 30_000;
+
 type PanelView = 'list' | 'thread' | 'contact';
 
 export default function CentroContactoUnificado() {
@@ -20,6 +22,8 @@ export default function CentroContactoUnificado() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
+  const syncResultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [filterChannel, setFilterChannel] = useState<CCChannel | 'all'>('all');
   const [filterStatus, setFilterStatus] = useState<CCStatus | 'all'>('open');
   const [search, setSearch] = useState('');
@@ -73,10 +77,10 @@ export default function CentroContactoUnificado() {
     return () => { supabase.removeChannel(channel); };
   }, [usuario, loadConversations]);
 
-  const syncChannels = async () => {
+  const syncChannels = useCallback(async (silent = false) => {
     if (!usuario || syncing) return;
     setSyncing(true);
-    setSyncResult(null);
+    if (!silent) setSyncResult(null);
     try {
       const { data, error } = await supabase.rpc('sync_all_channels_for_user', {
         p_user_id: usuario.id,
@@ -84,15 +88,34 @@ export default function CentroContactoUnificado() {
       if (error) throw error;
       const result = data as { wa_movi?: { upserted: number }; wa_personal?: { upserted: number }; chat?: { upserted: number } };
       const total = (result?.wa_movi?.upserted || 0) + (result?.wa_personal?.upserted || 0) + (result?.chat?.upserted || 0);
-      setSyncResult(`Sincronizacion completada: ${total} mensajes nuevos`);
+      if (!silent && total > 0) {
+        setSyncResult(`${total} mensajes nuevos sincronizados`);
+        if (syncResultTimerRef.current) clearTimeout(syncResultTimerRef.current);
+        syncResultTimerRef.current = setTimeout(() => setSyncResult(null), 4000);
+      }
       await loadConversations();
     } catch {
-      setSyncResult('Error al sincronizar. Intenta de nuevo.');
+      if (!silent) {
+        setSyncResult('Error al sincronizar. Intenta de nuevo.');
+        if (syncResultTimerRef.current) clearTimeout(syncResultTimerRef.current);
+        syncResultTimerRef.current = setTimeout(() => setSyncResult(null), 5000);
+      }
     } finally {
       setSyncing(false);
-      setTimeout(() => setSyncResult(null), 5000);
     }
-  };
+  }, [usuario, syncing, loadConversations]);
+
+  // Auto-sync on mount and every SYNC_INTERVAL_MS
+  useEffect(() => {
+    if (!usuario) return;
+    syncChannels(true);
+    syncIntervalRef.current = setInterval(() => syncChannels(true), SYNC_INTERVAL_MS);
+    return () => {
+      if (syncIntervalRef.current) clearInterval(syncIntervalRef.current);
+      if (syncResultTimerRef.current) clearTimeout(syncResultTimerRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuario?.id]);
 
   const handleSelectConversation = (conv: CCConversation) => {
     setSelected(conv);
@@ -130,12 +153,12 @@ export default function CentroContactoUnificado() {
             </span>
           )}
           <button
-            onClick={syncChannels}
+            onClick={() => syncChannels(false)}
             disabled={syncing}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors disabled:opacity-60"
+            title={syncing ? 'Sincronizando...' : 'Sincronizar ahora'}
+            className="p-1.5 rounded-lg bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors disabled:opacity-40"
           >
             <RefreshCw className={cn('w-3.5 h-3.5', syncing && 'animate-spin')} />
-            <span className="hidden sm:inline">{syncing ? 'Sincronizando...' : 'Sincronizar'}</span>
           </button>
         </div>
       </div>
@@ -149,7 +172,7 @@ export default function CentroContactoUnificado() {
           mobileView === 'thread' ? 'hidden sm:flex' : 'flex'
         )}>
           {hasNoChannels ? (
-            <EmptyChannels onSync={syncChannels} />
+            <EmptyChannels syncing={syncing} onSync={() => syncChannels(false)} />
           ) : (
             <ConversationList
               conversations={conversations}
@@ -236,41 +259,52 @@ function EmptyThread() {
   );
 }
 
-function EmptyChannels({ onSync }: { onSync: () => void }) {
+function EmptyChannels({ syncing, onSync }: { syncing: boolean; onSync: () => void }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-4">
-        <Users className="w-8 h-8 text-neutral-300 dark:text-neutral-600" />
+      <div className={cn(
+        'w-16 h-16 rounded-2xl flex items-center justify-center mb-4 transition-colors',
+        syncing ? 'bg-accent/10' : 'bg-neutral-100 dark:bg-neutral-800'
+      )}>
+        {syncing
+          ? <RefreshCw className="w-8 h-8 text-accent animate-spin" />
+          : <Users className="w-8 h-8 text-neutral-300 dark:text-neutral-600" />
+        }
       </div>
       <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-2">
-        Sin conversaciones
+        {syncing ? 'Sincronizando canales...' : 'Sin conversaciones'}
       </h3>
       <p className="text-xs text-neutral-400 dark:text-neutral-500 max-w-xs mb-6">
-        Sincroniza tus canales para importar conversaciones de WA MOVI, WA Personal y Chat.
+        {syncing
+          ? 'Importando conversaciones de WA MOVI, WA Personal y Chat. Esto puede tomar unos segundos.'
+          : 'No se encontraron conversaciones en tus canales conectados.'
+        }
       </p>
-      <div className="space-y-2 w-full max-w-xs">
-        <button
-          onClick={onSync}
-          className="w-full flex items-center gap-2 justify-center px-4 py-2.5 bg-accent text-white text-xs font-medium rounded-xl hover:bg-accent/90 transition-colors"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          Sincronizar canales
-        </button>
-        <a
-          href="/centro-contacto"
-          className="w-full flex items-center gap-2 justify-center px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 text-xs font-medium rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
-        >
-          <Smartphone className="w-3.5 h-3.5" />
-          Configurar WA Personal
-        </a>
-        <a
-          href="/centro-contacto"
-          className="w-full flex items-center gap-2 justify-center px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 text-xs font-medium rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
-        >
-          <Globe className="w-3.5 h-3.5" />
-          Configurar WA MOVI
-        </a>
-      </div>
+      {!syncing && (
+        <div className="space-y-2 w-full max-w-xs">
+          <button
+            onClick={onSync}
+            className="w-full flex items-center gap-2 justify-center px-4 py-2.5 bg-accent text-white text-xs font-medium rounded-xl hover:bg-accent/90 transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Reintentar sincronizacion
+          </button>
+          <a
+            href="/centro-contacto"
+            className="w-full flex items-center gap-2 justify-center px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 text-xs font-medium rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+          >
+            <Smartphone className="w-3.5 h-3.5" />
+            Configurar WA Personal
+          </a>
+          <a
+            href="/centro-contacto"
+            className="w-full flex items-center gap-2 justify-center px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 text-xs font-medium rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+          >
+            <Globe className="w-3.5 h-3.5" />
+            Configurar WA MOVI
+          </a>
+        </div>
+      )}
     </div>
   );
 }
