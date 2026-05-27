@@ -66,10 +66,11 @@ interface UserTemplate {
 
 interface FormTemplate {
   id: string;
-  nombre: string;
+  form_title: string;
+  form_type: string;
   slug: string;
-  descripcion: string | null;
-  activo: boolean;
+  public_url: string;
+  status: string;
 }
 
 interface PendingAttachment {
@@ -188,7 +189,7 @@ export default function MiWhatsApp() {
     const [statusResult, { data: tplData }, { data: formData }] = await Promise.all([
       callEdgeFunction('get-status'),
       supabase.from('whatsapp_user_templates').select('*').eq('user_id', usuario.id).order('is_favorite', { ascending: false }).order('sort_order'),
-      supabase.from('quote_form_templates').select('id, nombre, slug, descripcion, activo').eq('activo', true).order('nombre'),
+      supabase.from('shared_quote_form_links').select('id, form_title, form_type, slug, public_url, status').eq('agent_id', usuario.id).eq('status', 'active').order('form_title'),
     ]);
 
     if (statusResult) {
@@ -443,14 +444,13 @@ export default function MiWhatsApp() {
 
   const handleSendFormLink = async (form: FormTemplate) => {
     if (!selectedConversation || !usuario) return;
-    const formUrl = `${window.location.origin}/formulario/${form.slug}`;
-    const clientName = selectedConversation.remote_name || selectedConversation.remote_phone;
-    const text = `Hola ${clientName}, te comparto el formulario para avanzar con tu cotizacion: ${formUrl}`;
+    const formUrl = form.public_url;
+    const clientName = resolveContactName(selectedConversation);
+    const text = `Hola ${clientName}, te comparto el formulario para avanzar con tu cotizacion:\n${formUrl}`;
     setMessageInput(text);
     setShowFormularios(false);
     textareaRef.current?.focus();
 
-    // Log the form send
     await supabase.from('whatsapp_form_sends_log').insert({
       user_id: usuario.id,
       conversation_id: selectedConversation.id,
@@ -458,7 +458,7 @@ export default function MiWhatsApp() {
       form_template_id: form.id,
       form_url: formUrl,
       crm_contact_id: selectedConversation.crm_contact_id,
-    });
+    }).catch(() => {});
   };
 
   const handleToggleSelection = (msgId: string) => {
@@ -1091,8 +1091,8 @@ export default function MiWhatsApp() {
                                   <div className="flex items-center gap-2">
                                     <FileText className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-xs font-medium text-neutral-700 dark:text-white/70 truncate">{form.nombre}</p>
-                                      {form.descripcion && <p className="text-[10px] text-neutral-400 truncate mt-0.5">{form.descripcion}</p>}
+                                      <p className="text-xs font-medium text-neutral-700 dark:text-white/70 truncate">{form.form_title}</p>
+                                      <p className="text-[10px] text-neutral-400 truncate mt-0.5">{form.form_type.replace(/_/g, ' ')}</p>
                                     </div>
                                     <ExternalLink className="w-3.5 h-3.5 text-neutral-300 flex-shrink-0" />
                                   </div>
