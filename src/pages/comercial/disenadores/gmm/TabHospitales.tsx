@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, MapPin, Building, Filter, ChevronDown } from 'lucide-react';
+import { Search, MapPin, Building, Filter, ChevronDown, AlertTriangle } from 'lucide-react';
 import {
   GMM_HOSPITALS, MEXICAN_STATES, INSURER_LEVEL_NAMES,
   type InsurerId, type GmmHospital,
@@ -78,6 +78,17 @@ export default function TabHospitales() {
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Explora {GMM_HOSPITALS.length} hospitales en {statesWithHospitals.length} estados con niveles por aseguradora
         </p>
+      </div>
+
+      {/* Disclaimer */}
+      <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-700/40">
+        <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 mb-0.5">Directorio referencial</p>
+          <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
+            La informacion de redes hospitalarias puede contener errores u omisiones. Los niveles y la disponibilidad de hospitales cambian periodicamente. Verifica el directorio actualizado directamente en el sitio oficial de cada aseguradora antes de contratar o emitir una poliza.
+          </p>
+        </div>
       </div>
 
       {/* Filters */}

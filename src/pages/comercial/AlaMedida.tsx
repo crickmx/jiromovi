@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Car, HeartPulse, ArrowRight, Sparkles, Shield, Users } from 'lucide-react';
+import { Car, HeartPulse, ArrowRight, Sparkles, Shield, Users, AlertTriangle } from 'lucide-react';
 
 const AUTO_LOGOS = [
   '/qualitas-compania-de-seguros-logo-png_seeklogo-329374-2.png',
@@ -151,11 +151,13 @@ export default function AlaMedida() {
         </button>
       </div>
 
-      {/* Footer hint */}
-      <div className="mt-12 text-center">
-        <p className="text-xs text-gray-400 dark:text-gray-500 max-w-md mx-auto">
-          Los datos de coberturas son referenciales y se actualizan periodicamente.
-          Confirma condiciones directamente con cada aseguradora antes de emitir.
+      {/* Disclaimer */}
+      <div className="mt-10 flex items-start gap-3 px-4 py-3.5 rounded-xl bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-700/40 max-w-2xl mx-auto">
+        <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+        <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+          <span className="font-semibold text-amber-800 dark:text-amber-300">Informacion referencial.</span>{' '}
+          El directorio de hospitales y la disponibilidad de coberturas pueden contener errores u omisiones.
+          Confirma toda la informacion directamente con cada aseguradora antes de emitir una poliza.
         </p>
       </div>
     </div>

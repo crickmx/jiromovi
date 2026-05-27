@@ -540,14 +540,15 @@ export default function DisenadorGMM() {
           </div>
 
           {/* Disclaimer */}
-          {selectedHospitals.length > 0 && (
-            <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30">
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
-              <p className="text-[10px] text-amber-700 dark:text-amber-300 leading-relaxed">
-                Las redes hospitalarias se actualizan periodicamente. Confirma disponibilidad directamente con cada aseguradora antes de emitir.
+          <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-700/40">
+            <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 mb-0.5">Informacion referencial</p>
+              <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
+                El directorio de hospitales y la disponibilidad de coberturas pueden contener errores u omisiones. Confirma toda la informacion directamente con cada aseguradora antes de emitir una poliza.
               </p>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Right Panel - Results */}
