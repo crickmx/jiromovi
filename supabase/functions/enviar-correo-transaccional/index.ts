@@ -31,6 +31,8 @@ interface ResolvedEmailChannel {
   from_email: string;
   channel_id: string | null;
   channel_name: string | null;
+  header_html: string | null;
+  footer_html: string | null;
 }
 
 interface ResolvedWhatsAppChannel {
@@ -64,6 +66,8 @@ async function resolveEmailChannel(
         from_email: data.config.from_email || "notificaciones@movi.digital",
         channel_id: data.id,
         channel_name: data.name,
+        header_html: data.branding?.header_html || null,
+        footer_html: data.branding?.footer_html || null,
       };
     }
   }
@@ -83,6 +87,8 @@ async function resolveEmailChannel(
       from_email: def.config.from_email || "notificaciones@movi.digital",
       channel_id: def.id,
       channel_name: def.name,
+      header_html: def.branding?.header_html || null,
+      footer_html: def.branding?.footer_html || null,
     };
   }
 
@@ -95,6 +101,8 @@ async function resolveEmailChannel(
       from_email: "notificaciones@movi.digital",
       channel_id: null,
       channel_name: null,
+      header_html: null,
+      footer_html: null,
     };
   }
 
@@ -477,9 +485,9 @@ Deno.serve(async (req: Request) => {
     const userEmail = user.email_laboral;
     const userPhone = user.celular_laboral || user.celular_personal;
 
-    // 3. Resolve channels
-    const emailChannel = await resolveEmailChannel(supabase, null);
-    const waChannel = await resolveWhatsAppChannel(supabase, null);
+    // 3. Resolve channels (prefer template-assigned channels)
+    const emailChannel = await resolveEmailChannel(supabase, template.resend_channel_id || null);
+    const waChannel = await resolveWhatsAppChannel(supabase, template.wazzup24_channel_id || null);
 
     // 4. Determine if this is a ticket event and enrich variables
     const isTicketEvent = event_key.startsWith("tramite_");
@@ -535,6 +543,11 @@ Deno.serve(async (req: Request) => {
         finalBody = finalBody.replace("{{adjuntos_advertencia_html}}", warning);
       }
       finalBody = finalBody.replace("{{adjuntos_advertencia_html}}", "");
+
+      // Wrap body with channel branding header/footer
+      if (emailChannel.header_html || emailChannel.footer_html) {
+        finalBody = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head><body style="margin:0;padding:16px;background-color:#f4f4f4;font-family:Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center"><table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">${emailChannel.header_html ? `<tr><td>${emailChannel.header_html}</td></tr>` : ""}<tr><td style="padding:32px;">${finalBody}</td></tr>${emailChannel.footer_html ? `<tr><td>${emailChannel.footer_html}</td></tr>` : ""}</table></td></tr></table></body></html>`;
+      }
 
       const emailPayload: Record<string, unknown> = {
         from: `${emailChannel.from_name} <${emailChannel.from_email}>`,

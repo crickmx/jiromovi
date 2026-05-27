@@ -1,16 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { LayoutGrid as Layout, Save, RefreshCw, Eye, Code, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Info, RotateCcw } from 'lucide-react';
+import { LayoutGrid as Layout, Save, RefreshCw, Eye, Code, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Info, RotateCcw, Radio } from 'lucide-react';
 
-interface GlobalSettings {
+interface NotificationChannel {
   id: string;
-  header_html: string;
-  footer_html: string;
-  activo: boolean;
-  version: number;
-  updated_at: string;
-  updated_by: string | null;
+  name: string;
+  type: string;
+  is_default: boolean;
+  is_active: boolean;
+  branding: {
+    header_html?: string;
+    footer_html?: string;
+    logo_url?: string;
+    primary_color?: string;
+    sender_name?: string;
+  } | null;
 }
 
 const DEFAULT_HEADER = `<div style="background-color:#ffffff; border-bottom:2px solid #f0f0f0; padding:24px 32px; text-align:center; font-family:Arial,sans-serif;">
@@ -40,7 +45,8 @@ type ViewMode = 'code' | 'preview';
 
 export function EmailGlobalLayout() {
   const { usuario } = useAuth();
-  const [settings, setSettings] = useState<GlobalSettings | null>(null);
+  const [channels, setChannels] = useState<NotificationChannel[]>([]);
+  const [selectedChannelId, setSelectedChannelId] = useState<string>('');
   const [headerHtml, setHeaderHtml] = useState(DEFAULT_HEADER);
   const [footerHtml, setFooterHtml] = useState(DEFAULT_FOOTER);
   const [loading, setLoading] = useState(true);
@@ -52,7 +58,7 @@ export function EmailGlobalLayout() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
-    fetchSettings();
+    fetchChannels();
   }, []);
 
   useEffect(() => {
@@ -61,29 +67,41 @@ export function EmailGlobalLayout() {
     }
   }, [headerHtml, footerHtml, showPreview]);
 
-  const fetchSettings = async () => {
+  const fetchChannels = async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('email_global_settings')
-        .select('*')
-        .eq('activo', true)
-        .order('version', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .from('notification_channels')
+        .select('id, name, type, is_default, is_active, branding')
+        .eq('type', 'email_resend')
+        .eq('is_active', true)
+        .order('is_default', { ascending: false });
 
       if (error) throw error;
 
-      if (data) {
-        setSettings(data);
-        setHeaderHtml(data.header_html || DEFAULT_HEADER);
-        setFooterHtml(data.footer_html || DEFAULT_FOOTER);
+      const list: NotificationChannel[] = data || [];
+      setChannels(list);
+
+      if (list.length > 0) {
+        const defaultChannel = list.find(c => c.is_default) || list[0];
+        loadChannel(defaultChannel);
       }
     } catch (err) {
-      console.error('Error cargando configuracion:', err);
+      console.error('Error cargando canales:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadChannel = (channel: NotificationChannel) => {
+    setSelectedChannelId(channel.id);
+    setHeaderHtml(channel.branding?.header_html || DEFAULT_HEADER);
+    setFooterHtml(channel.branding?.footer_html || DEFAULT_FOOTER);
+  };
+
+  const handleChannelChange = (channelId: string) => {
+    const channel = channels.find(c => c.id === channelId);
+    if (channel) loadChannel(channel);
   };
 
   const updatePreview = () => {
@@ -124,41 +142,30 @@ export function EmailGlobalLayout() {
 </html>`;
 
   const handleSave = async () => {
+    if (!selectedChannelId) return;
     try {
       setSaving(true);
       setMessage(null);
 
-      const newVersion = (settings?.version || 0) + 1;
+      const channel = channels.find(c => c.id === selectedChannelId);
+      const existingBranding = channel?.branding || {};
 
-      if (settings) {
-        const { error } = await supabase
-          .from('email_global_settings')
-          .update({
+      const { error } = await supabase
+        .from('notification_channels')
+        .update({
+          branding: {
+            ...existingBranding,
             header_html: headerHtml,
             footer_html: footerHtml,
-            version: newVersion,
-            updated_at: new Date().toISOString(),
-            updated_by: usuario?.id || null,
-          })
-          .eq('id', settings.id);
+          },
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', selectedChannelId);
 
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('email_global_settings')
-          .insert({
-            header_html: headerHtml,
-            footer_html: footerHtml,
-            activo: true,
-            version: 1,
-            updated_by: usuario?.id || null,
-          });
+      if (error) throw error;
 
-        if (error) throw error;
-      }
-
-      setMessage({ type: 'success', text: 'Header y Footer guardados. Se aplicaran a todos los correos.' });
-      await fetchSettings();
+      setMessage({ type: 'success', text: 'Header y Footer guardados en el canal seleccionado.' });
+      await fetchChannels();
     } catch (err: any) {
       setMessage({ type: 'error', text: `Error al guardar: ${err.message}` });
     } finally {
@@ -176,13 +183,24 @@ export function EmailGlobalLayout() {
     return (
       <div className="flex items-center justify-center py-12">
         <RefreshCw className="w-5 h-5 animate-spin text-neutral-400 mr-2" />
-        <span className="text-sm text-neutral-500">Cargando configuracion...</span>
+        <span className="text-sm text-neutral-500">Cargando canales...</span>
+      </div>
+    );
+  }
+
+  if (channels.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <Radio className="w-12 h-12 text-neutral-300 mb-4" />
+        <p className="text-neutral-600 font-medium">No hay canales de correo configurados</p>
+        <p className="text-sm text-neutral-400 mt-1">Crea un canal de tipo "Resend (Email)" en la pestana de Canales.</p>
       </div>
     );
   }
 
   const currentValue = activeSection === 'header' ? headerHtml : footerHtml;
   const setCurrentValue = activeSection === 'header' ? setHeaderHtml : setFooterHtml;
+  const selectedChannel = channels.find(c => c.id === selectedChannelId);
 
   return (
     <div className="space-y-5">
@@ -190,16 +208,32 @@ export function EmailGlobalLayout() {
       <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
         <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-semibold text-blue-800">Header y Footer globales</p>
+          <p className="text-sm font-semibold text-blue-800">Header y Footer por canal</p>
           <p className="text-sm text-blue-700 mt-0.5">
-            El HTML que configures aqui se inyectara automaticamente en <strong>todos</strong> los correos enviados desde la plataforma — sin excepcion. Los templates solo deben contener el cuerpo del mensaje.
+            Cada canal de correo tiene su propio header y footer. Selecciona el canal que deseas editar. El HTML se inyectara automaticamente en todos los correos enviados por ese canal.
           </p>
-          {settings && (
-            <p className="text-xs text-blue-500 mt-1.5">
-              Version {settings.version} &middot; Ultima actualizacion: {new Date(settings.updated_at).toLocaleString('es-MX')}
-            </p>
-          )}
         </div>
+      </div>
+
+      {/* Channel selector */}
+      <div className="flex items-center gap-3">
+        <label className="text-sm font-medium text-neutral-700 dark:text-white/70 flex-shrink-0">Canal:</label>
+        <select
+          value={selectedChannelId}
+          onChange={e => handleChannelChange(e.target.value)}
+          className="flex-1 max-w-xs px-3 py-2 border border-neutral-300 dark:border-white/10 rounded-lg text-sm bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        >
+          {channels.map(channel => (
+            <option key={channel.id} value={channel.id}>
+              {channel.name}{channel.is_default ? ' (predeterminado)' : ''}
+            </option>
+          ))}
+        </select>
+        {selectedChannel && (
+          <span className="text-xs text-neutral-500 dark:text-white/40">
+            {selectedChannel.is_default ? 'Canal predeterminado' : 'Canal personalizado'}
+          </span>
+        )}
       </div>
 
       {message && (
@@ -223,15 +257,15 @@ export function EmailGlobalLayout() {
         {/* Editor */}
         <div className="space-y-3">
           {/* Tabs header/footer */}
-          <div className="flex items-center gap-1 bg-neutral-100 rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-neutral-100 dark:bg-white/5 rounded-lg p-1">
             {(['header', 'footer'] as const).map(section => (
               <button
                 key={section}
                 onClick={() => setActiveSection(section)}
                 className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
                   activeSection === section
-                    ? 'bg-white text-neutral-900 shadow-sm'
-                    : 'text-neutral-500 hover:text-neutral-700'
+                    ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
+                    : 'text-neutral-500 dark:text-white/40 hover:text-neutral-700 dark:hover:text-white/70'
                 }`}
               >
                 {section === 'header' ? 'Header (Encabezado)' : 'Footer (Pie de pagina)'}
@@ -241,13 +275,13 @@ export function EmailGlobalLayout() {
 
           {/* Toggle code / preview del fragmento */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-neutral-100 rounded-lg p-1">
+            <div className="flex items-center gap-1 bg-neutral-100 dark:bg-white/5 rounded-lg p-1">
               <button
                 onClick={() => setViewMode('code')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                   viewMode === 'code'
-                    ? 'bg-white text-neutral-900 shadow-sm'
-                    : 'text-neutral-500 hover:text-neutral-700'
+                    ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
+                    : 'text-neutral-500 dark:text-white/40 hover:text-neutral-700 dark:hover:text-white/70'
                 }`}
               >
                 <Code className="w-3.5 h-3.5" />
@@ -257,8 +291,8 @@ export function EmailGlobalLayout() {
                 onClick={() => setViewMode('preview')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                   viewMode === 'preview'
-                    ? 'bg-white text-neutral-900 shadow-sm'
-                    : 'text-neutral-500 hover:text-neutral-700'
+                    ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
+                    : 'text-neutral-500 dark:text-white/40 hover:text-neutral-700 dark:hover:text-white/70'
                 }`}
               >
                 <Eye className="w-3.5 h-3.5" />
@@ -297,7 +331,7 @@ export function EmailGlobalLayout() {
           <div className="flex items-center gap-2 pt-1">
             <button
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || !selectedChannelId}
               className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm font-medium shadow-sm"
             >
               {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
@@ -305,7 +339,7 @@ export function EmailGlobalLayout() {
             </button>
             <button
               onClick={handleRestoreDefaults}
-              className="flex items-center gap-2 px-4 py-2.5 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors text-sm font-medium"
+              className="flex items-center gap-2 px-4 py-2.5 border border-neutral-300 dark:border-white/10 text-neutral-700 dark:text-white/70 rounded-lg hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors text-sm font-medium"
             >
               <RotateCcw className="w-4 h-4" />
               Restaurar defecto
@@ -317,11 +351,11 @@ export function EmailGlobalLayout() {
         <div className="space-y-3">
           <button
             onClick={() => setShowPreview(!showPreview)}
-            className="flex items-center justify-between w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-lg hover:bg-neutral-100 transition-colors"
+            className="flex items-center justify-between w-full px-4 py-3 bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/8 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/8 transition-colors"
           >
             <div className="flex items-center gap-2">
-              <Eye className="w-4 h-4 text-neutral-600" />
-              <span className="text-sm font-semibold text-neutral-700">Vista previa del correo completo</span>
+              <Eye className="w-4 h-4 text-neutral-600 dark:text-white/60" />
+              <span className="text-sm font-semibold text-neutral-700 dark:text-white/80">Vista previa del correo completo</span>
             </div>
             {showPreview
               ? <ChevronUp className="w-4 h-4 text-neutral-500" />
@@ -355,7 +389,7 @@ export function EmailGlobalLayout() {
                 <div className="space-y-0.5 ml-1">
                   <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 bg-blue-400 rounded-sm flex-shrink-0" />
-                    <span>Header global (esta configuracion)</span>
+                    <span>Header del canal seleccionado</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 bg-neutral-400 rounded-sm flex-shrink-0" />
@@ -363,7 +397,7 @@ export function EmailGlobalLayout() {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 bg-emerald-400 rounded-sm flex-shrink-0" />
-                    <span>Footer global (esta configuracion)</span>
+                    <span>Footer del canal seleccionado</span>
                   </div>
                 </div>
               </div>
