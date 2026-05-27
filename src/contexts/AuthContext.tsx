@@ -151,6 +151,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[AuthContext] Auth state changed:', event, session?.user?.email || 'No session');
 
+      // Handle post-magic-link redirect: if we stored a platform destination, navigate there
+      if (event === 'SIGNED_IN' && session?.user) {
+        const magicPlatform = localStorage.getItem('magic_link_platform');
+        if (magicPlatform) {
+          localStorage.removeItem('magic_link_platform');
+          const dest = magicPlatform === 'seguwallet' ? '/seguwallet/dashboard' : '/';
+          // Use replace to avoid back-button loop
+          window.location.replace(dest);
+          return;
+        }
+      }
+
       // Si ya se completó la carga inicial, solo actualizar estado
       if (!isInitialLoad) {
         (async () => {

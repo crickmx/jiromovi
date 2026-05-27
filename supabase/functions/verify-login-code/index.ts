@@ -140,16 +140,12 @@ Deno.serve(async (req: Request) => {
     // For magic_token flow: return action_link so client can redirect directly
     // to Supabase Auth which handles session creation via its own redirect.
     // For code flow: use token_hash with verifyOtp on the client side.
-    const defaultRedirect = platform === 'seguwallet'
-      ? 'https://app.seguwallet.mx/seguwallet/dashboard'
-      : 'https://app.movi.digital/';
-
-    const finalRedirect = redirect_to || defaultRedirect;
-
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
       type: 'magiclink',
       email: token.email,
-      options: { redirectTo: finalRedirect },
+      options: {
+        redirectTo: redirect_to || undefined,
+      },
     });
 
     if (linkError || !linkData?.properties?.hashed_token) {

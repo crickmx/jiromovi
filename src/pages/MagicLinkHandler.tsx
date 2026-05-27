@@ -17,10 +17,6 @@ export default function MagicLinkHandler() {
       return;
     }
 
-    const redirectTo = platform === 'seguwallet'
-      ? `${window.location.origin}/seguwallet/dashboard`
-      : `${window.location.origin}/`;
-
     (async () => {
       try {
         const res = await fetch(`${SUPABASE_URL}/functions/v1/verify-login-code`, {
@@ -29,7 +25,7 @@ export default function MagicLinkHandler() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
           },
-          body: JSON.stringify({ magic_token: token, platform, redirect_to: redirectTo }),
+          body: JSON.stringify({ magic_token: token, platform }),
         });
 
         const data = await res.json();
@@ -44,8 +40,10 @@ export default function MagicLinkHandler() {
         }
 
         // Redirect to Supabase action_link — Supabase Auth creates the session
-        // and then redirects back to the app at redirect_to.
+        // and redirects back to the site URL. We save the intended platform
+        // destination so AuthContext can navigate there after login.
         if (data.action_link) {
+          localStorage.setItem('magic_link_platform', platform);
           window.location.href = data.action_link;
           return;
         }
