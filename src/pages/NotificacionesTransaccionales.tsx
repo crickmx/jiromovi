@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Mail, Settings, FileText, Send, CheckCircle2, XCircle, Clock, AlertCircle, RefreshCw, MessageCircle, LayoutGrid as Layout } from 'lucide-react';
+import { Mail, Settings, FileText, Send, CheckCircle2, XCircle, Clock, AlertCircle, RefreshCw, Radio } from 'lucide-react';
 import { ConfiguracionSMTP } from '../components/notificaciones/ConfiguracionSMTP';
 import { ConfiguracionWhatsApp } from '../components/notificaciones/ConfiguracionWhatsApp';
 import { TiposNotificaciones } from '../components/notificaciones/TiposNotificaciones';
 import { HistorialEnvios } from '../components/notificaciones/HistorialEnvios';
 import { EmailGlobalLayout } from '../components/notificaciones/EmailGlobalLayout';
+import { CanalesNotificacion } from '../components/notificaciones/CanalesNotificacion';
 import { PageHeader } from '@/components/ui/page-header';
+import { LayoutGrid as Layout } from 'lucide-react';
 
-type Tab = 'configuracion' | 'whatsapp' | 'notificaciones' | 'layout' | 'historial';
+type Tab = 'canales' | 'configuracion' | 'whatsapp' | 'notificaciones' | 'layout' | 'historial';
 
 interface Config {
   id: string;
@@ -31,7 +33,7 @@ interface Stats {
 
 export function NotificacionesTransaccionales() {
   const { usuario } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('configuracion');
+  const [activeTab, setActiveTab] = useState<Tab>('canales');
   const [config, setConfig] = useState<Config | null>(null);
   const [whatsappConfig, setWhatsappConfig] = useState<any>(null);
   const [stats, setStats] = useState<Stats>({
@@ -218,6 +220,17 @@ export function NotificacionesTransaccionales() {
         <div className="border-b border-neutral-200 dark:border-white/8">
           <div className="flex overflow-x-auto">
             <button
+              onClick={() => setActiveTab('canales')}
+              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
+                activeTab === 'canales'
+                  ? 'text-accent border-b-2 border-accent'
+                  : 'text-neutral-600 dark:text-white/50 hover:text-neutral-800 dark:hover:text-white/70'
+              }`}
+            >
+              <Radio className="w-5 h-5" />
+              Canales
+            </button>
+            <button
               onClick={() => setActiveTab('configuracion')}
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'configuracion'
@@ -226,7 +239,7 @@ export function NotificacionesTransaccionales() {
               }`}
             >
               <Settings className="w-5 h-5" />
-              Configuración SMTP
+              Config. SMTP
             </button>
             <button
               onClick={() => setActiveTab('whatsapp')}
@@ -276,6 +289,9 @@ export function NotificacionesTransaccionales() {
         </div>
 
         <div className="p-6">
+          {activeTab === 'canales' && (
+            <CanalesNotificacion />
+          )}
           {activeTab === 'configuracion' && (
             <ConfiguracionSMTP
               config={config}

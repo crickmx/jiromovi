@@ -24,6 +24,99 @@ const TIPO_TRAMITE_LABELS: Record<string, string> = {
 };
 
 // ============================================================
+// Channel resolution helpers
+// ============================================================
+
+interface ResolvedEmailChannel {
+  api_key: string;
+  from_name: string;
+  from_email: string;
+  channel_id: string | null;
+  channel_name: string | null;
+}
+
+interface ResolvedWhatsAppChannel {
+  api_key: string;
+  channel_id_uuid: string;
+  channel_id: string | null;
+  channel_name: string | null;
+}
+
+async function resolveEmailChannel(
+  supabase: ReturnType<typeof createClient>
+): Promise<ResolvedEmailChannel | null> {
+  // 1. Try default notification_channels entry
+  const { data: def } = await supabase
+    .from("notification_channels")
+    .select("id, name, config, branding, is_active")
+    .eq("type", "email_resend")
+    .eq("is_default", true)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (def?.config?.api_key) {
+    return {
+      api_key: def.config.api_key,
+      from_name: def.config.from_name || def.branding?.sender_name || "MOVI Digital",
+      from_email: def.config.from_email || "notificaciones@movi.digital",
+      channel_id: def.id,
+      channel_name: def.name,
+    };
+  }
+
+  // 2. Fallback to env var
+  const envKey = Deno.env.get("RESEND_API_KEY");
+  if (envKey) {
+    return {
+      api_key: envKey,
+      from_name: "MOVI Digital",
+      from_email: "notificaciones@movi.digital",
+      channel_id: null,
+      channel_name: null,
+    };
+  }
+
+  return null;
+}
+
+async function resolveWhatsAppChannel(
+  supabase: ReturnType<typeof createClient>
+): Promise<ResolvedWhatsAppChannel | null> {
+  // 1. Try default notification_channels entry
+  const { data: def } = await supabase
+    .from("notification_channels")
+    .select("id, name, config, is_active")
+    .eq("type", "whatsapp_wazzup24")
+    .eq("is_default", true)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (def?.config?.api_key && def?.config?.channel_id) {
+    return {
+      api_key: def.config.api_key,
+      channel_id_uuid: def.config.channel_id,
+      channel_id: def.id,
+      channel_name: def.name,
+    };
+  }
+
+  // 2. Fallback to legacy whatsapp_configuracion
+  const { data: legacy } = await supabase
+    .from("whatsapp_configuracion")
+    .select("api_key, channel_id_uuid, activo")
+    .eq("activo", true)
+    .maybeSingle();
+  if (legacy?.api_key) {
+    return {
+      api_key: legacy.api_key,
+      channel_id_uuid: legacy.channel_id_uuid || "",
+      channel_id: null,
+      channel_name: null,
+    };
+  }
+
+  return null;
+}
+
+// ============================================================
 // Ticket enrichment helpers
 // ============================================================
 
@@ -221,12 +314,15 @@ Deno.serve(async (req: Request) => {
         );
       }
 
+      // Resolve channels once for all jobs
+      const emailChannel = await resolveEmailChannel(supabase);
+      const waChannel = await resolveWhatsAppChannel(supabase);
+
       let processed = 0;
       let failed = 0;
 
       for (const job of pendingJobs) {
         try {
-          // Mark as processing
           await supabase
             .from("notification_jobs")
             .update({ status: "processing", updated_at: new Date().toISOString() })
@@ -259,13 +355,11 @@ Deno.serve(async (req: Request) => {
           const isTicketEvent = (job.event_code || "").startsWith("tramite_");
           let ticketId: string | null = null;
 
-          // Extract ticket_id from payload URL
           if (isTicketEvent && job.payload?.url) {
             const match = (job.payload.url as string).match(/\/tramites\/([a-f0-9-]+)/);
             if (match) ticketId = match[1];
           }
 
-          // Enrich for ticket events
           let enrichedPayload = job.payload || {};
           let enhancedSubject = "";
           if (isTicketEvent && ticketId) {
@@ -274,7 +368,6 @@ Deno.serve(async (req: Request) => {
             enhancedSubject = enrichment.enhancedSubject;
           }
 
-          // Get template
           const { data: template } = await supabase
             .from("transactional_notification_templates")
             .select("*")
@@ -282,7 +375,6 @@ Deno.serve(async (req: Request) => {
             .eq("is_active", true)
             .maybeSingle();
 
-          // Get event config
           const { data: eventConfig } = await supabase
             .from("notification_events_catalog")
             .select("enable_email, enable_whatsapp, enable_in_app")
@@ -301,15 +393,12 @@ Deno.serve(async (req: Request) => {
 
           const vars = enrichedPayload as Record<string, string>;
 
-          // Send based on channel
           if (job.channel === "email" && eventConfig?.enable_email !== false) {
-            const resendApiKey = Deno.env.get("RESEND_API_KEY");
-            if (resendApiKey && job.payload?.email) {
+            if (emailChannel && job.payload?.email) {
               const subject = enhancedSubject || renderTemplate(template.email_subject_template || "", vars);
               let htmlBody = renderTemplate(template.email_body_template || "", vars);
               htmlBody = htmlBody.replace("{{adjuntos_advertencia_html}}", "");
 
-              // Get attachments for ticket events
               let emailAttachments: Array<{ filename: string; content: string }> = [];
               if (isTicketEvent && ticketId) {
                 const atts = await getTicketAttachments(supabase, ticketId, job.attachments as any);
@@ -334,7 +423,7 @@ Deno.serve(async (req: Request) => {
               }
 
               const emailPayload: Record<string, unknown> = {
-                from: "MOVI Digital <notificaciones@movi.digital>",
+                from: `${emailChannel.from_name} <${emailChannel.from_email}>`,
                 to: [job.payload.email],
                 subject,
                 html: htmlBody,
@@ -343,7 +432,7 @@ Deno.serve(async (req: Request) => {
 
               const res = await fetch("https://api.resend.com/emails", {
                 method: "POST",
-                headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+                headers: { Authorization: `Bearer ${emailChannel.api_key}`, "Content-Type": "application/json" },
                 body: JSON.stringify(emailPayload),
               });
 
@@ -363,6 +452,9 @@ Deno.serve(async (req: Request) => {
                   estado: "enviado",
                   proveedor: "resend",
                   provider_message_id: resendBody?.id || null,
+                  channel_id: emailChannel.channel_id || null,
+                  channel_name: emailChannel.channel_name || null,
+                  channel_type: "email_resend",
                   fecha_envio: new Date().toISOString(),
                 });
                 processed++;
@@ -386,6 +478,9 @@ Deno.serve(async (req: Request) => {
                   asunto: subject,
                   estado: "fallido",
                   proveedor: "resend",
+                  channel_id: emailChannel.channel_id || null,
+                  channel_name: emailChannel.channel_name || null,
+                  channel_type: "email_resend",
                   error_mensaje: `Resend ${res.status}: ${errText}`,
                   fecha_envio: new Date().toISOString(),
                 });
@@ -394,18 +489,12 @@ Deno.serve(async (req: Request) => {
             } else {
               await supabase
                 .from("notification_jobs")
-                .update({ status: "failed", last_error: "No RESEND_API_KEY or no email", updated_at: new Date().toISOString() })
+                .update({ status: "failed", last_error: "No email channel configured or no email", updated_at: new Date().toISOString() })
                 .eq("id", job.id);
               failed++;
             }
           } else if (job.channel === "whatsapp" && eventConfig?.enable_whatsapp !== false) {
-            const { data: waConfig } = await supabase
-              .from("whatsapp_configuracion")
-              .select("api_key, channel_id_uuid, activo")
-              .eq("activo", true)
-              .maybeSingle();
-
-            if (waConfig?.api_key && job.payload?.phone) {
+            if (waChannel && job.payload?.phone) {
               const message = renderTemplate(template.whatsapp_body_template || "", vars);
               let normalizedPhone = (job.payload.phone as string).replace(/[^0-9]/g, "");
               if (normalizedPhone.length === 10) {
@@ -417,15 +506,13 @@ Deno.serve(async (req: Request) => {
               }
               const chatId = normalizedPhone;
 
-              // Send text message
               const msgRes = await fetch("https://api.wazzup24.com/v3/message", {
                 method: "POST",
-                headers: { Authorization: `Bearer ${waConfig.api_key}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ channelId: waConfig.channel_id_uuid, chatType: "whatsapp", chatId, text: message }),
+                headers: { Authorization: `Bearer ${waChannel.api_key}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ channelId: waChannel.channel_id_uuid, chatType: "whatsapp", chatId, text: message }),
               });
 
               if (msgRes.ok) {
-                // Send documents for ticket events
                 if (isTicketEvent && ticketId) {
                   const atts = await getTicketAttachments(supabase, ticketId, job.attachments as any);
                   for (const att of atts) {
@@ -438,10 +525,10 @@ Deno.serve(async (req: Request) => {
                       }
                       await fetch("https://api.wazzup24.com/v3/message", {
                         method: "POST",
-                        headers: { Authorization: `Bearer ${waConfig.api_key}`, "Content-Type": "application/json" },
-                        body: JSON.stringify({ channelId: waConfig.channel_id_uuid, chatType: "whatsapp", chatId, contentUri: url, fileName: att.fileName }),
+                        headers: { Authorization: `Bearer ${waChannel.api_key}`, "Content-Type": "application/json" },
+                        body: JSON.stringify({ channelId: waChannel.channel_id_uuid, chatType: "whatsapp", chatId, contentUri: url, fileName: att.fileName }),
                       });
-                    } catch { /* continue with next */ }
+                    } catch { /* continue */ }
                   }
                 }
 
@@ -459,6 +546,9 @@ Deno.serve(async (req: Request) => {
                   asunto: null,
                   estado: "enviado",
                   proveedor: "wazzup24",
+                  channel_id: waChannel.channel_id || null,
+                  channel_name: waChannel.channel_name || null,
+                  channel_type: "whatsapp_wazzup24",
                   fecha_envio: new Date().toISOString(),
                 });
                 processed++;
@@ -483,6 +573,9 @@ Deno.serve(async (req: Request) => {
                   asunto: null,
                   estado: "fallido",
                   proveedor: "wazzup24",
+                  channel_id: waChannel.channel_id || null,
+                  channel_name: waChannel.channel_name || null,
+                  channel_type: "whatsapp_wazzup24",
                   error_mensaje: `Wazzup ${msgRes.status}: ${errText}`,
                   fecha_envio: new Date().toISOString(),
                 });
@@ -491,7 +584,7 @@ Deno.serve(async (req: Request) => {
             } else {
               await supabase
                 .from("notification_jobs")
-                .update({ status: "failed", last_error: "WhatsApp not configured or no phone", updated_at: new Date().toISOString() })
+                .update({ status: "failed", last_error: "No WhatsApp channel configured or no phone", updated_at: new Date().toISOString() })
                 .eq("id", job.id);
               failed++;
             }
@@ -533,7 +626,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Get event config
     const { data: eventConfig } = await supabase
       .from("notification_events_catalog")
       .select("enable_email, enable_whatsapp, enable_in_app")
@@ -541,7 +633,6 @@ Deno.serve(async (req: Request) => {
       .eq("active", true)
       .maybeSingle();
 
-    // Get user for contact info
     const { data: userInfo } = await supabase
       .from("usuarios")
       .select("email_laboral, celular_laboral, celular_personal")
@@ -584,9 +675,7 @@ Deno.serve(async (req: Request) => {
       await supabase.from("notification_jobs").insert(jobsToCreate);
     }
 
-    // Process immediately
     if (jobsToCreate.length > 0) {
-      // Self-invoke to process
       const selfUrl = `${supabaseUrl}/functions/v1/notification-dispatcher`;
       fetch(selfUrl, {
         method: "POST",
