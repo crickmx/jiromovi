@@ -76,8 +76,8 @@ function wrapWithLayout(body: string, header: string, footer: string): string {
 </html>`;
 }
 
-// Fallback email body (no DOCTYPE/html — will be wrapped by wrapWithLayout)
-function buildFallbackEmailBody(brandName: string, userName: string, code: string, magicLink: string): string {
+// Fallback email body — solo código, sin magic link
+function buildFallbackEmailBody(brandName: string, userName: string, code: string): string {
   const greeting = userName ? `Hola, ${userName}` : 'Hola';
   return `
 <div style="background:#0b2d6b;padding:28px 32px;text-align:center;margin:-32px -32px 0 -32px;">
@@ -86,15 +86,11 @@ function buildFallbackEmailBody(brandName: string, userName: string, code: strin
 </div>
 <div style="padding:32px 0 0 0;">
   <p style="margin:0 0 8px;font-size:18px;font-weight:700;color:#111827;">${greeting}</p>
-  <p style="margin:0 0 28px;font-size:14px;color:#6b7280;line-height:1.6;">Solicitaste acceso a <strong>${brandName}</strong>. Usa el siguiente código o el botón para ingresar.</p>
+  <p style="margin:0 0 28px;font-size:14px;color:#6b7280;line-height:1.6;">Solicitaste acceso a <strong>${brandName}</strong>. Usa el siguiente código para ingresar.</p>
   <div style="background:#f8faff;border:2px solid #1a56db;border-radius:12px;padding:24px;text-align:center;margin-bottom:28px;">
     <div style="font-size:11px;font-weight:600;color:#6b7280;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">Tu código de acceso</div>
     <div style="font-size:40px;font-weight:800;color:#0b2d6b;letter-spacing:10px;font-family:'Courier New',monospace;">${code}</div>
     <div style="font-size:12px;color:#9ca3af;margin-top:8px;">Válido por ${EXPIRES_MINUTES} minutos · Un solo uso</div>
-  </div>
-  <div style="text-align:center;margin-bottom:28px;">
-    <a href="${magicLink}" style="display:inline-block;background:#1a56db;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:10px;">Ingresar directamente →</a>
-    <div style="font-size:11px;color:#9ca3af;margin-top:10px;">O copia: <span style="color:#1a56db;">${magicLink}</span></div>
   </div>
   <div style="background:#fef3c7;border-radius:8px;padding:14px 16px;">
     <p style="margin:0;font-size:12px;color:#92400e;line-height:1.5;"><strong>Aviso de seguridad:</strong> Si no solicitaste este acceso, ignora este mensaje.</p>
@@ -202,13 +198,11 @@ Deno.serve(async (req: Request) => {
       .eq('platform', platform)
       .is('used_at', null);
 
-    // ── Generate code and magic token ─────────────────────────────────────────
+    // ── Generate code ─────────────────────────────────────────────────────────
     const code = generateCode();
-    const magicToken = crypto.randomUUID();
-    const [codeHash, magicTokenHash] = await Promise.all([
-      sha256(code.toUpperCase()),
-      sha256(magicToken),
-    ]);
+    const codeHash = await sha256(code.toUpperCase());
+    // magic_token_hash kept as empty string for DB compatibility (column exists but not used)
+    const magicTokenHash = await sha256(crypto.randomUUID());
 
     const expiresAt = new Date(Date.now() + EXPIRES_MINUTES * 60 * 1000).toISOString();
 
@@ -232,15 +226,12 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // ── Build magic link and template vars ────────────────────────────────────
-    const baseUrl = platform === 'movi' ? 'https://app.movi.digital' : 'https://app.seguwallet.mx';
-    const magicLink = `${baseUrl}/auth/magic?token=${magicToken}&platform=${platform}`;
+    // ── Build template vars ────────────────────────────────────────────────────
     const brandName = platform === 'movi' ? 'MOVI Digital' : 'Seguwallet';
 
     const vars: Record<string, string> = {
       nombre: userName || '',
       codigo: code,
-      magic_link: magicLink,
       plataforma: brandName,
       minutos_validez: String(EXPIRES_MINUTES),
     };
@@ -253,8 +244,8 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     let emailSubject = `Tu código de acceso a ${brandName}: ${code}`;
-    let emailBody = buildFallbackEmailBody(brandName, userName || '', code, magicLink);
-    let whatsappText = `Tu código de acceso a ${brandName} es: *${code}*\n\nTambién puedes ingresar aquí:\n${magicLink}\n\n_Este acceso vence en ${EXPIRES_MINUTES} minutos._`;
+    let emailBody = buildFallbackEmailBody(brandName, userName || '', code);
+    let whatsappText = `Tu código de acceso a *${brandName}* es:\n\n*${code}*\n\n_Válido por ${EXPIRES_MINUTES} minutos. Un solo uso._`;
 
     if (typeRow?.id) {
       const { data: tpl } = await supabase
@@ -282,7 +273,6 @@ Deno.serve(async (req: Request) => {
     const header = layoutData?.header_html || '';
     const footer = layoutData?.footer_html || '';
 
-    // If the body is a full HTML document (has DOCTYPE), use as-is; otherwise wrap with layout
     const isFullDocument = emailBody.trimStart().toLowerCase().startsWith('<!doctype');
     const finalEmailHtml = isFullDocument ? emailBody : wrapWithLayout(emailBody, header, footer);
 

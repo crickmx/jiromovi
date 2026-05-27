@@ -30,14 +30,13 @@ Deno.serve(async (req: Request) => {
     });
 
     const body = await req.json() as {
-      email?: string;
-      code?: string;
-      magic_token?: string;
+      email: string;
+      code: string;
       platform: 'movi' | 'seguwallet';
       redirect_to?: string;
     };
 
-    const { email, code, magic_token, platform, redirect_to } = body;
+    const { email, code, platform, redirect_to } = body;
 
     if (!platform || (platform !== 'movi' && platform !== 'seguwallet')) {
       return new Response(JSON.stringify({ error: 'Plataforma inválida.' }), {
@@ -45,34 +44,23 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // ── Find valid, unexpired, unused token ────────────────────────────────────
-    let token: any = null;
-
-    if (magic_token) {
-      const magicHash = await sha256(magic_token);
-      const { data } = await supabase
-        .from('passwordless_login_tokens')
-        .select('*')
-        .eq('magic_token_hash', magicHash)
-        .eq('platform', platform)
-        .is('used_at', null)
-        .maybeSingle();
-      token = data;
-    } else if (email && code) {
-      const { data: tokens } = await supabase
-        .from('passwordless_login_tokens')
-        .select('*')
-        .eq('email', email.trim().toLowerCase())
-        .eq('platform', platform)
-        .is('used_at', null)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      token = tokens?.[0] || null;
-    } else {
-      return new Response(JSON.stringify({ error: 'Datos de verificación incompletos.' }), {
+    if (!email || !code) {
+      return new Response(JSON.stringify({ error: 'Se requieren correo y código.' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // ── Find valid, unexpired, unused token by email ───────────────────────────
+    const { data: tokens } = await supabase
+      .from('passwordless_login_tokens')
+      .select('*')
+      .eq('email', email.trim().toLowerCase())
+      .eq('platform', platform)
+      .is('used_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    const token = tokens?.[0] || null;
 
     if (!token) {
       return new Response(JSON.stringify({
@@ -108,26 +96,24 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // ── For code flow, validate the code ──────────────────────────────────────
-    if (code) {
-      const inputHash = await sha256(code.trim().toUpperCase());
-      if (inputHash !== token.code_hash) {
-        await supabase
-          .from('passwordless_login_tokens')
-          .update({ attempts: token.attempts + 1 })
-          .eq('id', token.id);
+    // ── Validate the code ──────────────────────────────────────────────────────
+    const inputHash = await sha256(code.trim().toUpperCase());
+    if (inputHash !== token.code_hash) {
+      await supabase
+        .from('passwordless_login_tokens')
+        .update({ attempts: token.attempts + 1 })
+        .eq('id', token.id);
 
-        const remaining = MAX_ATTEMPTS - (token.attempts + 1);
-        return new Response(JSON.stringify({
-          error: remaining > 0
-            ? `Código incorrecto. Te quedan ${remaining} intentos.`
-            : 'Demasiados intentos fallidos. Solicita un nuevo código.',
-          code: remaining > 0 ? 'WRONG_CODE' : 'MAX_ATTEMPTS',
-          remaining_attempts: Math.max(0, remaining),
-        }), {
-          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+      const remaining = MAX_ATTEMPTS - (token.attempts + 1);
+      return new Response(JSON.stringify({
+        error: remaining > 0
+          ? `Código incorrecto. Te quedan ${remaining} intentos.`
+          : 'Demasiados intentos fallidos. Solicita un nuevo código.',
+        code: remaining > 0 ? 'WRONG_CODE' : 'MAX_ATTEMPTS',
+        remaining_attempts: Math.max(0, remaining),
+      }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // ── Mark token as used ────────────────────────────────────────────────────
@@ -136,10 +122,7 @@ Deno.serve(async (req: Request) => {
       .update({ used_at: new Date().toISOString() })
       .eq('id', token.id);
 
-    // ── Generate Supabase magic link ──────────────────────────────────────────
-    // For magic_token flow: return action_link so client can redirect directly
-    // to Supabase Auth which handles session creation via its own redirect.
-    // For code flow: use token_hash with verifyOtp on the client side.
+    // ── Generate Supabase session token ──────────────────────────────────────
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
       type: 'magiclink',
       email: token.email,
@@ -159,10 +142,7 @@ Deno.serve(async (req: Request) => {
       success: true,
       user_id: token.user_id,
       platform,
-      // token_hash for verifyOtp (code flow)
       token_hash: linkData.properties.hashed_token,
-      // action_link for direct redirect (magic link flow) — Supabase handles session creation
-      action_link: linkData.properties.action_link,
       email: token.email,
     }), {
       status: 200,
