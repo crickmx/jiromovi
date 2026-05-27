@@ -162,18 +162,18 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Parse the hashed_token and type from the generated URL
+    // Parse the token_hash and type from the generated URL
+    // The URL contains token_hash (not the raw OTP) — client must use verifyOtp({ token_hash, type })
     const url = new URL(generatedUrl);
-    const hashedToken = url.searchParams.get('token');
-    const tokenType = url.searchParams.get('type') || 'magiclink';
+    const tokenHash = url.searchParams.get('token');
+    const tokenType = (url.searchParams.get('type') || 'magiclink') as string;
 
     return new Response(JSON.stringify({
       success: true,
       user_id: token.user_id,
       platform,
-      // Return the Supabase OTP token so client can call verifyOtp
-      supabase_token: hashedToken,
-      supabase_token_type: tokenType,
+      token_hash: tokenHash,
+      token_type: tokenType,
       email: token.email,
     }), {
       status: 200,

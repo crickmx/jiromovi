@@ -42,9 +42,8 @@ export default function MagicLinkHandler() {
         }
 
         const { error: otpError } = await supabase.auth.verifyOtp({
-          email: data.email,
-          token: data.supabase_token,
-          type: data.supabase_token_type || 'magiclink',
+          token_hash: data.token_hash,
+          type: data.token_type || 'magiclink',
         });
 
         if (otpError) {

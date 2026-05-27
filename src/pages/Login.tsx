@@ -125,11 +125,10 @@ export function Login() {
         return;
       }
 
-      // Exchange Supabase OTP token for a real session
+      // Exchange Supabase token_hash for a real session
       const { error: sessionError } = await supabase.auth.verifyOtp({
-        email: data.email,
-        token: data.supabase_token,
-        type: 'magiclink',
+        token_hash: data.token_hash,
+        type: data.token_type || 'magiclink',
       });
 
       if (sessionError) {
