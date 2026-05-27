@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { MessageSquare, Headphones, Bell, Mail, Settings, Activity, CheckCircle2, XCircle, AlertCircle, RefreshCw, Webhook, Smartphone } from 'lucide-react';
+import { MessageSquare, Headphones, Bell, Mail, Settings, Activity, CheckCircle2, XCircle, AlertCircle, RefreshCw, Webhook, Smartphone, LayoutDashboard } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Chat } from './Chat';
@@ -7,10 +7,11 @@ import CentroContacto from './CentroContacto';
 import { NotificacionesTransaccionales } from './NotificacionesTransaccionales';
 import { CentroNotificacionesContent } from './CentroNotificaciones';
 import MiWhatsApp from './MiWhatsApp';
+import CentroContactoUnificado from './CentroContactoUnificado';
 import { cn } from '@/lib/utils';
 import { supabase } from '../lib/supabase';
 
-type TabKey = 'chat' | 'bandeja' | 'mi-whatsapp' | 'notificaciones' | 'transaccionales' | 'diagnostico';
+type TabKey = 'omnicanal' | 'chat' | 'bandeja' | 'mi-whatsapp' | 'notificaciones' | 'transaccionales' | 'diagnostico';
 
 interface TabDef {
   key: TabKey;
@@ -320,16 +321,17 @@ export default function CentroContactoHub() {
   const isNotAgent = usuario?.rol !== 'Agente';
 
   const tabs: TabDef[] = useMemo(() => [
-    { key: 'bandeja', label: 'Bandeja', icon: Headphones, show: isAdmin || isGerente || isEmpleado },
-    { key: 'mi-whatsapp', label: 'Mi WhatsApp', icon: Smartphone, show: isAdmin || isGerente || isEmpleado },
+    { key: 'omnicanal', label: 'Omnicanal', icon: LayoutDashboard, show: isAdmin || isGerente || isEmpleado },
+    { key: 'bandeja', label: 'Bandeja WA MOVI', icon: Headphones, show: isAdmin || isGerente || isEmpleado },
+    { key: 'mi-whatsapp', label: 'WA Personal', icon: Smartphone, show: isAdmin || isGerente || isEmpleado },
     { key: 'chat', label: 'Chat', icon: MessageSquare, show: isNotAgent },
     { key: 'notificaciones', label: 'Notificaciones', icon: Bell, show: isAdmin },
     { key: 'transaccionales', label: 'Transaccionales', icon: Mail, show: isAdmin },
-    { key: 'diagnostico', label: 'Diagnóstico', icon: Activity, show: isAdmin },
+    { key: 'diagnostico', label: 'Diagnostico', icon: Activity, show: isAdmin },
   ], [isAdmin, isGerente, isEmpleado, isNotAgent]);
 
   const visibleTabs = tabs.filter(t => t.show);
-  const [activeTab, setActiveTab] = useState<TabKey>(() => visibleTabs[0]?.key || 'chat');
+  const [activeTab, setActiveTab] = useState<TabKey>(() => visibleTabs[0]?.key || 'omnicanal');
 
   const currentTab = visibleTabs.find(t => t.key === activeTab) ? activeTab : (visibleTabs[0]?.key || 'chat');
 
@@ -374,6 +376,7 @@ export default function CentroContactoHub() {
 
       {/* Tab Content */}
       <div className="flex-1 overflow-hidden">
+        {currentTab === 'omnicanal' && <CentroContactoUnificado />}
         {currentTab === 'chat' && <Chat />}
         {currentTab === 'mi-whatsapp' && <MiWhatsApp />}
         {currentTab === 'bandeja' && <CentroContacto />}
