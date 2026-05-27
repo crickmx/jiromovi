@@ -69,6 +69,7 @@ export const SUM_ASSURED_OPTIONS = [
   { value: 30_000_000, label: '$30 MDP' },
   { value: 50_000_000, label: '$50 MDP' },
   { value: 100_000_000, label: '$100 MDP' },
+  { value: 999_000_000, label: 'Sin limite' },
 ];
 
 export const DEDUCTIBLE_OPTIONS = [

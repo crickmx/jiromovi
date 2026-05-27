@@ -33,6 +33,7 @@ const INSURER_LOGOS: Record<string, string> = {
   metlife: '/seguros-atlas-logo-png_seeklogo-251455.png',
   mapfre: '/mapfre-seguros-logo-png_seeklogo-225013.png',
   bxplus: '/logo-bx.png',
+  planseguro: '/seguwallet-logo.png',
 };
 
 type ViewMode = 'cards' | 'table';
@@ -705,11 +706,15 @@ function GmmCardsView({ results, detailInsurer, setDetailInsurer, selectedHospit
                 <div className="grid grid-cols-4 gap-2 mb-4">
                   <div className="text-center p-2.5 rounded-lg bg-gray-50 dark:bg-gray-750">
                     <span className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">Edad max</span>
-                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{result.insurer.maxAge}</span>
+                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                      {result.insurer.maxAge >= 99 ? 'Sin limite' : result.insurer.maxAge}
+                    </span>
                   </div>
                   <div className="text-center p-2.5 rounded-lg bg-gray-50 dark:bg-gray-750">
                     <span className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">SA max</span>
-                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">${(result.insurer.maxSumAssured / 1_000_000)}M</span>
+                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                      {result.insurer.maxSumAssured >= 999_000_000 ? 'Ilimitada' : `$${(result.insurer.maxSumAssured / 1_000_000)}M`}
+                    </span>
                   </div>
                   <div className="text-center p-2.5 rounded-lg bg-gray-50 dark:bg-gray-750">
                     <span className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">Espera</span>
