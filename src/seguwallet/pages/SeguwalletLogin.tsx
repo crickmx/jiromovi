@@ -271,10 +271,7 @@ export function SeguwalletLogin() {
 
             {/* Mobile logo */}
             <div className="lg:hidden mb-10 text-center">
-              <div className="flex items-center justify-center gap-2.5">
-                <img src={logoIcon} alt="" className="w-9 h-9" style={{ filter: 'brightness(0) invert(1)' }} />
-                <span className="text-xl font-extrabold text-white tracking-tight" style={{ fontFamily: "'Inter','Segoe UI',Arial,sans-serif", letterSpacing: '-0.5px' }}>seguwallet</span>
-              </div>
+              <img src={SEGUWALLET_LOGO} alt="Seguwallet" className="h-9 w-auto mx-auto" />
             </div>
 
             <div className="w-full max-w-[380px]">
