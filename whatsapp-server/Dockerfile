@@ -13,4 +13,6 @@ RUN mkdir -p /app/sessions
 
 EXPOSE 3100
 
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \n  CMD curl -f http://localhost:3100/health || exit 1
+
 CMD ["node", "src/index.js"]
