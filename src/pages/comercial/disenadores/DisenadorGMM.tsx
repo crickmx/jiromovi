@@ -33,7 +33,7 @@ const INSURER_LOGOS: Record<string, string> = {
   metlife: '/seguros-atlas-logo-png_seeklogo-251455.png',
   mapfre: '/mapfre-seguros-logo-png_seeklogo-225013.png',
   bxplus: '/logo-bx.png',
-  planseguro: '/seguwallet-logo.png',
+  planseguro: '/plan-seguro-logo.png',
 };
 
 type ViewMode = 'cards' | 'table';
