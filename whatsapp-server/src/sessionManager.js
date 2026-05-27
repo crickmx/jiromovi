@@ -81,7 +81,7 @@ class SessionManager {
       logger,
       printQRInTerminal: false,
       generateHighQualityLinkPreview: false,
-      syncFullHistory: false,
+      syncFullHistory: true,
     });
 
     sessionData.sock = sock;
@@ -144,6 +144,49 @@ class SessionManager {
 
     // Save credentials when updated
     sock.ev.on('creds.update', saveCreds);
+
+    // Handle initial chat list sync from WhatsApp
+    sock.ev.on('chats.set', ({ chats }) => {
+      for (const chat of chats) {
+        if (!chat.id || chat.id === 'status@broadcast') continue;
+        if (chat.id.includes('@g.us')) continue; // Skip groups for now
+        const phone = chat.id.split('@')[0];
+        const name = chat.name || chat.notify || phone;
+        const lastMsg = chat.conversationTimestamp
+          ? new Date(chat.conversationTimestamp * 1000).toISOString()
+          : new Date().toISOString();
+
+        const idx = sessionData.conversations.findIndex(c => c.phone === phone);
+        if (idx < 0) {
+          sessionData.conversations.push({
+            phone,
+            name,
+            lastMessage: '',
+            lastMessageAt: lastMsg,
+            unreadCount: chat.unreadCount || 0,
+          });
+        }
+      }
+      // Sort by last message
+      sessionData.conversations.sort((a, b) =>
+        new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
+      );
+      console.log(`[${userId}] Synced ${chats.length} chats from WhatsApp`);
+    });
+
+    // Handle contacts for name resolution
+    sock.ev.on('contacts.set', ({ contacts }) => {
+      for (const contact of contacts) {
+        if (!contact.id || contact.id === 'status@broadcast') continue;
+        const phone = contact.id.split('@')[0];
+        const name = contact.notify || contact.name || contact.verifiedName;
+        if (!name) continue;
+        const idx = sessionData.conversations.findIndex(c => c.phone === phone);
+        if (idx >= 0) {
+          sessionData.conversations[idx].name = name;
+        }
+      }
+    });
 
     // Handle incoming messages
     sock.ev.on('messages.upsert', async ({ messages: msgs, type }) => {

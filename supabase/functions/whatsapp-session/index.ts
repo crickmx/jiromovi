@@ -415,13 +415,84 @@ Deno.serve(async (req: Request) => {
       }
 
       case "get-conversations": {
+        // First get from DB
         const { data: convs } = await supabase
           .from("whatsapp_conversations")
           .select("*")
           .eq("user_id", user.id)
           .order("last_message_at", { ascending: false });
 
-        return json({ conversations: convs || [] });
+        // If DB has conversations, return them
+        if (convs && convs.length > 0) {
+          return json({ conversations: convs });
+        }
+
+        // If DB is empty but server is connected, try to fetch live conversations
+        if (serverConfigured) {
+          try {
+            const liveResp = await fetch(
+              `${WHATSAPP_SERVER_URL}/session/${user.id}/conversations`,
+              {
+                headers: {
+                  "x-api-key": WHATSAPP_SERVER_API_KEY,
+                  "Content-Type": "application/json",
+                },
+                signal: AbortSignal.timeout(8000),
+              }
+            );
+
+            if (liveResp.ok) {
+              const liveData = await liveResp.json();
+              const liveConvs = liveData.conversations || [];
+
+              if (liveConvs.length > 0) {
+                // Get session ID
+                const { data: sessionRow } = await supabase
+                  .from("whatsapp_sessions")
+                  .select("id")
+                  .eq("user_id", user.id)
+                  .maybeSingle();
+
+                if (sessionRow) {
+                  // Sync live conversations to DB (insert only new ones)
+                  for (const c of liveConvs as { phone: string; name?: string; lastMessage?: string; lastMessageAt?: string; unreadCount?: number }[]) {
+                    const { data: existing } = await supabase
+                      .from("whatsapp_conversations")
+                      .select("id")
+                      .eq("user_id", user.id)
+                      .eq("remote_phone", c.phone)
+                      .maybeSingle();
+
+                    if (!existing) {
+                      await supabase.from("whatsapp_conversations").insert({
+                        user_id: user.id,
+                        session_id: sessionRow.id,
+                        remote_phone: c.phone,
+                        remote_name: c.name || null,
+                        last_message_text: c.lastMessage || null,
+                        last_message_at: c.lastMessageAt || new Date().toISOString(),
+                        unread_count: c.unreadCount || 0,
+                      });
+                    }
+                  }
+
+                  // Re-fetch from DB to get proper IDs
+                  const { data: freshConvs } = await supabase
+                    .from("whatsapp_conversations")
+                    .select("*")
+                    .eq("user_id", user.id)
+                    .order("last_message_at", { ascending: false });
+
+                  return json({ conversations: freshConvs || [] });
+                }
+              }
+            }
+          } catch {
+            // Server unreachable, return empty
+          }
+        }
+
+        return json({ conversations: [] });
       }
 
       case "get-messages": {
