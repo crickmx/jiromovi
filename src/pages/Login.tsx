@@ -128,7 +128,7 @@ export function Login() {
       // Verify the token_hash returned from the edge function to create a session
       const { error: sessionError } = await supabase.auth.verifyOtp({
         token_hash: data.token_hash,
-        type: 'email',
+        type: 'magiclink',
       });
 
       if (sessionError) {

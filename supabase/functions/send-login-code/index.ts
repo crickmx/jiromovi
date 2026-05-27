@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { Resend } from "npm:resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,42 +48,58 @@ function substituteVars(template: string, vars: Record<string, string>): string 
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? '');
 }
 
-function buildFallbackEmailHtml(brandName: string, userName: string, code: string, magicLink: string): string {
-  const greeting = userName ? `Hola, ${userName}` : 'Hola';
+function wrapWithLayout(body: string, header: string, footer: string): string {
   return `<!DOCTYPE html>
 <html lang="es">
-<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
-<body style="margin:0;padding:0;background:#f4f7fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7fb;padding:40px 16px;">
-  <tr><td align="center">
-    <table width="100%" style="max-width:520px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-      <tr><td style="background:#0b2d6b;padding:28px 32px;text-align:center;">
-        <div style="font-size:22px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">${brandName}</div>
-        <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:4px;">Código de acceso seguro</div>
-      </td></tr>
-      <tr><td style="padding:36px 32px;">
-        <p style="margin:0 0 8px;font-size:18px;font-weight:700;color:#111827;">${greeting}</p>
-        <p style="margin:0 0 28px;font-size:14px;color:#6b7280;line-height:1.6;">Solicitaste acceso a <strong>${brandName}</strong>. Usa el siguiente código o el botón para ingresar.</p>
-        <div style="background:#f8faff;border:2px solid #1a56db;border-radius:12px;padding:24px;text-align:center;margin-bottom:28px;">
-          <div style="font-size:11px;font-weight:600;color:#6b7280;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">Tu código de acceso</div>
-          <div style="font-size:40px;font-weight:800;color:#0b2d6b;letter-spacing:10px;font-family:'Courier New',monospace;">${code}</div>
-          <div style="font-size:12px;color:#9ca3af;margin-top:8px;">Válido por ${EXPIRES_MINUTES} minutos · Un solo uso</div>
-        </div>
-        <div style="text-align:center;margin-bottom:28px;">
-          <a href="${magicLink}" style="display:inline-block;background:#1a56db;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:10px;">Ingresar directamente →</a>
-        </div>
-        <div style="background:#fef3c7;border-radius:8px;padding:14px 16px;">
-          <p style="margin:0;font-size:12px;color:#92400e;line-height:1.5;"><strong>Aviso de seguridad:</strong> Si no solicitaste este acceso, ignora este mensaje.</p>
-        </div>
-      </td></tr>
-      <tr><td style="border-top:1px solid #f0f0f0;padding:20px 32px;text-align:center;">
-        <p style="margin:0;font-size:11px;color:#9ca3af;">Grupo JIRO · Sistema de acceso seguro</p>
-      </td></tr>
-    </table>
-  </td></tr>
-</table>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MOVI Digital</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4;padding:20px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+          ${header ? `<tr><td>${header}</td></tr>` : ''}
+          <tr>
+            <td style="padding:32px;">
+              ${body}
+            </td>
+          </tr>
+          ${footer ? `<tr><td>${footer}</td></tr>` : ''}
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`;
+}
+
+// Fallback email body (no DOCTYPE/html — will be wrapped by wrapWithLayout)
+function buildFallbackEmailBody(brandName: string, userName: string, code: string, magicLink: string): string {
+  const greeting = userName ? `Hola, ${userName}` : 'Hola';
+  return `
+<div style="background:#0b2d6b;padding:28px 32px;text-align:center;margin:-32px -32px 0 -32px;">
+  <div style="font-size:22px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">${brandName}</div>
+  <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:4px;">Código de acceso seguro</div>
+</div>
+<div style="padding:32px 0 0 0;">
+  <p style="margin:0 0 8px;font-size:18px;font-weight:700;color:#111827;">${greeting}</p>
+  <p style="margin:0 0 28px;font-size:14px;color:#6b7280;line-height:1.6;">Solicitaste acceso a <strong>${brandName}</strong>. Usa el siguiente código o el botón para ingresar.</p>
+  <div style="background:#f8faff;border:2px solid #1a56db;border-radius:12px;padding:24px;text-align:center;margin-bottom:28px;">
+    <div style="font-size:11px;font-weight:600;color:#6b7280;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">Tu código de acceso</div>
+    <div style="font-size:40px;font-weight:800;color:#0b2d6b;letter-spacing:10px;font-family:'Courier New',monospace;">${code}</div>
+    <div style="font-size:12px;color:#9ca3af;margin-top:8px;">Válido por ${EXPIRES_MINUTES} minutos · Un solo uso</div>
+  </div>
+  <div style="text-align:center;margin-bottom:28px;">
+    <a href="${magicLink}" style="display:inline-block;background:#1a56db;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:10px;">Ingresar directamente →</a>
+    <div style="font-size:11px;color:#9ca3af;margin-top:10px;">O copia: <span style="color:#1a56db;">${magicLink}</span></div>
+  </div>
+  <div style="background:#fef3c7;border-radius:8px;padding:14px 16px;">
+    <p style="margin:0;font-size:12px;color:#92400e;line-height:1.5;"><strong>Aviso de seguridad:</strong> Si no solicitaste este acceso, ignora este mensaje.</p>
+  </div>
+</div>`;
 }
 
 Deno.serve(async (req: Request) => {
@@ -236,7 +253,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     let emailSubject = `Tu código de acceso a ${brandName}: ${code}`;
-    let emailHtml = buildFallbackEmailHtml(brandName, userName || '', code, magicLink);
+    let emailBody = buildFallbackEmailBody(brandName, userName || '', code, magicLink);
     let whatsappText = `Tu código de acceso a ${brandName} es: *${code}*\n\nTambién puedes ingresar aquí:\n${magicLink}\n\n_Este acceso vence en ${EXPIRES_MINUTES} minutos._`;
 
     if (typeRow?.id) {
@@ -248,62 +265,94 @@ Deno.serve(async (req: Request) => {
 
       if (tpl) {
         if (tpl.asunto) emailSubject = substituteVars(tpl.asunto, vars);
-        if (tpl.html_cuerpo) emailHtml = substituteVars(tpl.html_cuerpo, vars);
+        if (tpl.html_cuerpo) emailBody = substituteVars(tpl.html_cuerpo, vars);
         if (tpl.whatsapp_plantilla) whatsappText = substituteVars(tpl.whatsapp_plantilla, vars);
       }
     }
 
+    // ── Load global email layout (header/footer) ──────────────────────────────
+    const { data: layoutData } = await supabase
+      .from('email_global_settings')
+      .select('header_html, footer_html')
+      .eq('activo', true)
+      .order('version', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const header = layoutData?.header_html || '';
+    const footer = layoutData?.footer_html || '';
+
+    // If the body is a full HTML document (has DOCTYPE), use as-is; otherwise wrap with layout
+    const isFullDocument = emailBody.trimStart().toLowerCase().startsWith('<!doctype');
+    const finalEmailHtml = isFullDocument ? emailBody : wrapWithLayout(emailBody, header, footer);
+
+    // ── Load email config from DB ─────────────────────────────────────────────
+    const { data: emailConfig } = await supabase
+      .from('correo_configuracion')
+      .select('remitente_email, remitente_nombre, resend_api_key')
+      .eq('activo', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const resendApiKey = emailConfig?.resend_api_key || Deno.env.get('RESEND_API_KEY');
+    const fromEmail = emailConfig?.remitente_email || (platform === 'movi' ? 'noresponder@movi.digital' : 'noreply@seguwallet.mx');
+    const fromName = emailConfig?.remitente_nombre || brandName;
+
     // ── Send email via Resend ─────────────────────────────────────────────────
-    const resendKey = Deno.env.get('RESEND_API_KEY');
-    if (resendKey && userEmail) {
-      const fromEmail = platform === 'movi' ? 'noreply@movi.digital' : 'noreply@seguwallet.mx';
+    let emailSent = false;
+    if (resendApiKey && userEmail) {
       try {
-        await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${resendKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            from: `${brandName} <${fromEmail}>`,
-            to: [userEmail],
-            subject: emailSubject,
-            html: emailHtml,
-          }),
+        const resend = new Resend(resendApiKey);
+        const { error: emailErr } = await resend.emails.send({
+          from: `${fromName} <${fromEmail}>`,
+          to: [userEmail],
+          subject: emailSubject,
+          html: finalEmailHtml,
         });
-      } catch (emailErr) {
-        console.error('Error sending email:', emailErr);
+        if (emailErr) {
+          console.error('Resend error:', emailErr);
+        } else {
+          emailSent = true;
+        }
+      } catch (emailEx) {
+        console.error('Error sending email:', emailEx);
       }
     }
 
     // ── Send WhatsApp via Wazzup ──────────────────────────────────────────────
+    let whatsappSent = false;
     if (userPhone) {
       const normalizedPhone = normalizePhone(userPhone);
       try {
-        const { data: wazzupConfig } = await supabase
-          .from('notificaciones_config')
-          .select('wazzup_api_key, wazzup_channel_id')
+        const { data: waConfig } = await supabase
+          .from('whatsapp_configuracion')
+          .select('api_key, channel_id_uuid, activo')
           .eq('activo', true)
           .maybeSingle();
 
-        if (wazzupConfig?.wazzup_api_key && wazzupConfig?.wazzup_channel_id) {
+        if (waConfig?.api_key && waConfig?.channel_id_uuid) {
           const waRes = await fetch('https://api.wazzup24.com/v3/message', {
             method: 'POST',
             headers: {
-              'X-Authorization': `Bearer ${wazzupConfig.wazzup_api_key}`,
+              'Authorization': `Bearer ${waConfig.api_key}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              channelId: wazzupConfig.wazzup_channel_id,
+              channelId: waConfig.channel_id_uuid,
               chatType: 'whatsapp',
               chatId: normalizedPhone,
               text: whatsappText,
             }),
           });
-          if (!waRes.ok) {
+          if (waRes.ok) {
+            whatsappSent = true;
+          } else {
             const waBody = await waRes.text();
             console.error('Wazzup error:', waRes.status, waBody, 'phone:', normalizedPhone);
           }
+        } else {
+          console.log('WhatsApp not configured or inactive');
         }
       } catch (waErr) {
         console.error('Error sending WhatsApp:', waErr);
@@ -317,8 +366,8 @@ Deno.serve(async (req: Request) => {
 
     return new Response(JSON.stringify({
       success: true,
-      email_sent: !!userEmail,
-      whatsapp_sent: !!userPhone,
+      email_sent: emailSent,
+      whatsapp_sent: whatsappSent,
       masked_email: maskedEmail,
       expires_minutes: EXPIRES_MINUTES,
     }), {

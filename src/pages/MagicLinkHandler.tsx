@@ -43,7 +43,7 @@ export default function MagicLinkHandler() {
 
         const { error: otpError } = await supabase.auth.verifyOtp({
           token_hash: data.token_hash,
-          type: 'email',
+          type: 'magiclink',
         });
 
         if (otpError) {

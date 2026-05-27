@@ -147,7 +147,7 @@ export function SeguwalletLogin() {
       // Verify the token_hash returned from the edge function to create a session
       const { error: otpError } = await supabase.auth.verifyOtp({
         token_hash: data.token_hash,
-        type: 'email',
+        type: 'magiclink',
       });
       if (otpError) {
         setError('Error al crear la sesión. Intenta de nuevo.');
