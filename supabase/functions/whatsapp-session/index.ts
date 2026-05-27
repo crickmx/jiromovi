@@ -499,82 +499,49 @@ Deno.serve(async (req: Request) => {
         const conversationId = body.conversationId;
         if (!conversationId) return err("Missing conversationId");
 
-        // Get the conversation to know the remote phone
-        const { data: conv } = await supabase
-          .from("whatsapp_conversations")
-          .select("remote_phone")
-          .eq("id", conversationId)
-          .eq("user_id", user.id)
-          .maybeSingle();
+        const limit = body.limit || 50;
+        const before = body.before; // cursor: load messages before this timestamp
 
-        // Get messages from DB
-        const { data: dbMsgs } = await supabase
+        // Build query - Supabase is primary source
+        let query = supabase
           .from("whatsapp_messages")
           .select("*")
           .eq("conversation_id", conversationId)
-          .order("created_at", { ascending: true })
-          .limit(200);
+          .eq("user_id", user.id)
+          .order("message_timestamp", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false })
+          .limit(limit);
 
-        // Mark as read
-        await supabase
-          .from("whatsapp_conversations")
-          .update({ unread_count: 0 })
-          .eq("id", conversationId)
-          .eq("user_id", user.id);
-
-        let allMessages = dbMsgs || [];
-
-        // If DB has few messages and server is connected, fetch from server memory
-        if (allMessages.length < 5 && serverConfigured && conv?.remote_phone) {
-          try {
-            const serverResp = await fetch(
-              `${WHATSAPP_SERVER_URL}/session/${user.id}/messages/${conv.remote_phone}?limit=100`,
-              {
-                headers: {
-                  "x-api-key": WHATSAPP_SERVER_API_KEY,
-                  "Content-Type": "application/json",
-                },
-                signal: AbortSignal.timeout(8000),
-              }
-            );
-
-            if (serverResp.ok) {
-              const serverData = await serverResp.json();
-              const serverMsgs = serverData.messages || [];
-
-              if (serverMsgs.length > 0) {
-                // Merge server messages with DB messages (avoid duplicates by ID)
-                const dbIds = new Set(allMessages.map((m: { id?: string; wa_message_id?: string }) => m.wa_message_id || m.id));
-
-                const newMsgs = serverMsgs
-                  .filter((m: { id: string }) => !dbIds.has(m.id))
-                  .map((m: { id: string; content: string; direction: string; mediaType?: string; timestamp: number; fromName?: string }) => ({
-                    id: m.id,
-                    conversation_id: conversationId,
-                    user_id: user.id,
-                    direction: m.direction || 'inbound',
-                    message_type: m.mediaType || 'text',
-                    content: m.content,
-                    media_url: null,
-                    media_filename: null,
-                    status: m.direction === 'outbound' ? 'sent' : 'delivered',
-                    is_internal_note: false,
-                    created_at: new Date(m.timestamp).toISOString(),
-                    wa_message_id: m.id,
-                  }));
-
-                allMessages = [...newMsgs, ...allMessages].sort(
-                  (a: { created_at: string }, b: { created_at: string }) =>
-                    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-                );
-              }
-            }
-          } catch {
-            // Server unreachable, return DB messages only
-          }
+        if (before) {
+          query = query.lt("message_timestamp", before);
         }
 
-        return json({ messages: allMessages });
+        const { data: dbMsgs } = await query;
+
+        // Reverse to show oldest first
+        const messages = (dbMsgs || []).reverse();
+
+        // Mark as read (only on first load, not on pagination)
+        if (!before) {
+          await supabase
+            .from("whatsapp_conversations")
+            .update({ unread_count: 0 })
+            .eq("id", conversationId)
+            .eq("user_id", user.id);
+        }
+
+        // Determine if there are older messages available
+        const hasMore = messages.length === limit;
+        const oldestTimestamp = messages.length > 0
+          ? (messages[0].message_timestamp || messages[0].created_at)
+          : null;
+
+        return json({
+          messages,
+          hasMore,
+          oldestTimestamp,
+          total: messages.length,
+        });
       }
 
       case "send-message": {

@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const mime = require('mime-types');
 
 class SupabaseSync {
   constructor() {
@@ -8,13 +9,17 @@ class SupabaseSync {
     if (url && key) {
       this.supabase = createClient(url, key);
       this.enabled = true;
+      this.supabaseUrl = url;
       console.log('Supabase sync enabled');
     } else {
       this.supabase = null;
       this.enabled = false;
+      this.supabaseUrl = null;
       console.log('Supabase sync disabled (missing env vars)');
     }
   }
+
+  // ─── Session Management ───────────────────────────────────────
 
   async updateSessionStatus(userId, status, extra = {}) {
     if (!this.enabled) return;
@@ -52,11 +57,12 @@ class SupabaseSync {
     }
   }
 
-  async saveInboundMessage(userId, phone, pushName, content, waMessageId) {
-    if (!this.enabled) return;
+  // ─── Conversation Management ──────────────────────────────────
+
+  async getOrCreateConversation(userId, phone, name = null) {
+    if (!this.enabled) return null;
 
     try {
-      // Find or create conversation
       let { data: conv } = await this.supabase
         .from('whatsapp_conversations')
         .select('id, session_id')
@@ -64,56 +70,228 @@ class SupabaseSync {
         .eq('remote_phone', phone)
         .maybeSingle();
 
-      if (!conv) {
-        const { data: session } = await this.supabase
-          .from('whatsapp_sessions')
-          .select('id')
-          .eq('user_id', userId)
-          .maybeSingle();
+      if (conv) return conv;
 
-        if (!session) return;
+      const { data: session } = await this.supabase
+        .from('whatsapp_sessions')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle();
 
-        const { data: newConv } = await this.supabase
-          .from('whatsapp_conversations')
-          .insert({
-            user_id: userId,
-            session_id: session.id,
-            remote_phone: phone,
-            remote_name: pushName,
-            last_message_text: content.text,
-            last_message_at: new Date().toISOString(),
-            unread_count: 1,
-          })
-          .select('id, session_id')
-          .single();
-        conv = newConv;
-      } else {
-        await this.supabase.from('whatsapp_conversations').update({
-          remote_name: pushName,
-          last_message_text: content.text,
+      if (!session) return null;
+
+      const { data: newConv } = await this.supabase
+        .from('whatsapp_conversations')
+        .insert({
+          user_id: userId,
+          session_id: session.id,
+          remote_phone: phone,
+          remote_name: name,
           last_message_at: new Date().toISOString(),
-          unread_count: this.supabase.rpc ? undefined : 1,
-        }).eq('id', conv.id);
+        })
+        .select('id, session_id')
+        .single();
 
-        // Increment unread
-        await this.supabase.rpc('increment_unread_count', { conv_id: conv.id }).catch(() => {
-          // Fallback: just set to 1 if RPC doesn't exist
-          this.supabase.from('whatsapp_conversations').update({ unread_count: 1 }).eq('id', conv.id);
+      return newConv;
+    } catch (err) {
+      if (err.code === '23505') {
+        const { data: conv } = await this.supabase
+          .from('whatsapp_conversations')
+          .select('id, session_id')
+          .eq('user_id', userId)
+          .eq('remote_phone', phone)
+          .maybeSingle();
+        return conv;
+      }
+      console.error(`[Sync] Error getting/creating conversation:`, err.message);
+      return null;
+    }
+  }
+
+  async updateConversationLastMessage(conversationId, text, timestamp, incrementUnread = false) {
+    if (!this.enabled) return;
+
+    try {
+      await this.supabase
+        .from('whatsapp_conversations')
+        .update({
+          last_message_text: text ? text.substring(0, 200) : null,
+          last_message_at: timestamp || new Date().toISOString(),
+        })
+        .eq('id', conversationId);
+
+      if (incrementUnread) {
+        await this.supabase.rpc('increment_unread_count', { conv_id: conversationId }).catch(() => {
+          this.supabase.from('whatsapp_conversations').update({ unread_count: 1 }).eq('id', conversationId);
         });
       }
+    } catch (err) {
+      console.error(`[Sync] Error updating conversation:`, err.message);
+    }
+  }
 
+  async updateConversationName(userId, phone, name) {
+    if (!this.enabled || !name) return;
+    try {
+      await this.supabase
+        .from('whatsapp_conversations')
+        .update({ remote_name: name })
+        .eq('user_id', userId)
+        .eq('remote_phone', phone);
+    } catch {}
+  }
+
+  // ─── Message Persistence (Upsert) ────────────────────────────
+
+  async upsertMessage(userId, conversationId, msgData) {
+    if (!this.enabled || !conversationId) return null;
+
+    try {
+      const record = {
+        conversation_id: conversationId,
+        user_id: userId,
+        direction: msgData.direction || 'inbound',
+        message_type: msgData.messageType || 'text',
+        content: msgData.content || null,
+        media_url: msgData.mediaUrl || null,
+        media_mime_type: msgData.mediaMimeType || null,
+        media_filename: msgData.mediaFilename || null,
+        media_storage_path: msgData.mediaStoragePath || null,
+        media_file_size: msgData.mediaFileSize || null,
+        media_thumbnail_url: msgData.mediaThumbnailUrl || null,
+        media_caption: msgData.mediaCaption || null,
+        media_download_status: msgData.mediaDownloadStatus || 'none',
+        wa_message_id: msgData.waMessageId,
+        status: msgData.status || 'delivered',
+        message_timestamp: msgData.timestamp ? new Date(msgData.timestamp).toISOString() : null,
+        metadata: msgData.metadata || null,
+      };
+
+      if (msgData.waMessageId) {
+        const { data, error } = await this.supabase
+          .from('whatsapp_messages')
+          .upsert(record, {
+            onConflict: 'user_id,wa_message_id',
+            ignoreDuplicates: true,
+          })
+          .select('id')
+          .maybeSingle();
+
+        if (error && error.code !== '23505') {
+          console.error(`[Sync] Upsert error:`, error.message);
+        }
+        return data;
+      } else {
+        const { data } = await this.supabase
+          .from('whatsapp_messages')
+          .insert(record)
+          .select('id')
+          .maybeSingle();
+        return data;
+      }
+    } catch (err) {
+      if (err.code !== '23505') {
+        console.error(`[Sync] Error upserting message:`, err.message);
+      }
+      return null;
+    }
+  }
+
+  // ─── Bulk History Sync ────────────────────────────────────────
+
+  async syncHistoryBatch(userId, messages, sock) {
+    if (!this.enabled || !messages || messages.length === 0) return 0;
+
+    let synced = 0;
+
+    await this.logAudit(userId, 'sync_history_started', {
+      total_messages: messages.length,
+    });
+
+    for (const msg of messages) {
+      try {
+        if (!msg.message && !msg.messageStubType) continue;
+
+        const remoteJid = msg.key?.remoteJid;
+        if (!remoteJid || remoteJid === 'status@broadcast') continue;
+        if (remoteJid.includes('@g.us')) continue;
+
+        const phone = remoteJid.split('@')[0];
+        const isFromMe = msg.key?.fromMe || false;
+        const pushName = msg.pushName || phone;
+
+        const conv = await this.getOrCreateConversation(userId, phone, isFromMe ? null : pushName);
+        if (!conv) continue;
+
+        const content = this.extractMessageContent(msg);
+        if (!content) continue;
+
+        const msgTimestamp = msg.messageTimestamp
+          ? (typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp * 1000 : Number(msg.messageTimestamp) * 1000)
+          : Date.now();
+
+        await this.upsertMessage(userId, conv.id, {
+          direction: isFromMe ? 'outbound' : 'inbound',
+          messageType: content.mediaType || 'text',
+          content: content.text,
+          mediaCaption: content.caption || null,
+          mediaMimeType: content.mimeType || null,
+          mediaFilename: content.filename || null,
+          mediaDownloadStatus: content.hasMedia ? 'pending' : 'none',
+          waMessageId: msg.key?.id,
+          status: isFromMe ? 'sent' : 'delivered',
+          timestamp: msgTimestamp,
+          metadata: content.metadata || null,
+        });
+        synced++;
+
+        // Download media for recent messages (last 24h)
+        if (content.hasMedia && sock && (Date.now() - msgTimestamp < 86400000)) {
+          this.downloadAndStoreMedia(userId, conv.id, msg, content, sock).catch(() => {});
+        }
+      } catch {}
+    }
+
+    await this.logAudit(userId, 'sync_history_completed', {
+      synced_count: synced,
+      total_attempted: messages.length,
+    });
+
+    console.log(`[${userId}] Synced ${synced}/${messages.length} messages to Supabase`);
+    return synced;
+  }
+
+  // ─── Real-time Message Sync ───────────────────────────────────
+
+  async saveInboundMessage(userId, phone, pushName, content, waMessageId, msgTimestamp = null) {
+    if (!this.enabled) return;
+
+    try {
+      const conv = await this.getOrCreateConversation(userId, phone, pushName);
       if (!conv) return;
 
-      // Save message
-      await this.supabase.from('whatsapp_messages').insert({
-        conversation_id: conv.id,
-        user_id: userId,
+      const ts = msgTimestamp || Date.now();
+
+      await this.upsertMessage(userId, conv.id, {
         direction: 'inbound',
-        message_type: content.mediaType || 'text',
+        messageType: content.mediaType || 'text',
         content: content.text,
-        wa_message_id: waMessageId,
+        mediaCaption: content.caption || null,
+        mediaMimeType: content.mimeType || null,
+        mediaFilename: content.filename || null,
+        mediaDownloadStatus: content.hasMedia ? 'pending' : 'none',
+        waMessageId,
         status: 'delivered',
+        timestamp: ts,
+        metadata: content.metadata || null,
       });
+
+      await this.updateConversationLastMessage(
+        conv.id,
+        content.text || `[${content.mediaType}]`,
+        new Date(ts).toISOString(),
+        true
+      );
     } catch (err) {
       console.error(`[Sync] Error saving inbound message:`, err.message);
     }
@@ -126,55 +304,268 @@ class SupabaseSync {
       let phone = to.replace(/\D/g, '');
       if (phone.length === 10) phone = `52${phone}`;
 
-      let { data: conv } = await this.supabase
-        .from('whatsapp_conversations')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('remote_phone', phone)
-        .maybeSingle();
-
-      if (!conv) {
-        const { data: session } = await this.supabase
-          .from('whatsapp_sessions')
-          .select('id')
-          .eq('user_id', userId)
-          .maybeSingle();
-
-        if (!session) return;
-
-        const { data: newConv } = await this.supabase
-          .from('whatsapp_conversations')
-          .insert({
-            user_id: userId,
-            session_id: session.id,
-            remote_phone: phone,
-            last_message_text: text,
-            last_message_at: new Date().toISOString(),
-          })
-          .select('id')
-          .single();
-        conv = newConv;
-      } else {
-        await this.supabase.from('whatsapp_conversations').update({
-          last_message_text: text,
-          last_message_at: new Date().toISOString(),
-        }).eq('id', conv.id);
-      }
-
+      const conv = await this.getOrCreateConversation(userId, phone);
       if (!conv) return;
 
-      await this.supabase.from('whatsapp_messages').insert({
-        conversation_id: conv.id,
-        user_id: userId,
+      await this.upsertMessage(userId, conv.id, {
         direction: 'outbound',
-        message_type: media?.mediaType || 'text',
+        messageType: media?.mediaType || 'text',
         content: text,
-        wa_message_id: waMessageId,
+        mediaMimeType: media?.mimeType || null,
+        mediaFilename: media?.filename || null,
+        mediaDownloadStatus: 'none',
+        waMessageId,
         status: 'sent',
+        timestamp: Date.now(),
       });
+
+      await this.updateConversationLastMessage(conv.id, text, new Date().toISOString(), false);
     } catch (err) {
       console.error(`[Sync] Error saving outbound message:`, err.message);
     }
+  }
+
+  // ─── Message Status Updates ───────────────────────────────────
+
+  async updateMessageStatus(userId, waMessageId, status) {
+    if (!this.enabled || !waMessageId) return;
+
+    try {
+      const statusMap = { server_ack: 'sent', delivery_ack: 'delivered', read: 'read', played: 'read' };
+      const mappedStatus = statusMap[status] || status;
+      if (!['sent', 'delivered', 'read', 'failed'].includes(mappedStatus)) return;
+
+      await this.supabase
+        .from('whatsapp_messages')
+        .update({ status: mappedStatus })
+        .eq('user_id', userId)
+        .eq('wa_message_id', waMessageId);
+    } catch {}
+  }
+
+  // ─── Chats Sync ──────────────────────────────────────────────
+
+  async syncChats(userId, chats) {
+    if (!this.enabled || !chats || chats.length === 0) return;
+
+    try {
+      const { data: session } = await this.supabase
+        .from('whatsapp_sessions')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!session) return;
+
+      let synced = 0;
+      for (const chat of chats) {
+        if (!chat.id || chat.id === 'status@broadcast') continue;
+        if (chat.id.includes('@g.us')) continue;
+
+        const phone = chat.id.split('@')[0];
+        const name = chat.name || chat.notify || null;
+        const lastMsgAt = chat.conversationTimestamp
+          ? new Date(chat.conversationTimestamp * 1000).toISOString()
+          : new Date().toISOString();
+
+        const { error } = await this.supabase
+          .from('whatsapp_conversations')
+          .upsert({
+            user_id: userId,
+            session_id: session.id,
+            remote_phone: phone,
+            remote_name: name,
+            last_message_at: lastMsgAt,
+            unread_count: chat.unreadCount || 0,
+          }, { onConflict: 'user_id,remote_phone' });
+
+        if (!error) synced++;
+      }
+
+      console.log(`[${userId}] Synced ${synced} chats to Supabase`);
+    } catch (err) {
+      console.error(`[Sync] Error syncing chats:`, err.message);
+    }
+  }
+
+  // ─── Contacts Sync ───────────────────────────────────────────
+
+  async syncContacts(userId, contacts) {
+    if (!this.enabled || !contacts || contacts.length === 0) return;
+
+    for (const contact of contacts) {
+      if (!contact.id || contact.id === 'status@broadcast') continue;
+      if (contact.id.includes('@g.us')) continue;
+
+      const phone = contact.id.split('@')[0];
+      const name = contact.notify || contact.name || contact.verifiedName;
+      if (name) await this.updateConversationName(userId, phone, name);
+    }
+  }
+
+  // ─── Media Download & Storage ─────────────────────────────────
+
+  async downloadAndStoreMedia(userId, conversationId, msg, content, sock) {
+    if (!this.enabled || !sock || !content.hasMedia) return;
+
+    const waMessageId = msg.key?.id;
+    if (!waMessageId) return;
+
+    try {
+      await this.supabase
+        .from('whatsapp_messages')
+        .update({ media_download_status: 'downloading' })
+        .eq('user_id', userId)
+        .eq('wa_message_id', waMessageId);
+
+      const { downloadMediaMessage } = require('@whiskeysockets/baileys');
+      const buffer = await downloadMediaMessage(msg, 'buffer', {});
+
+      if (!buffer || buffer.length === 0) {
+        await this.supabase
+          .from('whatsapp_messages')
+          .update({ media_download_status: 'failed' })
+          .eq('user_id', userId)
+          .eq('wa_message_id', waMessageId);
+        return;
+      }
+
+      const ext = mime.extension(content.mimeType) || 'bin';
+      const filename = content.filename || `${content.mediaType}_${Date.now()}.${ext}`;
+      const storagePath = `${userId}/${conversationId}/${waMessageId}_${filename}`;
+
+      const { error: uploadError } = await this.supabase.storage
+        .from('whatsapp-media')
+        .upload(storagePath, buffer, {
+          contentType: content.mimeType || 'application/octet-stream',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.error(`[Sync] Upload error:`, uploadError.message);
+        await this.supabase
+          .from('whatsapp_messages')
+          .update({ media_download_status: 'failed' })
+          .eq('user_id', userId)
+          .eq('wa_message_id', waMessageId);
+        return;
+      }
+
+      const { data: signedData } = await this.supabase.storage
+        .from('whatsapp-media')
+        .createSignedUrl(storagePath, 60 * 60 * 24 * 365);
+
+      await this.supabase
+        .from('whatsapp_messages')
+        .update({
+          media_url: signedData?.signedUrl || null,
+          media_storage_path: storagePath,
+          media_file_size: buffer.length,
+          media_download_status: 'downloaded',
+          media_mime_type: content.mimeType,
+        })
+        .eq('user_id', userId)
+        .eq('wa_message_id', waMessageId);
+
+    } catch (err) {
+      console.error(`[Sync] Media download error:`, err.message);
+      await this.supabase
+        .from('whatsapp_messages')
+        .update({ media_download_status: 'failed' })
+        .eq('user_id', userId)
+        .eq('wa_message_id', waMessageId);
+    }
+  }
+
+  // ─── Content Extraction ───────────────────────────────────────
+
+  extractMessageContent(msg) {
+    const m = msg.message;
+    if (!m) return null;
+
+    if (m.conversation) return { text: m.conversation, mediaType: 'text', hasMedia: false };
+    if (m.extendedTextMessage?.text) return { text: m.extendedTextMessage.text, mediaType: 'text', hasMedia: false };
+    if (m.imageMessage) {
+      return {
+        text: m.imageMessage.caption || null,
+        caption: m.imageMessage.caption || null,
+        mediaType: 'image',
+        mimeType: m.imageMessage.mimetype || 'image/jpeg',
+        hasMedia: true,
+        metadata: { width: m.imageMessage.width, height: m.imageMessage.height },
+      };
+    }
+    if (m.videoMessage) {
+      return {
+        text: m.videoMessage.caption || null,
+        caption: m.videoMessage.caption || null,
+        mediaType: 'video',
+        mimeType: m.videoMessage.mimetype || 'video/mp4',
+        hasMedia: true,
+        metadata: { duration: m.videoMessage.seconds },
+      };
+    }
+    if (m.audioMessage) {
+      return {
+        text: null,
+        mediaType: m.audioMessage.ptt ? 'voice_note' : 'audio',
+        mimeType: m.audioMessage.mimetype || 'audio/ogg',
+        hasMedia: true,
+        metadata: { duration: m.audioMessage.seconds, ptt: m.audioMessage.ptt },
+      };
+    }
+    if (m.documentMessage) {
+      return {
+        text: m.documentMessage.caption || null,
+        caption: m.documentMessage.caption || null,
+        mediaType: 'document',
+        mimeType: m.documentMessage.mimetype || 'application/octet-stream',
+        filename: m.documentMessage.fileName,
+        hasMedia: true,
+        metadata: { pageCount: m.documentMessage.pageCount, fileSize: m.documentMessage.fileLength },
+      };
+    }
+    if (m.stickerMessage) {
+      return {
+        text: null,
+        mediaType: 'sticker',
+        mimeType: m.stickerMessage.mimetype || 'image/webp',
+        hasMedia: true,
+        metadata: { animated: m.stickerMessage.isAnimated },
+      };
+    }
+    if (m.contactMessage || m.contactsArrayMessage) {
+      const contact = m.contactMessage || m.contactsArrayMessage?.contacts?.[0];
+      const displayName = contact?.displayName || 'Contacto';
+      const vcard = contact?.vcard || '';
+      const phoneMatch = vcard.match(/TEL[^:]*:([^\n]+)/i);
+      return {
+        text: displayName,
+        mediaType: 'contact',
+        hasMedia: false,
+        metadata: { displayName, phone: phoneMatch ? phoneMatch[1].trim() : null, vcard },
+      };
+    }
+    if (m.locationMessage || m.liveLocationMessage) {
+      const loc = m.locationMessage || m.liveLocationMessage;
+      return {
+        text: loc.name || loc.address || null,
+        mediaType: 'location',
+        hasMedia: false,
+        metadata: { latitude: loc.degreesLatitude, longitude: loc.degreesLongitude, name: loc.name, address: loc.address },
+      };
+    }
+
+    return { text: null, mediaType: 'unknown', hasMedia: false };
+  }
+
+  // ─── Audit Logging ────────────────────────────────────────────
+
+  async logAudit(userId, action, details = {}) {
+    if (!this.enabled) return;
+    try {
+      await this.supabase.from('whatsapp_audit_log').insert({ user_id: userId, action, details });
+    } catch {}
   }
 }
 

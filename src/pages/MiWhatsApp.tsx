@@ -41,9 +41,17 @@ interface Message {
   content: string | null;
   media_url: string | null;
   media_filename: string | null;
+  media_mime_type: string | null;
+  media_file_size: number | null;
+  media_caption: string | null;
+  media_download_status: string | null;
+  media_storage_path: string | null;
+  media_thumbnail_url: string | null;
   status: string;
   is_internal_note: boolean;
   created_at: string;
+  message_timestamp: string | null;
+  metadata: Record<string, unknown> | null;
 }
 
 interface UserTemplate {
@@ -113,6 +121,9 @@ export default function MiWhatsApp() {
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
   const [showCreateTramite, setShowCreateTramite] = useState(false);
   const [contextMenuMsg, setContextMenuMsg] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [mediaPreview, setMediaPreview] = useState<{ url: string; type: string } | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -179,10 +190,27 @@ export default function MiWhatsApp() {
     setLoading(false);
   };
 
-  const loadMessages = useCallback(async (conversationId: string) => {
-    const result = await callEdgeFunction('get-messages', { conversationId });
-    setMessages(result?.messages || []);
+  const loadMessages = useCallback(async (conversationId: string, before?: string) => {
+    const result = await callEdgeFunction('get-messages', { conversationId, limit: 50, before });
+    if (!result) return;
+
+    if (before) {
+      // Prepend older messages
+      setMessages(prev => [...(result.messages || []), ...prev]);
+    } else {
+      setMessages(result.messages || []);
+    }
+    setHasMoreMessages(result.hasMore || false);
   }, []);
+
+  const handleLoadMore = async () => {
+    if (!selectedConversation || loadingMore || !hasMoreMessages) return;
+    setLoadingMore(true);
+    const oldestMsg = messages[0];
+    const before = oldestMsg?.message_timestamp || oldestMsg?.created_at;
+    if (before) await loadMessages(selectedConversation.id, before);
+    setLoadingMore(false);
+  };
 
   const handleSelectConversation = (conv: Conversation) => {
     setSelectedConversation(conv);
@@ -651,6 +679,15 @@ export default function MiWhatsApp() {
 
                   {/* Messages */}
                   <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2 relative">
+                    {/* Load more button */}
+                    {hasMoreMessages && (
+                      <div className="text-center py-2">
+                        <button onClick={handleLoadMore} disabled={loadingMore}
+                          className="text-xs px-4 py-1.5 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-600 dark:text-white/60 rounded-full transition-colors disabled:opacity-50">
+                          {loadingMore ? 'Cargando...' : 'Cargar mensajes anteriores'}
+                        </button>
+                      </div>
+                    )}
                     {messages.length === 0 && <div className="text-center py-10"><p className="text-sm text-neutral-400 dark:text-white/30">No hay mensajes en esta conversacion</p></div>}
                     {messages.map(msg => (
                       <div key={msg.id} className={cn('flex', msg.direction === 'outbound' ? 'justify-end' : 'justify-start')}
@@ -667,33 +704,149 @@ export default function MiWhatsApp() {
                           selectionMode && selectedMessages.has(msg.id) && 'ring-2 ring-emerald-400'
                         )} onClick={() => { if (selectionMode) handleToggleSelection(msg.id); }}>
                           {msg.is_internal_note && <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wider block mb-1">Nota interna</span>}
-                          {msg.media_url && (
+
+                          {/* ── Media Rendering ── */}
+                          {msg.message_type === 'image' && (
                             <div className="mb-1.5">
-                              {msg.message_type === 'image' || msg.message_type === 'sticker' ? (
-                                <img src={msg.media_url} alt="" className={cn('rounded-lg max-w-full object-cover', msg.message_type === 'sticker' ? 'max-h-32 w-32' : 'max-h-48')} />
-                              ) : msg.message_type === 'video' ? (
-                                <video src={msg.media_url} controls className="rounded-lg max-w-full max-h-48" />
-                              ) : msg.message_type === 'audio' ? (
-                                <audio src={msg.media_url} controls className="max-w-full h-10" />
+                              {msg.media_url ? (
+                                <img src={msg.media_url} alt="" className="rounded-lg max-w-full max-h-52 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                  onClick={(e) => { e.stopPropagation(); setMediaPreview({ url: msg.media_url!, type: 'image' }); }} />
+                              ) : msg.media_download_status === 'pending' || msg.media_download_status === 'downloading' ? (
+                                <div className="w-48 h-32 rounded-lg bg-neutral-100 dark:bg-neutral-700 flex flex-col items-center justify-center gap-1">
+                                  <ImageIcon className="w-6 h-6 text-neutral-400 animate-pulse" />
+                                  <span className="text-[10px] text-neutral-400">Descargando imagen...</span>
+                                </div>
+                              ) : msg.media_download_status === 'failed' ? (
+                                <div className="w-48 h-24 rounded-lg bg-neutral-100 dark:bg-neutral-700 flex flex-col items-center justify-center gap-1">
+                                  <ImageIcon className="w-5 h-5 text-neutral-400" />
+                                  <span className="text-[10px] text-neutral-400">Imagen no disponible</span>
+                                </div>
+                              ) : null}
+                              {msg.media_caption && <p className={cn('text-sm mt-1', msg.direction === 'outbound' ? 'text-white' : 'text-neutral-800 dark:text-white/80')}>{msg.media_caption}</p>}
+                            </div>
+                          )}
+
+                          {msg.message_type === 'sticker' && (
+                            <div className="mb-1">
+                              {msg.media_url ? (
+                                <img src={msg.media_url} alt="Sticker" className="w-28 h-28 object-contain" />
                               ) : (
-                                <div className="flex items-center gap-2 p-2 bg-white/20 dark:bg-white/10 rounded-lg">
-                                  <FileText className="w-4 h-4" />
-                                  <span className="text-xs truncate">{msg.media_filename || 'Archivo'}</span>
+                                <div className="w-28 h-28 rounded-lg bg-neutral-50 dark:bg-neutral-700/50 flex flex-col items-center justify-center">
+                                  <span className="text-3xl">🏷</span>
+                                  <span className="text-[10px] text-neutral-400 mt-1">Sticker</span>
                                 </div>
                               )}
                             </div>
                           )}
-                          {msg.content && !(msg.message_type === 'sticker' && msg.content === '[Sticker]') && !(msg.message_type === 'image' && msg.content === '[Imagen]') && !(msg.message_type === 'audio' && msg.content === '[Audio]') && !(msg.message_type === 'video' && msg.content === '[Video]') && (
+
+                          {msg.message_type === 'video' && (
+                            <div className="mb-1.5">
+                              {msg.media_url ? (
+                                <video src={msg.media_url} controls className="rounded-lg max-w-full max-h-52" />
+                              ) : (
+                                <div className="w-48 h-32 rounded-lg bg-neutral-100 dark:bg-neutral-700 flex flex-col items-center justify-center gap-1">
+                                  <FileText className="w-6 h-6 text-neutral-400" />
+                                  <span className="text-[10px] text-neutral-400">{msg.media_download_status === 'failed' ? 'Video no disponible' : 'Descargando video...'}</span>
+                                </div>
+                              )}
+                              {msg.media_caption && <p className={cn('text-sm mt-1', msg.direction === 'outbound' ? 'text-white' : 'text-neutral-800 dark:text-white/80')}>{msg.media_caption}</p>}
+                            </div>
+                          )}
+
+                          {(msg.message_type === 'audio' || msg.message_type === 'voice_note') && (
+                            <div className="mb-1.5">
+                              {msg.media_url ? (
+                                <audio src={msg.media_url} controls className="max-w-[220px] h-10" />
+                              ) : (
+                                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-neutral-100 dark:bg-neutral-700/50">
+                                  <div className="w-8 h-8 rounded-full bg-neutral-200 dark:bg-neutral-600 flex items-center justify-center">
+                                    <Paperclip className="w-4 h-4 text-neutral-400" />
+                                  </div>
+                                  <span className="text-[11px] text-neutral-500">{msg.message_type === 'voice_note' ? 'Nota de voz' : 'Audio'}{msg.metadata?.duration ? ` (${Math.round(msg.metadata.duration as number)}s)` : ''}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {msg.message_type === 'document' && (
+                            <div className="mb-1.5">
+                              <div className={cn('flex items-center gap-2.5 p-2.5 rounded-lg', msg.direction === 'outbound' ? 'bg-emerald-700/50' : 'bg-neutral-50 dark:bg-neutral-700/50')}>
+                                <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                                  <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className={cn('text-xs font-medium truncate', msg.direction === 'outbound' ? 'text-white' : 'text-neutral-800 dark:text-white/80')}>{msg.media_filename || 'Documento'}</p>
+                                  <p className={cn('text-[10px]', msg.direction === 'outbound' ? 'text-white/60' : 'text-neutral-400')}>
+                                    {msg.media_file_size ? `${(msg.media_file_size / 1024).toFixed(0)} KB` : msg.media_mime_type || 'Archivo'}
+                                  </p>
+                                </div>
+                                {msg.media_url && (
+                                  <a href={msg.media_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                                    className={cn('p-1.5 rounded-lg transition-colors', msg.direction === 'outbound' ? 'hover:bg-white/10' : 'hover:bg-neutral-200 dark:hover:bg-neutral-600')}>
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                  </a>
+                                )}
+                              </div>
+                              {msg.media_caption && <p className={cn('text-sm mt-1', msg.direction === 'outbound' ? 'text-white' : 'text-neutral-800 dark:text-white/80')}>{msg.media_caption}</p>}
+                            </div>
+                          )}
+
+                          {msg.message_type === 'location' && (
+                            <div className="mb-1.5">
+                              <div className={cn('p-2.5 rounded-lg', msg.direction === 'outbound' ? 'bg-emerald-700/50' : 'bg-neutral-50 dark:bg-neutral-700/50')}>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                                    <span className="text-sm">📍</span>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className={cn('text-xs font-medium', msg.direction === 'outbound' ? 'text-white' : 'text-neutral-800 dark:text-white/80')}>
+                                      {(msg.metadata?.name as string) || 'Ubicacion'}
+                                    </p>
+                                    {msg.metadata?.address && <p className={cn('text-[10px] truncate', msg.direction === 'outbound' ? 'text-white/60' : 'text-neutral-400')}>{msg.metadata.address as string}</p>}
+                                  </div>
+                                </div>
+                                {msg.metadata?.latitude && (
+                                  <a href={`https://maps.google.com/?q=${msg.metadata.latitude},${msg.metadata.longitude}`}
+                                    target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                                    className={cn('mt-2 block text-center text-[11px] font-medium py-1.5 rounded-md transition-colors', msg.direction === 'outbound' ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-neutral-200 dark:bg-neutral-600 text-neutral-700 dark:text-white/80 hover:bg-neutral-300')}>
+                                    Abrir en Maps
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {msg.message_type === 'contact' && (
+                            <div className="mb-1.5">
+                              <div className={cn('flex items-center gap-2.5 p-2.5 rounded-lg', msg.direction === 'outbound' ? 'bg-emerald-700/50' : 'bg-neutral-50 dark:bg-neutral-700/50')}>
+                                <div className="w-9 h-9 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center flex-shrink-0">
+                                  <User className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className={cn('text-xs font-medium', msg.direction === 'outbound' ? 'text-white' : 'text-neutral-800 dark:text-white/80')}>{(msg.metadata?.displayName as string) || msg.content || 'Contacto'}</p>
+                                  {msg.metadata?.phone && <p className={cn('text-[10px]', msg.direction === 'outbound' ? 'text-white/60' : 'text-neutral-400')}>{msg.metadata.phone as string}</p>}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Text content (only for text messages or captions not already shown) */}
+                          {msg.message_type === 'text' && msg.content && (
                             <p className={cn('text-sm leading-relaxed whitespace-pre-wrap break-words', msg.direction === 'outbound' && !msg.is_internal_note ? 'text-white' : 'text-neutral-800 dark:text-white/80')}>
-                              {msg.message_type === 'sticker' && !msg.media_url ? '🏷️ Sticker' :
-                               msg.message_type === 'location' ? '📍 Ubicacion compartida' :
-                               msg.message_type === 'contact' ? '👤 Contacto compartido' :
-                               msg.content}
+                              {msg.content}
                             </p>
                           )}
+
+                          {msg.message_type === 'unknown' && msg.content && (
+                            <p className={cn('text-sm italic', msg.direction === 'outbound' ? 'text-white/70' : 'text-neutral-500')}>
+                              [Mensaje no soportado]
+                            </p>
+                          )}
+
+                          {/* Timestamp & status */}
                           <div className={cn('flex items-center gap-1.5 mt-1', msg.direction === 'outbound' ? 'justify-end' : 'justify-start')}>
                             <span className={cn('text-[10px]', msg.direction === 'outbound' && !msg.is_internal_note ? 'text-white/60' : 'text-neutral-400 dark:text-white/30')}>
-                              {new Date(msg.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+                              {new Date(msg.message_timestamp || msg.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                             {msg.direction === 'outbound' && !msg.is_internal_note && getStatusIcon(msg.status)}
                           </div>
