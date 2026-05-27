@@ -125,6 +125,10 @@ export default function MiWhatsApp() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [mediaPreview, setMediaPreview] = useState<{ url: string; type: string } | null>(null);
 
+  const [contactNames, setContactNames] = useState<Record<string, { display_name: string; profile_pic_url: string | null; is_business: boolean }>>({});
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sendingMessage, setSendingMessage] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -165,6 +169,18 @@ export default function MiWhatsApp() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  const resolveContactName = useCallback((conv: Conversation): string => {
+    const phone = conv.remote_phone;
+    const contact = contactNames[phone];
+    if (contact?.display_name && contact.display_name !== phone) return contact.display_name;
+    if (conv.remote_name && conv.remote_name !== phone) return conv.remote_name;
+    // Format phone for display
+    if (phone.length === 12 && phone.startsWith('52')) {
+      return `+${phone.slice(0, 2)} ${phone.slice(2, 5)} ${phone.slice(5, 8)} ${phone.slice(8)}`;
+    }
+    return phone;
+  }, [contactNames]);
+
   const loadSessionAndConversations = async () => {
     if (!usuario) return;
     setLoading(true);
@@ -183,8 +199,12 @@ export default function MiWhatsApp() {
       }
     }
 
-    const convsResult = await callEdgeFunction('get-conversations');
+    const [convsResult, contactsResult] = await Promise.all([
+      callEdgeFunction('get-conversations'),
+      callEdgeFunction('get-contacts'),
+    ]);
     setConversations(convsResult?.conversations || []);
+    if (contactsResult?.contacts) setContactNames(contactsResult.contacts);
     setTemplates(tplData || []);
     setFormTemplates(formData || []);
     setLoading(false);
@@ -224,37 +244,103 @@ export default function MiWhatsApp() {
   };
 
   const handleSendMessage = async () => {
-    if (!messageInput.trim() || !selectedConversation || !usuario) return;
+    if (!messageInput.trim() || !selectedConversation || !usuario || sendingMessage) return;
+
+    // Check session is connected
+    if (session?.status !== 'connected') {
+      setSendError('Tu WhatsApp no esta conectado. Escanea el QR para enviar mensajes.');
+      return;
+    }
+
     const text = messageInput.trim();
     setMessageInput('');
+    setSendError(null);
     setShowEmojiPicker(false);
     setShowTemplatesDropdown(false);
+    setSendingMessage(true);
 
+    const tempId = crypto.randomUUID();
     const newMsg: Message = {
-      id: crypto.randomUUID(),
+      id: tempId,
       direction: 'outbound',
       message_type: 'text',
       content: text,
       media_url: null,
       media_filename: null,
+      media_mime_type: null,
+      media_file_size: null,
+      media_caption: null,
+      media_download_status: null,
+      media_storage_path: null,
+      media_thumbnail_url: null,
       status: 'pending',
       is_internal_note: false,
       created_at: new Date().toISOString(),
+      message_timestamp: new Date().toISOString(),
+      metadata: null,
     };
     setMessages(prev => [...prev, newMsg]);
 
     const result = await callEdgeFunction('send-message', {
       to: selectedConversation.remote_phone,
       message: text,
+      conversationId: selectedConversation.id,
     });
 
+    setSendingMessage(false);
+
     if (result?.success) {
-      setMessages(prev => prev.map(m => m.id === newMsg.id ? { ...m, status: 'sent' } : m));
+      setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'sent' } : m));
       setConversations(prev => prev.map(c =>
         c.id === selectedConversation.id ? { ...c, last_message_text: text, last_message_at: new Date().toISOString() } : c
       ));
     } else {
-      setMessages(prev => prev.map(m => m.id === newMsg.id ? { ...m, status: 'failed' } : m));
+      const errorMsg = result?.error || 'Error al enviar mensaje';
+      setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed', metadata: { error: errorMsg, retryText: text } } : m));
+      setSendError(errorMsg);
+      // If disconnected, update session state
+      if (result?.disconnected) {
+        setSession(prev => prev ? { ...prev, status: 'disconnected' } : prev);
+      }
+    }
+  };
+
+  const handleRetryMessage = async (msg: Message) => {
+    if (!selectedConversation || !usuario || sendingMessage) return;
+    const retryText = (msg.metadata?.retryText as string) || msg.content || '';
+    if (!retryText) return;
+
+    if (session?.status !== 'connected') {
+      setSendError('Tu WhatsApp no esta conectado. Escanea el QR para enviar mensajes.');
+      return;
+    }
+
+    setSendError(null);
+    setSendingMessage(true);
+
+    // Update failed message to pending
+    setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, status: 'pending' } : m));
+
+    const result = await callEdgeFunction('send-message', {
+      to: selectedConversation.remote_phone,
+      message: retryText,
+      conversationId: selectedConversation.id,
+    });
+
+    setSendingMessage(false);
+
+    if (result?.success) {
+      setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, status: 'sent' } : m));
+      setConversations(prev => prev.map(c =>
+        c.id === selectedConversation.id ? { ...c, last_message_text: retryText, last_message_at: new Date().toISOString() } : c
+      ));
+    } else {
+      const errorMsg = result?.error || 'Error al reenviar mensaje';
+      setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, status: 'failed', metadata: { error: errorMsg, retryText } } : m));
+      setSendError(errorMsg);
+      if (result?.disconnected) {
+        setSession(prev => prev ? { ...prev, status: 'disconnected' } : prev);
+      }
     }
   };
 
@@ -622,11 +708,11 @@ export default function MiWhatsApp() {
                   <button key={conv.id} onClick={() => handleSelectConversation(conv)}
                     className={cn('w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-neutral-50 dark:hover:bg-white/[0.03] transition-colors border-b border-neutral-100/60 dark:border-white/[0.04]', selectedConversation?.id === conv.id && 'bg-emerald-50/50 dark:bg-emerald-900/10')}>
                     <div className="w-11 h-11 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
-                      {conv.remote_avatar_url ? <img src={conv.remote_avatar_url} alt="" className="w-full h-full rounded-full object-cover" /> : <User className="w-5 h-5 text-emerald-600" />}
+                      {(contactNames[conv.remote_phone]?.profile_pic_url || conv.remote_avatar_url) ? <img src={contactNames[conv.remote_phone]?.profile_pic_url || conv.remote_avatar_url || ''} alt="" className="w-full h-full rounded-full object-cover" /> : <User className="w-5 h-5 text-emerald-600" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{conv.remote_name || conv.remote_phone}</span>
+                        <span className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{resolveContactName(conv)}</span>
                         <span className="text-[10px] text-neutral-400 dark:text-white/30 flex-shrink-0">{formatTime(conv.last_message_at)}</span>
                       </div>
                       <div className="flex items-center justify-between gap-2 mt-0.5">
@@ -656,10 +742,15 @@ export default function MiWhatsApp() {
                     <button onClick={() => { setShowMobileChat(false); setSelectedConversation(null); setSelectionMode(false); setSelectedMessages(new Set()); }} className="md:hidden p-1.5 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-lg">
                       <ArrowLeft className="w-5 h-5 text-neutral-600 dark:text-white/60" />
                     </button>
-                    <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0"><User className="w-5 h-5 text-emerald-600" /></div>
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+                      {(contactNames[selectedConversation.remote_phone]?.profile_pic_url || selectedConversation.remote_avatar_url) ? <img src={contactNames[selectedConversation.remote_phone]?.profile_pic_url || selectedConversation.remote_avatar_url || ''} alt="" className="w-full h-full rounded-full object-cover" /> : <User className="w-5 h-5 text-emerald-600" />}
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{selectedConversation.remote_name || selectedConversation.remote_phone}</h3>
-                      <p className="text-[11px] text-neutral-400 dark:text-white/30">{selectedConversation.remote_phone}</p>
+                      <h3 className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{resolveContactName(selectedConversation)}</h3>
+                      <p className="text-[11px] text-neutral-400 dark:text-white/30 flex items-center gap-1">
+                        <span>+{selectedConversation.remote_phone.slice(0, 2)} {selectedConversation.remote_phone.slice(2)}</span>
+                        {contactNames[selectedConversation.remote_phone]?.is_business && <span className="text-[8px] px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded font-medium">Empresa</span>}
+                      </p>
                     </div>
                     <div className="flex items-center gap-1">
                       {selectedConversation.crm_contact_id && <span className="text-[9px] px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full font-medium">CRM</span>}
@@ -676,6 +767,17 @@ export default function MiWhatsApp() {
                       </button>
                     </div>
                   </div>
+
+                  {/* Disconnected warning */}
+                  {session?.status !== 'connected' && (
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800/40 px-4 py-2.5 flex items-center gap-2.5">
+                      <WifiOff className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                      <p className="text-xs text-amber-700 dark:text-amber-300 flex-1">WhatsApp desconectado. No puedes enviar mensajes hasta reconectar.</p>
+                      <button onClick={() => setActiveView('connection')} className="text-xs font-medium text-amber-700 dark:text-amber-200 hover:underline flex-shrink-0">
+                        Conectar
+                      </button>
+                    </div>
+                  )}
 
                   {/* Messages */}
                   <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2 relative">
@@ -849,6 +951,15 @@ export default function MiWhatsApp() {
                               {new Date(msg.message_timestamp || msg.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                             {msg.direction === 'outbound' && !msg.is_internal_note && getStatusIcon(msg.status)}
+                            {msg.direction === 'outbound' && msg.status === 'failed' && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleRetryMessage(msg); }}
+                                className="ml-1 text-[10px] font-medium text-red-300 hover:text-white bg-red-500/30 hover:bg-red-500/50 px-1.5 py-0.5 rounded transition-colors"
+                                title="Reintentar envio"
+                              >
+                                Reintentar
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -891,6 +1002,17 @@ export default function MiWhatsApp() {
                           </button>
                         </div>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Send error banner */}
+                  {sendError && (
+                    <div className="bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-800/40 px-4 py-2 flex items-center gap-2">
+                      <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                      <p className="text-xs text-red-600 dark:text-red-400 flex-1">{sendError}</p>
+                      <button onClick={() => setSendError(null)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors">
+                        <X className="w-3.5 h-3.5 text-red-400" />
+                      </button>
                     </div>
                   )}
 
@@ -995,9 +1117,9 @@ export default function MiWhatsApp() {
                       </div>
 
                       {/* Send button */}
-                      <button onClick={handleSendMessage} disabled={!messageInput.trim()}
+                      <button onClick={handleSendMessage} disabled={!messageInput.trim() || sendingMessage}
                         className="p-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-neutral-200 disabled:dark:bg-white/5 text-white disabled:text-neutral-400 rounded-xl transition-colors flex-shrink-0">
-                        <Send className="w-5 h-5" />
+                        {sendingMessage ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                       </button>
                     </div>
                   </div>

@@ -545,11 +545,41 @@ Deno.serve(async (req: Request) => {
       }
 
       case "send-message": {
-        const { to, message } = body;
+        const { to, message, conversationId } = body;
         if (!to || !message) return err("Missing to or message");
 
         if (!serverConfigured) {
-          return json({ error: "Server not configured", success: false });
+          return json({ error: "Servidor de WhatsApp no configurado", success: false });
+        }
+
+        // Normalize phone: remove non-digits, ensure country code
+        let normalizedPhone = (to as string).replace(/\D/g, "");
+        if (normalizedPhone.startsWith("+")) normalizedPhone = normalizedPhone.slice(1);
+        if (normalizedPhone.length === 10) normalizedPhone = `52${normalizedPhone}`;
+        if (normalizedPhone.length === 12 && normalizedPhone.startsWith("52") && !normalizedPhone.startsWith("521")) {
+          normalizedPhone = `521${normalizedPhone.slice(2)}`;
+        }
+        if (!normalizedPhone || normalizedPhone.length < 10) {
+          return json({ success: false, error: "Numero de telefono invalido" });
+        }
+
+        // Verify session is connected before sending
+        try {
+          const statusResp = await fetch(
+            `${WHATSAPP_SERVER_URL}/session/${user.id}/status`,
+            {
+              headers: { "x-api-key": WHATSAPP_SERVER_API_KEY, "Content-Type": "application/json" },
+              signal: AbortSignal.timeout(5000),
+            }
+          );
+          if (statusResp.ok) {
+            const statusData = await statusResp.json();
+            if (!statusData.connected) {
+              return json({ success: false, error: "Tu WhatsApp no esta conectado. Vuelve a escanear el QR para enviar mensajes.", disconnected: true });
+            }
+          }
+        } catch {
+          return json({ success: false, error: "No se pudo verificar la conexion de WhatsApp" });
         }
 
         try {
@@ -561,57 +591,74 @@ Deno.serve(async (req: Request) => {
                 "x-api-key": WHATSAPP_SERVER_API_KEY,
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({ to, message }),
+              body: JSON.stringify({ to: normalizedPhone, message }),
+              signal: AbortSignal.timeout(15000),
             }
           );
 
           if (sendResp.ok) {
             const sendData = await sendResp.json();
+            const waMessageId = sendData.messageId || sendData.id || null;
 
             // Find or create conversation
             const { data: conv } = await supabase
               .from("whatsapp_conversations")
-              .select("id")
+              .select("id, session_id")
               .eq("user_id", user.id)
-              .eq("remote_phone", to)
+              .eq("remote_phone", normalizedPhone)
               .maybeSingle();
 
-            const convId = conv?.id || crypto.randomUUID();
+            let convId = conv?.id || conversationId;
+
             if (!conv) {
+              // Get session ID for FK
+              const { data: sessionRow } = await supabase
+                .from("whatsapp_sessions")
+                .select("id")
+                .eq("user_id", user.id)
+                .maybeSingle();
+
+              convId = convId || crypto.randomUUID();
               await supabase.from("whatsapp_conversations").insert({
                 id: convId,
                 user_id: user.id,
-                remote_phone: to,
-                last_message_text: message,
+                session_id: sessionRow?.id || null,
+                remote_phone: normalizedPhone,
+                last_message_text: message.slice(0, 200),
                 last_message_at: new Date().toISOString(),
               });
             } else {
+              convId = conv.id;
               await supabase
                 .from("whatsapp_conversations")
                 .update({
-                  last_message_text: message,
+                  last_message_text: message.slice(0, 200),
                   last_message_at: new Date().toISOString(),
                 })
                 .eq("id", convId);
             }
 
-            // Store message
-            await supabase.from("whatsapp_messages").insert({
-              conversation_id: convId,
-              user_id: user.id,
-              direction: "outbound",
-              message_type: "text",
-              content: message,
-              status: "sent",
-              external_id: sendData.messageId || sendData.id || null,
-            });
+            // Store message (server also stores via saveOutboundMessage, use wa_message_id for dedup)
+            if (waMessageId) {
+              await supabase.from("whatsapp_messages").upsert({
+                conversation_id: convId,
+                user_id: user.id,
+                direction: "outbound",
+                message_type: "text",
+                content: message,
+                status: "sent",
+                wa_message_id: waMessageId,
+                message_timestamp: new Date().toISOString(),
+              }, { onConflict: "user_id,wa_message_id", ignoreDuplicates: true });
+            }
 
-            return json({ success: true, messageId: sendData.messageId || sendData.id });
+            return json({ success: true, messageId: waMessageId, conversationId: convId });
           } else {
-            return json({ success: false, error: "Failed to send message" });
+            const errText = await sendResp.text().catch(() => "");
+            return json({ success: false, error: `Error del servidor: ${sendResp.status} ${errText.slice(0, 100)}` });
           }
         } catch (e: unknown) {
-          const errorMsg = e instanceof Error ? e.message : "Unknown error";
+          const errorMsg = e instanceof Error ? e.message : "Error desconocido";
           return json({ success: false, error: errorMsg });
         }
       }
@@ -645,6 +692,99 @@ Deno.serve(async (req: Request) => {
           }
         } catch (e: unknown) {
           const errorMsg = e instanceof Error ? e.message : "Unknown error";
+          return json({ success: false, error: errorMsg });
+        }
+      }
+
+      case "get-contacts": {
+        // Return all contacts for this user with resolved names
+        const { data: contacts } = await supabase
+          .from("whatsapp_contacts")
+          .select("phone, display_name, push_name, notify_name, saved_name, local_alias, verified_name, business_name, is_business, profile_pic_url")
+          .eq("user_id", user.id);
+
+        // Build a phone->name map for quick lookup
+        const contactMap: Record<string, { display_name: string; profile_pic_url: string | null; is_business: boolean }> = {};
+        for (const c of contacts || []) {
+          contactMap[c.phone] = {
+            display_name: c.display_name || c.phone,
+            profile_pic_url: c.profile_pic_url,
+            is_business: c.is_business || false,
+          };
+        }
+
+        return json({ contacts: contactMap });
+      }
+
+      case "set-contact-alias": {
+        const { phone, alias } = body;
+        if (!phone) return err("Missing phone");
+
+        const normalizedPhone = (phone as string).replace(/\D/g, "");
+
+        if (alias) {
+          // Upsert contact with alias
+          await supabase.from("whatsapp_contacts").upsert({
+            user_id: user.id,
+            phone: normalizedPhone,
+            local_alias: alias,
+          }, { onConflict: "user_id,phone" });
+        } else {
+          // Clear alias
+          await supabase
+            .from("whatsapp_contacts")
+            .update({ local_alias: null })
+            .eq("user_id", user.id)
+            .eq("phone", normalizedPhone);
+        }
+
+        return json({ success: true });
+      }
+
+      case "retry-message": {
+        const { originalMessageId, to: retryTo, message: retryMsg } = body;
+        if (!retryTo || !retryMsg) return err("Missing to or message");
+
+        // Delete the failed message
+        if (originalMessageId) {
+          await supabase
+            .from("whatsapp_messages")
+            .delete()
+            .eq("id", originalMessageId)
+            .eq("user_id", user.id);
+        }
+
+        // Re-send using the same logic as send-message (redirect internally)
+        // Normalize phone
+        let retryPhone = (retryTo as string).replace(/\D/g, "");
+        if (retryPhone.length === 10) retryPhone = `52${retryPhone}`;
+        if (retryPhone.length === 12 && retryPhone.startsWith("52") && !retryPhone.startsWith("521")) {
+          retryPhone = `521${retryPhone.slice(2)}`;
+        }
+
+        if (!serverConfigured) {
+          return json({ success: false, error: "Servidor no configurado" });
+        }
+
+        try {
+          const sendResp = await fetch(
+            `${WHATSAPP_SERVER_URL}/session/${user.id}/send-message`,
+            {
+              method: "POST",
+              headers: { "x-api-key": WHATSAPP_SERVER_API_KEY, "Content-Type": "application/json" },
+              body: JSON.stringify({ to: retryPhone, message: retryMsg }),
+              signal: AbortSignal.timeout(15000),
+            }
+          );
+
+          if (sendResp.ok) {
+            const sendData = await sendResp.json();
+            return json({ success: true, messageId: sendData.messageId || sendData.id });
+          } else {
+            return json({ success: false, error: "Error al reenviar mensaje" });
+          }
+        } catch (e: unknown) {
+          const errorMsg = e instanceof Error ? e.message : "Error desconocido";
           return json({ success: false, error: errorMsg });
         }
       }

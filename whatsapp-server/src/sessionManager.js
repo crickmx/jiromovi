@@ -201,6 +201,7 @@ class SessionManager {
         const idx = sessionData.conversations.findIndex(c => c.phone === phone);
         if (idx >= 0) sessionData.conversations[idx].name = name;
         supabaseSync.updateConversationName(userId, phone, name);
+        supabaseSync.upsertContact(userId, phone, contact).catch(() => {});
       }
     });
 
@@ -245,6 +246,11 @@ class SessionManager {
 
         // Update conversation list
         this.updateConversationList(sessionData, phone, isFromMe ? null : pushName, content.text || `[${content.mediaType}]`, isFromMe);
+
+        // Update contact pushName for name resolution
+        if (!isFromMe && pushName && pushName !== phone) {
+          supabaseSync.updateContactPushName(userId, phone, pushName).catch(() => {});
+        }
 
         // Persist ALL messages to Supabase (both notify and history/append)
         if (isFromMe) {

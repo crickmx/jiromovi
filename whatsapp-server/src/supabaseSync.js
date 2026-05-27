@@ -393,6 +393,7 @@ class SupabaseSync {
   async syncContacts(userId, contacts) {
     if (!this.enabled || !contacts || contacts.length === 0) return;
 
+    let synced = 0;
     for (const contact of contacts) {
       if (!contact.id || contact.id === 'status@broadcast') continue;
       if (contact.id.includes('@g.us')) continue;
@@ -400,7 +401,60 @@ class SupabaseSync {
       const phone = contact.id.split('@')[0];
       const name = contact.notify || contact.name || contact.verifiedName;
       if (name) await this.updateConversationName(userId, phone, name);
+
+      // Persist to whatsapp_contacts table for name resolution
+      await this.upsertContact(userId, phone, contact);
+      synced++;
     }
+    console.log(`[${userId}] Synced ${synced} contacts to whatsapp_contacts`);
+  }
+
+  async upsertContact(userId, phone, contactData) {
+    if (!this.enabled) return;
+
+    try {
+      const record = {
+        user_id: userId,
+        phone,
+        jid: contactData.id || `${phone}@s.whatsapp.net`,
+        is_business: !!contactData.isBusiness,
+      };
+
+      // Only set non-empty values to avoid overwriting good data with null
+      if (contactData.name) record.saved_name = contactData.name;
+      if (contactData.notify) record.notify_name = contactData.notify;
+      if (contactData.verifiedName) record.verified_name = contactData.verifiedName;
+      if (contactData.pushName) record.push_name = contactData.pushName;
+      if (contactData.shortName) record.short_name = contactData.shortName;
+      if (contactData.imgUrl) record.profile_pic_url = contactData.imgUrl;
+
+      // Store raw data for debugging
+      const { id, lid, ...safeData } = contactData;
+      record.raw_contact_data = safeData;
+
+      await this.supabase
+        .from('whatsapp_contacts')
+        .upsert(record, { onConflict: 'user_id,phone' });
+    } catch (err) {
+      if (err.code !== '23505') {
+        console.error(`[Sync] Error upserting contact ${phone}:`, err.message);
+      }
+    }
+  }
+
+  async updateContactPushName(userId, phone, pushName) {
+    if (!this.enabled || !pushName) return;
+
+    try {
+      // Upsert: only update push_name, don't overwrite better names
+      await this.supabase
+        .from('whatsapp_contacts')
+        .upsert({
+          user_id: userId,
+          phone,
+          push_name: pushName,
+        }, { onConflict: 'user_id,phone' });
+    } catch {}
   }
 
   // ─── Media Download & Storage ─────────────────────────────────
