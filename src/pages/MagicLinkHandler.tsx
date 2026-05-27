@@ -41,9 +41,9 @@ export default function MagicLinkHandler() {
           return;
         }
 
-        const { error: otpError } = await supabase.auth.verifyOtp({
-          token_hash: data.token_hash,
-          type: data.token_type || 'magiclink',
+        const { error: otpError } = await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
         });
 
         if (otpError) {

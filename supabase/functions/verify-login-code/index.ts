@@ -137,43 +137,24 @@ Deno.serve(async (req: Request) => {
       .update({ used_at: new Date().toISOString() })
       .eq('id', token.id);
 
-    // ── Generate a Supabase magic link session for the user ───────────────────
-    // Use generateLink to get a sign-in link, then exchange it for a session
-    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-      type: 'magiclink',
-      email: token.email,
-      options: {
-        redirectTo: platform === 'movi' ? 'https://app.movi.digital/' : 'https://app.seguwallet.mx/seguwallet/dashboard',
-      },
+    // ── Create a real session for the user using admin API ───────────────────
+    const { data: sessionData, error: sessionError } = await supabase.auth.admin.createSession({
+      user_id: token.user_id,
     });
 
-    if (linkError || !linkData) {
-      console.error('Error generating magic link:', linkError);
+    if (sessionError || !sessionData?.session) {
+      console.error('Error creating session:', sessionError);
       return new Response(JSON.stringify({ error: 'Error al crear sesión. Intenta de nuevo.' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Extract the token from the generated URL to use for session exchange
-    const generatedUrl = linkData.properties?.action_link;
-    if (!generatedUrl) {
-      return new Response(JSON.stringify({ error: 'Error al crear sesión.' }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Parse the token_hash and type from the generated URL
-    // The URL contains token_hash (not the raw OTP) — client must use verifyOtp({ token_hash, type })
-    const url = new URL(generatedUrl);
-    const tokenHash = url.searchParams.get('token');
-    const tokenType = (url.searchParams.get('type') || 'magiclink') as string;
-
     return new Response(JSON.stringify({
       success: true,
       user_id: token.user_id,
       platform,
-      token_hash: tokenHash,
-      token_type: tokenType,
+      access_token: sessionData.session.access_token,
+      refresh_token: sessionData.session.refresh_token,
       email: token.email,
     }), {
       status: 200,

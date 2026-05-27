@@ -144,10 +144,10 @@ export function SeguwalletLogin() {
         setError(data.error || 'Código incorrecto.');
         return;
       }
-      // Exchange the Supabase token_hash for a real session
-      const { error: otpError } = await supabase.auth.verifyOtp({
-        token_hash: data.token_hash,
-        type: data.token_type || 'magiclink',
+      // Set the session directly using the tokens returned from the edge function
+      const { error: otpError } = await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
       });
       if (otpError) {
         setError('Error al crear la sesión. Intenta de nuevo.');
