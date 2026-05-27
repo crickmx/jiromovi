@@ -14,6 +14,12 @@ export interface GmmInsurerCoverageData {
   note?: string;
 }
 
+export interface GmmFidelidad {
+  nombre: string;
+  descripcion: string;
+  beneficios: string[];
+}
+
 export interface GmmInsurer {
   id: string;
   name: string;
@@ -25,7 +31,13 @@ export interface GmmInsurer {
   minAge: number;
   maxAge: number;
   waitingPeriodMonths: number;
+  renovacionVitalicia: boolean;
+  deducibleMin: string;
+  coaseguro: string;
   data: Record<string, GmmInsurerCoverageData>;
+  fidelidad: GmmFidelidad | null;
+  coberturasAdicionales: string[];
+  limitesAceptacion: string[];
 }
 
 export const GMM_INSURERS: GmmInsurer[] = [
@@ -44,6 +56,9 @@ export const GMM_INSURERS: GmmInsurer[] = [
     minAge: 0,
     maxAge: 74,
     waitingPeriodMonths: 12,
+    renovacionVitalicia: true,
+    deducibleMin: '$5,000',
+    coaseguro: '10% - 20%',
     data: {
       tabulador_alto: { s: 'base', plans: ['gnp_esencial', 'gnp_platino', 'gnp_platino_plus'] },
       cirugia_ambulatoria: { s: 'base', plans: ['gnp_esencial', 'gnp_platino', 'gnp_platino_plus'] },
@@ -68,6 +83,29 @@ export const GMM_INSURERS: GmmInsurer[] = [
       nutricion: { s: 'optional', plans: ['gnp_platino', 'gnp_platino_plus'] },
       padecimientos_prex: { s: 'base', plans: ['gnp_esencial', 'gnp_platino', 'gnp_platino_plus'], note: '24 meses espera' },
     },
+    fidelidad: {
+      nombre: 'GNP Conmigo',
+      descripcion: 'Programa de fidelidad que reduce deducible y coaseguro con cada ano sin siniestro',
+      beneficios: [
+        'Reduccion de deducible por ano sin siniestro',
+        'Reduccion de coaseguro acumulativa',
+        'Tope de coaseguro favorable',
+        'Red GNP Keralty para consultas preventivas',
+      ],
+    },
+    coberturasAdicionales: [
+      'Asistencia en viaje nacional e internacional',
+      'Orientacion medica telefonica 24/7',
+      'Red GNP Keralty (consultas, laboratorio, farmacia)',
+      'Programa de maternidad integral',
+      'Descuentos en farmacias de red',
+    ],
+    limitesAceptacion: [
+      'Edad maxima de ingreso: 74 anos',
+      'Renovacion vitalicia garantizada',
+      'Periodo de espera enfermedades preexistentes: 24 meses',
+      'Periodo de espera maternidad: 10 meses',
+    ],
   },
   {
     id: 'axa',
@@ -84,6 +122,9 @@ export const GMM_INSURERS: GmmInsurer[] = [
     minAge: 0,
     maxAge: 69,
     waitingPeriodMonths: 12,
+    renovacionVitalicia: true,
+    deducibleMin: '$5,000',
+    coaseguro: '10% - 20%',
     data: {
       tabulador_alto: { s: 'base', plans: ['axa_optima', 'axa_flex_plus', 'axa_premier'] },
       cirugia_ambulatoria: { s: 'base', plans: ['axa_optima', 'axa_flex_plus', 'axa_premier'] },
@@ -108,6 +149,29 @@ export const GMM_INSURERS: GmmInsurer[] = [
       nutricion: { s: 'optional', plans: ['axa_premier'] },
       padecimientos_prex: { s: 'base', plans: ['axa_optima', 'axa_flex_plus', 'axa_premier'], note: '24 meses espera' },
     },
+    fidelidad: {
+      nombre: 'AXA Contigo',
+      descripcion: 'Programa de beneficios que premia permanencia y buen historial',
+      beneficios: [
+        'Deducible decreciente por ano sin siniestro',
+        'Cobertura dental preventiva sin costo adicional',
+        'Acceso a red AXA Keralty para consultas',
+        'Check-up anual incluido desde 2do ano',
+      ],
+    },
+    coberturasAdicionales: [
+      'AXA Keralty: red propia de consultas y laboratorio',
+      'Programa de bienestar y prevencion',
+      'Asistencia medica telefonica 24/7',
+      'Cobertura de emergencias en viaje',
+      'Programa de maternidad y lactancia',
+    ],
+    limitesAceptacion: [
+      'Edad maxima de ingreso: 69 anos',
+      'Renovacion vitalicia garantizada',
+      'Periodo de espera enfermedades preexistentes: 24 meses',
+      'Periodo de espera maternidad: 10 meses',
+    ],
   },
   {
     id: 'bupa',
@@ -124,6 +188,9 @@ export const GMM_INSURERS: GmmInsurer[] = [
     minAge: 0,
     maxAge: 75,
     waitingPeriodMonths: 12,
+    renovacionVitalicia: true,
+    deducibleMin: '$5,000',
+    coaseguro: '10% - 20%',
     data: {
       tabulador_alto: { s: 'base', plans: ['bupa_access', 'bupa_connect', 'bupa_global'] },
       cirugia_ambulatoria: { s: 'base', plans: ['bupa_access', 'bupa_connect', 'bupa_global'] },
@@ -148,6 +215,31 @@ export const GMM_INSURERS: GmmInsurer[] = [
       nutricion: { s: 'base', plans: ['bupa_connect', 'bupa_global'] },
       padecimientos_prex: { s: 'base', plans: ['bupa_access', 'bupa_connect', 'bupa_global'], note: '24 meses espera' },
     },
+    fidelidad: {
+      nombre: 'Bupa Wellness Rewards',
+      descripcion: 'Programa integral de bienestar con beneficios acumulativos por permanencia',
+      beneficios: [
+        'Sin limite de sesiones de rehabilitacion',
+        'Cobertura dental incluida desde Connect',
+        'Segunda opinion medica internacional',
+        'Cobertura mundial sin restriccion (Global)',
+        'Tope de coaseguro bajo',
+      ],
+    },
+    coberturasAdicionales: [
+      'Cobertura mundial sin restriccion (plan Global)',
+      'Segunda opinion medica con expertos internacionales',
+      'Programa de bienestar integral',
+      'Sin limite en consultas en red propia',
+      'Maternidad incluida (no endoso) en Connect/Global',
+      'Dental basico incluido desde Connect',
+    ],
+    limitesAceptacion: [
+      'Edad maxima de ingreso: 75 anos',
+      'Renovacion vitalicia garantizada',
+      'Periodo de espera enfermedades preexistentes: 24 meses',
+      'Periodo de espera maternidad: 10 meses',
+    ],
   },
   {
     id: 'metlife',
@@ -164,6 +256,9 @@ export const GMM_INSURERS: GmmInsurer[] = [
     minAge: 0,
     maxAge: 70,
     waitingPeriodMonths: 12,
+    renovacionVitalicia: true,
+    deducibleMin: '$5,000',
+    coaseguro: '10% - 20%',
     data: {
       tabulador_alto: { s: 'base', plans: ['metlife_esencial', 'metlife_elite', 'metlife_signature'] },
       cirugia_ambulatoria: { s: 'base', plans: ['metlife_esencial', 'metlife_elite', 'metlife_signature'] },
@@ -188,6 +283,29 @@ export const GMM_INSURERS: GmmInsurer[] = [
       nutricion: { s: 'optional', plans: ['metlife_signature'] },
       padecimientos_prex: { s: 'base', plans: ['metlife_esencial', 'metlife_elite', 'metlife_signature'], note: '24 meses espera' },
     },
+    fidelidad: {
+      nombre: 'MetLife Rewards',
+      descripcion: 'Programa de lealtad con beneficios por permanencia continua',
+      beneficios: [
+        'Deducible decreciente por ano sin siniestro',
+        'Coaseguro preferente en renovaciones',
+        'Acceso a red de especialistas sin referencia',
+        'Check-up anual desde plan Elite',
+      ],
+    },
+    coberturasAdicionales: [
+      'Orientacion medica telefonica 24/7',
+      'Cobertura de emergencias en EUA y Canada (Signature)',
+      'Programa de bienestar preventivo',
+      'Red de farmacias con descuento',
+      'Asistencia en viaje internacional',
+    ],
+    limitesAceptacion: [
+      'Edad maxima de ingreso: 70 anos',
+      'Renovacion vitalicia garantizada',
+      'Periodo de espera enfermedades preexistentes: 24 meses',
+      'Periodo de espera maternidad: 10 meses',
+    ],
   },
   {
     id: 'mapfre',
@@ -204,6 +322,9 @@ export const GMM_INSURERS: GmmInsurer[] = [
     minAge: 0,
     maxAge: 64,
     waitingPeriodMonths: 12,
+    renovacionVitalicia: true,
+    deducibleMin: '$10,000',
+    coaseguro: '10% - 30%',
     data: {
       tabulador_alto: { s: 'base', plans: ['mapfre_salud', 'mapfre_salud_plus', 'mapfre_salud_elite'] },
       cirugia_ambulatoria: { s: 'base', plans: ['mapfre_salud', 'mapfre_salud_plus', 'mapfre_salud_elite'] },
@@ -228,6 +349,20 @@ export const GMM_INSURERS: GmmInsurer[] = [
       nutricion: { s: 'optional', plans: ['mapfre_salud_elite'] },
       padecimientos_prex: { s: 'base', plans: ['mapfre_salud', 'mapfre_salud_plus', 'mapfre_salud_elite'], note: '36 meses espera' },
     },
+    fidelidad: null,
+    coberturasAdicionales: [
+      'Orientacion medica telefonica',
+      'Programa de prevencion y bienestar',
+      'Red de farmacias con descuento',
+      'Asistencia en viaje (planes Plus y Elite)',
+    ],
+    limitesAceptacion: [
+      'Edad maxima de ingreso: 64 anos',
+      'Renovacion vitalicia garantizada',
+      'Periodo de espera enfermedades preexistentes: 36 meses',
+      'Periodo de espera maternidad: 10 meses',
+      'Suma asegurada maxima: $30 MDP',
+    ],
   },
   {
     id: 'bxplus',
@@ -244,6 +379,9 @@ export const GMM_INSURERS: GmmInsurer[] = [
     minAge: 0,
     maxAge: 69,
     waitingPeriodMonths: 12,
+    renovacionVitalicia: true,
+    deducibleMin: '$5,000',
+    coaseguro: '10% - 20%',
     data: {
       tabulador_alto: { s: 'base', plans: ['bx_integral', 'bx_plus', 'bx_premier'] },
       cirugia_ambulatoria: { s: 'base', plans: ['bx_integral', 'bx_plus', 'bx_premier'] },
@@ -268,6 +406,29 @@ export const GMM_INSURERS: GmmInsurer[] = [
       nutricion: { s: 'optional', plans: ['bx_premier'] },
       padecimientos_prex: { s: 'base', plans: ['bx_integral', 'bx_plus', 'bx_premier'], note: '24 meses espera' },
     },
+    fidelidad: {
+      nombre: 'BX+ Fidelidad',
+      descripcion: 'Programa de beneficios por permanencia con deducible decreciente',
+      beneficios: [
+        'Deducible decreciente por ano sin reclamaciones',
+        'Bonificacion en renovacion',
+        'Acceso a la red Angeles con niveles exclusivos',
+        'Cobertura en EUA (Premier)',
+      ],
+    },
+    coberturasAdicionales: [
+      'Red Hospitalaria Angeles exclusiva',
+      'Cobertura en EUA solo emergencias (Premier)',
+      'Asistencia medica telefonica',
+      'Programa de bienestar preventivo',
+      'Descuentos en farmacias',
+    ],
+    limitesAceptacion: [
+      'Edad maxima de ingreso: 69 anos',
+      'Renovacion vitalicia garantizada',
+      'Periodo de espera enfermedades preexistentes: 24 meses',
+      'Periodo de espera maternidad: 10 meses',
+    ],
   },
   {
     id: 'planseguro',
@@ -286,6 +447,9 @@ export const GMM_INSURERS: GmmInsurer[] = [
     minAge: 0,
     maxAge: 99,
     waitingPeriodMonths: 12,
+    renovacionVitalicia: true,
+    deducibleMin: '1 UMAM (~$3,300)',
+    coaseguro: '10% - 20%',
     data: {
       tabulador_alto: { s: 'base', plans: ['ps_esencial', 'ps_intermedio', 'ps_avanzado', 'ps_optimo', 'ps_optimo_plus'] },
       cirugia_ambulatoria: { s: 'base', plans: ['ps_esencial', 'ps_intermedio', 'ps_avanzado', 'ps_optimo', 'ps_optimo_plus'] },
@@ -310,5 +474,32 @@ export const GMM_INSURERS: GmmInsurer[] = [
       nutricion: { s: 'base', plans: ['ps_avanzado', 'ps_optimo', 'ps_optimo_plus'], note: 'Videoconsulta ilimitada' },
       padecimientos_prex: { s: 'base', plans: ['ps_esencial', 'ps_intermedio', 'ps_avanzado', 'ps_optimo', 'ps_optimo_plus'], note: '24 meses espera' },
     },
+    fidelidad: {
+      nombre: 'Plan Seguro Fidelidad',
+      descripcion: 'Sin edad limite de ingreso, suma asegurada ilimitada (UMAM), precios accesibles',
+      beneficios: [
+        'Sin edad limite de ingreso ni renovacion',
+        'Suma asegurada ilimitada basada en UMAM',
+        'Dental gratuito desde dia 1 (Dentalia)',
+        'Videoconsulta ilimitada (psicologia, nutricion, medicina general)',
+        'Precios competitivos tipo prepago medico',
+      ],
+    },
+    coberturasAdicionales: [
+      'Sin edad limite - acepta desde 0 hasta 99+ anos',
+      'Suma asegurada ilimitada en UMAM',
+      'Dental Dentalia incluido desde dia 1',
+      'Videoconsulta ilimitada: medico, psicologo, nutriologo',
+      'Maternidad INCLUIDA (no endoso) en planes Avanzado+',
+      'Precios basados en UMAM - accesible para familias',
+      'Cobertura internacional opcional ($50k/$100k USD)',
+    ],
+    limitesAceptacion: [
+      'Sin edad limite de ingreso',
+      'Renovacion vitalicia garantizada',
+      'Periodo de espera enfermedades preexistentes: 24 meses',
+      'Periodo de espera maternidad: 10 meses',
+      'Suma asegurada en UMAM (sin limite monetario fijo)',
+    ],
   },
 ];

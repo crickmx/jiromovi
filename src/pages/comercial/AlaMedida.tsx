@@ -14,6 +14,7 @@ const GMM_LOGOS = [
   '/logo-bupa.png',
   '/mapfre-seguros-logo-png_seeklogo-225013.png',
   '/logo-bx.png',
+  '/plan-seguro-logo.png',
 ];
 
 export default function AlaMedida() {
@@ -117,7 +118,7 @@ export default function AlaMedida() {
               Gastos Medicos Mayores
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-5">
-              Configura edad, suma asegurada, nivel hospitalario y coberturas. Encuentra el plan ideal entre 6 aseguradoras lideres.
+              Configura edad, suma asegurada, nivel hospitalario y coberturas. Encuentra el plan ideal entre 7 aseguradoras lideres.
             </p>
 
             {/* Stats */}
@@ -128,7 +129,7 @@ export default function AlaMedida() {
               </div>
               <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
                 <Users className="w-3.5 h-3.5 text-teal-500" />
-                <span className="font-medium">6 aseguradoras</span>
+                <span className="font-medium">7 aseguradoras</span>
               </div>
             </div>
 

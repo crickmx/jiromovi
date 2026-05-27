@@ -3,8 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Check, X, ChevronDown, ChevronUp, BarChart3, Table2,
   Building2, Stethoscope, Baby, Smile, Globe, Heart, Info, RotateCcw,
-  Award, Building, UserRound, MapPin, Search, Cross, AlertTriangle
+  Award, Building, UserRound, MapPin, Search, Cross, AlertTriangle,
+  Layers, Shield
 } from 'lucide-react';
+import TabAseguradoras from './gmm/TabAseguradoras';
+import TabHospitales from './gmm/TabHospitales';
+import TabComparador from './gmm/TabComparador';
 import {
   GMM_COVERAGES, GMM_CATEGORY_LABELS, DEFAULT_GMM_COVERAGES,
   SUM_ASSURED_OPTIONS, DEDUCTIBLE_OPTIONS, COINSURANCE_OPTIONS,
@@ -37,9 +41,18 @@ const INSURER_LOGOS: Record<string, string> = {
 };
 
 type ViewMode = 'cards' | 'table';
+type GmmTab = 'disenador' | 'aseguradoras' | 'hospitales' | 'comparador';
+
+const GMM_TABS: { id: GmmTab; label: string; icon: React.FC<{ className?: string }> }[] = [
+  { id: 'disenador', label: 'Disenador', icon: Layers },
+  { id: 'aseguradoras', label: 'Aseguradoras', icon: Shield },
+  { id: 'hospitales', label: 'Hospitales', icon: Building2 },
+  { id: 'comparador', label: 'Comparador', icon: BarChart3 },
+];
 
 export default function DisenadorGMM() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<GmmTab>('disenador');
   const [selectedCoverages, setSelectedCoverages] = useState<string[]>(DEFAULT_GMM_COVERAGES);
   const [expandedCategories, setExpandedCategories] = useState<GmmCoverageCategory[]>(
     Object.keys(GMM_CATEGORY_LABELS) as GmmCoverageCategory[]
@@ -190,6 +203,34 @@ export default function DisenadorGMM() {
         </div>
       </div>
 
+      {/* Tab Navigation */}
+      <div className="flex items-center gap-1 mb-6 p-1 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 overflow-x-auto">
+        {GMM_TABS.map(tab => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                isActive
+                  ? 'bg-white dark:bg-gray-700 text-teal-700 dark:text-teal-300 shadow-sm border border-gray-200 dark:border-gray-600'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750'
+              }`}
+            >
+              <Icon className={`w-4 h-4 ${isActive ? 'text-teal-600 dark:text-teal-400' : ''}`} />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'aseguradoras' && <TabAseguradoras />}
+      {activeTab === 'hospitales' && <TabHospitales />}
+      {activeTab === 'comparador' && <TabComparador />}
+
+      {activeTab === 'disenador' && (
       <div className="grid lg:grid-cols-[380px_1fr] gap-6">
         {/* Left Panel */}
         <div className="space-y-4">
@@ -585,6 +626,7 @@ export default function DisenadorGMM() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }
