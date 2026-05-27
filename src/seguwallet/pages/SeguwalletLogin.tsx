@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, ArrowRight, ChevronLeft, RotateCcw, CheckCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import logoIcon from '../assets/logo-icon.svg';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -218,14 +219,8 @@ export function SeguwalletLogin() {
           {/* LEFT COLUMN */}
           <div className="hidden lg:flex lg:w-[52%] xl:w-[55%] flex-col items-start justify-between px-16 xl:px-24 py-14">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.1)' }}>
-                <svg viewBox="0 0 32 32" fill="none" className="w-6 h-6">
-                  <rect x="3" y="8" width="26" height="18" rx="3" stroke="white" strokeWidth="2"/>
-                  <path d="M3 13h26" stroke="white" strokeWidth="2"/>
-                  <circle cx="9" cy="19" r="2" fill="rgba(91,120,255,0.9)"/>
-                </svg>
-              </div>
-              <span className="text-xl font-bold text-white tracking-tight">Seguwallet</span>
+              <img src={logoIcon} alt="" className="w-10 h-10" style={{ filter: 'brightness(0) invert(1)' }} />
+              <span className="text-xl font-extrabold text-white tracking-tight" style={{ fontFamily: "'Inter','Segoe UI',Arial,sans-serif", letterSpacing: '-0.5px' }}>seguwallet</span>
             </div>
 
             <div className="max-w-md">
@@ -278,14 +273,8 @@ export function SeguwalletLogin() {
             {/* Mobile logo */}
             <div className="lg:hidden mb-10 text-center">
               <div className="flex items-center justify-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.1)' }}>
-                  <svg viewBox="0 0 32 32" fill="none" className="w-5 h-5">
-                    <rect x="3" y="8" width="26" height="18" rx="3" stroke="white" strokeWidth="2"/>
-                    <path d="M3 13h26" stroke="white" strokeWidth="2"/>
-                    <circle cx="9" cy="19" r="2" fill="rgba(91,120,255,0.9)"/>
-                  </svg>
-                </div>
-                <span className="text-xl font-bold text-white tracking-tight">Seguwallet</span>
+                <img src={logoIcon} alt="" className="w-9 h-9" style={{ filter: 'brightness(0) invert(1)' }} />
+                <span className="text-xl font-extrabold text-white tracking-tight" style={{ fontFamily: "'Inter','Segoe UI',Arial,sans-serif", letterSpacing: '-0.5px' }}>seguwallet</span>
               </div>
             </div>
 
