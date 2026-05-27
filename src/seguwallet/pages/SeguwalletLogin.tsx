@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, ArrowRight, ChevronLeft, RotateCcw, CheckCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import logoIcon from '../assets/logo-icon.svg';
+const SEGUWALLET_LOGO = 'https://app.seguwallet.mx/seguwallet-logo.png';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -219,8 +219,7 @@ export function SeguwalletLogin() {
           {/* LEFT COLUMN */}
           <div className="hidden lg:flex lg:w-[52%] xl:w-[55%] flex-col items-start justify-between px-16 xl:px-24 py-14">
             <div className="flex items-center gap-3">
-              <img src={logoIcon} alt="" className="w-10 h-10" style={{ filter: 'brightness(0) invert(1)' }} />
-              <span className="text-xl font-extrabold text-white tracking-tight" style={{ fontFamily: "'Inter','Segoe UI',Arial,sans-serif", letterSpacing: '-0.5px' }}>seguwallet</span>
+              <img src={SEGUWALLET_LOGO} alt="Seguwallet" className="h-8 w-auto" />
             </div>
 
             <div className="max-w-md">
