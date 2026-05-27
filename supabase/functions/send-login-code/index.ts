@@ -7,12 +7,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-// Charset excludes ambiguous chars: 0/O, 1/I/l
 const CHARSET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE_LENGTH = 6;
 const EXPIRES_MINUTES = 10;
-const MAX_ATTEMPTS = 5;
-const RATE_LIMIT_MINUTES = 2; // min time between new code requests per email
+const RATE_LIMIT_MINUTES = 2;
 
 function generateCode(): string {
   const arr = new Uint8Array(CODE_LENGTH);
@@ -30,65 +28,55 @@ async function sha256(text: string): Promise<string> {
 
 function normalizePhone(phone: string): string {
   const digits = phone.replace(/\D/g, '');
-  if (digits.startsWith('521')) return digits;
-  if (digits.startsWith('52') && digits.length === 12) return '5' + digits;
-  if (digits.startsWith('1') && digits.length === 11) return '52' + digits.slice(1);
-  if (digits.length === 10) return '521' + digits;
-  return digits;
+  let normalized: string;
+  if (digits.startsWith('521') && digits.length === 13) {
+    normalized = digits;
+  } else if (digits.startsWith('52') && digits.length === 12) {
+    normalized = '521' + digits.slice(2);
+  } else if (digits.startsWith('1') && digits.length === 11) {
+    normalized = '52' + digits.slice(1);
+  } else if (digits.length === 10) {
+    normalized = '521' + digits;
+  } else {
+    normalized = digits;
+  }
+  return '+' + normalized;
 }
 
-function buildEmailHtml(platform: 'movi' | 'seguwallet', userName: string, code: string, magicLink: string): string {
-  const isMovi = platform === 'movi';
-  const brandName = isMovi ? 'MOVI Digital' : 'Seguwallet';
-  const brandColor = isMovi ? '#0b2d6b' : '#0a1e5e';
-  const accentColor = isMovi ? '#1a56db' : '#1c37e0';
-  const greeting = userName ? `Hola, ${userName}` : 'Hola';
+function substituteVars(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? '');
+}
 
+function buildFallbackEmailHtml(brandName: string, userName: string, code: string, magicLink: string): string {
+  const greeting = userName ? `Hola, ${userName}` : 'Hola';
   return `<!DOCTYPE html>
 <html lang="es">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Tu código de acceso a ${brandName}</title>
-</head>
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
 <body style="margin:0;padding:0;background:#f4f7fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7fb;padding:40px 16px;">
   <tr><td align="center">
     <table width="100%" style="max-width:520px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-      <!-- Header -->
-      <tr><td style="background:${brandColor};padding:28px 32px;text-align:center;">
+      <tr><td style="background:#0b2d6b;padding:28px 32px;text-align:center;">
         <div style="font-size:22px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">${brandName}</div>
         <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:4px;">Código de acceso seguro</div>
       </td></tr>
-      <!-- Body -->
       <tr><td style="padding:36px 32px;">
         <p style="margin:0 0 8px;font-size:18px;font-weight:700;color:#111827;">${greeting}</p>
-        <p style="margin:0 0 28px;font-size:14px;color:#6b7280;line-height:1.6;">
-          Solicitaste acceso a <strong>${brandName}</strong>. Usa el siguiente código o el botón para ingresar.
-        </p>
-        <!-- Code box -->
-        <div style="background:#f8faff;border:2px solid ${accentColor};border-radius:12px;padding:24px;text-align:center;margin-bottom:28px;">
+        <p style="margin:0 0 28px;font-size:14px;color:#6b7280;line-height:1.6;">Solicitaste acceso a <strong>${brandName}</strong>. Usa el siguiente código o el botón para ingresar.</p>
+        <div style="background:#f8faff;border:2px solid #1a56db;border-radius:12px;padding:24px;text-align:center;margin-bottom:28px;">
           <div style="font-size:11px;font-weight:600;color:#6b7280;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">Tu código de acceso</div>
-          <div style="font-size:40px;font-weight:800;color:${brandColor};letter-spacing:10px;font-family:'Courier New',monospace;">${code}</div>
+          <div style="font-size:40px;font-weight:800;color:#0b2d6b;letter-spacing:10px;font-family:'Courier New',monospace;">${code}</div>
           <div style="font-size:12px;color:#9ca3af;margin-top:8px;">Válido por ${EXPIRES_MINUTES} minutos · Un solo uso</div>
         </div>
-        <!-- Magic link button -->
         <div style="text-align:center;margin-bottom:28px;">
-          <a href="${magicLink}" style="display:inline-block;background:${accentColor};color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:10px;letter-spacing:0.02em;">
-            Ingresar directamente →
-          </a>
-          <div style="font-size:11px;color:#9ca3af;margin-top:10px;">O copia este enlace: <span style="color:${accentColor};">${magicLink}</span></div>
+          <a href="${magicLink}" style="display:inline-block;background:#1a56db;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:10px;">Ingresar directamente →</a>
         </div>
-        <!-- Security notice -->
         <div style="background:#fef3c7;border-radius:8px;padding:14px 16px;">
-          <p style="margin:0;font-size:12px;color:#92400e;line-height:1.5;">
-            <strong>Aviso de seguridad:</strong> Si no solicitaste este acceso, ignora este mensaje. Tu cuenta permanece segura.
-          </p>
+          <p style="margin:0;font-size:12px;color:#92400e;line-height:1.5;"><strong>Aviso de seguridad:</strong> Si no solicitaste este acceso, ignora este mensaje.</p>
         </div>
       </td></tr>
-      <!-- Footer -->
       <tr><td style="border-top:1px solid #f0f0f0;padding:20px 32px;text-align:center;">
-        <p style="margin:0;font-size:11px;color:#9ca3af;">© ${new Date().getFullYear()} ${brandName} · Grupo JIRO</p>
+        <p style="margin:0;font-size:11px;color:#9ca3af;">Grupo JIRO · Sistema de acceso seguro</p>
       </td></tr>
     </table>
   </td></tr>
@@ -127,7 +115,6 @@ Deno.serve(async (req: Request) => {
     let userName: string | null = null;
 
     if (platform === 'movi') {
-      // Look up in usuarios table by email_laboral
       const { data: usuario } = await supabase
         .from('usuarios')
         .select('id, nombre, email_laboral, celular_laboral')
@@ -137,7 +124,6 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
 
       if (!usuario) {
-        // Don't reveal if user exists — always return success-like response
         return new Response(JSON.stringify({ success: true }), {
           status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -146,9 +132,7 @@ Deno.serve(async (req: Request) => {
       userEmail = usuario.email_laboral;
       userPhone = usuario.celular_laboral;
       userName = usuario.nombre;
-
     } else {
-      // Seguwallet: look up by email in seguwallet_customers
       const { data: customer } = await supabase
         .from('seguwallet_customers')
         .select('id, auth_user_id, email, full_name, phone, whatsapp, status')
@@ -172,7 +156,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // ── Rate limit: prevent spam (1 code per RATE_LIMIT_MINUTES per user) ─────
+    // ── Rate limit ─────────────────────────────────────────────────────────────
     const { data: recentToken } = await supabase
       .from('passwordless_login_tokens')
       .select('created_at')
@@ -193,7 +177,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // ── Invalidate any previous unused tokens ─────────────────────────────────
+    // ── Invalidate previous unused tokens ─────────────────────────────────────
     await supabase
       .from('passwordless_login_tokens')
       .update({ used_at: new Date().toISOString() })
@@ -231,14 +215,47 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // ── Build magic link ───────────────────────────────────────────────────────
+    // ── Build magic link and template vars ────────────────────────────────────
     const baseUrl = platform === 'movi' ? 'https://app.movi.digital' : 'https://app.seguwallet.mx';
     const magicLink = `${baseUrl}/auth/magic?token=${magicToken}&platform=${platform}`;
+    const brandName = platform === 'movi' ? 'MOVI Digital' : 'Seguwallet';
+
+    const vars: Record<string, string> = {
+      nombre: userName || '',
+      codigo: code,
+      magic_link: magicLink,
+      plataforma: brandName,
+      minutos_validez: String(EXPIRES_MINUTES),
+    };
+
+    // ── Load template from DB ──────────────────────────────────────────────────
+    const { data: typeRow } = await supabase
+      .from('correo_tipos_notificacion')
+      .select('id')
+      .eq('codigo', 'acceso_passwordless')
+      .maybeSingle();
+
+    let emailSubject = `Tu código de acceso a ${brandName}: ${code}`;
+    let emailHtml = buildFallbackEmailHtml(brandName, userName || '', code, magicLink);
+    let whatsappText = `Tu código de acceso a ${brandName} es: *${code}*\n\nTambién puedes ingresar aquí:\n${magicLink}\n\n_Este acceso vence en ${EXPIRES_MINUTES} minutos._`;
+
+    if (typeRow?.id) {
+      const { data: tpl } = await supabase
+        .from('correo_plantillas')
+        .select('asunto, html_cuerpo, whatsapp_plantilla')
+        .eq('tipo_notificacion_id', typeRow.id)
+        .maybeSingle();
+
+      if (tpl) {
+        if (tpl.asunto) emailSubject = substituteVars(tpl.asunto, vars);
+        if (tpl.html_cuerpo) emailHtml = substituteVars(tpl.html_cuerpo, vars);
+        if (tpl.whatsapp_plantilla) whatsappText = substituteVars(tpl.whatsapp_plantilla, vars);
+      }
+    }
 
     // ── Send email via Resend ─────────────────────────────────────────────────
     const resendKey = Deno.env.get('RESEND_API_KEY');
     if (resendKey && userEmail) {
-      const brandName = platform === 'movi' ? 'MOVI Digital' : 'Seguwallet';
       const fromEmail = platform === 'movi' ? 'noreply@movi.digital' : 'noreply@seguwallet.mx';
       try {
         await fetch('https://api.resend.com/emails', {
@@ -250,24 +267,19 @@ Deno.serve(async (req: Request) => {
           body: JSON.stringify({
             from: `${brandName} <${fromEmail}>`,
             to: [userEmail],
-            subject: `Tu código de acceso: ${code}`,
-            html: buildEmailHtml(platform, userName || '', code, magicLink),
+            subject: emailSubject,
+            html: emailHtml,
           }),
         });
       } catch (emailErr) {
         console.error('Error sending email:', emailErr);
-        // Don't fail the whole request if email fails
       }
     }
 
-    // ── Send WhatsApp if phone available ──────────────────────────────────────
+    // ── Send WhatsApp via Wazzup ──────────────────────────────────────────────
     if (userPhone) {
-      const brandName = platform === 'movi' ? 'MOVI' : 'Seguwallet';
       const normalizedPhone = normalizePhone(userPhone);
-      const whatsappMsg = `Tu código de acceso a ${brandName} es: *${code}*\n\nTambién puedes ingresar aquí:\n${magicLink}\n\n_Este acceso vence en ${EXPIRES_MINUTES} minutos._`;
-
       try {
-        // Check if WhatsApp (Wazzup) is configured
         const { data: wazzupConfig } = await supabase
           .from('notificaciones_config')
           .select('wazzup_api_key, wazzup_channel_id')
@@ -275,7 +287,7 @@ Deno.serve(async (req: Request) => {
           .maybeSingle();
 
         if (wazzupConfig?.wazzup_api_key && wazzupConfig?.wazzup_channel_id) {
-          await fetch('https://api.wazzup24.com/v3/message', {
+          const waRes = await fetch('https://api.wazzup24.com/v3/message', {
             method: 'POST',
             headers: {
               'X-Authorization': `Bearer ${wazzupConfig.wazzup_api_key}`,
@@ -285,17 +297,20 @@ Deno.serve(async (req: Request) => {
               channelId: wazzupConfig.wazzup_channel_id,
               chatType: 'whatsapp',
               chatId: normalizedPhone,
-              text: whatsappMsg,
+              text: whatsappText,
             }),
           });
+          if (!waRes.ok) {
+            const waBody = await waRes.text();
+            console.error('Wazzup error:', waRes.status, waBody, 'phone:', normalizedPhone);
+          }
         }
       } catch (waErr) {
         console.error('Error sending WhatsApp:', waErr);
-        // Don't fail if WhatsApp fails
       }
     }
 
-    // ── Return success (without leaking code) ────────────────────────────────
+    // ── Return success ────────────────────────────────────────────────────────
     const maskedEmail = userEmail
       ? userEmail.replace(/^(.{2})(.*)(@.*)$/, (_, a, b, c) => a + '*'.repeat(Math.max(1, b.length - 1)) + b.slice(-1) + c)
       : null;
