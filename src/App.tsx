@@ -99,6 +99,7 @@ import ManualesAdmin from './pages/ManualesAdmin';
 import CentroContactoAsistentes from './pages/CentroContactoAsistentes';
 import AsistenteEntrenamiento from './pages/AsistenteEntrenamiento';
 import PublicQuoteForm from './pages/PublicQuoteForm';
+import MagicLinkHandler from './pages/MagicLinkHandler';
 import AdminDigital from './pages/AdminDigital';
 import { SeguwalletAdmin } from './pages/SeguwalletAdmin';
 import { SeguwalletLogin } from './seguwallet/pages/SeguwalletLogin';
@@ -131,6 +132,7 @@ function SeguwalletApp() {
   return (
     <Routes>
       <Route path="/seguwallet/login" element={<SeguwalletLogin />} />
+      <Route path="/auth/magic" element={<MagicLinkHandler />} />
       <Route path="/seguwallet/completa-perfil" element={
         <SeguwalletProvider>
           <AgentBrandProvider>
@@ -172,6 +174,7 @@ function App() {
               <Routes>
               {/* Rutas autenticadas - se evalúan primero */}
               <Route path="/login" element={<Login />} />
+              <Route path="/auth/magic" element={<MagicLinkHandler />} />
               <Route path="/registro" element={<Registro />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />

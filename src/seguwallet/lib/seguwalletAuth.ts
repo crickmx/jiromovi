@@ -44,19 +44,15 @@ export async function getActiveSeguwalletTerms(): Promise<SeguwalletTerms | null
   return data[0] as SeguwalletTerms;
 }
 
-export async function seguwalletSignIn(email: string, password: string) {
-  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (authError) throw authError;
-
-  // Verify this auth user has a Seguwallet customer record
+/**
+ * Verify that a signed-in auth user has a valid Seguwallet customer record.
+ * Called after verifyOtp() succeeds in SeguwalletLogin.
+ */
+export async function verifySeguwalletCustomerAccess(authUserId: string) {
   const { data: customer, error: customerError } = await supabase
     .from('seguwallet_customers')
     .select('*')
-    .eq('auth_user_id', authData.user.id)
+    .eq('auth_user_id', authUserId)
     .maybeSingle();
 
   if (customerError) {
@@ -76,7 +72,12 @@ export async function seguwalletSignIn(email: string, password: string) {
     throw new Error('Tu cuenta esta inactiva. Contacta a tu agente.');
   }
 
-  return { user: authData.user, customer };
+  return customer;
+}
+
+/** @deprecated Use passwordless flow via send-login-code / verify-login-code edge functions */
+export async function seguwalletSignIn(_email: string, _password: string): Promise<never> {
+  throw new Error('Passwordless login required. Use the code-based flow.');
 }
 
 export async function seguwalletSignOut() {
