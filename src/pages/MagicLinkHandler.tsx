@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { useSearchParams } from 'react-router-dom';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 export default function MagicLinkHandler() {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -19,6 +17,10 @@ export default function MagicLinkHandler() {
       return;
     }
 
+    const redirectTo = platform === 'seguwallet'
+      ? `${window.location.origin}/seguwallet/dashboard`
+      : `${window.location.origin}/`;
+
     (async () => {
       try {
         const res = await fetch(`${SUPABASE_URL}/functions/v1/verify-login-code`, {
@@ -27,7 +29,7 @@ export default function MagicLinkHandler() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
           },
-          body: JSON.stringify({ magic_token: token, platform }),
+          body: JSON.stringify({ magic_token: token, platform, redirect_to: redirectTo }),
         });
 
         const data = await res.json();
@@ -41,21 +43,14 @@ export default function MagicLinkHandler() {
           return;
         }
 
-        const { error: otpError } = await supabase.auth.verifyOtp({
-          token_hash: data.token_hash,
-          type: 'magiclink',
-        });
-
-        if (otpError) {
-          setError('No se pudo crear la sesión. Intenta con el código manual.');
+        // Redirect to Supabase action_link — Supabase Auth creates the session
+        // and then redirects back to the app at redirect_to.
+        if (data.action_link) {
+          window.location.href = data.action_link;
           return;
         }
 
-        if (platform === 'seguwallet') {
-          navigate('/seguwallet/dashboard', { replace: true });
-        } else {
-          navigate('/', { replace: true });
-        }
+        setError('No se pudo crear la sesión. Intenta con el código manual.');
       } catch {
         setError('Error de conexión. Intenta de nuevo.');
       }

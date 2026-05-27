@@ -34,9 +34,10 @@ Deno.serve(async (req: Request) => {
       code?: string;
       magic_token?: string;
       platform: 'movi' | 'seguwallet';
+      redirect_to?: string;
     };
 
-    const { email, code, magic_token, platform } = body;
+    const { email, code, magic_token, platform, redirect_to } = body;
 
     if (!platform || (platform !== 'movi' && platform !== 'seguwallet')) {
       return new Response(JSON.stringify({ error: 'Plataforma inválida.' }), {
@@ -135,12 +136,20 @@ Deno.serve(async (req: Request) => {
       .update({ used_at: new Date().toISOString() })
       .eq('id', token.id);
 
-    // ── Generate a one-time magic link and extract the hashed_token ───────────
-    // admin.generateLink returns properties.hashed_token which can be used
-    // with verifyOtp({ token_hash, type: 'email' }) on the client side.
+    // ── Generate Supabase magic link ──────────────────────────────────────────
+    // For magic_token flow: return action_link so client can redirect directly
+    // to Supabase Auth which handles session creation via its own redirect.
+    // For code flow: use token_hash with verifyOtp on the client side.
+    const defaultRedirect = platform === 'seguwallet'
+      ? 'https://app.seguwallet.mx/seguwallet/dashboard'
+      : 'https://app.movi.digital/';
+
+    const finalRedirect = redirect_to || defaultRedirect;
+
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
       type: 'magiclink',
       email: token.email,
+      options: { redirectTo: finalRedirect },
     });
 
     if (linkError || !linkData?.properties?.hashed_token) {
@@ -154,7 +163,10 @@ Deno.serve(async (req: Request) => {
       success: true,
       user_id: token.user_id,
       platform,
+      // token_hash for verifyOtp (code flow)
       token_hash: linkData.properties.hashed_token,
+      // action_link for direct redirect (magic link flow) — Supabase handles session creation
+      action_link: linkData.properties.action_link,
       email: token.email,
     }), {
       status: 200,
