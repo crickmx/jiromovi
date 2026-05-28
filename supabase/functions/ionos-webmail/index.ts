@@ -294,24 +294,35 @@ async function getMessage(conn: Deno.TlsConn, uid: number, folder: string): Prom
   let bodyText: string | null = null;
   const attachments: { filename: string; contentType: string; size: number; partId: string }[] = [];
 
+  function extractContent(ct: string, partBody: string, partHeaders: string, disp: string, partId: string, depth: number): void {
+    if (depth > 5) return;
+    const ctLower = ct.toLowerCase();
+
+    if (ctLower.includes('multipart')) {
+      const nb = ct.match(/boundary="?([^";\s]+)"?/i)?.[1];
+      if (nb) {
+        parseParts(partBody, nb, (nct, nd, nh, nb2, npid) => {
+          extractContent(nct, nb2, nh, nd, `${partId}.${npid}`, depth + 1);
+        });
+      }
+    } else if (ctLower.includes('text/html') && !bodyHtml && !disp.includes('attachment')) {
+      bodyHtml = decodePartContent(partBody, partHeaders);
+    } else if (ctLower.includes('text/plain') && !bodyText && !disp.includes('attachment')) {
+      bodyText = decodePartContent(partBody, partHeaders);
+    } else if (disp.includes('attachment') || (disp.includes('inline') && extractFilenameFromHeaders(partHeaders))) {
+      const fn = extractFilenameFromHeaders(partHeaders) || `adjunto_${partId}`;
+      attachments.push({ filename: fn, contentType: ctLower.split(';')[0], size: partBody.length, partId });
+    } else if (!ctLower.includes('text/') && !ctLower.includes('multipart')) {
+      const fn = extractFilenameFromHeaders(partHeaders) || `adjunto_${partId}`;
+      attachments.push({ filename: fn, contentType: ctLower.split(';')[0], size: partBody.length, partId });
+    }
+  }
+
   if (contentType.toLowerCase().includes('multipart')) {
-    const boundary = contentType.match(/boundary="?([^";\s]+)"?/)?.[1];
+    const boundary = contentType.match(/boundary="?([^";\s]+)"?/i)?.[1];
     if (boundary) {
       parseParts(body, boundary, (ct, disp, partHeaders, partBody, partId) => {
-        if (disp.includes('attachment') || (ct !== 'text/plain' && ct !== 'text/html' && !ct.includes('multipart'))) {
-          const fn = extractFilenameFromHeaders(partHeaders) || `adjunto_${partId}`;
-          attachments.push({ filename: fn, contentType: ct.split(';')[0], size: partBody.length, partId });
-        } else if (ct.includes('text/html') && !bodyHtml) {
-          bodyHtml = decodePartContent(partBody, partHeaders);
-        } else if (ct.includes('text/plain') && !bodyText) {
-          bodyText = decodePartContent(partBody, partHeaders);
-        } else if (ct.includes('multipart')) {
-          const nb = ct.match(/boundary="?([^";\s]+)"?/)?.[1];
-          if (nb) parseParts(partBody, nb, (nct, _nd, nh, nb2, _npid) => {
-            if (nct.includes('text/html') && !bodyHtml) bodyHtml = decodePartContent(nb2, nh);
-            else if (nct.includes('text/plain') && !bodyText) bodyText = decodePartContent(nb2, nh);
-          });
-        }
+        extractContent(ct, partBody, partHeaders, disp, partId, 0);
       });
     }
   } else if (contentType.includes('text/html')) {
@@ -605,26 +616,41 @@ Deno.serve(async (req: Request) => {
         // Append sent message to Sent folder via IMAP
         try {
           const sentMsg = buildRfc822Message(creds.email, creds.nombre, body.to, body.cc || [], body.subject, body.bodyHtml, body.bodyText || '', body.inReplyTo, body.references);
+          const sentMsgBytes = new TextEncoder().encode(sentMsg);
           const conn = await imapConnect('imap.ionos.mx', 993);
           if (await imapLogin(conn, creds.email, creds.password)) {
-            // Try common Sent folder names
-            const sentFolders = ['Sent', 'INBOX.Sent', 'Enviados', 'Sent Items', 'Sent Messages'];
-            let sentFolder = 'Sent';
+            // Detect the Sent folder from LIST
             const listResp = await imapCommand(conn, 'LIST "" "*"');
-            for (const sf of sentFolders) {
-              if (listResp.includes(`"${sf}"`) || listResp.toLowerCase().includes(sf.toLowerCase())) {
+            let sentFolder = 'Sent';
+            const sentFolderCandidates = ['Sent', 'Enviados', 'Sent Items', 'Sent Messages', 'INBOX.Sent'];
+            for (const sf of sentFolderCandidates) {
+              if (listResp.includes(`"${sf}"`)) {
                 sentFolder = sf;
                 break;
               }
             }
-            const appendCmd = `APPEND "${sentFolder}" (\\Seen) {${new TextEncoder().encode(sentMsg).length}}`;
+            // IMAP APPEND with literal
             const tag = `A${++tagCounter}`;
-            await conn.write(new TextEncoder().encode(`${tag} ${appendCmd}\r\n`));
-            // Wait for continuation (+)
-            const contBuf = new Uint8Array(1024);
-            const cn = await conn.read(contBuf);
-            if (cn && new TextDecoder().decode(contBuf.subarray(0, cn)).includes('+')) {
-              await conn.write(new TextEncoder().encode(sentMsg + '\r\n'));
+            const appendLine = `${tag} APPEND "${sentFolder}" (\\Seen) {${sentMsgBytes.length}}\r\n`;
+            await conn.write(new TextEncoder().encode(appendLine));
+            // Read server response - expect continuation "+"
+            const waitBuf = new Uint8Array(4096);
+            let waitResp = '';
+            const waitStart = Date.now();
+            while (Date.now() - waitStart < 5000) {
+              const wn = await Promise.race([
+                conn.read(waitBuf),
+                new Promise<null>(r => setTimeout(() => r(null), 5000)),
+              ]);
+              if (wn === null || typeof wn !== 'number') break;
+              waitResp += new TextDecoder().decode(waitBuf.subarray(0, wn));
+              if (waitResp.includes('+') || waitResp.includes(tag)) break;
+            }
+            if (waitResp.includes('+')) {
+              // Server ready to receive literal data
+              await conn.write(sentMsgBytes);
+              await conn.write(new TextEncoder().encode('\r\n'));
+              // Wait for completion
               await imapReadUntilTag(conn, tag);
             }
             await imapLogout(conn);
