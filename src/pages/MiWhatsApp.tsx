@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { cn } from '@/lib/utils';
@@ -100,6 +100,48 @@ const EMOJI_CATEGORIES: { name: string; emojis: string[] }[] = [
   { name: 'Simbolos', emojis: ['✅','❌','⭕','❗','❓','💡','⚠️','🚫','✨','💫','⭐','🌟','❤️','🧡','💛','💚','💙','💜','🖤','🤍','💔','❤️‍🔥','💯','🔥','💥','💢','💦','💨','🕊️','☮️'] },
 ];
 
+// ── WhatsApp markdown parser ──────────────────────────────────────
+
+function parseWhatsAppText(text: string): React.ReactNode[] {
+  // Split on code blocks first (```...```) then inline patterns
+  const nodes: React.ReactNode[] = [];
+  let remaining = text;
+  let key = 0;
+
+  // Ordered patterns: multiline code block, inline code, bold, italic, strikethrough
+  const patterns: [RegExp, (match: string, inner: string) => React.ReactNode][] = [
+    [/```([\s\S]*?)```/g, (_m, inner) => <code key={key++} className="block font-mono bg-black/10 dark:bg-white/10 rounded px-2 py-1 text-[0.8em] whitespace-pre-wrap my-0.5">{inner}</code>],
+    [/`([^`\n]+)`/g, (_m, inner) => <code key={key++} className="font-mono bg-black/10 dark:bg-white/10 rounded px-1 text-[0.85em]">{inner}</code>],
+    [/\*\*([^*\n]+)\*\*/g, (_m, inner) => <strong key={key++} className="font-bold">{inner}</strong>],
+    [/\*([^*\n]+)\*/g, (_m, inner) => <strong key={key++} className="font-bold">{inner}</strong>],
+    [/_([^_\n]+)_/g, (_m, inner) => <em key={key++} className="italic">{inner}</em>],
+    [/~([^~\n]+)~/g, (_m, inner) => <del key={key++} className="line-through opacity-70">{inner}</del>],
+  ];
+
+  // Tokenise by finding the earliest match among all patterns
+  while (remaining.length > 0) {
+    let earliest: { index: number; match: RegExpExecArray; render: (m: string, i: string) => React.ReactNode } | null = null;
+    for (const [re, render] of patterns) {
+      re.lastIndex = 0;
+      const m = re.exec(remaining);
+      if (m && (earliest === null || m.index < earliest.index)) {
+        earliest = { index: m.index, match: m, render };
+      }
+    }
+    if (!earliest) {
+      nodes.push(<span key={key++}>{remaining}</span>);
+      break;
+    }
+    if (earliest.index > 0) {
+      nodes.push(<span key={key++}>{remaining.slice(0, earliest.index)}</span>);
+    }
+    nodes.push(earliest.render(earliest.match[0], earliest.match[1]));
+    remaining = remaining.slice(earliest.index + earliest.match[0].length);
+  }
+
+  return nodes;
+}
+
 // ── Main Component ────────────────────────────────────────────────
 
 export default function MiWhatsApp() {
@@ -153,13 +195,18 @@ export default function MiWhatsApp() {
     const { data: { session: authSession } } = await supabase.auth.getSession();
     if (!authSession?.access_token) return null;
     const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-session`;
-    const resp = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${authSession.access_token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, ...extra }),
-    });
-    if (!resp.ok) return null;
-    return resp.json();
+    try {
+      const resp = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${authSession.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, ...extra }),
+      });
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok) return data ?? { error: `HTTP ${resp.status}` };
+      return data;
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : 'Error de red' };
+    }
   };
 
   useEffect(() => {
@@ -170,6 +217,47 @@ export default function MiWhatsApp() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Real-time: listen for new messages in the selected conversation
+  useEffect(() => {
+    if (!selectedConversation) return;
+    const convId = selectedConversation.id;
+    const channel = supabase
+      .channel(`wa_msgs_${convId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'whatsapp_messages',
+        filter: `conversation_id=eq.${convId}`,
+      }, (payload) => {
+        const newMsg = payload.new as Message;
+        setMessages(prev => {
+          // Avoid duplicates (optimistic messages use temp UUIDs)
+          if (prev.some(m => m.id === newMsg.id)) return prev;
+          return [...prev, newMsg];
+        });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [selectedConversation?.id]);
+
+  // Real-time: refresh conversation list when a new message arrives for any conversation
+  useEffect(() => {
+    if (!usuario) return;
+    const channel = supabase
+      .channel('wa_convs_updates')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'whatsapp_conversations',
+      }, () => {
+        callEdgeFunction('get-conversations').then(result => {
+          if (result?.conversations) setConversations(result.conversations);
+        });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [usuario?.id]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -187,12 +275,24 @@ export default function MiWhatsApp() {
 
   const resolveContactName = useCallback((conv: Conversation): string => {
     const phone = conv.remote_phone;
-    const contact = contactNames[phone];
-    if (contact?.display_name && contact.display_name !== phone) return contact.display_name;
-    if (conv.remote_name && conv.remote_name !== phone) return conv.remote_name;
+    // Strip leading 521 → 52 for lookup since contacts may store either form
+    const phoneVariants = [phone, phone.replace(/^521/, '52'), phone.replace(/^52/, '521')];
+    for (const p of phoneVariants) {
+      const contact = contactNames[p];
+      if (contact?.display_name && contact.display_name !== p && contact.display_name !== phone) {
+        return contact.display_name;
+      }
+    }
+    if (conv.remote_name && conv.remote_name !== phone && conv.remote_name.trim().length > 0) {
+      return conv.remote_name;
+    }
     // Format phone for display
-    if (phone.length === 12 && phone.startsWith('52')) {
-      return `+${phone.slice(0, 2)} ${phone.slice(2, 5)} ${phone.slice(5, 8)} ${phone.slice(8)}`;
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length === 12 && digits.startsWith('52')) {
+      return `+${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
+    }
+    if (digits.length === 13 && digits.startsWith('521')) {
+      return `+52 ${digits.slice(3, 6)} ${digits.slice(6, 9)} ${digits.slice(9)}`;
     }
     return phone;
   }, [contactNames]);
@@ -256,6 +356,14 @@ export default function MiWhatsApp() {
     loadMessages(conv.id);
     if (conv.unread_count > 0) {
       setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, unread_count: 0 } : c));
+      // Mark as read server-side (best effort)
+      callEdgeFunction('mark-read', { conversationId: conv.id }).catch(() => {});
+    }
+    // Refresh contact info for this conversation if name is missing
+    if (!conv.remote_name || conv.remote_name === conv.remote_phone) {
+      callEdgeFunction('get-contacts').then(r => {
+        if (r?.contacts) setContactNames(r.contacts);
+      });
     }
   };
 
@@ -1015,7 +1123,7 @@ export default function MiWhatsApp() {
                           {/* Text content (only for text messages or captions not already shown) */}
                           {msg.message_type === 'text' && msg.content && (
                             <p className={cn('text-sm leading-relaxed whitespace-pre-wrap break-words', msg.direction === 'outbound' && !msg.is_internal_note ? 'text-white' : 'text-neutral-800 dark:text-white/80')}>
-                              {msg.content}
+                              {parseWhatsAppText(msg.content)}
                             </p>
                           )}
 
