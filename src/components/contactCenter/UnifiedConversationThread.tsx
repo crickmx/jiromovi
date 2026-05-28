@@ -530,25 +530,39 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
   }, [conversation.id, isMoviChannel, conversation.agentUserId]);
 
   // ── Send message ────────────────────────────────────────────────────────────
+  const [sendError, setSendError] = useState<string | null>(null);
+
   const sendMessage = async () => {
     if (!text.trim() || sending) return;
     const body = text.trim();
+    const savedText = body;
     setText('');
     setSending(true);
+    setSendError(null);
     try {
       const { channel, sourceId } = conversation;
       if (channel === 'wa_movi') {
-        if (conversation.contactPhone) {
-          await callEdgeFn('send-contact-whatsapp', { phone: conversation.contactPhone, message: body, agent_user_id: currentUserId });
+        if (!conversation.contactPhone) throw new Error('No se encontro el telefono del contacto');
+        const result = await callEdgeFn('send-contact-whatsapp', {
+          contactPhone: conversation.contactPhone,
+          message: body,
+          agent_user_id: currentUserId,
+        });
+        if (result?.error || result?.success === false) {
+          throw new Error(result?.error || result?.message || 'Error al enviar por WA MOVI');
         }
       } else if (channel === 'wa_personal') {
-        const { data: conv } = await supabase.from('whatsapp_conversations').select('remote_phone').eq('id', sourceId).single();
-        await supabase.functions.invoke('whatsapp-session', { body: { action: 'send-message', phone: conv?.remote_phone, message: body } });
-        await supabase.from('whatsapp_messages').insert({ conversation_id: sourceId, user_id: currentUserId, direction: 'outbound', message_type: 'text', content: body, status: 'pending' });
+        const { data: conv } = await supabase.from('whatsapp_conversations').select('remote_phone').eq('id', sourceId).maybeSingle();
+        if (!conv?.remote_phone) throw new Error('No se encontro el telefono del contacto');
+        const result = await callEdgeFn('whatsapp-session', { action: 'send-message', phone: conv.remote_phone, message: body });
+        if (result?.error) throw new Error(result.error);
       } else if (channel === 'chat') {
         await supabase.from('chat_mensajes').insert({ chat_id: sourceId, remitente_id: currentUserId, mensaje: body });
       }
       await loadMessages();
+    } catch (err: any) {
+      setText(savedText);
+      setSendError(err.message || 'No se pudo enviar el mensaje');
     } finally {
       setSending(false);
       textRef.current?.focus();
@@ -1148,6 +1162,15 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>
+        {sendError && (
+          <div className="flex items-center gap-2 mt-1.5 px-2.5 py-1.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-lg">
+            <AlertCircle className="w-3 h-3 text-red-500 flex-shrink-0" />
+            <p className="text-[11px] text-red-600 dark:text-red-400 flex-1">{sendError}</p>
+            <button onClick={() => setSendError(null)} className="text-red-400 hover:text-red-600 flex-shrink-0">
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
         <p className="text-[10px] text-neutral-400 mt-1 text-center">
           {CHANNEL_LABELS[conversation.channel]}
           {text.length > 450 && <span className="ml-2 text-amber-500">{text.length}/550</span>}

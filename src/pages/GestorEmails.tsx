@@ -6,9 +6,10 @@ import {
   Mail, Send, FileText, Trash2, AlertCircle, Inbox, Search, RefreshCw,
   Paperclip, ChevronLeft, ChevronRight, Settings, Plus, Archive,
   MailOpen, Eye, EyeOff, FolderOpen, X, ArrowLeft, Reply, ReplyAll,
-  Forward, Download, ChevronDown, ChevronUp
+  Forward, Download, ChevronDown, ChevronUp, ClipboardList
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { IniciarTramiteEmailModal } from '@/components/email/IniciarTramiteEmailModal';
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -162,6 +163,9 @@ export function GestorEmails() {
 
   // Mobile: show reading pane full screen
   const [mobileShowReading, setMobileShowReading] = useState(false);
+
+  // Tramite from email
+  const [showTramiteModal, setShowTramiteModal] = useState(false);
 
   useEffect(() => { checkConfig(); }, [usuario]);
 
@@ -543,6 +547,7 @@ export function GestorEmails() {
               onReply={() => { setComposeMode('reply'); setShowCompose(true); }}
               onReplyAll={() => { setComposeMode('replyAll'); setShowCompose(true); }}
               onForward={() => { setComposeMode('forward'); setShowCompose(true); }}
+              onIniciarTramite={() => setShowTramiteModal(true)}
               currentFolder={currentFolder}
             />
           ) : (
@@ -570,6 +575,20 @@ export function GestorEmails() {
           configEmail={configEmail}
         />
       )}
+
+      {/* Iniciar Tramite Modal */}
+      {selectedMessage && (
+        <IniciarTramiteEmailModal
+          isOpen={showTramiteModal}
+          onClose={() => setShowTramiteModal(false)}
+          email={selectedMessage}
+          emailAccount={configEmail}
+          currentFolder={currentFolder}
+          onSuccess={(ticketId, folio) => {
+            setShowTramiteModal(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -577,7 +596,7 @@ export function GestorEmails() {
 // ── Reading Pane ────────────────────────────────────────────────────
 
 function ReadingPane({
-  message, loading, onBack, onMarkRead, onDelete, onReply, onReplyAll, onForward, currentFolder,
+  message, loading, onBack, onMarkRead, onDelete, onReply, onReplyAll, onForward, onIniciarTramite, currentFolder,
 }: {
   message: EmailFull;
   loading: boolean;
@@ -587,10 +606,26 @@ function ReadingPane({
   onReply: () => void;
   onReplyAll: () => void;
   onForward: () => void;
+  onIniciarTramite: () => void;
   currentFolder: string;
 }) {
   const [showFullHeaders, setShowFullHeaders] = useState(false);
+  const [existingTramite, setExistingTramite] = useState<{ id: string; folio: string } | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    if (message.messageId) {
+      supabase
+        .from('tickets')
+        .select('id, folio')
+        .eq('canal_origen', 'email')
+        .eq('source_email_message_id', message.messageId)
+        .maybeSingle()
+        .then(({ data }) => setExistingTramite(data || null));
+    } else {
+      setExistingTramite(null);
+    }
+  }, [message.messageId]);
 
   useEffect(() => {
     if (iframeRef.current && message.bodyHtml) {
@@ -662,9 +697,17 @@ function ReadingPane({
         </button>
 
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-bold text-neutral-800 dark:text-white truncate">
-            {message.subject || '(Sin asunto)'}
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold text-neutral-800 dark:text-white truncate">
+              {message.subject || '(Sin asunto)'}
+            </h2>
+            {existingTramite && (
+              <span className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 rounded-full text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                <ClipboardList className="w-3 h-3" />
+                {existingTramite.folio}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-0.5 flex-shrink-0">
@@ -771,6 +814,18 @@ function ReadingPane({
             <button onClick={onForward} className="flex items-center gap-1.5 px-3.5 py-2 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 transition text-xs font-medium">
               <Forward className="w-3.5 h-3.5" /> Reenviar
             </button>
+            {existingTramite ? (
+              <a
+                href={`/tramites/${existingTramite.id}`}
+                className="flex items-center gap-1.5 px-3.5 py-2 border border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition text-xs font-medium"
+              >
+                <ClipboardList className="w-3.5 h-3.5" /> Ver tramite {existingTramite.folio}
+              </a>
+            ) : (
+              <button onClick={onIniciarTramite} className="flex items-center gap-1.5 px-3.5 py-2 border border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition text-xs font-medium">
+                <ClipboardList className="w-3.5 h-3.5" /> Iniciar tramite
+              </button>
+            )}
           </div>
         </div>
       </div>

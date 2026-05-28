@@ -7,6 +7,8 @@ import { type CCChannel, type CCStatus } from '@/lib/contactCenterTypes';
 import {
   type UnifiedConversation,
   mergeConversations,
+  buildContactNameMap,
+  normalizeMexicanPhone,
 } from '@/lib/unifiedContactCenter';
 import { UnifiedConversationList } from '@/components/contactCenter/UnifiedConversationList';
 import { UnifiedConversationThread } from '@/components/contactCenter/UnifiedConversationThread';
@@ -108,23 +110,27 @@ export default function CentroContactoUnificado() {
 
       const { data: moviMsgs } = await moviQuery.limit(500);
 
-      // Resolve CRM contact names for WA MOVI phones
-      const moviContactNames: Record<string, string> = {};
+      // Resolve CRM contact names for WA MOVI phones (normalized comparison)
       const moviPhones = [...new Set((moviMsgs || []).map((m: any) => m.contact_phone).filter(Boolean))];
+      let crmContacts: any[] = [];
       if (moviPhones.length > 0) {
-        const { data: crmContacts } = await supabase
+        // Query CRM with both original phones AND normalized 10-digit versions
+        const normalizedPhones = [...new Set(moviPhones.map(normalizeMexicanPhone).filter((p: string) => p.length >= 10))];
+        const allPhoneVariants = [...new Set([...moviPhones, ...normalizedPhones])];
+        const { data } = await supabase
           .from('crm_contactos')
           .select('telefono, nombre, apellido')
-          .in('telefono', moviPhones);
-        for (const c of crmContacts || []) {
-          if (c.telefono) {
-            moviContactNames[c.telefono] = [c.nombre, c.apellido].filter(Boolean).join(' ').trim() || c.telefono;
-          }
-        }
-        for (const m of moviMsgs || []) {
-          if (m.contact_phone && m.contact_name && !moviContactNames[m.contact_phone]) {
-            moviContactNames[m.contact_phone] = m.contact_name;
-          }
+          .in('telefono', allPhoneVariants);
+        crmContacts = data || [];
+      }
+      // Build normalized name map (CRM priority > WhatsApp pushName from messages)
+      const normalizedNameMap = buildContactNameMap(crmContacts, moviMsgs || []);
+      // Convert to format expected by mergeConversations (keyed by both original and normalized phone)
+      const moviContactNames: Record<string, string> = { ...normalizedNameMap };
+      for (const phone of moviPhones) {
+        const norm = normalizeMexicanPhone(phone);
+        if (normalizedNameMap[norm] && !moviContactNames[phone]) {
+          moviContactNames[phone] = normalizedNameMap[norm];
         }
       }
 

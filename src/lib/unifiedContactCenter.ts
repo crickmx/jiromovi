@@ -86,11 +86,14 @@ export function mergeConversations({
     const unread = msgs.filter(m => m.direction === 'inbound' && !m.read_at).length;
 
     const phone = latest.contact_phone || null;
-    // Resolve name: CRM lookup > message contact_name > metadata > phone
+    // Resolve name: normalized map lookup (CRM > pushName) > exact match > message fields
+    const normalizedKey = phone ? normalizeMexicanPhone(phone) : '';
     const resolvedName =
       (phone && moviContactNames[phone]) ||
+      (normalizedKey && moviContactNames[normalizedKey]) ||
       latest.contact_name ||
       (latest.metadata as any)?.contact_name ||
+      (latest.metadata as any)?.pushName ||
       null;
 
     result.push({
@@ -192,6 +195,64 @@ export function formatMoviPhone(phone: string): string {
     return `${clean.slice(0, 3)} ${clean.slice(3, 6)} ${clean.slice(6)}`;
   }
   return phone;
+}
+
+/**
+ * Extracts the last 10 digits from a Mexican phone number regardless of format.
+ * Handles: "5512345678", "+52 55 1234 5678", "521XXXXXXXXXX", "52XXXXXXXXXX", etc.
+ */
+export function normalizeMexicanPhone(phone: string): string {
+  if (!phone) return '';
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 10) return digits;
+  if (digits.length === 12 && digits.startsWith('52')) return digits.slice(2);
+  if (digits.length === 13 && digits.startsWith('521')) return digits.slice(3);
+  if (digits.length > 10) return digits.slice(-10);
+  return digits;
+}
+
+/**
+ * Builds a name lookup map from CRM contacts and message metadata using normalized phones.
+ */
+export function buildContactNameMap(
+  crmContacts: { telefono?: string | null; nombre?: string | null; apellido?: string | null }[],
+  messages: { contact_phone?: string | null; contact_name?: string | null; metadata?: any }[],
+): Record<string, string> {
+  const nameMap: Record<string, string> = {};
+
+  // CRM contacts take highest priority
+  for (const c of crmContacts) {
+    if (!c.telefono) continue;
+    const norm = normalizeMexicanPhone(c.telefono);
+    if (norm.length >= 10) {
+      const fullName = [c.nombre, c.apellido].filter(Boolean).join(' ').trim();
+      if (fullName) nameMap[norm] = fullName;
+    }
+  }
+
+  // Then message-level contact_name (from Wazzup webhook pushName)
+  for (const m of messages) {
+    if (!m.contact_phone) continue;
+    const norm = normalizeMexicanPhone(m.contact_phone);
+    if (norm.length >= 10 && !nameMap[norm]) {
+      const name = m.contact_name || (m.metadata as any)?.contact_name || (m.metadata as any)?.pushName;
+      if (name) nameMap[norm] = name;
+    }
+  }
+
+  return nameMap;
+}
+
+/**
+ * Resolves the original phone -> name using a normalized map.
+ */
+export function resolveNameByPhone(
+  originalPhone: string,
+  normalizedNameMap: Record<string, string>,
+): string | null {
+  if (!originalPhone) return null;
+  const norm = normalizeMexicanPhone(originalPhone);
+  return normalizedNameMap[norm] || null;
 }
 
 export { CHANNEL_LABELS, CHANNEL_COLORS, formatTime };
