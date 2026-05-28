@@ -54,9 +54,7 @@ export default function DisenadorGMM() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<GmmTab>('disenador');
   const [selectedCoverages, setSelectedCoverages] = useState<string[]>(DEFAULT_GMM_COVERAGES);
-  const [expandedCategories, setExpandedCategories] = useState<GmmCoverageCategory[]>(
-    Object.keys(GMM_CATEGORY_LABELS) as GmmCoverageCategory[]
-  );
+  const [expandedCategories, setExpandedCategories] = useState<GmmCoverageCategory[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const [detailInsurer, setDetailInsurer] = useState<string | null>(null);
   const [sumAssured, setSumAssured] = useState(10_000_000);
@@ -458,7 +456,7 @@ export default function DisenadorGMM() {
             </button>
           </div>
 
-          <div className="max-h-[calc(100vh-700px)] overflow-y-auto space-y-2 pr-1 scrollbar-thin">
+          <div className="max-h-64 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
             {(Object.entries(coveragesByCategory) as [GmmCoverageCategory, typeof GMM_COVERAGES][]).map(([cat, coverages]) => {
               const catLabel = GMM_CATEGORY_LABELS[cat];
               const IconComp = ICON_MAP[catLabel.icon] || Heart;

@@ -26,9 +26,7 @@ type ViewMode = 'cards' | 'table';
 export default function DisenadorAuto() {
   const navigate = useNavigate();
   const [selectedCoverages, setSelectedCoverages] = useState<string[]>(DEFAULT_SELECTED_COVERAGES);
-  const [expandedCategories, setExpandedCategories] = useState<CoverageCategory[]>(
-    Object.keys(CATEGORY_LABELS) as CoverageCategory[]
-  );
+  const [expandedCategories, setExpandedCategories] = useState<CoverageCategory[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const [detailInsurer, setDetailInsurer] = useState<string | null>(null);
 
