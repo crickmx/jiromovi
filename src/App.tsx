@@ -21,6 +21,7 @@ import AlaMedida from './pages/comercial/AlaMedida';
 import DisenadorAuto from './pages/comercial/disenadores/DisenadorAuto';
 import DisenadorGMM from './pages/comercial/disenadores/DisenadorGMM';
 import { GestorEmails } from './pages/GestorEmails';
+import { FirmasEmail } from './pages/FirmasEmail';
 import { AccesosNacional } from './pages/AccesosNacional';
 import { DirectorioJiro } from './pages/DirectorioJiro';
 import { SegurosEducation } from './pages/SegurosEducation';
@@ -223,6 +224,7 @@ function App() {
               <Route path="/mercadotecnia/mi-pagina-web" element={<ProtectedRoute><Layout><Mercadotecnia section="mi-pagina-web" /></Layout></ProtectedRoute>} />
               <Route path="/mercadotecnia/publicidad" element={<ProtectedRoute><Layout><Mercadotecnia section="publicidad" /></Layout></ProtectedRoute>} />
               <Route path="/gestor-emails" element={<ProtectedRoute><Layout><GestorEmails /></Layout></ProtectedRoute>} />
+              <Route path="/firmas-email" element={<ProtectedRoute requireAdmin><Layout><FirmasEmail /></Layout></ProtectedRoute>} />
               <Route path="/centro-digital" element={<ProtectedRoute><CentroDigital /></ProtectedRoute>} />
               <Route path="/chat" element={<Navigate to="/centro-contacto" replace />} />
               <Route path="/accesos-nacional" element={<ProtectedRoute><AccesosNacional /></ProtectedRoute>} />

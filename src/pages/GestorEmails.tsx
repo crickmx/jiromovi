@@ -1,12 +1,16 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { getRenderedSignature, stripExistingSignature } from '../lib/emailSignatureUtils';
 import {
   Mail, Send, FileText, Trash2, AlertCircle, Inbox, Search, RefreshCw,
-  Star, Paperclip, ChevronLeft, ChevronRight, Settings, Plus, Archive,
-  MailOpen, Eye, EyeOff, FolderOpen, X, ArrowLeft
+  Paperclip, ChevronLeft, ChevronRight, Settings, Plus, Archive,
+  MailOpen, Eye, EyeOff, FolderOpen, X, ArrowLeft, Reply, ReplyAll,
+  Forward, Download, ChevronDown, ChevronUp
 } from 'lucide-react';
-import { LoadingState } from '@/components/ui/loading-state';
+import { cn } from '@/lib/utils';
+
+// ── Types ───────────────────────────────────────────────────────────
 
 interface ImapFolder {
   name: string;
@@ -48,8 +52,10 @@ interface EmailFull {
   attachments: { filename: string; contentType: string; size: number; partId: string }[];
 }
 
+// ── Constants ───────────────────────────────────────────────────────
+
 const FOLDER_META: Record<string, { label: string; icon: typeof Inbox }> = {
-  'INBOX': { label: 'Bandeja de entrada', icon: Inbox },
+  'INBOX': { label: 'Entrada', icon: Inbox },
   'Sent': { label: 'Enviados', icon: Send },
   'Drafts': { label: 'Borradores', icon: FileText },
   'Trash': { label: 'Papelera', icon: Trash2 },
@@ -65,6 +71,8 @@ function getFolderLabel(path: string): string {
 function getFolderIcon(path: string) {
   return FOLDER_META[path]?.icon || FolderOpen;
 }
+
+// ── API Helper ──────────────────────────────────────────────────────
 
 async function callWebmail(action: string, params: Record<string, unknown> = {}): Promise<any> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -87,47 +95,75 @@ async function callWebmail(action: string, params: Record<string, unknown> = {})
   return data;
 }
 
+// ── Helpers ─────────────────────────────────────────────────────────
+
+function formatDate(dateStr: string) {
+  try {
+    const d = new Date(dateStr);
+    const now = new Date();
+    if (d.toDateString() === now.toDateString()) {
+      return d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    }
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) return 'Ayer';
+    return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+  } catch { return dateStr; }
+}
+
+function formatFullDate(dateStr: string) {
+  try {
+    return new Date(dateStr).toLocaleString('es-MX', {
+      day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+  } catch { return dateStr; }
+}
+
+function formatSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getInitials(name: string) {
+  return name.split(' ').slice(0, 2).map(w => w.charAt(0)).join('').toUpperCase() || '?';
+}
+
+// ── Main Component ──────────────────────────────────────────────────
+
 export function GestorEmails() {
   const { usuario } = useAuth();
 
-  // Config state
   const [hasConfig, setHasConfig] = useState<boolean | null>(null);
   const [configEmail, setConfigEmail] = useState('');
   const [showSetup, setShowSetup] = useState(false);
 
-  // Folder state
   const [folders, setFolders] = useState<ImapFolder[]>([]);
   const [currentFolder, setCurrentFolder] = useState('INBOX');
 
-  // Message list state
   const [messages, setMessages] = useState<EmailHeader[]>([]);
   const [totalMessages, setTotalMessages] = useState(0);
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(25);
+  const [perPage] = useState(30);
   const [loadingMessages, setLoadingMessages] = useState(false);
 
-  // Selected message state
   const [selectedMessage, setSelectedMessage] = useState<EmailFull | null>(null);
   const [loadingMessage, setLoadingMessage] = useState(false);
 
-  // Compose state
   const [showCompose, setShowCompose] = useState(false);
   const [composeMode, setComposeMode] = useState<'new' | 'reply' | 'replyAll' | 'forward'>('new');
 
-  // Search state
-  const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<EmailHeader[] | null>(null);
   const [searching, setSearching] = useState(false);
 
-  // General
   const [error, setError] = useState('');
   const [initialLoading, setInitialLoading] = useState(true);
 
-  // Check config on mount
-  useEffect(() => {
-    checkConfig();
-  }, [usuario]);
+  // Mobile: show reading pane full screen
+  const [mobileShowReading, setMobileShowReading] = useState(false);
+
+  useEffect(() => { checkConfig(); }, [usuario]);
 
   const checkConfig = async () => {
     if (!usuario) return;
@@ -186,7 +222,7 @@ export function GestorEmails() {
     try {
       const data = await callWebmail('get-message', { uid, folder: currentFolder });
       setSelectedMessage(data);
-      // Mark as read locally
+      setMobileShowReading(true);
       setMessages(prev => prev.map(m => m.uid === uid ? { ...m, seen: true } : m));
     } catch (err: any) {
       setError(err.message);
@@ -209,7 +245,10 @@ export function GestorEmails() {
     try {
       await callWebmail('delete-message', { uid, folder: currentFolder });
       setMessages(prev => prev.filter(m => m.uid !== uid));
-      if (selectedMessage?.uid === uid) setSelectedMessage(null);
+      if (selectedMessage?.uid === uid) {
+        setSelectedMessage(null);
+        setMobileShowReading(false);
+      }
     } catch (err: any) {
       setError(err.message);
     }
@@ -237,131 +276,126 @@ export function GestorEmails() {
   const totalPages = Math.ceil(totalMessages / perPage);
   const displayMessages = searchResults ?? messages;
 
-  const formatDate = (dateStr: string) => {
-    try {
-      const d = new Date(dateStr);
-      const now = new Date();
-      if (d.toDateString() === now.toDateString()) {
-        return d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-      }
-      const yesterday = new Date(now);
-      yesterday.setDate(yesterday.getDate() - 1);
-      if (d.toDateString() === yesterday.toDateString()) return 'Ayer';
-      return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
-    } catch { return dateStr; }
-  };
-
-  const formatSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
-  // ── Setup screen ─────────────────────────────────────────────
+  // ── Setup / Loading screens ────────────────────────────────────────
   if (showSetup || hasConfig === false) {
-    return <SetupScreen onSuccess={() => { setShowSetup(false); checkConfig(); }} onClose={() => setShowSetup(false)} />;
+    return <SetupScreen onSuccess={() => { setShowSetup(false); checkConfig(); }} />;
   }
 
   if (initialLoading) {
-    return <LoadingState text="Conectando con el servidor de correo..." className="min-h-screen" />;
+    return (
+      <div className="h-full flex items-center justify-center bg-neutral-50 dark:bg-neutral-900">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center animate-pulse">
+            <Mail className="w-5 h-5 text-accent" />
+          </div>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">Conectando...</p>
+        </div>
+      </div>
+    );
   }
 
+  // ── 3-Column Layout ────────────────────────────────────────────────
   return (
-    <div className="h-screen flex flex-col bg-neutral-50 dark:bg-neutral-900">
-      {/* Header */}
-      <header className="bg-white dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-white/10 px-4 py-3 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <Mail className="w-7 h-7 text-accent" />
-          <div>
-            <h1 className="text-xl font-display font-bold text-accent">Mi E-Mail</h1>
-            <p className="text-xs text-neutral-500 dark:text-white/50">{configEmail}</p>
+    <div className="h-full flex flex-col bg-neutral-50 dark:bg-neutral-900 overflow-hidden">
+      {/* Top Bar */}
+      <header className="bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 px-4 py-2.5 flex items-center gap-3 flex-shrink-0">
+        <Mail className="w-5 h-5 text-accent flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h1 className="text-sm font-bold text-neutral-800 dark:text-white truncate">Mi E-Mail</h1>
+            <span className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate hidden sm:inline">{configEmail}</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Search bar */}
-          <div className="relative hidden md:block">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder="Buscar correos..."
-              className="w-64 pl-9 pr-3 py-2 text-sm bg-neutral-100 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50"
-            />
-            <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            {searchResults && (
-              <button
-                onClick={() => { setSearchResults(null); setSearchQuery(''); }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-
-          <button
-            onClick={handleRefresh}
-            disabled={loadingMessages}
-            className="p-2 text-neutral-600 dark:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-all disabled:opacity-50"
-            title="Actualizar"
-          >
-            <RefreshCw className={`w-5 h-5 ${loadingMessages ? 'animate-spin' : ''}`} />
-          </button>
-
-          <button
-            onClick={() => setShowSetup(true)}
-            className="p-2 text-neutral-600 dark:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-all"
-            title="Configuracion"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
-
-          <button
-            onClick={() => { setShowCompose(true); setComposeMode('new'); }}
-            className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover transition-all font-medium text-sm"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Redactar</span>
-          </button>
+        {/* Search */}
+        <div className="relative hidden md:block">
+          <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            placeholder="Buscar..."
+            className="w-48 lg:w-56 pl-8 pr-8 py-1.5 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-accent/50 transition"
+          />
+          {(searchResults || searching) && (
+            <button
+              onClick={() => { setSearchResults(null); setSearchQuery(''); }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
+
+        <button
+          onClick={handleRefresh}
+          disabled={loadingMessages}
+          className="p-1.5 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition disabled:opacity-40"
+          title="Actualizar"
+        >
+          <RefreshCw className={cn('w-4 h-4', loadingMessages && 'animate-spin')} />
+        </button>
+
+        <button
+          onClick={() => setShowSetup(true)}
+          className="p-1.5 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition"
+          title="Configuracion"
+        >
+          <Settings className="w-4 h-4" />
+        </button>
+
+        <button
+          onClick={() => { setShowCompose(true); setComposeMode('new'); }}
+          className="flex items-center gap-1.5 bg-accent text-white px-3 py-1.5 rounded-lg hover:bg-accent/90 transition font-medium text-xs"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Redactar</span>
+        </button>
       </header>
 
       {/* Error bar */}
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800/30 px-4 py-2 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-red-600" />
-          <span className="text-sm text-red-700 dark:text-red-300 flex-1">{error}</span>
-          <button onClick={() => setError('')} className="text-red-400 hover:text-red-600"><X className="w-4 h-4" /></button>
+        <div className="bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800/30 px-4 py-1.5 flex items-center gap-2 flex-shrink-0">
+          <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+          <span className="text-xs text-red-700 dark:text-red-300 flex-1 truncate">{error}</span>
+          <button onClick={() => setError('')} className="text-red-400 hover:text-red-600"><X className="w-3.5 h-3.5" /></button>
         </div>
       )}
 
-      {/* Main */}
+      {/* Main 3-column area */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Folders sidebar */}
-        <aside className="w-56 bg-white dark:bg-neutral-800/50 border-r border-neutral-200 dark:border-white/10 overflow-y-auto flex-shrink-0 hidden md:block">
-          <nav className="p-3 space-y-0.5">
+        {/* Column 1: Folders */}
+        <aside className="w-48 lg:w-52 bg-white dark:bg-neutral-800 border-r border-neutral-200 dark:border-neutral-700 overflow-y-auto flex-shrink-0 hidden md:flex flex-col">
+          <nav className="p-2 space-y-0.5 flex-1">
             {folders.map((f) => {
               const Icon = getFolderIcon(f.path);
               const isActive = currentFolder === f.path && !searchResults;
               return (
                 <button
                   key={f.path}
-                  onClick={() => { setSelectedMessage(null); setSearchResults(null); setPage(1); loadMessages(f.path, 1); }}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-all ${
+                  onClick={() => {
+                    setSelectedMessage(null);
+                    setSearchResults(null);
+                    setPage(1);
+                    loadMessages(f.path, 1);
+                  }}
+                  className={cn(
+                    'w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition-all',
                     isActive
                       ? 'bg-accent/10 text-accent font-semibold'
-                      : 'text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/5'
-                  }`}
+                      : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700/50'
+                  )}
                 >
-                  <div className="flex items-center gap-2.5">
-                    <Icon className="w-4 h-4" />
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Icon className="w-3.5 h-3.5 flex-shrink-0" />
                     <span className="truncate">{getFolderLabel(f.path)}</span>
                   </div>
                   {f.unseen > 0 && (
-                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
-                      isActive ? 'bg-accent text-white' : 'bg-neutral-200 dark:bg-white/10 text-neutral-600 dark:text-white/60'
-                    }`}>
+                    <span className={cn(
+                      'text-[10px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0',
+                      isActive ? 'bg-accent text-white' : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300'
+                    )}>
                       {f.unseen}
                     </span>
                   )}
@@ -371,254 +405,158 @@ export function GestorEmails() {
           </nav>
         </aside>
 
-        {/* Message list OR Reading pane */}
-        {selectedMessage ? (
-          // Reading pane
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="px-4 py-3 border-b border-neutral-200 dark:border-white/10 flex items-center gap-3 bg-white dark:bg-neutral-800/50 flex-shrink-0">
-              <button
-                onClick={() => setSelectedMessage(null)}
-                className="p-1.5 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-all"
-              >
-                <ArrowLeft className="w-5 h-5 text-neutral-600 dark:text-white/60" />
-              </button>
-              <div className="flex-1 min-w-0">
-                <h2 className="font-semibold text-neutral-900 dark:text-white truncate">
-                  {selectedMessage.subject || '(Sin asunto)'}
-                </h2>
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => handleMarkRead(selectedMessage.uid, !selectedMessage.seen)}
-                  className="p-2 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-all"
-                  title={selectedMessage.seen ? 'Marcar como no leido' : 'Marcar como leido'}
-                >
-                  {selectedMessage.seen ? <EyeOff className="w-4 h-4 text-neutral-500" /> : <Eye className="w-4 h-4 text-neutral-500" />}
-                </button>
-                <button
-                  onClick={() => handleDelete(selectedMessage.uid)}
-                  className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                  title="Eliminar"
-                >
-                  <Trash2 className="w-4 h-4 text-red-500" />
-                </button>
-              </div>
+        {/* Column 2: Message List */}
+        <div className={cn(
+          'w-full md:w-80 lg:w-96 flex flex-col border-r border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/50 flex-shrink-0',
+          mobileShowReading && 'hidden md:flex'
+        )}>
+          {/* List header */}
+          <div className="px-3 py-2.5 border-b border-neutral-100 dark:border-neutral-700/50 flex items-center justify-between flex-shrink-0">
+            <div>
+              <h2 className="text-xs font-bold text-neutral-800 dark:text-white">
+                {searchResults ? `"${searchQuery}"` : getFolderLabel(currentFolder)}
+              </h2>
+              <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
+                {searchResults
+                  ? `${searchResults.length} resultado${searchResults.length !== 1 ? 's' : ''}`
+                  : `${totalMessages} mensaje${totalMessages !== 1 ? 's' : ''}`
+                }
+              </p>
             </div>
-
-            <div className="flex-1 overflow-y-auto">
-              {loadingMessage ? (
-                <LoadingState text="Cargando mensaje..." className="h-full" />
-              ) : (
-                <div className="max-w-4xl mx-auto p-6">
-                  {/* Message metadata */}
-                  <div className="mb-6 space-y-2">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-semibold text-neutral-900 dark:text-white">{selectedMessage.from}</p>
-                        <p className="text-sm text-neutral-500 dark:text-white/50">&lt;{selectedMessage.fromEmail}&gt;</p>
-                      </div>
-                      <p className="text-sm text-neutral-500 dark:text-white/50 flex-shrink-0">
-                        {new Date(selectedMessage.date).toLocaleString('es-MX', {
-                          day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                        })}
-                      </p>
-                    </div>
-                    {selectedMessage.to.length > 0 && (
-                      <p className="text-sm text-neutral-600 dark:text-white/60">
-                        <span className="font-medium">Para:</span> {selectedMessage.to.join(', ')}
-                      </p>
-                    )}
-                    {selectedMessage.cc.length > 0 && (
-                      <p className="text-sm text-neutral-600 dark:text-white/60">
-                        <span className="font-medium">CC:</span> {selectedMessage.cc.join(', ')}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Attachments */}
-                  {selectedMessage.attachments.length > 0 && (
-                    <div className="mb-4 p-3 bg-neutral-50 dark:bg-white/5 rounded-lg border border-neutral-200 dark:border-white/10">
-                      <p className="text-xs font-medium text-neutral-500 dark:text-white/50 mb-2 flex items-center gap-1">
-                        <Paperclip className="w-3.5 h-3.5" />
-                        {selectedMessage.attachments.length} adjunto{selectedMessage.attachments.length !== 1 ? 's' : ''}
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedMessage.attachments.map((att, i) => (
-                          <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-white/10 border border-neutral-200 dark:border-white/10 rounded-md text-xs text-neutral-700 dark:text-white/70">
-                            <FileText className="w-3.5 h-3.5" />
-                            {att.filename}
-                            <span className="text-neutral-400">({formatSize(att.size)})</span>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Body */}
-                  <div className="border border-neutral-200 dark:border-white/10 rounded-lg overflow-hidden bg-white dark:bg-neutral-800/50">
-                    {selectedMessage.bodyHtml ? (
-                      <iframe
-                        srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;line-height:1.6;color:#333;margin:16px;word-break:break-word}img{max-width:100%}a{color:#0066cc}</style></head><body>${selectedMessage.bodyHtml}</body></html>`}
-                        className="w-full min-h-[400px] border-0"
-                        sandbox="allow-same-origin"
-                        title="Contenido del correo"
-                      />
-                    ) : (
-                      <pre className="p-4 whitespace-pre-wrap text-sm text-neutral-700 dark:text-white/70 font-sans">
-                        {selectedMessage.bodyText}
-                      </pre>
-                    )}
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      onClick={() => { setComposeMode('reply'); setShowCompose(true); }}
-                      className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-all text-sm font-medium"
-                    >
-                      Responder
-                    </button>
-                    <button
-                      onClick={() => { setComposeMode('replyAll'); setShowCompose(true); }}
-                      className="px-4 py-2 border border-neutral-300 dark:border-white/15 text-neutral-700 dark:text-white/70 rounded-lg hover:bg-neutral-50 dark:hover:bg-white/5 transition-all text-sm"
-                    >
-                      Responder a todos
-                    </button>
-                    <button
-                      onClick={() => { setComposeMode('forward'); setShowCompose(true); }}
-                      className="px-4 py-2 border border-neutral-300 dark:border-white/15 text-neutral-700 dark:text-white/70 rounded-lg hover:bg-neutral-50 dark:hover:bg-white/5 transition-all text-sm"
-                    >
-                      Reenviar
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            {!searchResults && totalPages > 1 && (
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={() => { const p = Math.max(1, page - 1); setPage(p); loadMessages(currentFolder, p); }}
+                  disabled={page <= 1}
+                  className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded disabled:opacity-30 transition"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <span className="text-[10px] text-neutral-400 dark:text-neutral-500 min-w-[36px] text-center tabular-nums">
+                  {page}/{totalPages}
+                </span>
+                <button
+                  onClick={() => { const p = Math.min(totalPages, page + 1); setPage(p); loadMessages(currentFolder, p); }}
+                  disabled={page >= totalPages}
+                  className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded disabled:opacity-30 transition"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </div>
-        ) : (
-          // Message list
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {/* List header */}
-            <div className="px-4 py-3 border-b border-neutral-200 dark:border-white/10 flex items-center justify-between bg-white dark:bg-neutral-800/50 flex-shrink-0">
-              <div>
-                <h2 className="font-semibold text-neutral-900 dark:text-white">
-                  {searchResults ? `Resultados: "${searchQuery}"` : getFolderLabel(currentFolder)}
-                </h2>
-                <p className="text-xs text-neutral-500 dark:text-white/50">
-                  {searchResults
-                    ? `${searchResults.length} encontrados`
-                    : `${totalMessages} mensaje${totalMessages !== 1 ? 's' : ''}`
-                  }
+
+          {/* Message rows */}
+          <div className="flex-1 overflow-y-auto">
+            {loadingMessages ? (
+              <div className="p-3 space-y-2">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="flex items-start gap-2.5 p-2.5 rounded-lg animate-pulse">
+                    <div className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-700 flex-shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3 bg-neutral-100 dark:bg-neutral-700 rounded w-3/4" />
+                      <div className="h-2.5 bg-neutral-100 dark:bg-neutral-700 rounded w-1/2" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : displayMessages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full px-6 text-center">
+                <div className="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-neutral-700 flex items-center justify-center mb-2">
+                  <Mail className="w-5 h-5 text-neutral-300 dark:text-neutral-500" />
+                </div>
+                <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                  {searchResults ? 'Sin resultados' : 'Carpeta vacia'}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <select
-                  value={perPage}
-                  onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); loadMessages(currentFolder, 1); }}
-                  className="text-xs px-2 py-1.5 border border-neutral-200 dark:border-white/10 rounded-md bg-white dark:bg-neutral-800 text-neutral-700 dark:text-white/70"
-                >
-                  <option value={25}>25 por pagina</option>
-                  <option value={50}>50 por pagina</option>
-                  <option value={100}>100 por pagina</option>
-                </select>
-                {!searchResults && totalPages > 1 && (
-                  <div className="flex items-center gap-1">
+            ) : (
+              <div className="py-1">
+                {displayMessages.map((msg) => {
+                  const isActive = selectedMessage?.uid === msg.uid;
+                  return (
                     <button
-                      onClick={() => { setPage(p => Math.max(1, p - 1)); loadMessages(currentFolder, Math.max(1, page - 1)); }}
-                      disabled={page <= 1}
-                      className="p-1.5 hover:bg-neutral-100 dark:hover:bg-white/10 rounded disabled:opacity-30 transition-all"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <span className="text-xs text-neutral-500 dark:text-white/50 min-w-[60px] text-center">
-                      {page} / {totalPages}
-                    </span>
-                    <button
-                      onClick={() => { setPage(p => Math.min(totalPages, p + 1)); loadMessages(currentFolder, Math.min(totalPages, page + 1)); }}
-                      disabled={page >= totalPages}
-                      className="p-1.5 hover:bg-neutral-100 dark:hover:bg-white/10 rounded disabled:opacity-30 transition-all"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto">
-              {loadingMessages ? (
-                <LoadingState text="Cargando mensajes..." className="h-full" />
-              ) : displayMessages.length === 0 ? (
-                <div className="h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <Mail className="w-12 h-12 text-neutral-300 dark:text-white/20 mx-auto mb-3" />
-                    <p className="text-neutral-500 dark:text-white/50 text-sm">
-                      {searchResults ? 'Sin resultados' : 'No hay mensajes en esta carpeta'}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="divide-y divide-neutral-100 dark:divide-white/5">
-                  {displayMessages.map((msg) => (
-                    <div
                       key={msg.uid}
                       onClick={() => openMessage(msg.uid)}
-                      className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-all group ${
-                        !msg.seen
-                          ? 'bg-accent/5 dark:bg-accent/10 hover:bg-accent/10 dark:hover:bg-accent/15'
-                          : 'hover:bg-neutral-50 dark:hover:bg-white/5'
-                      }`}
+                      className={cn(
+                        'w-full text-left px-3 py-2.5 flex items-start gap-2.5 transition-all group',
+                        isActive
+                          ? 'bg-accent/8 dark:bg-accent/15'
+                          : !msg.seen
+                          ? 'bg-blue-50/50 dark:bg-blue-900/10 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                          : 'hover:bg-neutral-50 dark:hover:bg-neutral-700/30'
+                      )}
                     >
-                      {/* Unread indicator */}
-                      <div className="w-2 flex-shrink-0">
-                        {!msg.seen && <div className="w-2 h-2 rounded-full bg-accent" />}
+                      {/* Avatar */}
+                      <div className={cn(
+                        'w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0',
+                        isActive ? 'bg-accent/20 text-accent' : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400'
+                      )}>
+                        {getInitials(msg.from || msg.fromEmail)}
                       </div>
 
-                      {/* Sender */}
-                      <div className="w-44 flex-shrink-0 truncate">
-                        <span className={`text-sm ${!msg.seen ? 'font-semibold text-neutral-900 dark:text-white' : 'text-neutral-700 dark:text-white/70'}`}>
-                          {msg.from || msg.fromEmail}
-                        </span>
+                      <div className="flex-1 min-w-0">
+                        {/* Row 1: Sender + Date */}
+                        <div className="flex items-center justify-between gap-2 mb-0.5">
+                          <span className={cn(
+                            'text-xs truncate',
+                            !msg.seen ? 'font-bold text-neutral-900 dark:text-white' : 'font-medium text-neutral-600 dark:text-neutral-300'
+                          )}>
+                            {msg.from || msg.fromEmail}
+                          </span>
+                          <span className="text-[10px] text-neutral-400 dark:text-neutral-500 flex-shrink-0 tabular-nums">
+                            {formatDate(msg.date)}
+                          </span>
+                        </div>
+                        {/* Row 2: Subject */}
+                        <div className="flex items-center gap-1.5">
+                          {!msg.seen && <div className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />}
+                          <span className={cn(
+                            'text-[11px] truncate',
+                            !msg.seen ? 'text-neutral-800 dark:text-neutral-200' : 'text-neutral-500 dark:text-neutral-400'
+                          )}>
+                            {msg.subject || '(Sin asunto)'}
+                          </span>
+                          {msg.hasAttachments && <Paperclip className="w-3 h-3 text-neutral-300 dark:text-neutral-600 flex-shrink-0" />}
+                        </div>
                       </div>
-
-                      {/* Subject + preview */}
-                      <div className="flex-1 min-w-0 flex items-center gap-2">
-                        <span className={`text-sm truncate ${!msg.seen ? 'font-semibold text-neutral-900 dark:text-white' : 'text-neutral-700 dark:text-white/70'}`}>
-                          {msg.subject || '(Sin asunto)'}
-                        </span>
-                        {msg.hasAttachments && <Paperclip className="w-3.5 h-3.5 text-neutral-400 dark:text-white/40 flex-shrink-0" />}
-                      </div>
-
-                      {/* Date */}
-                      <span className="text-xs text-neutral-500 dark:text-white/50 flex-shrink-0 w-16 text-right">
-                        {formatDate(msg.date)}
-                      </span>
-
-                      {/* Actions on hover */}
-                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleMarkRead(msg.uid, !msg.seen); }}
-                          className="p-1.5 hover:bg-neutral-200 dark:hover:bg-white/10 rounded transition-all"
-                          title={msg.seen ? 'Marcar no leido' : 'Marcar leido'}
-                        >
-                          {msg.seen ? <MailOpen className="w-3.5 h-3.5 text-neutral-500" /> : <Eye className="w-3.5 h-3.5 text-neutral-500" />}
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(msg.uid); }}
-                          className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/20 rounded transition-all"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
+        </div>
+
+        {/* Column 3: Reading Pane */}
+        <div className={cn(
+          'flex-1 flex flex-col bg-white dark:bg-neutral-900 overflow-hidden',
+          !mobileShowReading && !selectedMessage && 'hidden md:flex',
+          mobileShowReading && 'flex'
+        )}>
+          {selectedMessage ? (
+            <ReadingPane
+              message={selectedMessage}
+              loading={loadingMessage}
+              onBack={() => { setSelectedMessage(null); setMobileShowReading(false); }}
+              onMarkRead={(read) => handleMarkRead(selectedMessage.uid, read)}
+              onDelete={() => handleDelete(selectedMessage.uid)}
+              onReply={() => { setComposeMode('reply'); setShowCompose(true); }}
+              onReplyAll={() => { setComposeMode('replyAll'); setShowCompose(true); }}
+              onForward={() => { setComposeMode('forward'); setShowCompose(true); }}
+              currentFolder={currentFolder}
+            />
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-14 h-14 rounded-2xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mx-auto mb-3">
+                  <Mail className="w-7 h-7 text-neutral-300 dark:text-neutral-600" />
+                </div>
+                <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Selecciona un mensaje</p>
+                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">para ver su contenido</p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Compose Modal */}
@@ -628,19 +566,218 @@ export function GestorEmails() {
           replyTo={selectedMessage}
           onClose={() => setShowCompose(false)}
           onSent={() => { setShowCompose(false); handleRefresh(); }}
+          usuarioId={usuario?.id}
         />
       )}
     </div>
   );
 }
 
-// ── Setup Screen ─────────────────────────────────────────────────
+// ── Reading Pane ────────────────────────────────────────────────────
 
-function SetupScreen({ onSuccess, onClose }: { onSuccess: () => void; onClose: () => void }) {
+function ReadingPane({
+  message, loading, onBack, onMarkRead, onDelete, onReply, onReplyAll, onForward, currentFolder,
+}: {
+  message: EmailFull;
+  loading: boolean;
+  onBack: () => void;
+  onMarkRead: (read: boolean) => void;
+  onDelete: () => void;
+  onReply: () => void;
+  onReplyAll: () => void;
+  onForward: () => void;
+  currentFolder: string;
+}) {
+  const [showFullHeaders, setShowFullHeaders] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    if (iframeRef.current && message.bodyHtml) {
+      const doc = iframeRef.current.contentDocument;
+      if (doc) {
+        doc.open();
+        doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.6; color: #333; margin: 20px; word-break: break-word; }
+          img { max-width: 100%; height: auto; }
+          a { color: #0066cc; }
+          table { max-width: 100% !important; }
+          @media (prefers-color-scheme: dark) { body { color: #e0e0e0; background: #1a1a1a; } a { color: #66b3ff; } }
+        </style></head><body>${message.bodyHtml}</body></html>`);
+        doc.close();
+        // Auto-resize iframe
+        setTimeout(() => {
+          if (iframeRef.current?.contentDocument?.body) {
+            iframeRef.current.style.height = `${iframeRef.current.contentDocument.body.scrollHeight + 40}px`;
+          }
+        }, 200);
+      }
+    }
+  }, [message.bodyHtml]);
+
+  const handleDownloadAttachment = async (att: { filename: string; partId: string }) => {
+    try {
+      const data = await callWebmail('download-attachment', {
+        uid: message.uid,
+        folder: currentFolder,
+        partId: att.partId,
+      });
+      if (data.content) {
+        const binaryStr = atob(data.content);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+        const blob = new Blob([bytes], { type: data.contentType || 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = att.filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch { /* silent */ }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center animate-pulse">
+            <Mail className="w-4 h-4 text-accent" />
+          </div>
+          <p className="text-xs text-neutral-400">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Reading pane header */}
+      <div className="px-4 py-2.5 border-b border-neutral-100 dark:border-neutral-700/50 flex items-center gap-2 flex-shrink-0 bg-neutral-50/50 dark:bg-neutral-800/30">
+        <button
+          onClick={onBack}
+          className="p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded-lg transition md:hidden"
+        >
+          <ArrowLeft className="w-4 h-4 text-neutral-500" />
+        </button>
+
+        <div className="flex-1 min-w-0">
+          <h2 className="text-sm font-bold text-neutral-800 dark:text-white truncate">
+            {message.subject || '(Sin asunto)'}
+          </h2>
+        </div>
+
+        <div className="flex items-center gap-0.5 flex-shrink-0">
+          <button onClick={() => onMarkRead(!message.seen)} className="p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded-lg transition" title={message.seen ? 'Marcar no leido' : 'Marcar leido'}>
+            {message.seen ? <EyeOff className="w-4 h-4 text-neutral-400" /> : <Eye className="w-4 h-4 text-neutral-400" />}
+          </button>
+          <button onClick={onDelete} className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition" title="Eliminar">
+            <Trash2 className="w-4 h-4 text-red-400" />
+          </button>
+        </div>
+      </div>
+
+      {/* Message content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto p-4 lg:p-6">
+          {/* Sender info */}
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-sm font-bold text-accent flex-shrink-0">
+              {getInitials(message.from)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-neutral-800 dark:text-white truncate">{message.from}</p>
+                  <p className="text-[11px] text-neutral-400 dark:text-neutral-500 truncate">{message.fromEmail}</p>
+                </div>
+                <span className="text-[11px] text-neutral-400 dark:text-neutral-500 flex-shrink-0 whitespace-nowrap">
+                  {formatFullDate(message.date)}
+                </span>
+              </div>
+
+              {/* Recipients */}
+              <button
+                onClick={() => setShowFullHeaders(!showFullHeaders)}
+                className="flex items-center gap-1 mt-1 text-[11px] text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition"
+              >
+                <span>Para: {message.to.slice(0, 2).join(', ')}{message.to.length > 2 ? ` +${message.to.length - 2}` : ''}</span>
+                {showFullHeaders ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
+
+              {showFullHeaders && (
+                <div className="mt-1.5 pl-0 space-y-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">
+                  <p><span className="font-medium">Para:</span> {message.to.join(', ')}</p>
+                  {message.cc.length > 0 && <p><span className="font-medium">CC:</span> {message.cc.join(', ')}</p>}
+                  {message.bcc.length > 0 && <p><span className="font-medium">CCO:</span> {message.bcc.join(', ')}</p>}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Attachments */}
+          {message.attachments.length > 0 && (
+            <div className="mb-4 p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-100 dark:border-neutral-700/50">
+              <p className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Paperclip className="w-3 h-3" />
+                {message.attachments.length} adjunto{message.attachments.length !== 1 ? 's' : ''}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {message.attachments.map((att, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleDownloadAttachment(att)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded-lg text-[11px] text-neutral-700 dark:text-neutral-200 hover:border-accent/50 hover:bg-accent/5 transition group"
+                  >
+                    <FileText className="w-3 h-3 text-neutral-400 group-hover:text-accent" />
+                    <span className="truncate max-w-[120px]">{att.filename}</span>
+                    <span className="text-neutral-300 dark:text-neutral-500">({formatSize(att.size)})</span>
+                    <Download className="w-3 h-3 text-neutral-300 group-hover:text-accent" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Email body */}
+          <div className="rounded-xl border border-neutral-100 dark:border-neutral-700/50 overflow-hidden bg-white dark:bg-neutral-800">
+            {message.bodyHtml ? (
+              <iframe
+                ref={iframeRef}
+                className="w-full min-h-[300px] border-0"
+                sandbox="allow-same-origin"
+                title="Contenido del correo"
+              />
+            ) : (
+              <pre className="p-4 whitespace-pre-wrap text-sm text-neutral-700 dark:text-neutral-300 font-sans leading-relaxed">
+                {message.bodyText}
+              </pre>
+            )}
+          </div>
+
+          {/* Action buttons */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button onClick={onReply} className="flex items-center gap-1.5 px-3.5 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition text-xs font-medium">
+              <Reply className="w-3.5 h-3.5" /> Responder
+            </button>
+            <button onClick={onReplyAll} className="flex items-center gap-1.5 px-3.5 py-2 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 transition text-xs font-medium">
+              <ReplyAll className="w-3.5 h-3.5" /> Responder a todos
+            </button>
+            <button onClick={onForward} className="flex items-center gap-1.5 px-3.5 py-2 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 transition text-xs font-medium">
+              <Forward className="w-3.5 h-3.5" /> Reenviar
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Setup Screen ────────────────────────────────────────────────────
+
+function SetupScreen({ onSuccess }: { onSuccess: () => void }) {
   const { usuario } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState('');
   const [verified, setVerified] = useState(false);
@@ -650,7 +787,6 @@ function SetupScreen({ onSuccess, onClose }: { onSuccess: () => void; onClose: (
     setVerifying(true);
     setError('');
     try {
-      // Save config first
       await supabase
         .from('email_configuraciones')
         .upsert({
@@ -660,7 +796,6 @@ function SetupScreen({ onSuccess, onClose }: { onSuccess: () => void; onClose: (
           activa: true,
         }, { onConflict: 'usuario_id' });
 
-      // Test connection
       const result = await callWebmail('verify-connection');
       if (result.success) {
         setVerified(true);
@@ -669,27 +804,22 @@ function SetupScreen({ onSuccess, onClose }: { onSuccess: () => void; onClose: (
       }
     } catch (err: any) {
       setError(err.message);
-      // Remove bad config
       await supabase.from('email_configuraciones').delete().eq('usuario_id', usuario!.id);
     } finally {
       setVerifying(false);
     }
   };
 
-  const handleContinue = () => {
-    onSuccess();
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-900 p-4">
+    <div className="h-full flex items-center justify-center bg-neutral-50 dark:bg-neutral-900 p-4">
       <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-lg max-w-md w-full p-8">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
-            <Mail className="w-8 h-8 text-accent" />
+          <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-4">
+            <Mail className="w-7 h-7 text-accent" />
           </div>
-          <h1 className="text-2xl font-display font-bold text-neutral-900 dark:text-white">Configura tu correo IONOS</h1>
-          <p className="text-sm text-neutral-500 dark:text-white/50 mt-2">
-            Ingresa tus credenciales para acceder a tu buzon de correo
+          <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Configura tu correo</h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
+            Ingresa tus credenciales IONOS
           </p>
         </div>
 
@@ -706,10 +836,10 @@ function SetupScreen({ onSuccess, onClose }: { onSuccess: () => void; onClose: (
               <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
             </div>
             <p className="font-semibold text-neutral-900 dark:text-white">Conexion exitosa</p>
-            <p className="text-sm text-neutral-500 dark:text-white/50">Tu cuenta {email} esta lista para usar</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">Tu cuenta {email} esta lista</p>
             <button
-              onClick={handleContinue}
-              className="w-full py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent-hover transition-all"
+              onClick={onSuccess}
+              className="w-full py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent/90 transition"
             >
               Ir a mi correo
             </button>
@@ -717,36 +847,36 @@ function SetupScreen({ onSuccess, onClose }: { onSuccess: () => void; onClose: (
         ) : (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1.5">Correo electronico</label>
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Correo electronico</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 text-neutral-900 dark:text-white"
+                className="w-full px-4 py-2.5 border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 text-neutral-900 dark:text-white text-sm"
                 placeholder="nombre@jiro.mx"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1.5">Contrasena</label>
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Contrasena</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 text-neutral-900 dark:text-white"
+                className="w-full px-4 py-2.5 border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 text-neutral-900 dark:text-white text-sm"
                 placeholder="Tu contrasena de IONOS"
               />
             </div>
-            <div className="bg-neutral-50 dark:bg-white/5 rounded-lg p-3 text-xs text-neutral-500 dark:text-white/50 space-y-1">
-              <p>Servidores preconfigurados:</p>
+            <div className="bg-neutral-50 dark:bg-neutral-700/30 rounded-lg p-3 text-[11px] text-neutral-500 dark:text-neutral-400 space-y-0.5">
+              <p className="font-medium">Servidores preconfigurados:</p>
               <p>IMAP: imap.ionos.mx:993 (SSL/TLS)</p>
               <p>SMTP: smtp.ionos.mx:465 (SSL/TLS)</p>
             </div>
             <button
               onClick={handleVerify}
               disabled={verifying || !email || !password}
-              className="w-full py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent-hover transition-all disabled:opacity-50"
+              className="w-full py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent/90 transition disabled:opacity-50"
             >
-              {verifying ? 'Verificando conexion...' : 'Verificar y conectar'}
+              {verifying ? 'Verificando...' : 'Verificar y conectar'}
             </button>
           </div>
         )}
@@ -755,21 +885,25 @@ function SetupScreen({ onSuccess, onClose }: { onSuccess: () => void; onClose: (
   );
 }
 
-// ── Compose Modal ────────────────────────────────────────────────
+// ── Compose Modal ───────────────────────────────────────────────────
 
-function ComposeModal({ mode, replyTo, onClose, onSent }: {
+function ComposeModal({ mode, replyTo, onClose, onSent, usuarioId }: {
   mode: 'new' | 'reply' | 'replyAll' | 'forward';
   replyTo: EmailFull | null;
   onClose: () => void;
   onSent: () => void;
+  usuarioId?: string;
 }) {
   const [to, setTo] = useState('');
   const [cc, setCc] = useState('');
+  const [bcc, setBcc] = useState('');
   const [subject, setSubject] = useState('');
   const [bodyHtml, setBodyHtml] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [showCc, setShowCc] = useState(false);
+  const [showBcc, setShowBcc] = useState(false);
+  const [signatureHtml, setSignatureHtml] = useState('');
 
   useEffect(() => {
     if (!replyTo) return;
@@ -787,6 +921,14 @@ function ComposeModal({ mode, replyTo, onClose, onSent }: {
     }
   }, [mode, replyTo]);
 
+  // Load signature
+  useEffect(() => {
+    if (!usuarioId) return;
+    getRenderedSignature(usuarioId).then(sig => {
+      if (sig) setSignatureHtml(sig);
+    });
+  }, [usuarioId]);
+
   const handleSend = async () => {
     if (!to.trim() || !subject.trim()) {
       setError('Destinatario y asunto son requeridos');
@@ -795,13 +937,23 @@ function ComposeModal({ mode, replyTo, onClose, onSent }: {
     setSending(true);
     setError('');
     try {
+      let finalBody = bodyHtml || '';
+
+      // Append signature if available
+      if (signatureHtml) {
+        finalBody = stripExistingSignature(finalBody);
+        finalBody = `${finalBody}\n<br/>\n${signatureHtml}`;
+      }
+
+      const htmlContent = finalBody.includes('<') ? finalBody : `<p>${finalBody.replace(/\n/g, '<br/>')}</p>`;
+
       await callWebmail('send-message', {
         to: to.split(',').map(s => s.trim()).filter(Boolean),
         cc: cc ? cc.split(',').map(s => s.trim()).filter(Boolean) : [],
-        bcc: [],
+        bcc: bcc ? bcc.split(',').map(s => s.trim()).filter(Boolean) : [],
         subject,
-        bodyHtml: bodyHtml || `<p>${subject}</p>`,
-        bodyText: bodyHtml.replace(/<[^>]*>/g, '') || subject,
+        bodyHtml: htmlContent,
+        bodyText: finalBody.replace(/<[^>]*>/g, ''),
       });
       onSent();
     } catch (err: any) {
@@ -812,87 +964,118 @@ function ComposeModal({ mode, replyTo, onClose, onSent }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 backdrop-blur-sm">
+      <div className="bg-white dark:bg-neutral-800 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl sm:mx-4 max-h-[92vh] flex flex-col animate-in slide-in-from-bottom-4 sm:animate-in sm:fade-in">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-white/10">
-          <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-neutral-100 dark:border-neutral-700">
+          <h2 className="text-sm font-bold text-neutral-800 dark:text-white">
             {mode === 'new' ? 'Nuevo correo' : mode === 'forward' ? 'Reenviar' : 'Responder'}
           </h2>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-all">
-            <X className="w-5 h-5 text-neutral-500" />
+          <button onClick={onClose} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition">
+            <X className="w-4 h-4 text-neutral-400" />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-3">
+        {/* Fields */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-2.5">
           {error && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-lg text-sm text-red-700 dark:text-red-300">
+            <div className="p-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-lg text-xs text-red-700 dark:text-red-300 flex items-center gap-2">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
               {error}
             </div>
           )}
 
+          {/* To */}
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-neutral-600 dark:text-white/60 w-12">Para:</label>
+            <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 w-10 flex-shrink-0">Para</label>
             <input
               type="text"
               value={to}
               onChange={(e) => setTo(e.target.value)}
-              className="flex-1 px-3 py-2 border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 text-sm text-neutral-900 dark:text-white"
+              className="flex-1 px-3 py-2 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-xs text-neutral-800 dark:text-white"
               placeholder="email@ejemplo.com"
             />
-            {!showCc && (
-              <button onClick={() => setShowCc(true)} className="text-xs text-accent hover:text-accent-hover">CC</button>
-            )}
+            <div className="flex gap-1 flex-shrink-0">
+              {!showCc && <button onClick={() => setShowCc(true)} className="text-[10px] font-medium text-accent hover:text-accent/80 px-1.5 py-0.5 rounded">CC</button>}
+              {!showBcc && <button onClick={() => setShowBcc(true)} className="text-[10px] font-medium text-accent hover:text-accent/80 px-1.5 py-0.5 rounded">CCO</button>}
+            </div>
           </div>
 
+          {/* CC */}
           {showCc && (
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-neutral-600 dark:text-white/60 w-12">CC:</label>
+              <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 w-10 flex-shrink-0">CC</label>
               <input
                 type="text"
                 value={cc}
                 onChange={(e) => setCc(e.target.value)}
-                className="flex-1 px-3 py-2 border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 text-sm text-neutral-900 dark:text-white"
+                className="flex-1 px-3 py-2 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-xs text-neutral-800 dark:text-white"
                 placeholder="cc@ejemplo.com"
               />
             </div>
           )}
 
+          {/* BCC */}
+          {showBcc && (
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 w-10 flex-shrink-0">CCO</label>
+              <input
+                type="text"
+                value={bcc}
+                onChange={(e) => setBcc(e.target.value)}
+                className="flex-1 px-3 py-2 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-xs text-neutral-800 dark:text-white"
+                placeholder="cco@ejemplo.com"
+              />
+            </div>
+          )}
+
+          {/* Subject */}
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-neutral-600 dark:text-white/60 w-12">Asunto:</label>
+            <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 w-10 flex-shrink-0">Asunto</label>
             <input
               type="text"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="flex-1 px-3 py-2 border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 text-sm text-neutral-900 dark:text-white"
+              className="flex-1 px-3 py-2 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-xs text-neutral-800 dark:text-white"
               placeholder="Asunto del correo"
             />
           </div>
 
+          {/* Body */}
           <textarea
             value={bodyHtml}
             onChange={(e) => setBodyHtml(e.target.value)}
-            rows={14}
-            className="w-full px-4 py-3 border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 text-sm text-neutral-900 dark:text-white resize-none"
+            rows={12}
+            className="w-full px-3 py-3 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-xs text-neutral-800 dark:text-white resize-none leading-relaxed"
             placeholder="Escribe tu mensaje..."
           />
+
+          {/* Signature preview */}
+          {signatureHtml && (
+            <div className="border-t border-dashed border-neutral-200 dark:border-neutral-700 pt-2">
+              <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mb-1">Firma (se insertara automaticamente)</p>
+              <div
+                className="text-[11px] text-neutral-500 dark:text-neutral-400 overflow-hidden max-h-20 opacity-60"
+                dangerouslySetInnerHTML={{ __html: signatureHtml }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-neutral-200 dark:border-white/10">
+        <div className="flex items-center justify-between px-5 py-3.5 border-t border-neutral-100 dark:border-neutral-700">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-all text-sm font-medium"
+            className="px-3 py-2 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition text-xs font-medium"
           >
             Cancelar
           </button>
           <button
             onClick={handleSend}
             disabled={sending}
-            className="flex items-center gap-2 px-5 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-all text-sm font-medium disabled:opacity-50"
+            className="flex items-center gap-1.5 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition text-xs font-medium disabled:opacity-50"
           >
-            <Send className="w-4 h-4" />
+            <Send className="w-3.5 h-3.5" />
             {sending ? 'Enviando...' : 'Enviar'}
           </button>
         </div>

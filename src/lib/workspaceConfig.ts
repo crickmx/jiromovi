@@ -146,6 +146,7 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/produccion/configuracion', label: 'Config Produccion', icon: Settings, visibleTo: ADMIN_ONLY },
     { path: '/sicas/salud', label: 'SICAS Salud', icon: Activity, visibleTo: ADMIN_ONLY },
     { path: '/admin/asistentes', label: 'Asistentes IA', icon: Bot, visibleTo: ADMIN_GERENTE, matchPrefix: true },
+    { path: '/firmas-email', label: 'Firmas Email', icon: FileText, visibleTo: ADMIN_ONLY },
     { path: '/admin/transaccionales', label: 'Transaccionales', icon: Send, visibleTo: ADMIN_ONLY },
     { path: '/admin/diagnostico', label: 'Diagnostico', icon: Activity, visibleTo: ADMIN_ONLY },
     { path: '/chatgpt-test', label: 'Asistente IA', icon: Zap, visibleTo: ALL_ROLES },
