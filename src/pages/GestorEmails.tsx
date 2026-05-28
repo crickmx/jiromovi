@@ -567,6 +567,7 @@ export function GestorEmails() {
           onClose={() => setShowCompose(false)}
           onSent={() => { setShowCompose(false); handleRefresh(); }}
           usuarioId={usuario?.id}
+          configEmail={configEmail}
         />
       )}
     </div>
@@ -747,10 +748,15 @@ function ReadingPane({
                 sandbox="allow-same-origin"
                 title="Contenido del correo"
               />
-            ) : (
+            ) : message.bodyText ? (
               <pre className="p-4 whitespace-pre-wrap text-sm text-neutral-700 dark:text-neutral-300 font-sans leading-relaxed">
                 {message.bodyText}
               </pre>
+            ) : (
+              <div className="p-6 text-center text-neutral-400 dark:text-neutral-500">
+                <MailOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Este mensaje no tiene contenido visible.</p>
+              </div>
             )}
           </div>
 
@@ -887,12 +893,21 @@ function SetupScreen({ onSuccess }: { onSuccess: () => void }) {
 
 // ── Compose Modal ───────────────────────────────────────────────────
 
-function ComposeModal({ mode, replyTo, onClose, onSent, usuarioId }: {
+const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB per file
+const MAX_TOTAL_SIZE = 20 * 1024 * 1024; // 20 MB total
+
+interface AttachmentFile {
+  file: File;
+  base64: string;
+}
+
+function ComposeModal({ mode, replyTo, onClose, onSent, usuarioId, configEmail: senderEmail }: {
   mode: 'new' | 'reply' | 'replyAll' | 'forward';
   replyTo: EmailFull | null;
   onClose: () => void;
   onSent: () => void;
   usuarioId?: string;
+  configEmail?: string;
 }) {
   const [to, setTo] = useState('');
   const [cc, setCc] = useState('');
@@ -904,30 +919,78 @@ function ComposeModal({ mode, replyTo, onClose, onSent, usuarioId }: {
   const [showCc, setShowCc] = useState(false);
   const [showBcc, setShowBcc] = useState(false);
   const [signatureHtml, setSignatureHtml] = useState('');
+  const [signatureLoading, setSignatureLoading] = useState(true);
+  const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
+  const [attachError, setAttachError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!replyTo) return;
     if (mode === 'reply') {
       setTo(replyTo.fromEmail);
-      setSubject(`Re: ${replyTo.subject}`);
+      setSubject(replyTo.subject.startsWith('Re:') ? replyTo.subject : `Re: ${replyTo.subject}`);
     } else if (mode === 'replyAll') {
       setTo(replyTo.fromEmail);
-      setCc([...replyTo.to, ...replyTo.cc].filter(Boolean).join(', '));
-      setShowCc(true);
-      setSubject(`Re: ${replyTo.subject}`);
+      const others = [...replyTo.to, ...replyTo.cc]
+        .filter(Boolean)
+        .filter(e => e !== senderEmail && !e.includes(senderEmail || '__none__'));
+      if (others.length > 0) {
+        setCc(others.join(', '));
+        setShowCc(true);
+      }
+      setSubject(replyTo.subject.startsWith('Re:') ? replyTo.subject : `Re: ${replyTo.subject}`);
     } else if (mode === 'forward') {
-      setSubject(`Fwd: ${replyTo.subject}`);
-      setBodyHtml(`\n\n---------- Mensaje reenviado ----------\nDe: ${replyTo.from} <${replyTo.fromEmail}>\nFecha: ${replyTo.date}\nAsunto: ${replyTo.subject}\n\n${replyTo.bodyText || ''}`);
+      setSubject(replyTo.subject.startsWith('Fwd:') ? replyTo.subject : `Fwd: ${replyTo.subject}`);
+      const quoted = replyTo.bodyText || (replyTo.bodyHtml ? replyTo.bodyHtml.replace(/<[^>]*>/g, '') : '');
+      setBodyHtml(`\n\n---------- Mensaje reenviado ----------\nDe: ${replyTo.from} <${replyTo.fromEmail}>\nFecha: ${replyTo.date}\nAsunto: ${replyTo.subject}\n\n${quoted}`);
     }
-  }, [mode, replyTo]);
+  }, [mode, replyTo, senderEmail]);
 
   // Load signature
   useEffect(() => {
-    if (!usuarioId) return;
+    if (!usuarioId) { setSignatureLoading(false); return; }
+    setSignatureLoading(true);
     getRenderedSignature(usuarioId).then(sig => {
       if (sig) setSignatureHtml(sig);
-    });
+      setSignatureLoading(false);
+    }).catch(() => setSignatureLoading(false));
   }, [usuarioId]);
+
+  const totalAttachmentSize = attachments.reduce((sum, a) => sum + a.file.size, 0);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setAttachError('');
+
+    const newAttachments: AttachmentFile[] = [];
+    let newTotalSize = totalAttachmentSize;
+
+    for (const file of Array.from(files)) {
+      if (file.size > MAX_FILE_SIZE) {
+        setAttachError(`"${file.name}" excede el limite de ${formatSize(MAX_FILE_SIZE)} por archivo.`);
+        continue;
+      }
+      newTotalSize += file.size;
+      if (newTotalSize > MAX_TOTAL_SIZE) {
+        setAttachError(`El total de adjuntos excede ${formatSize(MAX_TOTAL_SIZE)}.`);
+        break;
+      }
+      const base64 = await fileToBase64(file);
+      newAttachments.push({ file, base64 });
+    }
+
+    if (newAttachments.length > 0) {
+      setAttachments(prev => [...prev, ...newAttachments]);
+    }
+    // Reset input so same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+    setAttachError('');
+  };
 
   const handleSend = async () => {
     if (!to.trim() || !subject.trim()) {
@@ -947,14 +1010,31 @@ function ComposeModal({ mode, replyTo, onClose, onSent, usuarioId }: {
 
       const htmlContent = finalBody.includes('<') ? finalBody : `<p>${finalBody.replace(/\n/g, '<br/>')}</p>`;
 
-      await callWebmail('send-message', {
+      const payload: Record<string, unknown> = {
         to: to.split(',').map(s => s.trim()).filter(Boolean),
         cc: cc ? cc.split(',').map(s => s.trim()).filter(Boolean) : [],
         bcc: bcc ? bcc.split(',').map(s => s.trim()).filter(Boolean) : [],
         subject,
         bodyHtml: htmlContent,
         bodyText: finalBody.replace(/<[^>]*>/g, ''),
-      });
+      };
+
+      // Add threading headers for replies
+      if ((mode === 'reply' || mode === 'replyAll') && replyTo?.messageId) {
+        payload.inReplyTo = replyTo.messageId;
+        payload.references = replyTo.messageId;
+      }
+
+      // Add attachments
+      if (attachments.length > 0) {
+        payload.attachments = attachments.map(a => ({
+          filename: a.file.name,
+          contentType: a.file.type || 'application/octet-stream',
+          content: a.base64,
+        }));
+      }
+
+      await callWebmail('send-message', payload);
       onSent();
     } catch (err: any) {
       setError(err.message);
@@ -1045,31 +1125,90 @@ function ComposeModal({ mode, replyTo, onClose, onSent, usuarioId }: {
           <textarea
             value={bodyHtml}
             onChange={(e) => setBodyHtml(e.target.value)}
-            rows={12}
+            rows={10}
             className="w-full px-3 py-3 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-xs text-neutral-800 dark:text-white resize-none leading-relaxed"
             placeholder="Escribe tu mensaje..."
           />
 
+          {/* Attachments section */}
+          {attachments.length > 0 && (
+            <div className="p-3 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Paperclip className="w-3 h-3" />
+                  {attachments.length} adjunto{attachments.length !== 1 ? 's' : ''} ({formatSize(totalAttachmentSize)})
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {attachments.map((att, i) => (
+                  <div
+                    key={i}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-[11px] text-neutral-700 dark:text-neutral-200 group"
+                  >
+                    <FileText className="w-3 h-3 text-neutral-400" />
+                    <span className="truncate max-w-[120px]">{att.file.name}</span>
+                    <span className="text-neutral-300 dark:text-neutral-500">({formatSize(att.file.size)})</span>
+                    <button
+                      onClick={() => removeAttachment(i)}
+                      className="p-0.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition"
+                      title="Quitar"
+                    >
+                      <X className="w-3 h-3 text-red-400" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {attachError && (
+            <div className="p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/30 rounded-lg text-[11px] text-amber-700 dark:text-amber-300 flex items-center gap-2">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+              {attachError}
+            </div>
+          )}
+
           {/* Signature preview */}
-          {signatureHtml && (
+          {signatureLoading ? (
             <div className="border-t border-dashed border-neutral-200 dark:border-neutral-700 pt-2">
-              <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mb-1">Firma (se insertara automaticamente)</p>
+              <div className="h-12 bg-neutral-100 dark:bg-neutral-800 rounded animate-pulse" />
+            </div>
+          ) : signatureHtml ? (
+            <div className="border-t border-dashed border-neutral-200 dark:border-neutral-700 pt-2">
+              <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mb-1">Firma</p>
               <div
-                className="text-[11px] text-neutral-500 dark:text-neutral-400 overflow-hidden max-h-20 opacity-60"
+                className="text-[11px] text-neutral-600 dark:text-neutral-400 overflow-hidden max-h-24"
                 dangerouslySetInnerHTML={{ __html: signatureHtml }}
               />
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-between px-5 py-3.5 border-t border-neutral-100 dark:border-neutral-700">
-          <button
-            onClick={onClose}
-            className="px-3 py-2 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition text-xs font-medium"
-          >
-            Cancelar
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="px-3 py-2 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition text-xs font-medium"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-1.5 px-3 py-2 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition text-xs font-medium border border-neutral-200 dark:border-neutral-700"
+              title="Adjuntar archivo"
+            >
+              <Paperclip className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Adjuntar</span>
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+          </div>
           <button
             onClick={handleSend}
             disabled={sending}
@@ -1082,4 +1221,18 @@ function ComposeModal({ mode, replyTo, onClose, onSent, usuarioId }: {
       </div>
     </div>
   );
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      // Remove data URL prefix (data:type;base64,)
+      const base64 = result.split(',')[1] || '';
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }

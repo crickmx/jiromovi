@@ -78,8 +78,8 @@ async function imapReadUntilTag(conn: Deno.TlsConn, tag: string): Promise<string
   const decoder = new TextDecoder();
   let attempts = 0;
   while (!result.includes(`${tag} OK`) && !result.includes(`${tag} NO`) && !result.includes(`${tag} BAD`)) {
-    if (attempts++ > 50) break;
-    const buf = new Uint8Array(131072);
+    if (attempts++ > 200) break;
+    const buf = new Uint8Array(262144);
     const n = await conn.read(buf);
     if (n === null) break;
     result += decoder.decode(buf.subarray(0, n));
@@ -340,7 +340,13 @@ function extractFilenameFromHeaders(headersBlock: string): string | null {
 
 // ── SMTP ──────────────────────────────────────────────────────────
 
-async function smtpSend(email: string, password: string, fromName: string, to: string[], cc: string[], bcc: string[], subject: string, bodyHtml: string, bodyText: string): Promise<void> {
+interface SmtpAttachment {
+  filename: string;
+  contentType: string;
+  content: string; // base64 encoded
+}
+
+async function smtpSend(email: string, password: string, fromName: string, to: string[], cc: string[], bcc: string[], subject: string, bodyHtml: string, bodyText: string, attachments: SmtpAttachment[] = [], inReplyTo?: string, references?: string): Promise<void> {
   const rawConn = await Deno.connect({ hostname: 'smtp.ionos.mx', port: 465, transport: 'tcp' });
   const conn = await Deno.startTls(rawConn, { hostname: 'smtp.ionos.mx' });
 
@@ -385,8 +391,10 @@ async function smtpSend(email: string, password: string, fromName: string, to: s
 
     await send('DATA', '354');
 
-    const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const msgId = `<${Date.now()}.${Math.random().toString(36).slice(2)}@ionos.mx>`;
+    const hasAttachments = attachments.length > 0;
+    const mixedBoundary = `----=_Mixed_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const altBoundary = `----=_Alt_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
     let msg = `From: "${fromName}" <${email}>\r\n`;
     msg += `To: ${to.join(', ')}\r\n`;
@@ -394,15 +402,47 @@ async function smtpSend(email: string, password: string, fromName: string, to: s
     msg += `Subject: =?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=\r\n`;
     msg += `Date: ${new Date().toUTCString()}\r\n`;
     msg += `Message-ID: ${msgId}\r\n`;
+    if (inReplyTo) msg += `In-Reply-To: ${inReplyTo}\r\n`;
+    if (references) msg += `References: ${references}\r\n`;
     msg += `MIME-Version: 1.0\r\n`;
-    msg += `Content-Type: multipart/alternative; boundary="${boundary}"\r\n\r\n`;
-    msg += `--${boundary}\r\n`;
+
+    if (hasAttachments) {
+      msg += `Content-Type: multipart/mixed; boundary="${mixedBoundary}"\r\n\r\n`;
+      msg += `--${mixedBoundary}\r\n`;
+      msg += `Content-Type: multipart/alternative; boundary="${altBoundary}"\r\n\r\n`;
+    } else {
+      msg += `Content-Type: multipart/alternative; boundary="${altBoundary}"\r\n\r\n`;
+    }
+
+    // Text part
+    msg += `--${altBoundary}\r\n`;
     msg += `Content-Type: text/plain; charset="UTF-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n`;
     msg += btoa(unescape(encodeURIComponent(bodyText || subject))) + '\r\n';
-    msg += `--${boundary}\r\n`;
+
+    // HTML part
+    msg += `--${altBoundary}\r\n`;
     msg += `Content-Type: text/html; charset="UTF-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n`;
     msg += btoa(unescape(encodeURIComponent(bodyHtml))) + '\r\n';
-    msg += `--${boundary}--\r\n.\r\n`;
+    msg += `--${altBoundary}--\r\n`;
+
+    // Attachments
+    if (hasAttachments) {
+      for (const att of attachments) {
+        const encodedName = `=?UTF-8?B?${btoa(unescape(encodeURIComponent(att.filename)))}?=`;
+        msg += `--${mixedBoundary}\r\n`;
+        msg += `Content-Type: ${att.contentType}; name="${encodedName}"\r\n`;
+        msg += `Content-Disposition: attachment; filename="${encodedName}"\r\n`;
+        msg += `Content-Transfer-Encoding: base64\r\n\r\n`;
+        // Split base64 into 76-char lines
+        const b64 = att.content;
+        for (let i = 0; i < b64.length; i += 76) {
+          msg += b64.substring(i, i + 76) + '\r\n';
+        }
+      }
+      msg += `--${mixedBoundary}--\r\n`;
+    }
+
+    msg += '.\r\n';
 
     await sendRaw(msg, '250');
     await send('QUIT', '221');
@@ -488,7 +528,12 @@ Deno.serve(async (req: Request) => {
 
       case 'send-message': {
         if (!body.to || !body.subject) throw new Error('to y subject son requeridos');
-        await smtpSend(creds.email, creds.password, creds.nombre, body.to, body.cc || [], body.bcc || [], body.subject, body.bodyHtml, body.bodyText || '');
+        const attachments: SmtpAttachment[] = (body.attachments || []).map((a: any) => ({
+          filename: a.filename || 'adjunto',
+          contentType: a.contentType || 'application/octet-stream',
+          content: a.content || '',
+        }));
+        await smtpSend(creds.email, creds.password, creds.nombre, body.to, body.cc || [], body.bcc || [], body.subject, body.bodyHtml, body.bodyText || '', attachments, body.inReplyTo, body.references);
         result = { success: true };
         break;
       }
@@ -580,7 +625,7 @@ Deno.serve(async (req: Request) => {
           const dataM = resp.match(/\{(\d+)\}\r\n([\s\S]*)/);
           if (!dataM) throw new Error('No se pudo obtener el adjunto');
           const rawData = dataM[2].substring(0, parseInt(dataM[1]));
-          result = { data: rawData.replace(/\s/g, ''), contentType: 'application/octet-stream' };
+          result = { content: rawData.replace(/\s/g, ''), contentType: 'application/octet-stream' };
           await imapLogout(conn);
         } catch (e) { try { conn.close(); } catch {} throw e; }
         break;
