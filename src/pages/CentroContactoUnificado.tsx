@@ -218,21 +218,29 @@ export default function CentroContactoUnificado() {
   // ── Connection handlers ──────────────────────────────────────────
   const handleConnect = async () => {
     setPolling(true);
-    const result = await callEdgeFunction('create-session');
-    if (result?.qr) setQrCode(result.qr);
+    const result = await callEdgeFunction('connect');
+    if (result?.qr_code) setQrCode(result.qr_code);
+    if (result?.error && !result.success) {
+      setProviderConfigured(result.server_configured ?? false);
+      setProviderMessage(result.error);
+      setPolling(false);
+      return;
+    }
 
+    // Poll for QR updates and connection status
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
-      const status = await callEdgeFunction('get-status');
-      if (status?.session) {
-        setWaSession(status.session);
-        if (status.session.status === 'connected') {
+      const qrResult = await callEdgeFunction('get-qr');
+      if (qrResult) {
+        if (qrResult.connected) {
           setQrCode(null);
           setPolling(false);
           if (pollRef.current) clearInterval(pollRef.current);
+          const status = await callEdgeFunction('get-status');
+          if (status?.session) setWaSession(status.session);
           loadAll();
-        } else if (status.session.status === 'qr_pending' && status.qr) {
-          setQrCode(status.qr);
+        } else if (qrResult.qr_code) {
+          setQrCode(qrResult.qr_code);
         }
       }
     }, 5000);
