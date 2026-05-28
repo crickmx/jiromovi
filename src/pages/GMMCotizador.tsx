@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Calculator, Save, FileText, Plus, Trash2, Calendar, DollarSign, Users, ChevronDown, ChevronRight, Download, Search, CreditCard as Edit, ArrowLeftRight } from 'lucide-react';
 import { Layout } from '../components/Layout';
-import { PageHeader } from '../components/ui/page-header';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -616,12 +615,20 @@ export default function GMMCotizador() {
 
   return (
     <Layout>
-      <PageHeader
-        title="GMM BX+"
-        subtitle="Cotizador de Gastos Médicos Mayores"
-      />
+      {/* Section header — unified Cotizar style */}
+      <div className="max-w-7xl mx-auto px-6 pt-7 pb-2">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-900/20 border border-sky-100 dark:border-sky-800/30 flex-shrink-0 overflow-hidden p-1.5">
+            <img src="/logo-bx.png" alt="BX+" className="w-full h-full object-contain" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-neutral-900 dark:text-white tracking-tight">GMM BX+</h1>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">Cotizador de Gastos Medicos Mayores</p>
+          </div>
+        </div>
+      </div>
 
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="max-w-7xl mx-auto px-6 pb-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6">
             <TabsTrigger value="cotizador">
