@@ -52,6 +52,28 @@ export default function CentroContactoUnificado() {
 
       const { data: moviMsgs } = await moviQuery.limit(500);
 
+      // Resolve CRM contact names for WA MOVI phones
+      const moviContactNames: Record<string, string> = {};
+      const moviPhones = [...new Set((moviMsgs || []).map((m: any) => m.contact_phone).filter(Boolean))];
+      if (moviPhones.length > 0) {
+        // Try crm_contactos table for name lookup by phone
+        const { data: crmContacts } = await supabase
+          .from('crm_contactos')
+          .select('telefono, nombre, apellido')
+          .in('telefono', moviPhones);
+        for (const c of crmContacts || []) {
+          if (c.telefono) {
+            moviContactNames[c.telefono] = [c.nombre, c.apellido].filter(Boolean).join(' ').trim() || c.telefono;
+          }
+        }
+        // Also check contact_center_messages contact_name field itself (latest non-null per phone)
+        for (const m of moviMsgs || []) {
+          if (m.contact_phone && m.contact_name && !moviContactNames[m.contact_phone]) {
+            moviContactNames[m.contact_phone] = m.contact_name;
+          }
+        }
+      }
+
       // ── 2. WA Personal: whatsapp_conversations ───────────────────
       const { data: waConvs } = await supabase
         .from('whatsapp_conversations')
@@ -125,6 +147,7 @@ export default function CentroContactoUnificado() {
         chatLastMsgs,
         chatUnread,
         userId,
+        moviContactNames,
       });
 
       setConversations(merged);

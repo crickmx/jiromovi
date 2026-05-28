@@ -2,13 +2,12 @@ import { type CCChannel, type CCStatus, CHANNEL_LABELS, CHANNEL_COLORS, formatTi
 
 export type { CCChannel, CCStatus };
 
-// ── Unified conversation shape (source-agnostic) ─────────────────────────────
+// ── Unified conversation shape ────────────────────────────────────────────────
 
 export interface UnifiedConversation {
-  // Composite ID: "{channel}:{sourceId}"
-  id: string;
+  id: string;             // "{channel}:{sourceId}"
   channel: CCChannel;
-  sourceId: string; // original ID in the source table
+  sourceId: string;       // original ID in source table
 
   contactName: string | null;
   contactPhone: string | null;
@@ -22,8 +21,10 @@ export interface UnifiedConversation {
   isGroup: boolean;
   groupName: string | null;
 
-  // For chat: other participant user IDs
+  // chat-only
   participantIds?: string[];
+  // wa_movi: agent user id
+  agentUserId?: string | null;
 }
 
 // ── Unified message shape ────────────────────────────────────────────────────
@@ -43,6 +44,9 @@ export interface UnifiedMessage {
   senderName: string | null;
   sentAt: string;
   status: string;
+  linkedTaskId?: string | null;
+  // original raw record (for actions)
+  raw?: Record<string, unknown>;
 }
 
 // ── Merge helper ─────────────────────────────────────────────────────────────
@@ -54,6 +58,7 @@ interface MergeInput {
   chatLastMsgs: Record<string, { mensaje: string; created_at: string; remitente_id: string }>;
   chatUnread: Record<string, number>;
   userId: string;
+  moviContactNames?: Record<string, string>;
 }
 
 export function mergeConversations({
@@ -63,29 +68,37 @@ export function mergeConversations({
   chatLastMsgs,
   chatUnread,
   userId,
+  moviContactNames = {},
 }: MergeInput): UnifiedConversation[] {
   const result: UnifiedConversation[] = [];
 
-  // ── WA MOVI: group contact_center_messages by contact ────────────────────
+  // ── WA MOVI: group by contact_phone (or agent_user_id if no phone) ────────
   const moviGroups: Record<string, any[]> = {};
   for (const msg of moviMsgs) {
-    const key = msg.contact_phone || msg.agent_user_id || msg.id;
+    const key = msg.contact_phone || `agent:${msg.agent_user_id}`;
     if (!moviGroups[key]) moviGroups[key] = [];
     moviGroups[key].push(msg);
   }
 
   for (const [key, msgs] of Object.entries(moviGroups)) {
-    // Sort descending
     msgs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     const latest = msgs[0];
     const unread = msgs.filter(m => m.direction === 'inbound' && !m.read_at).length;
+
+    const phone = latest.contact_phone || null;
+    // Resolve name: CRM lookup > message contact_name > metadata > phone
+    const resolvedName =
+      (phone && moviContactNames[phone]) ||
+      latest.contact_name ||
+      (latest.metadata as any)?.contact_name ||
+      null;
 
     result.push({
       id: `wa_movi:${key}`,
       channel: 'wa_movi',
       sourceId: key,
-      contactName: latest.contact_name || null,
-      contactPhone: latest.contact_phone || null,
+      contactName: resolvedName,
+      contactPhone: phone,
       avatarUrl: null,
       lastMessage: latest.body || null,
       lastMessageAt: latest.created_at || null,
@@ -93,10 +106,11 @@ export function mergeConversations({
       status: 'open',
       isGroup: false,
       groupName: null,
+      agentUserId: latest.agent_user_id || null,
     });
   }
 
-  // ── WA Personal: whatsapp_conversations ─────────────────────────────────
+  // ── WA Personal ─────────────────────────────────────────────────────────
   for (const conv of waConvs) {
     result.push({
       id: `wa_personal:${conv.id}`,
@@ -129,7 +143,7 @@ export function mergeConversations({
       id: `chat:${chat.id}`,
       channel: 'chat',
       sourceId: chat.id,
-      contactName: isGroup ? chat.nombre : null, // resolved later with participantNames
+      contactName: isGroup ? chat.nombre : null,
       contactPhone: null,
       avatarUrl: null,
       lastMessage: lastMsg?.mensaje || null,
@@ -142,7 +156,6 @@ export function mergeConversations({
     });
   }
 
-  // Sort all by lastMessageAt descending
   result.sort((a, b) => {
     if (!a.lastMessageAt && !b.lastMessageAt) return 0;
     if (!a.lastMessageAt) return 1;
@@ -165,8 +178,20 @@ export function getConversationDisplayName(
     if (name) return name;
   }
   if (conv.contactName) return conv.contactName;
-  if (conv.contactPhone) return conv.contactPhone;
+  if (conv.contactPhone) return formatMoviPhone(conv.contactPhone);
   return 'Sin nombre';
+}
+
+export function formatMoviPhone(phone: string): string {
+  if (!phone) return '';
+  const clean = phone.replace(/\D/g, '');
+  if (clean.length === 12 && clean.startsWith('52')) {
+    return `+52 ${clean.slice(2, 5)} ${clean.slice(5, 8)} ${clean.slice(8)}`;
+  }
+  if (clean.length === 10) {
+    return `${clean.slice(0, 3)} ${clean.slice(3, 6)} ${clean.slice(6)}`;
+  }
+  return phone;
 }
 
 export { CHANNEL_LABELS, CHANNEL_COLORS, formatTime };
