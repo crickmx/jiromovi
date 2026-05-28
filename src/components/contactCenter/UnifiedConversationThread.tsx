@@ -426,27 +426,30 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
         }
 
       } else if (channel === 'wa_personal') {
-        const { data } = await supabase
-          .from('whatsapp_messages')
-          .select('id, direction, message_type, content, media_url, media_filename, media_mime_type, media_thumbnail_url, media_caption, status, created_at')
-          .eq('conversation_id', sourceId)
-          .order('created_at', { ascending: true })
-          .limit(300);
+        // Use the edge function so it falls back to the whatsapp-server
+        // when the DB has no messages yet (first open / no history sync)
+        const result = await callEdgeFn('whatsapp-session', {
+          action: 'get-messages',
+          conversationId: sourceId,
+          limit: 100,
+        });
 
-        setMessages((data || []).map((m: any): UnifiedMessage => ({
-          id: m.id,
-          direction: m.direction,
-          messageType: m.message_type || 'text',
-          body: m.content || m.media_caption || null,
-          mediaUrl: m.media_url || null,
-          mediaMime: m.media_mime_type || null,
-          mediaFilename: m.media_filename || null,
-          mediaThumbnail: m.media_thumbnail_url || null,
+        const data: any[] = result?.messages || [];
+
+        setMessages(data.map((m: any): UnifiedMessage => ({
+          id: m.id || m.wa_message_id || String(Math.random()),
+          direction: m.direction || (m.fromMe ? 'outbound' : 'inbound'),
+          messageType: m.message_type || m.type || 'text',
+          body: m.content || m.body || m.media_caption || null,
+          mediaUrl: m.media_url || m.mediaUrl || null,
+          mediaMime: m.media_mime_type || m.mimetype || null,
+          mediaFilename: m.media_filename || m.filename || null,
+          mediaThumbnail: m.media_thumbnail_url || m.thumbnailUrl || null,
           locationLat: null,
           locationLng: null,
           locationLabel: null,
           senderName: null,
-          sentAt: m.created_at,
+          sentAt: m.message_timestamp || m.created_at || new Date().toISOString(),
           status: m.status || 'sent',
           raw: m,
         })));

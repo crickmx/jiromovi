@@ -499,7 +499,7 @@ Deno.serve(async (req: Request) => {
         const conversationId = body.conversationId;
         if (!conversationId) return err("Missing conversationId");
 
-        const limit = body.limit || 50;
+        const limit = body.limit || 100;
         const before = body.before; // cursor: load messages before this timestamp
 
         // Build query - Supabase is primary source
@@ -518,8 +518,75 @@ Deno.serve(async (req: Request) => {
 
         const { data: dbMsgs } = await query;
 
-        // Reverse to show oldest first
-        const messages = (dbMsgs || []).reverse();
+        let messages = (dbMsgs || []).reverse();
+
+        // ── Fallback: fetch from whatsapp-server when DB is empty ──────────
+        // This happens on first open before messages have been persisted
+        if (messages.length === 0 && !before && serverConfigured) {
+          try {
+            // Get conversation to find remote_phone
+            const { data: conv } = await supabase
+              .from("whatsapp_conversations")
+              .select("remote_phone")
+              .eq("id", conversationId)
+              .eq("user_id", user.id)
+              .maybeSingle();
+
+            if (conv?.remote_phone) {
+              const serverResp = await fetch(
+                `${WHATSAPP_SERVER_URL}/session/${user.id}/messages/${encodeURIComponent(conv.remote_phone)}?limit=${limit}`,
+                {
+                  headers: { "x-api-key": WHATSAPP_SERVER_API_KEY },
+                  signal: AbortSignal.timeout(8000),
+                }
+              );
+
+              if (serverResp.ok) {
+                const serverData = await serverResp.json();
+                const serverMsgs: any[] = serverData.messages || [];
+
+                if (serverMsgs.length > 0) {
+                  // Persist to DB so future loads are instant
+                  const toInsert = serverMsgs.map((m: any) => ({
+                    conversation_id: conversationId,
+                    user_id: user.id,
+                    direction: m.direction || (m.fromMe ? "outbound" : "inbound"),
+                    message_type: m.type || m.message_type || "text",
+                    content: m.body || m.content || null,
+                    media_url: m.mediaUrl || m.media_url || null,
+                    media_mime_type: m.mimetype || m.media_mime_type || null,
+                    media_filename: m.filename || m.media_filename || null,
+                    media_caption: m.caption || m.media_caption || null,
+                    media_thumbnail_url: m.thumbnailUrl || m.media_thumbnail_url || null,
+                    wa_message_id: m.id || m.wa_message_id || null,
+                    status: m.status || (m.fromMe ? "sent" : "read"),
+                    message_timestamp: m.timestamp
+                      ? new Date(m.timestamp * 1000).toISOString()
+                      : m.message_timestamp || m.created_at || new Date().toISOString(),
+                    metadata: m.metadata || null,
+                  }));
+
+                  // Upsert to avoid duplicates (wa_message_id is unique per user)
+                  const { data: saved } = await supabase
+                    .from("whatsapp_messages")
+                    .upsert(toInsert, {
+                      onConflict: "user_id,wa_message_id",
+                      ignoreDuplicates: true,
+                    })
+                    .select("*");
+
+                  messages = (saved || toInsert).sort((a: any, b: any) => {
+                    const ta = a.message_timestamp || a.created_at || "";
+                    const tb = b.message_timestamp || b.created_at || "";
+                    return ta < tb ? -1 : ta > tb ? 1 : 0;
+                  });
+                }
+              }
+            }
+          } catch {
+            // Server unreachable — return empty, DB messages already in `messages`
+          }
+        }
 
         // Mark as read (only on first load, not on pagination)
         if (!before) {
