@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { cn } from '@/lib/utils';
-import { Smartphone, QrCode, Wifi, WifiOff, Search, Send, Paperclip, MoreVertical, ArrowLeft, MessageSquare, Clock, CheckCheck, Check, AlertCircle, Plus, FileText, User, Tag, Settings, Zap, RefreshCw, X, Smile, FileUp, Star, Copy, ClipboardList, Trash2, CreditCard as Edit3, Image as ImageIcon, File, ExternalLink, CheckSquare, Square, ChevronDown } from 'lucide-react';
+import { Smartphone, QrCode, Wifi, WifiOff, Search, Send, Paperclip, MoreVertical, ArrowLeft, MessageSquare, Clock, CheckCheck, Check, AlertCircle, Plus, FileText, User, Tag, Settings, Zap, RefreshCw, X, Smile, FileUp, Star, Copy, ClipboardList, Trash2, CreditCard as Edit3, Image as ImageIcon, File, ExternalLink, CheckSquare, Square, ChevronDown, Bot } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -80,6 +80,14 @@ interface PendingAttachment {
   error: string | null;
 }
 
+interface CcAssistant {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  source: string;
+  is_active: boolean;
+}
+
 type ActiveView = 'inbox' | 'connection' | 'templates';
 
 // ── Emoji data (compact, most used) ────────────────────────────────
@@ -126,6 +134,12 @@ export default function MiWhatsApp() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [mediaPreview, setMediaPreview] = useState<{ url: string; type: string } | null>(null);
 
+  // AI/Assistant state
+  const [showAssistants, setShowAssistants] = useState(false);
+  const [assistants, setAssistants] = useState<CcAssistant[]>([]);
+  const [autoMode, setAutoMode] = useState(false);
+  const [autoLoading, setAutoLoading] = useState(false);
+
   const [contactNames, setContactNames] = useState<Record<string, { display_name: string; profile_pic_url: string | null; is_business: boolean }>>({});
   const [sendError, setSendError] = useState<string | null>(null);
   const [sendingMessage, setSendingMessage] = useState(false);
@@ -164,6 +178,7 @@ export default function MiWhatsApp() {
       if (!target.closest('.emoji-picker-container')) setShowEmojiPicker(false);
       if (!target.closest('.templates-dropdown-container')) setShowTemplatesDropdown(false);
       if (!target.closest('.formularios-container')) setShowFormularios(false);
+      if (!target.closest('.assistants-container')) setShowAssistants(false);
       if (!target.closest('.context-menu-container')) setContextMenuMsg(null);
     };
     document.addEventListener('mousedown', handler);
@@ -459,6 +474,52 @@ export default function MiWhatsApp() {
       form_url: formUrl,
       crm_contact_id: selectedConversation.crm_contact_id,
     }).catch(() => {});
+  };
+
+  const openAssistants = async () => {
+    setShowAssistants(true);
+    setShowEmojiPicker(false);
+    setShowTemplatesDropdown(false);
+    setShowFormularios(false);
+    setAutoLoading(true);
+    const { data } = await supabase.from('contact_center_assistants').select('id, nombre, descripcion, source, is_active').eq('is_active', true).order('nombre');
+    setAssistants((data as CcAssistant[]) || []);
+    setAutoLoading(false);
+  };
+
+  const startAutoMode = async (assistantId: string) => {
+    setShowAssistants(false);
+    setAutoLoading(true);
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    if (!authSession?.access_token) { setAutoLoading(false); return; }
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/contact-center-assistant-process`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authSession.access_token}`, 'Apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+        body: JSON.stringify({ action: 'start_session', agent_user_id: usuario?.id, assistant_id: assistantId }),
+      });
+      const result = await res.json();
+      if (result?.session_id) setAutoMode(true);
+    } catch { /* ignore */ }
+    setAutoLoading(false);
+  };
+
+  const stopAutoMode = async () => {
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    if (!authSession?.access_token) { setAutoMode(false); return; }
+    await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/contact-center-assistant-process`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authSession.access_token}`, 'Apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+      body: JSON.stringify({ action: 'cancel_session', agent_user_id: usuario?.id }),
+    }).catch(() => {});
+    setAutoMode(false);
+  };
+
+  const handleDirectCreateTramite = () => {
+    const lastMsgs = messages.slice(-3);
+    const description = lastMsgs.map(m => `[${m.direction === 'outbound' ? 'Yo' : selectedConversation?.remote_name || selectedConversation?.remote_phone || ''}] ${m.content || ''}`.trim()).join('\n');
+    setSelectedMessages(new Set(lastMsgs.map(m => m.id)));
+    setShowCreateTramite(true);
   };
 
   const handleToggleSelection = (msgId: string) => {
@@ -1103,6 +1164,55 @@ export default function MiWhatsApp() {
                         )}
                       </div>
 
+                      {/* Bot/IA button */}
+                      <div className="relative assistants-container flex-shrink-0 hidden sm:block">
+                        {autoMode ? (
+                          <button onClick={stopAutoMode}
+                            className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 animate-pulse" title="IA activa - detener">
+                            <Bot className="w-5 h-5" />
+                          </button>
+                        ) : (
+                          <button onClick={openAssistants} disabled={autoLoading}
+                            className={cn('p-2.5 rounded-xl transition-colors', showAssistants ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400')} title="Asistentes IA">
+                            {autoLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Bot className="w-5 h-5" />}
+                          </button>
+                        )}
+                        {showAssistants && (
+                          <div className="absolute bottom-full left-0 mb-2 w-80 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl max-h-72 overflow-y-auto z-50">
+                            <div className="p-3 border-b border-neutral-100 dark:border-neutral-700">
+                              <p className="text-xs font-bold text-neutral-800 dark:text-white">Asistentes IA</p>
+                              <p className="text-[10px] text-neutral-400 mt-0.5">Selecciona un asistente para modo automatico</p>
+                            </div>
+                            {autoLoading ? (
+                              <div className="p-4 flex items-center justify-center"><RefreshCw className="w-4 h-4 animate-spin text-neutral-400" /></div>
+                            ) : assistants.length === 0 ? (
+                              <div className="p-4 text-center"><p className="text-xs text-neutral-400">No hay asistentes activos</p></div>
+                            ) : (
+                              assistants.map(a => (
+                                <button key={a.id} onClick={() => startAutoMode(a.id)}
+                                  className="w-full text-left px-3 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors border-b border-neutral-50 dark:border-neutral-700/50 last:border-0">
+                                  <div className="flex items-center gap-2">
+                                    <Bot className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs font-medium text-neutral-700 dark:text-white/70 truncate">{a.nombre}</p>
+                                      {a.descripcion && <p className="text-[10px] text-neutral-400 truncate mt-0.5">{a.descripcion}</p>}
+                                    </div>
+                                  </div>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Crear tramite button */}
+                      <div className="flex-shrink-0 hidden sm:block">
+                        <button onClick={handleDirectCreateTramite}
+                          className="p-2.5 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-xl transition-colors text-neutral-400" title="Crear tramite">
+                          <Plus className="w-5 h-5" />
+                        </button>
+                      </div>
+
                       {/* Text input */}
                       <div className="flex-1">
                         <textarea
@@ -1110,9 +1220,12 @@ export default function MiWhatsApp() {
                           value={messageInput}
                           onChange={e => setMessageInput(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
-                          placeholder="Escribe un mensaje..."
+                          placeholder={autoMode ? 'IA activa - escribe para intervenir...' : 'Escribe un mensaje...'}
                           rows={1}
-                          className="w-full px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-white/5 border border-neutral-200/60 dark:border-white/10 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400/40 resize-none transition-all"
+                          className={cn(
+                            'w-full px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-white/5 border text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400/40 resize-none transition-all',
+                            autoMode ? 'border-emerald-300/60 dark:border-emerald-600/30' : 'border-neutral-200/60 dark:border-white/10'
+                          )}
                         />
                       </div>
 
