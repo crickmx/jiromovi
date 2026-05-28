@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Copy, Eye, Save, X, Code, Image as ImageIcon } from 'lucide-react';
+import { Plus, CreditCard as Edit, Trash2, Copy, Eye, Save, X, Code, Image as ImageIcon, Info } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { SIGNATURE_VARIABLES, EXAMPLE_CONTEXT, renderSignatureHtml } from '../../lib/emailSignatureUtils';
 
 interface Template {
   id: string;
@@ -48,19 +49,49 @@ export function PlantillasFirma() {
     setFormData({
       nombre: '',
       descripcion: '',
-      html: `<!-- FIRMA_BEGIN -->
-<table style="font-family: Arial, sans-serif; font-size: 14px; color: #333; max-width: 700px;" cellpadding="0" cellspacing="0">
+      html: `<table style="font-family:Arial,sans-serif;font-size:14px;color:#333333;max-width:600px;border-collapse:collapse;" cellpadding="0" cellspacing="0" role="presentation">
   <tr>
-    <td style="padding: 20px 0;">
-      <div style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">
-        {{nombre}} {{apellidos}}
-      </div>
-      <div>{{puesto}}</div>
-      <div>{{email_laboral}}</div>
+    <td style="padding:0 0 12px 0;">
+      <table cellpadding="0" cellspacing="0" role="presentation">
+        <tr>
+          {{#if imagen_perfil}}<td style="vertical-align:top;padding-right:16px;">
+            <img src="{{imagen_perfil}}" alt="{{nombre_completo}}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;" />
+          </td>{{/if}}
+          <td style="vertical-align:top;">
+            <div style="font-size:17px;font-weight:bold;color:{{oficina_color_primario}};margin-bottom:2px;">{{nombre_completo}}</div>
+            {{#if puesto}}<div style="font-size:13px;color:#555555;margin-bottom:8px;">{{puesto}}</div>{{/if}}
+            <div style="font-size:12px;color:#666666;line-height:1.6;">
+              {{#if email_laboral}}<span>{{email_laboral}}</span><br/>{{/if}}
+              {{#if celular_laboral}}<span>{{celular_laboral}}</span>{{/if}}
+              {{#if extension_telefonica}}<span> ext. {{extension_telefonica}}</span>{{/if}}
+            </div>
+          </td>
+        </tr>
+      </table>
     </td>
   </tr>
-</table>
-<!-- FIRMA_END -->`,
+  <tr>
+    <td style="border-top:2px solid {{oficina_color_primario}};padding:12px 0 0 0;">
+      <table cellpadding="0" cellspacing="0" role="presentation">
+        <tr>
+          {{#if oficina_logo}}<td style="vertical-align:middle;padding-right:12px;">
+            <img src="{{oficina_logo}}" alt="{{oficina_nombre}}" style="height:32px;max-width:140px;" />
+          </td>{{/if}}
+          <td style="vertical-align:middle;font-size:12px;color:#666666;line-height:1.5;">
+            {{#if oficina_nombre}}<strong>{{oficina_nombre}}</strong><br/>{{/if}}
+            {{#if oficina_domicilio}}<span>{{oficina_domicilio}}</span><br/>{{/if}}
+            {{#if oficina_telefono}}<span>Tel: {{oficina_telefono}}</span>{{/if}}
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  {{#if whatsapp_link}}<tr>
+    <td style="padding-top:10px;">
+      <a href="{{whatsapp_link}}" style="display:inline-block;padding:6px 14px;background-color:#25D366;color:#ffffff;font-size:12px;font-weight:bold;text-decoration:none;border-radius:4px;">WhatsApp</a>
+    </td>
+  </tr>{{/if}}
+</table>`,
       ancho_max: 700
     });
     setShowEditor(true);
@@ -144,10 +175,7 @@ export function PlantillasFirma() {
     });
   };
 
-  const variables = [
-    { group: 'Usuario', items: ['nombre', 'apellidos', 'rol', 'puesto', 'email_laboral', 'celular_laboral', 'extension_telefonica'] },
-    { group: 'Oficina', items: ['oficina_nombre', 'oficina_direccion', 'oficina_telefono', 'oficina_email'] }
-  ];
+  const variables = SIGNATURE_VARIABLES;
 
   if (loading) {
     return <div className="text-center py-12">Cargando...</div>;
@@ -262,20 +290,32 @@ export function PlantillasFirma() {
                 />
               </div>
 
-              <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
-                <h4 className="font-semibold text-primary-900 mb-2">Variables disponibles:</h4>
+              <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <h4 className="font-semibold text-neutral-900">Variables disponibles</h4>
+                  <div className="group relative">
+                    <Info className="w-4 h-4 text-neutral-400" />
+                    <div className="absolute left-6 top-0 z-10 hidden group-hover:block w-72 p-3 bg-white border border-neutral-200 rounded-lg shadow-lg text-xs text-neutral-600">
+                      <p className="font-semibold mb-1">Uso:</p>
+                      <code className="block bg-neutral-100 p-1 rounded mb-2">{`{{variable}}`}</code>
+                      <p className="font-semibold mb-1">Condicional:</p>
+                      <code className="block bg-neutral-100 p-1 rounded">{`{{#if variable}}...{{/if}}`}</code>
+                    </div>
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   {variables.map((group) => (
                     <div key={group.group}>
-                      <p className="font-semibold text-sm text-primary-800 mb-2">{group.group}:</p>
-                      <div className="flex flex-wrap gap-2">
+                      <p className="font-semibold text-sm text-neutral-700 mb-2">{group.group}:</p>
+                      <div className="flex flex-wrap gap-1.5">
                         {group.items.map((item) => (
                           <button
-                            key={item}
-                            onClick={() => insertVariable(item)}
-                            className="px-2 py-1 bg-white border border-primary-300 text-primary-700 text-xs rounded hover:bg-primary-100 transition-all"
+                            key={item.key}
+                            onClick={() => insertVariable(item.key)}
+                            title={item.label}
+                            className="px-2 py-1 bg-white border border-neutral-300 text-neutral-700 text-xs rounded hover:bg-accent/5 hover:border-accent/40 hover:text-accent transition-all"
                           >
-                            {`{{${item}}}`}
+                            {`{{${item.key}}}`}
                           </button>
                         ))}
                       </div>
@@ -318,7 +358,8 @@ export function PlantillasFirma() {
                   />
                 ) : (
                   <div className="border border-neutral-300 rounded-lg p-4 bg-white min-h-[400px]">
-                    <div dangerouslySetInnerHTML={{ __html: formData.html }} />
+                    <p className="text-xs text-neutral-500 mb-3 italic">Vista previa con datos de ejemplo:</p>
+                    <div dangerouslySetInnerHTML={{ __html: renderSignatureHtml(formData.html, EXAMPLE_CONTEXT) }} />
                   </div>
                 )}
               </div>
