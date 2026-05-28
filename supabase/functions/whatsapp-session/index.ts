@@ -89,20 +89,43 @@ Deno.serve(async (req: Request) => {
                   updated_at: new Date().toISOString(),
                 })
                 .eq("id", session.id);
+            } else if (!statusData.connected && session && session.status !== 'disconnected') {
+              // Server says not connected - update DB to reflect reality
+              await supabase
+                .from("whatsapp_sessions")
+                .update({
+                  status: "disconnected",
+                  disconnected_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", session.id);
             }
+            const resolvedStatus = statusData.connected ? "connected" : "disconnected";
             return json({
               session: session
-                ? {
-                    ...session,
-                    status: statusData.connected ? "connected" : session.status,
-                  }
+                ? { ...session, status: resolvedStatus }
                 : { status: "disconnected" },
               server_configured: true,
               provider_configured: true,
             });
           }
         } catch {
-          // Server unreachable, return DB state
+          // Server unreachable - if session is in a transient state, mark as disconnected
+          if (session && (session.status === 'qr_pending' || session.status === 'connecting')) {
+            const updatedAt = session.updated_at ? new Date(session.updated_at).getTime() : 0;
+            const staleMs = Date.now() - updatedAt;
+            if (staleMs > 120_000) {
+              await supabase
+                .from("whatsapp_sessions")
+                .update({ status: "disconnected", updated_at: new Date().toISOString() })
+                .eq("id", session.id);
+              return json({
+                session: { ...session, status: "disconnected" },
+                server_configured: serverConfigured,
+                provider_configured: serverConfigured,
+              });
+            }
+          }
         }
 
         return json({
