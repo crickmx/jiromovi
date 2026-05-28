@@ -73,7 +73,7 @@ export const NotificationTemplates = {
       mensaje: `Has recibido un nuevo correo de ${remitente}.`,
       modulo: 'Correos',
       icono: 'mail',
-      accion_url: '/gestor-emails',
+      accion_url: '/centro-contacto',
       accion_texto: 'Ver correo',
     }),
 
@@ -84,7 +84,7 @@ export const NotificationTemplates = {
       mensaje: 'Tu correo programado fue enviado correctamente.',
       modulo: 'Correos',
       icono: 'mail',
-      accion_url: '/gestor-emails',
+      accion_url: '/centro-contacto',
       accion_texto: 'Ver enviados',
     }),
 

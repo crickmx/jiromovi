@@ -1,12 +1,13 @@
 import { useState, useMemo } from 'react';
-import { MessageSquare, Bell, Smartphone } from 'lucide-react';
+import { MessageSquare, Bell, Smartphone, Mail } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Chat } from './Chat';
+import { GestorEmails } from './GestorEmails';
 import { CentroNotificacionesContent } from './CentroNotificaciones';
 import CentroContactoUnificado from './CentroContactoUnificado';
 import { cn } from '@/lib/utils';
 
-type TabKey = 'whatsapp' | 'chat' | 'notificaciones';
+type TabKey = 'whatsapp' | 'email' | 'chat' | 'notificaciones';
 
 interface TabDef {
   key: TabKey;
@@ -25,14 +26,15 @@ export default function CentroContactoHub() {
 
   const tabs: TabDef[] = useMemo(() => [
     { key: 'whatsapp', label: 'WhatsApp', icon: Smartphone, show: isAdmin || isGerente || isEmpleado },
+    { key: 'email', label: 'Email', icon: Mail, show: true },
     { key: 'chat', label: 'Chat', icon: MessageSquare, show: isNotAgent },
     { key: 'notificaciones', label: 'Notificaciones', icon: Bell, show: isAdmin },
-  ], [isAdmin, isGerente, isEmpleado, isNotAgent]);
+  ], [isAdmin, isGerente, isEmpleado, isNotAgent, isNotAgent]);
 
   const visibleTabs = tabs.filter(t => t.show);
   const [activeTab, setActiveTab] = useState<TabKey>(() => visibleTabs[0]?.key || 'whatsapp');
 
-  const currentTab = visibleTabs.find(t => t.key === activeTab) ? activeTab : (visibleTabs[0]?.key || 'chat');
+  const currentTab = visibleTabs.find(t => t.key === activeTab) ? activeTab : (visibleTabs[0]?.key || 'whatsapp');
 
   return (
     <div className="h-full flex flex-col">
@@ -64,6 +66,7 @@ export default function CentroContactoHub() {
       {/* Tab Content */}
       <div className="flex-1 overflow-hidden">
         {currentTab === 'whatsapp' && <CentroContactoUnificado />}
+        {currentTab === 'email' && <GestorEmails />}
         {currentTab === 'chat' && <Chat />}
         {currentTab === 'notificaciones' && <CentroNotificacionesContent />}
       </div>

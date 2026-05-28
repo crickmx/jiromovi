@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Mail, Bot, BarChart3, Video, BookMarked, BadgeCheck, Zap, Compass, Calculator } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, BarChart3, Video, BookMarked, BadgeCheck, Zap, Compass, Calculator } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
@@ -110,7 +110,6 @@ const WORKSPACE_MERCADOTECNIA: WorkspaceDefinition = {
     { path: '/mercadotecnia/mi-marca', label: 'Mi Marca', icon: BadgeCheck, visibleTo: ALL_ROLES },
     { path: '/mercadotecnia/publicidad', label: 'Publicidad', icon: Megaphone, visibleTo: ALL_ROLES },
     { path: '/mercadotecnia/mi-pagina-web', label: 'Mi Pagina Web', icon: Globe, visibleTo: ALL_ROLES },
-    { path: '/gestor-emails', label: 'Gestor Emails', icon: Mail, visibleTo: ALL_ROLES },
     { path: '/centro-digital', label: 'Centro Digital', icon: FolderOpen, visibleTo: ALL_ROLES },
   ],
 };
