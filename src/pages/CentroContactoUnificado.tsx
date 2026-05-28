@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Info, X, MessageSquare } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Info, X, MessageSquare, QrCode, Zap, Wifi, WifiOff, AlertCircle, RefreshCw, Settings, Plus, Star, Send, Copy, Trash2, Tag, CreditCard as Edit3 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -11,9 +11,33 @@ import {
 import { UnifiedConversationList } from '@/components/contactCenter/UnifiedConversationList';
 import { UnifiedConversationThread } from '@/components/contactCenter/UnifiedConversationThread';
 
+type SubTab = 'conversations' | 'connection' | 'templates';
+
+interface WhatsAppSession {
+  id: string;
+  status: 'connected' | 'disconnected' | 'connecting' | 'error' | 'qr_pending';
+  phone_number: string | null;
+  connected_at: string | null;
+  error_message: string | null;
+}
+
+interface UserTemplate {
+  id: string;
+  name: string;
+  category: string;
+  body: string;
+  variables: string[];
+  is_favorite: boolean;
+  sort_order: number;
+}
+
 export default function CentroContactoUnificado() {
   const { usuario } = useAuth();
 
+  // ── Subtab state ─────────────────────────────────────────────────
+  const [subTab, setSubTab] = useState<SubTab>('conversations');
+
+  // ── Conversations state ──────────────────────────────────────────
   const [conversations, setConversations] = useState<UnifiedConversation[]>([]);
   const [participantNames, setParticipantNames] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<UnifiedConversation | null>(null);
@@ -24,15 +48,47 @@ export default function CentroContactoUnificado() {
   const [showContactPanel, setShowContactPanel] = useState(false);
   const [mobileView, setMobileView] = useState<'list' | 'thread'>('list');
 
+  // ── Connection state ─────────────────────────────────────────────
+  const [waSession, setWaSession] = useState<WhatsAppSession | null>(null);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [providerConfigured, setProviderConfigured] = useState(false);
+  const [providerMessage, setProviderMessage] = useState<string | null>(null);
+  const [polling, setPolling] = useState(false);
+  const [syncingHistory, setSyncingHistory] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Templates state ──────────────────────────────────────────────
+  const [templates, setTemplates] = useState<UserTemplate[]>([]);
+
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
   const userId = usuario?.id;
 
+  // ── Edge function helper ─────────────────────────────────────────
+  const callEdgeFunction = useCallback(async (action: string, extra?: Record<string, unknown>) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return null;
+    try {
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-session`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, ...extra }),
+      });
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok) return data ?? { error: `HTTP ${resp.status}` };
+      return data;
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : 'Error de red' };
+    }
+  }, []);
+
+  // ── Load conversations (WA only, no chat) ────────────────────────
   const loadAll = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
     try {
-      // ── 1. WA MOVI: contact_center_messages ──────────────────────
+      // 1. WA MOVI: contact_center_messages
       let moviQuery = supabase
         .from('contact_center_messages')
         .select('id, agent_user_id, contact_phone, contact_name, direction, body, channel, created_at, status, read_at')
@@ -56,7 +112,6 @@ export default function CentroContactoUnificado() {
       const moviContactNames: Record<string, string> = {};
       const moviPhones = [...new Set((moviMsgs || []).map((m: any) => m.contact_phone).filter(Boolean))];
       if (moviPhones.length > 0) {
-        // Try crm_contactos table for name lookup by phone
         const { data: crmContacts } = await supabase
           .from('crm_contactos')
           .select('telefono, nombre, apellido')
@@ -66,7 +121,6 @@ export default function CentroContactoUnificado() {
             moviContactNames[c.telefono] = [c.nombre, c.apellido].filter(Boolean).join(' ').trim() || c.telefono;
           }
         }
-        // Also check contact_center_messages contact_name field itself (latest non-null per phone)
         for (const m of moviMsgs || []) {
           if (m.contact_phone && m.contact_name && !moviContactNames[m.contact_phone]) {
             moviContactNames[m.contact_phone] = m.contact_name;
@@ -74,7 +128,7 @@ export default function CentroContactoUnificado() {
         }
       }
 
-      // ── 2. WA Personal: whatsapp_conversations ───────────────────
+      // 2. WA Personal: whatsapp_conversations
       const { data: waConvs } = await supabase
         .from('whatsapp_conversations')
         .select('id, user_id, remote_phone, remote_name, remote_avatar_url, last_message_text, last_message_at, unread_count, is_group, group_name, is_archived')
@@ -82,70 +136,12 @@ export default function CentroContactoUnificado() {
         .order('last_message_at', { ascending: false, nullsFirst: false })
         .limit(200);
 
-      // ── 3. Chat: chats where current user is member ──────────────
-      const { data: myChats } = await supabase
-        .from('chat_miembros')
-        .select('chat_id, ultimo_leido_at, chats(id, tipo, nombre, ultimo_mensaje_at, participantes_directos)')
-        .eq('usuario_id', userId)
-        .eq('eliminado', false);
-
-      const chatIds = (myChats || []).map(m => m.chat_id);
-      const chatLastMsgs: Record<string, { mensaje: string; created_at: string; remitente_id: string }> = {};
-      const chatUnread: Record<string, number> = {};
-
-      if (chatIds.length > 0) {
-        const { data: lastMsgsData } = await supabase
-          .from('chat_mensajes')
-          .select('chat_id, mensaje, created_at, remitente_id')
-          .in('chat_id', chatIds)
-          .eq('eliminado', false)
-          .order('created_at', { ascending: false });
-
-        for (const m of lastMsgsData || []) {
-          if (!chatLastMsgs[m.chat_id]) chatLastMsgs[m.chat_id] = m;
-        }
-
-        // Unread per chat
-        for (const m of myChats || []) {
-          const lastRead = m.ultimo_leido_at;
-          const q = supabase
-            .from('chat_mensajes')
-            .select('id', { count: 'exact', head: true })
-            .eq('chat_id', m.chat_id)
-            .neq('remitente_id', userId)
-            .eq('eliminado', false);
-          const { count } = lastRead ? await q.gt('created_at', lastRead) : await q;
-          chatUnread[m.chat_id] = count || 0;
-        }
-
-        // Resolve direct chat participant names
-        const allParticipantIds = new Set<string>();
-        for (const m of myChats || []) {
-          const chat = (m as any).chats;
-          if (chat?.tipo === 'direct' && Array.isArray(chat.participantes_directos)) {
-            for (const pid of chat.participantes_directos) {
-              if (pid !== userId) allParticipantIds.add(pid);
-            }
-          }
-        }
-
-        if (allParticipantIds.size > 0) {
-          const { data: pUsers } = await supabase
-            .from('usuarios')
-            .select('id, nombres, apellido_paterno')
-            .in('id', Array.from(allParticipantIds));
-          setParticipantNames(
-            Object.fromEntries((pUsers || []).map(u => [u.id, `${u.nombres} ${u.apellido_paterno}`.trim()]))
-          );
-        }
-      }
-
       const merged = mergeConversations({
         moviMsgs: moviMsgs || [],
         waConvs: waConvs || [],
-        myChats: myChats || [],
-        chatLastMsgs,
-        chatUnread,
+        myChats: [],
+        chatLastMsgs: {},
+        chatUnread: {},
         userId,
         moviContactNames,
       });
@@ -156,35 +152,106 @@ export default function CentroContactoUnificado() {
     }
   }, [userId, isAdmin, isGerente, usuario?.oficina_id]);
 
+  // ── Load WA Personal session status ──────────────────────────────
+  const loadConnectionStatus = useCallback(async () => {
+    const result = await callEdgeFunction('get-status');
+    if (result) {
+      setWaSession(result.session || null);
+      setProviderConfigured(result.server_configured ?? result.provider_configured ?? false);
+      setProviderMessage(result.message || null);
+      if (result.session?.status === 'connected' || result.session?.status === 'disconnected') {
+        setQrCode(null);
+      }
+    }
+  }, [callEdgeFunction]);
+
+  // ── Load templates ───────────────────────────────────────────────
+  const loadTemplates = useCallback(async () => {
+    if (!userId) return;
+    const { data } = await supabase
+      .from('whatsapp_user_templates')
+      .select('*')
+      .eq('user_id', userId)
+      .order('is_favorite', { ascending: false })
+      .order('sort_order');
+    setTemplates(data || []);
+  }, [userId]);
+
+  // ── Initial load ─────────────────────────────────────────────────
   useEffect(() => {
     loadAll();
-  }, [loadAll]);
+    loadConnectionStatus();
+    loadTemplates();
+  }, [loadAll, loadConnectionStatus, loadTemplates]);
 
-  // Realtime: subscribe to all three source tables
+  // ── Realtime subscriptions ───────────────────────────────────────
   useEffect(() => {
     if (!userId) return;
 
     const ch1 = supabase
-      .channel('omni_movi')
+      .channel('wa_unified_movi')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'contact_center_messages' }, () => loadAll())
       .subscribe();
 
     const ch2 = supabase
-      .channel('omni_wa')
+      .channel('wa_unified_personal')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_conversations' }, () => loadAll())
-      .subscribe();
-
-    const ch3 = supabase
-      .channel('omni_chat_msgs')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_mensajes' }, () => loadAll())
       .subscribe();
 
     return () => {
       supabase.removeChannel(ch1);
       supabase.removeChannel(ch2);
-      supabase.removeChannel(ch3);
     };
   }, [userId, loadAll]);
+
+  // ── Cleanup polling on unmount ───────────────────────────────────
+  useEffect(() => {
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, []);
+
+  // ── Connection handlers ──────────────────────────────────────────
+  const handleConnect = async () => {
+    setPolling(true);
+    const result = await callEdgeFunction('create-session');
+    if (result?.qr) setQrCode(result.qr);
+
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(async () => {
+      const status = await callEdgeFunction('get-status');
+      if (status?.session) {
+        setWaSession(status.session);
+        if (status.session.status === 'connected') {
+          setQrCode(null);
+          setPolling(false);
+          if (pollRef.current) clearInterval(pollRef.current);
+          loadAll();
+        } else if (status.session.status === 'qr_pending' && status.qr) {
+          setQrCode(status.qr);
+        }
+      }
+    }, 5000);
+  };
+
+  const handleDisconnect = async () => {
+    await callEdgeFunction('disconnect');
+    setWaSession(prev => prev ? { ...prev, status: 'disconnected' } : null);
+    setQrCode(null);
+    setPolling(false);
+    if (pollRef.current) clearInterval(pollRef.current);
+  };
+
+  const handleSyncHistory = async () => {
+    setSyncingHistory(true);
+    setSyncResult(null);
+    const result = await callEdgeFunction('sync-history');
+    setSyncingHistory(false);
+    if (result?.error) {
+      setSyncResult(`Error: ${result.error}`);
+    } else {
+      setSyncResult(`Sincronizado: ${result?.synced || 0} conversaciones actualizadas`);
+      loadAll();
+    }
+  };
 
   const handleSelectConversation = (conv: UnifiedConversation) => {
     setSelected(conv);
@@ -192,110 +259,556 @@ export default function CentroContactoUnificado() {
     setMobileView('thread');
   };
 
+  // ── WA MOVI status (always active) ──────────────────────────────
+  const waMoviActive = true;
+  const waPersonalConnected = waSession?.status === 'connected';
+
   return (
     <div className="h-full flex flex-col bg-neutral-50 dark:bg-neutral-950">
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-2.5 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <h1 className="text-sm font-semibold text-neutral-800 dark:text-white">Centro de Contacto Omnicanal</h1>
-          <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-full text-[10px] font-medium">
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-            En vivo
-          </span>
+        <div className="flex items-center gap-3">
+          <h1 className="text-sm font-semibold text-neutral-800 dark:text-white">WhatsApp</h1>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-full text-[10px] font-medium">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+              MOVI
+            </span>
+            <span className={cn(
+              'flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium',
+              waPersonalConnected
+                ? 'bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400'
+                : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500'
+            )}>
+              <span className={cn('w-1.5 h-1.5 rounded-full', waPersonalConnected ? 'bg-teal-500' : 'bg-neutral-300 dark:bg-neutral-600')} />
+              Personal {waPersonalConnected ? '' : '(sin conectar)'}
+            </span>
+          </div>
         </div>
-        <span className="text-[10px] text-neutral-400 dark:text-neutral-500 tabular-nums">
-          {conversations.length} conversaciones
-        </span>
+
+        {/* Subtab navigation */}
+        <div className="flex items-center gap-1">
+          {([
+            { key: 'conversations' as SubTab, icon: MessageSquare, label: 'Conversaciones' },
+            { key: 'connection' as SubTab, icon: QrCode, label: 'Conexion' },
+            { key: 'templates' as SubTab, icon: Zap, label: 'Plantillas' },
+          ]).map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setSubTab(tab.key)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all',
+                subTab === tab.key
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200'
+              )}
+            >
+              <tab.icon className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{tab.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Main layout */}
-      <div className="flex-1 overflow-hidden flex">
-        {/* Conversation list */}
-        <div className={cn(
-          'flex-shrink-0 flex flex-col border-r border-neutral-200 dark:border-neutral-700',
-          'w-full sm:w-80 lg:w-[320px]',
-          mobileView === 'thread' ? 'hidden sm:flex' : 'flex'
-        )}>
-          <UnifiedConversationList
+      {/* Subtab content */}
+      <div className="flex-1 overflow-hidden">
+        {subTab === 'conversations' && (
+          <ConversationsView
             conversations={conversations}
-            selectedId={selected?.id || null}
-            onSelect={handleSelectConversation}
-            search={search}
-            onSearchChange={setSearch}
-            filterChannel={filterChannel}
-            onFilterChange={setFilterChannel}
-            filterStatus={filterStatus}
-            onStatusChange={setFilterStatus}
-            loading={loading}
             participantNames={participantNames}
+            selected={selected}
+            loading={loading}
+            filterChannel={filterChannel}
+            filterStatus={filterStatus}
+            search={search}
+            showContactPanel={showContactPanel}
+            mobileView={mobileView}
+            userId={userId!}
+            waPersonalConnected={waPersonalConnected}
+            onSelect={handleSelectConversation}
+            onSearchChange={setSearch}
+            onFilterChange={setFilterChannel}
+            onStatusChange={setFilterStatus}
+            onToggleContactPanel={() => setShowContactPanel(v => !v)}
+            onBack={() => setMobileView('list')}
           />
-        </div>
+        )}
+        {subTab === 'connection' && (
+          <ConnectionView
+            waSession={waSession}
+            qrCode={qrCode}
+            providerConfigured={providerConfigured}
+            providerMessage={providerMessage}
+            polling={polling}
+            waMoviActive={waMoviActive}
+            syncingHistory={syncingHistory}
+            syncResult={syncResult}
+            onConnect={handleConnect}
+            onDisconnect={handleDisconnect}
+            onRefresh={loadConnectionStatus}
+            onSyncHistory={handleSyncHistory}
+          />
+        )}
+        {subTab === 'templates' && (
+          <TemplatesView
+            templates={templates}
+            userId={userId || ''}
+            onRefresh={loadTemplates}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
 
-        {/* Thread + Contact panel */}
-        <div className={cn(
-          'flex-1 flex overflow-hidden',
-          mobileView === 'list' ? 'hidden sm:flex' : 'flex'
-        )}>
-          {selected ? (
-            <>
-              <div className="flex-1 overflow-hidden">
-                <UnifiedConversationThread
-                  conversation={selected}
-                  onBack={() => setMobileView('list')}
-                  currentUserId={userId!}
-                  participantNames={participantNames}
-                />
-              </div>
+// ── Conversations Sub-view ─────────────────────────────────────────────────
 
-              <div className={cn(
-                'transition-all duration-200 overflow-hidden flex-shrink-0',
-                showContactPanel ? 'w-64' : 'w-0'
-              )}>
-                {showContactPanel && (
-                  <div className="w-64 h-full bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-700 p-4 overflow-y-auto">
-                    <p className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">Informacion</p>
-                    {selected.contactName && (
-                      <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100 mb-1">{selected.contactName}</p>
-                    )}
-                    {selected.contactPhone && (
-                      <p className="text-xs text-neutral-500 mb-3">{selected.contactPhone}</p>
-                    )}
-                    <p className="text-[10px] text-neutral-400 uppercase tracking-wider mb-1">Canal</p>
-                    <p className="text-xs text-neutral-700 dark:text-neutral-200">
-                      {selected.channel === 'wa_movi' ? 'WA MOVI' : selected.channel === 'wa_personal' ? 'WA Personal' : 'Chat Interno'}
-                    </p>
-                  </div>
-                )}
-              </div>
+function ConversationsView({
+  conversations, participantNames, selected, loading,
+  filterChannel, filterStatus, search, showContactPanel,
+  mobileView, userId, waPersonalConnected,
+  onSelect, onSearchChange, onFilterChange, onStatusChange,
+  onToggleContactPanel, onBack,
+}: {
+  conversations: UnifiedConversation[];
+  participantNames: Record<string, string>;
+  selected: UnifiedConversation | null;
+  loading: boolean;
+  filterChannel: CCChannel | 'all';
+  filterStatus: CCStatus | 'all';
+  search: string;
+  showContactPanel: boolean;
+  mobileView: 'list' | 'thread';
+  userId: string;
+  waPersonalConnected: boolean;
+  onSelect: (conv: UnifiedConversation) => void;
+  onSearchChange: (v: string) => void;
+  onFilterChange: (v: CCChannel | 'all') => void;
+  onStatusChange: (v: CCStatus | 'all') => void;
+  onToggleContactPanel: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <div className="h-full flex">
+      {/* Conversation list */}
+      <div className={cn(
+        'flex-shrink-0 flex flex-col border-r border-neutral-200 dark:border-neutral-700',
+        'w-full sm:w-80 lg:w-[320px]',
+        mobileView === 'thread' ? 'hidden sm:flex' : 'flex'
+      )}>
+        <UnifiedConversationList
+          conversations={conversations}
+          selectedId={selected?.id || null}
+          onSelect={onSelect}
+          search={search}
+          onSearchChange={onSearchChange}
+          filterChannel={filterChannel}
+          onFilterChange={onFilterChange}
+          filterStatus={filterStatus}
+          onStatusChange={onStatusChange}
+          loading={loading}
+          participantNames={participantNames}
+        />
+      </div>
 
-              <div className="hidden lg:flex flex-col items-center justify-start pt-4 px-1 bg-white dark:bg-neutral-900 border-l border-neutral-100 dark:border-neutral-800">
-                <button
-                  onClick={() => setShowContactPanel(v => !v)}
-                  className={cn(
-                    'p-2 rounded-lg transition-colors',
-                    showContactPanel
-                      ? 'bg-accent/10 text-accent'
-                      : 'text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-600'
+      {/* Thread + Contact panel */}
+      <div className={cn(
+        'flex-1 flex overflow-hidden',
+        mobileView === 'list' ? 'hidden sm:flex' : 'flex'
+      )}>
+        {selected ? (
+          <>
+            <div className="flex-1 overflow-hidden">
+              <UnifiedConversationThread
+                conversation={selected}
+                onBack={onBack}
+                currentUserId={userId}
+                participantNames={participantNames}
+              />
+            </div>
+
+            <div className={cn(
+              'transition-all duration-200 overflow-hidden flex-shrink-0',
+              showContactPanel ? 'w-64' : 'w-0'
+            )}>
+              {showContactPanel && (
+                <div className="w-64 h-full bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-700 p-4 overflow-y-auto">
+                  <p className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">Informacion</p>
+                  {selected.contactName && (
+                    <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100 mb-1">{selected.contactName}</p>
                   )}
-                  title={showContactPanel ? 'Ocultar info' : 'Ver info del contacto'}
-                >
-                  {showContactPanel ? <X className="w-4 h-4" /> : <Info className="w-4 h-4" />}
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950 text-center p-8">
-              <div className="w-16 h-16 rounded-2xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-4">
-                <MessageSquare className="w-8 h-8 text-neutral-300 dark:text-neutral-600" />
-              </div>
-              <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-1">
-                Selecciona una conversacion
-              </h3>
-              <p className="text-xs text-neutral-400 dark:text-neutral-500 max-w-xs">
-                Elige una conversacion del panel izquierdo para ver el historial y responder.
+                  {selected.contactPhone && (
+                    <p className="text-xs text-neutral-500 mb-3">{selected.contactPhone}</p>
+                  )}
+                  <p className="text-[10px] text-neutral-400 uppercase tracking-wider mb-1">Canal</p>
+                  <p className="text-xs text-neutral-700 dark:text-neutral-200">
+                    {selected.channel === 'wa_movi' ? 'WA MOVI' : 'WA Personal'}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="hidden lg:flex flex-col items-center justify-start pt-4 px-1 bg-white dark:bg-neutral-900 border-l border-neutral-100 dark:border-neutral-800">
+              <button
+                onClick={onToggleContactPanel}
+                className={cn(
+                  'p-2 rounded-lg transition-colors',
+                  showContactPanel
+                    ? 'bg-accent/10 text-accent'
+                    : 'text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-600'
+                )}
+                title={showContactPanel ? 'Ocultar info' : 'Ver info del contacto'}
+              >
+                {showContactPanel ? <X className="w-4 h-4" /> : <Info className="w-4 h-4" />}
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950 text-center p-8">
+            <div className="w-16 h-16 rounded-2xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-4">
+              <MessageSquare className="w-8 h-8 text-neutral-300 dark:text-neutral-600" />
+            </div>
+            <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-1">
+              Selecciona una conversacion
+            </h3>
+            <p className="text-xs text-neutral-400 dark:text-neutral-500 max-w-xs">
+              Elige una conversacion del panel izquierdo para ver el historial y responder.
+            </p>
+            {!waPersonalConnected && (
+              <p className="text-[10px] text-teal-500 dark:text-teal-400 mt-4 max-w-xs">
+                Conecta tu WA Personal en la pestana "Conexion" para ver tambien esas conversaciones aqui.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Connection Sub-view ────────────────────────────────────────────────────
+
+function ConnectionView({
+  waSession, qrCode, providerConfigured, providerMessage,
+  polling, waMoviActive, syncingHistory, syncResult,
+  onConnect, onDisconnect, onRefresh, onSyncHistory,
+}: {
+  waSession: WhatsAppSession | null;
+  qrCode: string | null;
+  providerConfigured: boolean;
+  providerMessage: string | null;
+  polling: boolean;
+  waMoviActive: boolean;
+  syncingHistory: boolean;
+  syncResult: string | null;
+  onConnect: () => void;
+  onDisconnect: () => void;
+  onRefresh: () => void;
+  onSyncHistory: () => void;
+}) {
+  const isConnected = waSession?.status === 'connected';
+  const isQrPending = waSession?.status === 'qr_pending';
+  const isConnecting = waSession?.status === 'connecting';
+  const isError = waSession?.status === 'error';
+
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="max-w-lg mx-auto p-6 space-y-6">
+        {/* WA MOVI status (always active) */}
+        <div className="rounded-2xl border bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/40 p-5">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-800/30 flex items-center justify-center">
+              <Wifi className="w-6 h-6 text-emerald-600" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-emerald-800 dark:text-emerald-200">WA MOVI</h3>
+              <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                Siempre activo. Los mensajes de clientes llegan automaticamente a tu bandeja.
               </p>
             </div>
+            <span className="ml-auto flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 dark:bg-emerald-800/40 rounded-full text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+              Activo
+            </span>
+          </div>
+        </div>
+
+        {/* WA Personal status */}
+        {!providerConfigured && (
+          <div className="rounded-xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10 p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Servidor de WA Personal no configurado</p>
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">{providerMessage || 'Se requiere configurar el servidor de WhatsApp. Contacta al administrador del sistema.'}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className={cn('rounded-2xl border p-6', isConnected ? 'bg-teal-50 dark:bg-teal-900/10 border-teal-200 dark:border-teal-800/40' : isError ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/40' : 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700')}>
+          <div className="flex items-center gap-4 mb-4">
+            <div className={cn('w-14 h-14 rounded-2xl flex items-center justify-center', isConnected ? 'bg-teal-100 dark:bg-teal-800/30' : isError ? 'bg-red-100 dark:bg-red-800/30' : 'bg-neutral-100 dark:bg-white/5')}>
+              {isConnected ? <Wifi className="w-7 h-7 text-teal-600" /> : isError ? <AlertCircle className="w-7 h-7 text-red-600" /> : <WifiOff className="w-7 h-7 text-neutral-400" />}
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
+                {isConnected ? 'WA Personal Conectado' : isQrPending ? 'Esperando escaneo QR' : isConnecting ? 'Conectando...' : isError ? 'Error de conexion' : 'WA Personal Desconectado'}
+              </h2>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                {isConnected && waSession?.phone_number ? `Numero: ${waSession.phone_number}` : isConnected ? 'Sesion activa' : isError && waSession?.error_message ? waSession.error_message : 'Conecta tu WhatsApp personal para sincronizar tus conversaciones'}
+              </p>
+            </div>
+          </div>
+
+          {isConnected && waSession?.connected_at && (
+            <div className="text-xs text-teal-600 dark:text-teal-400 mb-4">
+              Conectado desde: {new Date(waSession.connected_at).toLocaleString('es-MX')}
+            </div>
           )}
+
+          <div className="flex flex-wrap items-center gap-3">
+            {!isConnected && (
+              <button onClick={onConnect} disabled={!providerConfigured}
+                className="flex items-center gap-2 px-5 py-3 bg-teal-600 hover:bg-teal-700 disabled:bg-neutral-300 disabled:dark:bg-neutral-700 text-white disabled:text-neutral-500 rounded-xl text-sm font-medium transition-colors">
+                <QrCode className="w-4 h-4" />
+                {isQrPending || isConnecting ? 'Reintentar' : 'Conectar WhatsApp'}
+              </button>
+            )}
+            {isConnected && (
+              <button onClick={onDisconnect} className="flex items-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium transition-colors">
+                <WifiOff className="w-4 h-4" /> Desconectar
+              </button>
+            )}
+            {isConnected && (
+              <button onClick={onSyncHistory} disabled={syncingHistory}
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl text-sm font-medium transition-colors">
+                <RefreshCw className={cn('w-4 h-4', syncingHistory && 'animate-spin')} />
+                {syncingHistory ? 'Sincronizando...' : 'Sincronizar historial'}
+              </button>
+            )}
+            <button onClick={onRefresh} className="p-3 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-xl transition-colors" title="Actualizar estado">
+              <RefreshCw className={cn('w-4 h-4 text-neutral-500', polling && 'animate-spin')} />
+            </button>
+          </div>
+
+          {syncResult && (
+            <div className={cn('mt-3 text-xs px-3 py-2 rounded-lg', syncResult.includes('Error') || syncResult.includes('error') ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300')}>
+              {syncResult}
+            </div>
+          )}
+        </div>
+
+        {/* QR Code display */}
+        {(isQrPending || isConnecting) && (
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-8 text-center">
+            <div className="w-64 h-64 mx-auto bg-white rounded-2xl flex items-center justify-center mb-4 border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+              {qrCode ? (
+                <img src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`} alt="WhatsApp QR Code" className="w-full h-full object-contain p-2" />
+              ) : (
+                <div className="text-center p-4">
+                  {polling ? (
+                    <>
+                      <div className="w-10 h-10 border-[3px] border-teal-500/20 border-t-teal-500 rounded-full animate-spin mx-auto mb-3" />
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">Generando codigo QR...</p>
+                    </>
+                  ) : (
+                    <>
+                      <QrCode className="w-16 h-16 text-neutral-200 dark:text-neutral-700 mx-auto mb-2" />
+                      <p className="text-xs text-neutral-400 dark:text-neutral-500">Presiona "Conectar WhatsApp" para generar el codigo QR</p>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+            {qrCode && (
+              <div className="mb-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-teal-50 dark:bg-teal-900/20 rounded-full">
+                  <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+                  <span className="text-xs font-medium text-teal-700 dark:text-teal-300">Esperando escaneo...</span>
+                </div>
+              </div>
+            )}
+            <h3 className="text-sm font-semibold text-neutral-800 dark:text-white mb-2">Escanea el codigo QR</h3>
+            <ol className="text-left text-xs text-neutral-500 dark:text-neutral-400 space-y-1.5 max-w-xs mx-auto">
+              <li>1. Abre WhatsApp en tu celular</li>
+              <li>2. Toca Menu o Configuracion</li>
+              <li>3. Selecciona "Dispositivos vinculados"</li>
+              <li>4. Toca "Vincular un dispositivo"</li>
+              <li>5. Apunta la camara hacia el codigo QR</li>
+            </ol>
+          </div>
+        )}
+
+        {/* Info section */}
+        <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl p-5 border border-neutral-200/50 dark:border-neutral-700/50">
+          <h3 className="text-sm font-semibold text-neutral-800 dark:text-white mb-3 flex items-center gap-2">
+            <Settings className="w-4 h-4 text-neutral-400" /> Informacion importante
+          </h3>
+          <ul className="text-xs text-neutral-500 dark:text-neutral-400 space-y-2">
+            <li className="flex items-start gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" /> WA MOVI siempre esta activo y recibe mensajes de clientes de forma independiente.</li>
+            <li className="flex items-start gap-2"><span className="w-1.5 h-1.5 rounded-full bg-teal-400 mt-1.5 flex-shrink-0" /> WA Personal requiere vincular tu celular para sincronizar tus conversaciones personales.</li>
+            <li className="flex items-start gap-2"><span className="w-1.5 h-1.5 rounded-full bg-teal-400 mt-1.5 flex-shrink-0" /> Si cierras sesion desde tu celular, la conexion de WA Personal se desconectara automaticamente.</li>
+            <li className="flex items-start gap-2"><span className="w-1.5 h-1.5 rounded-full bg-neutral-300 mt-1.5 flex-shrink-0" /> Ambos canales se combinan en una sola bandeja en "Conversaciones".</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Templates Sub-view ─────────────────────────────────────────────────────
+
+function TemplatesView({ templates, userId, onRefresh }: {
+  templates: UserTemplate[];
+  userId: string;
+  onRefresh: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('');
+  const [body, setBody] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [filterCategory, setFilterCategory] = useState('');
+
+  const categories = useMemo(() => {
+    const cats = new Set(templates.map(t => t.category).filter(Boolean));
+    return Array.from(cats);
+  }, [templates]);
+
+  const filtered = useMemo(() => {
+    if (!filterCategory) return templates;
+    return templates.filter(t => t.category === filterCategory);
+  }, [templates, filterCategory]);
+
+  const handleSave = async () => {
+    if (!name.trim() || !body.trim()) return;
+    if (editingId) {
+      await supabase.from('whatsapp_user_templates').update({ name: name.trim(), category: category.trim(), body: body.trim(), updated_at: new Date().toISOString() }).eq('id', editingId);
+    } else {
+      await supabase.from('whatsapp_user_templates').insert({ user_id: userId, name: name.trim(), category: category.trim(), body: body.trim() });
+    }
+    setName(''); setCategory(''); setBody(''); setEditingId(null);
+    onRefresh();
+  };
+
+  const handleEdit = (tpl: UserTemplate) => {
+    setEditingId(tpl.id); setName(tpl.name); setCategory(tpl.category); setBody(tpl.body);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Eliminar esta plantilla?')) return;
+    await supabase.from('whatsapp_user_templates').delete().eq('id', id);
+    onRefresh();
+  };
+
+  const handleDuplicate = async (tpl: UserTemplate) => {
+    await supabase.from('whatsapp_user_templates').insert({ user_id: userId, name: `${tpl.name} (copia)`, category: tpl.category, body: tpl.body });
+    onRefresh();
+  };
+
+  const handleToggleFavorite = async (tpl: UserTemplate) => {
+    await supabase.from('whatsapp_user_templates').update({ is_favorite: !tpl.is_favorite }).eq('id', tpl.id);
+    onRefresh();
+  };
+
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="max-w-2xl mx-auto p-6 space-y-6">
+        {/* Create/Edit form */}
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-5">
+          <h3 className="text-sm font-bold text-neutral-900 dark:text-white mb-4 flex items-center gap-2">
+            {editingId ? <Edit3 className="w-4 h-4 text-amber-500" /> : <Plus className="w-4 h-4 text-emerald-600" />}
+            {editingId ? 'Editar plantilla' : 'Nueva plantilla'}
+          </h3>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nombre"
+                className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-emerald-400/60" />
+              <input type="text" value={category} onChange={e => setCategory(e.target.value)} placeholder="Categoria (opcional)"
+                className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-emerald-400/60" />
+            </div>
+            <textarea value={body} onChange={e => setBody(e.target.value)}
+              placeholder="Hola {{nombre_cliente}}, te saluda {{nombre_usuario}} de {{nombre_oficina}}..."
+              rows={4} className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-emerald-400/60 resize-none" />
+            <div className="flex items-center gap-2">
+              <button onClick={handleSave} disabled={!name.trim() || !body.trim()}
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-neutral-200 disabled:dark:bg-neutral-700 text-white disabled:text-neutral-400 rounded-xl text-sm font-medium transition-colors">
+                {editingId ? 'Actualizar' : 'Guardar'}
+              </button>
+              {editingId && <button onClick={() => { setEditingId(null); setName(''); setCategory(''); setBody(''); }} className="px-4 py-2.5 text-sm text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl">Cancelar</button>}
+            </div>
+          </div>
+        </div>
+
+        {/* Filter */}
+        {categories.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <button onClick={() => setFilterCategory('')} className={cn('px-3 py-1.5 rounded-lg text-xs font-medium transition-colors', !filterCategory ? 'bg-emerald-600 text-white' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700')}>Todas</button>
+            {categories.map(cat => (
+              <button key={cat} onClick={() => setFilterCategory(cat)} className={cn('px-3 py-1.5 rounded-lg text-xs font-medium transition-colors', filterCategory === cat ? 'bg-emerald-600 text-white' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700')}>{cat}</button>
+            ))}
+          </div>
+        )}
+
+        {/* Templates list */}
+        <div>
+          <h3 className="text-sm font-bold text-neutral-900 dark:text-white mb-3">Mis plantillas ({filtered.length})</h3>
+          {filtered.length === 0 ? (
+            <div className="text-center py-10 bg-neutral-50 dark:bg-neutral-800/30 rounded-2xl border border-neutral-200/50 dark:border-neutral-700/50">
+              <Zap className="w-8 h-8 text-neutral-300 dark:text-neutral-600 mx-auto mb-2" />
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">No tienes plantillas aun</p>
+              <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">Crea una plantilla para enviar mensajes rapidos en WhatsApp</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filtered.map(tpl => (
+                <div key={tpl.id} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 group">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        {tpl.is_favorite && <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />}
+                        <h4 className="text-sm font-semibold text-neutral-800 dark:text-white">{tpl.name}</h4>
+                        {tpl.category && <span className="text-[9px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 rounded">{tpl.category}</span>}
+                      </div>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2">{tpl.body}</p>
+                    </div>
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => handleToggleFavorite(tpl)} className="p-1.5 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg" title="Favorito"><Star className={cn('w-3.5 h-3.5', tpl.is_favorite ? 'text-amber-500 fill-amber-500' : 'text-neutral-300')} /></button>
+                      <button onClick={() => handleDuplicate(tpl)} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg" title="Duplicar"><Copy className="w-3.5 h-3.5 text-neutral-400" /></button>
+                      <button onClick={() => handleEdit(tpl)} className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg" title="Editar"><Edit3 className="w-3.5 h-3.5 text-blue-500" /></button>
+                      <button onClick={() => handleDelete(tpl.id)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg" title="Eliminar"><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Variables reference */}
+        <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl p-5 border border-neutral-200/50 dark:border-neutral-700/50">
+          <h3 className="text-sm font-semibold text-neutral-800 dark:text-white mb-3 flex items-center gap-2"><Tag className="w-4 h-4 text-neutral-400" /> Variables disponibles</h3>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { var: '{{nombre_cliente}}', desc: 'Nombre del contacto' },
+              { var: '{{nombre_usuario}}', desc: 'Tu nombre' },
+              { var: '{{nombre_agente}}', desc: 'Nombre agente' },
+              { var: '{{telefono_usuario}}', desc: 'Tu telefono' },
+              { var: '{{email_usuario}}', desc: 'Tu email' },
+              { var: '{{tipo_seguro}}', desc: 'Tipo de seguro' },
+              { var: '{{fecha_vencimiento}}', desc: 'Fecha vencimiento' },
+              { var: '{{liga_seguwallet}}', desc: 'Liga Seguwallet' },
+              { var: '{{liga_formulario}}', desc: 'Liga formulario' },
+              { var: '{{nombre_oficina}}', desc: 'Nombre oficina' },
+              { var: '{{telefono_oficina}}', desc: 'Telefono oficina' },
+              { var: '{{email_oficina}}', desc: 'Email oficina' },
+            ].map(v => (
+              <div key={v.var} className="text-xs">
+                <code className="text-emerald-600 dark:text-emerald-400 font-mono text-[10px]">{v.var}</code>
+                <span className="text-neutral-400 dark:text-neutral-500 ml-1.5">{v.desc}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

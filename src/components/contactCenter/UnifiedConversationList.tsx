@@ -23,7 +23,7 @@ interface Props {
   participantNames: Record<string, string>;
 }
 
-const CHANNELS: (CCChannel | 'all')[] = ['all', 'wa_movi', 'wa_personal', 'chat'];
+const CHANNELS: (CCChannel | 'all')[] = ['all', 'wa_movi', 'wa_personal'];
 const STATUS_OPTIONS: { value: CCStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'Todas' },
   { value: 'open', label: 'Abiertas' },
@@ -230,7 +230,7 @@ export function UnifiedConversationList({
             </p>
             {!search && filterChannel === 'all' && (
               <p className="text-[10px] text-neutral-400 dark:text-neutral-500 leading-relaxed">
-                Conecta WA MOVI o WA Personal para ver conversaciones
+                Las conversaciones de WA MOVI y WA Personal apareceran aqui
               </p>
             )}
           </div>
