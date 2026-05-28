@@ -59,6 +59,15 @@ class SupabaseSync {
 
   // ─── Conversation Management ──────────────────────────────────
 
+  async getSessionId(userId) {
+    const { data } = await this.supabase
+      .from('whatsapp_sessions')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+    return data?.id || null;
+  }
+
   async getOrCreateConversation(userId, phone, name = null) {
     if (!this.enabled) return null;
 
@@ -72,19 +81,14 @@ class SupabaseSync {
 
       if (conv) return conv;
 
-      const { data: session } = await this.supabase
-        .from('whatsapp_sessions')
-        .select('id')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (!session) return null;
+      const sessionId = await this.getSessionId(userId);
+      if (!sessionId) return null;
 
       const { data: newConv } = await this.supabase
         .from('whatsapp_conversations')
         .insert({
           user_id: userId,
-          session_id: session.id,
+          session_id: sessionId,
           remote_phone: phone,
           remote_name: name,
           last_message_at: new Date().toISOString(),
@@ -106,6 +110,87 @@ class SupabaseSync {
       console.error(`[Sync] Error getting/creating conversation:`, err.message);
       return null;
     }
+  }
+
+  // Group conversations use the full JID (e.g. "1234567890-1234567890@g.us") as remote_phone
+  async getOrCreateGroupConversation(userId, groupJid, groupName = null) {
+    if (!this.enabled) return null;
+
+    try {
+      let { data: conv } = await this.supabase
+        .from('whatsapp_conversations')
+        .select('id, session_id')
+        .eq('user_id', userId)
+        .eq('remote_phone', groupJid)
+        .maybeSingle();
+
+      if (conv) return conv;
+
+      const sessionId = await this.getSessionId(userId);
+      if (!sessionId) return null;
+
+      const insertData = {
+        user_id: userId,
+        session_id: sessionId,
+        remote_phone: groupJid,
+        remote_name: groupName || groupJid,
+        last_message_at: new Date().toISOString(),
+        unread_count: 0,
+      };
+
+      // Add is_group / group_name if columns exist (safe — no-op if missing)
+      insertData.is_group = true;
+      insertData.group_name = groupName || groupJid;
+
+      const { data: newConv } = await this.supabase
+        .from('whatsapp_conversations')
+        .insert(insertData)
+        .select('id, session_id')
+        .single();
+
+      return newConv;
+    } catch (err) {
+      if (err.code === '23505') {
+        const { data: conv } = await this.supabase
+          .from('whatsapp_conversations')
+          .select('id, session_id')
+          .eq('user_id', userId)
+          .eq('remote_phone', groupJid)
+          .maybeSingle();
+        return conv;
+      }
+      // If is_group / group_name columns don't exist yet, retry without them
+      if (err.code === '42703') {
+        try {
+          const sessionId = await this.getSessionId(userId);
+          if (!sessionId) return null;
+          const { data: newConv } = await this.supabase
+            .from('whatsapp_conversations')
+            .insert({
+              user_id: userId,
+              session_id: sessionId,
+              remote_phone: groupJid,
+              remote_name: groupName || groupJid,
+              last_message_at: new Date().toISOString(),
+              unread_count: 0,
+            })
+            .select('id, session_id')
+            .single();
+          return newConv;
+        } catch {}
+      }
+      console.error(`[Sync] Error getting/creating group conversation ${groupJid}:`, err.message);
+      return null;
+    }
+  }
+
+  async getOrCreateConversationForJid(userId, jid, displayName = null) {
+    if (!jid) return null;
+    if (jid.includes('@g.us')) {
+      return this.getOrCreateGroupConversation(userId, jid, displayName);
+    }
+    const phone = jid.split('@')[0];
+    return this.getOrCreateConversation(userId, phone, displayName);
   }
 
   async updateConversationLastMessage(conversationId, text, timestamp, incrementUnread = false) {
@@ -141,6 +226,27 @@ class SupabaseSync {
     } catch {}
   }
 
+  async updateGroupConversationName(userId, groupJid, name) {
+    if (!this.enabled || !name) return;
+    try {
+      const updateData = { remote_name: name };
+      // Attempt to also set group_name if column exists
+      try {
+        await this.supabase
+          .from('whatsapp_conversations')
+          .update({ ...updateData, group_name: name })
+          .eq('user_id', userId)
+          .eq('remote_phone', groupJid);
+      } catch {
+        await this.supabase
+          .from('whatsapp_conversations')
+          .update(updateData)
+          .eq('user_id', userId)
+          .eq('remote_phone', groupJid);
+      }
+    } catch {}
+  }
+
   // ─── Message Persistence (Upsert) ────────────────────────────
 
   async upsertMessage(userId, conversationId, msgData) {
@@ -167,6 +273,12 @@ class SupabaseSync {
         metadata: msgData.metadata || null,
       };
 
+      // Add sender_jid for group messages if column exists
+      if (msgData.senderJid) {
+        record.sender_jid = msgData.senderJid;
+        record.sender_name = msgData.senderName || null;
+      }
+
       if (msgData.waMessageId) {
         const { data, error } = await this.supabase
           .from('whatsapp_messages')
@@ -178,6 +290,17 @@ class SupabaseSync {
           .maybeSingle();
 
         if (error && error.code !== '23505') {
+          // If sender_jid column doesn't exist, retry without it
+          if (error.code === '42703' && msgData.senderJid) {
+            delete record.sender_jid;
+            delete record.sender_name;
+            const { data: d2 } = await this.supabase
+              .from('whatsapp_messages')
+              .upsert(record, { onConflict: 'user_id,wa_message_id', ignoreDuplicates: true })
+              .select('id')
+              .maybeSingle();
+            return d2;
+          }
           console.error(`[Sync] Upsert error:`, error.message);
         }
         return data;
@@ -203,28 +326,43 @@ class SupabaseSync {
     if (!this.enabled || !messages || messages.length === 0) return 0;
 
     let synced = 0;
+    let skipped = 0;
+    let groups = 0;
 
-    await this.logAudit(userId, 'sync_history_started', {
-      total_messages: messages.length,
-    });
+    await this.logAudit(userId, 'sync_history_started', { total_messages: messages.length });
+    console.log(`[${userId}] [History] Processing ${messages.length} messages from history batch`);
 
     for (const msg of messages) {
       try {
-        if (!msg.message && !msg.messageStubType) continue;
+        if (!msg.message && !msg.messageStubType) { skipped++; continue; }
 
         const remoteJid = msg.key?.remoteJid;
-        if (!remoteJid || remoteJid === 'status@broadcast') continue;
-        if (remoteJid.includes('@g.us')) continue;
+        if (!remoteJid || remoteJid === 'status@broadcast') { skipped++; continue; }
 
-        const phone = remoteJid.split('@')[0];
+        const isGroup = remoteJid.includes('@g.us');
         const isFromMe = msg.key?.fromMe || false;
-        const pushName = msg.pushName || phone;
 
-        const conv = await this.getOrCreateConversation(userId, phone, isFromMe ? null : pushName);
-        if (!conv) continue;
+        // For groups: use full JID as key; for individuals: use phone number
+        const phone = isGroup ? remoteJid : remoteJid.split('@')[0];
+        const pushName = msg.pushName || (isGroup ? null : phone);
+
+        // Determine sender JID for group messages
+        const senderJid = isGroup
+          ? (isFromMe ? null : (msg.key?.participant || msg.participant || null))
+          : null;
+
+        let conv;
+        if (isGroup) {
+          // We'll update group name later from group metadata if available
+          conv = await this.getOrCreateGroupConversation(userId, remoteJid, null);
+          groups++;
+        } else {
+          conv = await this.getOrCreateConversation(userId, phone, isFromMe ? null : pushName);
+        }
+        if (!conv) { skipped++; continue; }
 
         const content = this.extractMessageContent(msg);
-        if (!content) continue;
+        if (!content) { skipped++; continue; }
 
         const msgTimestamp = msg.messageTimestamp
           ? (typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp * 1000 : Number(msg.messageTimestamp) * 1000)
@@ -242,32 +380,47 @@ class SupabaseSync {
           status: isFromMe ? 'sent' : 'delivered',
           timestamp: msgTimestamp,
           metadata: content.metadata || null,
+          senderJid: senderJid || undefined,
+          senderName: pushName || undefined,
         });
         synced++;
 
-        // Download media for recent messages (last 24h)
-        if (content.hasMedia && sock && (Date.now() - msgTimestamp < 86400000)) {
+        // Download media for recent messages (last 7 days)
+        if (content.hasMedia && sock && (Date.now() - msgTimestamp < 7 * 86400000)) {
           this.downloadAndStoreMedia(userId, conv.id, msg, content, sock).catch(() => {});
         }
-      } catch {}
+      } catch (err) {
+        skipped++;
+        if (err.code !== '23505') {
+          console.error(`[Sync] History msg error:`, err.message);
+        }
+      }
     }
 
     await this.logAudit(userId, 'sync_history_completed', {
       synced_count: synced,
+      skipped_count: skipped,
+      group_messages: groups,
       total_attempted: messages.length,
     });
 
-    console.log(`[${userId}] Synced ${synced}/${messages.length} messages to Supabase`);
+    console.log(`[${userId}] [History] Synced ${synced}/${messages.length} messages (${groups} group, ${skipped} skipped)`);
     return synced;
   }
 
   // ─── Real-time Message Sync ───────────────────────────────────
 
-  async saveInboundMessage(userId, phone, pushName, content, waMessageId, msgTimestamp = null) {
+  async saveInboundMessage(userId, jidOrPhone, pushName, content, waMessageId, msgTimestamp = null, senderJid = null) {
     if (!this.enabled) return;
 
     try {
-      const conv = await this.getOrCreateConversation(userId, phone, pushName);
+      let conv;
+      if (jidOrPhone && jidOrPhone.includes('@g.us')) {
+        conv = await this.getOrCreateGroupConversation(userId, jidOrPhone, null);
+      } else {
+        const phone = (jidOrPhone || '').replace(/\D/g, '') || jidOrPhone;
+        conv = await this.getOrCreateConversation(userId, phone, pushName);
+      }
       if (!conv) return;
 
       const ts = msgTimestamp || Date.now();
@@ -284,6 +437,8 @@ class SupabaseSync {
         status: 'delivered',
         timestamp: ts,
         metadata: content.metadata || null,
+        senderJid: senderJid || undefined,
+        senderName: pushName || undefined,
       });
 
       await this.updateConversationLastMessage(
@@ -301,10 +456,15 @@ class SupabaseSync {
     if (!this.enabled) return;
 
     try {
-      let phone = to.replace(/\D/g, '');
-      if (phone.length === 10) phone = `52${phone}`;
-
-      const conv = await this.getOrCreateConversation(userId, phone);
+      let conv;
+      // to can be a phone, JID, or group JID
+      if (to && to.includes('@g.us')) {
+        conv = await this.getOrCreateGroupConversation(userId, to, null);
+      } else {
+        let phone = to.replace(/\D/g, '');
+        if (phone.length === 10) phone = `52${phone}`;
+        conv = await this.getOrCreateConversation(userId, phone);
+      }
       if (!conv) return;
 
       await this.upsertMessage(userId, conv.id, {
@@ -349,40 +509,58 @@ class SupabaseSync {
     if (!this.enabled || !chats || chats.length === 0) return;
 
     try {
-      const { data: session } = await this.supabase
-        .from('whatsapp_sessions')
-        .select('id')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (!session) return;
+      const sessionId = await this.getSessionId(userId);
+      if (!sessionId) return;
 
       let synced = 0;
+      let groupsSynced = 0;
+
       for (const chat of chats) {
         if (!chat.id || chat.id === 'status@broadcast') continue;
-        if (chat.id.includes('@g.us')) continue;
 
-        const phone = chat.id.split('@')[0];
+        const isGroup = chat.id.includes('@g.us');
+        // Use full JID as remote_phone for groups, phone number for individuals
+        const remotePhone = isGroup ? chat.id : chat.id.split('@')[0];
         const name = chat.name || chat.notify || null;
         const lastMsgAt = chat.conversationTimestamp
           ? new Date(chat.conversationTimestamp * 1000).toISOString()
           : new Date().toISOString();
 
-        const { error } = await this.supabase
-          .from('whatsapp_conversations')
-          .upsert({
-            user_id: userId,
-            session_id: session.id,
-            remote_phone: phone,
-            remote_name: name,
-            last_message_at: lastMsgAt,
-            unread_count: chat.unreadCount || 0,
-          }, { onConflict: 'user_id,remote_phone' });
+        const upsertData = {
+          user_id: userId,
+          session_id: sessionId,
+          remote_phone: remotePhone,
+          remote_name: name,
+          last_message_at: lastMsgAt,
+          unread_count: chat.unreadCount || 0,
+        };
 
-        if (!error) synced++;
+        // Add group fields if available — safe to include, DB will ignore unknown columns gracefully
+        // (column errors caught below)
+        if (isGroup) {
+          try {
+            await this.supabase
+              .from('whatsapp_conversations')
+              .upsert({
+                ...upsertData,
+                is_group: true,
+                group_name: name,
+              }, { onConflict: 'user_id,remote_phone' });
+          } catch {
+            await this.supabase
+              .from('whatsapp_conversations')
+              .upsert(upsertData, { onConflict: 'user_id,remote_phone' });
+          }
+          groupsSynced++;
+        } else {
+          await this.supabase
+            .from('whatsapp_conversations')
+            .upsert(upsertData, { onConflict: 'user_id,remote_phone' });
+        }
+        synced++;
       }
 
-      console.log(`[${userId}] Synced ${synced} chats to Supabase`);
+      console.log(`[${userId}] [Chats] Synced ${synced} chats (${groupsSynced} groups) to Supabase`);
     } catch (err) {
       console.error(`[Sync] Error syncing chats:`, err.message);
     }
@@ -396,17 +574,25 @@ class SupabaseSync {
     let synced = 0;
     for (const contact of contacts) {
       if (!contact.id || contact.id === 'status@broadcast') continue;
-      if (contact.id.includes('@g.us')) continue;
+
+      const isGroup = contact.id.includes('@g.us');
+      if (isGroup) {
+        // Update group conversation name if we have it
+        const groupName = contact.name || contact.notify || contact.verifiedName;
+        if (groupName) {
+          await this.updateGroupConversationName(userId, contact.id, groupName);
+        }
+        continue;
+      }
 
       const phone = contact.id.split('@')[0];
       const name = contact.notify || contact.name || contact.verifiedName;
       if (name) await this.updateConversationName(userId, phone, name);
 
-      // Persist to whatsapp_contacts table for name resolution
       await this.upsertContact(userId, phone, contact);
       synced++;
     }
-    console.log(`[${userId}] Synced ${synced} contacts to whatsapp_contacts`);
+    console.log(`[${userId}] [Contacts] Synced ${synced} contacts`);
   }
 
   async upsertContact(userId, phone, contactData) {
@@ -420,7 +606,6 @@ class SupabaseSync {
         is_business: !!contactData.isBusiness,
       };
 
-      // Only set non-empty values to avoid overwriting good data with null
       if (contactData.name) record.saved_name = contactData.name;
       if (contactData.notify) record.notify_name = contactData.notify;
       if (contactData.verifiedName) record.verified_name = contactData.verifiedName;
@@ -428,7 +613,6 @@ class SupabaseSync {
       if (contactData.shortName) record.short_name = contactData.shortName;
       if (contactData.imgUrl) record.profile_pic_url = contactData.imgUrl;
 
-      // Store raw data for debugging
       const { id, lid, ...safeData } = contactData;
       record.raw_contact_data = safeData;
 
@@ -446,7 +630,6 @@ class SupabaseSync {
     if (!this.enabled || !pushName) return;
 
     try {
-      // Upsert: only update push_name, don't overwrite better names
       await this.supabase
         .from('whatsapp_contacts')
         .upsert({
@@ -537,59 +720,75 @@ class SupabaseSync {
     const m = msg.message;
     if (!m) return null;
 
-    if (m.conversation) return { text: m.conversation, mediaType: 'text', hasMedia: false };
-    if (m.extendedTextMessage?.text) return { text: m.extendedTextMessage.text, mediaType: 'text', hasMedia: false };
-    if (m.imageMessage) {
+    // Unwrap ephemeral / view-once wrappers
+    const inner = m.ephemeralMessage?.message
+      || m.viewOnceMessage?.message
+      || m.viewOnceMessageV2?.message
+      || m.viewOnceMessageV2Extension?.message
+      || m;
+
+    if (inner.conversation) return { text: inner.conversation, mediaType: 'text', hasMedia: false };
+    if (inner.extendedTextMessage?.text) {
       return {
-        text: m.imageMessage.caption || null,
-        caption: m.imageMessage.caption || null,
+        text: inner.extendedTextMessage.text,
+        mediaType: 'text',
+        hasMedia: false,
+        metadata: inner.extendedTextMessage.contextInfo ? {
+          quotedMessageId: inner.extendedTextMessage.contextInfo.stanzaId,
+        } : null,
+      };
+    }
+    if (inner.imageMessage) {
+      return {
+        text: inner.imageMessage.caption || null,
+        caption: inner.imageMessage.caption || null,
         mediaType: 'image',
-        mimeType: m.imageMessage.mimetype || 'image/jpeg',
+        mimeType: inner.imageMessage.mimetype || 'image/jpeg',
         hasMedia: true,
-        metadata: { width: m.imageMessage.width, height: m.imageMessage.height },
+        metadata: { width: inner.imageMessage.width, height: inner.imageMessage.height },
       };
     }
-    if (m.videoMessage) {
+    if (inner.videoMessage) {
       return {
-        text: m.videoMessage.caption || null,
-        caption: m.videoMessage.caption || null,
-        mediaType: 'video',
-        mimeType: m.videoMessage.mimetype || 'video/mp4',
+        text: inner.videoMessage.caption || null,
+        caption: inner.videoMessage.caption || null,
+        mediaType: inner.videoMessage.gifPlayback ? 'gif' : 'video',
+        mimeType: inner.videoMessage.mimetype || 'video/mp4',
         hasMedia: true,
-        metadata: { duration: m.videoMessage.seconds },
+        metadata: { duration: inner.videoMessage.seconds, gif: !!inner.videoMessage.gifPlayback },
       };
     }
-    if (m.audioMessage) {
+    if (inner.audioMessage) {
       return {
         text: null,
-        mediaType: m.audioMessage.ptt ? 'voice_note' : 'audio',
-        mimeType: m.audioMessage.mimetype || 'audio/ogg',
+        mediaType: inner.audioMessage.ptt ? 'voice_note' : 'audio',
+        mimeType: inner.audioMessage.mimetype || 'audio/ogg',
         hasMedia: true,
-        metadata: { duration: m.audioMessage.seconds, ptt: m.audioMessage.ptt },
+        metadata: { duration: inner.audioMessage.seconds, ptt: inner.audioMessage.ptt },
       };
     }
-    if (m.documentMessage) {
+    if (inner.documentMessage) {
       return {
-        text: m.documentMessage.caption || null,
-        caption: m.documentMessage.caption || null,
+        text: inner.documentMessage.caption || null,
+        caption: inner.documentMessage.caption || null,
         mediaType: 'document',
-        mimeType: m.documentMessage.mimetype || 'application/octet-stream',
-        filename: m.documentMessage.fileName,
+        mimeType: inner.documentMessage.mimetype || 'application/octet-stream',
+        filename: inner.documentMessage.fileName,
         hasMedia: true,
-        metadata: { pageCount: m.documentMessage.pageCount, fileSize: m.documentMessage.fileLength },
+        metadata: { pageCount: inner.documentMessage.pageCount, fileSize: inner.documentMessage.fileLength },
       };
     }
-    if (m.stickerMessage) {
+    if (inner.stickerMessage) {
       return {
         text: null,
         mediaType: 'sticker',
-        mimeType: m.stickerMessage.mimetype || 'image/webp',
+        mimeType: inner.stickerMessage.mimetype || 'image/webp',
         hasMedia: true,
-        metadata: { animated: m.stickerMessage.isAnimated },
+        metadata: { animated: inner.stickerMessage.isAnimated },
       };
     }
-    if (m.contactMessage || m.contactsArrayMessage) {
-      const contact = m.contactMessage || m.contactsArrayMessage?.contacts?.[0];
+    if (inner.contactMessage || inner.contactsArrayMessage) {
+      const contact = inner.contactMessage || inner.contactsArrayMessage?.contacts?.[0];
       const displayName = contact?.displayName || 'Contacto';
       const vcard = contact?.vcard || '';
       const phoneMatch = vcard.match(/TEL[^:]*:([^\n]+)/i);
@@ -600,14 +799,35 @@ class SupabaseSync {
         metadata: { displayName, phone: phoneMatch ? phoneMatch[1].trim() : null, vcard },
       };
     }
-    if (m.locationMessage || m.liveLocationMessage) {
-      const loc = m.locationMessage || m.liveLocationMessage;
+    if (inner.locationMessage || inner.liveLocationMessage) {
+      const loc = inner.locationMessage || inner.liveLocationMessage;
       return {
         text: loc.name || loc.address || null,
         mediaType: 'location',
         hasMedia: false,
         metadata: { latitude: loc.degreesLatitude, longitude: loc.degreesLongitude, name: loc.name, address: loc.address },
       };
+    }
+    if (inner.reactionMessage) {
+      return {
+        text: inner.reactionMessage.text || '❤️',
+        mediaType: 'reaction',
+        hasMedia: false,
+        metadata: { reactionText: inner.reactionMessage.text, reactionKey: inner.reactionMessage.key?.id },
+      };
+    }
+    if (inner.pollCreationMessage) {
+      return {
+        text: inner.pollCreationMessage.name || 'Encuesta',
+        mediaType: 'poll',
+        hasMedia: false,
+        metadata: { question: inner.pollCreationMessage.name, options: inner.pollCreationMessage.options },
+      };
+    }
+
+    // Message stub types (e.g. "XX added to group", etc.) — return minimal text
+    if (msg.messageStubType) {
+      return { text: `[${msg.messageStubType}]`, mediaType: 'system', hasMedia: false };
     }
 
     return { text: null, mediaType: 'unknown', hasMedia: false };

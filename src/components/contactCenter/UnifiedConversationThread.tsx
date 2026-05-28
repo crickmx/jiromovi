@@ -349,6 +349,10 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
   const [autoMode, setAutoMode] = useState(false);
   const [autoLoading, setAutoLoading] = useState(false);
 
+  // WA Personal: sync-history state
+  const [syncingHistory, setSyncingHistory] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ synced: number; total: number } | null>(null);
+
   // WA Personal: media preview + file attachment + private templates
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [pendingAttachment, setPendingAttachment] = useState<PendingAttachment | null>(null);
@@ -779,6 +783,22 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
     setShowWaTemplates(false);
   };
 
+  // ── WA Personal: sync history from server ────────────────────────────────
+  const syncHistory = async () => {
+    if (syncingHistory) return;
+    setSyncingHistory(true);
+    setSyncResult(null);
+    try {
+      const result = await callEdgeFn('whatsapp-session', { action: 'sync-history' });
+      if (result?.success) {
+        setSyncResult({ synced: result.synced || 0, total: result.total || 0 });
+        await loadMessages();
+      }
+    } catch { /* ignore */ } finally {
+      setSyncingHistory(false);
+    }
+  };
+
   const filteredTemplates = templates.filter(t => !tmplSearch || t.name.toLowerCase().includes(tmplSearch.toLowerCase()) || t.content.toLowerCase().includes(tmplSearch.toLowerCase()));
   const filteredForms = forms.filter(f => !formSearch || f.title.toLowerCase().includes(formSearch.toLowerCase()));
   const filteredTickets = openTickets.filter(t => !ticketSearch || t.folio.toLowerCase().includes(ticketSearch.toLowerCase()) || t.instrucciones?.toLowerCase().includes(ticketSearch.toLowerCase()));
@@ -879,7 +899,12 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
                     </button>
                     {isMoviChannel && (
                       <button onClick={() => { openAssistants(); setShowMenu(false); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-left">
-                        <Bot className="w-3.5 h-3.5 text-violet-500" /> Modo IA
+                        <Bot className="w-3.5 h-3.5 text-neutral-400" /> Modo IA
+                      </button>
+                    )}
+                    {isWaPersonal && (
+                      <button onClick={() => { syncHistory(); setShowMenu(false); }} disabled={syncingHistory} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-left disabled:opacity-50">
+                        <RefreshCw className={cn('w-3.5 h-3.5 text-neutral-400', syncingHistory && 'animate-spin')} /> Sincronizar historial
                       </button>
                     )}
                   </div>
@@ -924,8 +949,31 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 text-neutral-300 animate-spin" /></div>
         ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center py-12">
-            <p className="text-sm text-neutral-400">Sin mensajes todavia</p>
+          <div className="flex flex-col items-center justify-center h-full text-center py-12 gap-3">
+            {isWaPersonal && (conversation.raw as any)?.last_message_text ? (
+              <>
+                <WifiOff className="w-8 h-8 text-neutral-300" />
+                <p className="text-sm font-medium text-neutral-600 dark:text-neutral-300">Esta conversacion tiene actividad pero el historial aun no se ha sincronizado.</p>
+                <p className="text-xs text-neutral-400 max-w-xs">
+                  Los mensajes se sincronizan automaticamente al conectar WhatsApp. Puedes forzar la sincronizacion ahora.
+                </p>
+                {syncResult && (
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                    {syncResult.synced > 0 ? `${syncResult.synced} mensajes sincronizados` : 'Sin mensajes nuevos en el servidor'}
+                  </p>
+                )}
+                <button
+                  onClick={syncHistory}
+                  disabled={syncingHistory}
+                  className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-xl text-sm font-medium hover:bg-accent/90 disabled:opacity-60 transition-colors"
+                >
+                  {syncingHistory ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  {syncingHistory ? 'Sincronizando...' : 'Sincronizar historial'}
+                </button>
+              </>
+            ) : (
+              <p className="text-sm text-neutral-400">Sin mensajes todavia</p>
+            )}
           </div>
         ) : messages.map((msg, i) => {
           const prev = messages[i - 1];

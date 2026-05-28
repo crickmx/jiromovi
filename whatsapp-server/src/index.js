@@ -94,7 +94,6 @@ app.post('/session/:userId/send-message', auth, async (req, res) => {
 
   try {
     const result = await sessionManager.sendMessage(userId, to, message, quotedMessageId);
-    // Sync to Supabase
     await supabaseSync.saveOutboundMessage(userId, to, message, result.key?.id);
     res.json({ success: true, messageId: result.key?.id });
   } catch (err) {
@@ -139,6 +138,7 @@ app.get('/session/:userId/conversations', auth, (req, res) => {
 });
 
 // Get messages for a conversation
+// :phone can be a phone number (individual) or a group JID (e.g. "1234567890-1234567890@g.us")
 app.get('/session/:userId/messages/:phone', auth, (req, res) => {
   const { userId, phone } = req.params;
   const limit = parseInt(req.query.limit) || 50;
@@ -146,8 +146,41 @@ app.get('/session/:userId/messages/:phone', auth, (req, res) => {
   if (!session || session.status !== 'connected') {
     return res.json({ messages: [] });
   }
-  const messages = (session.messageStore?.[phone] || []).slice(-limit);
+  const messages = sessionManager.getMessagesFromStore(session, phone, limit);
   res.json({ messages });
+});
+
+// Manual history sync — re-syncs in-memory messages to Supabase
+// Useful after reconnect when messages.set / messaging-history.set already fired
+app.post('/session/:userId/sync-history', auth, async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const result = await sessionManager.triggerHistorySync(userId, supabaseSync);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get memory store stats (for diagnostics)
+app.get('/session/:userId/store-stats', auth, (req, res) => {
+  const { userId } = req.params;
+  const session = sessionManager.getSession(userId);
+  if (!session) {
+    return res.json({ error: 'No session' });
+  }
+  const store = session.messageStore || {};
+  const stats = Object.entries(store).map(([key, msgs]) => ({
+    key,
+    count: msgs.length,
+    oldest: msgs[0]?.timestamp ? new Date(msgs[0].timestamp).toISOString() : null,
+    newest: msgs[msgs.length - 1]?.timestamp ? new Date(msgs[msgs.length - 1].timestamp).toISOString() : null,
+  }));
+  res.json({
+    conversations: stats.length,
+    totalMessages: stats.reduce((sum, s) => sum + s.count, 0),
+    details: stats,
+  });
 });
 
 // List all active sessions (admin)

@@ -961,6 +961,38 @@ Deno.serve(async (req: Request) => {
         return json({ diagnostics });
       }
 
+      case "sync-history": {
+        // Trigger the whatsapp-server to re-sync its in-memory message store to Supabase
+        if (!serverConfigured) {
+          return json({ success: false, error: "Servidor no configurado" });
+        }
+
+        try {
+          const syncResp = await fetch(
+            `${WHATSAPP_SERVER_URL}/session/${user.id}/sync-history`,
+            {
+              method: "POST",
+              headers: {
+                "x-api-key": WHATSAPP_SERVER_API_KEY,
+                "Content-Type": "application/json",
+              },
+              signal: AbortSignal.timeout(30000),
+            }
+          );
+
+          if (syncResp.ok) {
+            const syncData = await syncResp.json();
+            return json({ success: true, synced: syncData.synced || 0, total: syncData.total || 0 });
+          } else {
+            const errText = await syncResp.text().catch(() => "");
+            return json({ success: false, error: `Server returned ${syncResp.status}: ${errText.slice(0, 100)}` });
+          }
+        } catch (e: unknown) {
+          const errorMsg = e instanceof Error ? e.message : "Unknown error";
+          return json({ success: false, error: errorMsg });
+        }
+      }
+
       default:
         return err(`Unknown action: ${action}`);
     }
