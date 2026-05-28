@@ -99,6 +99,8 @@ import ManualViewer from './pages/ManualViewer';
 import ManualesAdmin from './pages/ManualesAdmin';
 import CentroContactoAsistentes from './pages/CentroContactoAsistentes';
 import AsistenteEntrenamiento from './pages/AsistenteEntrenamiento';
+import DiagnosticoWebhook from './pages/DiagnosticoWebhook';
+import { NotificacionesTransaccionales } from './pages/NotificacionesTransaccionales';
 import PublicQuoteForm from './pages/PublicQuoteForm';
 import MagicLinkHandler from './pages/MagicLinkHandler';
 import AdminDigital from './pages/AdminDigital';
@@ -185,11 +187,17 @@ function App() {
               <Route path="/usuario/:id" element={<ProtectedRoute requireAdminOrGerente><Layout><PerfilUsuario /></Layout></ProtectedRoute>} />
               <Route path="/oficinas" element={<Navigate to="/configuracion" replace />} />
               <Route path="/configuracion" element={<ProtectedRoute requireAdmin><Layout><ConfiguracionHub /></Layout></ProtectedRoute>} />
-              <Route path="/notificaciones-transaccionales" element={<Navigate to="/centro-contacto" replace />} />
+              <Route path="/notificaciones-transaccionales" element={<Navigate to="/admin/transaccionales" replace />} />
               <Route path="/centro-correos" element={<ProtectedRoute requireAdminOrGerente><Layout><CentroCorreos /></Layout></ProtectedRoute>} />
               <Route path="/centro-contacto" element={<ProtectedRoute><Layout><CentroContactoHub /></Layout></ProtectedRoute>} />
-              <Route path="/centro-contacto/asistentes" element={<ProtectedRoute requireAdminOrGerente><Layout><CentroContactoAsistentes /></Layout></ProtectedRoute>} />
-              <Route path="/centro-contacto/asistentes/entrenamiento" element={<ProtectedRoute requireAdminOrGerente><Layout><AsistenteEntrenamiento /></Layout></ProtectedRoute>} />
+              <Route path="/centro-contacto/asistentes" element={<Navigate to="/admin/asistentes" replace />} />
+              <Route path="/centro-contacto/asistentes/entrenamiento" element={<Navigate to="/admin/asistentes/entrenamiento" replace />} />
+              {/* Admin routes — Transaccionales, Diagnostico, Asistentes IA */}
+              <Route path="/admin/transaccionales" element={<ProtectedRoute requireAdmin><Layout><NotificacionesTransaccionales /></Layout></ProtectedRoute>} />
+              <Route path="/admin/diagnostico" element={<ProtectedRoute requireAdmin><Layout><DiagnosticoWebhook /></Layout></ProtectedRoute>} />
+              <Route path="/admin/asistentes" element={<ProtectedRoute requireAdminOrGerente><Layout><CentroContactoAsistentes /></Layout></ProtectedRoute>} />
+              <Route path="/admin/asistentes/entrenamiento" element={<ProtectedRoute requireAdminOrGerente><Layout><AsistenteEntrenamiento /></Layout></ProtectedRoute>} />
+              <Route path="/admin/ia" element={<Navigate to="/chatgpt-test" replace />} />
               <Route path="/vacaciones" element={<ProtectedRoute excludeAgente><Layout><Vacaciones /></Layout></ProtectedRoute>} />
               <Route path="/espacio-jiro" element={<ProtectedRoute><Layout><EspacioJiro /></Layout></ProtectedRoute>} />
               {/* Cotizar hub */}

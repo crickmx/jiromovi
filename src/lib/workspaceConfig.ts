@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, Palette, TrendingUp, Brain, GraduationCap, Settings, ClipboardList, FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Mail, Bot, BarChart3, Video, BookMarked, BadgeCheck, Zap, Compass, Calculator } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Mail, Bot, BarChart3, Video, BookMarked, BadgeCheck, Zap, Compass, Calculator } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
@@ -6,7 +6,6 @@ export type WorkspaceId =
   | 'cotizar'
   | 'mercadotecnia'
   | 'operaciones'
-  | 'ia-automatizacion'
   | 'seguros-education'
   | 'administracion';
 
@@ -131,17 +130,6 @@ const WORKSPACE_SEGUROS_EDUCATION: WorkspaceDefinition = {
   ],
 };
 
-const WORKSPACE_IA: WorkspaceDefinition = {
-  id: 'ia-automatizacion',
-  label: 'IA',
-  icon: Brain,
-  visibleTo: ALL_ROLES,
-  items: [
-    { path: '/centro-contacto/asistentes', label: 'Asistentes IA', icon: Bot, visibleTo: ADMIN_GERENTE, matchPrefix: true },
-    { path: '/chatgpt-test', label: 'Asistente', icon: Zap, visibleTo: ALL_ROLES },
-  ],
-};
-
 const WORKSPACE_ADMIN: WorkspaceDefinition = {
   id: 'administracion',
   label: 'Admin',
@@ -157,6 +145,10 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/comisiones/mapeo-vendedores', label: 'Mapeo Vendedores', icon: Users, visibleTo: ADMIN_ONLY },
     { path: '/produccion/configuracion', label: 'Config Produccion', icon: Settings, visibleTo: ADMIN_ONLY },
     { path: '/sicas/salud', label: 'SICAS Salud', icon: Activity, visibleTo: ADMIN_ONLY },
+    { path: '/admin/asistentes', label: 'Asistentes IA', icon: Bot, visibleTo: ADMIN_GERENTE, matchPrefix: true },
+    { path: '/admin/transaccionales', label: 'Transaccionales', icon: Send, visibleTo: ADMIN_ONLY },
+    { path: '/admin/diagnostico', label: 'Diagnostico', icon: Activity, visibleTo: ADMIN_ONLY },
+    { path: '/chatgpt-test', label: 'Asistente IA', icon: Zap, visibleTo: ALL_ROLES },
   ],
 };
 
@@ -166,11 +158,10 @@ export const WORKSPACES: WorkspaceDefinition[] = [
   WORKSPACE_OPERACIONES,
   WORKSPACE_MERCADOTECNIA,
   WORKSPACE_SEGUROS_EDUCATION,
-  WORKSPACE_IA,
   WORKSPACE_ADMIN,
 ];
 
-// Ordered navigation: Dashboard, Comercial, Cotizar, Operaciones, Mercadotecnia, Seguros Education, MOVI Store, Comunicados, IA, Admin
+// Ordered navigation: Dashboard, Comercial, Cotizar, Operaciones, Mercadotecnia, Seguros Education, MOVI Store, Comunicados, Admin
 export const NAV_ORDER: NavEntry[] = [
   { type: 'link', item: { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visibleTo: ALL_ROLES } },
   { type: 'workspace', workspace: WORKSPACE_COMERCIAL },
@@ -180,7 +171,6 @@ export const NAV_ORDER: NavEntry[] = [
   { type: 'workspace', workspace: WORKSPACE_SEGUROS_EDUCATION },
   { type: 'link', item: { path: '/store', label: 'MOVI Store', icon: ShoppingBag, visibleTo: ALL_ROLES } },
   { type: 'link', item: { path: '/comunicados', label: 'Comunicados', icon: FileText, visibleTo: ALL_ROLES, matchPrefix: true } },
-  { type: 'workspace', workspace: WORKSPACE_IA },
   { type: 'workspace', workspace: WORKSPACE_ADMIN },
 ];
 
