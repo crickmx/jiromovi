@@ -113,12 +113,35 @@ function decodeQP(str: string): string {
   return str.replace(/=\r?\n/g, '').replace(/=([0-9A-Fa-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
 }
 
+function decodeQPBytes(str: string, charset: string): string {
+  const cleaned = str.replace(/_/g, ' ');
+  const bytes: number[] = [];
+  for (let i = 0; i < cleaned.length; i++) {
+    if (cleaned[i] === '=' && i + 2 < cleaned.length) {
+      const hex = cleaned.substring(i + 1, i + 3);
+      if (/^[0-9A-Fa-f]{2}$/.test(hex)) {
+        bytes.push(parseInt(hex, 16));
+        i += 2;
+        continue;
+      }
+    }
+    bytes.push(cleaned.charCodeAt(i));
+  }
+  try {
+    return new TextDecoder(charset).decode(new Uint8Array(bytes));
+  } catch {
+    return cleaned.replace(/=([0-9A-Fa-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  }
+}
+
 function decodeHeaderWord(str: string): string {
   if (!str) return '';
-  return str.replace(/=\?([^?]+)\?([BQ])\?([^?]+)\?=/gi, (_m, charset, enc, text) => {
+  // Handle consecutive encoded words separated by whitespace
+  const combined = str.replace(/\?=\s+=\?/g, '?==?');
+  return combined.replace(/=\?([^?]+)\?([BQ])\?([^?]+)\?=/gi, (_m, charset, enc, text) => {
     try {
       if (enc.toUpperCase() === 'B') return decodeBase64Str(text, charset.toLowerCase());
-      return decodeQP(text.replace(/_/g, ' '));
+      return decodeQPBytes(text, charset.toLowerCase());
     } catch { return _m; }
   });
 }
@@ -320,7 +343,27 @@ function decodePartContent(body: string, headersBlock: string): string {
   const ctHeader = extractHeaderValue(headersBlock, 'Content-Type') || '';
   const charset = ctHeader.match(/charset="?([^";\s]+)"?/i)?.[1] || 'utf-8';
   if (enc === 'base64') return decodeBase64Str(body.replace(/\s/g, ''), charset);
-  if (enc === 'quoted-printable') return decodeQP(body);
+  if (enc === 'quoted-printable') {
+    // Decode QP bytes respecting charset
+    const cleaned = body.replace(/=\r?\n/g, '');
+    const bytes: number[] = [];
+    for (let i = 0; i < cleaned.length; i++) {
+      if (cleaned[i] === '=' && i + 2 < cleaned.length) {
+        const hex = cleaned.substring(i + 1, i + 3);
+        if (/^[0-9A-Fa-f]{2}$/.test(hex)) {
+          bytes.push(parseInt(hex, 16));
+          i += 2;
+          continue;
+        }
+      }
+      bytes.push(cleaned.charCodeAt(i));
+    }
+    try {
+      return new TextDecoder(charset).decode(new Uint8Array(bytes));
+    } catch {
+      return decodeQP(body);
+    }
+  }
   return body;
 }
 
@@ -451,6 +494,30 @@ async function smtpSend(email: string, password: string, fromName: string, to: s
   }
 }
 
+// ── Build RFC822 for IMAP APPEND ─────────────────────────────────
+
+function buildRfc822Message(fromEmail: string, fromName: string, to: string[], cc: string[], subject: string, bodyHtml: string, bodyText: string, inReplyTo?: string, references?: string): string {
+  const altBoundary = `----=_Alt_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  let msg = `From: "${fromName}" <${fromEmail}>\r\n`;
+  msg += `To: ${to.join(', ')}\r\n`;
+  if (cc.length > 0) msg += `Cc: ${cc.join(', ')}\r\n`;
+  msg += `Subject: =?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=\r\n`;
+  msg += `Date: ${new Date().toUTCString()}\r\n`;
+  msg += `Message-ID: <${Date.now()}.${Math.random().toString(36).slice(2)}@ionos.mx>\r\n`;
+  if (inReplyTo) msg += `In-Reply-To: ${inReplyTo}\r\n`;
+  if (references) msg += `References: ${references}\r\n`;
+  msg += `MIME-Version: 1.0\r\n`;
+  msg += `Content-Type: multipart/alternative; boundary="${altBoundary}"\r\n\r\n`;
+  msg += `--${altBoundary}\r\n`;
+  msg += `Content-Type: text/plain; charset="UTF-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n`;
+  msg += btoa(unescape(encodeURIComponent(bodyText || subject))) + '\r\n';
+  msg += `--${altBoundary}\r\n`;
+  msg += `Content-Type: text/html; charset="UTF-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n`;
+  msg += btoa(unescape(encodeURIComponent(bodyHtml))) + '\r\n';
+  msg += `--${altBoundary}--\r\n`;
+  return msg;
+}
+
 // ── Main handler ───────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
@@ -534,6 +601,38 @@ Deno.serve(async (req: Request) => {
           content: a.content || '',
         }));
         await smtpSend(creds.email, creds.password, creds.nombre, body.to, body.cc || [], body.bcc || [], body.subject, body.bodyHtml, body.bodyText || '', attachments, body.inReplyTo, body.references);
+
+        // Append sent message to Sent folder via IMAP
+        try {
+          const sentMsg = buildRfc822Message(creds.email, creds.nombre, body.to, body.cc || [], body.subject, body.bodyHtml, body.bodyText || '', body.inReplyTo, body.references);
+          const conn = await imapConnect('imap.ionos.mx', 993);
+          if (await imapLogin(conn, creds.email, creds.password)) {
+            // Try common Sent folder names
+            const sentFolders = ['Sent', 'INBOX.Sent', 'Enviados', 'Sent Items', 'Sent Messages'];
+            let sentFolder = 'Sent';
+            const listResp = await imapCommand(conn, 'LIST "" "*"');
+            for (const sf of sentFolders) {
+              if (listResp.includes(`"${sf}"`) || listResp.toLowerCase().includes(sf.toLowerCase())) {
+                sentFolder = sf;
+                break;
+              }
+            }
+            const appendCmd = `APPEND "${sentFolder}" (\\Seen) {${new TextEncoder().encode(sentMsg).length}}`;
+            const tag = `A${++tagCounter}`;
+            await conn.write(new TextEncoder().encode(`${tag} ${appendCmd}\r\n`));
+            // Wait for continuation (+)
+            const contBuf = new Uint8Array(1024);
+            const cn = await conn.read(contBuf);
+            if (cn && new TextDecoder().decode(contBuf.subarray(0, cn)).includes('+')) {
+              await conn.write(new TextEncoder().encode(sentMsg + '\r\n'));
+              await imapReadUntilTag(conn, tag);
+            }
+            await imapLogout(conn);
+          } else {
+            try { conn.close(); } catch {}
+          }
+        } catch { /* best-effort: don't fail the send if APPEND fails */ }
+
         result = { success: true };
         break;
       }
