@@ -635,6 +635,25 @@ export default function MiWhatsApp() {
     }
   };
 
+  const [syncingHistory, setSyncingHistory] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
+
+  const handleSyncHistory = async () => {
+    setSyncingHistory(true);
+    setSyncResult(null);
+    try {
+      const result = await callEdgeFunction('sync-history');
+      if (result?.success) {
+        setSyncResult(`Historial sincronizado: ${result.synced || 0} mensajes`);
+        await loadSessionAndConversations();
+      } else {
+        setSyncResult(result?.error || 'Error al sincronizar');
+      }
+    } finally {
+      setSyncingHistory(false);
+    }
+  };
+
   const filteredConversations = conversations.filter(c => {
     if (!searchQuery) return !c.is_archived;
     const q = searchQuery.toLowerCase();
@@ -720,7 +739,7 @@ export default function MiWhatsApp() {
       <div className="flex-1 overflow-hidden">
         {activeView === 'connection' && (
           <div className="h-full overflow-y-auto">
-            <ConnectionPanel session={session} qrCode={qrCode} providerConfigured={providerConfigured} providerMessage={providerMessage} polling={polling} onConnect={handleConnect} onDisconnect={handleDisconnect} onRefresh={loadSessionAndConversations} onDiagnose={handleDiagnose} />
+            <ConnectionPanel session={session} qrCode={qrCode} providerConfigured={providerConfigured} providerMessage={providerMessage} polling={polling} onConnect={handleConnect} onDisconnect={handleDisconnect} onRefresh={loadSessionAndConversations} onDiagnose={handleDiagnose} onSyncHistory={handleSyncHistory} syncingHistory={syncingHistory} syncResult={syncResult} />
             {diagResult && (
               <div className="max-w-lg mx-auto px-6 pb-6">
                 <div className="rounded-xl border border-blue-200 dark:border-blue-800/40 bg-blue-50 dark:bg-blue-900/10 p-4">
@@ -1375,7 +1394,7 @@ function CreateTramiteModal({ selectedCount, conversationName, onClose, onSubmit
 
 // ── Connection Panel ──────────────────────────────────────────────
 
-function ConnectionPanel({ session, qrCode, providerConfigured, providerMessage, polling, onConnect, onDisconnect, onRefresh, onDiagnose }: {
+function ConnectionPanel({ session, qrCode, providerConfigured, providerMessage, polling, onConnect, onDisconnect, onRefresh, onDiagnose, onSyncHistory, syncingHistory, syncResult }: {
   session: WhatsAppSession | null;
   qrCode: string | null;
   providerConfigured: boolean;
@@ -1385,6 +1404,9 @@ function ConnectionPanel({ session, qrCode, providerConfigured, providerMessage,
   onDisconnect: () => void;
   onRefresh: () => void;
   onDiagnose: () => void;
+  onSyncHistory: () => void;
+  syncingHistory: boolean;
+  syncResult: string | null;
 }) {
   const isConnected = session?.status === 'connected';
   const isQrPending = session?.status === 'qr_pending';
@@ -1421,7 +1443,7 @@ function ConnectionPanel({ session, qrCode, providerConfigured, providerMessage,
             </div>
           </div>
           {isConnected && session?.connected_at && <div className="text-xs text-emerald-600 dark:text-emerald-400 mb-4">Conectado desde: {new Date(session.connected_at).toLocaleString('es-MX')}</div>}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {!isConnected && (
               <button onClick={onConnect} disabled={!providerConfigured}
                 className="flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-neutral-300 disabled:dark:bg-neutral-700 text-white disabled:text-neutral-500 rounded-xl text-sm font-medium transition-colors">
@@ -1431,9 +1453,22 @@ function ConnectionPanel({ session, qrCode, providerConfigured, providerMessage,
             {isConnected && (
               <button onClick={onDisconnect} className="flex items-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium transition-colors"><WifiOff className="w-4 h-4" /> Desconectar</button>
             )}
+            {isConnected && (
+              <button onClick={onSyncHistory} disabled={syncingHistory}
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl text-sm font-medium transition-colors"
+                title="Sincronizar historial de mensajes desde el servidor">
+                <RefreshCw className={cn('w-4 h-4', syncingHistory && 'animate-spin')} />
+                {syncingHistory ? 'Sincronizando...' : 'Sincronizar historial'}
+              </button>
+            )}
             <button onClick={onRefresh} className="p-3 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-xl transition-colors" title="Actualizar estado"><RefreshCw className={cn('w-4 h-4 text-neutral-500', polling && 'animate-spin')} /></button>
             <button onClick={onDiagnose} className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-neutral-500 hover:text-neutral-700 dark:text-white/40 dark:hover:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-lg transition-colors" title="Diagnosticar conexion"><AlertCircle className="w-3.5 h-3.5" /> Diagnosticar</button>
           </div>
+          {syncResult && (
+            <div className={cn('mt-3 text-xs px-3 py-2 rounded-lg', syncResult.includes('Error') || syncResult.includes('error') ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300')}>
+              {syncResult}
+            </div>
+          )}
         </div>
 
         {(isQrPending || isConnecting) && (
