@@ -73,7 +73,7 @@ export const NotificationTemplates = {
       mensaje: `Has recibido un nuevo correo de ${remitente}.`,
       modulo: 'Correos',
       icono: 'mail',
-      accion_url: '/centro-contacto',
+      accion_url: '/centro-contacto/email',
       accion_texto: 'Ver correo',
     }),
 
@@ -84,7 +84,7 @@ export const NotificationTemplates = {
       mensaje: 'Tu correo programado fue enviado correctamente.',
       modulo: 'Correos',
       icono: 'mail',
-      accion_url: '/centro-contacto',
+      accion_url: '/centro-contacto/email',
       accion_texto: 'Ver enviados',
     }),
 
@@ -96,7 +96,7 @@ export const NotificationTemplates = {
       mensaje: `Nuevo mensaje de ${nombre}.`,
       modulo: 'Chat',
       icono: 'message',
-      accion_url: `/chat?id=${chat_id}`,
+      accion_url: `/centro-contacto/chat?id=${chat_id}`,
       accion_texto: 'Abrir chat',
     }),
 
@@ -107,7 +107,7 @@ export const NotificationTemplates = {
       mensaje: `${nombre} te ha agregado al grupo ${grupo}.`,
       modulo: 'Chat',
       icono: 'users',
-      accion_url: `/chat?id=${chat_id}`,
+      accion_url: `/centro-contacto/chat?id=${chat_id}`,
       accion_texto: 'Ver grupo',
     }),
 

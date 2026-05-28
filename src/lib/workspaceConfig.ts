@@ -1,8 +1,9 @@
-import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, BarChart3, Video, BookMarked, BadgeCheck, Zap, Compass, Calculator } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, BarChart3, Video, BookMarked, BadgeCheck, Zap, Compass, Calculator, Smartphone, Mail, MessageSquare, Bell } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
   | 'comercial'
+  | 'centro-contacto'
   | 'cotizar'
   | 'mercadotecnia'
   | 'operaciones'
@@ -60,12 +61,24 @@ const WORKSPACE_COMERCIAL: WorkspaceDefinition = {
   items: [
     { path: '/mi-crm', label: 'CRM', icon: Users, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/tramites', label: 'Tramites', icon: ClipboardList, visibleTo: ALL_ROLES, matchPrefix: true, excludePrefixes: ['/tramites/formularios'] },
-    { path: '/centro-contacto', label: 'Centro de Contacto', icon: Headphones, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/entrega-polizas', label: 'Entrega Polizas', icon: Send, visibleTo: NOT_AGENT },
     { path: '/mis-polizas', label: 'Mis Polizas', icon: FileText, visibleTo: ALL_ROLES },
     { path: '/lector-qualitas', label: 'Lector Qualitas', icon: BookOpen, visibleTo: NOT_AGENT },
     { path: '/mi-progreso', label: 'Mi Progreso', icon: Trophy, visibleTo: NO_EMPLEADO_AGENTE },
     { path: '/seguwallet-admin', label: 'Seguwallet', icon: Wallet, visibleTo: ALL_ROLES },
+  ],
+};
+
+const WORKSPACE_CENTRO_CONTACTO: WorkspaceDefinition = {
+  id: 'centro-contacto',
+  label: 'Centro de Contacto',
+  icon: Headphones,
+  visibleTo: ALL_ROLES,
+  items: [
+    { path: '/centro-contacto/whatsapp', label: 'WhatsApp', icon: Smartphone, visibleTo: NOT_AGENT },
+    { path: '/centro-contacto/email', label: 'Email', icon: Mail, visibleTo: ALL_ROLES },
+    { path: '/centro-contacto/chat', label: 'Chat', icon: MessageSquare, visibleTo: NOT_AGENT },
+    { path: '/centro-contacto/notificaciones', label: 'Notificaciones', icon: Bell, visibleTo: ADMIN_ONLY },
   ],
 };
 
@@ -154,6 +167,7 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
 
 export const WORKSPACES: WorkspaceDefinition[] = [
   WORKSPACE_COMERCIAL,
+  WORKSPACE_CENTRO_CONTACTO,
   WORKSPACE_COTIZAR,
   WORKSPACE_OPERACIONES,
   WORKSPACE_MERCADOTECNIA,
@@ -161,10 +175,10 @@ export const WORKSPACES: WorkspaceDefinition[] = [
   WORKSPACE_ADMIN,
 ];
 
-// Ordered navigation: Dashboard, Comercial, Cotizar, Operaciones, Mercadotecnia, Seguros Education, MOVI Store, Comunicados, Admin
 export const NAV_ORDER: NavEntry[] = [
   { type: 'link', item: { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visibleTo: ALL_ROLES } },
   { type: 'workspace', workspace: WORKSPACE_COMERCIAL },
+  { type: 'workspace', workspace: WORKSPACE_CENTRO_CONTACTO },
   { type: 'workspace', workspace: WORKSPACE_COTIZAR },
   { type: 'workspace', workspace: WORKSPACE_OPERACIONES },
   { type: 'workspace', workspace: WORKSPACE_MERCADOTECNIA },

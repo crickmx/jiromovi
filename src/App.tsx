@@ -90,6 +90,10 @@ import RegimenFiscalAdmin from './pages/RegimenFiscalAdmin';
 import RegimenFiscalEditor from './pages/RegimenFiscalEditor';
 import ProduccionSICASLive from './pages/ProduccionSICASLive';
 import CentroContactoHub from './pages/CentroContactoHub';
+import CentroContactoUnificado from './pages/CentroContactoUnificado';
+import { GestorEmails } from './pages/GestorEmails';
+import { Chat } from './pages/Chat';
+import { CentroNotificacionesContent } from './pages/CentroNotificaciones';
 import LectorQualitas from './pages/LectorQualitas';
 import EntregaPolizas from './pages/EntregaPolizas';
 import FormulariosCotizacion from './pages/FormulariosCotizacion';
@@ -190,6 +194,10 @@ function App() {
               <Route path="/notificaciones-transaccionales" element={<Navigate to="/admin/transaccionales" replace />} />
               <Route path="/centro-correos" element={<ProtectedRoute requireAdminOrGerente><Layout><CentroCorreos /></Layout></ProtectedRoute>} />
               <Route path="/centro-contacto" element={<ProtectedRoute><Layout><CentroContactoHub /></Layout></ProtectedRoute>} />
+              <Route path="/centro-contacto/whatsapp" element={<ProtectedRoute excludeAgente><Layout><CentroContactoUnificado /></Layout></ProtectedRoute>} />
+              <Route path="/centro-contacto/email" element={<ProtectedRoute><Layout><GestorEmails /></Layout></ProtectedRoute>} />
+              <Route path="/centro-contacto/chat" element={<ProtectedRoute excludeAgente><Layout><Chat /></Layout></ProtectedRoute>} />
+              <Route path="/centro-contacto/notificaciones" element={<ProtectedRoute requireAdmin><Layout><CentroNotificacionesContent /></Layout></ProtectedRoute>} />
               <Route path="/centro-contacto/asistentes" element={<Navigate to="/admin/asistentes" replace />} />
               <Route path="/centro-contacto/asistentes/entrenamiento" element={<Navigate to="/admin/asistentes/entrenamiento" replace />} />
               {/* Admin routes — Transaccionales, Diagnostico, Asistentes IA */}
@@ -222,10 +230,10 @@ function App() {
               <Route path="/mercadotecnia/mi-marca" element={<ProtectedRoute><Layout><Mercadotecnia section="mi-marca" /></Layout></ProtectedRoute>} />
               <Route path="/mercadotecnia/mi-pagina-web" element={<ProtectedRoute><Layout><Mercadotecnia section="mi-pagina-web" /></Layout></ProtectedRoute>} />
               <Route path="/mercadotecnia/publicidad" element={<ProtectedRoute><Layout><Mercadotecnia section="publicidad" /></Layout></ProtectedRoute>} />
-              <Route path="/gestor-emails" element={<Navigate to="/centro-contacto" replace />} />
+              <Route path="/gestor-emails" element={<Navigate to="/centro-contacto/email" replace />} />
               <Route path="/firmas-email" element={<ProtectedRoute requireAdmin><Layout><FirmasEmail /></Layout></ProtectedRoute>} />
               <Route path="/centro-digital" element={<ProtectedRoute><CentroDigital /></ProtectedRoute>} />
-              <Route path="/chat" element={<Navigate to="/centro-contacto" replace />} />
+              <Route path="/chat" element={<Navigate to="/centro-contacto/chat" replace />} />
               <Route path="/accesos-nacional" element={<ProtectedRoute><AccesosNacional /></ProtectedRoute>} />
               <Route path="/seguros-education" element={<ProtectedRoute><SegurosEducation /></ProtectedRoute>} />
               <Route path="/seguros-education/on-demand" element={<ProtectedRoute><SegurosEducationOnDemand /></ProtectedRoute>} />
@@ -239,7 +247,7 @@ function App() {
               <Route path="/seguros-education/cedula-a/examenes" element={<ProtectedRoute><Layout><CedulaAExamenes /></Layout></ProtectedRoute>} />
               <Route path="/seguros-education/cedula-a/examen/:examenId" element={<ProtectedRoute><Layout><ExamenInterface /></Layout></ProtectedRoute>} />
               <Route path="/seguros-education/cedula-a/certificado/:certificadoId" element={<ProtectedRoute><Layout><CertificadoCedulaA /></Layout></ProtectedRoute>} />
-              <Route path="/centro-notificaciones" element={<Navigate to="/centro-contacto" replace />} />
+              <Route path="/centro-notificaciones" element={<Navigate to="/centro-contacto/notificaciones" replace />} />
               <Route path="/tramites" element={<ProtectedRoute><Layout><Tramites /></Layout></ProtectedRoute>} />
               <Route path="/tramites/reportes" element={<ProtectedRoute><Layout><TramitesReportes /></Layout></ProtectedRoute>} />
               <Route path="/tramites/formularios" element={<Navigate to="/cotizar/formularios" replace />} />
