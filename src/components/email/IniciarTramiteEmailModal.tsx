@@ -193,9 +193,11 @@ export function IniciarTramiteEmailModal({ isOpen, onClose, email, emailAccount,
       // Select all attachments by default
       setSelectedAttachments(new Set(email.attachments.map((_, i) => i)));
 
-      // Build default instrucciones
-      const defaultInstr = `Email de: ${email.from} <${email.fromEmail}>\nAsunto: ${email.subject || '(Sin asunto)'}\nFecha: ${email.date ? new Date(email.date).toLocaleDateString('es-MX') : 'N/A'}`;
-      setInstrucciones(defaultInstr);
+      // Build instrucciones including AI summary
+      const headerLine = `Email de: ${email.from} <${email.fromEmail}>\nAsunto: ${email.subject || '(Sin asunto)'}\nFecha: ${email.date ? new Date(email.date).toLocaleDateString('es-MX') : 'N/A'}`;
+      const aiSummaryText = data.analysis?.summary ? `\n\nResumen IA:\n${data.analysis.summary}` : '';
+      const nextAction = data.analysis?.suggested_next_action ? `\n\nAccion sugerida: ${data.analysis.suggested_next_action}` : '';
+      setInstrucciones(`${headerLine}${aiSummaryText}${nextAction}`);
 
       setStep('form');
     } catch (err: any) {
