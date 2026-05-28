@@ -218,12 +218,16 @@ export default function CentroContactoUnificado() {
   // ── Connection handlers ──────────────────────────────────────────
   const handleConnect = async () => {
     setPolling(true);
+    // Immediately set session to qr_pending so the QR area renders
+    setWaSession(prev => prev ? { ...prev, status: 'qr_pending' } : { id: '', status: 'qr_pending', phone_number: null, connected_at: null, error_message: null });
+
     const result = await callEdgeFunction('connect');
     if (result?.qr_code) setQrCode(result.qr_code);
     if (result?.error && !result.success) {
       setProviderConfigured(result.server_configured ?? false);
       setProviderMessage(result.error);
       setPolling(false);
+      setWaSession(prev => prev ? { ...prev, status: 'disconnected' } : null);
       return;
     }
 
