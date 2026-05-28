@@ -1296,9 +1296,9 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
             : assistants.length === 0 ? <p className="text-xs text-neutral-400 text-center py-6">Sin asistentes configurados</p>
             : <div className="space-y-2 max-h-72 overflow-y-auto">
                 {assistants.map(a => (
-                  <button key={a.id} onClick={() => startAutoMode(a.id)} className="w-full text-left p-3 rounded-xl border border-neutral-100 dark:border-neutral-700 hover:border-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/10 transition-all">
+                  <button key={a.id} onClick={() => startAutoMode(a.id)} className="w-full text-left p-3 rounded-xl border border-neutral-100 dark:border-neutral-700 hover:border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all">
                     <div className="flex items-center gap-2">
-                      <Bot className="w-5 h-5 text-violet-500 flex-shrink-0" />
+                      <Bot className="w-5 h-5 text-emerald-500 flex-shrink-0" />
                       <div>
                         <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{a.nombre}</p>
                         {a.descripcion && <p className="text-[11px] text-neutral-500 mt-0.5">{a.descripcion}</p>}
@@ -1317,15 +1317,15 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
 // ── Reusable modal wrapper ────────────────────────────────────────────────────
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="absolute inset-0 z-40 flex items-end sm:items-center justify-center bg-black/40">
-      <div className="w-full sm:max-w-sm bg-white dark:bg-neutral-900 rounded-t-2xl sm:rounded-2xl shadow-2xl p-4 max-h-[80vh] flex flex-col">
-        <div className="flex items-center justify-between mb-3 flex-shrink-0">
-          <h3 className="text-sm font-semibold text-neutral-800 dark:text-white">{title}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-md mx-4 bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-700 overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 dark:border-neutral-800">
+          <h3 className="text-sm font-bold text-neutral-800 dark:text-white">{title}</h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto min-h-0">{children}</div>
+        <div className="p-5 max-h-[70vh] overflow-y-auto">{children}</div>
       </div>
     </div>
   );

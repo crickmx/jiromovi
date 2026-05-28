@@ -745,7 +745,7 @@ export default function MiWhatsApp() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                   <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Buscar conversaciones..."
-                    className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-white/5 border border-neutral-200/60 dark:border-white/10 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400/40 transition-all" />
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-white/5 border border-neutral-200/60 dark:border-white/10 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-accent/40 focus:border-emerald-400/40 transition-all" />
                 </div>
               </div>
 
@@ -1165,7 +1165,7 @@ export default function MiWhatsApp() {
                       </div>
 
                       {/* Bot/IA button */}
-                      <div className="relative assistants-container flex-shrink-0 hidden sm:block">
+                      <div className="flex-shrink-0 hidden sm:block">
                         {autoMode ? (
                           <button onClick={stopAutoMode}
                             className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 animate-pulse" title="IA activa - detener">
@@ -1173,35 +1173,9 @@ export default function MiWhatsApp() {
                           </button>
                         ) : (
                           <button onClick={openAssistants} disabled={autoLoading}
-                            className={cn('p-2.5 rounded-xl transition-colors', showAssistants ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400')} title="Asistentes IA">
+                            className="p-2.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400 transition-colors" title="Asistentes IA">
                             {autoLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Bot className="w-5 h-5" />}
                           </button>
-                        )}
-                        {showAssistants && (
-                          <div className="absolute bottom-full left-0 mb-2 w-80 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl max-h-72 overflow-y-auto z-50">
-                            <div className="p-3 border-b border-neutral-100 dark:border-neutral-700">
-                              <p className="text-xs font-bold text-neutral-800 dark:text-white">Asistentes IA</p>
-                              <p className="text-[10px] text-neutral-400 mt-0.5">Selecciona un asistente para modo automatico</p>
-                            </div>
-                            {autoLoading ? (
-                              <div className="p-4 flex items-center justify-center"><RefreshCw className="w-4 h-4 animate-spin text-neutral-400" /></div>
-                            ) : assistants.length === 0 ? (
-                              <div className="p-4 text-center"><p className="text-xs text-neutral-400">No hay asistentes activos</p></div>
-                            ) : (
-                              assistants.map(a => (
-                                <button key={a.id} onClick={() => startAutoMode(a.id)}
-                                  className="w-full text-left px-3 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors border-b border-neutral-50 dark:border-neutral-700/50 last:border-0">
-                                  <div className="flex items-center gap-2">
-                                    <Bot className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-xs font-medium text-neutral-700 dark:text-white/70 truncate">{a.nombre}</p>
-                                      {a.descripcion && <p className="text-[10px] text-neutral-400 truncate mt-0.5">{a.descripcion}</p>}
-                                    </div>
-                                  </div>
-                                </button>
-                              ))
-                            )}
-                          </div>
                         )}
                       </div>
 
@@ -1223,7 +1197,7 @@ export default function MiWhatsApp() {
                           placeholder={autoMode ? 'IA activa - escribe para intervenir...' : 'Escribe un mensaje...'}
                           rows={1}
                           className={cn(
-                            'w-full px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-white/5 border text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400/40 resize-none transition-all',
+                            'w-full px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-white/5 border text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-accent/40 focus:border-emerald-400/40 resize-none transition-all',
                             autoMode ? 'border-emerald-300/60 dark:border-emerald-600/30' : 'border-neutral-200/60 dark:border-white/10'
                           )}
                         />
@@ -1251,6 +1225,39 @@ export default function MiWhatsApp() {
           onClose={() => setShowCreateTramite(false)}
           onSubmit={handleCreateTramiteFromMessages}
         />
+      )}
+
+      {/* Assistants Modal */}
+      {showAssistants && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowAssistants(false)}>
+          <div className="w-full max-w-md mx-4 bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-700 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 dark:border-neutral-800">
+              <h3 className="text-sm font-bold text-neutral-800 dark:text-white">Asistentes IA</h3>
+              <button onClick={() => setShowAssistants(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5">
+              <p className="text-xs text-neutral-500 mb-3">Selecciona un asistente para activar el modo automatico.</p>
+              {autoLoading ? <div className="flex justify-center py-6"><RefreshCw className="w-5 h-5 animate-spin text-neutral-300" /></div>
+                : assistants.length === 0 ? <p className="text-xs text-neutral-400 text-center py-6">Sin asistentes configurados</p>
+                : <div className="space-y-2 max-h-72 overflow-y-auto">
+                    {assistants.map(a => (
+                      <button key={a.id} onClick={() => startAutoMode(a.id)} className="w-full text-left p-3 rounded-xl border border-neutral-100 dark:border-neutral-700 hover:border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all">
+                        <div className="flex items-center gap-2">
+                          <Bot className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                          <div>
+                            <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{a.nombre}</p>
+                            {a.descripcion && <p className="text-[11px] text-neutral-500 mt-0.5">{a.descripcion}</p>}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+              }
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1307,20 +1314,25 @@ function CreateTramiteModal({ selectedCount, conversationName, onClose, onSubmit
   const [comentarios, setComentarios] = useState('');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-md border border-neutral-200 dark:border-neutral-700">
-        <div className="p-5 border-b border-neutral-200 dark:border-neutral-700">
-          <h3 className="text-base font-bold text-neutral-900 dark:text-white flex items-center gap-2">
-            <ClipboardList className="w-5 h-5 text-emerald-600" />
-            Crear tramite desde mensajes
-          </h3>
-          <p className="text-xs text-neutral-500 mt-1">{selectedCount} mensaje(s) seleccionado(s) de {conversationName}</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-md mx-4 border border-neutral-200 dark:border-neutral-700 overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 dark:border-neutral-800">
+          <div>
+            <h3 className="text-sm font-bold text-neutral-800 dark:text-white flex items-center gap-2">
+              <ClipboardList className="w-4 h-4 text-emerald-600" />
+              Crear tramite desde mensajes
+            </h3>
+            <p className="text-xs text-neutral-500 mt-0.5">{selectedCount} mensaje(s) de {conversationName}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
         </div>
         <div className="p-5 space-y-4">
           <div>
             <label className="text-xs font-medium text-neutral-700 dark:text-white/70 block mb-1.5">Tipo de tramite</label>
             <select value={tipo} onChange={e => setTipo(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20">
+              className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-none focus:ring-1 focus:ring-accent/40">
               <option value="soporte">Soporte</option>
               <option value="cotizacion">Cotizacion</option>
               <option value="emision">Emision</option>
@@ -1333,12 +1345,12 @@ function CreateTramiteModal({ selectedCount, conversationName, onClose, onSubmit
           <div>
             <label className="text-xs font-medium text-neutral-700 dark:text-white/70 block mb-1.5">Ramo (opcional)</label>
             <input type="text" value={ramo} onChange={e => setRamo(e.target.value)} placeholder="Ej: Autos, GMM, Vida..."
-              className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20" />
+              className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-accent/40" />
           </div>
           <div>
             <label className="text-xs font-medium text-neutral-700 dark:text-white/70 block mb-1.5">Prioridad</label>
             <select value={prioridad} onChange={e => setPrioridad(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20">
+              className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-none focus:ring-1 focus:ring-accent/40">
               <option value="Baja">Baja</option>
               <option value="Media">Media</option>
               <option value="Alta">Alta</option>
@@ -1348,13 +1360,13 @@ function CreateTramiteModal({ selectedCount, conversationName, onClose, onSubmit
           <div>
             <label className="text-xs font-medium text-neutral-700 dark:text-white/70 block mb-1.5">Comentarios adicionales</label>
             <textarea value={comentarios} onChange={e => setComentarios(e.target.value)} placeholder="Agrega contexto o instrucciones..."
-              rows={3} className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 resize-none" />
+              rows={3} className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-accent/40 resize-none" />
           </div>
         </div>
-        <div className="p-5 border-t border-neutral-200 dark:border-neutral-700 flex items-center justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-neutral-600 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-xl transition-colors">Cancelar</button>
+        <div className="px-5 py-4 border-t border-neutral-100 dark:border-neutral-800 flex gap-2">
+          <button onClick={onClose} className="flex-1 px-4 py-2 text-sm border border-neutral-200 dark:border-neutral-700 rounded-xl text-neutral-600 hover:bg-neutral-50 transition-colors">Cancelar</button>
           <button onClick={() => onSubmit({ tipo, ramo, prioridad, comentarios })}
-            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium transition-colors">Crear tramite</button>
+            className="flex-1 px-4 py-2 text-sm bg-accent text-white rounded-xl hover:bg-accent/90 transition-colors font-medium">Crear tramite</button>
         </div>
       </div>
     </div>
@@ -1539,13 +1551,13 @@ function TemplatesPanel({ templates, userId, onRefresh, onUseTemplate }: {
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nombre"
-                className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20" />
+                className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-accent/40" />
               <input type="text" value={category} onChange={e => setCategory(e.target.value)} placeholder="Categoria (opcional)"
-                className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20" />
+                className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-accent/40" />
             </div>
             <textarea value={body} onChange={e => setBody(e.target.value)}
               placeholder="Hola {{nombre_cliente}}, te saluda {{nombre_usuario}} de {{nombre_oficina}}..."
-              rows={4} className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 resize-none" />
+              rows={4} className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-accent/40 resize-none" />
             <div className="flex items-center gap-2">
               <button onClick={handleSave} disabled={!name.trim() || !body.trim()}
                 className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-neutral-200 disabled:dark:bg-white/5 text-white disabled:text-neutral-400 rounded-xl text-sm font-medium transition-colors">
