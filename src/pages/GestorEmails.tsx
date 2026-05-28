@@ -1,654 +1,902 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Mail, Send, FileText, Trash2, AlertCircle, Inbox, Search, RefreshCw,
-  Star, Paperclip, ChevronLeft, ChevronRight, Settings, Plus, Calendar, Filter
+  Star, Paperclip, ChevronLeft, ChevronRight, Settings, Plus, Archive,
+  MailOpen, Eye, EyeOff, FolderOpen, X, ArrowLeft
 } from 'lucide-react';
-import { ConfiguracionCorreo } from '../components/email/ConfiguracionCorreo';
-import { RedactarCorreo } from '../components/email/RedactarCorreo';
-import { BuscadorAvanzado } from '../components/email/BuscadorAvanzado';
 import { LoadingState } from '@/components/ui/loading-state';
 
-interface EmailConfig {
-  id: string;
-  email: string;
-  nombre_remitente: string | null;
-  servidor_entrada: string;
-  servidor_salida: string;
-  ultima_sincronizacion: string | null;
-  estado_conexion: string;
+interface ImapFolder {
+  name: string;
+  path: string;
+  flags: string[];
+  total: number;
+  unseen: number;
 }
 
-interface EmailMessage {
-  id: string;
-  message_uid: string;
-  carpeta: string;
-  remitente: string;
-  remitente_email: string;
-  asunto: string | null;
-  cuerpo_html: string | null;
-  cuerpo_texto: string | null;
-  fecha: string;
-  leido: boolean;
-  marcado: boolean;
-  tiene_adjuntos: boolean;
-  destinatarios: string[];
+interface EmailHeader {
+  uid: number;
+  messageId: string;
+  from: string;
+  fromEmail: string;
+  to: string[];
   cc: string[];
+  subject: string;
+  date: string;
+  seen: boolean;
+  flagged: boolean;
+  hasAttachments: boolean;
+  size: number;
 }
 
-type Carpeta = 'INBOX' | 'SENT' | 'DRAFTS' | 'TRASH' | 'SPAM' | 'QUEUE';
+interface EmailFull {
+  uid: number;
+  messageId: string;
+  from: string;
+  fromEmail: string;
+  to: string[];
+  cc: string[];
+  bcc: string[];
+  subject: string;
+  date: string;
+  seen: boolean;
+  flagged: boolean;
+  bodyHtml: string | null;
+  bodyText: string | null;
+  attachments: { filename: string; contentType: string; size: number; partId: string }[];
+}
 
-const CARPETAS_INFO = {
-  INBOX: { nombre: 'Bandeja de entrada', icon: Inbox, color: 'text-accent' },
-  SENT: { nombre: 'Enviados', icon: Send, color: 'text-green-600' },
-  DRAFTS: { nombre: 'Borradores', icon: FileText, color: 'text-yellow-600' },
-  QUEUE: { nombre: 'En cola', icon: Calendar, color: 'text-purple-600' },
-  TRASH: { nombre: 'Papelera', icon: Trash2, color: 'text-red-600' },
-  SPAM: { nombre: 'Spam', icon: AlertCircle, color: 'text-orange-600' }
+const FOLDER_META: Record<string, { label: string; icon: typeof Inbox }> = {
+  'INBOX': { label: 'Bandeja de entrada', icon: Inbox },
+  'Sent': { label: 'Enviados', icon: Send },
+  'Drafts': { label: 'Borradores', icon: FileText },
+  'Trash': { label: 'Papelera', icon: Trash2 },
+  'Spam': { label: 'Spam', icon: AlertCircle },
+  'Archive': { label: 'Archivo', icon: Archive },
+  'Junk': { label: 'Spam', icon: AlertCircle },
 };
 
+function getFolderLabel(path: string): string {
+  return FOLDER_META[path]?.label || path;
+}
+
+function getFolderIcon(path: string) {
+  return FOLDER_META[path]?.icon || FolderOpen;
+}
+
+async function callWebmail(action: string, params: Record<string, unknown> = {}): Promise<any> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('No hay sesion activa');
+
+  const resp = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ionos-webmail`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ action, ...params }),
+    }
+  );
+
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data.error || data.message || 'Error del servidor');
+  return data;
+}
+
 export function GestorEmails() {
-  const { usuario, refreshUsuario } = useAuth();
-  const [configuracion, setConfiguracion] = useState<EmailConfig | null>(null);
-  const [carpetaActual, setCarpetaActual] = useState<Carpeta>('INBOX');
-  const [mensajes, setMensajes] = useState<EmailMessage[]>([]);
-  const [mensajeSeleccionado, setMensajeSeleccionado] = useState<EmailMessage | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [sincronizando, setSincronizando] = useState(false);
+  const { usuario } = useAuth();
 
-  // Modales
-  const [showConfig, setShowConfig] = useState(false);
-  const [showRedactar, setShowRedactar] = useState(false);
-  const [showBuscador, setShowBuscador] = useState(false);
+  // Config state
+  const [hasConfig, setHasConfig] = useState<boolean | null>(null);
+  const [configEmail, setConfigEmail] = useState('');
+  const [showSetup, setShowSetup] = useState(false);
 
+  // Folder state
+  const [folders, setFolders] = useState<ImapFolder[]>([]);
+  const [currentFolder, setCurrentFolder] = useState('INBOX');
+
+  // Message list state
+  const [messages, setMessages] = useState<EmailHeader[]>([]);
+  const [totalMessages, setTotalMessages] = useState(0);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+
+  // Selected message state
+  const [selectedMessage, setSelectedMessage] = useState<EmailFull | null>(null);
+  const [loadingMessage, setLoadingMessage] = useState(false);
+
+  // Compose state
+  const [showCompose, setShowCompose] = useState(false);
+  const [composeMode, setComposeMode] = useState<'new' | 'reply' | 'replyAll' | 'forward'>('new');
+
+  // Search state
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<EmailHeader[] | null>(null);
+  const [searching, setSearching] = useState(false);
+
+  // General
+  const [error, setError] = useState('');
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  // Check config on mount
   useEffect(() => {
-    loadConfiguracion();
+    checkConfig();
   }, [usuario]);
 
-  useEffect(() => {
-    if (configuracion) {
-      loadMensajes();
-    }
-  }, [configuracion, carpetaActual]);
-
-  const loadConfiguracion = async () => {
+  const checkConfig = async () => {
     if (!usuario) return;
-
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('email_configuraciones')
-      .select('*')
+      .select('email')
       .eq('usuario_id', usuario.id)
+      .eq('activa', true)
       .maybeSingle();
 
-    if (error) {
-      console.error('Error cargando configuración:', error);
-    }
-
-    setConfiguracion(data);
-
-    if (!data && !usuario.email_cuenta) {
-      setShowConfig(true);
-    } else if (data && data.email && data.estado_conexion === 'conectado') {
-      handleSincronizarInicial(data);
-    }
-
-    setLoading(false);
-  };
-
-  const handleSincronizarInicial = async (config: EmailConfig) => {
-    try {
-      const { data: mensajes } = await supabase
-        .from('email_mensajes_cache')
-        .select('id')
-        .eq('usuario_id', usuario!.id)
-        .limit(1);
-
-      if (mensajes && mensajes.length > 0) {
-        console.log('[GestorEmails] Ya existen mensajes en caché');
-        return;
-      }
-
-      console.log('[GestorEmails] Sincronizando todas las carpetas por primera vez...');
-      setSincronizando(true);
-
-      const carpetas: Carpeta[] = ['INBOX', 'SENT', 'DRAFTS', 'TRASH', 'SPAM'];
-      const { data: { session } } = await supabase.auth.getSession();
-
-      let totalSincronizados = 0;
-
-      for (const carpeta of carpetas) {
-        console.log(`[GestorEmails] Sincronizando carpeta: ${carpeta}`);
-
-        try {
-          const response = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/email-sync-inbox`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${session?.access_token}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                configuracionId: config.id,
-                carpeta: carpeta
-              })
-            }
-          );
-
-          if (response.ok) {
-            const result = await response.json();
-            console.log(`[GestorEmails] ${carpeta} sincronizada:`, result);
-            totalSincronizados += result.mensajes || 0;
-          } else {
-            const errorText = await response.text();
-            console.error(`[GestorEmails] Error sincronizando ${carpeta}:`, errorText);
-          }
-        } catch (err) {
-          console.error(`[GestorEmails] Error en carpeta ${carpeta}:`, err);
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-
-      console.log(`[GestorEmails] Sincronización inicial completa. Total: ${totalSincronizados} mensajes`);
-      setSincronizando(false);
-
-      setTimeout(() => loadMensajes(), 500);
-    } catch (error) {
-      console.error('[GestorEmails] Error en sincronización inicial:', error);
-      setSincronizando(false);
-    }
-  };
-
-  const loadMensajes = async () => {
-    if (!configuracion) return;
-
-    console.log(`[GestorEmails] Cargando mensajes de carpeta: ${carpetaActual}`);
-
-    const { data, error } = await supabase
-      .from('email_mensajes_cache')
-      .select('*')
-      .eq('usuario_id', usuario!.id)
-      .eq('carpeta', carpetaActual)
-      .order('fecha', { ascending: false })
-      .limit(200);
-
-    if (error) {
-      console.error('[GestorEmails] Error cargando mensajes:', error);
+    if (data) {
+      setHasConfig(true);
+      setConfigEmail(data.email);
+      loadFolders();
     } else {
-      console.log(`[GestorEmails] ${data?.length || 0} mensajes cargados`);
-      setMensajes(data || []);
+      setHasConfig(false);
+      setShowSetup(true);
+      setInitialLoading(false);
     }
   };
 
-  const handleSincronizar = async () => {
-    if (!configuracion) return;
-
-    setSincronizando(true);
-    console.log('[GestorEmails] Sincronizando todas las carpetas...');
-
+  const loadFolders = async () => {
     try {
-      const carpetas: Carpeta[] = ['INBOX', 'SENT', 'DRAFTS', 'TRASH', 'SPAM'];
-      const { data: { session } } = await supabase.auth.getSession();
+      const data = await callWebmail('list-folders');
+      setFolders(data);
+      setInitialLoading(false);
+      loadMessages('INBOX', 1);
+    } catch (err: any) {
+      setError(err.message);
+      setInitialLoading(false);
+    }
+  };
 
-      let totalSincronizados = 0;
-
-      for (const carpeta of carpetas) {
-        console.log(`[GestorEmails] Sincronizando ${carpeta}...`);
-
-        try {
-          const response = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/email-sync-inbox`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${session?.access_token}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                configuracionId: configuracion.id,
-                carpeta: carpeta
-              })
-            }
-          );
-
-          if (response.ok) {
-            const result = await response.json();
-            console.log(`[GestorEmails] ${carpeta} sincronizada:`, result);
-            totalSincronizados += result.mensajes || 0;
-          } else {
-            const errorText = await response.text();
-            console.error(`[GestorEmails] Error en ${carpeta}:`, errorText);
-          }
-        } catch (err) {
-          console.error(`[GestorEmails] Error sincronizando ${carpeta}:`, err);
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-
-      console.log(`[GestorEmails] Sincronización completa. Total: ${totalSincronizados} mensajes`);
-
-      await loadMensajes();
-      await loadConfiguracion();
-
-      if (totalSincronizados > 0) {
-        alert(`Sincronización completa: ${totalSincronizados} mensajes actualizados`);
-      }
-    } catch (error) {
-      console.error('[GestorEmails] Error sincronizando:', error);
-      alert('Error al sincronizar. Revisa la consola para más detalles.');
+  const loadMessages = useCallback(async (folder?: string, p?: number) => {
+    const f = folder || currentFolder;
+    const pg = p || page;
+    setLoadingMessages(true);
+    setError('');
+    setSearchResults(null);
+    try {
+      const data = await callWebmail('list-messages', { folder: f, page: pg, perPage });
+      setMessages(data.messages || []);
+      setTotalMessages(data.total || 0);
+      if (folder) setCurrentFolder(f);
+      if (p) setPage(pg);
+    } catch (err: any) {
+      setError(err.message);
     } finally {
-      setSincronizando(false);
+      setLoadingMessages(false);
+    }
+  }, [currentFolder, page, perPage]);
+
+  const openMessage = async (uid: number) => {
+    setLoadingMessage(true);
+    setError('');
+    try {
+      const data = await callWebmail('get-message', { uid, folder: currentFolder });
+      setSelectedMessage(data);
+      // Mark as read locally
+      setMessages(prev => prev.map(m => m.uid === uid ? { ...m, seen: true } : m));
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoadingMessage(false);
     }
   };
 
-  const handleMarcarLeido = async (mensaje: EmailMessage) => {
-    await supabase
-      .from('email_mensajes_cache')
-      .update({ leido: !mensaje.leido })
-      .eq('id', mensaje.id);
-
-    await loadMensajes();
-  };
-
-  const handleMarcarEstrella = async (mensaje: EmailMessage) => {
-    await supabase
-      .from('email_mensajes_cache')
-      .update({ marcado: !mensaje.marcado })
-      .eq('id', mensaje.id);
-
-    await loadMensajes();
-  };
-
-  const formatFecha = (fecha: string) => {
-    const date = new Date(fecha);
-    const hoy = new Date();
-    const ayer = new Date(hoy);
-    ayer.setDate(ayer.getDate() - 1);
-
-    if (date.toDateString() === hoy.toDateString()) {
-      return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-    } else if (date.toDateString() === ayer.toDateString()) {
-      return 'Ayer';
-    } else {
-      return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+  const handleMarkRead = async (uid: number, read: boolean) => {
+    try {
+      await callWebmail('mark-read', { uid, folder: currentFolder, read });
+      setMessages(prev => prev.map(m => m.uid === uid ? { ...m, seen: read } : m));
+      if (selectedMessage?.uid === uid) setSelectedMessage({ ...selectedMessage, seen: read });
+    } catch (err: any) {
+      setError(err.message);
     }
   };
 
-  if (loading) {
-    return (
-      <LoadingState text="Cargando correos..." className="min-h-screen" />
-    );
+  const handleDelete = async (uid: number) => {
+    try {
+      await callWebmail('delete-message', { uid, folder: currentFolder });
+      setMessages(prev => prev.filter(m => m.uid !== uid));
+      if (selectedMessage?.uid === uid) setSelectedMessage(null);
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    setError('');
+    try {
+      const data = await callWebmail('search', { query: searchQuery, folder: currentFolder, maxResults: 50 });
+      setSearchResults(data.messages || []);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    loadFolders();
+    loadMessages(currentFolder, page);
+  };
+
+  const totalPages = Math.ceil(totalMessages / perPage);
+  const displayMessages = searchResults ?? messages;
+
+  const formatDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      const now = new Date();
+      if (d.toDateString() === now.toDateString()) {
+        return d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+      }
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      if (d.toDateString() === yesterday.toDateString()) return 'Ayer';
+      return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+    } catch { return dateStr; }
+  };
+
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  // ── Setup screen ─────────────────────────────────────────────
+  if (showSetup || hasConfig === false) {
+    return <SetupScreen onSuccess={() => { setShowSetup(false); checkConfig(); }} onClose={() => setShowSetup(false)} />;
+  }
+
+  if (initialLoading) {
+    return <LoadingState text="Conectando con el servidor de correo..." className="min-h-screen" />;
   }
 
   return (
     <div className="h-screen flex flex-col bg-neutral-50 dark:bg-neutral-900">
       {/* Header */}
-      <div className="bg-white dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-white/10 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Mail className="w-8 h-8 text-accent" />
-            <div>
-              <h1 className="text-2xl font-display font-bold text-accent">
-                Mi E-Mail
-              </h1>
-              {configuracion && (
-                <div>
-                  <p className="text-sm text-neutral-600 dark:text-white/60">
-                    {configuracion.email}
-                    {configuracion.ultima_sincronizacion && (
-                      <span className="ml-2">
-                        · Actualizado {formatFecha(configuracion.ultima_sincronizacion)}
-                      </span>
-                    )}
-                  </p>
-                  {!configuracion.ultima_sincronizacion && mensajes.length === 0 && (
-                    <p className="text-xs text-accent font-semibold mt-1">
-                      Haz clic en "Actualizar" para sincronizar tus correos
-                    </p>
+      <header className="bg-white dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-white/10 px-4 py-3 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <Mail className="w-7 h-7 text-accent" />
+          <div>
+            <h1 className="text-xl font-display font-bold text-accent">Mi E-Mail</h1>
+            <p className="text-xs text-neutral-500 dark:text-white/50">{configEmail}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Search bar */}
+          <div className="relative hidden md:block">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              placeholder="Buscar correos..."
+              className="w-64 pl-9 pr-3 py-2 text-sm bg-neutral-100 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50"
+            />
+            <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            {searchResults && (
+              <button
+                onClick={() => { setSearchResults(null); setSearchQuery(''); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          <button
+            onClick={handleRefresh}
+            disabled={loadingMessages}
+            className="p-2 text-neutral-600 dark:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-all disabled:opacity-50"
+            title="Actualizar"
+          >
+            <RefreshCw className={`w-5 h-5 ${loadingMessages ? 'animate-spin' : ''}`} />
+          </button>
+
+          <button
+            onClick={() => setShowSetup(true)}
+            className="p-2 text-neutral-600 dark:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-all"
+            title="Configuracion"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
+
+          <button
+            onClick={() => { setShowCompose(true); setComposeMode('new'); }}
+            className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover transition-all font-medium text-sm"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Redactar</span>
+          </button>
+        </div>
+      </header>
+
+      {/* Error bar */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800/30 px-4 py-2 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-red-600" />
+          <span className="text-sm text-red-700 dark:text-red-300 flex-1">{error}</span>
+          <button onClick={() => setError('')} className="text-red-400 hover:text-red-600"><X className="w-4 h-4" /></button>
+        </div>
+      )}
+
+      {/* Main */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Folders sidebar */}
+        <aside className="w-56 bg-white dark:bg-neutral-800/50 border-r border-neutral-200 dark:border-white/10 overflow-y-auto flex-shrink-0 hidden md:block">
+          <nav className="p-3 space-y-0.5">
+            {folders.map((f) => {
+              const Icon = getFolderIcon(f.path);
+              const isActive = currentFolder === f.path && !searchResults;
+              return (
+                <button
+                  key={f.path}
+                  onClick={() => { setSelectedMessage(null); setSearchResults(null); setPage(1); loadMessages(f.path, 1); }}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-all ${
+                    isActive
+                      ? 'bg-accent/10 text-accent font-semibold'
+                      : 'text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/5'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Icon className="w-4 h-4" />
+                    <span className="truncate">{getFolderLabel(f.path)}</span>
+                  </div>
+                  {f.unseen > 0 && (
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
+                      isActive ? 'bg-accent text-white' : 'bg-neutral-200 dark:bg-white/10 text-neutral-600 dark:text-white/60'
+                    }`}>
+                      {f.unseen}
+                    </span>
                   )}
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
+
+        {/* Message list OR Reading pane */}
+        {selectedMessage ? (
+          // Reading pane
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="px-4 py-3 border-b border-neutral-200 dark:border-white/10 flex items-center gap-3 bg-white dark:bg-neutral-800/50 flex-shrink-0">
+              <button
+                onClick={() => setSelectedMessage(null)}
+                className="p-1.5 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-all"
+              >
+                <ArrowLeft className="w-5 h-5 text-neutral-600 dark:text-white/60" />
+              </button>
+              <div className="flex-1 min-w-0">
+                <h2 className="font-semibold text-neutral-900 dark:text-white truncate">
+                  {selectedMessage.subject || '(Sin asunto)'}
+                </h2>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handleMarkRead(selectedMessage.uid, !selectedMessage.seen)}
+                  className="p-2 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-all"
+                  title={selectedMessage.seen ? 'Marcar como no leido' : 'Marcar como leido'}
+                >
+                  {selectedMessage.seen ? <EyeOff className="w-4 h-4 text-neutral-500" /> : <Eye className="w-4 h-4 text-neutral-500" />}
+                </button>
+                <button
+                  onClick={() => handleDelete(selectedMessage.uid)}
+                  className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                  title="Eliminar"
+                >
+                  <Trash2 className="w-4 h-4 text-red-500" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              {loadingMessage ? (
+                <LoadingState text="Cargando mensaje..." className="h-full" />
+              ) : (
+                <div className="max-w-4xl mx-auto p-6">
+                  {/* Message metadata */}
+                  <div className="mb-6 space-y-2">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-semibold text-neutral-900 dark:text-white">{selectedMessage.from}</p>
+                        <p className="text-sm text-neutral-500 dark:text-white/50">&lt;{selectedMessage.fromEmail}&gt;</p>
+                      </div>
+                      <p className="text-sm text-neutral-500 dark:text-white/50 flex-shrink-0">
+                        {new Date(selectedMessage.date).toLocaleString('es-MX', {
+                          day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                    {selectedMessage.to.length > 0 && (
+                      <p className="text-sm text-neutral-600 dark:text-white/60">
+                        <span className="font-medium">Para:</span> {selectedMessage.to.join(', ')}
+                      </p>
+                    )}
+                    {selectedMessage.cc.length > 0 && (
+                      <p className="text-sm text-neutral-600 dark:text-white/60">
+                        <span className="font-medium">CC:</span> {selectedMessage.cc.join(', ')}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Attachments */}
+                  {selectedMessage.attachments.length > 0 && (
+                    <div className="mb-4 p-3 bg-neutral-50 dark:bg-white/5 rounded-lg border border-neutral-200 dark:border-white/10">
+                      <p className="text-xs font-medium text-neutral-500 dark:text-white/50 mb-2 flex items-center gap-1">
+                        <Paperclip className="w-3.5 h-3.5" />
+                        {selectedMessage.attachments.length} adjunto{selectedMessage.attachments.length !== 1 ? 's' : ''}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedMessage.attachments.map((att, i) => (
+                          <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-white/10 border border-neutral-200 dark:border-white/10 rounded-md text-xs text-neutral-700 dark:text-white/70">
+                            <FileText className="w-3.5 h-3.5" />
+                            {att.filename}
+                            <span className="text-neutral-400">({formatSize(att.size)})</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Body */}
+                  <div className="border border-neutral-200 dark:border-white/10 rounded-lg overflow-hidden bg-white dark:bg-neutral-800/50">
+                    {selectedMessage.bodyHtml ? (
+                      <iframe
+                        srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;line-height:1.6;color:#333;margin:16px;word-break:break-word}img{max-width:100%}a{color:#0066cc}</style></head><body>${selectedMessage.bodyHtml}</body></html>`}
+                        className="w-full min-h-[400px] border-0"
+                        sandbox="allow-same-origin"
+                        title="Contenido del correo"
+                      />
+                    ) : (
+                      <pre className="p-4 whitespace-pre-wrap text-sm text-neutral-700 dark:text-white/70 font-sans">
+                        {selectedMessage.bodyText}
+                      </pre>
+                    )}
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      onClick={() => { setComposeMode('reply'); setShowCompose(true); }}
+                      className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-all text-sm font-medium"
+                    >
+                      Responder
+                    </button>
+                    <button
+                      onClick={() => { setComposeMode('replyAll'); setShowCompose(true); }}
+                      className="px-4 py-2 border border-neutral-300 dark:border-white/15 text-neutral-700 dark:text-white/70 rounded-lg hover:bg-neutral-50 dark:hover:bg-white/5 transition-all text-sm"
+                    >
+                      Responder a todos
+                    </button>
+                    <button
+                      onClick={() => { setComposeMode('forward'); setShowCompose(true); }}
+                      className="px-4 py-2 border border-neutral-300 dark:border-white/15 text-neutral-700 dark:text-white/70 rounded-lg hover:bg-neutral-50 dark:hover:bg-white/5 transition-all text-sm"
+                    >
+                      Reenviar
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
           </div>
+        ) : (
+          // Message list
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* List header */}
+            <div className="px-4 py-3 border-b border-neutral-200 dark:border-white/10 flex items-center justify-between bg-white dark:bg-neutral-800/50 flex-shrink-0">
+              <div>
+                <h2 className="font-semibold text-neutral-900 dark:text-white">
+                  {searchResults ? `Resultados: "${searchQuery}"` : getFolderLabel(currentFolder)}
+                </h2>
+                <p className="text-xs text-neutral-500 dark:text-white/50">
+                  {searchResults
+                    ? `${searchResults.length} encontrados`
+                    : `${totalMessages} mensaje${totalMessages !== 1 ? 's' : ''}`
+                  }
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={perPage}
+                  onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); loadMessages(currentFolder, 1); }}
+                  className="text-xs px-2 py-1.5 border border-neutral-200 dark:border-white/10 rounded-md bg-white dark:bg-neutral-800 text-neutral-700 dark:text-white/70"
+                >
+                  <option value={25}>25 por pagina</option>
+                  <option value={50}>50 por pagina</option>
+                  <option value={100}>100 por pagina</option>
+                </select>
+                {!searchResults && totalPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => { setPage(p => Math.max(1, p - 1)); loadMessages(currentFolder, Math.max(1, page - 1)); }}
+                      disabled={page <= 1}
+                      className="p-1.5 hover:bg-neutral-100 dark:hover:bg-white/10 rounded disabled:opacity-30 transition-all"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="text-xs text-neutral-500 dark:text-white/50 min-w-[60px] text-center">
+                      {page} / {totalPages}
+                    </span>
+                    <button
+                      onClick={() => { setPage(p => Math.min(totalPages, p + 1)); loadMessages(currentFolder, Math.min(totalPages, page + 1)); }}
+                      disabled={page >= totalPages}
+                      className="p-1.5 hover:bg-neutral-100 dark:hover:bg-white/10 rounded disabled:opacity-30 transition-all"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
 
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setShowBuscador(true)}
-              className="flex items-center space-x-2 px-4 py-2 text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-all"
-              title="Buscador avanzado"
-            >
-              <Search className="w-5 h-5" />
-              <span className="hidden sm:inline">Buscar</span>
-            </button>
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto">
+              {loadingMessages ? (
+                <LoadingState text="Cargando mensajes..." className="h-full" />
+              ) : displayMessages.length === 0 ? (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-center">
+                    <Mail className="w-12 h-12 text-neutral-300 dark:text-white/20 mx-auto mb-3" />
+                    <p className="text-neutral-500 dark:text-white/50 text-sm">
+                      {searchResults ? 'Sin resultados' : 'No hay mensajes en esta carpeta'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="divide-y divide-neutral-100 dark:divide-white/5">
+                  {displayMessages.map((msg) => (
+                    <div
+                      key={msg.uid}
+                      onClick={() => openMessage(msg.uid)}
+                      className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-all group ${
+                        !msg.seen
+                          ? 'bg-accent/5 dark:bg-accent/10 hover:bg-accent/10 dark:hover:bg-accent/15'
+                          : 'hover:bg-neutral-50 dark:hover:bg-white/5'
+                      }`}
+                    >
+                      {/* Unread indicator */}
+                      <div className="w-2 flex-shrink-0">
+                        {!msg.seen && <div className="w-2 h-2 rounded-full bg-accent" />}
+                      </div>
 
-            <button
-              onClick={handleSincronizar}
-              disabled={sincronizando || !configuracion}
-              className="flex items-center space-x-2 px-4 py-2 text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-all disabled:opacity-50"
-              title="Actualizar"
-            >
-              <RefreshCw className={`w-5 h-5 ${sincronizando ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">
-                {sincronizando ? 'Actualizando...' : 'Actualizar'}
-              </span>
-            </button>
+                      {/* Sender */}
+                      <div className="w-44 flex-shrink-0 truncate">
+                        <span className={`text-sm ${!msg.seen ? 'font-semibold text-neutral-900 dark:text-white' : 'text-neutral-700 dark:text-white/70'}`}>
+                          {msg.from || msg.fromEmail}
+                        </span>
+                      </div>
 
-            <button
-              onClick={() => setShowConfig(true)}
-              className="flex items-center space-x-2 px-4 py-2 text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-all"
-              title="Configuración"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
+                      {/* Subject + preview */}
+                      <div className="flex-1 min-w-0 flex items-center gap-2">
+                        <span className={`text-sm truncate ${!msg.seen ? 'font-semibold text-neutral-900 dark:text-white' : 'text-neutral-700 dark:text-white/70'}`}>
+                          {msg.subject || '(Sin asunto)'}
+                        </span>
+                        {msg.hasAttachments && <Paperclip className="w-3.5 h-3.5 text-neutral-400 dark:text-white/40 flex-shrink-0" />}
+                      </div>
 
-            {configuracion && (
-              <button
-                onClick={() => setShowRedactar(true)}
-                className="flex items-center space-x-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-4 py-2 rounded-lg hover:shadow-medium transition-all"
-              >
-                <Plus className="w-5 h-5" />
-                <span className="hidden sm:inline">Redactar</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+                      {/* Date */}
+                      <span className="text-xs text-neutral-500 dark:text-white/50 flex-shrink-0 w-16 text-right">
+                        {formatDate(msg.date)}
+                      </span>
 
-      {/* Contenido principal */}
-      {!configuracion && !usuario?.email_cuenta ? (
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="text-center max-w-md">
-            <Mail className="w-16 h-16 text-neutral-400 dark:text-white/40 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">
-              Configura tu cuenta de correo IONOS
-            </h2>
-            <p className="text-neutral-600 dark:text-white/60 mb-6">
-              Para comenzar a usar Mi E-Mail, configura tu correo IONOS en tu perfil o aquí.
-            </p>
-            <div className="space-y-3">
-              <button
-                onClick={() => window.location.href = '/perfil'}
-                className="w-full bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 py-3 rounded-xl hover:shadow-medium transition-all font-semibold"
-              >
-                Ir a Mi Perfil
-              </button>
-              <button
-                onClick={() => setShowConfig(true)}
-                className="w-full border-2 border-accent text-accent px-6 py-3 rounded-xl hover:bg-primary-50 transition-all font-semibold"
-              >
-                Configurar aquí
-              </button>
+                      {/* Actions on hover */}
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleMarkRead(msg.uid, !msg.seen); }}
+                          className="p-1.5 hover:bg-neutral-200 dark:hover:bg-white/10 rounded transition-all"
+                          title={msg.seen ? 'Marcar no leido' : 'Marcar leido'}
+                        >
+                          {msg.seen ? <MailOpen className="w-3.5 h-3.5 text-neutral-500" /> : <Eye className="w-3.5 h-3.5 text-neutral-500" />}
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDelete(msg.uid); }}
+                          className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/20 rounded transition-all"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
+        )}
+      </div>
+
+      {/* Compose Modal */}
+      {showCompose && (
+        <ComposeModal
+          mode={composeMode}
+          replyTo={selectedMessage}
+          onClose={() => setShowCompose(false)}
+          onSent={() => { setShowCompose(false); handleRefresh(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Setup Screen ─────────────────────────────────────────────────
+
+function SetupScreen({ onSuccess, onClose }: { onSuccess: () => void; onClose: () => void }) {
+  const { usuario } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [error, setError] = useState('');
+  const [verified, setVerified] = useState(false);
+
+  const handleVerify = async () => {
+    if (!email || !password) { setError('Ingresa correo y contrasena'); return; }
+    setVerifying(true);
+    setError('');
+    try {
+      // Save config first
+      await supabase
+        .from('email_configuraciones')
+        .upsert({
+          usuario_id: usuario!.id,
+          email,
+          password,
+          activa: true,
+        }, { onConflict: 'usuario_id' });
+
+      // Test connection
+      const result = await callWebmail('verify-connection');
+      if (result.success) {
+        setVerified(true);
+      } else {
+        throw new Error(result.error || 'Credenciales incorrectas');
+      }
+    } catch (err: any) {
+      setError(err.message);
+      // Remove bad config
+      await supabase.from('email_configuraciones').delete().eq('usuario_id', usuario!.id);
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleContinue = () => {
+    onSuccess();
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-900 p-4">
+      <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-lg max-w-md w-full p-8">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
+            <Mail className="w-8 h-8 text-accent" />
+          </div>
+          <h1 className="text-2xl font-display font-bold text-neutral-900 dark:text-white">Configura tu correo IONOS</h1>
+          <p className="text-sm text-neutral-500 dark:text-white/50 mt-2">
+            Ingresa tus credenciales para acceder a tu buzon de correo
+          </p>
         </div>
-      ) : (
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Banner informativo */}
-          {configuracion && !configuracion.ultima_sincronizacion && mensajes.length === 0 && (
-            <div className="bg-primary-50 border-b border-primary-200 px-6 py-4">
-              <div className="flex items-center space-x-3">
-                <AlertCircle className="w-5 h-5 text-accent flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-primary-900">
-                    Cuenta configurada exitosamente
-                  </p>
-                  <p className="text-xs text-primary-700 mt-1">
-                    Tu correo <strong>{configuracion.email}</strong> está conectado.
-                    Haz clic en el botón "Actualizar" arriba para sincronizar tus correos del servidor IONOS.
-                  </p>
-                </div>
-              </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-lg flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+            <span className="text-sm text-red-700 dark:text-red-300">{error}</span>
+          </div>
+        )}
+
+        {verified ? (
+          <div className="text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto">
+              <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+            </div>
+            <p className="font-semibold text-neutral-900 dark:text-white">Conexion exitosa</p>
+            <p className="text-sm text-neutral-500 dark:text-white/50">Tu cuenta {email} esta lista para usar</p>
+            <button
+              onClick={handleContinue}
+              className="w-full py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent-hover transition-all"
+            >
+              Ir a mi correo
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1.5">Correo electronico</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 text-neutral-900 dark:text-white"
+                placeholder="nombre@jiro.mx"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1.5">Contrasena</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 text-neutral-900 dark:text-white"
+                placeholder="Tu contrasena de IONOS"
+              />
+            </div>
+            <div className="bg-neutral-50 dark:bg-white/5 rounded-lg p-3 text-xs text-neutral-500 dark:text-white/50 space-y-1">
+              <p>Servidores preconfigurados:</p>
+              <p>IMAP: imap.ionos.mx:993 (SSL/TLS)</p>
+              <p>SMTP: smtp.ionos.mx:465 (SSL/TLS)</p>
+            </div>
+            <button
+              onClick={handleVerify}
+              disabled={verifying || !email || !password}
+              className="w-full py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent-hover transition-all disabled:opacity-50"
+            >
+              {verifying ? 'Verificando conexion...' : 'Verificar y conectar'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Compose Modal ────────────────────────────────────────────────
+
+function ComposeModal({ mode, replyTo, onClose, onSent }: {
+  mode: 'new' | 'reply' | 'replyAll' | 'forward';
+  replyTo: EmailFull | null;
+  onClose: () => void;
+  onSent: () => void;
+}) {
+  const [to, setTo] = useState('');
+  const [cc, setCc] = useState('');
+  const [subject, setSubject] = useState('');
+  const [bodyHtml, setBodyHtml] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+  const [showCc, setShowCc] = useState(false);
+
+  useEffect(() => {
+    if (!replyTo) return;
+    if (mode === 'reply') {
+      setTo(replyTo.fromEmail);
+      setSubject(`Re: ${replyTo.subject}`);
+    } else if (mode === 'replyAll') {
+      setTo(replyTo.fromEmail);
+      setCc([...replyTo.to, ...replyTo.cc].filter(Boolean).join(', '));
+      setShowCc(true);
+      setSubject(`Re: ${replyTo.subject}`);
+    } else if (mode === 'forward') {
+      setSubject(`Fwd: ${replyTo.subject}`);
+      setBodyHtml(`\n\n---------- Mensaje reenviado ----------\nDe: ${replyTo.from} <${replyTo.fromEmail}>\nFecha: ${replyTo.date}\nAsunto: ${replyTo.subject}\n\n${replyTo.bodyText || ''}`);
+    }
+  }, [mode, replyTo]);
+
+  const handleSend = async () => {
+    if (!to.trim() || !subject.trim()) {
+      setError('Destinatario y asunto son requeridos');
+      return;
+    }
+    setSending(true);
+    setError('');
+    try {
+      await callWebmail('send-message', {
+        to: to.split(',').map(s => s.trim()).filter(Boolean),
+        cc: cc ? cc.split(',').map(s => s.trim()).filter(Boolean) : [],
+        bcc: [],
+        subject,
+        bodyHtml: bodyHtml || `<p>${subject}</p>`,
+        bodyText: bodyHtml.replace(/<[^>]*>/g, '') || subject,
+      });
+      onSent();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-white/10">
+          <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
+            {mode === 'new' ? 'Nuevo correo' : mode === 'forward' ? 'Reenviar' : 'Responder'}
+          </h2>
+          <button onClick={onClose} className="p-2 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-all">
+            <X className="w-5 h-5 text-neutral-500" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-3">
+          {error && (
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-lg text-sm text-red-700 dark:text-red-300">
+              {error}
             </div>
           )}
 
-          <div className="flex-1 flex overflow-hidden">
-          {/* Sidebar - Carpetas */}
-          <div className="w-64 bg-white dark:bg-neutral-800/50 border-r border-neutral-200 dark:border-white/10 overflow-y-auto">
-            <div className="p-4 space-y-1">
-              {Object.entries(CARPETAS_INFO).map(([key, info]) => {
-                const Icon = info.icon;
-                const count = mensajes.filter(m => m.carpeta === key).length;
-                const isActive = carpetaActual === key;
-
-                return (
-                  <button
-                    key={key}
-                    onClick={() => setCarpetaActual(key as Carpeta)}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
-                      isActive
-                        ? 'bg-primary-50 dark:bg-accent/10 text-primary-700 dark:text-accent font-semibold'
-                        : 'text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/10'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Icon className={`w-5 h-5 ${isActive ? 'text-accent' : info.color}`} />
-                      <span>{info.nombre}</span>
-                    </div>
-                    {count > 0 && (
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        isActive
-                          ? 'bg-accent text-white'
-                          : 'bg-neutral-200 text-neutral-600'
-                      }`}>
-                        {count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Lista de mensajes */}
-          <div className="w-96 bg-white dark:bg-neutral-800/50 border-r border-neutral-200 dark:border-white/10 overflow-y-auto">
-            <div className="p-4 border-b border-neutral-200 dark:border-white/10">
-              <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
-                {CARPETAS_INFO[carpetaActual].nombre}
-              </h2>
-              <p className="text-sm text-neutral-600 dark:text-white/60">
-                {mensajes.length} {mensajes.length === 1 ? 'mensaje' : 'mensajes'}
-              </p>
-            </div>
-
-            {mensajes.length === 0 ? (
-              <div className="p-8 text-center">
-                <Mail className="w-12 h-12 text-neutral-300 dark:text-white/20 mx-auto mb-3" />
-                <p className="text-neutral-500 dark:text-white/50 mb-4">No hay mensajes</p>
-                <button
-                  onClick={handleSincronizar}
-                  disabled={sincronizando}
-                  className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-all disabled:opacity-50 text-sm"
-                >
-                  {sincronizando ? 'Sincronizando...' : 'Sincronizar ahora'}
-                </button>
-              </div>
-            ) : (
-              <div>
-                {mensajes.map((mensaje) => (
-                  <div
-                    key={mensaje.id}
-                    onClick={() => {
-                      setMensajeSeleccionado(mensaje);
-                      if (!mensaje.leido) handleMarcarLeido(mensaje);
-                    }}
-                    className={`p-4 border-b border-neutral-200 dark:border-white/10 cursor-pointer transition-all ${
-                      !mensaje.leido ? 'bg-primary-50 dark:bg-accent/10' : 'hover:bg-neutral-50 dark:hover:bg-white/5'
-                    } ${
-                      mensajeSeleccionado?.id === mensaje.id
-                        ? 'bg-primary-50 dark:bg-accent/10 border-l-4 border-l-primary-600'
-                        : ''
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-1">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleMarcarEstrella(mensaje);
-                            }}
-                            className="flex-shrink-0"
-                          >
-                            <Star
-                              className={`w-4 h-4 ${
-                                mensaje.marcado
-                                  ? 'fill-yellow-400 text-yellow-400'
-                                  : 'text-neutral-400 hover:text-yellow-400'
-                              }`}
-                            />
-                          </button>
-                          <p className={`text-sm truncate ${
-                            !mensaje.leido ? 'font-bold text-neutral-900 dark:text-white' : 'text-neutral-700 dark:text-white/70'
-                          }`}>
-                            {mensaje.remitente}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-xs text-neutral-500 dark:text-white/50 flex-shrink-0 ml-2">
-                        {formatFecha(mensaje.fecha)}
-                      </span>
-                    </div>
-                    <p className={`text-sm mb-1 truncate ${
-                      !mensaje.leido ? 'font-semibold text-neutral-900 dark:text-white' : 'text-neutral-600 dark:text-white/60'
-                    }`}>
-                      {mensaje.asunto || '(Sin asunto)'}
-                    </p>
-                    <div className="flex items-center space-x-2">
-                      {mensaje.tiene_adjuntos && (
-                        <Paperclip className="w-3 h-3 text-neutral-400 dark:text-white/40" />
-                      )}
-                      <p className="text-xs text-neutral-500 dark:text-white/50 truncate">
-                        {mensaje.cuerpo_texto?.substring(0, 50)}...
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-neutral-600 dark:text-white/60 w-12">Para:</label>
+            <input
+              type="text"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              className="flex-1 px-3 py-2 border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 text-sm text-neutral-900 dark:text-white"
+              placeholder="email@ejemplo.com"
+            />
+            {!showCc && (
+              <button onClick={() => setShowCc(true)} className="text-xs text-accent hover:text-accent-hover">CC</button>
             )}
           </div>
 
-          {/* Panel de lectura */}
-          <div className="flex-1 bg-white dark:bg-neutral-800/50 overflow-y-auto">
-            {mensajeSeleccionado ? (
-              <div className="h-full flex flex-col">
-                <div className="p-6 border-b border-neutral-200 dark:border-white/10">
-                  <div className="flex items-start justify-between mb-4">
-                    <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">
-                      {mensajeSeleccionado.asunto || '(Sin asunto)'}
-                    </h2>
-                    <div className="flex items-center space-x-2">
-                      <button className="p-2 text-neutral-600 dark:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg">
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-4 text-sm">
-                    <div>
-                      <span className="font-semibold text-neutral-900 dark:text-white">
-                        {mensajeSeleccionado.remitente}
-                      </span>
-                      <span className="text-neutral-600 dark:text-white/60 ml-2">
-                        {`<${mensajeSeleccionado.remitente_email}>`}
-                      </span>
-                    </div>
-                    <span className="text-neutral-500 dark:text-white/50">
-                      {new Date(mensajeSeleccionado.fecha).toLocaleString('es-ES', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </span>
-                  </div>
-                  {mensajeSeleccionado.destinatarios.length > 0 && (
-                    <div className="mt-2 text-sm text-neutral-600 dark:text-white/60">
-                      <span className="font-semibold">Para:</span> {mensajeSeleccionado.destinatarios.join(', ')}
-                    </div>
-                  )}
-                </div>
+          {showCc && (
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-neutral-600 dark:text-white/60 w-12">CC:</label>
+              <input
+                type="text"
+                value={cc}
+                onChange={(e) => setCc(e.target.value)}
+                className="flex-1 px-3 py-2 border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 text-sm text-neutral-900 dark:text-white"
+                placeholder="cc@ejemplo.com"
+              />
+            </div>
+          )}
 
-                <div className="flex-1 p-6 overflow-y-auto">
-                  {mensajeSeleccionado.cuerpo_html ? (
-                    <div
-                      className="prose max-w-none"
-                      dangerouslySetInnerHTML={{ __html: mensajeSeleccionado.cuerpo_html }}
-                    />
-                  ) : (
-                    <p className="whitespace-pre-wrap text-neutral-700 dark:text-white/70">
-                      {mensajeSeleccionado.cuerpo_texto}
-                    </p>
-                  )}
-                </div>
-
-                <div className="p-4 border-t border-neutral-200 dark:border-white/10 flex space-x-2">
-                  <button
-                    onClick={() => {
-                      setShowRedactar(true);
-                    }}
-                    className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-all"
-                  >
-                    Responder
-                  </button>
-                  <button className="px-4 py-2 text-neutral-700 dark:text-white/70 border border-neutral-300 dark:border-white/15 rounded-lg hover:bg-neutral-50 dark:hover:bg-white/5 transition-all">
-                    Responder a todos
-                  </button>
-                  <button className="px-4 py-2 text-neutral-700 dark:text-white/70 border border-neutral-300 dark:border-white/15 rounded-lg hover:bg-neutral-50 dark:hover:bg-white/5 transition-all">
-                    Reenviar
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="h-full flex items-center justify-center text-neutral-400 dark:text-white/40">
-                <div className="text-center">
-                  <Mail className="w-16 h-16 mx-auto mb-4" />
-                  <p>Selecciona un mensaje para leerlo</p>
-                </div>
-              </div>
-            )}
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-neutral-600 dark:text-white/60 w-12">Asunto:</label>
+            <input
+              type="text"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              className="flex-1 px-3 py-2 border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 text-sm text-neutral-900 dark:text-white"
+              placeholder="Asunto del correo"
+            />
           </div>
+
+          <textarea
+            value={bodyHtml}
+            onChange={(e) => setBodyHtml(e.target.value)}
+            rows={14}
+            className="w-full px-4 py-3 border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 text-sm text-neutral-900 dark:text-white resize-none"
+            placeholder="Escribe tu mensaje..."
+          />
         </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-neutral-200 dark:border-white/10">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-all text-sm font-medium"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleSend}
+            disabled={sending}
+            className="flex items-center gap-2 px-5 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-all text-sm font-medium disabled:opacity-50"
+          >
+            <Send className="w-4 h-4" />
+            {sending ? 'Enviando...' : 'Enviar'}
+          </button>
         </div>
-      )}
-
-      {/* Modales */}
-      {showConfig && (
-        <ConfiguracionCorreo
-          isOpen={showConfig}
-          onClose={() => setShowConfig(false)}
-          onSuccess={() => {
-            setShowConfig(false);
-            loadConfiguracion();
-          }}
-          configuracion={configuracion}
-        />
-      )}
-
-      {showRedactar && configuracion && (
-        <RedactarCorreo
-          isOpen={showRedactar}
-          onClose={() => setShowRedactar(false)}
-          onSuccess={() => {
-            setShowRedactar(false);
-            loadMensajes();
-          }}
-          configuracion={configuracion}
-        />
-      )}
-
-      {showBuscador && (
-        <BuscadorAvanzado
-          isOpen={showBuscador}
-          onClose={() => setShowBuscador(false)}
-          onSearch={(resultados) => {
-            setMensajes(resultados);
-            setShowBuscador(false);
-          }}
-        />
-      )}
+      </div>
     </div>
   );
 }
