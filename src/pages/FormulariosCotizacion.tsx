@@ -86,7 +86,7 @@ export default function FormulariosCotizacion() {
   }, [] as { category: FormCategory; items: QuoteFormTemplate[] }[]);
 
   const startForm = (template: QuoteFormTemplate) => {
-    navigate(`/tramites/formularios/nuevo/${template.form_type}`);
+    navigate(`/cotizar/formularios/nuevo/${template.form_type}`);
   };
 
   const openShare = async (template: QuoteFormTemplate) => {

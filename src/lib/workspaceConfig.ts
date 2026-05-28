@@ -1,8 +1,9 @@
-import { LayoutDashboard, Briefcase, Palette, TrendingUp, Brain, GraduationCap, Settings, ClipboardList, FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Mail, Bot, BarChart3, Video, BookMarked, BadgeCheck, Zap, Compass } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Palette, TrendingUp, Brain, GraduationCap, Settings, ClipboardList, FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Mail, Bot, BarChart3, Video, BookMarked, BadgeCheck, Zap, Compass, Calculator } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
   | 'comercial'
+  | 'cotizar'
   | 'mercadotecnia'
   | 'operaciones'
   | 'ia-automatizacion'
@@ -60,16 +61,26 @@ const WORKSPACE_COMERCIAL: WorkspaceDefinition = {
   items: [
     { path: '/mi-crm', label: 'CRM', icon: Users, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/tramites', label: 'Tramites', icon: ClipboardList, visibleTo: ALL_ROLES, matchPrefix: true, excludePrefixes: ['/tramites/formularios'] },
-    { path: '/tramites/formularios', label: 'Formularios', icon: FormInput, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/centro-contacto', label: 'Centro de Contacto', icon: Headphones, visibleTo: ALL_ROLES, matchPrefix: true },
-    { path: '/a-la-medida', label: 'A la medida', icon: Compass, visibleTo: ALL_ROLES, matchPrefix: true },
-    { path: '/multicotizador-digital', label: 'Multicotizador', icon: Car, visibleTo: ALL_ROLES },
     { path: '/entrega-polizas', label: 'Entrega Polizas', icon: Send, visibleTo: NOT_AGENT },
     { path: '/mis-polizas', label: 'Mis Polizas', icon: FileText, visibleTo: ALL_ROLES },
     { path: '/lector-qualitas', label: 'Lector Qualitas', icon: BookOpen, visibleTo: NOT_AGENT },
     { path: '/mi-progreso', label: 'Mi Progreso', icon: Trophy, visibleTo: NO_EMPLEADO_AGENTE },
-    { path: '/gmm/cotizador', label: 'GMM BX+', icon: Activity, visibleTo: ADMIN_ONLY },
     { path: '/seguwallet-admin', label: 'Seguwallet', icon: Wallet, visibleTo: ALL_ROLES },
+  ],
+};
+
+const WORKSPACE_COTIZAR: WorkspaceDefinition = {
+  id: 'cotizar',
+  label: 'Cotizar',
+  icon: Calculator,
+  visibleTo: ALL_ROLES,
+  items: [
+    { path: '/cotizar', label: 'Inicio', icon: LayoutDashboard, visibleTo: ALL_ROLES },
+    { path: '/cotizar/gmm-bx', label: 'GMM BX+', icon: Activity, visibleTo: ADMIN_ONLY },
+    { path: '/cotizar/formularios', label: 'Formularios', icon: FormInput, visibleTo: ALL_ROLES, matchPrefix: true },
+    { path: '/cotizar/a-la-medida', label: 'A la Medida', icon: Compass, visibleTo: ALL_ROLES, matchPrefix: true },
+    { path: '/cotizar/multicotizador', label: 'Multicotizador', icon: Car, visibleTo: ALL_ROLES },
   ],
 };
 
@@ -151,6 +162,7 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
 
 export const WORKSPACES: WorkspaceDefinition[] = [
   WORKSPACE_COMERCIAL,
+  WORKSPACE_COTIZAR,
   WORKSPACE_OPERACIONES,
   WORKSPACE_MERCADOTECNIA,
   WORKSPACE_SEGUROS_EDUCATION,
@@ -158,10 +170,11 @@ export const WORKSPACES: WorkspaceDefinition[] = [
   WORKSPACE_ADMIN,
 ];
 
-// Ordered navigation: Dashboard, Comercial, Operaciones, Mercadotecnia, Seguros Education, MOVI Store, Comunicados, IA, Admin
+// Ordered navigation: Dashboard, Comercial, Cotizar, Operaciones, Mercadotecnia, Seguros Education, MOVI Store, Comunicados, IA, Admin
 export const NAV_ORDER: NavEntry[] = [
   { type: 'link', item: { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visibleTo: ALL_ROLES } },
   { type: 'workspace', workspace: WORKSPACE_COMERCIAL },
+  { type: 'workspace', workspace: WORKSPACE_COTIZAR },
   { type: 'workspace', workspace: WORKSPACE_OPERACIONES },
   { type: 'workspace', workspace: WORKSPACE_MERCADOTECNIA },
   { type: 'workspace', workspace: WORKSPACE_SEGUROS_EDUCATION },

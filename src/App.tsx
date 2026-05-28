@@ -67,6 +67,7 @@ import MiProduccion from './pages/MiProduccion';
 import MiProduccionSICASMirror from './pages/MiProduccionSICASMirror';
 import MisPolizas from './pages/MisPolizas';
 import GMMCotizador from './pages/GMMCotizador';
+import CotizarHub from './pages/CotizarHub';
 import Mercadotecnia from './pages/Mercadotecnia';
 import PaginaPublicaAsesor from './pages/PaginaPublicaAsesor';
 import ChatGPTTest from './pages/ChatGPTTest';
@@ -191,10 +192,21 @@ function App() {
               <Route path="/centro-contacto/asistentes/entrenamiento" element={<ProtectedRoute requireAdminOrGerente><Layout><AsistenteEntrenamiento /></Layout></ProtectedRoute>} />
               <Route path="/vacaciones" element={<ProtectedRoute excludeAgente><Layout><Vacaciones /></Layout></ProtectedRoute>} />
               <Route path="/espacio-jiro" element={<ProtectedRoute><Layout><EspacioJiro /></Layout></ProtectedRoute>} />
-              <Route path="/multicotizador-digital" element={<ProtectedRoute><Layout><MulticotizadorDigital /></Layout></ProtectedRoute>} />
-              <Route path="/a-la-medida" element={<ProtectedRoute><Layout><AlaMedida /></Layout></ProtectedRoute>} />
-              <Route path="/a-la-medida/auto" element={<ProtectedRoute><Layout><DisenadorAuto /></Layout></ProtectedRoute>} />
-              <Route path="/a-la-medida/gmm" element={<ProtectedRoute><Layout><DisenadorGMM /></Layout></ProtectedRoute>} />
+              {/* Cotizar hub */}
+              <Route path="/cotizar" element={<ProtectedRoute><Layout><CotizarHub /></Layout></ProtectedRoute>} />
+              <Route path="/cotizar/gmm-bx" element={<ProtectedRoute requireAdmin><GMMCotizador /></ProtectedRoute>} />
+              <Route path="/cotizar/formularios" element={<ProtectedRoute><Layout><FormulariosCotizacion /></Layout></ProtectedRoute>} />
+              <Route path="/cotizar/formularios/nuevo/:formType" element={<ProtectedRoute><Layout><QuoteFormWizard /></Layout></ProtectedRoute>} />
+              <Route path="/cotizar/formularios/:formId" element={<ProtectedRoute><Layout><QuoteFormWizard /></Layout></ProtectedRoute>} />
+              <Route path="/cotizar/a-la-medida" element={<ProtectedRoute><Layout><AlaMedida /></Layout></ProtectedRoute>} />
+              <Route path="/cotizar/a-la-medida/auto" element={<ProtectedRoute><Layout><DisenadorAuto /></Layout></ProtectedRoute>} />
+              <Route path="/cotizar/a-la-medida/gmm" element={<ProtectedRoute><Layout><DisenadorGMM /></Layout></ProtectedRoute>} />
+              <Route path="/cotizar/multicotizador" element={<ProtectedRoute><Layout><MulticotizadorDigital /></Layout></ProtectedRoute>} />
+              {/* Backwards compat redirects */}
+              <Route path="/multicotizador-digital" element={<Navigate to="/cotizar/multicotizador" replace />} />
+              <Route path="/a-la-medida" element={<Navigate to="/cotizar/a-la-medida" replace />} />
+              <Route path="/a-la-medida/auto" element={<Navigate to="/cotizar/a-la-medida/auto" replace />} />
+              <Route path="/a-la-medida/gmm" element={<Navigate to="/cotizar/a-la-medida/gmm" replace />} />
               <Route path="/lector-qualitas" element={<ProtectedRoute excludeAgente><Layout><LectorQualitas /></Layout></ProtectedRoute>} />
               <Route path="/entrega-polizas" element={<ProtectedRoute excludeAgente><Layout><EntregaPolizas /></Layout></ProtectedRoute>} />
               <Route path="/publicidad" element={<Navigate to="/mercadotecnia/publicidad" replace />} />
@@ -221,9 +233,9 @@ function App() {
               <Route path="/centro-notificaciones" element={<Navigate to="/centro-contacto" replace />} />
               <Route path="/tramites" element={<ProtectedRoute><Layout><Tramites /></Layout></ProtectedRoute>} />
               <Route path="/tramites/reportes" element={<ProtectedRoute><Layout><TramitesReportes /></Layout></ProtectedRoute>} />
-              <Route path="/tramites/formularios" element={<ProtectedRoute><Layout><FormulariosCotizacion /></Layout></ProtectedRoute>} />
-              <Route path="/tramites/formularios/nuevo/:formType" element={<ProtectedRoute><Layout><QuoteFormWizard /></Layout></ProtectedRoute>} />
-              <Route path="/tramites/formularios/:formId" element={<ProtectedRoute><Layout><QuoteFormWizard /></Layout></ProtectedRoute>} />
+              <Route path="/tramites/formularios" element={<Navigate to="/cotizar/formularios" replace />} />
+              <Route path="/tramites/formularios/nuevo/:formType" element={<Navigate to="/cotizar/formularios" replace />} />
+              <Route path="/tramites/formularios/:formId" element={<Navigate to="/cotizar/formularios" replace />} />
               <Route path="/tramites/:id" element={<ProtectedRoute><Layout><TramiteDetalle /></Layout></ProtectedRoute>} />
               <Route path="/configuracion/catalogos" element={<ProtectedRoute requireAdmin><Layout><ConfiguracionCatalogos /></Layout></ProtectedRoute>} />
               <Route path="/mi-crm" element={<ProtectedRoute><Layout><MiCRM /></Layout></ProtectedRoute>} />
@@ -263,7 +275,7 @@ function App() {
               <Route path="/mis-polizas" element={<ProtectedRoute><Layout><MisPolizas /></Layout></ProtectedRoute>} />
               <Route path="/produccion/configuracion" element={<ProtectedRoute requireAdmin><Layout><ProduccionConfiguracion /></Layout></ProtectedRoute>} />
               <Route path="/gmm/tarifas" element={<Navigate to="/configuracion" replace />} />
-              <Route path="/gmm/cotizador" element={<ProtectedRoute requireAdmin><GMMCotizador /></ProtectedRoute>} />
+              <Route path="/gmm/cotizador" element={<Navigate to="/cotizar/gmm-bx" replace />} />
               <Route path="/catalogos-web" element={<Navigate to="/configuracion" replace />} />
               <Route path="/sicas" element={<Navigate to="/configuracion" replace />} />
               <Route path="/sicas/test-catalogs" element={<ProtectedRoute requireAdmin><Layout><SicasTestCatalogs /></Layout></ProtectedRoute>} />

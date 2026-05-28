@@ -72,7 +72,7 @@ export default function DisenadorAuto() {
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <button
-          onClick={() => navigate('/a-la-medida')}
+          onClick={() => navigate('/cotizar/a-la-medida')}
           className="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-700"
         >
           <ArrowLeft className="w-4 h-4 text-gray-600 dark:text-gray-400" />

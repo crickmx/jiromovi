@@ -42,7 +42,7 @@ export default function AlaMedida() {
       <div className="grid md:grid-cols-2 gap-8">
         {/* Auto Card */}
         <button
-          onClick={() => navigate('/a-la-medida/auto')}
+          onClick={() => navigate('/cotizar/a-la-medida/auto')}
           className="group relative text-left rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-sky-100/40 dark:hover:shadow-sky-900/20 hover:-translate-y-1.5 hover:border-sky-200 dark:hover:border-sky-700"
         >
           {/* Gradient accent top bar */}
@@ -97,7 +97,7 @@ export default function AlaMedida() {
 
         {/* GMM Card */}
         <button
-          onClick={() => navigate('/a-la-medida/gmm')}
+          onClick={() => navigate('/cotizar/a-la-medida/gmm')}
           className="group relative text-left rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-teal-100/40 dark:hover:shadow-teal-900/20 hover:-translate-y-1.5 hover:border-teal-200 dark:hover:border-teal-700"
         >
           {/* Gradient accent top bar */}

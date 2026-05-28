@@ -320,7 +320,7 @@ export function Tramites() {
                 <span className="hidden sm:inline">Reportes</span>
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={() => navigate('/tramites/formularios')}>
+            <Button variant="outline" size="sm" onClick={() => navigate('/cotizar/formularios')}>
               <FileText className="w-4 h-4 mr-1.5" />
               <span className="hidden sm:inline">Formularios</span>
             </Button>

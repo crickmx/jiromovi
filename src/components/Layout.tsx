@@ -287,12 +287,12 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
           )}
 
           <main className={cn(
-            ['/multicotizador-digital', '/centro-contacto'].includes(location.pathname)
+            ['/cotizar/multicotizador', '/multicotizador-digital', '/centro-contacto'].includes(location.pathname)
               ? 'h-screen overflow-hidden'
               : 'w-full py-6 lg:py-8',
             ['/espacio-jiro'].includes(location.pathname)
               ? 'px-4 sm:px-6 lg:px-8'
-              : ['/multicotizador-digital', '/centro-contacto'].includes(location.pathname)
+              : ['/cotizar/multicotizador', '/multicotizador-digital', '/centro-contacto'].includes(location.pathname)
               ? ''
               : 'max-w-[1400px] mx-auto px-5 sm:px-6 lg:px-10'
           )}>
