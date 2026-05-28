@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { FileText, Save, Eye, AlertCircle, CheckCircle2, Mail, MessageCircle, Bell, Star, ChevronDown } from 'lucide-react';
+import { FileText, Save, Eye, AlertCircle, CheckCircle2, Mail, MessageCircle, Bell, Star, ChevronDown, Monitor, Smartphone } from 'lucide-react';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
 
@@ -28,6 +28,7 @@ interface Plantilla {
     id: string;
     nombre: string;
     codigo: string;
+    platform: 'movi' | 'seguwallet';
   };
 }
 
@@ -136,7 +137,8 @@ export function GestionPlantillas() {
           tipo_notificacion:tipo_notificacion_id (
             id,
             nombre,
-            codigo
+            codigo,
+            platform
           )
         `)
         .order('created_at', { ascending: true });
@@ -204,6 +206,13 @@ export function GestionPlantillas() {
   const defaultEmailChannel = emailChannels.find(c => c.is_default);
   const defaultWaChannel = waChannels.find(c => c.is_default);
 
+  const [platformFilter, setPlatformFilter] = useState<'all' | 'movi' | 'seguwallet'>('all');
+
+  const plantillasFiltradas = plantillas.filter(p => {
+    if (platformFilter === 'all') return true;
+    return (p.tipo_notificacion as any)?.platform === platformFilter;
+  });
+
   if (loading) {
     return <div className="text-center py-8 text-neutral-600">Cargando...</div>;
   }
@@ -212,9 +221,46 @@ export function GestionPlantillas() {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Lista de Plantillas */}
       <div className="lg:col-span-1">
-        <h3 className="text-lg font-semibold text-neutral-800 mb-4">Plantillas Disponibles</h3>
+        <h3 className="text-lg font-semibold text-neutral-800 mb-3">Plantillas Disponibles</h3>
+
+        {/* Platform filter */}
+        <div className="flex items-center border border-neutral-200 rounded-lg overflow-hidden mb-4">
+          <button
+            onClick={() => setPlatformFilter('all')}
+            className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
+              platformFilter === 'all'
+                ? 'bg-neutral-800 text-white'
+                : 'bg-white text-neutral-600 hover:bg-neutral-50'
+            }`}
+          >
+            Todas
+          </button>
+          <button
+            onClick={() => setPlatformFilter('movi')}
+            className={`flex-1 px-3 py-2 text-xs font-medium transition-colors flex items-center justify-center gap-1 border-l border-neutral-200 ${
+              platformFilter === 'movi'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-neutral-600 hover:bg-neutral-50'
+            }`}
+          >
+            <Monitor className="w-3 h-3" />
+            MOVI
+          </button>
+          <button
+            onClick={() => setPlatformFilter('seguwallet')}
+            className={`flex-1 px-3 py-2 text-xs font-medium transition-colors flex items-center justify-center gap-1 border-l border-neutral-200 ${
+              platformFilter === 'seguwallet'
+                ? 'bg-teal-600 text-white'
+                : 'bg-white text-neutral-600 hover:bg-neutral-50'
+            }`}
+          >
+            <Smartphone className="w-3 h-3" />
+            Seguwallet
+          </button>
+        </div>
+
         <div className="space-y-2">
-          {plantillas.map((plantilla) => (
+          {plantillasFiltradas.map((plantilla) => (
             <button
               key={plantilla.id}
               onClick={() => handleSelectPlantilla(plantilla)}
@@ -233,8 +279,17 @@ export function GestionPlantillas() {
                     {(plantilla.tipo_notificacion as any)?.nombre || 'Sin nombre'}
                   </p>
                   <p className="text-sm text-neutral-600 truncate">{plantilla.asunto}</p>
-                  {/* Channel indicators */}
-                  <div className="flex gap-1 mt-1.5">
+                  {/* Platform + Channel indicators */}
+                  <div className="flex gap-1 mt-1.5 flex-wrap">
+                    {(plantilla.tipo_notificacion as any)?.platform === 'seguwallet' ? (
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] bg-teal-100 text-teal-700 font-semibold">
+                        <Smartphone className="w-2.5 h-2.5" /> Seguwallet
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-600 font-semibold">
+                        <Monitor className="w-2.5 h-2.5" /> MOVI
+                      </span>
+                    )}
                     {(plantilla.email_enabled || plantilla.enviar_correo) && (
                       <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] bg-blue-100 text-blue-700 font-medium">
                         <Mail className="w-2.5 h-2.5" /> Email
@@ -278,9 +333,20 @@ export function GestionPlantillas() {
             )}
 
             <div>
-              <h3 className="text-lg font-semibold text-neutral-800 mb-4">
-                Editar Plantilla: {(selectedPlantilla.tipo_notificacion as any)?.nombre}
-              </h3>
+              <div className="flex items-center gap-3 mb-4">
+                <h3 className="text-lg font-semibold text-neutral-800">
+                  Editar Plantilla: {(selectedPlantilla.tipo_notificacion as any)?.nombre}
+                </h3>
+                {(selectedPlantilla.tipo_notificacion as any)?.platform === 'seguwallet' ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-teal-100 text-teal-700 text-xs rounded-full font-semibold border border-teal-200">
+                    <Smartphone className="w-3 h-3" /> Seguwallet
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-semibold border border-blue-200">
+                    <Monitor className="w-3 h-3" /> MOVI
+                  </span>
+                )}
+              </div>
 
               {/* Variables Disponibles */}
               <div className="mb-4 p-4 bg-primary-50 rounded-lg border border-primary-200">

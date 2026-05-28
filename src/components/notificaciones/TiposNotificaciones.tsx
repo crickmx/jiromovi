@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Mail, Power, MessageCircle, AlertCircle, CreditCard as Edit, Bell, ChevronDown, ChevronUp, Users, Check, X, Search, ShieldCheck, Briefcase, BookOpen, FileText, ShoppingBag, Building2, UserCheck, RefreshCw, Info, Layers, Wallet } from 'lucide-react';
+import { Mail, Power, MessageCircle, AlertCircle, CreditCard as Edit, Bell, ChevronDown, ChevronUp, Users, Check, X, Search, ShieldCheck, Briefcase, BookOpen, FileText, ShoppingBag, Building2, UserCheck, RefreshCw, Info, Layers, Wallet, Smartphone, Monitor } from 'lucide-react';
 import { EditarPlantillaModal } from './EditarPlantillaModal';
 
 interface TipoNotificacion {
@@ -14,6 +14,7 @@ interface TipoNotificacion {
   enviar_notificacion: boolean;
   permite_destinatarios_custom: boolean;
   modulo: string;
+  platform: 'movi' | 'seguwallet';
   es_obsoleto?: boolean;
 }
 
@@ -72,13 +73,14 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
   const [tipos, setTipos] = useState<TipoNotificacion[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [editingTipo, setEditingTipo] = useState<{ id: string; nombre: string } | null>(null);
+  const [editingTipo, setEditingTipo] = useState<{ id: string; nombre: string; platform?: 'movi' | 'seguwallet' } | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [destinatarios, setDestinatarios] = useState<Record<string, Destinatario[]>>({});
   const [usuariosDisponibles, setUsuariosDisponibles] = useState<Usuario[]>([]);
   const [managingDestinatarios, setManagingDestinatarios] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState('');
   const [moduloActivo, setModuloActivo] = useState<string | null>(null);
+  const [platformFilter, setPlatformFilter] = useState<'all' | 'movi' | 'seguwallet'>('all');
   const [mostrarMotor, setMostrarMotor] = useState(false);
 
   useEffect(() => {
@@ -206,6 +208,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
   const tiposFiltrados = tipos.filter(t => {
     if (!mostrarMotor && CODIGOS_MOTOR_INTERNO.includes(t.codigo)) return false;
     if (moduloActivo && t.modulo !== moduloActivo) return false;
+    if (platformFilter !== 'all' && t.platform !== platformFilter) return false;
     if (busqueda) {
       const q = busqueda.toLowerCase();
       return (
@@ -252,8 +255,8 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
       )}
 
       <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative flex-1 max-w-sm min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
             <input
               type="text"
@@ -263,6 +266,43 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
               className="w-full pl-9 pr-4 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
+
+          {/* Platform filter */}
+          <div className="flex items-center border border-neutral-200 rounded-lg overflow-hidden">
+            <button
+              onClick={() => setPlatformFilter('all')}
+              className={`px-3 py-2 text-xs font-medium transition-colors ${
+                platformFilter === 'all'
+                  ? 'bg-neutral-800 text-white'
+                  : 'bg-white text-neutral-600 hover:bg-neutral-50'
+              }`}
+            >
+              Todas
+            </button>
+            <button
+              onClick={() => setPlatformFilter('movi')}
+              className={`px-3 py-2 text-xs font-medium transition-colors flex items-center gap-1 border-l border-neutral-200 ${
+                platformFilter === 'movi'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-neutral-600 hover:bg-neutral-50'
+              }`}
+            >
+              <Monitor className="w-3 h-3" />
+              MOVI
+            </button>
+            <button
+              onClick={() => setPlatformFilter('seguwallet')}
+              className={`px-3 py-2 text-xs font-medium transition-colors flex items-center gap-1 border-l border-neutral-200 ${
+                platformFilter === 'seguwallet'
+                  ? 'bg-teal-600 text-white'
+                  : 'bg-white text-neutral-600 hover:bg-neutral-50'
+              }`}
+            >
+              <Smartphone className="w-3 h-3" />
+              Seguwallet
+            </button>
+          </div>
+
           <div className="text-sm text-neutral-500">
             <span className="font-semibold text-neutral-800">{totalActivos}</span>
             {' '}activas de{' '}
@@ -373,6 +413,17 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                               }`}>
                                 {tipo.nombre}
                               </span>
+                              {tipo.platform === 'seguwallet' ? (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-teal-50 text-teal-700 text-[10px] rounded border border-teal-200 font-semibold uppercase tracking-wide">
+                                  <Smartphone className="w-2.5 h-2.5" />
+                                  Seguwallet
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[10px] rounded border border-blue-200 font-semibold uppercase tracking-wide">
+                                  <Monitor className="w-2.5 h-2.5" />
+                                  MOVI
+                                </span>
+                              )}
                               {esDepartamental ? (
                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-violet-50 text-violet-600 text-xs rounded border border-violet-200">
                                   <Users className="w-2.5 h-2.5" />
@@ -515,7 +566,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                             )}
 
                             <button
-                              onClick={() => setEditingTipo({ id: tipo.id, nombre: tipo.nombre })}
+                              onClick={() => setEditingTipo({ id: tipo.id, nombre: tipo.nombre, platform: tipo.platform })}
                               className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                             >
                               <Edit className="w-4 h-4" />
@@ -537,6 +588,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
         <EditarPlantillaModal
           tipoId={editingTipo.id}
           tipoNombre={editingTipo.nombre}
+          platform={editingTipo.platform}
           onClose={() => setEditingTipo(null)}
           onSave={() => { fetchTipos(); onUpdate(); }}
         />
