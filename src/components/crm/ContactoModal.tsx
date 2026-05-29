@@ -1,6 +1,23 @@
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, ChevronDown } from 'lucide-react';
 import { trackCrmAction } from '../../lib/activityLogger';
+
+const MEXICAN_STATES = [
+  'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche',
+  'Chiapas', 'Chihuahua', 'Ciudad de México', 'Coahuila', 'Colima',
+  'Durango', 'Estado de México', 'Guanajuato', 'Guerrero', 'Hidalgo',
+  'Jalisco', 'Michoacán', 'Morelos', 'Nayarit', 'Nuevo León', 'Oaxaca',
+  'Puebla', 'Querétaro', 'Quintana Roo', 'San Luis Potosí', 'Sinaloa',
+  'Sonora', 'Tabasco', 'Tamaulipas', 'Tlaxcala', 'Veracruz',
+  'Yucatán', 'Zacatecas',
+];
+
+const GENDER_OPTIONS = [
+  { value: 'masculino', label: 'Masculino' },
+  { value: 'femenino', label: 'Femenino' },
+  { value: 'no_binario', label: 'No binario' },
+  { value: 'prefiero_no_decir', label: 'Prefiero no decir' },
+];
 import {
   crearContacto,
   actualizarContacto,
@@ -30,6 +47,9 @@ export default function ContactoModal({ contacto, onClose, onSave }: Props) {
     celular: '',
     email: '',
     fecha_nacimiento: '',
+    genero: '',
+    estado: '',
+    municipio: '',
     estatus: 'Prospecto',
     fuente_origen: '',
     etiquetas_segmentacion: [] as string[],
@@ -45,6 +65,9 @@ export default function ContactoModal({ contacto, onClose, onSave }: Props) {
         celular: contacto.celular,
         email: contacto.email || '',
         fecha_nacimiento: (contacto as any).fecha_nacimiento || '',
+        genero: (contacto as any).genero || '',
+        estado: (contacto as any).estado || '',
+        municipio: (contacto as any).municipio || '',
         estatus: contacto.estatus,
         fuente_origen: contacto.fuente_origen || '',
         etiquetas_segmentacion: contacto.etiquetas_segmentacion || [],
@@ -194,10 +217,67 @@ export default function ContactoModal({ contacto, onClose, onSave }: Props) {
                 max={new Date().toISOString().split('T')[0]}
               />
               <p className="text-xs text-gray-500 mt-1">
-                📅 Se generará un recordatorio automático en tu calendario el día del cumpleaños
+                Se generara un recordatorio automatico en tu calendario el dia del cumpleanos
               </p>
             </div>
           )}
+
+          {formData.tipo_contacto === 'Persona' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Genero</label>
+              <div className="grid grid-cols-2 gap-2">
+                {GENDER_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        genero: formData.genero === opt.value ? '' : opt.value,
+                      })
+                    }
+                    className={`px-3 py-2 rounded-lg border text-sm font-medium text-left transition ${
+                      formData.genero === opt.value
+                        ? 'bg-blue-50 border-blue-400 text-blue-700'
+                        : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+              <div className="relative">
+                <select
+                  value={formData.estado}
+                  onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
+                  className="w-full appearance-none px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 pr-9"
+                >
+                  <option value="">Seleccionar...</option>
+                  {MEXICAN_STATES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Municipio / Alcaldia</label>
+              <input
+                type="text"
+                value={formData.municipio}
+                onChange={(e) => setFormData({ ...formData, municipio: e.target.value })}
+                placeholder="Ej. Monterrey"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Fuente de Origen</label>
