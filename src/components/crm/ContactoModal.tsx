@@ -1,6 +1,16 @@
 import { useState, useEffect } from 'react';
-import { X, ChevronDown } from 'lucide-react';
+import { X, ChevronDown, Wallet } from 'lucide-react';
 import { trackCrmAction } from '../../lib/activityLogger';
+import {
+  crearContacto,
+  actualizarContacto,
+  obtenerCamposPersonalizados,
+  obtenerEtiquetas,
+  obtenerFuentesOrigen,
+} from '../../lib/crmUtils';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
+import type { CRMContacto, CRMCampoPersonalizado, CRMEtiqueta, CRMFuenteOrigen } from '../../lib/crmTypes';
 
 const MEXICAN_STATES = [
   'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche',
@@ -18,28 +28,21 @@ const GENDER_OPTIONS = [
   { value: 'no_binario', label: 'No binario' },
   { value: 'prefiero_no_decir', label: 'Prefiero no decir' },
 ];
-import {
-  crearContacto,
-  actualizarContacto,
-  obtenerCamposPersonalizados,
-  obtenerEtiquetas,
-  obtenerFuentesOrigen,
-} from '../../lib/crmUtils';
-import { useAuth } from '../../contexts/AuthContext';
-import type { CRMContacto, CRMCampoPersonalizado, CRMEtiqueta, CRMFuenteOrigen } from '../../lib/crmTypes';
 
 interface Props {
   contacto: CRMContacto | null;
+  seguwalletCustomerId?: string | null;
   onClose: () => void;
   onSave: () => void;
 }
 
-export default function ContactoModal({ contacto, onClose, onSave }: Props) {
+export default function ContactoModal({ contacto, seguwalletCustomerId, onClose, onSave }: Props) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [camposPersonalizados, setCamposPersonalizados] = useState<CRMCampoPersonalizado[]>([]);
   const [etiquetas, setEtiquetas] = useState<CRMEtiqueta[]>([]);
   const [fuentes, setFuentes] = useState<CRMFuenteOrigen[]>([]);
+  const [hasSW, setHasSW] = useState(false);
 
   const [formData, setFormData] = useState({
     tipo_contacto: 'Persona',
@@ -58,23 +61,53 @@ export default function ContactoModal({ contacto, onClose, onSave }: Props) {
 
   useEffect(() => {
     cargarConfiguracion();
-    if (contacto) {
-      setFormData({
-        tipo_contacto: contacto.tipo_contacto,
-        nombre_completo: contacto.nombre_completo,
-        celular: contacto.celular,
-        email: contacto.email || '',
-        fecha_nacimiento: (contacto as any).fecha_nacimiento || '',
-        genero: (contacto as any).genero || '',
-        estado: (contacto as any).estado || '',
-        municipio: (contacto as any).municipio || '',
-        estatus: contacto.estatus,
-        fuente_origen: contacto.fuente_origen || '',
-        etiquetas_segmentacion: contacto.etiquetas_segmentacion || [],
-        campos_personalizados: contacto.campos_personalizados || {},
-      });
+  }, []);
+
+  useEffect(() => {
+    if (!contacto) return;
+
+    const base = {
+      tipo_contacto: contacto.tipo_contacto,
+      nombre_completo: contacto.nombre_completo,
+      celular: contacto.celular,
+      email: contacto.email || '',
+      fecha_nacimiento: contacto.fecha_nacimiento || '',
+      genero: contacto.genero || '',
+      estado: contacto.estado || '',
+      municipio: contacto.municipio || '',
+      estatus: contacto.estatus,
+      fuente_origen: contacto.fuente_origen || '',
+      etiquetas_segmentacion: contacto.etiquetas_segmentacion || [],
+      campos_personalizados: contacto.campos_personalizados || {},
+    };
+
+    if (seguwalletCustomerId) {
+      setHasSW(true);
+      // Load Seguwallet data and merge — SW fields take precedence when they exist
+      supabase
+        .from('seguwallet_customers')
+        .select('phone, state, municipality, birth_date, gender, whatsapp')
+        .eq('id', seguwalletCustomerId)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setFormData({
+              ...base,
+              celular: base.celular || data.phone || '',
+              fecha_nacimiento: data.birth_date || base.fecha_nacimiento,
+              genero: data.gender || base.genero,
+              estado: data.state || base.estado,
+              municipio: data.municipality || base.municipio,
+            });
+          } else {
+            setFormData(base);
+          }
+        });
+    } else {
+      setHasSW(false);
+      setFormData(base);
     }
-  }, [contacto]);
+  }, [contacto, seguwalletCustomerId]);
 
   const cargarConfiguracion = async () => {
     try {
@@ -97,13 +130,30 @@ export default function ContactoModal({ contacto, onClose, onSave }: Props) {
 
     try {
       setLoading(true);
+
       if (contacto) {
         await actualizarContacto(contacto.id, formData);
-        trackCrmAction('contact_update', 'contacto', contacto.id, `Actualizo contacto: ${formData.nombre}`);
+        trackCrmAction('contact_update', 'contacto', contacto.id, `Actualizo contacto: ${formData.nombre_completo}`);
+
+        // Sync personal fields back to Seguwallet if linked
+        if (seguwalletCustomerId) {
+          await supabase
+            .from('seguwallet_customers')
+            .update({
+              phone: formData.celular || null,
+              state: formData.estado || null,
+              municipality: formData.municipio || null,
+              birth_date: formData.fecha_nacimiento || null,
+              gender: formData.genero || null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', seguwalletCustomerId);
+        }
       } else {
         await crearContacto(formData, user.id);
-        trackCrmAction('contact_create', 'contacto', 'new', `Creo contacto: ${formData.nombre}`);
+        trackCrmAction('contact_create', 'contacto', 'new', `Creo contacto: ${formData.nombre_completo}`);
       }
+
       onSave();
     } catch (error) {
       console.error('Error:', error);
@@ -125,10 +175,18 @@ export default function ContactoModal({ contacto, onClose, onSave }: Props) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
-          <h2 className="text-xl font-bold text-gray-900">
-            {contacto ? 'Editar Contacto' : 'Nuevo Contacto'}
-          </h2>
+        <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">
+              {contacto ? 'Editar Contacto' : 'Nuevo Contacto'}
+            </h2>
+            {hasSW && (
+              <span className="inline-flex items-center gap-1 text-xs text-cyan-600 font-medium mt-0.5">
+                <Wallet className="h-3 w-3" />
+                Datos sincronizados con Seguwallet
+              </span>
+            )}
+          </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="h-6 w-6" />
           </button>
@@ -297,7 +355,7 @@ export default function ContactoModal({ contacto, onClose, onSave }: Props) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Etiquetas de Segmentación
+              Etiquetas de Segmentacion
             </label>
             <div className="flex flex-wrap gap-2">
               {etiquetas.map((etiqueta) => (

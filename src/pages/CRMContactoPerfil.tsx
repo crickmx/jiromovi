@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CreditCard as Edit, Phone, Mail, Calendar, Tag, Plus, Trash2, CheckCircle, User, FolderOpen } from 'lucide-react';
+import { CreditCard as Edit, Phone, Mail, Calendar, Tag, Plus, Trash2, CheckCircle, User, FolderOpen, MapPin } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { supabase } from '../lib/supabase';
 import SeguwalletExpedienteModal from '../components/contactos/SeguwalletExpedienteModal';
@@ -27,6 +27,7 @@ export default function CRMContactoPerfil() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'historial' | 'tareas' | 'expediente'>('historial');
   const [swCustomerId, setSwCustomerId] = useState<string | null>(null);
+  const [swProfile, setSwProfile] = useState<{ phone: string | null; state: string | null; municipality: string | null; birth_date: string | null; gender: string | null } | null>(null);
   const [showExpediente, setShowExpediente] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showTareaModal, setShowTareaModal] = useState(false);
@@ -52,20 +53,33 @@ export default function CRMContactoPerfil() {
 
       // Look up Seguwallet customer via CRM link then email fallback
       if (contactoData) {
+        let swId: string | null = null;
         const { data: linkData } = await supabase
           .from('seguwallet_crm_links')
           .select('seguwallet_customer_id')
           .eq('crm_contacto_id', id)
           .maybeSingle();
         if (linkData?.seguwallet_customer_id) {
-          setSwCustomerId(linkData.seguwallet_customer_id);
+          swId = linkData.seguwallet_customer_id;
         } else if (contactoData.email) {
           const { data: swData } = await supabase
             .from('seguwallet_customers')
             .select('id')
             .eq('email', contactoData.email)
             .maybeSingle();
-          if (swData?.id) setSwCustomerId(swData.id);
+          if (swData?.id) swId = swData.id;
+        }
+        setSwCustomerId(swId);
+
+        if (swId) {
+          const { data: profile } = await supabase
+            .from('seguwallet_customers')
+            .select('phone, state, municipality, birth_date, gender')
+            .eq('id', swId)
+            .maybeSingle();
+          setSwProfile(profile || null);
+        } else {
+          setSwProfile(null);
         }
       }
     } catch (error) {
@@ -194,6 +208,32 @@ export default function CRMContactoPerfil() {
                   )}
                 </div>
               )}
+              {/* Seguwallet-enriched personal fields */}
+              {(() => {
+                const genero = contacto.genero || swProfile?.gender;
+                const estado = contacto.estado || swProfile?.state;
+                const municipio = contacto.municipio || swProfile?.municipality;
+                const GENDER_MAP: Record<string, string> = {
+                  masculino: 'Masculino', femenino: 'Femenino',
+                  no_binario: 'No binario', prefiero_no_decir: 'Prefiero no decir',
+                };
+                return (
+                  <>
+                    {genero && (
+                      <div className="flex items-center text-neutral-600 dark:text-neutral-400">
+                        <User className="h-4 w-4 mr-2" />
+                        Genero: <span className="ml-1 font-medium">{GENDER_MAP[genero] || genero}</span>
+                      </div>
+                    )}
+                    {(estado || municipio) && (
+                      <div className="flex items-center text-neutral-600 dark:text-neutral-400">
+                        <MapPin className="h-4 w-4 mr-2" />
+                        {[municipio, estado].filter(Boolean).join(', ')}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
               {contacto.fuente_origen && (
                 <div className="text-sm text-neutral-600 dark:text-neutral-400">
                   Fuente: <span className="font-medium">{contacto.fuente_origen}</span>
@@ -365,6 +405,7 @@ export default function CRMContactoPerfil() {
       {showEditModal && (
         <ContactoModal
           contacto={contacto}
+          seguwalletCustomerId={swCustomerId}
           onClose={() => setShowEditModal(false)}
           onSave={() => {
             setShowEditModal(false);

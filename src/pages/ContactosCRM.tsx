@@ -43,6 +43,7 @@ export default function ContactosCRM() {
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [showContactoModal, setShowContactoModal] = useState(false);
   const [editContacto, setEditContacto] = useState<CRMContacto | null>(null);
+  const [editContactoSwId, setEditContactoSwId] = useState<string | null>(null);
   const [showActivarSW, setShowActivarSW] = useState<UnifiedContacto | null>(null);
   const [showAsignarSicas, setShowAsignarSicas] = useState<UnifiedContacto | null>(null);
   const [stats, setStats] = useState({ total: 0, conSW: 0, clientes: 0, prospectos: 0 });
@@ -116,8 +117,8 @@ export default function ContactosCRM() {
     try {
       const data = await obtenerContactoPorId(c.id);
       setEditContacto(data);
+      setEditContactoSwId(c.seguwallet_customer_id);
     } catch {
-      // fallback: navigate to profile
       navigate(`/mi-crm/contactos/${c.id}`);
     }
   };
@@ -279,8 +280,9 @@ export default function ContactosCRM() {
       {editContacto && (
         <ContactoModal
           contacto={editContacto}
-          onClose={() => setEditContacto(null)}
-          onSave={() => { setEditContacto(null); loadContactos(); }}
+          seguwalletCustomerId={editContactoSwId}
+          onClose={() => { setEditContacto(null); setEditContactoSwId(null); }}
+          onSave={() => { setEditContacto(null); setEditContactoSwId(null); loadContactos(); }}
         />
       )}
 
