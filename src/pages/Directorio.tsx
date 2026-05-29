@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseUrl } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, UserPlus, CreditCard as Edit, Trash2, ToggleLeft, ToggleRight, Users, Filter } from 'lucide-react';
+import { Search, UserPlus, CreditCard as Edit, Trash2, ToggleLeft, ToggleRight, Users, Filter, Send, CheckCircle } from 'lucide-react';
 import { UserModal } from '../components/UserModal';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,8 @@ export function Directorio() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<Usuario | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [sendingAccessId, setSendingAccessId] = useState<string | null>(null);
+  const [accessSentId, setAccessSentId] = useState<string | null>(null);
 
   const isAdmin = currentUser?.rol === 'Administrador';
   const isGerente = currentUser?.rol === 'Gerente';
@@ -52,6 +54,25 @@ export function Directorio() {
       refreshUsuario();
     }
   }, []);
+
+  const handleSendAccess = async (usuario: Usuario) => {
+    if (!usuario.email_laboral || sendingAccessId) return;
+    setSendingAccessId(usuario.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await fetch(`${supabaseUrl}/functions/v1/send-login-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ email: usuario.email_laboral, platform: 'movi' }),
+      });
+      setAccessSentId(usuario.id);
+      setTimeout(() => setAccessSentId(null), 5000);
+    } catch {
+      // silent
+    } finally {
+      setSendingAccessId(null);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -395,7 +416,26 @@ export function Directorio() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end space-x-2">
+                    <div className="flex justify-end items-center space-x-2">
+                      {(isAdmin || isGerente) && usuario.estado === 'activo' && (
+                        <button
+                          onClick={() => handleSendAccess(usuario)}
+                          disabled={sendingAccessId === usuario.id || accessSentId === usuario.id}
+                          className={`flex items-center gap-1.5 px-2 lg:px-3 py-2 rounded-lg text-sm font-medium transition disabled:opacity-60 ${
+                            accessSentId === usuario.id
+                              ? 'text-green-700 bg-green-50'
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                          }`}
+                          title="Enviar código de acceso al correo y WhatsApp"
+                        >
+                          {accessSentId === usuario.id
+                            ? <><CheckCircle className="w-4 h-4" /><span className="hidden lg:inline">Enviado</span></>
+                            : sendingAccessId === usuario.id
+                            ? <><span className="w-4 h-4 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" /></>
+                            : <><Send className="w-4 h-4" /><span className="hidden lg:inline">Enviar acceso</span></>
+                          }
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           setSelectedUser(usuario);

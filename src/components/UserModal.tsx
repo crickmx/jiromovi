@@ -5,7 +5,7 @@ import { PaymentFields } from './PaymentFields';
 import { BaseModal } from './BaseModal';
 import { ImageUploader } from './ImageUploader';
 import { ExpedienteSection } from './ExpedienteSection';
-import { User, Mail, Phone, Building2, Image, FileText, Calendar, Smartphone, Laptop, Palette, Shield } from 'lucide-react';
+import { User, Mail, Phone, Building2, Image, FileText, Calendar, Smartphone, Laptop, Palette, Shield, Send, CheckCircle } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
@@ -44,7 +44,6 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
   const [formData, setFormData] = useState({
-    password: '',
     nombre: '',
     apellidos: '',
     rol: 'Empleado' as 'Administrador' | 'Gerente' | 'Empleado' | 'Agente',
@@ -71,6 +70,8 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
   const [permisosAdicionales, setPermisosAdicionales] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [sendingAccess, setSendingAccess] = useState(false);
+  const [accessSent, setAccessSent] = useState(false);
 
   useEffect(() => {
     if (isGerente && currentUser?.oficina_id) {
@@ -83,7 +84,6 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
     loadModulosSistema();
     if (user) {
       setFormData({
-        password: '',
         nombre: user.nombre,
         apellidos: user.apellidos,
         rol: user.rol,
@@ -303,35 +303,10 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         if (formData.rol === 'Gerente' && isAdmin) {
           await savePermisosAdicionales(user.id);
         }
-
-        if (formData.password) {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) throw new Error('No hay sesión activa');
-
-          const response = await fetch(
-            `${supabaseUrl}/functions/v1/update-user-password`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`,
-              },
-              body: JSON.stringify({
-                userId: user.id,
-                password: formData.password,
-              }),
-            }
-          );
-
-          const result = await response.json();
-          if (!response.ok) {
-            throw new Error(result.error || 'Error al actualizar la contraseña');
-          }
-        }
       } else {
         // Crear usuario nuevo
-        if (!formData.email_laboral || !formData.password) {
-          setError('E-mail laboral y contraseña son requeridos para crear un usuario');
+        if (!formData.email_laboral) {
+          setError('E-mail laboral es requerido para crear un usuario');
           setLoading(false);
           return;
         }
@@ -344,7 +319,6 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         }
 
         const requestBody = {
-          password: formData.password,
           userData: {
             nombre: formData.nombre,
             apellidos: formData.apellidos,
@@ -427,6 +401,26 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
     }
   };
 
+  const handleSendAccess = async () => {
+    if (!user?.email_laboral || sendingAccess) return;
+    setSendingAccess(true);
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/send-login-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}` },
+        body: JSON.stringify({ email: user.email_laboral, platform: 'movi' }),
+      });
+      if (res.ok || res.status === 429) {
+        setAccessSent(true);
+        setTimeout(() => setAccessSent(false), 5000);
+      }
+    } catch {
+      // silent
+    } finally {
+      setSendingAccess(false);
+    }
+  };
+
   const tabs = [
     { id: 'general' as TabType, label: 'General', icon: User },
     { id: 'contact' as TabType, label: 'Contacto', icon: Phone },
@@ -444,6 +438,21 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
       >
         Cancelar
       </button>
+      {user && (isAdmin || isGerente) && (
+        <button
+          type="button"
+          onClick={handleSendAccess}
+          disabled={sendingAccess || accessSent}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-60 ${
+            accessSent
+              ? 'bg-green-100 text-green-700 border border-green-200'
+              : 'bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200'
+          }`}
+          title="Enviar código de acceso al correo y WhatsApp del usuario"
+        >
+          {accessSent ? <><CheckCircle className="w-4 h-4" /> Acceso enviado</> : sendingAccess ? <><span className="w-4 h-4 border-2 border-slate-400/30 border-t-slate-500 rounded-full animate-spin" /> Enviando...</> : <><Send className="w-4 h-4" /> Enviar acceso</>}
+        </button>
+      )}
       <button
         type="submit"
         form="user-form"
@@ -515,31 +524,6 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         {/* Tab: General */}
         {activeTab === 'general' && (
           <div className="space-y-6">
-            {/* Contraseña */}
-            {(!user || (user && isAdmin)) && (
-              <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
-                <h3 className="text-sm font-semibold text-primary-900 mb-3 flex items-center gap-2">
-                  <span>🔐</span>
-                  Contraseña de Acceso
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">
-                      {user ? 'Nueva Contraseña (opcional)' : 'Contraseña *'}
-                    </label>
-                    <input
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      required={!user}
-                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
-                      placeholder={user ? 'Dejar en blanco para mantener actual' : 'Mínimo 6 caracteres'}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Información Básica */}
             <div>
               <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
