@@ -36,6 +36,7 @@ import { ConfiguracionCatalogos } from './pages/ConfiguracionCatalogos';
 import { AulaVirtualSala } from './pages/AulaVirtualSala';
 import MiCRM from './pages/MiCRM';
 import CRMContactos from './pages/CRMContactos';
+import ContactosCRM from './pages/ContactosCRM';
 import CRMContactoPerfil from './pages/CRMContactoPerfil';
 import CRMTareas from './pages/CRMTareas';
 import CRMReportes from './pages/CRMReportes';
@@ -255,6 +256,7 @@ function App() {
               <Route path="/tramites/formularios/:formId" element={<Navigate to="/cotizar/formularios" replace />} />
               <Route path="/tramites/:id" element={<ProtectedRoute><Layout><TramiteDetalle /></Layout></ProtectedRoute>} />
               <Route path="/configuracion/catalogos" element={<ProtectedRoute requireAdmin><Layout><ConfiguracionCatalogos /></Layout></ProtectedRoute>} />
+              <Route path="/contactos" element={<ProtectedRoute><Layout><ContactosCRM /></Layout></ProtectedRoute>} />
               <Route path="/mi-crm" element={<ProtectedRoute><Layout><MiCRM /></Layout></ProtectedRoute>} />
               <Route path="/mi-crm/contactos" element={<ProtectedRoute><Layout><CRMContactos /></Layout></ProtectedRoute>} />
               <Route path="/mi-crm/contactos/:id" element={<ProtectedRoute><Layout><CRMContactoPerfil /></Layout></ProtectedRoute>} />
