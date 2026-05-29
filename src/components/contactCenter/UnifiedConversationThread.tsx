@@ -380,7 +380,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
           .eq('channel', 'whatsapp')
           .order('created_at', { ascending: true });
 
-        if (isPhone) q = q.or(`contact_phone.eq.${sourceId},contact_name.eq.${sourceId}`);
+        if (isPhone) q = q.or(`contact_phone.eq.${sourceId},metadata->>chat_id.eq.${sourceId}`);
         else q = q.eq('agent_user_id', sourceId.replace('agent:', ''));
 
         const { data } = await q.limit(300);
