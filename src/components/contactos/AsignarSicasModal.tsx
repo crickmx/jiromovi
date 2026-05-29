@@ -93,17 +93,19 @@ export default function AsignarSicasModal({ contacto, onClose, onSave }: Asignar
       } else {
         const { data, error } = await supabase
           .from('seguwallet_customer_sicas_clients')
-          .insert({
+          .upsert({
             seguwallet_customer_id: customerId,
             sicas_client_id: client.sicas_client_id,
             sicas_client_name: client.client_name,
             sicas_client_rfc: client.rfc || '',
             created_by: usuario?.id,
-          })
+          }, { onConflict: 'seguwallet_customer_id,sicas_client_id', ignoreDuplicates: false })
           .select('id, sicas_client_id, sicas_client_name, sicas_client_rfc')
           .single();
         if (error) throw error;
-        if (data) setAssigned(prev => [...prev, data]);
+        if (data) setAssigned(prev =>
+          prev.some(a => a.sicas_client_id === data.sicas_client_id) ? prev : [...prev, data]
+        );
       }
     } catch (err: any) {
       setError(err.message || 'Error al actualizar asignacion.');
