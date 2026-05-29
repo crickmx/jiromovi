@@ -495,6 +495,3 @@ function CardsView({
     </div>
   );
 }
-
-
-export default ContactosCRM
