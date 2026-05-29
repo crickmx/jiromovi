@@ -570,7 +570,7 @@ export function SeguwalletPerfil() {
           customerId={customer.id}
           customerName={customer.full_name}
           onClose={() => setShowExpediente(false)}
-          readOnly={true}
+          readOnly={false}
         />
       )}
 
