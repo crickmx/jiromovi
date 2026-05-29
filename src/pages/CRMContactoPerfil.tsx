@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CreditCard as Edit, Phone, Mail, Calendar, Tag, Plus, Trash2, CheckCircle, Download, ExternalLink, User } from 'lucide-react';
+import { CreditCard as Edit, Phone, Mail, Calendar, Tag, Plus, Trash2, CheckCircle, Download, ExternalLink, User, FolderOpen } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
+import { supabase } from '../lib/supabase';
+import SeguwalletExpedienteModal from '../components/contactos/SeguwalletExpedienteModal';
 import {
   obtenerContactoPorId,
   obtenerCotizacionesPorContacto,
@@ -33,7 +35,9 @@ export default function CRMContactoPerfil() {
   const [tareas, setTareas] = useState<CRMTarea[]>([]);
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'historial' | 'cotizaciones' | 'polizas' | 'tareas'>('historial');
+  const [tab, setTab] = useState<'historial' | 'cotizaciones' | 'polizas' | 'tareas' | 'expediente'>('historial');
+  const [swCustomerId, setSwCustomerId] = useState<string | null>(null);
+  const [showExpediente, setShowExpediente] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCotizacionModal, setShowCotizacionModal] = useState(false);
   const [showPolizaModal, setShowPolizaModal] = useState(false);
@@ -63,6 +67,25 @@ export default function CRMContactoPerfil() {
       setPolizas(polizasData);
       setTareas(tareasData);
       setTimeline(timelineData);
+
+      // Look up Seguwallet customer via CRM link then email fallback
+      if (contactoData) {
+        const { data: linkData } = await supabase
+          .from('seguwallet_crm_links')
+          .select('seguwallet_customer_id')
+          .eq('crm_contacto_id', id)
+          .maybeSingle();
+        if (linkData?.seguwallet_customer_id) {
+          setSwCustomerId(linkData.seguwallet_customer_id);
+        } else if (contactoData.email) {
+          const { data: swData } = await supabase
+            .from('seguwallet_customers')
+            .select('id')
+            .eq('email', contactoData.email)
+            .maybeSingle();
+          if (swData?.id) setSwCustomerId(swData.id);
+        }
+      }
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -247,16 +270,17 @@ export default function CRMContactoPerfil() {
       <div className="bg-white rounded-lg shadow">
         <div className="border-b">
           <div className="flex overflow-x-auto">
-            {['historial', 'cotizaciones', 'polizas', 'tareas'].map((t) => (
+            {['historial', 'cotizaciones', 'polizas', 'tareas', 'expediente'].map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t as any)}
-                className={`px-6 py-3 font-medium text-sm whitespace-nowrap ${
+                className={`px-6 py-3 font-medium text-sm whitespace-nowrap flex items-center gap-1.5 ${
                   tab === t
                     ? 'text-accent border-b-2 border-accent'
                     : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:text-white'
                 }`}
               >
+                {t === 'expediente' && <FolderOpen className="h-3.5 w-3.5" />}
                 {t.charAt(0).toUpperCase() + t.slice(1)}
               </button>
             ))}
@@ -426,6 +450,50 @@ export default function CRMContactoPerfil() {
             </div>
           )}
 
+          {tab === 'expediente' && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Expediente Digital</h3>
+                  <p className="text-sm text-neutral-500 dark:text-white/50 mt-0.5">Documentos almacenados del contacto en Seguwallet</p>
+                </div>
+                {swCustomerId && (
+                  <button
+                    onClick={() => setShowExpediente(true)}
+                    className="flex items-center gap-2 bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 transition text-sm font-medium"
+                  >
+                    <FolderOpen className="h-4 w-4" />
+                    Abrir expediente
+                  </button>
+                )}
+              </div>
+              {!swCustomerId ? (
+                <div className="text-center py-12 border-2 border-dashed border-neutral-200 dark:border-neutral-700 rounded-xl">
+                  <FolderOpen className="h-10 w-10 text-neutral-200 dark:text-neutral-700 mx-auto mb-3" />
+                  <p className="text-sm font-medium text-neutral-600 dark:text-white/60">Sin cuenta Seguwallet</p>
+                  <p className="text-xs text-neutral-400 dark:text-white/40 mt-1 max-w-xs mx-auto">
+                    Este contacto no tiene una cuenta Seguwallet asociada. Activa Seguwallet desde la lista de contactos para gestionar su expediente.
+                  </p>
+                </div>
+              ) : (
+                <div
+                  className="cursor-pointer border border-neutral-100 dark:border-neutral-700 rounded-xl p-6 hover:border-teal-300 dark:hover:border-teal-700 hover:bg-teal-50/30 dark:hover:bg-teal-900/10 transition group"
+                  onClick={() => setShowExpediente(true)}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center group-hover:bg-teal-100 dark:group-hover:bg-teal-900/30 transition">
+                      <FolderOpen className="h-6 w-6 text-teal-600 dark:text-teal-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-neutral-900 dark:text-white">Ver y gestionar documentos</p>
+                      <p className="text-sm text-neutral-500 dark:text-white/50 mt-0.5">Subir, visualizar, descargar y eliminar documentos del expediente</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {tab === 'tareas' && (
             <div>
               <div className="flex items-center justify-between mb-4">
@@ -527,6 +595,15 @@ export default function CRMContactoPerfil() {
             setShowTareaModal(false);
             cargarDatos();
           }}
+        />
+      )}
+
+      {showExpediente && swCustomerId && contacto && (
+        <SeguwalletExpedienteModal
+          customerId={swCustomerId}
+          customerName={contacto.nombre_completo}
+          onClose={() => setShowExpediente(false)}
+          readOnly={false}
         />
       )}
     </div>
