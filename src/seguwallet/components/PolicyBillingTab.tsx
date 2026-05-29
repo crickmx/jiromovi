@@ -44,11 +44,23 @@ interface BillingSummary {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function parseDate(s: string | null | undefined): Date | null {
+  if (!s || s === 'null' || s === 'undefined' || s === '0' || s === '0001-01-01') return null;
+  // Handle SICAS date formats: "DD/MM/YYYY", "YYYY-MM-DD", ISO strings
+  let d: Date;
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+    const [day, month, year] = s.split('/');
+    d = new Date(Number(year), Number(month) - 1, Number(day));
+  } else {
+    d = new Date(s);
+  }
+  return isNaN(d.getTime()) ? null : d;
+}
+
 function fmt(s: string | null | undefined) {
-  if (!s) return null;
-  try {
-    return new Date(s).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
-  } catch { return s; }
+  const d = parseDate(s);
+  if (!d) return null;
+  return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function fmtMoney(n: number | null | undefined, moneda?: string | null) {
@@ -58,23 +70,26 @@ function fmtMoney(n: number | null | undefined, moneda?: string | null) {
 }
 
 function getDaysRemaining(dateStr: string | null | undefined): number | null {
-  if (!dateStr) return null;
-  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
+  const d = parseDate(dateStr);
+  if (!d) return null;
+  return Math.ceil((d.getTime() - Date.now()) / 86400000);
 }
 
 type ReceiptClass = 'pagado' | 'vencido' | 'pendiente' | 'programado' | 'cancelado';
 
 function classifyStatus(record: BillingRecord): ReceiptClass {
   const s = (record.status || '').toLowerCase();
-  if (s.includes('pagado') || s.includes('liquidado') || s.includes('cobrado')) return 'pagado';
   if (s.includes('cancel')) return 'cancelado';
+  // Paid: explicit status OR valid fecha_pago exists
+  const fechaPago = parseDate(record.fecha_pago);
+  if (s.includes('pagado') || s.includes('liquidado') || s.includes('cobrado') || fechaPago !== null) return 'pagado';
   const daysOver = record.dias_vencidos ?? 0;
   if (daysOver > 0) return 'vencido';
-  // If there is a vencimiento date and it's in the past
-  if (record.fecha_vencimiento) {
-    const remaining = getDaysRemaining(record.fecha_vencimiento);
-    if (remaining !== null && remaining < 0) return 'vencido';
-    if (remaining !== null && remaining >= 0) return remaining === 0 ? 'pendiente' : 'programado';
+  const remaining = getDaysRemaining(record.fecha_vencimiento);
+  if (remaining !== null) {
+    if (remaining < 0) return 'vencido';
+    if (remaining === 0) return 'pendiente';
+    return 'programado';
   }
   return 'pendiente';
 }
@@ -266,7 +281,8 @@ function ReceiptRow({ record, isLast }: { record: BillingRecord; isLast: boolean
     : cls === 'pendiente' ? 'bg-amber-50' : cls === 'programado' ? 'bg-sky-50' : 'bg-neutral-100';
 
   // Prefer fecha_vencimiento for display, fallback to fecha_hasta
-  const displayDate = record.fecha_vencimiento || record.fecha_hasta;
+  const displayDate = parseDate(record.fecha_vencimiento) ? record.fecha_vencimiento
+    : parseDate(record.fecha_hasta) ? record.fecha_hasta : null;
 
   return (
     <div className={cn('px-4 py-3 flex items-start gap-3', !isLast && 'border-b border-neutral-100')}>
@@ -283,9 +299,9 @@ function ReceiptRow({ record, isLast }: { record: BillingRecord; isLast: boolean
               </p>
             )}
             {/* Period covered */}
-            {(record.fecha_desde || record.fecha_hasta) && (
+            {(parseDate(record.fecha_desde) || parseDate(record.fecha_hasta)) && (
               <p className="text-[11px] text-neutral-400 mt-0.5">
-                {fmt(record.fecha_desde)}{record.fecha_hasta ? ` — ${fmt(record.fecha_hasta)}` : ''}
+                {fmt(record.fecha_desde) ?? ''}{fmt(record.fecha_hasta) ? ` — ${fmt(record.fecha_hasta)}` : ''}
               </p>
             )}
             {/* Due date */}
@@ -298,8 +314,8 @@ function ReceiptRow({ record, isLast }: { record: BillingRecord; isLast: boolean
                 )}
               </p>
             )}
-            {/* Payment date */}
-            {record.fecha_pago && (
+            {/* Payment date — only show when parseable */}
+            {parseDate(record.fecha_pago) && (
               <p className="text-[11px] text-emerald-600 mt-0.5 flex items-center gap-1">
                 <CheckCircle className="w-3 h-3 flex-shrink-0" />
                 Pagado: {fmt(record.fecha_pago)}
@@ -320,7 +336,7 @@ function ReceiptRow({ record, isLast }: { record: BillingRecord; isLast: boolean
                 {fmtMoney(importe, record.moneda)}
               </p>
             )}
-            {record.forma_pago && (
+            {record.forma_pago && record.forma_pago !== 'No Definida' && record.forma_pago !== 'null' && record.forma_pago !== 'undefined' && (
               <p className="text-[10px] text-neutral-400">{record.forma_pago}</p>
             )}
           </div>
