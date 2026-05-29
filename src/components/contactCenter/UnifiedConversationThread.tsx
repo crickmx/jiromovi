@@ -550,7 +550,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
         const result = await callEdgeFn('send-contact-whatsapp', {
           contactPhone: phone,
           message: body,
-          agent_user_id: currentUserId,
+          agentUserId: conversation.agentUserId || currentUserId,
         });
         if (result?.error || result?.success === false) {
           throw new Error(result?.error || result?.message || 'Error al enviar por WA MOVI');
