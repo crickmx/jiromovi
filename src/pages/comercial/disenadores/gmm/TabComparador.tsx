@@ -144,7 +144,7 @@ export default function TabComparador() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                  <ComparisonRow label="Suma Asegurada max" values={selectedInsurers.map(i => i.maxSumAssured >= 999_000_000 ? 'Ilimitada' : `$${i.maxSumAssured / 1_000_000} MDP`)} />
+                  <ComparisonRow label="Suma Asegurada max" values={selectedInsurers.map(i => i.maxSumAssured >= 999_000_000 ? 'Ilimitada' : `$${(i.maxSumAssured / 1_000_000).toLocaleString('en-US')} MDP`)} />
                   <ComparisonRow label="Edad max ingreso" values={selectedInsurers.map(i => i.maxAge >= 99 ? 'Sin limite' : `${i.maxAge} anos`)} />
                   <ComparisonRow label="Deducible min" values={selectedInsurers.map(i => i.deducibleMin)} />
                   <ComparisonRow label="Coaseguro" values={selectedInsurers.map(i => i.coaseguro)} />

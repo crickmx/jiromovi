@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Check, X, Shield, Wrench, FileText, Truck, User, Star, Plus,
-  ChevronDown, ChevronUp, BarChart3, Table2, Info, RotateCcw, Award
+  ChevronDown, ChevronUp, BarChart3, Table2, Info, RotateCcw, Award, Lock
 } from 'lucide-react';
 import { AUTO_COVERAGES, CATEGORY_LABELS, DEFAULT_SELECTED_COVERAGES, type CoverageCategory } from '../../../data/insuranceDesigner/autoCoverages';
 import { calculateAutoMatch, getStatusLabel, getStatusColor, type AutoMatchResult } from '../../../lib/insuranceDesigner/calculateAutoMatch';
@@ -33,6 +33,7 @@ export default function DisenadorAuto() {
   const results = useMemo(() => calculateAutoMatch(selectedCoverages), [selectedCoverages]);
 
   const toggleCoverage = (id: string) => {
+    if (id === 'rc') return;
     setSelectedCoverages(prev =>
       prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
     );
@@ -157,31 +158,38 @@ export default function DisenadorAuto() {
                       </button>
                       {coverages.map(cov => {
                         const isSelected = selectedCoverages.includes(cov.id);
+                        const isLocked = cov.id === 'rc';
                         return (
                           <button
                             key={cov.id}
                             onClick={() => toggleCoverage(cov.id)}
+                            disabled={isLocked}
                             className={`w-full flex items-start gap-2.5 px-3 py-2 rounded-lg text-left transition-all duration-150 ${
-                              isSelected
-                                ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
-                                : 'hover:bg-gray-50 dark:hover:bg-gray-700 border border-transparent'
+                              isLocked
+                                ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 opacity-80 cursor-not-allowed'
+                                : isSelected
+                                  ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
+                                  : 'hover:bg-gray-50 dark:hover:bg-gray-700 border border-transparent'
                             }`}
                           >
                             <div className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-all duration-150 ${
-                              isSelected ? 'bg-blue-600 text-white scale-110' : 'border-2 border-gray-300 dark:border-gray-600'
+                              isSelected || isLocked ? 'bg-blue-600 text-white scale-110' : 'border-2 border-gray-300 dark:border-gray-600'
                             }`}>
-                              {isSelected && <Check className="w-3 h-3" />}
+                              {(isSelected || isLocked) && <Check className="w-3 h-3" />}
                             </div>
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex items-center gap-1.5">
                               <span className={`text-sm block leading-tight transition-colors ${
-                                isSelected ? 'text-blue-900 dark:text-blue-100 font-medium' : 'text-gray-700 dark:text-gray-300'
+                                isSelected || isLocked ? 'text-blue-900 dark:text-blue-100 font-medium' : 'text-gray-700 dark:text-gray-300'
                               }`}>
                                 {cov.name}
                               </span>
+                              {isLocked && <Lock className="w-3 h-3 text-blue-500 flex-shrink-0" />}
+                            </div>
+                            {!isLocked && (
                               <span className="text-xs text-gray-400 dark:text-gray-500 line-clamp-1">
                                 {cov.description}
                               </span>
-                            </div>
+                            )}
                           </button>
                         );
                       })}

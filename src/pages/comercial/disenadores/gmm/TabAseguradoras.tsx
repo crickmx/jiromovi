@@ -112,7 +112,7 @@ function InsurerCard({ insurer, isExpanded, onToggle }: {
         <div className="px-5 pb-5 border-t border-gray-100 dark:border-gray-700 pt-4 space-y-5">
           {/* Quick stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <StatBox label="Suma Asegurada max" value={insurer.maxSumAssured >= 999_000_000 ? 'Ilimitada' : `$${(insurer.maxSumAssured / 1_000_000)} MDP`} />
+            <StatBox label="Suma Asegurada max" value={insurer.maxSumAssured >= 999_000_000 ? 'Ilimitada' : `$${(insurer.maxSumAssured / 1_000_000).toLocaleString('en-US')} MDP`} />
             <StatBox label="Deducible min" value={insurer.deducibleMin} />
             <StatBox label="Coaseguro" value={insurer.coaseguro} />
             <StatBox label="Espera preex" value={`${insurer.waitingPeriodMonths} meses`} />

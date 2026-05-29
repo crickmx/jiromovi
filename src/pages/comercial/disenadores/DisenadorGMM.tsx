@@ -754,7 +754,7 @@ function GmmCardsView({ results, detailInsurer, setDetailInsurer, selectedHospit
                   <div className="text-center p-2.5 rounded-lg bg-gray-50 dark:bg-gray-750">
                     <span className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">SA max</span>
                     <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                      {result.insurer.maxSumAssured >= 999_000_000 ? 'Ilimitada' : `$${(result.insurer.maxSumAssured / 1_000_000)}M`}
+                      {result.insurer.maxSumAssured >= 999_000_000 ? 'Ilimitada' : `$${(result.insurer.maxSumAssured / 1_000_000).toLocaleString('en-US')} MDP`}
                     </span>
                   </div>
                   <div className="text-center p-2.5 rounded-lg bg-gray-50 dark:bg-gray-750">
