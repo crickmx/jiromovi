@@ -346,16 +346,18 @@ export function PolicyBillingTab({ poliza, idDocto, onContactAgent }: PolicyBill
   const [summary, setSummary] = useState<BillingSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [source, setSource] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setErrorMsg(null);
+    setErrorCode(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('no_session');
 
-      console.log('[PolicyBilling] querying billing for poliza:', poliza, 'id_docto:', idDocto);
+      console.log('[PolicyBilling] poliza:', poliza, 'id_docto:', idDocto);
 
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/seguwallet-get-policy-billing`,
@@ -371,11 +373,15 @@ export function PolicyBillingTab({ poliza, idDocto, onContactAgent }: PolicyBill
       );
 
       const data = await res.json();
-      console.log('[PolicyBilling] response source:', data.source, 'records:', data.receipts?.length ?? 0);
+      console.log('[PolicyBilling] source:', data.source, '| error_code:', data.error_code, '| records:', data.receipts?.length ?? 0);
+      if (data._debug) console.log('[PolicyBilling] debug:', JSON.stringify(data._debug));
 
       if (!res.ok) {
+        setErrorCode(data.error_code || 'http_error');
         throw new Error(data.error || `HTTP ${res.status}`);
       }
+
+      if (data.error_code) setErrorCode(data.error_code);
 
       const rows = (data.receipts || []) as BillingRecord[];
       setRecords(rows);
@@ -406,41 +412,51 @@ export function PolicyBillingTab({ poliza, idDocto, onContactAgent }: PolicyBill
 
   // ── Error ──────────────────────────────────────────────────────────────────
   if (errorMsg && records.length === 0) {
-    const isTimeout = errorMsg.toLowerCase().includes('timeout') || errorMsg.toLowerCase().includes('45 seg');
+    const isTimeout = errorCode === 'sicas_timeout' || errorMsg.toLowerCase().includes('timeout');
+    const isIdentifier = errorCode === 'policy_not_found' || errorCode === 'ownership_denied';
     return (
       <div className="rounded-2xl border border-neutral-100 bg-neutral-50 p-8 text-center">
         {isTimeout
           ? <Wifi className="w-8 h-8 text-neutral-300 mx-auto mb-3" />
           : <DollarSign className="w-8 h-8 text-neutral-300 mx-auto mb-3" />}
         <p className="text-sm font-semibold text-neutral-600">
-          {isTimeout ? 'SICAS tardo demasiado en responder' : 'No se pudo consultar la cobranza'}
+          {isTimeout ? 'El servicio no respondio a tiempo'
+            : isIdentifier ? 'No fue posible relacionar esta poliza'
+            : 'No fue posible consultar la cobranza'}
         </p>
         <p className="text-xs text-neutral-400 mt-1 max-w-xs mx-auto">
           {isTimeout
-            ? 'El servidor SICAS puede estar ocupado. Intenta en unos momentos.'
-            : 'Por el momento no es posible consultar la cobranza de esta poliza.'}
+            ? 'El servicio de cobranza no respondio. Intenta nuevamente mas tarde.'
+            : isIdentifier
+            ? 'No fue posible relacionar esta poliza con la informacion de cobranza.'
+            : 'No fue posible consultar la informacion de cobranza en este momento.'}
         </p>
-        <button
-          onClick={load}
-          className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-500 hover:text-neutral-800 transition-colors"
-        >
-          <RefreshCw className="w-3.5 h-3.5" /> Reintentar
-        </button>
+        {!isIdentifier && (
+          <button
+            onClick={load}
+            className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-500 hover:text-neutral-800 transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" /> Reintentar
+          </button>
+        )}
       </div>
     );
   }
 
   // ── No data (SICAS returned 0 receipts) ───────────────────────────────────
   if (summary && summary.total_records === 0) {
+    const isSicasErr = source === 'sicas_error' || errorCode === 'sicas_error';
     return (
       <div className="space-y-4">
         <div className="rounded-2xl border border-neutral-100 bg-neutral-50 p-8 text-center">
           <DollarSign className="w-8 h-8 text-neutral-300 mx-auto mb-3" />
-          <p className="text-sm font-semibold text-neutral-500">Sin recibos disponibles</p>
+          <p className="text-sm font-semibold text-neutral-500">
+            {isSicasErr ? 'Error al consultar cobranza' : 'Sin movimientos de cobranza'}
+          </p>
           <p className="text-xs text-neutral-400 mt-1 max-w-xs mx-auto">
-            {source === 'sicas_unavailable'
-              ? 'El servicio de cobranza de SICAS no esta disponible en este momento.'
-              : 'No se encontraron recibos asociados a esta poliza en el sistema.'}
+            {isSicasErr
+              ? 'No fue posible consultar la informacion de cobranza en este momento.'
+              : 'Esta poliza no tiene movimientos de cobranza registrados.'}
           </p>
           <button
             onClick={load}
