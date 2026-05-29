@@ -4,7 +4,6 @@ import {
   Loader2, AlertCircle, FolderOpen, Pencil, Check, ChevronDown
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
 
 const BUCKET = 'seguwallet-documents';
 
@@ -57,7 +56,6 @@ function getFileIcon(mime: string | null) {
 }
 
 export default function SeguwalletExpedienteModal({ customerId, customerName, onClose, readOnly = false }: Props) {
-  const { usuario } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [docs, setDocs] = useState<DocRecord[]>([]);
@@ -134,7 +132,7 @@ export default function SeguwalletExpedienteModal({ customerId, customerName, on
           archivo_path: path,
           mime_type: selectedFile.type || null,
           size_bytes: selectedFile.size,
-          subido_por: usuario?.id || null,
+          subido_por: (await supabase.auth.getUser()).data.user?.id || null,
         });
       if (dbErr) {
         await supabase.storage.from(BUCKET).remove([path]);
