@@ -542,9 +542,10 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
     try {
       const { channel, sourceId } = conversation;
       if (channel === 'wa_movi') {
-        if (!conversation.contactPhone) throw new Error('No se encontro el telefono del contacto');
+        const phone = conversation.contactPhone || (sourceId && !sourceId.startsWith('agent:') ? sourceId : null);
+        if (!phone) throw new Error('No se encontro el telefono del contacto');
         const result = await callEdgeFn('send-contact-whatsapp', {
-          contactPhone: conversation.contactPhone,
+          contactPhone: phone,
           message: body,
           agent_user_id: currentUserId,
         });
@@ -554,7 +555,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
       } else if (channel === 'wa_personal') {
         const { data: conv } = await supabase.from('whatsapp_conversations').select('remote_phone').eq('id', sourceId).maybeSingle();
         if (!conv?.remote_phone) throw new Error('No se encontro el telefono del contacto');
-        const result = await callEdgeFn('whatsapp-session', { action: 'send-message', phone: conv.remote_phone, message: body });
+        const result = await callEdgeFn('whatsapp-session', { action: 'send-message', to: conv.remote_phone, message: body });
         if (result?.error) throw new Error(result.error);
       } else if (channel === 'chat') {
         await supabase.from('chat_mensajes').insert({ chat_id: sourceId, remitente_id: currentUserId, mensaje: body });

@@ -207,7 +207,7 @@ export function ConversationThread({ conversation, onBack, onStatusChange }: Con
         });
       } else if (sendChannel === 'wa_personal' && conversation.contact_phone) {
         supabase.functions.invoke('whatsapp-session', {
-          body: { action: 'send-message', phone: conversation.contact_phone, message: body },
+          body: { action: 'send-message', to: conversation.contact_phone, message: body },
         });
       }
 
