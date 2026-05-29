@@ -1,49 +1,35 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CreditCard as Edit, Phone, Mail, Calendar, Tag, Plus, Trash2, CheckCircle, Download, ExternalLink, User, FolderOpen } from 'lucide-react';
+import { CreditCard as Edit, Phone, Mail, Calendar, Tag, Plus, Trash2, CheckCircle, User, FolderOpen } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { supabase } from '../lib/supabase';
 import SeguwalletExpedienteModal from '../components/contactos/SeguwalletExpedienteModal';
 import {
   obtenerContactoPorId,
-  obtenerCotizacionesPorContacto,
-  obtenerPolizasPorContacto,
   obtenerTareasPorContacto,
   obtenerTimelinePorContacto,
-  eliminarCotizacion,
-  eliminarPoliza,
   eliminarTarea,
   actualizarTarea,
-  descargarArchivoCRM,
-  abrirArchivoCRM,
   esCumpleanosHoy,
   formatearFechaNacimiento,
   calcularEdad,
 } from '../lib/crmUtils';
-import type { CRMContacto, CRMCotizacion, CRMPoliza, CRMTarea, TimelineItem } from '../lib/crmTypes';
+import type { CRMContacto, CRMTarea, TimelineItem } from '../lib/crmTypes';
 import ContactoModal from '../components/crm/ContactoModal';
-import CotizacionModal from '../components/crm/CotizacionModal';
-import PolizaModal from '../components/crm/PolizaModal';
 import TareaModal from '../components/crm/TareaModal';
 
 export default function CRMContactoPerfil() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [contacto, setContacto] = useState<CRMContacto | null>(null);
-  const [cotizaciones, setCotizaciones] = useState<CRMCotizacion[]>([]);
-  const [polizas, setPolizas] = useState<CRMPoliza[]>([]);
   const [tareas, setTareas] = useState<CRMTarea[]>([]);
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'historial' | 'cotizaciones' | 'polizas' | 'tareas' | 'expediente'>('historial');
+  const [tab, setTab] = useState<'historial' | 'tareas' | 'expediente'>('historial');
   const [swCustomerId, setSwCustomerId] = useState<string | null>(null);
   const [showExpediente, setShowExpediente] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showCotizacionModal, setShowCotizacionModal] = useState(false);
-  const [showPolizaModal, setShowPolizaModal] = useState(false);
   const [showTareaModal, setShowTareaModal] = useState(false);
-  const [cotizacionEditar, setCotizacionEditar] = useState<CRMCotizacion | undefined>();
-  const [polizaEditar, setPolizaEditar] = useState<CRMPoliza | undefined>();
   const [tareaEditar, setTareaEditar] = useState<CRMTarea | undefined>();
 
   useEffect(() => {
@@ -54,17 +40,13 @@ export default function CRMContactoPerfil() {
     if (!id) return;
     try {
       setLoading(true);
-      const [contactoData, cotizacionesData, polizasData, tareasData, timelineData] =
+      const [contactoData, tareasData, timelineData] =
         await Promise.all([
           obtenerContactoPorId(id),
-          obtenerCotizacionesPorContacto(id),
-          obtenerPolizasPorContacto(id),
           obtenerTareasPorContacto(id),
           obtenerTimelinePorContacto(id),
         ]);
       setContacto(contactoData);
-      setCotizaciones(cotizacionesData);
-      setPolizas(polizasData);
       setTareas(tareasData);
       setTimeline(timelineData);
 
@@ -93,28 +75,6 @@ export default function CRMContactoPerfil() {
     }
   };
 
-  const handleEliminarCotizacion = async (idCot: string) => {
-    if (!confirm('¿Eliminar esta cotización?')) return;
-    try {
-      await eliminarCotizacion(idCot);
-      cargarDatos();
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Error al eliminar cotización');
-    }
-  };
-
-  const handleEliminarPoliza = async (idPol: string) => {
-    if (!confirm('¿Eliminar esta póliza?')) return;
-    try {
-      await eliminarPoliza(idPol);
-      cargarDatos();
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Error al eliminar póliza');
-    }
-  };
-
   const handleEliminarTarea = async (idTar: string) => {
     if (!confirm('¿Eliminar esta tarea?')) return;
     try {
@@ -134,16 +94,6 @@ export default function CRMContactoPerfil() {
       console.error('Error:', error);
       alert('Error al actualizar tarea');
     }
-  };
-
-  const handleAgregarCotizacion = () => {
-    setCotizacionEditar(undefined);
-    setShowCotizacionModal(true);
-  };
-
-  const handleAgregarPoliza = () => {
-    setPolizaEditar(undefined);
-    setShowPolizaModal(true);
   };
 
   const handleAgregarTarea = () => {
@@ -270,7 +220,7 @@ export default function CRMContactoPerfil() {
       <div className="bg-white rounded-lg shadow">
         <div className="border-b">
           <div className="flex overflow-x-auto">
-            {['historial', 'cotizaciones', 'polizas', 'tareas', 'expediente'].map((t) => (
+            {['historial', 'tareas', 'expediente'].map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t as any)}
@@ -308,145 +258,6 @@ export default function CRMContactoPerfil() {
                   </div>
                 ))
               )}
-            </div>
-          )}
-
-          {tab === 'cotizaciones' && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Cotizaciones</h3>
-                <button
-                  onClick={handleAgregarCotizacion}
-                  className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Nueva Cotización
-                </button>
-              </div>
-              <div className="space-y-4">
-                {cotizaciones.length === 0 ? (
-                  <p className="text-neutral-500 dark:text-white/50 text-center py-8">No hay cotizaciones registradas</p>
-                ) : (
-                  cotizaciones.map((cot) => (
-                    <div key={cot.id} className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h3 className="font-medium text-neutral-900 dark:text-white">{cot.nombre_documento}</h3>
-                          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-                            Estatus: {cot.estatus_cotizacion}
-                          </p>
-                          <p className="text-sm text-neutral-500 dark:text-white/50 mt-1">
-                            {new Date(cot.fecha_presentacion).toLocaleDateString('es-MX')}
-                          </p>
-                          {cot.observaciones && (
-                            <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-2">{cot.observaciones}</p>
-                          )}
-                          {cot.archivo_url && (
-                            <div className="flex items-center gap-3 mt-3">
-                              <button
-                                onClick={() => abrirArchivoCRM(cot.archivo_url!)}
-                                className="flex items-center gap-2 text-accent hover:text-primary-800 text-sm font-medium hover:bg-primary-50 px-3 py-1.5 rounded transition"
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                                Abrir PDF
-                              </button>
-                              <button
-                                onClick={() => descargarArchivoCRM(cot.archivo_url!, cot.nombre_documento + '.pdf')}
-                                className="flex items-center gap-2 text-green-600 hover:text-green-800 text-sm font-medium hover:bg-green-50 px-3 py-1.5 rounded transition"
-                              >
-                                <Download className="h-4 w-4" />
-                                Descargar
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {cot.monto_cotizado && (
-                            <p className="text-lg font-bold text-neutral-900 dark:text-white mr-4">
-                              ${cot.monto_cotizado.toLocaleString('es-MX')}
-                            </p>
-                          )}
-                          <button
-                            onClick={() => handleEliminarCotizacion(cot.id)}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            <Trash2 className="h-5 w-5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-
-          {tab === 'polizas' && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Pólizas</h3>
-                <button
-                  onClick={handleAgregarPoliza}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Nueva Póliza
-                </button>
-              </div>
-              <div className="space-y-4">
-                {polizas.length === 0 ? (
-                  <p className="text-neutral-500 dark:text-white/50 text-center py-8">No hay pólizas registradas</p>
-                ) : (
-                  polizas.map((pol) => (
-                    <div key={pol.id} className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h3 className="font-medium text-neutral-900 dark:text-white">Póliza #{pol.numero_poliza}</h3>
-                          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-                            {pol.tipo_ramo} - {pol.compania_aseguradora}
-                          </p>
-                          <p className="text-sm text-neutral-500 dark:text-white/50 mt-1">
-                            Vigencia: {new Date(pol.fecha_emision).toLocaleDateString('es-MX')} -{' '}
-                            {new Date(pol.fecha_vencimiento).toLocaleDateString('es-MX')}
-                          </p>
-                          {pol.observaciones && (
-                            <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-2">{pol.observaciones}</p>
-                          )}
-                          {pol.archivo_url && (
-                            <div className="flex items-center gap-3 mt-3">
-                              <button
-                                onClick={() => abrirArchivoCRM(pol.archivo_url!)}
-                                className="flex items-center gap-2 text-accent hover:text-primary-800 text-sm font-medium hover:bg-primary-50 px-3 py-1.5 rounded transition"
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                                Abrir PDF
-                              </button>
-                              <button
-                                onClick={() => descargarArchivoCRM(pol.archivo_url!, `Poliza_${pol.numero_poliza}.pdf`)}
-                                className="flex items-center gap-2 text-green-600 hover:text-green-800 text-sm font-medium hover:bg-green-50 px-3 py-1.5 rounded transition"
-                              >
-                                <Download className="h-4 w-4" />
-                                Descargar
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-lg font-bold text-green-600 mr-4">
-                            ${pol.prima_total.toLocaleString('es-MX')}
-                          </p>
-                          <button
-                            onClick={() => handleEliminarPoliza(pol.id)}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            <Trash2 className="h-5 w-5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
             </div>
           )}
 
@@ -557,30 +368,6 @@ export default function CRMContactoPerfil() {
           onClose={() => setShowEditModal(false)}
           onSave={() => {
             setShowEditModal(false);
-            cargarDatos();
-          }}
-        />
-      )}
-
-      {showCotizacionModal && (
-        <CotizacionModal
-          contactoId={id!}
-          cotizacion={cotizacionEditar}
-          onClose={() => setShowCotizacionModal(false)}
-          onSave={() => {
-            setShowCotizacionModal(false);
-            cargarDatos();
-          }}
-        />
-      )}
-
-      {showPolizaModal && (
-        <PolizaModal
-          contactoId={id!}
-          poliza={polizaEditar}
-          onClose={() => setShowPolizaModal(false)}
-          onSave={() => {
-            setShowPolizaModal(false);
             cargarDatos();
           }}
         />
