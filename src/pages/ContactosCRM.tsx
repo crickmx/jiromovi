@@ -4,7 +4,7 @@ import {
   Search, Plus, Users, Phone, Mail, Wallet, X,
   LayoutGrid, List, Eye, UserPlus, ChevronDown,
   BadgeCheck, Clock, Ban, Wifi, WifiOff, CheckCircle,
-  Pencil,
+  Pencil, Database,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,6 +13,7 @@ import type { UnifiedContacto } from '../lib/contactosTypes';
 import type { CRMContacto } from '../lib/crmTypes';
 import ContactoModal from '../components/crm/ContactoModal';
 import ActivarSeguwalletModal from '../components/contactos/ActivarSeguwalletModal';
+import AsignarSicasModal from '../components/contactos/AsignarSicasModal';
 import { obtenerContactoPorId } from '../lib/crmUtils';
 
 const ESTATUS_OPTIONS = [
@@ -43,6 +44,7 @@ export default function ContactosCRM() {
   const [showContactoModal, setShowContactoModal] = useState(false);
   const [editContacto, setEditContacto] = useState<CRMContacto | null>(null);
   const [showActivarSW, setShowActivarSW] = useState<UnifiedContacto | null>(null);
+  const [showAsignarSicas, setShowAsignarSicas] = useState<UnifiedContacto | null>(null);
   const [stats, setStats] = useState({ total: 0, conSW: 0, clientes: 0, prospectos: 0 });
 
   const isAdminOrGerente = ['Administrador', 'Gerente'].includes(usuario?.rol || '');
@@ -251,6 +253,7 @@ export default function ContactosCRM() {
           onView={(c) => navigate(`/mi-crm/contactos/${c.id}`)}
           onEdit={openEdit}
           onActivarSW={setShowActivarSW}
+          onAsignarSicas={setShowAsignarSicas}
         />
       ) : (
         <CardsView
@@ -261,6 +264,7 @@ export default function ContactosCRM() {
           onView={(c) => navigate(`/mi-crm/contactos/${c.id}`)}
           onEdit={openEdit}
           onActivarSW={setShowActivarSW}
+          onAsignarSicas={setShowAsignarSicas}
         />
       )}
 
@@ -285,6 +289,14 @@ export default function ContactosCRM() {
           contacto={showActivarSW}
           onClose={() => setShowActivarSW(null)}
           onSuccess={() => { setShowActivarSW(null); loadContactos(); }}
+        />
+      )}
+
+      {showAsignarSicas && showAsignarSicas.seguwallet_customer_id && (
+        <AsignarSicasModal
+          contacto={showAsignarSicas}
+          onClose={() => setShowAsignarSicas(null)}
+          onSave={() => { setShowAsignarSicas(null); loadContactos(); }}
         />
       )}
     </div>
@@ -329,7 +341,7 @@ function SeguwalletBadge({ status }: { status: string | null }) {
 // ─── Table View ──────────────────────────────────────────────────────────────
 
 function TableView({
-  contactos, isAdminOrGerente, getEstatusStyle, timeSince, onView, onEdit, onActivarSW,
+  contactos, isAdminOrGerente, getEstatusStyle, timeSince, onView, onEdit, onActivarSW, onAsignarSicas,
 }: {
   contactos: UnifiedContacto[];
   isAdminOrGerente: boolean;
@@ -338,6 +350,7 @@ function TableView({
   onView: (c: UnifiedContacto) => void;
   onEdit: (c: UnifiedContacto) => void;
   onActivarSW: (c: UnifiedContacto) => void;
+  onAsignarSicas: (c: UnifiedContacto) => void;
 }) {
   return (
     <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
@@ -429,9 +442,13 @@ function TableView({
                       </button>
                     )}
                     {c.seguwallet_customer_id && (
-                      <span title="Seguwallet activo" className="p-1.5 text-teal-500">
-                        <BadgeCheck className="h-4 w-4" />
-                      </span>
+                      <button
+                        onClick={() => onAsignarSicas(c)}
+                        className="p-1.5 rounded-md text-neutral-400 hover:text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 transition"
+                        title="Gestionar clientes SICAS"
+                      >
+                        <Database className="h-4 w-4" />
+                      </button>
                     )}
                   </div>
                 </td>
@@ -447,7 +464,7 @@ function TableView({
 // ─── Cards View ──────────────────────────────────────────────────────────────
 
 function CardsView({
-  contactos, getEstatusStyle, timeSince, onView, onEdit, onActivarSW,
+  contactos, getEstatusStyle, timeSince, onView, onEdit, onActivarSW, onAsignarSicas,
 }: {
   contactos: UnifiedContacto[];
   isAdminOrGerente: boolean;
@@ -456,6 +473,7 @@ function CardsView({
   onView: (c: UnifiedContacto) => void;
   onEdit: (c: UnifiedContacto) => void;
   onActivarSW: (c: UnifiedContacto) => void;
+  onAsignarSicas: (c: UnifiedContacto) => void;
 }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -531,6 +549,15 @@ function CardsView({
                   title="Activar Seguwallet"
                 >
                   <Wallet className="h-3.5 w-3.5" />
+                </button>
+              )}
+              {c.seguwallet_customer_id && (
+                <button
+                  onClick={() => onAsignarSicas(c)}
+                  className="p-1 rounded text-neutral-400 hover:text-cyan-600 transition"
+                  title="Gestionar clientes SICAS"
+                >
+                  <Database className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>

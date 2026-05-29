@@ -1,11 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { User, Lock, Phone, Mail, CheckCircle, Camera, Trash2, MapPin, Calendar, ChevronDown, MessageCircle, Pencil, X, Loader2, AlertCircle } from 'lucide-react';
+import { User, Lock, Phone, Mail, CheckCircle, Camera, MapPin, Calendar, ChevronDown, MessageCircle, Pencil, X, Loader2, AlertCircle, FileText, Shield, ChevronRight } from 'lucide-react';
 import { useSeguwallet } from '../lib/SeguwalletContext';
 import { useAgentBrand } from '../lib/AgentBrandContext';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+
+interface ExpedienteClient { id: string; sicas_client_id: string; sicas_client_name: string; sicas_client_rfc: string; }
+interface ExpedientePoliza { poliza: string; ramo: string; aseguradora: string; prima_total: number | null; vigencia_inicio: string | null; vigencia_fin: string | null; estatus: string | null; }
 
 const MEXICAN_STATES = [
   'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche',
@@ -81,6 +84,12 @@ export function SeguwalletPerfil() {
   const [localPhotoUrl, setLocalPhotoUrl] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
+  // Expediente
+  const [expedienteClients, setExpedienteClients] = useState<ExpedienteClient[]>([]);
+  const [expedientePolizas, setExpedientePolizas] = useState<ExpedientePoliza[]>([]);
+  const [expedienteLoading, setExpedienteLoading] = useState(false);
+  const [expedienteOpen, setExpedienteOpen] = useState(false);
+
   useEffect(() => {
     if (customer) {
       setProfileForm({
@@ -95,6 +104,30 @@ export function SeguwalletPerfil() {
       setLocalPhotoUrl(getPhotoUrl(customer.profile_photo_path, customer.profile_photo_url));
     }
   }, [customer]);
+
+  useEffect(() => {
+    if (!customer || !expedienteOpen) return;
+    (async () => {
+      setExpedienteLoading(true);
+      try {
+        const { data: clients } = await supabase
+          .from('seguwallet_customer_sicas_clients')
+          .select('id, sicas_client_id, sicas_client_name, sicas_client_rfc')
+          .eq('seguwallet_customer_id', customer.id)
+          .order('sicas_client_name');
+        setExpedienteClients(clients || []);
+
+        const { data: polizas } = await supabase.rpc('get_seguwallet_polizas', {
+          p_auth_id: customer.auth_user_id,
+        });
+        setExpedientePolizas((polizas || []) as ExpedientePoliza[]);
+      } catch {
+        // silently fail
+      } finally {
+        setExpedienteLoading(false);
+      }
+    })();
+  }, [customer, expedienteOpen]);
 
   const photoUrl = localPhotoUrl || getPhotoUrl(customer?.profile_photo_path, customer?.profile_photo_url);
 
@@ -536,6 +569,108 @@ export function SeguwalletPerfil() {
             </form>
           )}
         </div>
+      </div>
+
+      {/* ── Expediente / SICAS ── */}
+      <div className="bg-white rounded-3xl border border-neutral-200/50 shadow-sm overflow-hidden">
+        <button
+          onClick={() => setExpedienteOpen(o => !o)}
+          className="w-full flex items-center justify-between p-6 text-left"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl" style={{ backgroundColor: primary + '12' }}>
+              <FileText className="w-3.5 h-3.5" style={{ color: primary }} />
+            </div>
+            <div>
+              <h2 className="font-bold text-neutral-900">Mi Expediente</h2>
+              <p className="text-xs text-neutral-400 mt-0.5">Clientes y polizas vinculadas</p>
+            </div>
+          </div>
+          <ChevronRight
+            className={`w-4 h-4 text-neutral-400 transition-transform ${expedienteOpen ? 'rotate-90' : ''}`}
+          />
+        </button>
+
+        {expedienteOpen && (
+          <div className="px-6 pb-6 border-t border-neutral-100">
+            {expedienteLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-5 h-5 animate-spin text-neutral-300" />
+              </div>
+            ) : expedienteClients.length === 0 ? (
+              <div className="text-center py-8">
+                <Shield className="w-8 h-8 text-neutral-200 mx-auto mb-2" />
+                <p className="text-sm text-neutral-500 font-medium">Sin expediente asignado</p>
+                <p className="text-xs text-neutral-400 mt-1">Tu agente asignara tus polizas proximamente.</p>
+              </div>
+            ) : (
+              <div className="space-y-4 pt-4">
+                {expedienteClients.map(client => (
+                  <div key={client.id} className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: primary + '15' }}>
+                      <Shield className="w-3 h-3" style={{ color: primary }} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-neutral-900">{client.sicas_client_name}</p>
+                      {client.sicas_client_rfc && (
+                        <p className="text-[11px] text-neutral-400">{client.sicas_client_rfc}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {expedientePolizas.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Polizas</p>
+                    <div className="space-y-2">
+                      {expedientePolizas.map((p, i) => (
+                        <div
+                          key={i}
+                          className="flex items-center justify-between p-3 rounded-xl bg-neutral-50 border border-neutral-100"
+                        >
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-semibold text-neutral-900 truncate">{p.poliza}</span>
+                              {p.estatus && (
+                                <span className={`px-1.5 py-0.5 text-[10px] font-semibold rounded-full ${
+                                  p.estatus === 'Vigente'
+                                    ? 'bg-emerald-100 text-emerald-700'
+                                    : 'bg-neutral-100 text-neutral-500'
+                                }`}>
+                                  {p.estatus}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                              <span className="text-[11px] text-neutral-400">{p.ramo}</span>
+                              {p.aseguradora && (
+                                <span className="text-[11px] text-neutral-400">· {p.aseguradora}</span>
+                              )}
+                              {p.vigencia_fin && (
+                                <span className="text-[11px] text-neutral-400 flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  Vence {new Date(p.vigencia_fin).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {p.prima_total != null && (
+                            <div className="flex-shrink-0 ml-3 text-right">
+                              <p className="text-xs font-bold text-neutral-900">
+                                ${p.prima_total.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                              </p>
+                              <p className="text-[10px] text-neutral-400">prima</p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Password change ── */}
