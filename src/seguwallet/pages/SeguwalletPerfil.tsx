@@ -551,7 +551,6 @@ export function SeguwalletPerfil() {
             </div>
             <div>
               <h2 className="font-bold text-neutral-900">Mi Expediente</h2>
-              <p className="text-xs text-neutral-400 mt-0.5">Documentos almacenados por tu agente</p>
             </div>
           </div>
           <button
