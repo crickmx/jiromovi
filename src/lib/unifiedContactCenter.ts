@@ -75,7 +75,9 @@ export function mergeConversations({
   // ── WA MOVI: group by contact_phone (or agent_user_id if no phone) ────────
   const moviGroups: Record<string, any[]> = {};
   for (const msg of moviMsgs) {
-    const key = msg.contact_phone || `agent:${msg.agent_user_id}`;
+    // If contact_phone is missing but contact_name looks like a phone number, use it as phone
+    const effectivePhone = msg.contact_phone || (msg.contact_name && /^\d{10,15}$/.test(msg.contact_name.replace(/\D/g, '')) ? msg.contact_name.replace(/\D/g, '') : null);
+    const key = effectivePhone || `agent:${msg.agent_user_id}`;
     if (!moviGroups[key]) moviGroups[key] = [];
     moviGroups[key].push(msg);
   }
@@ -85,7 +87,7 @@ export function mergeConversations({
     const latest = msgs[0];
     const unread = msgs.filter(m => m.direction === 'inbound' && !m.read_at).length;
 
-    const phone = latest.contact_phone || null;
+    const phone = latest.contact_phone || (latest.contact_name && /^\d{10,15}$/.test(latest.contact_name.replace(/\D/g, '')) ? latest.contact_name.replace(/\D/g, '') : null);
     // Resolve name: normalized map lookup (CRM > pushName) > exact match > message fields
     const normalizedKey = phone ? normalizeMexicanPhone(phone) : '';
     const resolvedName =

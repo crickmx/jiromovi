@@ -542,7 +542,8 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
     try {
       const { channel, sourceId } = conversation;
       if (channel === 'wa_movi') {
-        const phone = conversation.contactPhone || (sourceId && !sourceId.startsWith('agent:') ? sourceId : null);
+        const nameAsPhone = conversation.contactName && /^\d{10,15}$/.test(conversation.contactName.replace(/\D/g, '')) ? conversation.contactName.replace(/\D/g, '') : null;
+        const phone = conversation.contactPhone || (sourceId && !sourceId.startsWith('agent:') ? sourceId : null) || nameAsPhone;
         if (!phone) throw new Error('No se encontro el telefono del contacto');
         const result = await callEdgeFn('send-contact-whatsapp', {
           contactPhone: phone,
