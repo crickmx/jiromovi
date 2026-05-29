@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
-import { FileText, Search, Calendar, Building2, Shield, X, Download, ChevronRight, ExternalLink, FileCheck, BookOpen, Award, AlertTriangle, Clock, CheckCircle, XCircle, Car, Heart, Home, RefreshCw, User, DollarSign, Info, ChevronDown, ChevronUp, Folder, Plus, Upload, Trash2, CreditCard as Edit3, Check } from 'lucide-react';
+import { FileText, Search, Calendar, Building2, Shield, X, Download, ChevronRight, ExternalLink, FileCheck, BookOpen, Award, AlertTriangle, Clock, CheckCircle, XCircle, Car, Heart, Home, RefreshCw, User, DollarSign, Info, ChevronDown, ChevronUp, Folder, Plus, Upload, Trash2, CreditCard as Edit3, Check, CreditCard } from 'lucide-react';
 import { useSeguwallet } from '../lib/SeguwalletContext';
 import { useAgentBrand } from '../lib/AgentBrandContext';
 import { logDownload } from '../lib/seguwalletAuth';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
+import { PolicyBillingTab } from '../components/PolicyBillingTab';
 
 // ─── Insurer Logo Map ─────────────────────────────────────────────────────────
 
@@ -334,6 +335,7 @@ function SicasPolicyDetail({ policy, onClose, primary }: {
   policy: Policy; onClose: () => void; primary: string;
 }) {
   const { customer } = useSeguwallet();
+  const [detailTab, setDetailTab] = useState<'info' | 'cobranza'>('info');
   const [files, setFiles] = useState<DigitalFile[]>([]);
   const [filesLoading, setFilesLoading] = useState(false);
   const [filesFetched, setFilesFetched] = useState(false);
@@ -414,10 +416,43 @@ function SicasPolicyDetail({ policy, onClose, primary }: {
           </button>
         </div>
 
+        {/* Tab nav */}
+        <div className="flex gap-1 mx-5 mb-0 mt-3 bg-neutral-100 p-1 rounded-2xl flex-shrink-0">
+          <button
+            onClick={() => setDetailTab('info')}
+            className={cn('flex-1 py-2 px-3 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5',
+              detailTab === 'info' ? 'bg-white shadow-sm text-neutral-900' : 'text-neutral-500 hover:text-neutral-700')}
+          >
+            <Info className="w-3.5 h-3.5" />
+            Informacion
+          </button>
+          <button
+            onClick={() => setDetailTab('cobranza')}
+            className={cn('flex-1 py-2 px-3 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5',
+              detailTab === 'cobranza' ? 'bg-white shadow-sm text-neutral-900' : 'text-neutral-500 hover:text-neutral-700')}
+          >
+            <CreditCard className="w-3.5 h-3.5" />
+            Cobranza
+          </button>
+        </div>
+
         {/* Body */}
         <div className="overflow-y-auto flex-1">
           <div className="p-5 space-y-4">
 
+          {/* ── Cobranza tab ────────────────────────────────────────── */}
+          {detailTab === 'cobranza' && (
+            <PolicyBillingTab
+              poliza={policy.poliza}
+              idDocto={policy.id_docto}
+              onContactAgent={() => {
+                // Open WhatsApp/phone for agent contact — reuse existing patterns
+                onClose();
+              }}
+            />
+          )}
+
+          {detailTab === 'info' && <>
             {/* Status banner */}
             <div className={cn('rounded-2xl p-4 border', st.bannerCls)}>
               <div className="flex items-center justify-between flex-wrap gap-2">
@@ -535,6 +570,8 @@ function SicasPolicyDetail({ policy, onClose, primary }: {
             </div>
 
             {policy.id_docto && <p className="text-center text-[10px] text-neutral-300 font-mono">Ref. SICAS: {policy.id_docto}</p>}
+          </>}
+
           </div>
         </div>
       </div>
