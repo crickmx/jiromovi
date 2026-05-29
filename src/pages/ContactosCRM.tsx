@@ -57,6 +57,7 @@ export default function ContactosCRM() {
         : null;
 
       const { data, error } = await supabase.rpc('get_unified_contactos', {
+        p_user_id: usuario?.id ?? null,
         p_search: debouncedSearch || null,
         p_estatus: filterEstatus || null,
         p_has_seguwallet: hasSW,
@@ -494,3 +495,6 @@ function CardsView({
     </div>
   );
 }
+
+
+export default ContactosCRM
