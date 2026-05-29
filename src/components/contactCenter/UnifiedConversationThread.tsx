@@ -380,7 +380,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
           .eq('channel', 'whatsapp')
           .order('created_at', { ascending: true });
 
-        if (isPhone) q = q.eq('contact_phone', sourceId);
+        if (isPhone) q = q.or(`contact_phone.eq.${sourceId},contact_name.eq.${sourceId}`);
         else q = q.eq('agent_user_id', sourceId.replace('agent:', ''));
 
         const { data } = await q.limit(300);
@@ -423,10 +423,12 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
 
         // Mark as read
         if (conversation.agentUserId) {
-          await supabase.rpc('mark_contact_messages_read', {
-            p_agent_user_id: conversation.agentUserId,
-            p_user_id: currentUserId,
-          }).catch(() => {});
+          try {
+            await supabase.rpc('mark_contact_messages_read', {
+              p_agent_user_id: conversation.agentUserId,
+              p_user_id: currentUserId,
+            });
+          } catch {}
         }
 
       } else if (channel === 'wa_personal') {
@@ -678,7 +680,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
   const openAssistants = async () => {
     setShowAssistants(true);
     setAutoLoading(true);
-    const { data } = await supabase.from('contact_center_assistants').select('id, nombre, descripcion, source, is_active').eq('is_active', true).order('nombre').catch(() => ({ data: [] }));
+    const { data } = await supabase.from('contact_center_assistants').select('id, nombre, descripcion, source, is_active').eq('is_active', true).order('nombre');
     setAssistants((data as CcAssistant[]) || []);
     setAutoLoading(false);
   };
