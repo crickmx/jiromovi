@@ -4,13 +4,16 @@ import {
   Search, Plus, Users, Phone, Mail, Wallet, X,
   LayoutGrid, List, Eye, UserPlus, ChevronDown,
   BadgeCheck, Clock, Ban, Wifi, WifiOff, CheckCircle,
+  Pencil,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { PageHeader } from '@/components/ui/page-header';
 import type { UnifiedContacto } from '../lib/contactosTypes';
+import type { CRMContacto } from '../lib/crmTypes';
 import ContactoModal from '../components/crm/ContactoModal';
 import ActivarSeguwalletModal from '../components/contactos/ActivarSeguwalletModal';
+import { obtenerContactoPorId } from '../lib/crmUtils';
 
 const ESTATUS_OPTIONS = [
   { value: '', label: 'Todos los estatus' },
@@ -38,6 +41,7 @@ export default function ContactosCRM() {
   const [filterSeguwallet, setFilterSeguwallet] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [showContactoModal, setShowContactoModal] = useState(false);
+  const [editContacto, setEditContacto] = useState<CRMContacto | null>(null);
   const [showActivarSW, setShowActivarSW] = useState<UnifiedContacto | null>(null);
   const [stats, setStats] = useState({ total: 0, conSW: 0, clientes: 0, prospectos: 0 });
 
@@ -103,6 +107,17 @@ export default function ContactosCRM() {
     if (h < 24) return `hace ${h}h`;
     const d = Math.floor(h / 24);
     return `hace ${d}d`;
+  };
+
+  const openEdit = async (c: UnifiedContacto) => {
+    if (c.source !== 'crm') return;
+    try {
+      const data = await obtenerContactoPorId(c.id);
+      setEditContacto(data);
+    } catch {
+      // fallback: navigate to profile
+      navigate(`/mi-crm/contactos/${c.id}`);
+    }
   };
 
   return (
@@ -234,6 +249,7 @@ export default function ContactosCRM() {
           getEstatusStyle={getEstatusStyle}
           timeSince={timeSince}
           onView={(c) => navigate(`/mi-crm/contactos/${c.id}`)}
+          onEdit={openEdit}
           onActivarSW={setShowActivarSW}
         />
       ) : (
@@ -243,6 +259,7 @@ export default function ContactosCRM() {
           getEstatusStyle={getEstatusStyle}
           timeSince={timeSince}
           onView={(c) => navigate(`/mi-crm/contactos/${c.id}`)}
+          onEdit={openEdit}
           onActivarSW={setShowActivarSW}
         />
       )}
@@ -252,6 +269,14 @@ export default function ContactosCRM() {
           contacto={null}
           onClose={() => setShowContactoModal(false)}
           onSave={() => { setShowContactoModal(false); loadContactos(); }}
+        />
+      )}
+
+      {editContacto && (
+        <ContactoModal
+          contacto={editContacto}
+          onClose={() => setEditContacto(null)}
+          onSave={() => { setEditContacto(null); loadContactos(); }}
         />
       )}
 
@@ -304,13 +329,14 @@ function SeguwalletBadge({ status }: { status: string | null }) {
 // ─── Table View ──────────────────────────────────────────────────────────────
 
 function TableView({
-  contactos, isAdminOrGerente, getEstatusStyle, timeSince, onView, onActivarSW,
+  contactos, isAdminOrGerente, getEstatusStyle, timeSince, onView, onEdit, onActivarSW,
 }: {
   contactos: UnifiedContacto[];
   isAdminOrGerente: boolean;
   getEstatusStyle: (e: string) => string;
   timeSince: (d: string) => string;
   onView: (c: UnifiedContacto) => void;
+  onEdit: (c: UnifiedContacto) => void;
   onActivarSW: (c: UnifiedContacto) => void;
 }) {
   return (
@@ -335,7 +361,7 @@ function TableView({
               >
                 <td
                   className="px-4 py-3 cursor-pointer"
-                  onClick={() => c.source === 'crm' && onView(c)}
+                  onClick={() => c.source === 'crm' ? onView(c) : undefined}
                 >
                   <div>
                     <p className="text-sm font-medium text-neutral-900 dark:text-white">{c.nombre_completo}</p>
@@ -379,12 +405,21 @@ function TableView({
                       <button
                         onClick={() => onView(c)}
                         className="p-1.5 rounded-md text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
-                        title="Ver perfil"
+                        title="Ver perfil completo"
                       >
                         <Eye className="h-4 w-4" />
                       </button>
                     )}
-                    {!c.seguwallet_customer_id && (
+                    {c.source === 'crm' && (
+                      <button
+                        onClick={() => onEdit(c)}
+                        className="p-1.5 rounded-md text-neutral-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition"
+                        title="Editar contacto"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                    )}
+                    {!c.seguwallet_customer_id && c.source === 'crm' && (
                       <button
                         onClick={() => onActivarSW(c)}
                         className="p-1.5 rounded-md text-neutral-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition"
@@ -412,13 +447,14 @@ function TableView({
 // ─── Cards View ──────────────────────────────────────────────────────────────
 
 function CardsView({
-  contactos, getEstatusStyle, timeSince, onView, onActivarSW,
+  contactos, getEstatusStyle, timeSince, onView, onEdit, onActivarSW,
 }: {
   contactos: UnifiedContacto[];
   isAdminOrGerente: boolean;
   getEstatusStyle: (e: string) => string;
   timeSince: (d: string) => string;
   onView: (c: UnifiedContacto) => void;
+  onEdit: (c: UnifiedContacto) => void;
   onActivarSW: (c: UnifiedContacto) => void;
 }) {
   return (
@@ -430,7 +466,7 @@ function CardsView({
         >
           <div
             className="flex items-start justify-between mb-3 cursor-pointer"
-            onClick={() => c.source === 'crm' && onView(c)}
+            onClick={() => c.source === 'crm' ? onView(c) : undefined}
           >
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{c.nombre_completo}</p>
@@ -474,12 +510,21 @@ function CardsView({
                 <button
                   onClick={() => onView(c)}
                   className="p-1 rounded text-neutral-400 hover:text-blue-600 transition"
-                  title="Ver perfil"
+                  title="Ver perfil completo"
                 >
                   <Eye className="h-3.5 w-3.5" />
                 </button>
               )}
-              {!c.seguwallet_customer_id && (
+              {c.source === 'crm' && (
+                <button
+                  onClick={() => onEdit(c)}
+                  className="p-1 rounded text-neutral-400 hover:text-amber-600 transition"
+                  title="Editar contacto"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              )}
+              {!c.seguwallet_customer_id && c.source === 'crm' && (
                 <button
                   onClick={() => onActivarSW(c)}
                   className="p-1 rounded text-neutral-400 hover:text-teal-600 transition"
