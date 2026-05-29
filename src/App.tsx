@@ -258,7 +258,7 @@ function App() {
               <Route path="/configuracion/catalogos" element={<ProtectedRoute requireAdmin><Layout><ConfiguracionCatalogos /></Layout></ProtectedRoute>} />
               <Route path="/contactos" element={<ProtectedRoute><Layout><ContactosCRM /></Layout></ProtectedRoute>} />
               <Route path="/mi-crm" element={<ProtectedRoute><Layout><MiCRM /></Layout></ProtectedRoute>} />
-              <Route path="/mi-crm/contactos" element={<ProtectedRoute><Layout><CRMContactos /></Layout></ProtectedRoute>} />
+              <Route path="/mi-crm/contactos" element={<Navigate to="/contactos" replace />} />
               <Route path="/mi-crm/contactos/:id" element={<ProtectedRoute><Layout><CRMContactoPerfil /></Layout></ProtectedRoute>} />
               <Route path="/mi-crm/tareas" element={<ProtectedRoute><Layout><CRMTareas /></Layout></ProtectedRoute>} />
               <Route path="/mi-crm/reportes" element={<ProtectedRoute><Layout><CRMReportes /></Layout></ProtectedRoute>} />

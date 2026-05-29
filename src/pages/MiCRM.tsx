@@ -152,7 +152,7 @@ export default function MiCRM() {
       {/* Navigation Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6 mt-6">
         <Link
-          to="/mi-crm/contactos"
+          to="/contactos"
           className="group flex flex-col items-center p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:border-blue-300 hover:shadow-md transition-all"
         >
           <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-100 transition mb-2">
@@ -172,7 +172,7 @@ export default function MiCRM() {
         </Link>
 
         <Link
-          to="/mi-crm/contactos?view=kanban"
+          to="/contactos?view=kanban"
           className="group flex flex-col items-center p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:border-teal-300 hover:shadow-md transition-all"
         >
           <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-teal-50 text-teal-600 group-hover:bg-teal-100 transition mb-2">
@@ -202,7 +202,7 @@ export default function MiCRM() {
         </Link>
 
         <Link
-          to="/mi-crm/contactos"
+          to="/contactos"
           state={{ openNew: true }}
           className="group flex flex-col items-center p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-xl hover:border-blue-400 hover:shadow-md transition-all"
         >
@@ -220,7 +220,7 @@ export default function MiCRM() {
           value={kpis?.leadsNuevos || 0}
           icon={<UserPlus className="h-5 w-5" />}
           color="blue"
-          onClick={() => navigate('/mi-crm/contactos?filter=nuevos')}
+          onClick={() => navigate('/contactos?filter=nuevos')}
           subtitle="ultimas 24h"
         />
         <KPICard
@@ -228,7 +228,7 @@ export default function MiCRM() {
           value={kpis?.leadsContactados || 0}
           icon={<PhoneCall className="h-5 w-5" />}
           color="green"
-          onClick={() => navigate('/mi-crm/contactos?filter=contactados')}
+          onClick={() => navigate('/contactos?filter=contactados')}
           subtitle="en proceso"
         />
         <KPICard
@@ -252,7 +252,7 @@ export default function MiCRM() {
           value={kpis?.sinSeguimiento || 0}
           icon={<UserX className="h-5 w-5" />}
           color="amber"
-          onClick={() => navigate('/mi-crm/contactos?filter=sin_seguimiento')}
+          onClick={() => navigate('/contactos?filter=sin_seguimiento')}
           subtitle="+24h sin contacto"
         />
       </div>
@@ -388,7 +388,7 @@ export default function MiCRM() {
           <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-neutral-900 dark:text-white text-sm">Embudo de Ventas</h2>
-              <Link to="/mi-crm/contactos?view=kanban" className="text-xs text-accent hover:text-accent/80 font-medium">
+              <Link to="/contactos?view=kanban" className="text-xs text-accent hover:text-accent/80 font-medium">
                 Ver kanban
               </Link>
             </div>

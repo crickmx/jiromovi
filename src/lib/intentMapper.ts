@@ -89,7 +89,7 @@ function classifyByRouteAndKeyword(
   }
 
   if (modulo === 'crm') {
-    if (pathname === '/mi-crm/contactos' || pathname.startsWith('/mi-crm/contactos/')) {
+    if (pathname === '/contactos' || pathname === '/mi-crm/contactos' || pathname.startsWith('/mi-crm/contactos/')) {
       if (mensajeNorm.includes('contactar') || mensajeNorm.includes('llamar') || mensajeNorm.includes('plan')) {
         return 'client_outreach_plan';
       }

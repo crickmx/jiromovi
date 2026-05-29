@@ -135,7 +135,7 @@ export default function CumpleanosContactos() {
             </div>
           </div>
           <button
-            onClick={() => navigate('/mi-crm/contactos')}
+            onClick={() => navigate('/contactos')}
             className="text-accent hover:text-primary-700 text-sm font-medium flex items-center gap-1"
           >
             Ver todos

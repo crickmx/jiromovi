@@ -152,7 +152,7 @@ export default function CRMContactoPerfil() {
       <div className="p-8 text-center">
         <p>Contacto no encontrado</p>
         <button
-          onClick={() => navigate('/mi-crm/contactos')}
+          onClick={() => navigate('/contactos')}
           className="text-accent hover:underline mt-4"
         >
           Volver a contactos
@@ -167,7 +167,7 @@ export default function CRMContactoPerfil() {
         title={contacto.nombre_completo}
         description={contacto.tipo_contacto}
         icon={User}
-        backTo="/mi-crm/contactos"
+        backTo="/contactos"
         backLabel="Volver a Contactos"
         badge={
           <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getEstatusColor(contacto.estatus)}`}>
