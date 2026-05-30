@@ -120,6 +120,7 @@ const EntregaPolizas = lazy(() => import('./pages/EntregaPolizas'));
 const LectorQualitas = lazy(() => import('./pages/LectorQualitas'));
 const SeguwalletAdmin = lazy(() => import('./pages/SeguwalletAdmin').then(m => ({ default: m.SeguwalletAdmin })));
 const AdminDigital = lazy(() => import('./pages/AdminDigital'));
+const BaseConocimientoAdmin = lazy(() => import('./pages/BaseConocimientoAdmin'));
 const CursoCedulaA = lazy(() => import('./pages/CursoCedulaA'));
 const CedulaAExamenes = lazy(() => import('./pages/CedulaAExamenes'));
 const ExamenInterface = lazy(() => import('./pages/ExamenInterface'));
@@ -331,6 +332,7 @@ function App() {
                       <Route path="/actividad-usuarios" element={<ActividadUsuarios />} />
                       <Route path="/carga-masiva-usuarios" element={<CargaMasivaUsuarios />} />
                       <Route path="/admin-digital" element={<AdminDigital />} />
+                      <Route path="/admin/base-conocimiento" element={<BaseConocimientoAdmin />} />
                       <Route path="/firmas-email" element={<FirmasEmail />} />
                       <Route path="/admin/transaccionales" element={<NotificacionesTransaccionales />} />
                       <Route path="/admin/asistentes" element={<AsistenteEntrenamiento />} />
