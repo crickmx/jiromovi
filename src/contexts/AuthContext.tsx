@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useMemo, useRef } from 'react';
-import { User, AuthError } from '@supabase/supabase-js';
+import type { User, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
 import { cargarPermisosAdicionales } from '../lib/permisosUtils';
