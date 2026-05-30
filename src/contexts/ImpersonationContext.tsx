@@ -1,6 +1,8 @@
-import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
+import { cargarPermisosAdicionales } from '../lib/permisosUtils';
+import { applyTheme } from '../lib/themeUtils';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   permisosAdicionales?: string[];
@@ -42,7 +44,7 @@ interface ImpersonationContextType {
   getDisplayName: () => string;
 }
 
-const ImpersonationContext = createContext<ImpersonationContextType | null>(null);
+export const ImpersonationContext = createContext<ImpersonationContextType | null>(null);
 
 const NO_OP_CONTEXT: ImpersonationContextType = {
   isImpersonating: false,
@@ -69,6 +71,16 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
   const isImpersonating = !!session;
   const isReadOnly = isImpersonating;
 
+  // Apply impersonated user's theme when session is active (handles page reload)
+  useEffect(() => {
+    if (session?.platform === 'movi' && session.impersonatedUser?.oficina) {
+      const oficina = session.impersonatedUser.oficina as any;
+      if (oficina?.accent_color) {
+        applyTheme(oficina.accent_color);
+      }
+    }
+  }, [session?.id]);
+
   const startImpersonation = useCallback(async (opts: {
     platform: 'movi' | 'seguwallet';
     userId?: string;
@@ -85,7 +97,8 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
         .from('usuarios')
         .select(`
           *,
-          oficina:oficinas(id, nombre, accent_color, logo_url)
+          oficina:oficinas(id, nombre, accent_color, logo_url),
+          regimen_fiscal:commission_fiscal_regimes(id, name)
         `)
         .eq('id', userId)
         .is('deleted_at', null)
@@ -102,7 +115,13 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      impersonatedUser = data as Usuario;
+      // Load additional permissions for Gerente users
+      if (data.rol === 'Gerente') {
+        const permisos = await cargarPermisosAdicionales(data.id);
+        impersonatedUser = { ...data, permisosAdicionales: permisos } as Usuario;
+      } else {
+        impersonatedUser = data as Usuario;
+      }
     } else if (platform === 'seguwallet' && customerId) {
       const { data, error } = await supabase
         .from('seguwallet_customers')
@@ -148,6 +167,11 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
       startedAt: new Date().toISOString(),
     };
 
+    // Apply the impersonated user's office theme
+    if (impersonatedUser?.oficina && typeof impersonatedUser.oficina === 'object' && 'accent_color' in impersonatedUser.oficina) {
+      applyTheme((impersonatedUser.oficina as any).accent_color || '#0E23E2');
+    }
+
     setSession(newSession);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
     return true;
@@ -167,6 +191,18 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
 
     setSession(null);
     localStorage.removeItem(STORAGE_KEY);
+
+    // Restore the real user's theme by reloading their office color
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: realUser } = await supabase
+        .from('usuarios')
+        .select('oficina:oficinas(accent_color)')
+        .eq('id', user.id)
+        .maybeSingle();
+      const color = (realUser?.oficina as any)?.accent_color || '#0E23E2';
+      applyTheme(color);
+    }
   }, [session]);
 
   const getDisplayName = useCallback((): string => {

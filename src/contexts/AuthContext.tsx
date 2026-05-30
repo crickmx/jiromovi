@@ -5,9 +5,10 @@ import type { Database } from '../lib/database.types';
 import { cargarPermisosAdicionales } from '../lib/permisosUtils';
 import { applyTheme } from '../lib/themeUtils';
 import { setActivityUserId, trackLogin, trackLogout } from '../lib/activityLogger';
+import { ImpersonationContext } from './ImpersonationContext';
 
-type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
-  permisosAdicionales?: string[]; // Códigos de módulos con permisos admin
+export type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
+  permisosAdicionales?: string[];
 };
 
 interface AuthContextType {
@@ -396,5 +397,21 @@ export function useAuth() {
   if (context === undefined) {
     throw new Error('useAuth debe usarse dentro de un AuthProvider');
   }
-  return context;
+
+  // Access ImpersonationContext directly (available since ImpersonationProvider is a child of AuthProvider)
+  const impersonation = useContext(ImpersonationContext);
+
+  // During MOVI impersonation, return the impersonated user as `usuario`
+  if (impersonation?.isImpersonating && impersonation.session?.platform === 'movi' && impersonation.impersonatedUser) {
+    return {
+      ...context,
+      usuario: impersonation.impersonatedUser as unknown as Usuario,
+      realUsuario: context.usuario,
+    };
+  }
+
+  return {
+    ...context,
+    realUsuario: context.usuario,
+  };
 }

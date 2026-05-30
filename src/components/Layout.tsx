@@ -26,13 +26,10 @@ interface LayoutProps {
 const SIDEBAR_STORAGE_KEY = 'movi-sidebar-collapsed';
 
 export function Layout({ children, hideHeader = false }: LayoutProps) {
-  const { usuario: realUsuario, signOut } = useAuth();
-  const { isImpersonating, impersonatedUser, endImpersonation } = useImpersonation();
+  const { usuario, signOut } = useAuth();
+  const { isImpersonating, endImpersonation } = useImpersonation();
   const navigate = useNavigate();
   const location = useLocation();
-
-  // During impersonation, use the impersonated user for UI rendering
-  const usuario = isImpersonating && impersonatedUser ? impersonatedUser as typeof realUsuario : realUsuario;
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileExpandedWorkspace, setMobileExpandedWorkspace] = useState<WorkspaceId | null>(null);

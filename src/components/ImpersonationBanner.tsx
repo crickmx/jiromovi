@@ -1,10 +1,17 @@
+import { useNavigate } from 'react-router-dom';
 import { useImpersonation } from '../contexts/ImpersonationContext';
 import { Eye, X, Shield } from 'lucide-react';
 
 export function ImpersonationBanner() {
   const { isImpersonating, session, getDisplayName, endImpersonation } = useImpersonation();
+  const navigate = useNavigate();
 
   if (!isImpersonating || !session) return null;
+
+  const handleExit = async () => {
+    await endImpersonation();
+    navigate('/dashboard');
+  };
 
   const platformLabel = session.platform === 'seguwallet' ? 'Seguwallet' : 'MOVI Digital';
   const roleLabel = session.impersonatedUser?.rol || (session.platform === 'seguwallet' ? 'Cliente' : '');
@@ -34,7 +41,7 @@ export function ImpersonationBanner() {
             Solo lectura
           </span>
           <button
-            onClick={endImpersonation}
+            onClick={handleExit}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-950 text-amber-50 rounded-md text-xs font-bold hover:bg-amber-900 transition-colors"
           >
             <X className="h-3.5 w-3.5" />
