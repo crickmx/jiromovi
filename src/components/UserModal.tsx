@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useImpersonation } from '../contexts/ImpersonationContext';
 import { PaymentFields } from './PaymentFields';
 import { BaseModal } from './BaseModal';
 import { ImageUploader } from './ImageUploader';
@@ -36,8 +37,10 @@ type TabType = 'general' | 'contact' | 'images' | 'payment' | 'other';
 
 export function UserModal({ user, onClose, onSave }: UserModalProps) {
   const { usuario: currentUser } = useAuth();
+  const { isImpersonating } = useImpersonation();
   const isGerente = currentUser?.rol === 'Gerente';
   const isAdmin = currentUser?.rol === 'Administrador';
+  const isSaveBlocked = isImpersonating;
 
   const [activeTab, setActiveTab] = useState<TabType>('general');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -206,6 +209,10 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSaveBlocked) {
+      setError('No puedes modificar datos en modo de visualizacion.');
+      return;
+    }
     setLoading(true);
     setError('');
 

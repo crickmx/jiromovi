@@ -13,6 +13,7 @@ import type { Database } from '../lib/database.types';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/ui/loading-state';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
@@ -20,6 +21,7 @@ type PermisosCampo = Database['public']['Tables']['permisos_campos']['Row'];
 
 export function Perfil() {
   const { usuario, refreshUsuario } = useAuth();
+  const { isReadOnly } = useImpersonation();
   const [formData, setFormData] = useState<Partial<Usuario>>({});
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
   const [permisos, setPermisos] = useState<PermisosCampo[]>([]);
@@ -63,6 +65,10 @@ export function Perfil() {
 
   const handleSave = async () => {
     if (!usuario) return;
+    if (isReadOnly) {
+      setMessage({ type: 'error', text: 'No se pueden guardar cambios en modo de visualizacion.' });
+      return;
+    }
 
     setSaving(true);
     setMessage(null);

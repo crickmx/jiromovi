@@ -1,6 +1,8 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useImpersonation } from '../contexts/ImpersonationContext';
+import { ImpersonationBanner } from './ImpersonationBanner';
 import { Menu, X, ChevronDown, LogOut } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
@@ -24,9 +26,13 @@ interface LayoutProps {
 const SIDEBAR_STORAGE_KEY = 'movi-sidebar-collapsed';
 
 export function Layout({ children, hideHeader = false }: LayoutProps) {
-  const { usuario, signOut } = useAuth();
+  const { usuario: realUsuario, signOut } = useAuth();
+  const { isImpersonating, impersonatedUser, endImpersonation } = useImpersonation();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // During impersonation, use the impersonated user for UI rendering
+  const usuario = isImpersonating && impersonatedUser ? impersonatedUser as typeof realUsuario : realUsuario;
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileExpandedWorkspace, setMobileExpandedWorkspace] = useState<WorkspaceId | null>(null);
@@ -70,6 +76,10 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
   }, [mobileOpen]);
 
   const handleSignOut = async () => {
+    if (isImpersonating) {
+      await endImpersonation();
+      return;
+    }
     await signOut();
     navigate('/login');
   };
@@ -85,6 +95,9 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-[#f5f7fa] dark:bg-[#09090b]">
+      {/* Impersonation banner at very top */}
+      <ImpersonationBanner />
+
       {/* Desktop: Primary Sidebar (icon rail) */}
       <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40">
         <PrimarySidebar

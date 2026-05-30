@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, UserPlus, CreditCard as Edit, Trash2, ToggleLeft, ToggleRight, Users, Filter, Send, CheckCircle } from 'lucide-react';
+import { Search, UserPlus, CreditCard as Edit, Trash2, ToggleLeft, ToggleRight, Users, Filter, Send, CheckCircle, Eye } from 'lucide-react';
 import { UserModal } from '../components/UserModal';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/ui/loading-state';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 import type { Database } from '../lib/database.types';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
@@ -28,6 +29,7 @@ export function Directorio() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [sendingAccessId, setSendingAccessId] = useState<string | null>(null);
   const [accessSentId, setAccessSentId] = useState<string | null>(null);
+  const { startImpersonation } = useImpersonation();
 
   const isAdmin = currentUser?.rol === 'Administrador';
   const isGerente = currentUser?.rol === 'Gerente';
@@ -434,6 +436,19 @@ export function Directorio() {
                             ? <><span className="w-4 h-4 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" /></>
                             : <><Send className="w-4 h-4" /><span className="hidden lg:inline">Enviar acceso</span></>
                           }
+                        </button>
+                      )}
+                      {isAdmin && usuario.id !== currentUser?.id && usuario.rol !== 'Administrador' && (
+                        <button
+                          onClick={async () => {
+                            const ok = await startImpersonation({ platform: 'movi', userId: usuario.id });
+                            if (ok) window.location.href = '/dashboard';
+                          }}
+                          className="flex items-center gap-1.5 px-2 lg:px-3 py-2 rounded-lg text-sm font-medium text-amber-700 hover:text-amber-900 hover:bg-amber-50 transition"
+                          title="Ver como este usuario"
+                        >
+                          <Eye className="w-4 h-4" />
+                          <span className="hidden xl:inline">Ver como</span>
                         </button>
                       )}
                       <button

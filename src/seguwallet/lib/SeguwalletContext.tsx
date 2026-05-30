@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { supabase } from '../../lib/supabase';
 import { getSeguwalletCustomer, getActiveSeguwalletTerms, type SeguwalletCustomer, type SeguwalletTerms } from './seguwalletAuth';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 
 interface SeguwalletContextType {
   customer: SeguwalletCustomer | null;
@@ -39,6 +40,7 @@ export function SeguwalletProvider({ children }: { children: ReactNode }) {
   const [customer, setCustomer] = useState<SeguwalletCustomer | null>(null);
   const [activeTerms, setActiveTerms] = useState<SeguwalletTerms | null>(null);
   const [loading, setLoading] = useState(true);
+  const { isImpersonating, session, impersonatedCustomer } = useImpersonation();
 
   const loadCustomer = async () => {
     try {
@@ -60,7 +62,23 @@ export function SeguwalletProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // When impersonating a Seguwallet customer, load their full record
   useEffect(() => {
+    if (isImpersonating && session?.platform === 'seguwallet' && impersonatedCustomer) {
+      (async () => {
+        const { data } = await supabase
+          .from('seguwallet_customers')
+          .select('*')
+          .eq('id', impersonatedCustomer.id)
+          .maybeSingle();
+        if (data) {
+          setCustomer(data as SeguwalletCustomer);
+        }
+        setLoading(false);
+      })();
+      return;
+    }
+
     loadCustomer();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
@@ -73,18 +91,23 @@ export function SeguwalletProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [isImpersonating, session?.platform, impersonatedCustomer?.id]);
 
-  const { needsProfileCompletion, needsTermsAcceptance } = computeNeeds(customer, activeTerms);
+  const isImpersonatingSeguwallet = isImpersonating && session?.platform === 'seguwallet';
+
+  const { needsProfileCompletion, needsTermsAcceptance } = computeNeeds(
+    customer,
+    activeTerms
+  );
 
   return (
     <SeguwalletContext.Provider value={{
       customer,
       activeTerms,
       loading,
-      isAuthenticated: !!customer,
-      needsProfileCompletion,
-      needsTermsAcceptance,
+      isAuthenticated: isImpersonatingSeguwallet ? true : !!customer,
+      needsProfileCompletion: isImpersonatingSeguwallet ? false : needsProfileCompletion,
+      needsTermsAcceptance: isImpersonatingSeguwallet ? false : needsTermsAcceptance,
       refresh: loadCustomer,
     }}>
       {children}

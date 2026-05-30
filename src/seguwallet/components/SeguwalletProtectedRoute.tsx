@@ -1,10 +1,17 @@
 import { type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useSeguwallet } from '../lib/SeguwalletContext';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 
 export function SeguwalletProtectedRoute({ children }: { children: ReactNode }) {
   const { loading, isAuthenticated, needsProfileCompletion, needsTermsAcceptance } = useSeguwallet();
+  const { isImpersonating, session } = useImpersonation();
   const location = useLocation();
+
+  // Admin impersonating a Seguwallet customer — bypass auth check
+  if (isImpersonating && session?.platform === 'seguwallet') {
+    return <>{children}</>;
+  }
 
   if (loading) {
     return (

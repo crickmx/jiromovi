@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { Shield, Plus, Search, Eye, CreditCard as Edit, RotateCcw, Users, X, Check, UserPlus, Loader2, FileText, AlertCircle, CheckCircle2, Clock, Building2, ToggleLeft, ToggleRight, Trash2, Phone, Upload, Link, ImageOff, Camera, User, FileStack, Download, Copy, ExternalLink, Calendar, Hash } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { getAgentSicasClients, searchSicasClientsAdmin, type SicasClientResult } from '@/seguwallet/lib/seguwalletAuth';
 import { cn } from '@/lib/utils';
 import { type SeguwalletInsurer, type InsurerFormData, emptyInsurerForm, sanitizePhone, formatPhoneDisplay, getInsurerLogoUrl, isBlockedLogoUrl } from '@/seguwallet/lib/insurerTypes';
@@ -99,6 +100,7 @@ const STATUS_LABELS: Record<string, { label: string; class: string }> = {
 
 export function SeguwalletAdmin() {
   const { usuario } = useAuth();
+  const { startImpersonation } = useImpersonation();
   const isAdmin = usuario?.rol === 'Administrador';
   const isAgent = usuario?.rol === 'Agente';
 
@@ -938,6 +940,18 @@ export function SeguwalletAdmin() {
                       <td className="px-5 py-3">
                         <div className="flex items-center justify-end gap-1">
                           <button onClick={() => window.open(`/seguwallet/dashboard?preview=${c.id}`, '_blank')} className="p-1.5 rounded-lg text-neutral-400 hover:text-[#1C37E0] hover:bg-blue-50 transition-colors" title="Vista previa"><Eye className="w-3.5 h-3.5" /></button>
+                          {isAdmin && (
+                            <button
+                              onClick={async () => {
+                                const ok = await startImpersonation({ platform: 'seguwallet', customerId: c.id });
+                                if (ok) window.location.href = '/seguwallet/dashboard';
+                              }}
+                              className="p-1.5 rounded-lg text-neutral-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                              title="Ver como este cliente"
+                            >
+                              <User className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           <button onClick={() => openEdit(c)} className="p-1.5 rounded-lg text-neutral-400 hover:text-amber-600 hover:bg-amber-50 transition-colors" title="Editar"><Edit className="w-3.5 h-3.5" /></button>
                           <button onClick={() => openSicas(c)} className="p-1.5 rounded-lg text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Asignar SICAS"><UserPlus className="w-3.5 h-3.5" /></button>
                           <button onClick={() => openReset(c)} className="p-1.5 rounded-lg text-neutral-400 hover:text-teal-600 hover:bg-teal-50 transition-colors" title="Cambiar contrasena"><RotateCcw className="w-3.5 h-3.5" /></button>

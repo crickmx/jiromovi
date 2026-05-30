@@ -7,6 +7,8 @@ import {
 import { useSeguwallet } from '../lib/SeguwalletContext';
 import { useAgentBrand, SEGUWALLET_LOGO } from '../lib/AgentBrandContext';
 import { seguwalletSignOut } from '../lib/seguwalletAuth';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
+import { ImpersonationBanner } from '@/components/ImpersonationBanner';
 import { cn } from '@/lib/utils';
 import { FloatingSiniestroButton } from './FloatingSiniestroButton';
 
@@ -58,7 +60,14 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
+  const { isImpersonating: isImpersonatingActive, endImpersonation: exitImpersonationFn } = useImpersonation();
+
   const handleSignOut = async () => {
+    if (isImpersonatingActive) {
+      await exitImpersonationFn();
+      navigate('/seguwallet-admin');
+      return;
+    }
     await seguwalletSignOut();
     navigate('/seguwallet/login');
   };
@@ -120,8 +129,14 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-neutral-50">
 
+      {/* ── Impersonation Banner ── */}
+      <ImpersonationBanner />
+
       {/* ── Header ── */}
-      <header className="sticky top-0 z-40 bg-white border-b border-neutral-200/70 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+      <header className={cn(
+        'sticky z-40 bg-white border-b border-neutral-200/70 shadow-[0_1px_4px_rgba(0,0,0,0.04)]',
+        isImpersonatingActive ? 'top-10' : 'top-0'
+      )}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center h-14 gap-4">
 
           {/* Logo */}

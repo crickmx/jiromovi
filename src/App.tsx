@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
+import { ImpersonationProvider } from './contexts/ImpersonationContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { AssistantProvider } from './contexts/AssistantContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -177,6 +178,7 @@ function App() {
     <HelmetProvider>
       <BrowserRouter>
         <AuthProvider>
+          <ImpersonationProvider>
           <NotificationProvider>
             <AssistantProvider>
               <Routes>
@@ -338,6 +340,7 @@ function App() {
             </Routes>
             </AssistantProvider>
           </NotificationProvider>
+          </ImpersonationProvider>
         </AuthProvider>
       </BrowserRouter>
     </HelmetProvider>
