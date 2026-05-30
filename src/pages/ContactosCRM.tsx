@@ -4,7 +4,7 @@ import {
   Search, Plus, Users, Phone, Mail, Wallet, X,
   LayoutGrid, List, Eye, UserPlus, ChevronDown,
   BadgeCheck, Clock, Ban, Wifi, WifiOff, CheckCircle,
-  Pencil, Database,
+  Pencil, Database, Trash2, AlertTriangle, Loader2,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -46,6 +46,8 @@ export default function ContactosCRM() {
   const [editContactoSwId, setEditContactoSwId] = useState<string | null>(null);
   const [showActivarSW, setShowActivarSW] = useState<UnifiedContacto | null>(null);
   const [showAsignarSicas, setShowAsignarSicas] = useState<UnifiedContacto | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<UnifiedContacto | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [stats, setStats] = useState({ total: 0, conSW: 0, clientes: 0, prospectos: 0 });
 
   const isAdminOrGerente = ['Administrador', 'Gerente'].includes(usuario?.rol || '');
@@ -120,6 +122,24 @@ export default function ContactosCRM() {
       setEditContactoSwId(c.seguwallet_customer_id);
     } catch {
       navigate(`/mi-crm/contactos/${c.id}`);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('crm_contactos')
+        .delete()
+        .eq('id', deleteTarget.id);
+      if (error) throw error;
+      setDeleteTarget(null);
+      loadContactos();
+    } catch (err) {
+      console.error('Error eliminando contacto:', err);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -255,6 +275,7 @@ export default function ContactosCRM() {
           onEdit={openEdit}
           onActivarSW={setShowActivarSW}
           onAsignarSicas={setShowAsignarSicas}
+          onDelete={setDeleteTarget}
         />
       ) : (
         <CardsView
@@ -266,6 +287,7 @@ export default function ContactosCRM() {
           onEdit={openEdit}
           onActivarSW={setShowActivarSW}
           onAsignarSicas={setShowAsignarSicas}
+          onDelete={setDeleteTarget}
         />
       )}
 
@@ -300,6 +322,44 @@ export default function ContactosCRM() {
           onClose={() => setShowAsignarSicas(null)}
           onSave={() => { setShowAsignarSicas(null); loadContactos(); }}
         />
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-neutral-900 dark:text-white">Eliminar contacto</h3>
+                <p className="text-xs text-neutral-500 dark:text-white/50 mt-0.5">Esta accion no se puede deshacer</p>
+              </div>
+            </div>
+            <p className="text-sm text-neutral-700 dark:text-white/80 mb-5">
+              ¿Estas seguro que deseas eliminar a{' '}
+              <span className="font-semibold text-neutral-900 dark:text-white">{deleteTarget.nombre_completo}</span>?
+              Se perderan todos sus datos, tareas y notas asociadas.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-white/70 border border-neutral-200 dark:border-neutral-700 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                {deleting ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -343,7 +403,7 @@ function SeguwalletBadge({ status }: { status: string | null }) {
 // ─── Table View ──────────────────────────────────────────────────────────────
 
 function TableView({
-  contactos, isAdminOrGerente, getEstatusStyle, timeSince, onView, onEdit, onActivarSW, onAsignarSicas,
+  contactos, isAdminOrGerente, getEstatusStyle, timeSince, onView, onEdit, onActivarSW, onAsignarSicas, onDelete,
 }: {
   contactos: UnifiedContacto[];
   isAdminOrGerente: boolean;
@@ -353,6 +413,7 @@ function TableView({
   onEdit: (c: UnifiedContacto) => void;
   onActivarSW: (c: UnifiedContacto) => void;
   onAsignarSicas: (c: UnifiedContacto) => void;
+  onDelete: (c: UnifiedContacto) => void;
 }) {
   return (
     <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
@@ -452,6 +513,15 @@ function TableView({
                         <Database className="h-4 w-4" />
                       </button>
                     )}
+                    {c.source === 'crm' && (
+                      <button
+                        onClick={() => onDelete(c)}
+                        className="p-1.5 rounded-md text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                        title="Eliminar contacto"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -466,7 +536,7 @@ function TableView({
 // ─── Cards View ──────────────────────────────────────────────────────────────
 
 function CardsView({
-  contactos, getEstatusStyle, timeSince, onView, onEdit, onActivarSW, onAsignarSicas,
+  contactos, getEstatusStyle, timeSince, onView, onEdit, onActivarSW, onAsignarSicas, onDelete,
 }: {
   contactos: UnifiedContacto[];
   isAdminOrGerente: boolean;
@@ -476,6 +546,7 @@ function CardsView({
   onEdit: (c: UnifiedContacto) => void;
   onActivarSW: (c: UnifiedContacto) => void;
   onAsignarSicas: (c: UnifiedContacto) => void;
+  onDelete: (c: UnifiedContacto) => void;
 }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -560,6 +631,15 @@ function CardsView({
                   title="Gestionar clientes SICAS"
                 >
                   <Database className="h-3.5 w-3.5" />
+                </button>
+              )}
+              {c.source === 'crm' && (
+                <button
+                  onClick={() => onDelete(c)}
+                  className="p-1 rounded text-neutral-400 hover:text-red-600 transition"
+                  title="Eliminar contacto"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
