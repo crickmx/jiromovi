@@ -73,6 +73,7 @@ import CotizarHub from './pages/CotizarHub';
 import Mercadotecnia from './pages/Mercadotecnia';
 import PaginaPublicaAsesor from './pages/PaginaPublicaAsesor';
 import ChatGPTTest from './pages/ChatGPTTest';
+import Chava from './pages/Chava';
 import SicasTestCatalogs from './pages/SicasTestCatalogs';
 import SicasDiagnostico from './pages/SicasDiagnostico';
 import SicasRestTest from './pages/SicasRestTest';
@@ -306,6 +307,7 @@ function App() {
               <Route path="/sicas/salud" element={<ProtectedRoute requireAdmin><Layout><SicasSaludAdmin /></Layout></ProtectedRoute>} />
               <Route path="/mi-pagina-web" element={<Navigate to="/mercadotecnia/mi-pagina-web" replace />} />
               <Route path="/chatgpt-test" element={<ProtectedRoute><Layout><ChatGPTTest /></Layout></ProtectedRoute>} />
+              <Route path="/chava" element={<ProtectedRoute><Layout><Chava /></Layout></ProtectedRoute>} />
               <Route path="/carga-masiva-usuarios" element={<ProtectedRoute requireAdmin><Layout><CargaMasivaUsuarios /></Layout></ProtectedRoute>} />
               <Route path="/actividad-usuarios" element={<ProtectedRoute requireAdmin><Layout><ActividadUsuarios /></Layout></ProtectedRoute>} />
               <Route path="/admin-digital" element={<ProtectedRoute requireAdmin><Layout><AdminDigital /></Layout></ProtectedRoute>} />

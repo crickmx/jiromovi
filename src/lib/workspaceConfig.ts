@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, BarChart3, Video, BookMarked, BadgeCheck, Zap, Compass, Calculator, Smartphone, Mail, MessageSquare, Bell } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, BarChart3, Video, BookMarked, BadgeCheck, Compass, Calculator, Smartphone, Mail, MessageSquare, Bell, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
@@ -49,6 +49,7 @@ const NO_EMPLEADO_AGENTE: UserRole[] = ['Administrador', 'Gerente', 'Ejecutivo']
 
 export const TOP_LEVEL_ITEMS: TopLevelNavItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visibleTo: ALL_ROLES },
+  { path: '/chava', label: 'Chava', icon: Sparkles, visibleTo: ALL_ROLES },
   { path: '/store', label: 'MOVI Store', icon: ShoppingBag, visibleTo: ALL_ROLES },
   { path: '/comunicados', label: 'Comunicados', icon: FileText, visibleTo: ALL_ROLES, matchPrefix: true },
 ];
@@ -162,7 +163,6 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/firmas-email', label: 'Firmas Email', icon: FileText, visibleTo: ADMIN_ONLY },
     { path: '/admin/transaccionales', label: 'Transaccionales', icon: Send, visibleTo: ADMIN_ONLY },
     { path: '/admin/diagnostico', label: 'Diagnostico', icon: Activity, visibleTo: ADMIN_ONLY },
-    { path: '/chatgpt-test', label: 'Asistente IA', icon: Zap, visibleTo: ALL_ROLES },
   ],
 };
 
@@ -178,6 +178,7 @@ export const WORKSPACES: WorkspaceDefinition[] = [
 
 export const NAV_ORDER: NavEntry[] = [
   { type: 'link', item: { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visibleTo: ALL_ROLES } },
+  { type: 'link', item: { path: '/chava', label: 'Chava', icon: Sparkles, visibleTo: ALL_ROLES } },
   { type: 'workspace', workspace: WORKSPACE_COMERCIAL },
   { type: 'workspace', workspace: WORKSPACE_CENTRO_CONTACTO },
   { type: 'workspace', workspace: WORKSPACE_COTIZAR },

@@ -6,8 +6,6 @@ import { ImpersonationBanner } from './ImpersonationBanner';
 import { Menu, X, ChevronDown, LogOut } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
-import { FloatingAssistantButton } from './FloatingAssistantButton';
-import { AssistantModal } from './AssistantModal';
 import InstallAppButton from './InstallAppButton';
 import InstallBanner from './InstallBanner';
 import { cn } from '@/lib/utils';
@@ -52,7 +50,6 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
   }, [location.pathname]);
 
   const userRole: UserRole = (usuario?.rol as UserRole) || 'Agente';
-  const isAdmin = usuario?.rol === 'Administrador';
 
   const { workspace, activeItem } = resolveWorkspace(location.pathname, userRole);
   const breadcrumbs = buildBreadcrumbs(workspace, activeItem);
@@ -310,11 +307,9 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
               ? ''
               : 'max-w-[1400px] mx-auto px-5 sm:px-6 lg:px-10'
           )}>
-            {children}
+              {children}
           </main>
 
-          {isAdmin && <FloatingAssistantButton />}
-          {isAdmin && <AssistantModal />}
           <InstallBanner />
       </div>
     </div>
