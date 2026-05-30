@@ -1,21 +1,25 @@
-import { type ReactNode, useState, useEffect } from 'react';
+import { type ReactNode, useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FileText, Calculator, User, LogOut, Menu, X, LayoutDashboard, Building2 } from 'lucide-react';
+import {
+  FileText, Calculator, LogOut, Menu, X, LayoutDashboard, Building2,
+  User, FolderOpen, Shield, ChevronDown, Globe
+} from 'lucide-react';
 import { useSeguwallet } from '../lib/SeguwalletContext';
 import { useAgentBrand, SEGUWALLET_LOGO } from '../lib/AgentBrandContext';
 import { seguwalletSignOut } from '../lib/seguwalletAuth';
 import { cn } from '@/lib/utils';
 import { FloatingSiniestroButton } from './FloatingSiniestroButton';
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+
+// Nav without Perfil — access moved to user dropdown
 const NAV_ITEMS = [
   { path: '/seguwallet/dashboard', label: 'Inicio', icon: LayoutDashboard },
   { path: '/seguwallet/polizas', label: 'Pólizas', icon: FileText },
   { path: '/seguwallet/cotizar', label: 'Cotizar', icon: Calculator },
   { path: '/seguwallet/aseguradoras', label: 'Aseguradoras', icon: Building2 },
-  { path: '/seguwallet/perfil', label: 'Perfil', icon: User },
 ];
 
-/** Returns dark or white text color based on WCAG relative luminance */
 function getContrastColor(hex: string): string {
   const h = hex.replace('#', '').padEnd(6, '0');
   const r = parseInt(h.substring(0, 2), 16) / 255;
@@ -26,7 +30,6 @@ function getContrastColor(hex: string): string {
   return lum > 0.179 ? '#111827' : '#ffffff';
 }
 
-/** Creates a very light tint of the hex color for active backgrounds */
 function tint(hex: string, opacity = 0.12): string {
   const h = hex.replace('#', '').padEnd(6, '0');
   const r = parseInt(h.substring(0, 2), 16);
@@ -35,23 +38,34 @@ function tint(hex: string, opacity = 0.12): string {
   return `rgba(${r},${g},${b},${opacity})`;
 }
 
+function getPhotoUrl(path: string | null | undefined, fallback?: string | null): string | null {
+  if (path) return `${SUPABASE_URL}/storage/v1/object/public/seguwallet-profile-photos/${path}`;
+  return fallback || null;
+}
+
+function getInitials(name: string | null | undefined): string {
+  if (!name) return 'SW';
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase();
+}
+
 export function SeguwalletLayout({ children }: { children: ReactNode }) {
   const { customer } = useSeguwallet();
   const { brand, loading: brandLoading } = useAgentBrand();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const handleSignOut = async () => {
     await seguwalletSignOut();
     navigate('/seguwallet/login');
   };
 
-  const getInitials = () => {
-    if (!customer?.full_name) return 'SW';
-    const parts = customer.full_name.split(' ');
-    return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase();
-  };
+  const photoUrl = getPhotoUrl(customer?.profile_photo_path, customer?.profile_photo_url);
+  const initials = getInitials(customer?.full_name);
+  const firstName = customer?.full_name?.trim().split(/\s+/)[0] ?? '';
 
   const primary = brand.primaryColor;
   const contrastOnPrimary = getContrastColor(primary);
@@ -62,18 +76,56 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
     document.title = `Seguwallet - ${name}`;
   }, [brand.agentName]);
 
+  // Close user menu when clicking outside
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [userMenuOpen]);
+
+  const navTo = (path: string) => {
+    navigate(path);
+    setUserMenuOpen(false);
+    setMobileMenuOpen(false);
+  };
+
+  // ── User Avatar component ─────────────────────────────────────────────
+  const UserAvatar = ({ size = 'sm' }: { size?: 'sm' | 'md' | 'lg' }) => {
+    const cls = size === 'lg' ? 'w-16 h-16 text-2xl' : size === 'md' ? 'w-10 h-10 text-sm' : 'w-7 h-7 text-[11px]';
+    if (photoUrl) {
+      return (
+        <img
+          src={photoUrl}
+          alt={customer?.full_name ?? 'Avatar'}
+          className={cn(cls, 'rounded-xl object-cover flex-shrink-0')}
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        />
+      );
+    }
+    return (
+      <div
+        className={cn(cls, 'rounded-xl flex items-center justify-center font-bold flex-shrink-0')}
+        style={{ backgroundColor: primary, color: contrastOnPrimary }}
+      >
+        {initials}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50">
 
-      {/* ── Desktop + tablet header ── */}
+      {/* ── Header ── */}
       <header className="sticky top-0 z-40 bg-white border-b border-neutral-200/70 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center h-14 gap-4">
 
           {/* Logo */}
-          <button
-            onClick={() => navigate('/seguwallet/dashboard')}
-            className="flex items-center flex-shrink-0"
-          >
+          <button onClick={() => navTo('/seguwallet/dashboard')} className="flex items-center flex-shrink-0">
             {!brandLoading && (
               <img
                 src={brand.displayLogo}
@@ -95,14 +147,12 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
               return (
                 <button
                   key={item.path}
-                  onClick={() => navigate(item.path)}
+                  onClick={() => navTo(item.path)}
                   className={cn(
                     'flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-150',
                     !isActive && 'text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100'
                   )}
-                  style={isActive
-                    ? { backgroundColor: activeTint, color: primary }
-                    : undefined}
+                  style={isActive ? { backgroundColor: activeTint, color: primary } : undefined}
                 >
                   <Icon className="w-3.5 h-3.5 flex-shrink-0" />
                   {item.label}
@@ -112,27 +162,98 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
           </nav>
 
           {/* Right side */}
-          <div className="flex items-center gap-1.5 ml-auto">
-            {/* User pill */}
-            <div className="hidden sm:flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-neutral-200 bg-neutral-50">
-              <div
-                className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-bold flex-shrink-0"
-                style={{ backgroundColor: primary, color: contrastOnPrimary }}
-              >
-                {getInitials()}
-              </div>
-              <span className="text-sm font-medium text-neutral-700 max-w-[80px] truncate leading-none">
-                {customer?.full_name?.split(' ')[0]}
-              </span>
-            </div>
+          <div className="flex items-center gap-2 ml-auto">
 
-            <button
-              onClick={handleSignOut}
-              title="Cerrar sesión"
-              className="p-2 rounded-xl text-neutral-400 hover:text-red-500 hover:bg-red-50 transition-all"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
+            {/* ── User dropdown trigger (desktop) ── */}
+            <div className="hidden sm:block relative" ref={userMenuRef}>
+              <button
+                onClick={() => setUserMenuOpen(v => !v)}
+                className={cn(
+                  'flex items-center gap-2 px-2.5 py-1.5 rounded-xl border transition-all duration-150',
+                  userMenuOpen
+                    ? 'border-neutral-300 bg-neutral-100 shadow-inner'
+                    : 'border-neutral-200 bg-neutral-50 hover:border-neutral-300 hover:bg-white'
+                )}
+              >
+                <UserAvatar size="sm" />
+                <span className="text-sm font-semibold text-neutral-700 max-w-[100px] truncate leading-none">
+                  {firstName}
+                </span>
+                <ChevronDown
+                  className={cn('w-3.5 h-3.5 text-neutral-400 transition-transform duration-200', userMenuOpen && 'rotate-180')}
+                />
+              </button>
+
+              {/* ── Dropdown panel ── */}
+              {userMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl border border-neutral-200 shadow-xl shadow-neutral-900/10 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+
+                  {/* User header */}
+                  <div className="px-5 pt-5 pb-4 flex items-center gap-4" style={{ background: `linear-gradient(135deg, ${primary}18 0%, ${primary}08 100%)` }}>
+                    <UserAvatar size="md" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-neutral-900 truncate text-sm leading-tight">
+                        {customer?.full_name || 'Usuario'}
+                      </p>
+                      <p className="text-xs text-neutral-500 truncate mt-0.5">{customer?.email}</p>
+                      <span
+                        className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                        style={{ backgroundColor: primary + '20', color: primary }}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: primary }} />
+                        Cliente Activo
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="h-px bg-neutral-100" />
+
+                  {/* Menu items */}
+                  <div className="py-2 px-2">
+                    {[
+                      { icon: User, label: 'Mi Perfil', path: '/seguwallet/perfil', desc: 'Editar datos personales' },
+                      { icon: FolderOpen, label: 'Expediente 492', path: '/seguwallet/perfil?tab=expediente', desc: 'Documentos y archivos' },
+                      { icon: Globe, label: 'Mi Agente', path: '/seguwallet/perfil?tab=agente', desc: 'Contactar a tu asesor' },
+                      { icon: Shield, label: 'Seguridad', path: '/seguwallet/perfil?tab=seguridad', desc: 'Acceso y contraseña' },
+                    ].map(item => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.path}
+                          onClick={() => navTo(item.path)}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-neutral-50 transition-colors group"
+                        >
+                          <div
+                            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
+                            style={{ backgroundColor: primary + '15' }}
+                          >
+                            <Icon className="w-4 h-4" style={{ color: primary }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-neutral-800">{item.label}</p>
+                            <p className="text-[11px] text-neutral-400">{item.desc}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="h-px bg-neutral-100 mx-4" />
+
+                  <div className="py-2 px-2">
+                    <button
+                      onClick={handleSignOut}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-red-50 transition-colors"
+                    >
+                      <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 bg-red-50">
+                        <LogOut className="w-4 h-4 text-red-500" />
+                      </div>
+                      <p className="text-sm font-semibold text-red-500">Cerrar sesión</p>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Mobile menu button */}
             <button
@@ -144,33 +265,32 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        {/* Mobile dropdown menu */}
+        {/* ── Mobile dropdown menu ── */}
         {mobileMenuOpen && (
           <div className="lg:hidden border-t border-neutral-100 bg-white shadow-md">
             <div className="max-w-6xl mx-auto px-4 py-3">
-              {/* User info */}
-              <div className="flex items-center gap-3 px-2 py-2.5 mb-2">
-                <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0"
-                  style={{ backgroundColor: primary, color: contrastOnPrimary }}
-                >
-                  {getInitials()}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-neutral-900 truncate">{customer?.full_name}</p>
-                  <p className="text-[11px] text-neutral-400 truncate">{customer?.email}</p>
+              {/* User info card */}
+              <div
+                className="flex items-center gap-3 px-3 py-3 mb-2 rounded-2xl"
+                style={{ background: `linear-gradient(135deg, ${primary}15 0%, ${primary}08 100%)` }}
+              >
+                <UserAvatar size="md" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-neutral-900 truncate">{customer?.full_name}</p>
+                  <p className="text-[11px] text-neutral-500 truncate">{customer?.email}</p>
                 </div>
               </div>
 
               <div className="h-px bg-neutral-100 mb-2" />
 
+              {/* Main nav */}
               {NAV_ITEMS.map(item => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
                 return (
                   <button
                     key={item.path}
-                    onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
+                    onClick={() => navTo(item.path)}
                     className={cn(
                       'w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-all text-left',
                       !isActive && 'text-neutral-600 hover:bg-neutral-50'
@@ -178,6 +298,28 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
                     style={isActive ? { backgroundColor: activeTint, color: primary } : undefined}
                   >
                     <Icon className="w-4 h-4 flex-shrink-0" />
+                    {item.label}
+                  </button>
+                );
+              })}
+
+              <div className="h-px bg-neutral-100 my-2" />
+
+              {/* Profile section */}
+              {[
+                { icon: User, label: 'Mi Perfil', path: '/seguwallet/perfil' },
+                { icon: FolderOpen, label: 'Expediente 492', path: '/seguwallet/perfil?tab=expediente' },
+                { icon: Globe, label: 'Mi Agente', path: '/seguwallet/perfil?tab=agente' },
+                { icon: Shield, label: 'Seguridad', path: '/seguwallet/perfil?tab=seguridad' },
+              ].map(item => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.path}
+                    onClick={() => navTo(item.path)}
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-neutral-600 hover:bg-neutral-50 transition-all text-left"
+                  >
+                    <Icon className="w-4 h-4 flex-shrink-0 text-neutral-400" />
                     {item.label}
                   </button>
                 );
@@ -197,7 +339,7 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
         )}
       </header>
 
-      {/* ── Mobile bottom tab bar ── */}
+      {/* ── Mobile bottom tab bar (4 items only) ── */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-neutral-200 shadow-[0_-2px_12px_rgba(0,0,0,0.06)]">
         <div className="flex items-stretch safe-area-bottom">
           {NAV_ITEMS.map(item => {
@@ -206,29 +348,40 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
             return (
               <button
                 key={item.path}
-                onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
+                onClick={() => navTo(item.path)}
                 className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 px-1 relative transition-all"
               >
-                {/* Active indicator dot */}
                 {isActive && (
                   <span
-                    className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-b-full transition-all"
+                    className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-b-full"
                     style={{ backgroundColor: primary }}
                   />
                 )}
-                <Icon
-                  className="w-5 h-5 transition-colors"
-                  style={{ color: isActive ? primary : '#9ca3af' }}
-                />
-                <span
-                  className="text-[10px] font-semibold transition-colors leading-none"
-                  style={{ color: isActive ? primary : '#9ca3af' }}
-                >
+                <Icon className="w-5 h-5" style={{ color: isActive ? primary : '#9ca3af' }} />
+                <span className="text-[10px] font-semibold leading-none" style={{ color: isActive ? primary : '#9ca3af' }}>
                   {item.label}
                 </span>
               </button>
             );
           })}
+          {/* Mobile profile tab */}
+          <button
+            onClick={() => navTo('/seguwallet/perfil')}
+            className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 px-1 relative transition-all"
+          >
+            {location.pathname.startsWith('/seguwallet/perfil') && (
+              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-b-full" style={{ backgroundColor: primary }} />
+            )}
+            <div className="w-5 h-5 rounded-md overflow-hidden">
+              <UserAvatar size="sm" />
+            </div>
+            <span
+              className="text-[10px] font-semibold leading-none"
+              style={{ color: location.pathname.startsWith('/seguwallet/perfil') ? primary : '#9ca3af' }}
+            >
+              Perfil
+            </span>
+          </button>
         </div>
       </nav>
 
@@ -237,7 +390,6 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
         {children}
       </main>
 
-      {/* ── Floating siniestro button ── */}
       <FloatingSiniestroButton />
 
       {/* ── Footer ── */}

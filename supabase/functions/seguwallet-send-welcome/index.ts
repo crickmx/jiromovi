@@ -13,35 +13,144 @@ const PRIVACY_URL = "https://app.movi.digital/aviso-privacidad";
 const DEFAULT_PRIMARY = "#1C37E0";
 const DEFAULT_SECONDARY = "#1228B8";
 
-interface CustomerRecord {
-  id: string;
-  full_name: string | null;
-  email: string | null;
-  phone: string | null;
-  whatsapp: string | null;
-  agent_user_id: string | null;
-  status: string | null;
+// ── Channel resolution (same as enviar-correo-transaccional) ──────────────
+
+interface ResolvedEmailChannel {
+  api_key: string;
+  from_name: string;
+  from_email: string;
+  channel_id: string | null;
+  channel_name: string | null;
 }
 
-interface Template {
-  asunto: string | null;
-  html_cuerpo: string | null;
-  enviar_correo: boolean;
-  enviar_whatsapp: boolean;
-  whatsapp_plantilla: string | null;
+interface ResolvedWhatsAppChannel {
+  api_key: string;
+  channel_id_uuid: string;
+  channel_id: string | null;
+  channel_name: string | null;
 }
 
-interface Brand {
-  logo_url: string | null;
-  primary_color: string;
-  secondary_color: string;
-  agent_name: string;
-  office_name: string | null;
-  phone: string | null;
-  email: string | null;
-  web_slug: string | null;
+async function resolveEmailChannel(
+  supabase: ReturnType<typeof createClient>,
+  preferredChannelId?: string | null,
+  fromNameOverride?: string,
+): Promise<ResolvedEmailChannel | null> {
+  if (preferredChannelId) {
+    const { data } = await supabase
+      .from("notification_channels")
+      .select("id, name, config, is_active")
+      .eq("id", preferredChannelId)
+      .eq("type", "email_resend")
+      .eq("is_active", true)
+      .maybeSingle();
+    if (data?.config?.api_key) {
+      return {
+        api_key: data.config.api_key,
+        from_name: fromNameOverride || data.config.from_name || "Seguwallet",
+        from_email: data.config.from_email || "seguwallet@movi.digital",
+        channel_id: data.id,
+        channel_name: data.name,
+      };
+    }
+  }
+
+  const { data: def } = await supabase
+    .from("notification_channels")
+    .select("id, name, config, is_active")
+    .eq("type", "email_resend")
+    .eq("is_default", true)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (def?.config?.api_key) {
+    return {
+      api_key: def.config.api_key,
+      from_name: fromNameOverride || def.config.from_name || "MOVI Digital",
+      from_email: def.config.from_email || "noresponder@movi.digital",
+      channel_id: def.id,
+      channel_name: def.name,
+    };
+  }
+
+  const envKey = Deno.env.get("RESEND_API_KEY");
+  if (envKey) {
+    return {
+      api_key: envKey,
+      from_name: fromNameOverride || "Seguwallet",
+      from_email: "seguwallet@movi.digital",
+      channel_id: null,
+      channel_name: null,
+    };
+  }
+  return null;
 }
 
+async function resolveWhatsAppChannel(
+  supabase: ReturnType<typeof createClient>,
+  preferredChannelId?: string | null,
+): Promise<ResolvedWhatsAppChannel | null> {
+  if (preferredChannelId) {
+    const { data } = await supabase
+      .from("notification_channels")
+      .select("id, name, config, is_active")
+      .eq("id", preferredChannelId)
+      .eq("type", "whatsapp_wazzup24")
+      .eq("is_active", true)
+      .maybeSingle();
+    if (data?.config?.api_key && data?.config?.channel_id) {
+      return {
+        api_key: data.config.api_key,
+        channel_id_uuid: data.config.channel_id,
+        channel_id: data.id,
+        channel_name: data.name,
+      };
+    }
+  }
+
+  const { data: def } = await supabase
+    .from("notification_channels")
+    .select("id, name, config, is_active")
+    .eq("type", "whatsapp_wazzup24")
+    .eq("is_default", true)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (def?.config?.api_key && def?.config?.channel_id) {
+    return {
+      api_key: def.config.api_key,
+      channel_id_uuid: def.config.channel_id,
+      channel_id: def.id,
+      channel_name: def.name,
+    };
+  }
+
+  // Legacy fallback
+  const { data: legacy } = await supabase
+    .from("whatsapp_configuracion")
+    .select("api_key, channel_id_uuid, activo")
+    .eq("activo", true)
+    .maybeSingle();
+  if (legacy?.api_key) {
+    return {
+      api_key: legacy.api_key,
+      channel_id_uuid: legacy.channel_id_uuid || "",
+      channel_id: null,
+      channel_name: null,
+    };
+  }
+  return null;
+}
+
+// ── Phone normalizer — MX format, must start with 521 ────────────────────
+function normalizePhoneMX(phone: string): string {
+  let p = phone.replace(/[^0-9]/g, "");
+  // Remove leading + if present
+  if (p.startsWith("521") && p.length === 13) return p;          // already correct
+  if (p.startsWith("52") && p.length === 12) return "521" + p.substring(2); // 5212... → 5212... nope, 521+10
+  if (p.length === 10) return "521" + p;                          // 10-digit MX local
+  if (p.startsWith("1") && p.length === 11) return "52" + p;     // US format fallback
+  return p;
+}
+
+// ── Template renderer ────────────────────────────────────────────────────
 function renderTemplate(template: string, vars: Record<string, string>): string {
   let out = template;
   for (const [key, val] of Object.entries(vars)) {
@@ -50,13 +159,7 @@ function renderTemplate(template: string, vars: Record<string, string>): string 
   return out;
 }
 
-function normalizePhone(phone: string): string {
-  let p = phone.replace(/[^0-9]/g, "");
-  if (p.length === 10) return "521" + p;
-  if (p.length === 12 && p.startsWith("52")) return "521" + p.substring(2);
-  if (p.length === 13 && !p.startsWith("521")) return "521" + p.substring(3);
-  return p;
-}
+// ── Main handler ─────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -66,8 +169,6 @@ Deno.serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
-
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const body = await req.json();
@@ -80,7 +181,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Load customer with phone fields
+    // ── Load customer ──────────────────────────────────────────────────
     const { data: customer, error: custErr } = await supabase
       .from("seguwallet_customers")
       .select("id, full_name, email, phone, whatsapp, agent_user_id, status")
@@ -94,16 +195,14 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const c = customer as CustomerRecord;
-
-    if (!c.email || c.status !== "active") {
+    if (!customer.email || customer.status !== "active") {
       return new Response(JSON.stringify({ skipped: true, reason: "no email or inactive" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Load notification type
+    // ── Load notification type + template ─────────────────────────────
     const { data: tipoData } = await supabase
       .from("correo_tipos_notificacion")
       .select("id")
@@ -117,10 +216,9 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Load template — select the correct column name: html_cuerpo
     const { data: tplData, error: tplErr } = await supabase
       .from("correo_plantillas")
-      .select("asunto, html_cuerpo, enviar_correo, enviar_whatsapp, whatsapp_plantilla")
+      .select("asunto, html_cuerpo, enviar_correo, enviar_whatsapp, whatsapp_plantilla, resend_channel_id, wazzup24_channel_id")
       .eq("tipo_notificacion_id", tipoData.id)
       .eq("es_plantilla_default", true)
       .maybeSingle();
@@ -132,32 +230,30 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const template = tplData as Template | null;
-
-    if (!template) {
+    if (!tplData) {
       return new Response(JSON.stringify({ skipped: true, reason: "no default template found" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Load agent brand
-    let brand: Brand = {
-      logo_url: null,
+    // ── Load agent brand ───────────────────────────────────────────────
+    let brand = {
+      logo_url: null as string | null,
       primary_color: DEFAULT_PRIMARY,
       secondary_color: DEFAULT_SECONDARY,
       agent_name: "Tu Agente",
-      office_name: null,
-      phone: null,
-      email: null,
-      web_slug: null,
+      office_name: null as string | null,
+      phone: null as string | null,
+      email: null as string | null,
+      web_slug: null as string | null,
     };
 
-    if (c.agent_user_id) {
+    if (customer.agent_user_id) {
       const { data: brandData } = await supabase.rpc("get_agent_brand_for_seguwallet", {
-        p_agent_id: c.agent_user_id,
+        p_agent_id: customer.agent_user_id,
       });
-      if (brandData) brand = brandData as Brand;
+      if (brandData) brand = brandData;
     }
 
     const urlAgente = brand.web_slug
@@ -165,8 +261,8 @@ Deno.serve(async (req: Request) => {
       : SEGUWALLET_URL;
 
     const vars: Record<string, string> = {
-      nombre_cliente: c.full_name ?? "Cliente",
-      email_cliente: c.email,
+      nombre_cliente: customer.full_name ?? "Cliente",
+      email_cliente: customer.email,
       nombre_agente: brand.agent_name,
       nombre_oficina: brand.office_name ?? "",
       telefono_agente: brand.phone ?? "",
@@ -182,20 +278,23 @@ Deno.serve(async (req: Request) => {
 
     const results: Record<string, unknown> = {};
 
-    // ── EMAIL ───────────────────────────────────────────────────────────────
-    if (template.enviar_correo && template.html_cuerpo) {
-      if (!resendApiKey) {
-        results.email = { skipped: true, reason: "RESEND_API_KEY not configured" };
+    // ── EMAIL via resolved channel ─────────────────────────────────────
+    if (tplData.enviar_correo && tplData.html_cuerpo) {
+      const fromName = brand.office_name
+        ? `${brand.agent_name} - ${brand.office_name}`
+        : brand.agent_name !== "Tu Agente" ? brand.agent_name : "Seguwallet";
+
+      const emailChannel = await resolveEmailChannel(supabase, tplData.resend_channel_id, fromName);
+
+      if (!emailChannel) {
+        results.email = { skipped: true, reason: "no email channel configured" };
       } else {
-        const subject = renderTemplate(template.asunto ?? "Bienvenido a Seguwallet", vars);
-        const html = renderTemplate(template.html_cuerpo, vars);
-        const fromName = brand.office_name
-          ? `${brand.agent_name} - ${brand.office_name}`
-          : brand.agent_name;
+        const subject = renderTemplate(tplData.asunto ?? "Bienvenido a Seguwallet", vars);
+        const html = renderTemplate(tplData.html_cuerpo, vars);
 
         const resendPayload: Record<string, unknown> = {
-          from: `${fromName} <notificaciones@movi.digital>`,
-          to: [c.email],
+          from: `${emailChannel.from_name} <${emailChannel.from_email}>`,
+          to: [customer.email],
           subject,
           html,
         };
@@ -204,7 +303,7 @@ Deno.serve(async (req: Request) => {
         const resendRes = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${resendApiKey}`,
+            "Authorization": `Bearer ${emailChannel.api_key}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify(resendPayload),
@@ -216,44 +315,49 @@ Deno.serve(async (req: Request) => {
         await supabase.from("correo_historial_envios").insert({
           tipo_notificacion_codigo: "seguwallet_bienvenida",
           tipo_codigo: "seguwallet_bienvenida",
-          destinatario_email: c.email,
+          destinatario_email: customer.email,
           asunto: subject,
           estado: emailOk ? "enviado" : "fallido",
           error_mensaje: emailOk ? null : JSON.stringify(resendBody),
           proveedor: "resend",
           provider_message_id: emailOk ? resendBody.id : null,
           canal_envio: "email",
+          channel_id: emailChannel.channel_id,
+          channel_name: emailChannel.channel_name,
+          channel_type: "email_resend",
         });
 
-        results.email = { success: emailOk, resend: resendBody };
+        results.email = {
+          success: emailOk,
+          from: `${emailChannel.from_name} <${emailChannel.from_email}>`,
+          channel: emailChannel.channel_name,
+          resend_id: emailOk ? resendBody.id : undefined,
+          error: emailOk ? undefined : resendBody,
+        };
       }
     } else {
-      results.email = { skipped: true, reason: "email disabled in template or no html" };
+      results.email = { skipped: true, reason: "email disabled or no html in template" };
     }
 
-    // ── WHATSAPP ────────────────────────────────────────────────────────────
-    const customerPhone = c.whatsapp || c.phone;
-    if (template.enviar_whatsapp && template.whatsapp_plantilla && customerPhone) {
-      const waMessage = renderTemplate(template.whatsapp_plantilla, vars);
+    // ── WHATSAPP via resolved channel ──────────────────────────────────
+    const customerPhone = customer.whatsapp || customer.phone;
+    if (tplData.enviar_whatsapp && tplData.whatsapp_plantilla && customerPhone) {
+      const waChannel = await resolveWhatsAppChannel(supabase, tplData.wazzup24_channel_id);
 
-      const { data: waConfig } = await supabase
-        .from("whatsapp_configuracion")
-        .select("api_key, channel_id_uuid, activo")
-        .eq("activo", true)
-        .maybeSingle();
-
-      if (!waConfig?.api_key) {
-        results.whatsapp = { skipped: true, reason: "WhatsApp not configured" };
+      if (!waChannel) {
+        results.whatsapp = { skipped: true, reason: "no WhatsApp channel configured" };
       } else {
-        const chatId = normalizePhone(customerPhone);
+        const waMessage = renderTemplate(tplData.whatsapp_plantilla, vars);
+        const chatId = normalizePhoneMX(customerPhone);
+
         const waRes = await fetch("https://api.wazzup24.com/v3/message", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${waConfig.api_key}`,
+            Authorization: `Bearer ${waChannel.api_key}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            channelId: waConfig.channel_id_uuid,
+            channelId: waChannel.channel_id_uuid,
             chatType: "whatsapp",
             chatId,
             text: waMessage,
@@ -266,20 +370,32 @@ Deno.serve(async (req: Request) => {
         await supabase.from("correo_historial_envios").insert({
           tipo_notificacion_codigo: "seguwallet_bienvenida",
           tipo_codigo: "seguwallet_bienvenida",
-          destinatario_email: c.email,
-          asunto: "Mensaje WhatsApp",
+          destinatario_email: customer.email,
+          asunto: "Mensaje WhatsApp bienvenida Seguwallet",
           estado: waOk ? "enviado" : "fallido",
           error_mensaje: waOk ? null : JSON.stringify(waBody),
           proveedor: "wazzup",
           canal_envio: "whatsapp",
           numero_destino: chatId,
+          channel_id: waChannel.channel_id,
+          channel_name: waChannel.channel_name,
+          channel_type: "whatsapp_wazzup24",
         });
 
-        results.whatsapp = { success: waOk };
+        results.whatsapp = {
+          success: waOk,
+          chatId,
+          channel: waChannel.channel_name,
+          error: waOk ? undefined : waBody,
+        };
       }
     } else {
-      const waPhone = customerPhone ? "has phone" : "no phone";
-      results.whatsapp = { skipped: true, reason: `whatsapp disabled in template or ${waPhone}` };
+      const reason = !tplData.enviar_whatsapp
+        ? "whatsapp disabled in template"
+        : !customerPhone
+        ? "no phone on customer"
+        : "no whatsapp template text";
+      results.whatsapp = { skipped: true, reason };
     }
 
     return new Response(JSON.stringify({ ok: true, results }), {
