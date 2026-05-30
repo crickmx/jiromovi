@@ -132,7 +132,6 @@ export default function SeguwalletExpedienteModal({ customerId, customerName, on
           archivo_path: path,
           mime_type: selectedFile.type || null,
           size_bytes: selectedFile.size,
-          subido_por: (await supabase.auth.getUser()).data.user?.id || null,
         });
       if (dbErr) {
         await supabase.storage.from(BUCKET).remove([path]);
