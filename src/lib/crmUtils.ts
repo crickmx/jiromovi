@@ -56,12 +56,13 @@ export async function crearContacto(contacto: Partial<CRMContacto>, userId: stri
 export async function actualizarContacto(id: string, contacto: Partial<CRMContacto>) {
   const { data, error } = await supabase
     .from('crm_contactos')
-    .update(contacto)
+    .update({ ...contacto, actualizado_en: new Date().toISOString() })
     .eq('id', id)
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) throw error;
+  if (!data) throw new Error('No tienes permiso para editar este contacto o no existe.');
   return data as CRMContacto;
 }
 

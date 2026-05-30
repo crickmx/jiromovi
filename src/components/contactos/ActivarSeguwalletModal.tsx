@@ -52,10 +52,19 @@ export default function ActivarSeguwalletModal({ contacto, onClose, onSuccess }:
       if (!res.ok) throw new Error(data.error || 'Error al crear usuario Seguwallet');
 
       const customerId = data.customer?.id;
+      const crmId = contacto.source === 'crm' ? contacto.id : null;
+
       if (customerId) {
         await supabase.rpc('link_seguwallet_to_crm_contact', {
           p_customer_id: customerId,
-          p_crm_contact_id: contacto.source === 'crm' ? contacto.id : null,
+          p_crm_contact_id: crmId,
+        });
+      }
+
+      // Auto-promote prospecto to cliente
+      if (crmId) {
+        await supabase.rpc('promote_crm_contact_to_cliente', {
+          p_crm_contact_id: crmId,
         });
       }
 

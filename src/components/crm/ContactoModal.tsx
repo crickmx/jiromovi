@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, ChevronDown, Wallet } from 'lucide-react';
+import { X, ChevronDown, Wallet, AlertCircle } from 'lucide-react';
 import { trackCrmAction } from '../../lib/activityLogger';
 import {
   crearContacto,
@@ -39,6 +39,7 @@ interface Props {
 export default function ContactoModal({ contacto, seguwalletCustomerId, onClose, onSave }: Props) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [camposPersonalizados, setCamposPersonalizados] = useState<CRMCampoPersonalizado[]>([]);
   const [etiquetas, setEtiquetas] = useState<CRMEtiqueta[]>([]);
   const [fuentes, setFuentes] = useState<CRMFuenteOrigen[]>([]);
@@ -127,6 +128,7 @@ export default function ContactoModal({ contacto, seguwalletCustomerId, onClose,
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    setSaveError('');
 
     try {
       setLoading(true);
@@ -135,7 +137,6 @@ export default function ContactoModal({ contacto, seguwalletCustomerId, onClose,
         await actualizarContacto(contacto.id, formData);
         trackCrmAction('contact_update', 'contacto', contacto.id, `Actualizo contacto: ${formData.nombre_completo}`);
 
-        // Sync personal fields back to Seguwallet if linked
         if (seguwalletCustomerId) {
           await supabase
             .from('seguwallet_customers')
@@ -155,9 +156,9 @@ export default function ContactoModal({ contacto, seguwalletCustomerId, onClose,
       }
 
       onSave();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error);
-      alert('Error al guardar contacto');
+      setSaveError(error.message || 'Error al guardar contacto');
     } finally {
       setLoading(false);
     }
@@ -462,6 +463,12 @@ export default function ContactoModal({ contacto, seguwalletCustomerId, onClose,
           )}
 
           <div className="flex justify-end gap-3 pt-4 border-t">
+            {saveError && (
+              <div className="flex-1 flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                {saveError}
+              </div>
+            )}
             <button
               type="button"
               onClick={onClose}
