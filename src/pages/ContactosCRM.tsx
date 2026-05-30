@@ -4,10 +4,11 @@ import {
   Search, Plus, Users, Phone, Mail, Wallet, X,
   LayoutGrid, List, Eye, UserPlus, ChevronDown,
   BadgeCheck, Clock, Ban, Wifi, WifiOff, CheckCircle,
-  Pencil, Database, Trash2, AlertTriangle, Loader2,
+  Pencil, Database, Trash2, AlertTriangle, Loader2, User,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { PageHeader } from '@/components/ui/page-header';
 import type { UnifiedContacto } from '../lib/contactosTypes';
 import type { CRMContacto } from '../lib/crmTypes';
@@ -31,6 +32,8 @@ const SW_FILTER_OPTIONS = [
 export default function ContactosCRM() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
+  const { startImpersonation } = useImpersonation();
+  const isAdmin = usuario?.rol === 'Administrador';
   const [contactos, setContactos] = useState<UnifiedContacto[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -276,6 +279,7 @@ export default function ContactosCRM() {
         <CardsView
           contactos={contactos}
           isAdminOrGerente={isAdminOrGerente}
+          isAdmin={isAdmin}
           getEstatusStyle={getEstatusStyle}
           timeSince={timeSince}
           onView={(c) => navigate(`/mi-crm/contactos/${c.id}`)}
@@ -283,6 +287,12 @@ export default function ContactosCRM() {
           onActivarSW={setShowActivarSW}
           onAsignarSicas={setShowAsignarSicas}
           onDelete={setDeleteTarget}
+          onImpersonate={async (c) => {
+            if (c.seguwallet_customer_id) {
+              const ok = await startImpersonation({ platform: 'seguwallet', customerId: c.seguwallet_customer_id });
+              if (ok) navigate('/seguwallet/dashboard');
+            }
+          }}
         />
       )}
 
@@ -508,6 +518,18 @@ function TableView({
                         <Database className="h-4 w-4" />
                       </button>
                     )}
+                    {isAdmin && c.seguwallet_customer_id && (
+                      <button
+                        onClick={async () => {
+                          const ok = await startImpersonation({ platform: 'seguwallet', customerId: c.seguwallet_customer_id! });
+                          if (ok) navigate('/seguwallet/dashboard');
+                        }}
+                        className="p-1.5 rounded-md text-neutral-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition"
+                        title="Ver como este cliente en Seguwallet"
+                      >
+                        <User className="h-4 w-4" />
+                      </button>
+                    )}
                     {c.source === 'crm' && (
                       <button
                         onClick={() => onDelete(c)}
@@ -531,10 +553,11 @@ function TableView({
 // ─── Cards View ──────────────────────────────────────────────────────────────
 
 function CardsView({
-  contactos, getEstatusStyle, timeSince, onView, onEdit, onActivarSW, onAsignarSicas, onDelete,
+  contactos, getEstatusStyle, timeSince, onView, onEdit, onActivarSW, onAsignarSicas, onDelete, onImpersonate, isAdmin,
 }: {
   contactos: UnifiedContacto[];
   isAdminOrGerente: boolean;
+  isAdmin: boolean;
   getEstatusStyle: (e: string) => string;
   timeSince: (d: string) => string;
   onView: (c: UnifiedContacto) => void;
@@ -542,6 +565,7 @@ function CardsView({
   onActivarSW: (c: UnifiedContacto) => void;
   onAsignarSicas: (c: UnifiedContacto) => void;
   onDelete: (c: UnifiedContacto) => void;
+  onImpersonate: (c: UnifiedContacto) => void;
 }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -626,6 +650,15 @@ function CardsView({
                   title="Gestionar clientes SICAS"
                 >
                   <Database className="h-3.5 w-3.5" />
+                </button>
+              )}
+              {isAdmin && c.seguwallet_customer_id && (
+                <button
+                  onClick={() => onImpersonate(c)}
+                  className="p-1 rounded text-neutral-400 hover:text-amber-600 transition"
+                  title="Ver como este cliente"
+                >
+                  <User className="h-3.5 w-3.5" />
                 </button>
               )}
               {c.source === 'crm' && (
