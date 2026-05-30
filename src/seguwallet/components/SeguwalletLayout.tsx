@@ -2,7 +2,7 @@ import { type ReactNode, useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   FileText, Calculator, LogOut, Menu, X, LayoutDashboard, Building2,
-  User, FolderOpen, Shield, ChevronDown, Globe
+  User, FolderOpen, Shield, ChevronDown, Globe, Sparkles
 } from 'lucide-react';
 import { useSeguwallet } from '../lib/SeguwalletContext';
 import { useAgentBrand, SEGUWALLET_LOGO } from '../lib/AgentBrandContext';
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { path: '/seguwallet/polizas', label: 'Pólizas', icon: FileText },
   { path: '/seguwallet/cotizar', label: 'Cotizar', icon: Calculator },
   { path: '/seguwallet/aseguradoras', label: 'Aseguradoras', icon: Building2 },
+  { path: '/seguwallet/chava', label: 'Chava IA', icon: Sparkles },
 ];
 
 function getContrastColor(hex: string): string {

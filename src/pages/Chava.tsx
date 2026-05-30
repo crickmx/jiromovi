@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Paperclip, FileText, X, Trash2, Plus, History, RefreshCw } from 'lucide-react';
+import { Send, Paperclip, FileText, X, Trash2, Plus, History, RefreshCw, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { useAssistant } from '../contexts/AssistantContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
@@ -14,6 +14,79 @@ import { ResponseMessage } from '../components/assistant/ResponseMessage';
 import { ChavaAvatar } from '../components/chava/ChavaAvatar';
 import { trackAssistantOpened, trackAssistantPromptSent, trackAssistantQuickPrompt, trackAssistantResponse } from '../lib/activityLogger';
 import { cn } from '@/lib/utils';
+import { ChavaDisclaimer } from '../components/chava/ChavaDisclaimer';
+import type { WebSource } from '../lib/assistantTypes';
+
+function ConfidenceBadge({ confidence }: { confidence: number }) {
+  if (confidence >= 0.85) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+        Alta confianza
+      </span>
+    );
+  }
+  if (confidence >= 0.70) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+        Confianza media
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-red-500 dark:text-red-400">
+      <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />
+      Confianza baja
+    </span>
+  );
+}
+
+function SourcesPanel({ sources, confidence }: { sources: WebSource[]; confidence?: number }) {
+  const [open, setOpen] = useState(false);
+  if (!sources.length && confidence === undefined) return null;
+  return (
+    <div className="mt-2 pt-2 border-t border-neutral-100 dark:border-white/8">
+      <div className="flex items-center justify-between gap-2">
+        {confidence !== undefined && <ConfidenceBadge confidence={confidence} />}
+        {sources.length > 0 && (
+          <button
+            onClick={() => setOpen(!open)}
+            className="ml-auto flex items-center gap-1 text-[10px] text-neutral-400 dark:text-white/30 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors font-medium"
+          >
+            {open ? 'Ocultar fuentes' : `Ver fuentes (${sources.length})`}
+            {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </button>
+        )}
+      </div>
+      {open && sources.length > 0 && (
+        <div className="mt-2 space-y-1.5">
+          {sources.map((src, i) => (
+            <a
+              key={i}
+              href={src.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-start gap-2 p-2 rounded-lg bg-neutral-50 dark:bg-white/[0.03] border border-neutral-100 dark:border-white/6 hover:border-cyan-200 dark:hover:border-cyan-500/30 transition-colors group"
+            >
+              <ExternalLink className="w-3 h-3 text-neutral-300 dark:text-white/20 group-hover:text-cyan-500 mt-0.5 flex-shrink-0 transition-colors" />
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium text-neutral-600 dark:text-white/60 group-hover:text-cyan-700 dark:group-hover:text-cyan-300 transition-colors truncate">
+                  {src.title}
+                </p>
+                {src.snippet && (
+                  <p className="text-[10px] text-neutral-400 dark:text-white/25 mt-0.5 line-clamp-2 leading-relaxed">
+                    {src.snippet}
+                  </p>
+                )}
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Chava() {
   const {
@@ -433,9 +506,15 @@ export default function Chava() {
                       {isUser ? (
                         <p className="text-sm whitespace-pre-wrap leading-relaxed text-white font-medium">{message.contenido}</p>
                       ) : structuredResponse ? (
-                        <ResponseMessage response={structuredResponse} />
+                        <>
+                          <ResponseMessage response={structuredResponse} />
+                          <SourcesPanel sources={message.web_sources ?? []} confidence={message.router_confidence} />
+                        </>
                       ) : (
-                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.contenido}</p>
+                        <>
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.contenido}</p>
+                          <SourcesPanel sources={message.web_sources ?? []} confidence={message.router_confidence} />
+                        </>
                       )}
                     </div>
                   </div>
@@ -505,8 +584,13 @@ export default function Chava() {
             </div>
           )}
 
+          {/* AI Disclaimer */}
+          <div className="px-4 pb-2 pt-1.5 border-t border-neutral-50/80 dark:border-white/5">
+            <ChavaDisclaimer context="general" variant="banner" />
+          </div>
+
           {/* Input area */}
-          <div className="p-4 border-t border-neutral-100/80 dark:border-white/5 bg-neutral-50/30 dark:bg-white/[0.01]">
+          <div className="p-4 pt-2 border-neutral-100/80 dark:border-white/5 bg-neutral-50/30 dark:bg-white/[0.01]">
             {attachedFiles.length > 0 && (
               <div className="mb-3 flex flex-wrap gap-2">
                 {attachedFiles.map((file, index) => (

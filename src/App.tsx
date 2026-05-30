@@ -135,6 +135,7 @@ import { SeguwalletCompleteProfile } from './seguwallet/pages/SeguwalletComplete
 import { SeguwalletAseguradoras } from './seguwallet/pages/SeguwalletAseguradoras';
 import { SeguwalletCotizar } from './seguwallet/pages/SeguwalletCotizar';
 import { SeguwalletDescargas } from './seguwallet/pages/SeguwalletDescargas';
+import { SeguwalletChava } from './seguwallet/pages/SeguwalletChava';
 import { SeguwalletLayout } from './seguwallet/components/SeguwalletLayout';
 import { SeguwalletProtectedRoute } from './seguwallet/components/SeguwalletProtectedRoute';
 
@@ -172,6 +173,19 @@ function App() {
                   <Route path="aseguradoras" element={<SeguwalletAseguradoras />} />
                   <Route path="cotizar" element={<SeguwalletCotizar />} />
                   <Route path="descargas" element={<SeguwalletDescargas />} />
+                  <Route path="chava" element={<SeguwalletChava />} />
+                </Route>
+                {/* Also serve seguwallet routes at /seguwallet/* for nav compatibility */}
+                <Route path="/seguwallet" element={<SeguwalletProtectedRoute><SeguwalletLayout><Outlet /></SeguwalletLayout></SeguwalletProtectedRoute>}>
+                  <Route index element={<Navigate to="/seguwallet/dashboard" replace />} />
+                  <Route path="dashboard" element={<SeguwalletDashboard />} />
+                  <Route path="polizas" element={<SeguwalletPolizas />} />
+                  <Route path="perfil" element={<SeguwalletPerfil />} />
+                  <Route path="complete-profile" element={<SeguwalletCompleteProfile />} />
+                  <Route path="aseguradoras" element={<SeguwalletAseguradoras />} />
+                  <Route path="cotizar" element={<SeguwalletCotizar />} />
+                  <Route path="descargas" element={<SeguwalletDescargas />} />
+                  <Route path="chava" element={<SeguwalletChava />} />
                 </Route>
 
                 {/* Protected app routes */}
