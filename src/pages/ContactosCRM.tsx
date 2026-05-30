@@ -19,10 +19,7 @@ import { obtenerContactoPorId } from '../lib/crmUtils';
 const ESTATUS_OPTIONS = [
   { value: '', label: 'Todos los estatus' },
   { value: 'Prospecto', label: 'Prospecto' },
-  { value: 'Cotización Presentada', label: 'Cotización Presentada' },
-  { value: 'Negociación', label: 'Negociación' },
   { value: 'Cliente', label: 'Cliente' },
-  { value: 'Perdido', label: 'Perdido' },
 ];
 
 const SW_FILTER_OPTIONS = [
@@ -97,10 +94,7 @@ export default function ContactosCRM() {
   const getEstatusStyle = (estatus: string) => {
     switch (estatus) {
       case 'Prospecto': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
-      case 'Cotización Presentada': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
-      case 'Negociación': return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
       case 'Cliente': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
-      case 'Perdido': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
       default: return 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-white/50';
     }
   };
@@ -136,8 +130,9 @@ export default function ContactosCRM() {
       if (error) throw error;
       setDeleteTarget(null);
       loadContactos();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error eliminando contacto:', err);
+      alert(`No se pudo eliminar: ${err.message || 'Error desconocido'}`);
     } finally {
       setDeleting(false);
     }

@@ -2,10 +2,7 @@ export type TipoContacto = 'Persona' | 'Empresa';
 
 export type EstatusContacto =
   | 'Prospecto'
-  | 'Cotización Presentada'
-  | 'Negociación'
-  | 'Cliente'
-  | 'Perdido';
+  | 'Cliente';
 
 export type EstatusCotizacion =
   | 'Nueva'

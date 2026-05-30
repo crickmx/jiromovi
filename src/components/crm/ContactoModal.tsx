@@ -218,10 +218,7 @@ export default function ContactoModal({ contacto, seguwalletCustomerId, onClose,
                 required
               >
                 <option value="Prospecto">Prospecto</option>
-                <option value="Cotización Presentada">Cotización Presentada</option>
-                <option value="Negociación">Negociación</option>
                 <option value="Cliente">Cliente</option>
-                <option value="Perdido">Perdido</option>
               </select>
             </div>
           </div>
