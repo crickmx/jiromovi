@@ -90,13 +90,15 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     return secondaryCollapsed ? "lg:ml-[80px]" : "lg:ml-[280px]";
   };
 
+  const bannerOffset = isImpersonating ? "top-[40px]" : "top-0";
+
   return (
-    <div className="min-h-screen bg-[#f5f7fa] dark:bg-[#09090b]">
+    <div className={cn("min-h-screen bg-[#f5f7fa] dark:bg-[#09090b]", isImpersonating && "pt-[40px]")}>
       {/* Impersonation banner at very top */}
       <ImpersonationBanner />
 
       {/* Desktop: Primary Sidebar (icon rail) */}
-      <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40">
+      <aside className={cn("hidden lg:flex fixed left-0 z-40", bannerOffset, "bottom-0")}>
         <PrimarySidebar
           activeWorkspaceId={workspace?.id || null}
           userRole={userRole}
@@ -109,8 +111,10 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
       {hasSecondary && (
         <aside
           className={cn(
-            "hidden lg:flex fixed inset-y-0 z-30 transition-all duration-300 ease-smooth",
-            "left-[72px]"
+            "hidden lg:flex fixed z-30 transition-all duration-300 ease-smooth",
+            "left-[72px]",
+            bannerOffset,
+            "bottom-0"
           )}
         >
           <SecondarySidebar
@@ -265,7 +269,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
           {!hideHeader && (
             <>
               {/* Mobile header */}
-              <header className="lg:hidden sticky top-0 z-30 bg-white/80 dark:bg-[#111113]/80 backdrop-blur-xl border-b border-neutral-200/40 dark:border-white/5">
+              <header className={cn("lg:hidden sticky z-30 bg-white/80 dark:bg-[#111113]/80 backdrop-blur-xl border-b border-neutral-200/40 dark:border-white/5", bannerOffset)}>
                 <div className="flex items-center justify-between h-16 px-5">
                   <button
                     onClick={() => setMobileOpen(true)}
@@ -283,7 +287,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
               </header>
 
               {/* Desktop header */}
-              <header className="hidden lg:flex sticky top-0 z-20 bg-white/70 dark:bg-[#111113]/70 backdrop-blur-2xl border-b border-neutral-100/60 dark:border-white/4">
+              <header className={cn("hidden lg:flex sticky z-20 bg-white/70 dark:bg-[#111113]/70 backdrop-blur-2xl border-b border-neutral-100/60 dark:border-white/4", bannerOffset)}>
                 <div className="w-full px-8 flex items-center h-16">
                   <Breadcrumbs items={breadcrumbs} />
                   <div className="flex items-center gap-2 ml-auto">
