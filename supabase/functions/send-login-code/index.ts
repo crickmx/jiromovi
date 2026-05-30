@@ -27,21 +27,13 @@ async function sha256(text: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-function normalizePhone(phone: string): string {
-  const digits = phone.replace(/\D/g, '');
-  let normalized: string;
-  if (digits.startsWith('521') && digits.length === 13) {
-    normalized = digits;
-  } else if (digits.startsWith('52') && digits.length === 12) {
-    normalized = '521' + digits.slice(2);
-  } else if (digits.startsWith('1') && digits.length === 11) {
-    normalized = '52' + digits.slice(1);
-  } else if (digits.length === 10) {
-    normalized = '521' + digits;
-  } else {
-    normalized = digits;
-  }
-  return '+' + normalized;
+function normalizePhoneMX(phone: string): string {
+  const p = phone.replace(/\D/g, '');
+  if (p.startsWith('521') && p.length === 13) return p;
+  if (p.startsWith('52') && p.length === 12) return '521' + p.slice(2);
+  if (p.length === 10) return '521' + p;
+  if (p.startsWith('1') && p.length === 11) return '52' + p;
+  return p;
 }
 
 function substituteVars(template: string, vars: Record<string, string>): string {
@@ -428,7 +420,7 @@ Deno.serve(async (req: Request) => {
     let whatsappError: string | null = null;
 
     if (userPhone && waApiKey && waConfigChannelId) {
-      const normalizedPhone = normalizePhone(userPhone);
+      const normalizedPhone = normalizePhoneMX(userPhone);
       try {
         const waRes = await fetch('https://api.wazzup24.com/v3/message', {
           method: 'POST',

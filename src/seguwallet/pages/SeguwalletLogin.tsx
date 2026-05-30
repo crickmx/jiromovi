@@ -105,6 +105,10 @@ export function SeguwalletLogin() {
         setError(data.error || 'Error al enviar el código.');
         return;
       }
+      if (!data.email_sent && !data.whatsapp_sent) {
+        setError('No encontramos una cuenta con este correo. Verifica que sea el correo registrado en Seguwallet.');
+        return;
+      }
       setMaskedEmail(data.masked_email || trimmed);
       setStep('code');
       startCooldown(120);
@@ -180,6 +184,10 @@ export function SeguwalletLogin() {
           return;
         }
         setError(data.error || 'Error al reenviar el código.');
+        return;
+      }
+      if (!data.email_sent && !data.whatsapp_sent) {
+        setError('No se pudo reenviar el código. Verifica tu correo.');
         return;
       }
       startCooldown(120);
