@@ -267,6 +267,7 @@ export default function ContactosCRM() {
         <TableView
           contactos={contactos}
           isAdminOrGerente={isAdminOrGerente}
+          isAdmin={isAdmin}
           getEstatusStyle={getEstatusStyle}
           timeSince={timeSince}
           onView={(c) => navigate(`/mi-crm/contactos/${c.id}`)}
@@ -274,6 +275,12 @@ export default function ContactosCRM() {
           onActivarSW={setShowActivarSW}
           onAsignarSicas={setShowAsignarSicas}
           onDelete={setDeleteTarget}
+          onImpersonate={async (c) => {
+            if (c.seguwallet_customer_id) {
+              const ok = await startImpersonation({ platform: 'seguwallet', customerId: c.seguwallet_customer_id });
+              if (ok) navigate('/seguwallet/dashboard');
+            }
+          }}
         />
       ) : (
         <CardsView
@@ -408,10 +415,11 @@ function SeguwalletBadge({ status }: { status: string | null }) {
 // ─── Table View ──────────────────────────────────────────────────────────────
 
 function TableView({
-  contactos, isAdminOrGerente, getEstatusStyle, timeSince, onView, onEdit, onActivarSW, onAsignarSicas, onDelete,
+  contactos, isAdminOrGerente, isAdmin, getEstatusStyle, timeSince, onView, onEdit, onActivarSW, onAsignarSicas, onDelete, onImpersonate,
 }: {
   contactos: UnifiedContacto[];
   isAdminOrGerente: boolean;
+  isAdmin: boolean;
   getEstatusStyle: (e: string) => string;
   timeSince: (d: string) => string;
   onView: (c: UnifiedContacto) => void;
@@ -419,6 +427,7 @@ function TableView({
   onActivarSW: (c: UnifiedContacto) => void;
   onAsignarSicas: (c: UnifiedContacto) => void;
   onDelete: (c: UnifiedContacto) => void;
+  onImpersonate: (c: UnifiedContacto) => void;
 }) {
   return (
     <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
@@ -520,10 +529,7 @@ function TableView({
                     )}
                     {isAdmin && c.seguwallet_customer_id && (
                       <button
-                        onClick={async () => {
-                          const ok = await startImpersonation({ platform: 'seguwallet', customerId: c.seguwallet_customer_id! });
-                          if (ok) navigate('/seguwallet/dashboard');
-                        }}
+                        onClick={() => onImpersonate(c)}
                         className="p-1.5 rounded-md text-neutral-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition"
                         title="Ver como este cliente en Seguwallet"
                       >

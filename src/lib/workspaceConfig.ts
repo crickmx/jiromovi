@@ -79,6 +79,7 @@ const WORKSPACE_CENTRO_CONTACTO: WorkspaceDefinition = {
     { path: '/centro-contacto/whatsapp', label: 'WhatsApp', icon: Smartphone, visibleTo: NOT_AGENT },
     { path: '/centro-contacto/email', label: 'Email', icon: Mail, visibleTo: ALL_ROLES },
     { path: '/centro-contacto/chat', label: 'Chat', icon: MessageSquare, visibleTo: NOT_AGENT },
+    { path: '/directorio-jiro', label: 'Directorio JIRO', icon: BookUser, visibleTo: NOT_AGENT },
     { path: '/centro-contacto/notificaciones', label: 'Notificaciones', icon: Bell, visibleTo: ADMIN_ONLY },
   ],
 };
@@ -109,7 +110,6 @@ const WORKSPACE_OPERACIONES: WorkspaceDefinition = {
     { path: '/mis-comisiones', label: 'Mis Comisiones', icon: DollarSign, visibleTo: NO_EMPLEADO_AGENTE },
     { path: '/comisiones', label: 'Comisiones Admin', icon: CreditCard, visibleTo: ADMIN_ONLY, matchPrefix: true, excludePrefixes: ['/comisiones/regimen-fiscal', '/comisiones/mapeo-vendedores'] },
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, visibleTo: ALL_ROLES },
-    { path: '/directorio-jiro', label: 'Directorio JIRO', icon: BookUser, visibleTo: NOT_AGENT },
     { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, visibleTo: NOT_AGENT },
     { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, visibleTo: NOT_AGENT },
   ],
