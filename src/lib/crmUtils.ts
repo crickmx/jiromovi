@@ -44,6 +44,7 @@ export async function crearContacto(contacto: Partial<CRMContacto>, userId: stri
     .from('crm_contactos')
     .insert({
       ...contacto,
+      fecha_nacimiento: contacto.fecha_nacimiento || null,
       creado_por: userId,
     })
     .select()
@@ -56,7 +57,11 @@ export async function crearContacto(contacto: Partial<CRMContacto>, userId: stri
 export async function actualizarContacto(id: string, contacto: Partial<CRMContacto>) {
   const { data, error } = await supabase
     .from('crm_contactos')
-    .update({ ...contacto, actualizado_en: new Date().toISOString() })
+    .update({
+      ...contacto,
+      fecha_nacimiento: contacto.fecha_nacimiento || null,
+      actualizado_en: new Date().toISOString(),
+    })
     .eq('id', id)
     .select()
     .maybeSingle();
