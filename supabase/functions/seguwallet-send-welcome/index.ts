@@ -17,14 +17,18 @@ interface CustomerRecord {
   id: string;
   full_name: string | null;
   email: string | null;
+  phone: string | null;
+  whatsapp: string | null;
   agent_user_id: string | null;
   status: string | null;
 }
 
 interface Template {
   asunto: string | null;
-  cuerpo_html: string | null;
+  html_cuerpo: string | null;
   enviar_correo: boolean;
+  enviar_whatsapp: boolean;
+  whatsapp_plantilla: string | null;
 }
 
 interface Brand {
@@ -44,6 +48,14 @@ function renderTemplate(template: string, vars: Record<string, string>): string 
     out = out.replaceAll(`{{${key}}}`, val ?? "");
   }
   return out;
+}
+
+function normalizePhone(phone: string): string {
+  let p = phone.replace(/[^0-9]/g, "");
+  if (p.length === 10) return "521" + p;
+  if (p.length === 12 && p.startsWith("52")) return "521" + p.substring(2);
+  if (p.length === 13 && !p.startsWith("521")) return "521" + p.substring(3);
+  return p;
 }
 
 Deno.serve(async (req: Request) => {
@@ -68,9 +80,10 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // Load customer with phone fields
     const { data: customer, error: custErr } = await supabase
       .from("seguwallet_customers")
-      .select("id, full_name, email, agent_user_id, status")
+      .select("id, full_name, email, phone, whatsapp, agent_user_id, status")
       .eq("id", customerId)
       .maybeSingle();
 
@@ -90,6 +103,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // Load notification type
     const { data: tipoData } = await supabase
       .from("correo_tipos_notificacion")
       .select("id")
@@ -97,28 +111,37 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (!tipoData) {
-      return new Response(JSON.stringify({ error: "Notification type not found" }), {
+      return new Response(JSON.stringify({ error: "Notification type 'seguwallet_bienvenida' not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { data: tplData } = await supabase
+    // Load template — select the correct column name: html_cuerpo
+    const { data: tplData, error: tplErr } = await supabase
       .from("correo_plantillas")
-      .select("asunto, cuerpo_html, enviar_correo")
+      .select("asunto, html_cuerpo, enviar_correo, enviar_whatsapp, whatsapp_plantilla")
       .eq("tipo_notificacion_id", tipoData.id)
       .eq("es_plantilla_default", true)
       .maybeSingle();
 
+    if (tplErr) {
+      return new Response(JSON.stringify({ error: "Template query error", details: tplErr.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const template = tplData as Template | null;
 
-    if (!template || !template.enviar_correo) {
-      return new Response(JSON.stringify({ skipped: true, reason: "template disabled or missing" }), {
+    if (!template) {
+      return new Response(JSON.stringify({ skipped: true, reason: "no default template found" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // Load agent brand
     let brand: Brand = {
       logo_url: null,
       primary_color: DEFAULT_PRIMARY,
@@ -157,52 +180,105 @@ Deno.serve(async (req: Request) => {
       anio_actual: new Date().getFullYear().toString(),
     };
 
-    const subject = renderTemplate(template.asunto ?? "Bienvenido a Seguwallet", vars);
-    const html = renderTemplate(template.cuerpo_html ?? "", vars);
+    const results: Record<string, unknown> = {};
 
-    if (!resendApiKey) {
-      return new Response(JSON.stringify({ error: "RESEND_API_KEY not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // ── EMAIL ───────────────────────────────────────────────────────────────
+    if (template.enviar_correo && template.html_cuerpo) {
+      if (!resendApiKey) {
+        results.email = { skipped: true, reason: "RESEND_API_KEY not configured" };
+      } else {
+        const subject = renderTemplate(template.asunto ?? "Bienvenido a Seguwallet", vars);
+        const html = renderTemplate(template.html_cuerpo, vars);
+        const fromName = brand.office_name
+          ? `${brand.agent_name} - ${brand.office_name}`
+          : brand.agent_name;
+
+        const resendPayload: Record<string, unknown> = {
+          from: `${fromName} <notificaciones@movi.digital>`,
+          to: [c.email],
+          subject,
+          html,
+        };
+        if (brand.email) resendPayload.reply_to = brand.email;
+
+        const resendRes = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${resendApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(resendPayload),
+        });
+
+        const resendBody = await resendRes.json();
+        const emailOk = resendRes.ok;
+
+        await supabase.from("correo_historial_envios").insert({
+          tipo_codigo: "seguwallet_bienvenida",
+          destinatario_email: c.email,
+          asunto: subject,
+          estado: emailOk ? "enviado" : "fallido",
+          error_mensaje: emailOk ? null : JSON.stringify(resendBody),
+          proveedor: "resend",
+          provider_message_id: emailOk ? resendBody.id : null,
+        });
+
+        results.email = { success: emailOk, resend: resendBody };
+      }
+    } else {
+      results.email = { skipped: true, reason: "email disabled in template or no html" };
     }
 
-    const fromName = brand.office_name
-      ? `${brand.agent_name} - ${brand.office_name}`
-      : brand.agent_name;
+    // ── WHATSAPP ────────────────────────────────────────────────────────────
+    const customerPhone = c.whatsapp || c.phone;
+    if (template.enviar_whatsapp && template.whatsapp_plantilla && customerPhone) {
+      const waMessage = renderTemplate(template.whatsapp_plantilla, vars);
 
-    const resendPayload: Record<string, unknown> = {
-      from: `${fromName} <notificaciones@movi.digital>`,
-      to: [c.email],
-      subject,
-      html,
-    };
-    if (brand.email) resendPayload.reply_to = brand.email;
+      const { data: waConfig } = await supabase
+        .from("whatsapp_configuracion")
+        .select("api_key, channel_id_uuid, activo")
+        .eq("activo", true)
+        .maybeSingle();
 
-    const resendRes = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(resendPayload),
-    });
+      if (!waConfig?.api_key) {
+        results.whatsapp = { skipped: true, reason: "WhatsApp not configured" };
+      } else {
+        const chatId = normalizePhone(customerPhone);
+        const waRes = await fetch("https://api.wazzup24.com/v3/message", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${waConfig.api_key}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            channelId: waConfig.channel_id_uuid,
+            chatType: "whatsapp",
+            chatId,
+            text: waMessage,
+          }),
+        });
 
-    const resendBody = await resendRes.json();
-    const success = resendRes.ok;
+        const waOk = waRes.ok;
+        const waBody = waOk ? await waRes.json() : await waRes.text();
 
-    await supabase.from("correo_historial_envios").insert({
-      tipo_codigo: "seguwallet_bienvenida",
-      destinatario_email: c.email,
-      asunto: subject,
-      estado: success ? "enviado" : "fallido",
-      error_mensaje: success ? null : JSON.stringify(resendBody),
-      proveedor: "resend",
-      provider_message_id: success ? resendBody.id : null,
-    });
+        await supabase.from("correo_historial_envios").insert({
+          tipo_codigo: "seguwallet_bienvenida",
+          destinatario_email: c.email,
+          asunto: "Mensaje WhatsApp",
+          estado: waOk ? "enviado" : "fallido",
+          error_mensaje: waOk ? null : JSON.stringify(waBody),
+          proveedor: "wazzup",
+        });
 
-    return new Response(JSON.stringify({ success, resend: resendBody }), {
-      status: success ? 200 : 500,
+        results.whatsapp = { success: waOk };
+      }
+    } else {
+      const waPhone = customerPhone ? "has phone" : "no phone";
+      results.whatsapp = { skipped: true, reason: `whatsapp disabled in template or ${waPhone}` };
+    }
+
+    return new Response(JSON.stringify({ ok: true, results }), {
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
