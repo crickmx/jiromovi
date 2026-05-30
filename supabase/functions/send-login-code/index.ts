@@ -401,6 +401,8 @@ Deno.serve(async (req: Request) => {
     }
 
     // Log email delivery
+    // Note: destinatario_id / usuario_id only applies to MOVI users (in 'usuarios' table).
+    // Seguwallet customers have auth_user_id but no row in 'usuarios', so we omit these FKs.
     if (userEmail) {
       await supabase.from('correo_historial_envios').insert({
         tipo_notificacion_id: typeRow?.id || null,
@@ -408,10 +410,9 @@ Deno.serve(async (req: Request) => {
         tipo_codigo: templateCode,
         destinatario_email: userEmail,
         destinatario_nombre: userName,
-        destinatario_id: userId,
-        usuario_id: userId,
+        ...(platform === 'movi' ? { destinatario_id: userId, usuario_id: userId } : {}),
         asunto: emailSubject,
-        estado: emailSent ? 'enviado' : (resendApiKey ? 'error' : 'no_config'),
+        estado: emailSent ? 'enviado' : (resendApiKey ? 'fallido' : 'fallido'),
         error_mensaje: emailError,
         canal_envio: 'email',
         proveedor: 'resend',
@@ -462,10 +463,9 @@ Deno.serve(async (req: Request) => {
         tipo_notificacion_codigo: templateCode,
         tipo_codigo: templateCode,
         destinatario_nombre: userName,
-        destinatario_id: userId,
-        usuario_id: userId,
+        ...(platform === 'movi' ? { destinatario_id: userId, usuario_id: userId } : {}),
         numero_destino: userPhone,
-        estado: whatsappSent ? 'enviado' : (waApiKey ? 'error' : 'no_config'),
+        estado: whatsappSent ? 'enviado' : 'fallido',
         error_mensaje: whatsappError,
         canal_envio: 'whatsapp',
         proveedor: 'wazzup24',
