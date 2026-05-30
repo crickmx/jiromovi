@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ThemeMode, applyTheme, getStoredThemeMode, getSystemPrefersDark, storeThemeMode } from "@/lib/theme";
+import { type ThemeMode, applyTheme, getStoredThemeMode, getSystemPrefersDark, storeThemeMode } from "../lib/theme";
 
 export function useThemeMode() {
   const [mode, setMode] = useState<ThemeMode>("system");
