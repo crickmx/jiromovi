@@ -325,12 +325,12 @@ export default function Chava() {
                       className={cn(
                         "max-w-[75%] rounded-2xl px-4 py-3 shadow-sm",
                         isUser
-                          ? "bg-gradient-to-br from-cyan-600 to-blue-600 text-white rounded-br-md"
+                          ? "bg-gradient-to-br from-cyan-600 to-blue-700 rounded-br-md"
                           : "bg-white dark:bg-white/[0.05] border border-neutral-100 dark:border-white/8 text-neutral-800 dark:text-white/80 rounded-bl-md"
                       )}
                     >
                       {isUser ? (
-                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.contenido}</p>
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed text-white font-medium">{message.contenido}</p>
                       ) : structuredResponse ? (
                         <ResponseMessage response={structuredResponse} />
                       ) : (
