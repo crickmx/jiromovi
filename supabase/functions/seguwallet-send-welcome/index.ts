@@ -214,6 +214,7 @@ Deno.serve(async (req: Request) => {
         const emailOk = resendRes.ok;
 
         await supabase.from("correo_historial_envios").insert({
+          tipo_notificacion_codigo: "seguwallet_bienvenida",
           tipo_codigo: "seguwallet_bienvenida",
           destinatario_email: c.email,
           asunto: subject,
@@ -221,6 +222,7 @@ Deno.serve(async (req: Request) => {
           error_mensaje: emailOk ? null : JSON.stringify(resendBody),
           proveedor: "resend",
           provider_message_id: emailOk ? resendBody.id : null,
+          canal_envio: "email",
         });
 
         results.email = { success: emailOk, resend: resendBody };
@@ -262,12 +264,15 @@ Deno.serve(async (req: Request) => {
         const waBody = waOk ? await waRes.json() : await waRes.text();
 
         await supabase.from("correo_historial_envios").insert({
+          tipo_notificacion_codigo: "seguwallet_bienvenida",
           tipo_codigo: "seguwallet_bienvenida",
           destinatario_email: c.email,
           asunto: "Mensaje WhatsApp",
           estado: waOk ? "enviado" : "fallido",
           error_mensaje: waOk ? null : JSON.stringify(waBody),
           proveedor: "wazzup",
+          canal_envio: "whatsapp",
+          numero_destino: chatId,
         });
 
         results.whatsapp = { success: waOk };
