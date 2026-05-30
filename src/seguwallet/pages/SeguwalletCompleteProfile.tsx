@@ -150,6 +150,33 @@ export function SeguwalletCompleteProfile() {
         await supabase.from('seguwallet_customer_events').insert(events);
       }
 
+      // Fire transactional notifications to the agent (non-blocking)
+      if (customer.agent_user_id) {
+        if (needsProfileCompletion) {
+          supabase.rpc('notify', {
+            p_event_code: 'seguwallet_perfil_completado',
+            p_user_ids: [customer.agent_user_id],
+            p_payload: { cliente_nombre: customer.full_name || 'Cliente' },
+            p_entity_id: customer.id,
+          }).then(({ error }) => {
+            if (error) console.error('[complete-profile] notify perfil_completado error:', error);
+          });
+        }
+        if (needsTermsAcceptance && activeTerms) {
+          supabase.rpc('notify', {
+            p_event_code: 'seguwallet_terminos_aceptados',
+            p_user_ids: [customer.agent_user_id],
+            p_payload: {
+              cliente_nombre: customer.full_name || 'Cliente',
+              version_terminos: activeTerms.version,
+            },
+            p_entity_id: customer.id,
+          }).then(({ error }) => {
+            if (error) console.error('[complete-profile] notify terminos_aceptados error:', error);
+          });
+        }
+      }
+
       setStep('done');
       await refresh();
       setTimeout(() => navigate('/seguwallet/dashboard', { replace: true }), 1800);

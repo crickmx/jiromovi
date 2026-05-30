@@ -218,7 +218,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: tplData, error: tplErr } = await supabase
       .from("correo_plantillas")
-      .select("asunto, html_cuerpo, enviar_correo, enviar_whatsapp, whatsapp_plantilla, resend_channel_id, wazzup24_channel_id")
+      .select("asunto, html_cuerpo, enviar_correo, enviar_whatsapp, enviar_notificacion, whatsapp_plantilla, notificacion_titulo, notificacion_cuerpo, resend_channel_id, wazzup24_channel_id")
       .eq("tipo_notificacion_id", tipoData.id)
       .eq("es_plantilla_default", true)
       .maybeSingle();
@@ -396,6 +396,42 @@ Deno.serve(async (req: Request) => {
         ? "no phone on customer"
         : "no whatsapp template text";
       results.whatsapp = { skipped: true, reason };
+    }
+
+    // ── IN-APP CAMPANITA for agent ─────────────────────────────────────
+    if (customer.agent_user_id && (tplData.enviar_notificacion ?? false)) {
+      const bellTitle = tplData.notificacion_titulo
+        ? renderTemplate(tplData.notificacion_titulo, vars)
+        : `Nuevo cliente activado en SeguWallet`;
+      const bellBody = tplData.notificacion_cuerpo
+        ? renderTemplate(tplData.notificacion_cuerpo, vars)
+        : `${customer.full_name ?? "Un cliente"} ha sido activado en SeguWallet.`;
+
+      const { data: notifyResult, error: notifyErr } = await supabase.rpc("notify", {
+        p_event_code: "seguwallet_bienvenida",
+        p_user_ids: [customer.agent_user_id],
+        p_payload: { ...vars, titulo: bellTitle, cuerpo: bellBody },
+        p_entity_id: customer.id,
+      });
+
+      const bellOk = !notifyErr && (notifyResult as { jobs_created?: number })?.jobs_created > 0;
+      if (notifyErr) console.error("[send-welcome] notify() error:", notifyErr);
+
+      await supabase.from("correo_historial_envios").insert({
+        tipo_notificacion_codigo: "seguwallet_bienvenida",
+        tipo_codigo: "seguwallet_bienvenida",
+        destinatario_email: null,
+        usuario_id: customer.agent_user_id,
+        asunto: bellTitle,
+        estado: bellOk ? "enviado" : "fallido",
+        error_mensaje: notifyErr ? JSON.stringify(notifyErr) : null,
+        proveedor: "internal",
+        canal_envio: "notificacion",
+      });
+
+      results.bell = { success: bellOk, notify_result: notifyResult };
+    } else {
+      results.bell = { skipped: true, reason: !customer.agent_user_id ? "no agent" : "bell disabled in template" };
     }
 
     return new Response(JSON.stringify({ ok: true, results }), {

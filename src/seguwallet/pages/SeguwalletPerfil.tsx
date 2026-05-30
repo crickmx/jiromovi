@@ -712,6 +712,7 @@ export function SeguwalletPerfil() {
         <SeguwalletExpedienteModal
           customerId={customer.id}
           customerName={customer.full_name}
+          agentUserId={customer.agent_user_id}
           onClose={() => setShowExpediente(false)}
           readOnly={false}
         />

@@ -37,6 +37,7 @@ interface DocRecord {
 interface Props {
   customerId: string;
   customerName: string;
+  agentUserId?: string | null;
   onClose: () => void;
   readOnly?: boolean;
 }
@@ -55,7 +56,7 @@ function getFileIcon(mime: string | null) {
   return <File className="h-5 w-5 text-neutral-400" />;
 }
 
-export default function SeguwalletExpedienteModal({ customerId, customerName, onClose, readOnly = false }: Props) {
+export default function SeguwalletExpedienteModal({ customerId, customerName, agentUserId, onClose, readOnly = false }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [docs, setDocs] = useState<DocRecord[]>([]);
@@ -145,6 +146,21 @@ export default function SeguwalletExpedienteModal({ customerId, customerName, on
       setShowUploadForm(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
       await loadDocs();
+
+      // Notify agent (non-blocking)
+      if (agentUserId) {
+        supabase.rpc('notify', {
+          p_event_code: 'seguwallet_492_documento_cargado',
+          p_user_ids: [agentUserId],
+          p_payload: {
+            cliente_nombre: customerName || 'Cliente',
+            nombre_documento: uploadNombre.trim(),
+          },
+          p_entity_id: customerId,
+        }).then(({ error }) => {
+          if (error) console.error('[expediente] notify 492_documento_cargado error:', error);
+        });
+      }
     } catch (e: any) {
       setError(e.message || 'Error al subir documento.');
     } finally {
