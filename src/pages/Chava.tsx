@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Paperclip, FileText, X, Trash2, Plus, History, RefreshCw, WifiOff } from 'lucide-react';
+import { Send, Paperclip, FileText, X, Trash2, Plus, History, RefreshCw } from 'lucide-react';
 import { useAssistant } from '../contexts/AssistantContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
 import { getSuggestionsForRoute } from '../lib/suggestionsService';
 import { formatRelativeTime } from '../lib/assistantUtils';
 import { parseStructuredResponse } from '../lib/responseParser';
-import type { AssistantSuggestion } from '../lib/assistantTypes';
+import { sendChavaMessage } from '../lib/assistantService';
+import type { AssistantSuggestion, AssistantMessage } from '../lib/assistantTypes';
 import { Button } from '../components/ui/button';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { ResponseMessage } from '../components/assistant/ResponseMessage';
@@ -16,16 +17,14 @@ import { cn } from '@/lib/utils';
 
 export default function Chava() {
   const {
-    messages,
+    messages: contextMessages,
     conversations,
     conversationId,
-    sendMessage,
     loadConversation,
     deleteConversation,
     startNewConversation,
     openAssistant,
     isLoadingMessages,
-    isSendingMessage,
   } = useAssistant();
 
   const { usuario } = useAuth();
@@ -36,15 +35,26 @@ export default function Chava() {
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [hasError, setHasError] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [localMessages, setLocalMessages] = useState<AssistantMessage[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const messages = localMessages.length > 0 ? localMessages : contextMessages;
 
   useEffect(() => {
     trackAssistantOpened();
     openAssistant();
     loadSuggestions();
   }, []);
+
+  useEffect(() => {
+    if (contextMessages.length > 0) {
+      setLocalMessages(contextMessages);
+      setShowWelcome(false);
+    }
+  }, [contextMessages]);
 
   useEffect(() => {
     if (messages.length > 0) setShowWelcome(false);
@@ -69,23 +79,113 @@ export default function Chava() {
     messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
   };
 
-  const handleSend = async () => {
-    if ((!inputText.trim() && attachedFiles.length === 0) || isSendingMessage) return;
+  const doSend = async (overrideText?: string) => {
+    const text = overrideText || inputText.trim();
+    const files = overrideText ? [] : [...attachedFiles];
 
-    const text = inputText.trim();
-    const files = [...attachedFiles];
+    if ((!text && files.length === 0) || isSendingMessage) return;
 
-    setInputText('');
-    setAttachedFiles([]);
+    if (!overrideText) {
+      setInputText('');
+      setAttachedFiles([]);
+    }
     setHasError(false);
     setShowWelcome(false);
+    setIsSendingMessage(true);
 
     trackAssistantPromptSent(text);
+
+    const tempUserId = `temp-user-${Date.now()}`;
+    const messageText = files.length > 0
+      ? `${text}\n\n[${files.map(f => f.name).join(', ')}]`
+      : text;
+
+    const optimisticUserMessage: AssistantMessage = {
+      id: tempUserId,
+      conversacion_id: conversationId || '',
+      rol: 'user',
+      contenido: messageText,
+      respuesta_estructurada_json: null,
+      tiene_acciones: false,
+      created_at: new Date().toISOString(),
+    };
+
+    setLocalMessages(prev => [...prev, optimisticUserMessage]);
+
     try {
-      await sendMessage(text, undefined, files);
-      trackAssistantResponse();
-    } catch {
+      let uploadedFilePaths: string[] = [];
+      if (files.length > 0) {
+        const { supabase } = await import('../lib/supabase');
+        for (const file of files) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const filePath = `${usuario?.id}/${fileName}`;
+          const { error: uploadError } = await supabase.storage
+            .from('assistant-files')
+            .upload(filePath, file);
+          if (uploadError) throw new Error(`Error al subir archivo: ${file.name}`);
+          uploadedFilePaths.push(filePath);
+        }
+      }
+
+      const response = await sendChavaMessage({
+        conversacion_id: conversationId || '',
+        mensaje: text,
+        modulo: 'chava',
+        ruta: location.pathname,
+        parametros: {},
+        file_paths: uploadedFilePaths,
+      });
+
+      if (response) {
+        setLocalMessages(prev => {
+          const withoutTemp = prev.filter(m => m.id !== tempUserId);
+          return [
+            ...withoutTemp,
+            {
+              id: `msg-user-${Date.now()}`,
+              conversacion_id: conversationId || '',
+              rol: 'user',
+              contenido: messageText,
+              respuesta_estructurada_json: null,
+              tiene_acciones: false,
+              created_at: new Date().toISOString(),
+            },
+            {
+              id: response.mensaje_id || `msg-assistant-${Date.now()}`,
+              conversacion_id: conversationId || '',
+              rol: 'assistant',
+              contenido: response.respuesta || '',
+              respuesta_estructurada_json: response.respuesta_estructurada || null,
+              tiene_acciones: false,
+              created_at: new Date().toISOString(),
+            },
+          ];
+        });
+        trackAssistantResponse();
+      } else {
+        throw new Error('No se recibio respuesta de Chava');
+      }
+    } catch (error: any) {
+      console.error('Error sending chava message:', error);
       setHasError(true);
+      setLocalMessages(prev => {
+        const withoutTemp = prev.filter(m => m.id !== tempUserId);
+        return [
+          ...withoutTemp,
+          {
+            id: `temp-error-${Date.now()}`,
+            conversacion_id: conversationId || '',
+            rol: 'assistant',
+            contenido: error.message || 'Error al procesar tu mensaje.',
+            respuesta_estructurada_json: null,
+            tiene_acciones: false,
+            created_at: new Date().toISOString(),
+          },
+        ];
+      });
+    } finally {
+      setIsSendingMessage(false);
     }
   };
 
@@ -93,14 +193,13 @@ export default function Chava() {
     if (isSendingMessage) return;
     setShowWelcome(false);
     trackAssistantQuickPrompt(suggestion.texto_pregunta);
-    await sendMessage(suggestion.texto_pregunta);
-    trackAssistantResponse();
+    await doSend(suggestion.texto_pregunta);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      doSend();
     }
   };
 
@@ -130,6 +229,7 @@ export default function Chava() {
   const handleNewChat = async () => {
     setShowWelcome(true);
     setHasError(false);
+    setLocalMessages([]);
     await startNewConversation();
   };
 
@@ -206,6 +306,7 @@ export default function Chava() {
                         : "hover:bg-neutral-50 dark:hover:bg-white/[0.04] border border-transparent"
                     )}
                     onClick={() => {
+                      setLocalMessages([]);
                       loadConversation(conv.id);
                       setShowHistory(false);
                       setShowWelcome(false);
@@ -464,7 +565,7 @@ export default function Chava() {
                 />
               </div>
               <button
-                onClick={handleSend}
+                onClick={() => doSend()}
                 disabled={(!inputText.trim() && attachedFiles.length === 0) || isSendingMessage}
                 className={cn(
                   "p-3 rounded-xl transition-all duration-200 shadow-sm",

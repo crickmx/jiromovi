@@ -74,6 +74,7 @@ import Mercadotecnia from './pages/Mercadotecnia';
 import PaginaPublicaAsesor from './pages/PaginaPublicaAsesor';
 import ChatGPTTest from './pages/ChatGPTTest';
 import Chava from './pages/Chava';
+import ChavaAdmin from './pages/ChavaAdmin';
 import SicasTestCatalogs from './pages/SicasTestCatalogs';
 import SicasDiagnostico from './pages/SicasDiagnostico';
 import SicasRestTest from './pages/SicasRestTest';
@@ -209,6 +210,7 @@ function App() {
               <Route path="/admin/diagnostico" element={<ProtectedRoute requireAdmin><Layout><DiagnosticoWebhook /></Layout></ProtectedRoute>} />
               <Route path="/admin/asistentes" element={<ProtectedRoute requireAdminOrGerente><Layout><CentroContactoAsistentes /></Layout></ProtectedRoute>} />
               <Route path="/admin/asistentes/entrenamiento" element={<ProtectedRoute requireAdminOrGerente><Layout><AsistenteEntrenamiento /></Layout></ProtectedRoute>} />
+              <Route path="/admin/chava-ia" element={<ProtectedRoute requireAdmin><Layout><ChavaAdmin /></Layout></ProtectedRoute>} />
               <Route path="/admin/ia" element={<Navigate to="/chatgpt-test" replace />} />
               <Route path="/vacaciones" element={<ProtectedRoute excludeAgente><Layout><Vacaciones /></Layout></ProtectedRoute>} />
               <Route path="/espacio-jiro" element={<ProtectedRoute><Layout><EspacioJiro /></Layout></ProtectedRoute>} />
