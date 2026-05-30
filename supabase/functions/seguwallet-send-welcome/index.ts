@@ -17,7 +17,7 @@ interface CustomerRecord {
   id: string;
   full_name: string | null;
   email: string | null;
-  agent_id: string | null;
+  agent_user_id: string | null;
   status: string | null;
 }
 
@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: customer, error: custErr } = await supabase
       .from("seguwallet_customers")
-      .select("id, full_name, email, agent_id, status")
+      .select("id, full_name, email, agent_user_id, status")
       .eq("id", customerId)
       .maybeSingle();
 
@@ -130,9 +130,9 @@ Deno.serve(async (req: Request) => {
       web_slug: null,
     };
 
-    if (c.agent_id) {
+    if (c.agent_user_id) {
       const { data: brandData } = await supabase.rpc("get_agent_brand_for_seguwallet", {
-        p_agent_id: c.agent_id,
+        p_agent_id: c.agent_user_id,
       });
       if (brandData) brand = brandData as Brand;
     }

@@ -55,9 +55,20 @@ export default function ActivarSeguwalletModal({ contacto, onClose, onSuccess }:
       const crmId = contacto.source === 'crm' ? contacto.id : null;
 
       if (customerId) {
+        // Link to CRM contact
         await supabase.rpc('link_seguwallet_to_crm_contact', {
           p_customer_id: customerId,
           p_crm_contact_id: crmId,
+        });
+
+        // Send welcome notification (email + WhatsApp)
+        await fetch(`${supabaseUrl}/functions/v1/seguwallet-send-welcome`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ customer_id: customerId }),
         });
       }
 
