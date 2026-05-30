@@ -4,7 +4,7 @@ import {
   RefreshCw, ChevronRight, TrendingUp, Shield, FileText,
   AlertTriangle, Users, Target, BookOpen, FolderOpen,
   Activity, MessageCircle, Zap, Sparkles, Clock,
-  ArrowRight, Bell
+  Bell
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ChavaAvatar } from './chava/ChavaAvatar';
@@ -55,12 +55,6 @@ const BULLET_SECTION_LABELS: Record<string, string> = {
   marketing: 'Marketing',
   courses: 'Capacitacion',
   documents: 'Documentos',
-};
-
-const PRIORITY_TAG: Record<BulletPriority, { bg: string; text: string; label: string }> = {
-  high: { bg: 'bg-amber-500/15 border border-amber-500/25', text: 'text-amber-300', label: 'Urgente' },
-  medium: { bg: 'bg-sky-500/15 border border-sky-500/25', text: 'text-sky-300', label: 'Importante' },
-  low: { bg: 'bg-white/8 border border-white/10', text: 'text-white/40', label: 'Info' },
 };
 
 export function SmartAnalysisCard({ result, loading, onRefresh, userName }: Props) {
@@ -126,10 +120,6 @@ export function SmartAnalysisCard({ result, loading, onRefresh, userName }: Prop
     ? result.updatedMinutesAgo < 1 ? 'Ahora mismo' : `Hace ${result.updatedMinutesAgo} min`
     : null;
 
-  const greeting = userName
-    ? `Hola ${userName.split(' ')[0]}, revise tu operacion`
-    : 'Revise tu operacion';
-
   const subtitle = hasStructured
     ? structured!.title || 'Esto es lo que encontre'
     : 'Analizando tu actividad...';
@@ -168,7 +158,9 @@ export function SmartAnalysisCard({ result, loading, onRefresh, userName }: Prop
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
-              <span className="text-xs font-bold text-cyan-400 tracking-wider uppercase">Chava</span>
+              <span className="text-xs font-bold text-cyan-400 tracking-wider uppercase">
+                {userName ? `Hola ${userName.split(' ')[0]}` : 'Chava'}
+              </span>
               {result.source === 'chatgpt' && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-cyan-500/15 border border-cyan-500/20 text-cyan-300">
                   <Sparkles className="w-2.5 h-2.5" />
@@ -291,7 +283,6 @@ export function SmartAnalysisCard({ result, loading, onRefresh, userName }: Prop
 // ── Chat bubble component ──
 function ChatBubble({ bullet, visible }: { bullet: AnalysisBullet; visible: boolean }) {
   const Icon = BULLET_ICONS[bullet.type] || Activity;
-  const tag = PRIORITY_TAG[bullet.priority];
   const sectionLabel = BULLET_SECTION_LABELS[bullet.type] || 'Nota';
 
   return (
