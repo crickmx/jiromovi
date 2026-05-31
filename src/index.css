@@ -3,6 +3,9 @@
 :root {
   --sw-primary: #0F4C81;
   --sw-accent: #10B981;
+  /* MOVI Digital default accent (overridden per-office by themeUtils.applyTheme) */
+  --movi-accent-rgb: 22, 66, 129;
+  --movi-accent-foreground-rgb: 255, 255, 255;
   font-family: 'Inter', system-ui, sans-serif;
 }
 

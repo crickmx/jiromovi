@@ -46,6 +46,10 @@ export default function ChavaAgenteAuthModal({ onClose, pendingMessage }: Props)
     setLoading(true);
     try {
       const result = await login(email.trim());
+      if (!result.email_sent && !result.whatsapp_sent) {
+        setError('No encontramos una cuenta con ese correo. ¿Aún no tienes cuenta? Usa "Soy nuevo".');
+        return;
+      }
       setEmailSent(result.email_sent);
       setWhatsappSent(result.whatsapp_sent);
       setMaskedEmail(result.masked_email);

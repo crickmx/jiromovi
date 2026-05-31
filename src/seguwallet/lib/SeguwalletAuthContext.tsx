@@ -120,6 +120,7 @@ export function SeguwalletAuthProvider({ children }: { children: ReactNode }) {
           event === 'INITIAL_SESSION') &&
         session
       ) {
+        setLoading(true);
         (async () => { await loadProfile(session.user.id); })();
       } else if (event === 'SIGNED_OUT') {
         console.log('[SwAuth] signed out');

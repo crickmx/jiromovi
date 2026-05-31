@@ -104,15 +104,48 @@ export function ChavaAgenteProvider({ children }: { children: ReactNode }) {
   }
 
   async function register(data: RegisterData) {
-    // First ensure the auth user exists via signUp (no email confirmation needed)
-    const { error: signUpError } = await supabase.auth.signUp({
+    // Create or get the Supabase auth user
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: data.email.trim().toLowerCase(),
-      password: crypto.randomUUID(), // random password — user never uses it
+      password: crypto.randomUUID(),
       options: { emailRedirectTo: undefined },
     });
     // Ignore "already registered" errors
     if (signUpError && !signUpError.message.toLowerCase().includes('already')) {
       throw signUpError;
+    }
+
+    // Get the auth user id — either from signUp or from existing session
+    let authUserId: string | null = signUpData?.user?.id ?? null;
+    if (!authUserId) {
+      const { data: { user } } = await supabase.auth.getUser();
+      authUserId = user?.id ?? null;
+    }
+
+    // Create a provisional chava_agente_users record so send-login-code can find the user
+    if (authUserId) {
+      const { data: existing } = await supabase
+        .from('chava_agente_users')
+        .select('id')
+        .eq('auth_user_id', authUserId)
+        .maybeSingle();
+
+      if (!existing) {
+        await supabase.from('chava_agente_users').insert({
+          auth_user_id: authUserId,
+          nombre_completo: data.nombre_completo,
+          email: data.email.trim().toLowerCase(),
+          whatsapp: data.whatsapp || null,
+          estado: data.estado || null,
+          codigo_postal: data.codigo_postal || null,
+          tipo_usuario: data.tipo_usuario,
+          plataforma_origen: 'externo',
+          terminos_aceptados: true,
+          terminos_version: data.terms_version,
+          terminos_fecha: new Date().toISOString(),
+          estatus: 'activo',
+        });
+      }
     }
 
     // Store pending registration data to finalize after code verification
@@ -191,14 +224,20 @@ export function ChavaAgenteProvider({ children }: { children: ReactNode }) {
     const pendingRaw = sessionStorage.getItem('chava_pending_registration');
     if (pendingRaw) {
       const pending: RegisterData = JSON.parse(pendingRaw);
+      // Update the provisional record with any missing term audit info
       const { data: existing } = await supabase
         .from('chava_agente_users')
         .select('id')
         .eq('auth_user_id', user.id)
         .maybeSingle();
 
-      if (!existing) {
-        await createChavaUserAfterAuth(user.id, pending);
+      if (existing) {
+        await supabase.from('chava_agente_user_terms').upsert({
+          chava_user_id: existing.id,
+          version: pending.terms_version,
+          accepted_at: new Date().toISOString(),
+          ip_address: pending.terms_ip || null,
+        }, { onConflict: 'chava_user_id,version' });
       }
       sessionStorage.removeItem('chava_pending_registration');
     }
