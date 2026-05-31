@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, ArrowRight, ChevronLeft, RotateCcw, CheckCircle } from 'lucide-react';
+import { Mail, ArrowRight, ChevronLeft, RotateCcw, CircleCheck as CheckCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-const SEGUWALLET_LOGO = 'https://app.seguwallet.mx/seguwallet-logo.png';
+const SEGUWALLET_LOGO = '/seguwallet-logo.png';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
