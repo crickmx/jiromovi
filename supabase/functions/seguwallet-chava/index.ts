@@ -15,6 +15,16 @@ interface RequestBody {
   context_extra?: Record<string, unknown> | null;
 }
 
+interface Fuente {
+  tipo: "seguwallet" | "sicas" | "movi" | "conocimiento" | "internet" | "ia";
+  descripcion: string;
+  modulo?: string;
+  documento?: string;
+  url?: string;
+  fecha_actualizacion?: string;
+  confianza: "alta" | "media" | "baja";
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -28,7 +38,7 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Verify JWT and get auth user
+    // Verify JWT
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header");
 
@@ -58,16 +68,20 @@ Deno.serve(async (req: Request) => {
 
     if (custError || !customer) throw new Error("Cliente no autorizado");
 
+    // Track which sources we actually loaded
+    const fuentes: Fuente[] = [];
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const nowStr = now.toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
+
     // Gather customer context in parallel
     const [polizasRes, cobranzaRes, docsRes, agentRes, sicasRes] = await Promise.all([
-      // Policies
       supabase.from("seguwallet_external_policies")
         .select("insurer_name,ramo,policy_number,status,start_date,end_date,total_premium,currency,payment_frequency,insured_name,beneficiaries")
         .eq("seguwallet_customer_id", customer_id)
         .is("deleted_at", null)
         .order("end_date", { ascending: true }),
 
-      // Billing
       customer.agent_user_id
         ? supabase.from("sicas_cobranza_pendiente")
             .select("no_poliza,importe_pendiente,fecha_limite,dias_vencidos,status")
@@ -76,13 +90,11 @@ Deno.serve(async (req: Request) => {
             .limit(10)
         : Promise.resolve({ data: [] }),
 
-      // Documents
       supabase.from("seguwallet_customer_documents")
         .select("nombre_archivo,tipo_documento,descripcion")
         .eq("seguwallet_customer_id", customer_id)
         .limit(20),
 
-      // Agent info
       customer.agent_user_id
         ? supabase.from("usuarios")
             .select("nombre,apellidos,celular_laboral,celular_personal,email_laboral,url_web_jiro,oficina_id,imagen_perfil_url")
@@ -90,7 +102,6 @@ Deno.serve(async (req: Request) => {
             .maybeSingle()
         : Promise.resolve({ data: null }),
 
-      // SICAS policies
       customer.agent_user_id
         ? supabase.from("sicas_polizas_vigentes")
             .select("no_poliza,aseguradora,ramo,contratante,asegurado,vigencia_desde,vigencia_hasta,prima_total")
@@ -105,7 +116,47 @@ Deno.serve(async (req: Request) => {
     const agente = agentRes.data;
     const sicasPolizas = sicasRes.data || [];
 
-    // Get office info if agent has one
+    // Register Seguwallet as source if we have user data
+    if (polizas.length > 0) {
+      fuentes.push({
+        tipo: "seguwallet",
+        descripcion: `${polizas.length} póliza${polizas.length !== 1 ? "s" : ""} registrada${polizas.length !== 1 ? "s" : ""} en tu cuenta`,
+        modulo: "Mis Pólizas",
+        fecha_actualizacion: nowIso,
+        confianza: "alta",
+      });
+    }
+    if (documentos.length > 0) {
+      fuentes.push({
+        tipo: "seguwallet",
+        descripcion: `${documentos.length} documento${documentos.length !== 1 ? "s" : ""} en tu expediente`,
+        modulo: "Documentos",
+        fecha_actualizacion: nowIso,
+        confianza: "alta",
+      });
+    }
+
+    // Register SICAS as source if we have data
+    if (cobranza.length > 0) {
+      fuentes.push({
+        tipo: "sicas",
+        descripcion: `${cobranza.length} recibo${cobranza.length !== 1 ? "s" : ""} de cobranza pendiente${cobranza.length !== 1 ? "s" : ""}`,
+        modulo: "Cobranza",
+        fecha_actualizacion: nowIso,
+        confianza: "alta",
+      });
+    }
+    if (sicasPolizas.length > 0) {
+      fuentes.push({
+        tipo: "sicas",
+        descripcion: `${sicasPolizas.length} póliza${sicasPolizas.length !== 1 ? "s" : ""} vigente${sicasPolizas.length !== 1 ? "s" : ""} en sistema de la aseguradora`,
+        modulo: "Pólizas SICAS",
+        fecha_actualizacion: nowIso,
+        confianza: "alta",
+      });
+    }
+
+    // Get office info
     let oficina: Record<string, unknown> | null = null;
     if (agente?.oficina_id) {
       const { data: of } = await supabase
@@ -116,8 +167,19 @@ Deno.serve(async (req: Request) => {
       oficina = of;
     }
 
-    // Get RAG context from knowledge base
+    if (agente || oficina) {
+      fuentes.push({
+        tipo: "movi",
+        descripcion: `Datos del agente ${agente ? `${agente.nombre} ${agente.apellidos}` : oficina?.nombre}`,
+        modulo: "Directorio",
+        fecha_actualizacion: nowIso,
+        confianza: "alta",
+      });
+    }
+
+    // Get RAG knowledge base context
     let ragContext = "";
+    let ragDocs: { titulo?: string; fuente?: string }[] = [];
     try {
       const { data: fragmentos } = await supabase
         .from("chava_fragmentos")
@@ -125,16 +187,31 @@ Deno.serve(async (req: Request) => {
         .limit(5);
       if (fragmentos && fragmentos.length > 0) {
         ragContext = fragmentos.map((f: { contenido: string }) => f.contenido).join("\n\n");
+        ragDocs = fragmentos.map((f: { metadata?: { titulo?: string; fuente?: string } }) => f.metadata || {});
       }
     } catch {
-      // RAG is optional, continue without it
+      // RAG is optional
     }
 
-    // Build system prompt
-    const agenteNombre = agente ? `${agente.nombre} ${agente.apellidos}` : oficina?.nombre || "tu agente";
-    const now = new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
+    if (ragContext) {
+      const docNames = ragDocs
+        .map(d => d.titulo || d.fuente || "")
+        .filter(Boolean)
+        .slice(0, 2)
+        .join(", ");
+      fuentes.push({
+        tipo: "conocimiento",
+        descripcion: docNames
+          ? `Base de conocimiento: ${docNames}`
+          : "Base de conocimiento de seguros",
+        documento: docNames || "Base de conocimiento",
+        confianza: "media",
+      });
+    }
 
-    let systemPrompt = `Eres Chava, la asistente digital de seguros de ${agenteNombre}${oficina ? ` (${oficina.nombre})` : ""}. Hoy es ${now}.
+    const agenteNombre = agente ? `${agente.nombre} ${agente.apellidos}` : oficina?.nombre || "tu agente";
+
+    let systemPrompt = `Eres Chava, la asistente digital de seguros de ${agenteNombre}${oficina ? ` (${oficina.nombre})` : ""}. Hoy es ${nowStr}.
 
 PERSONALIDAD:
 - Habla de forma clara, amable y humana
@@ -176,8 +253,7 @@ ${sicasPolizas.length === 0 ? "Sin información SICAS disponible." : sicasPoliza
 ).join("\n")}`;
 
     if (ragContext) {
-      systemPrompt += `\n\nBASE DE CONOCIMIENTO:
-${ragContext.substring(0, 2000)}`;
+      systemPrompt += `\n\nBASE DE CONOCIMIENTO:\n${ragContext.substring(0, 2000)}`;
     }
 
     if (poliza_contexto) {
@@ -195,7 +271,7 @@ REGLAS IMPORTANTES:
 6. Usa formato claro con saltos de línea cuando sea útil
 7. Nunca menciones datos de otros clientes`;
 
-    // Get conversation history (last 8 messages)
+    // Get conversation history
     const { data: historial } = await supabase
       .from("seguwallet_chava_messages")
       .select("rol,contenido")
@@ -205,12 +281,22 @@ REGLAS IMPORTANTES:
 
     const mensajesHistorial = (historial || []).reverse();
 
-    // Call OpenAI via chatgpt-query pattern or directly
     const openaiKey = Deno.env.get("OPENAI_API_KEY");
     if (!openaiKey) {
-      // Fallback response without AI
       const fallback = buildFallbackResponse(pregunta, customer.full_name, polizas, cobranza, agente, agenteNombre, oficina);
-      return new Response(JSON.stringify({ respuesta: fallback, modo: "fallback", tiempo_ms: Date.now() - startTime }), {
+      // For fallback, mark as IA inference with low confidence
+      fuentes.push({
+        tipo: "ia",
+        descripcion: "Respuesta generada sin modelo de IA (modo fallback)",
+        confianza: "baja",
+      });
+      return new Response(JSON.stringify({
+        respuesta: fallback,
+        fuentes,
+        confianza_general: "baja",
+        modo: "fallback",
+        tiempo_ms: Date.now() - startTime,
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -248,8 +334,30 @@ REGLAS IMPORTANTES:
     const tokens_entrada = aiJson.usage?.prompt_tokens || 0;
     const tokens_salida = aiJson.usage?.completion_tokens || 0;
 
+    // Determine if the answer relied heavily on real data vs AI inference
+    const hasRealData = polizas.length > 0 || cobranza.length > 0 || sicasPolizas.length > 0;
+    const q = pregunta.toLowerCase();
+    const asksAboutGeneral = q.includes("cómo") || q.includes("qué es") || q.includes("explica") || q.includes("significado");
+
+    // Add AI source if answer likely includes inference
+    if (!hasRealData || asksAboutGeneral) {
+      fuentes.push({
+        tipo: "ia",
+        descripcion: "Conocimiento general de seguros (GPT-4o mini)",
+        confianza: hasRealData ? "media" : "baja",
+      });
+    }
+
+    // Compute overall confidence
+    const confianza_general: "alta" | "media" | "baja" =
+      fuentes.every(f => f.confianza === "alta") ? "alta"
+      : fuentes.some(f => f.confianza === "alta") ? "media"
+      : "baja";
+
     return new Response(JSON.stringify({
       respuesta,
+      fuentes,
+      confianza_general,
       modelo: "gpt-4o-mini",
       tokens_entrada,
       tokens_salida,
@@ -304,7 +412,7 @@ function buildFallbackResponse(
   if (q.includes("agente") || q.includes("contactar") || q.includes("teléfono") || q.includes("llamar")) {
     const tel = (agente?.celular_laboral as string) || (oficina?.telefono as string);
     const email = (agente?.email_laboral as string) || (oficina?.email as string);
-    return `Tu agente es **${agenteNombre}**${oficina ? ` de ${oficina.nombre}` : ""}.\n\n${tel ? `📞 Teléfono: ${tel}\n` : ""}${email ? `📧 Email: ${email}\n` : ""}\nPuedes contactarlo directamente para cualquier consulta sobre tus seguros.`;
+    return `Tu agente es **${agenteNombre}**${oficina ? ` de ${oficina.nombre}` : ""}.\n\n${tel ? `Teléfono: ${tel}\n` : ""}${email ? `Email: ${email}\n` : ""}\nPuedes contactarlo directamente para cualquier consulta sobre tus seguros.`;
   }
 
   if (q.includes("siniestro") || q.includes("accidente") || q.includes("reportar")) {

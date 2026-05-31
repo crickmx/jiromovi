@@ -1,15 +1,31 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Sparkles, Send, RotateCcw, Phone, Mail, MessageCircle, Globe, X, ChevronDown, FileText, CreditCard, Shield, TriangleAlert as AlertTriangle, BookOpen, User } from 'lucide-react';
+import {
+  Sparkles, Send, RotateCcw, Phone, Mail, MessageCircle, Globe, X,
+  ChevronDown, FileText, CreditCard, Shield, TriangleAlert as AlertTriangle,
+  BookOpen, User, Database, Server, Brain, ChevronUp, ExternalLink, Info,
+} from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+
+interface Fuente {
+  tipo: 'seguwallet' | 'sicas' | 'movi' | 'conocimiento' | 'internet' | 'ia';
+  descripcion: string;
+  modulo?: string;
+  documento?: string;
+  url?: string;
+  fecha_actualizacion?: string;
+  confianza: 'alta' | 'media' | 'baja';
+}
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   created_at: string;
+  fuentes?: Fuente[];
+  confianza_general?: 'alta' | 'media' | 'baja';
 }
 
 interface QuickAction {
@@ -26,6 +42,152 @@ const QUICK_ACTIONS: QuickAction[] = [
   { label: 'Mis coberturas', icon: <BookOpen className="w-3.5 h-3.5" />, prompt: '¿Qué cubre mi seguro?' },
   { label: 'Contactar agente', icon: <User className="w-3.5 h-3.5" />, prompt: '¿Cómo puedo contactar a mi agente?' },
 ];
+
+const FUENTE_CONFIG: Record<Fuente['tipo'], {
+  label: string;
+  icon: React.ReactNode;
+  color: string;
+  bg: string;
+  border: string;
+}> = {
+  seguwallet: {
+    label: 'Seguwallet',
+    icon: <Shield className="w-3 h-3" />,
+    color: 'text-blue-700',
+    bg: 'bg-blue-50',
+    border: 'border-blue-100',
+  },
+  sicas: {
+    label: 'SICAS',
+    icon: <Database className="w-3 h-3" />,
+    color: 'text-teal-700',
+    bg: 'bg-teal-50',
+    border: 'border-teal-100',
+  },
+  movi: {
+    label: 'MOVI',
+    icon: <Server className="w-3 h-3" />,
+    color: 'text-slate-700',
+    bg: 'bg-slate-100',
+    border: 'border-slate-200',
+  },
+  conocimiento: {
+    label: 'Base de conocimiento',
+    icon: <BookOpen className="w-3 h-3" />,
+    color: 'text-amber-700',
+    bg: 'bg-amber-50',
+    border: 'border-amber-100',
+  },
+  internet: {
+    label: 'Internet',
+    icon: <Globe className="w-3 h-3" />,
+    color: 'text-emerald-700',
+    bg: 'bg-emerald-50',
+    border: 'border-emerald-100',
+  },
+  ia: {
+    label: 'Inferencia IA',
+    icon: <Brain className="w-3 h-3" />,
+    color: 'text-slate-500',
+    bg: 'bg-slate-50',
+    border: 'border-slate-100',
+  },
+};
+
+const CONFIANZA_CONFIG = {
+  alta:  { dot: 'bg-emerald-500', text: 'text-emerald-700', label: 'Alta confianza' },
+  media: { dot: 'bg-amber-400',   text: 'text-amber-700',   label: 'Confianza media' },
+  baja:  { dot: 'bg-red-400',     text: 'text-red-600',     label: 'Baja confianza' },
+};
+
+function FuenteChip({ fuente }: { fuente: Fuente }) {
+  const cfg = FUENTE_CONFIG[fuente.tipo];
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${cfg.bg} ${cfg.color} ${cfg.border}`}>
+      {cfg.icon}
+      {cfg.label}
+    </span>
+  );
+}
+
+function FuentesPanel({ fuentes, confianza }: { fuentes: Fuente[]; confianza?: 'alta' | 'media' | 'baja' }) {
+  const [open, setOpen] = useState(false);
+  const conf = confianza ? CONFIANZA_CONFIG[confianza] : null;
+
+  return (
+    <div className="mt-2">
+      {/* Source chips row */}
+      <div className="flex items-center flex-wrap gap-1.5 mb-1.5">
+        {fuentes.map((f, i) => <FuenteChip key={i} fuente={f} />)}
+        {conf && (
+          <span className={`inline-flex items-center gap-1 text-xs font-medium ${conf.text}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${conf.dot}`} />
+            {conf.label}
+          </span>
+        )}
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors ml-auto"
+        >
+          <Info className="w-3 h-3" />
+          {open ? 'Ocultar fuentes' : 'Ver fuentes'}
+          {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        </button>
+      </div>
+
+      {/* Expanded panel */}
+      {open && (
+        <div className="rounded-xl border border-slate-100 bg-slate-50 divide-y divide-slate-100 overflow-hidden text-xs">
+          {fuentes.map((f, i) => {
+            const cfg = FUENTE_CONFIG[f.tipo];
+            const fConf = CONFIANZA_CONFIG[f.confianza];
+            return (
+              <div key={i} className="px-3 py-2 flex items-start gap-2">
+                <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center ${cfg.bg} ${cfg.color}`}>
+                  {cfg.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className={`font-semibold ${cfg.color}`}>{cfg.label}</span>
+                    {f.modulo && (
+                      <span className="text-slate-400">· {f.modulo}</span>
+                    )}
+                    <span className={`inline-flex items-center gap-0.5 ${fConf.text}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${fConf.dot}`} />
+                      {fConf.label}
+                    </span>
+                  </div>
+                  <p className="text-slate-500 mt-0.5 leading-snug">{f.descripcion}</p>
+                  {f.documento && (
+                    <p className="text-slate-400 mt-0.5">Documento: {f.documento}</p>
+                  )}
+                  {f.fecha_actualizacion && (
+                    <p className="text-slate-400 mt-0.5">
+                      Actualizado: {new Date(f.fecha_actualizacion).toLocaleDateString('es-MX', {
+                        day: '2-digit', month: 'short', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit',
+                      })}
+                    </p>
+                  )}
+                  {f.url && (
+                    <a href={f.url} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-blue-600 hover:underline mt-0.5">
+                      <ExternalLink className="w-2.5 h-2.5" />
+                      Ver fuente
+                    </a>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          <div className="px-3 py-2 text-slate-400 bg-white">
+            Chava usa exclusivamente información real de tus cuentas vinculadas. La IA complementa con conocimiento general de seguros cuando corresponde.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ChavaSeguwallet() {
   const { customer, agent, office } = useAuth();
@@ -76,7 +238,6 @@ export default function ChavaSeguwallet() {
 
     if (data) {
       setConversacionId(data.id);
-      // Build welcome message
       const welcome = buildWelcome();
       const welcomeMsg: Message = {
         id: 'welcome',
@@ -85,7 +246,6 @@ export default function ChavaSeguwallet() {
         created_at: new Date().toISOString(),
       };
       setMessages([welcomeMsg]);
-      // Save welcome msg to DB
       await supabase.from('seguwallet_chava_messages').insert({
         conversacion_id: data.id,
         rol: 'assistant',
@@ -100,12 +260,12 @@ export default function ChavaSeguwallet() {
       return `Hola ${firstName}, soy Chava. Estoy revisando tu póliza de **${polizaCtx.ramo || 'seguro'}** con **${polizaCtx.aseguradora}** (${polizaCtx.polizaNumero}). ¿Qué quieres saber sobre ella?`;
     }
     if (polizaCtx?.modulo === 'cobranza') {
-      return `Hola ${firstName}, soy Chava. Veo que tienes **${polizaCtx.totalRecibos} recibo${(polizaCtx.totalRecibos || 0) !== 1 ? 's' : ''}** pendientes por un total aproximado. ¿Quieres que te explique los detalles de tus pagos?`;
+      return `Hola ${firstName}, soy Chava. Veo que tienes **${polizaCtx.totalRecibos} recibo${(polizaCtx.totalRecibos || 0) !== 1 ? 's' : ''}** pendientes. ¿Quieres que te explique los detalles de tus pagos?`;
     }
     if (polizaCtx?.modulo === 'documentos') {
       return `Hola ${firstName}, soy Chava. Estoy aquí para ayudarte a entender tus documentos de seguros. ¿Tienes alguna duda sobre tus pólizas, condiciones generales o trámites?`;
     }
-    return `Hola ${firstName}, soy **Chava**, tu asistente digital de seguros. Estoy aquí para ayudarte con tus pólizas, pagos, coberturas y cualquier duda sobre tus seguros. ¿En qué puedo ayudarte hoy?`;
+    return `Hola ${firstName}, soy **Chava**, tu asistente digital de seguros. Estoy aquí para ayudarte con tus pólizas, pagos, coberturas y cualquier duda. ¿En qué puedo ayudarte hoy?`;
   }
 
   async function sendMessage(text?: string) {
@@ -122,7 +282,6 @@ export default function ChavaSeguwallet() {
     setInput('');
     setSending(true);
 
-    // Save user message
     await supabase.from('seguwallet_chava_messages').insert({
       conversacion_id: conversacionId,
       rol: 'user',
@@ -150,17 +309,18 @@ export default function ChavaSeguwallet() {
       );
 
       const json = await res.json();
-      const respuesta = json.respuesta || json.error || 'Lo siento, no pude procesar tu pregunta en este momento. Por favor intenta de nuevo.';
+      const respuesta = json.respuesta || json.error || 'Lo siento, no pude procesar tu pregunta. Por favor intenta de nuevo.';
 
       const assistantMsg: Message = {
         id: `a-${Date.now()}`,
         role: 'assistant',
         content: respuesta,
         created_at: new Date().toISOString(),
+        fuentes: json.fuentes || [],
+        confianza_general: json.confianza_general,
       };
       setMessages(prev => [...prev, assistantMsg]);
 
-      // Save assistant message
       await supabase.from('seguwallet_chava_messages').insert({
         conversacion_id: conversacionId,
         rol: 'assistant',
@@ -168,7 +328,6 @@ export default function ChavaSeguwallet() {
         tokens_usados: json.tokens || null,
       });
 
-      // Audit log
       await supabase.from('seguwallet_chava_audit').insert({
         customer_id: customer.id,
         conversacion_id: conversacionId,
@@ -180,6 +339,7 @@ export default function ChavaSeguwallet() {
         tokens_salida: json.tokens_salida || null,
         tiempo_respuesta_ms: json.tiempo_ms || null,
         modo_usado: json.modo || 'hybrid',
+        fuentes_rag: json.fuentes ? JSON.stringify(json.fuentes) : null,
       });
 
     } catch {
@@ -217,10 +377,11 @@ export default function ChavaSeguwallet() {
   return (
     <Layout>
       <div className="flex flex-col h-[calc(100vh-7rem)] max-h-[800px]">
-        {/* Chava header */}
+        {/* Header */}
         <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
           <div className="relative">
-            <div className="w-11 h-11 rounded-2xl flex items-center justify-center shadow-sm" style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)` }}>
+            <div className="w-11 h-11 rounded-2xl flex items-center justify-center shadow-sm"
+              style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)` }}>
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-white" />
@@ -306,12 +467,20 @@ export default function ChavaSeguwallet() {
                   <Sparkles className="w-4 h-4 text-white" />
                 </div>
               )}
-              <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                msg.role === 'user'
-                  ? 'bg-blue-600 text-white rounded-tr-md'
-                  : 'bg-white border border-slate-100 text-slate-800 rounded-tl-md shadow-sm'
-              }`}>
-                <span dangerouslySetInnerHTML={{ __html: renderContent(msg.content) }} />
+              <div className={`max-w-[80%] ${msg.role === 'user' ? '' : 'flex-1'}`}>
+                <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                  msg.role === 'user'
+                    ? 'bg-blue-600 text-white rounded-tr-md'
+                    : 'bg-white border border-slate-100 text-slate-800 rounded-tl-md shadow-sm'
+                }`}>
+                  <span dangerouslySetInnerHTML={{ __html: renderContent(msg.content) }} />
+                </div>
+                {/* Citations panel — only for assistant messages with sources */}
+                {msg.role === 'assistant' && msg.fuentes && msg.fuentes.length > 0 && (
+                  <div className="mt-1 px-1">
+                    <FuentesPanel fuentes={msg.fuentes} confianza={msg.confianza_general} />
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -379,7 +548,7 @@ export default function ChavaSeguwallet() {
             </button>
           </div>
           <p className="text-xs text-center text-slate-300 mt-2">
-            Chava proporciona orientación general. Para decisiones importantes, consulta con tu agente.
+            Chava indica siempre las fuentes de la información. Para decisiones importantes, consulta con tu agente.
           </p>
         </div>
       </div>
