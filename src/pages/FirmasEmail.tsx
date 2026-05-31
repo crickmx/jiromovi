@@ -58,3 +58,4 @@ export function FirmasEmail() {
     </div>
   );
 }
+export default FirmasEmail;

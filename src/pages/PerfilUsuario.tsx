@@ -696,3 +696,4 @@ export function PerfilUsuario() {
     </div>
   );
 }
+export default PerfilUsuario;

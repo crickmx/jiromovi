@@ -438,3 +438,4 @@ export function SegurosEducation() {
     </>
   );
 }
+export default SegurosEducation;

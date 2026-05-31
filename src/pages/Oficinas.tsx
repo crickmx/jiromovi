@@ -839,3 +839,4 @@ export function Oficinas() {
     </div>
   );
 }
+export default Oficinas;

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { XCircle, RefreshCw, Save, ChevronDown, AlertCircle, ClipboardList } from 'lucide-react';
+import { Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
@@ -586,3 +586,4 @@ export function TramiteDetalle() {
     </div>
   );
 }
+export default TramiteDetalle;

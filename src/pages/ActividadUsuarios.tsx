@@ -1,12 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import {
-  Activity, Users, LogIn, GraduationCap, ClipboardList,
-  Search, Filter, Download, ChevronLeft, ChevronRight,
-  UserCheck, UserX, TrendingUp, Megaphone, BookOpen, BarChart3,
-  Eye, X, Shield, Monitor
-} from 'lucide-react';
+import { Activity, Users, LogIn, GraduationCap, ClipboardList, Search, ListFilter as Filter, Download, ChevronLeft, ChevronRight, UserCheck, UserX, TrendingUp, Megaphone, BookOpen, ChartBar as BarChart3, Eye, X, Shield, Monitor } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { cn } from '@/lib/utils';
 
@@ -725,3 +720,4 @@ function DetailRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+export default ActividadUsuarios;

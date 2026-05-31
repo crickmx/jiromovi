@@ -461,3 +461,4 @@ export function CentroNotificacionesContent() {
     </div>
   );
 }
+export default CentroNotificaciones;

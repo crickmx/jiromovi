@@ -1634,3 +1634,4 @@ export function SegurosEducationOnDemand() {
     </>
   );
 }
+export default SegurosEducationOnDemand;

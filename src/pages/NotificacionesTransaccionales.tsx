@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Mail, FileText, Send, CheckCircle2, XCircle, Clock, AlertCircle, RefreshCw, Radio } from 'lucide-react';
+import { Mail, FileText, Send, CircleCheck as CheckCircle2, Circle as XCircle, Clock, CircleAlert as AlertCircle, RefreshCw, Radio } from 'lucide-react';
 import { TiposNotificaciones } from '../components/notificaciones/TiposNotificaciones';
 import { HistorialEnvios } from '../components/notificaciones/HistorialEnvios';
 import { CanalesNotificacion } from '../components/notificaciones/CanalesNotificacion';
@@ -168,3 +168,4 @@ export function NotificacionesTransaccionales() {
     </div>
   );
 }
+export default NotificacionesTransaccionales;

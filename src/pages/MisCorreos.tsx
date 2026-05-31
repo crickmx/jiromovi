@@ -1,10 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  Mail, X, RefreshCw, Send, AlertCircle, CheckCircle, User, Clock,
-  Inbox, Send as SendIcon, FileText, AlertTriangle, Trash2, Folder,
-  Plus, Paperclip, Eye, EyeOff, ChevronDown, ChevronUp, Bold, Italic,
-  Underline, Link as LinkIcon, Image as ImageIcon
-} from 'lucide-react';
+import { Mail, X, RefreshCw, Send, CircleAlert as AlertCircle, CircleCheck as CheckCircle, User, Clock, Inbox, Send as SendIcon, FileText, TriangleAlert as AlertTriangle, Trash2, Folder, Plus, Paperclip, Eye, EyeOff, ChevronDown, ChevronUp, Bold, Italic, Underline, Link as LinkIcon, Image as ImageIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { PageHeader } from '@/components/ui/page-header';
@@ -657,3 +652,4 @@ export function MisCorreos() {
     </>
   );
 }
+export default MisCorreos;

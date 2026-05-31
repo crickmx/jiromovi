@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Image, Video, Plus, Filter, Trash2, Palette } from 'lucide-react';
+import { Image, Video, Plus, ListFilter as Filter, Trash2, Palette } from 'lucide-react';
 import { NuevaPlantillaModal } from '../components/NuevaPlantillaModal';
 import { PersonalizarPlantillaModal } from '../components/PersonalizarPlantillaModal';
 import { PlanMKTPremiumBlock } from '../components/PlanMKTPremiumBlock';
@@ -519,3 +519,4 @@ export function Publicidad() {
     </div>
   );
 }
+export default Publicidad;

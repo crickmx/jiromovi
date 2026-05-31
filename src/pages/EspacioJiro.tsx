@@ -723,3 +723,4 @@ export function EspacioJiro() {
     </>
   );
 }
+export default EspacioJiro;

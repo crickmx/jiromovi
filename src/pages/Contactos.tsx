@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { PageHeader } from '@/components/ui/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
 import { Button } from '@/components/ui/button';
-import { Users, Plus, Search, CreditCard as Edit2, Trash2, Save, X, Mail, Phone, Building2, Calendar, Filter, Download, Upload } from 'lucide-react';
+import { Users, Plus, Search, CreditCard as Edit2, Trash2, Save, X, Mail, Phone, Building2, Calendar, ListFilter as Filter, Download, Upload } from 'lucide-react';
 
 interface Contacto {
   id: string;
@@ -537,3 +537,4 @@ export function Contactos() {
     </div>
   );
 }
+export default Contactos;

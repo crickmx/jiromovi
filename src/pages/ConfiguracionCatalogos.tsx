@@ -34,3 +34,4 @@ export function ConfiguracionCatalogos() {
     </div>
   );
 }
+export default ConfiguracionCatalogos;

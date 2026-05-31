@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, Palmtree } from 'lucide-react';
+import { Calendar, Clock, CircleCheck as CheckCircle, Circle as XCircle, CircleAlert as AlertCircle, TreePalm as Palmtree } from 'lucide-react';
 import { calcularDiasLaborables, formatearFecha, getEstadoBadgeClass, getEstadoLabel } from '../lib/vacacionesUtils';
 import type { Database } from '../lib/database.types';
 import { PageHeader } from '@/components/ui/page-header';
@@ -646,3 +646,4 @@ export function Vacaciones() {
     </div>
   );
 }
+export default Vacaciones;

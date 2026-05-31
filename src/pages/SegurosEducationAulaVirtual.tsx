@@ -763,3 +763,4 @@ function GrabacionesModal({
     </BaseModal>
   );
 }
+export default SegurosEducationAulaVirtual;

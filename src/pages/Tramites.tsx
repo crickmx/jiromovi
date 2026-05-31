@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { ClipboardList, Plus, Search, AlertCircle, Clock, CheckCircle2, FileText, Settings, Users, BarChart3, X } from 'lucide-react';
+import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X } from 'lucide-react';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
 import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
@@ -638,3 +638,4 @@ export function Tramites() {
     </div>
   );
 }
+export default Tramites;

@@ -515,3 +515,4 @@ export function Configuracion() {
     </div>
   );
 }
+export default Configuracion;

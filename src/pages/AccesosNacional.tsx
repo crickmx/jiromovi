@@ -895,3 +895,4 @@ export function AccesosNacional() {
     </>
   );
 }
+export default AccesosNacional;

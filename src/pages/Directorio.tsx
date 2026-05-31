@@ -593,3 +593,4 @@ export function Directorio() {
     </div>
   );
 }
+export default Directorio;
