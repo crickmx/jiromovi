@@ -1,9 +1,8 @@
 import { useState, type ReactNode } from 'react';
-import { supabase } from '../../lib/supabase';
 import { useChavaAgente, type RegisterData } from '../lib/ChavaAgenteContext';
 import { TIPO_USUARIO_LABELS, type TipoUsuario } from '../lib/types';
 import { ChavaBrandLogo } from '../../components/chava/ChavaBrandLogo';
-import { X, Mail, ArrowRight, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Loader as Loader2, User, Phone, MapPin } from 'lucide-react';
+import { X, Mail, ArrowRight, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Loader as Loader2, User, Phone, MapPin, MessageSquare } from 'lucide-react';
 
 type Step = 'choice' | 'login_email' | 'login_otp' | 'register_form' | 'register_otp' | 'success';
 
@@ -13,12 +12,15 @@ interface Props {
 }
 
 export default function ChavaAgenteAuthModal({ onClose, pendingMessage }: Props) {
-  const { login, register, refreshUser, terms } = useChavaAgente();
+  const { login, register, verifyCode, terms } = useChavaAgente();
   const [step, setStep] = useState<Step>('choice');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [whatsappSent, setWhatsappSent] = useState(false);
+  const [maskedEmail, setMaskedEmail] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<RegisterData, 'email' | 'terms_version' | 'terms_ip'>>({
     nombre_completo: '',
     whatsapp: '',
@@ -43,7 +45,10 @@ export default function ChavaAgenteAuthModal({ onClose, pendingMessage }: Props)
     setError('');
     setLoading(true);
     try {
-      await login(email.trim());
+      const result = await login(email.trim());
+      setEmailSent(result.email_sent);
+      setWhatsappSent(result.whatsapp_sent);
+      setMaskedEmail(result.masked_email);
       setStep('login_otp');
     } catch (e: any) {
       setError(e.message || 'Error al enviar el código');
@@ -52,22 +57,41 @@ export default function ChavaAgenteAuthModal({ onClose, pendingMessage }: Props)
     }
   }
 
-  async function handleVerifyOtp(_isRegister = false) {
+  async function handleVerifyOtp(isRegister = false) {
     if (!otp.trim() || otp.length < 6) return;
     setError('');
     setLoading(true);
     try {
-      const { error: verifyError } = await supabase.auth.verifyOtp({
-        email,
-        token: otp,
-        type: 'email',
-      });
-      if (verifyError) throw verifyError;
-      await refreshUser();
+      await verifyCode(email.trim(), otp.trim());
       setStep('success');
       setTimeout(() => onClose(), 1200);
     } catch (e: any) {
-      setError('Código inválido o expirado. Verifica e intenta de nuevo.');
+      if (e.code === 'EXPIRED') {
+        setError('El código ha expirado. Solicita uno nuevo.');
+        setStep(isRegister ? 'register_form' : 'login_email');
+      } else if (e.code === 'MAX_ATTEMPTS') {
+        setError('Demasiados intentos. Solicita un nuevo código.');
+        setStep(isRegister ? 'register_form' : 'login_email');
+      } else if (e.remaining_attempts !== undefined) {
+        setError(e.message || 'Código incorrecto.');
+      } else {
+        setError('Código inválido o expirado. Verifica e intenta de nuevo.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResendCode(isRegister = false) {
+    setError('');
+    setLoading(true);
+    try {
+      const result = await login(email.trim());
+      setEmailSent(result.email_sent);
+      setWhatsappSent(result.whatsapp_sent);
+      setOtp('');
+    } catch (e: any) {
+      setError(e.message || 'Error al reenviar el código');
     } finally {
       setLoading(false);
     }
@@ -85,7 +109,10 @@ export default function ChavaAgenteAuthModal({ onClose, pendingMessage }: Props)
         email: email.trim(),
         terms_version: terms?.version || '1.0',
       };
-      await register(regData);
+      const result = await register(regData);
+      setEmailSent(result.email_sent);
+      setWhatsappSent(result.whatsapp_sent);
+      setMaskedEmail(result.masked_email);
       setStep('register_otp');
     } catch (e: any) {
       setError(e.message || 'Error al crear cuenta');
@@ -94,6 +121,8 @@ export default function ChavaAgenteAuthModal({ onClose, pendingMessage }: Props)
     }
   }
 
+  const isRegisterStep = step === 'register_otp';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
@@ -101,9 +130,7 @@ export default function ChavaAgenteAuthModal({ onClose, pendingMessage }: Props)
 
         {/* Header */}
         <div className="px-6 py-5 flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #0D6EFD 0%, #0A183D 100%)' }}>
-          <div className="flex items-center gap-3">
-            <ChavaBrandLogo size="sm" animate />
-          </div>
+          <ChavaBrandLogo size="sm" animate />
           <div className="flex items-center gap-3">
             <p className="text-sm font-medium text-white opacity-80">
               {step === 'choice' && 'Accede a tu cuenta'}
@@ -188,35 +215,78 @@ export default function ChavaAgenteAuthModal({ onClose, pendingMessage }: Props)
             </div>
           )}
 
-          {/* Login — OTP */}
+          {/* OTP step (login or register) */}
           {(step === 'login_otp' || step === 'register_otp') && (
             <div className="space-y-4">
               <div className="text-center">
                 <div className="w-12 h-12 rounded-full bg-cyan-100 flex items-center justify-center mx-auto mb-3">
                   <Mail className="w-6 h-6 text-cyan-600" />
                 </div>
-                <p className="text-sm text-slate-600">Te enviamos un código de 6 dígitos a</p>
-                <p className="text-sm font-semibold text-slate-800 mt-1">{email}</p>
+                <p className="text-sm font-semibold text-slate-800">Revisa tu correo</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  Te enviamos un código de 6 caracteres
+                  {maskedEmail ? ` a ${maskedEmail}` : ''}
+                </p>
               </div>
+
+              {/* Channel confirmation badges */}
+              <div className="flex items-center justify-center gap-3">
+                {emailSent && (
+                  <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1">
+                    <Mail className="w-3 h-3" />
+                    Correo enviado
+                  </div>
+                )}
+                {whatsappSent && (
+                  <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1">
+                    <MessageSquare className="w-3 h-3" />
+                    WhatsApp enviado
+                  </div>
+                )}
+              </div>
+
               <div>
-                <label className="text-xs font-medium text-slate-600 mb-1 block">Código de verificación</label>
+                <label className="text-xs font-medium text-slate-600 mb-1 block">Código de acceso</label>
                 <input
                   type="text"
-                  inputMode="numeric"
+                  inputMode="text"
                   maxLength={6}
                   value={otp}
-                  onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
-                  onKeyDown={e => e.key === 'Enter' && handleVerifyOtp(step === 'register_otp')}
-                  placeholder="000000"
+                  onChange={e => setOtp(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
+                  onKeyDown={e => e.key === 'Enter' && handleVerifyOtp(isRegisterStep)}
+                  placeholder="ABC123"
                   autoFocus
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-center tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-cyan-400 font-mono"
+                  autoComplete="one-time-code"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-center tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-cyan-400 font-mono uppercase"
                 />
+                <p className="text-[10px] text-slate-400 mt-1.5 text-center">El código vence en 10 minutos</p>
               </div>
+
               {error && <ErrorMsg>{error}</ErrorMsg>}
-              <button onClick={() => handleVerifyOtp(step === 'register_otp')} disabled={loading || otp.length < 6} className="w-full btn-primary">
+
+              <button
+                onClick={() => handleVerifyOtp(isRegisterStep)}
+                disabled={loading || otp.length < 6}
+                className="w-full btn-primary"
+              >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Verificar'}
               </button>
-              <button onClick={() => setStep(step === 'register_otp' ? 'register_form' : 'login_email')} className="w-full text-xs text-slate-500 hover:text-slate-700">Cambiar email</button>
+
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setStep(isRegisterStep ? 'register_form' : 'login_email')}
+                  className="text-xs text-slate-500 hover:text-slate-700"
+                >
+                  Cambiar email
+                </button>
+                <button
+                  onClick={() => handleResendCode(isRegisterStep)}
+                  disabled={loading}
+                  className="text-xs text-cyan-600 hover:text-cyan-700 font-medium disabled:opacity-50"
+                >
+                  Reenviar código
+                </button>
+              </div>
             </div>
           )}
 
@@ -307,7 +377,7 @@ export default function ChavaAgenteAuthModal({ onClose, pendingMessage }: Props)
                     <button type="button" onClick={() => setShowTerms(true)} className="text-cyan-600 underline hover:text-cyan-700">términos y condiciones</button>
                     {' '}y la{' '}
                     <button type="button" onClick={() => setShowPrivacy(true)} className="text-cyan-600 underline hover:text-cyan-700">política de privacidad</button>
-                    {' '}de Chava Agente y Grupo JIRO.
+                    {' '}de Chava AI y Grupo JIRO.
                   </span>
                 </label>
               </div>
@@ -394,4 +464,3 @@ function ErrorMsg({ children }: { children: ReactNode }) {
     </div>
   );
 }
-

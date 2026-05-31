@@ -6,8 +6,9 @@ interface ChavaAgenteContextValue {
   chavaUser: ChavaUser | null;
   terms: ChavaTerms | null;
   loading: boolean;
-  login: (email: string) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  login: (email: string) => Promise<{ email_sent: boolean; whatsapp_sent: boolean; masked_email: string | null }>;
+  register: (data: RegisterData) => Promise<{ email_sent: boolean; whatsapp_sent: boolean; masked_email: string | null }>;
+  verifyCode: (email: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -22,6 +23,9 @@ export interface RegisterData {
   terms_version: string;
   terms_ip?: string;
 }
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 const ChavaAgenteContext = createContext<ChavaAgenteContextValue | null>(null);
 
@@ -77,28 +81,75 @@ export function ChavaAgenteProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }
 
-  async function login(email: string) {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: false },
+  async function sendCode(email: string) {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/send-login-code`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({ email: email.trim().toLowerCase(), platform: 'chava' }),
     });
-    if (error) throw error;
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Error al enviar el código');
+    return {
+      email_sent: json.email_sent as boolean,
+      whatsapp_sent: json.whatsapp_sent as boolean,
+      masked_email: json.masked_email as string | null,
+    };
+  }
+
+  async function login(email: string) {
+    return sendCode(email);
   }
 
   async function register(data: RegisterData) {
-    // Sign up with OTP — creates auth user if not exists
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email: data.email,
-      options: { shouldCreateUser: true },
+    // First ensure the auth user exists via signUp (no email confirmation needed)
+    const { error: signUpError } = await supabase.auth.signUp({
+      email: data.email.trim().toLowerCase(),
+      password: crypto.randomUUID(), // random password — user never uses it
+      options: { emailRedirectTo: undefined },
     });
-    if (otpError) throw otpError;
-    // After OTP verification the edge function or trigger will create chava_agente_users row.
-    // We store registration data in sessionStorage so we can finalize after OTP.
+    // Ignore "already registered" errors
+    if (signUpError && !signUpError.message.toLowerCase().includes('already')) {
+      throw signUpError;
+    }
+
+    // Store pending registration data to finalize after code verification
     sessionStorage.setItem('chava_pending_registration', JSON.stringify(data));
+
+    // Send OTP code via MOVI channels
+    return sendCode(data.email);
+  }
+
+  async function verifyCode(email: string, code: string) {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/verify-login-code`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim().toUpperCase(), platform: 'chava' }),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      const err: any = new Error(json.error || 'Código inválido');
+      err.code = json.code;
+      err.remaining_attempts = json.remaining_attempts;
+      throw err;
+    }
+
+    // Verify session using the hashed token returned from the edge function
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      token_hash: json.token_hash,
+      type: 'magiclink',
+    });
+    if (verifyError) throw verifyError;
+
+    await refreshUser();
   }
 
   async function createChavaUserAfterAuth(authUserId: string, pending: RegisterData) {
-    // Insert chava user
     const { data: newUser, error } = await supabase
       .from('chava_agente_users')
       .insert({
@@ -118,9 +169,8 @@ export function ChavaAgenteProvider({ children }: { children: ReactNode }) {
       .select('*')
       .single();
 
-    if (error && error.code !== '23505') throw error; // ignore duplicate
+    if (error && error.code !== '23505') throw error;
 
-    // Record terms acceptance
     if (newUser) {
       await supabase.from('chava_agente_user_terms').upsert({
         chava_user_id: newUser.id,
@@ -138,7 +188,6 @@ export function ChavaAgenteProvider({ children }: { children: ReactNode }) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Check if pending registration needs to be finalized
     const pendingRaw = sessionStorage.getItem('chava_pending_registration');
     if (pendingRaw) {
       const pending: RegisterData = JSON.parse(pendingRaw);
@@ -163,7 +212,7 @@ export function ChavaAgenteProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ChavaAgenteContext.Provider value={{ chavaUser, terms, loading, login, register, logout, refreshUser }}>
+    <ChavaAgenteContext.Provider value={{ chavaUser, terms, loading, login, register, verifyCode, logout, refreshUser }}>
       {children}
     </ChavaAgenteContext.Provider>
   );

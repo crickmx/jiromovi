@@ -104,7 +104,7 @@ Deno.serve(async (req: Request) => {
     const { email, phone, platform } = await req.json() as {
       email?: string;
       phone?: string;
-      platform: 'movi' | 'seguwallet';
+      platform: 'movi' | 'seguwallet' | 'chava';
     };
 
     const identifier = email?.trim().toLowerCase() || phone?.trim();
@@ -138,6 +138,24 @@ Deno.serve(async (req: Request) => {
       userEmail = usuario.email_laboral;
       userPhone = usuario.celular_laboral;
       userName = usuario.nombre;
+    } else if (platform === 'chava') {
+      // Chava AI users — look up chava_agente_users, send via MOVI channels
+      const { data: chavaUser } = await supabase
+        .from('chava_agente_users')
+        .select('id, auth_user_id, email, nombre_completo, whatsapp, estatus')
+        .eq('email', identifier)
+        .maybeSingle();
+
+      if (!chavaUser || chavaUser.estatus === 'inactivo' || chavaUser.estatus === 'bloqueado') {
+        // Silent success — don't reveal whether user exists
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      userId = chavaUser.auth_user_id;
+      userEmail = chavaUser.email;
+      userPhone = chavaUser.whatsapp;
+      userName = chavaUser.nombre_completo;
     } else {
       const { data: customer } = await supabase
         .from('seguwallet_customers')
@@ -219,8 +237,8 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── Build template vars ────────────────────────────────────────────────────
-    const brandName = platform === 'movi' ? 'MOVI Digital' : 'Seguwallet';
-    const templateCode = platform === 'movi' ? 'acceso_passwordless' : 'acceso_passwordless_seguwallet';
+    const brandName = platform === 'seguwallet' ? 'Seguwallet' : platform === 'chava' ? 'Chava AI' : 'MOVI Digital';
+    const templateCode = platform === 'seguwallet' ? 'acceso_passwordless_seguwallet' : 'acceso_passwordless';
 
     const vars: Record<string, string> = {
       nombre: userName || '',
@@ -403,7 +421,6 @@ Deno.serve(async (req: Request) => {
         destinatario_email: userEmail,
         destinatario_nombre: userName,
         ...(platform === 'movi' ? { destinatario_id: userId, usuario_id: userId } : {}),
-        asunto: emailSubject,
         estado: emailSent ? 'enviado' : (resendApiKey ? 'fallido' : 'fallido'),
         error_mensaje: emailError,
         canal_envio: 'email',

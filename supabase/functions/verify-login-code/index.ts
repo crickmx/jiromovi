@@ -33,13 +33,13 @@ Deno.serve(async (req: Request) => {
       email?: string;
       code?: string;
       magic_token?: string;
-      platform: 'movi' | 'seguwallet';
+      platform: 'movi' | 'seguwallet' | 'chava';
       redirect_to?: string;
     };
 
     const { email, code, magic_token, platform, redirect_to } = body;
 
-    if (!platform || (platform !== 'movi' && platform !== 'seguwallet')) {
+    if (!platform || (platform !== 'movi' && platform !== 'seguwallet' && platform !== 'chava')) {
       return new Response(JSON.stringify({ error: 'Plataforma inválida.' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
