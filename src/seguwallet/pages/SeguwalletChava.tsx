@@ -280,24 +280,7 @@ export function SeguwalletChava() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) throw new Error('Sin sesión activa');
 
-      // Build context about the customer
-      const customerContext = customer ? `
-INFORMACIÓN DEL CLIENTE SEGUWALLET:
-- Nombre: ${customer.full_name}
-- Email: ${customer.email}
-- Estado de perfil: ${customer.profile_completed ? 'Completo' : 'Incompleto'}
-- Cuenta activa desde: ${new Date(customer.created_at).toLocaleDateString('es-MX')}
-` : '';
-
-      const agentContext = brand.agentName ? `
-AGENTE ASIGNADO:
-- Nombre: ${brand.agentName}
-- Oficina: ${brand.officeName || 'N/A'}
-- Email: ${brand.email || 'N/A'}
-- WhatsApp: ${brand.whatsapp || 'N/A'}
-` : '';
-
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chava-query`;
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/seguwallet-chava`;
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -305,15 +288,9 @@ AGENTE ASIGNADO:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          mensaje: msg,
-          conversacion_id: conversationId || undefined,
-          modulo: 'seguwallet',
-          ruta: '/sw/chava',
-          parametros: {
-            customer_context: customerContext,
-            agent_context: agentContext,
-            is_seguwallet: true,
-          },
+          pregunta: msg,
+          conversacion_id: conversationId || `sw-${Date.now()}`,
+          customer_id: customer?.id,
         }),
       });
 
@@ -324,33 +301,19 @@ AGENTE ASIGNADO:
 
       const data = await response.json();
 
-      if (data.conversacion_id && !conversationId) {
-        setConversationId(data.conversacion_id);
-      }
-
-      // Determine confidence based on sources
-      let confidence: 'alta' | 'media' | 'baja' = 'media';
-      if (data.fuentes && data.fuentes.length > 0) {
-        const maxSim = Math.max(...data.fuentes.map((f: any) => f.similitud || 0));
-        confidence = maxSim > 0.85 ? 'alta' : maxSim > 0.70 ? 'media' : 'baja';
-      } else {
-        confidence = 'baja';
-      }
-
-      // Build sources list
-      const sources: SourceInfo[] = [];
-      if (customerContext) sources.push({ tipo: 'Seguwallet', descripcion: 'Datos de tu cuenta' });
-      if (data.fuentes && data.fuentes.length > 0) {
-        for (const f of data.fuentes.slice(0, 3)) {
-          sources.push({ tipo: 'Base de conocimiento', descripcion: f.documento_titulo || 'Documento' });
-        }
-      }
+      // Build sources list from the response fuentes
+      const sources: SourceInfo[] = (data.fuentes || []).slice(0, 4).map((f: any) => ({
+        tipo: f.tipo || 'Fuente',
+        descripcion: f.descripcion || f.documento || 'Información',
+      }));
       if (sources.length === 0) sources.push({ tipo: 'IA General', descripcion: 'Conocimiento de Chava IA' });
+
+      const confidence: 'alta' | 'media' | 'baja' = data.confianza_general || 'media';
 
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.respuesta || data.mensaje || 'Sin respuesta',
+        content: data.respuesta || 'Sin respuesta',
         timestamp: new Date(),
         sources,
         confidence,
@@ -362,7 +325,7 @@ AGENTE ASIGNADO:
     } finally {
       setIsTyping(false);
     }
-  }, [input, isTyping, conversationId, customer, brand]);
+  }, [input, isTyping, conversationId, customer]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
