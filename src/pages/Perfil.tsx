@@ -1,89 +1,77 @@
-import { useAuth } from '../contexts/AuthContext';
+import { useEffect } from 'react';
+import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { Layout } from '../components/Layout';
-import { User, Phone, Mail, MapPin, Shield, Globe, MessageCircle } from 'lucide-react';
+import { PageHeader } from '../components/ui/page-header';
+import { User, Phone, Mail, MapPin, Shield, Building2 } from 'lucide-react';
 
 export default function Perfil() {
-  const { customer, agent, office } = useAuth();
+  useEffect(() => { document.title = 'Mi Perfil · MOVI Digital'; }, []);
+  const { usuario } = useMoviAuth();
 
-  const agentName = agent ? `${agent.nombre} ${agent.apellidos}` : null;
+  if (!usuario) return null;
+
+  const fullName = `${usuario.nombre || ''} ${usuario.apellidos || ''}`.trim();
 
   return (
     <Layout>
-      <h1 className="text-xl font-bold text-slate-800 mb-6">Mi Perfil</h1>
+      <PageHeader title="Mi Perfil" subtitle="Información de tu cuenta MOVI Digital." />
 
-      {/* Customer card */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-5 mb-4">
-        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">Mis datos</h2>
-        <div className="flex items-center gap-4 mb-4">
-          <div className="w-14 h-14 rounded-2xl bg-blue-100 flex items-center justify-center flex-shrink-0">
-            <User className="w-7 h-7 text-blue-600" />
-          </div>
-          <div>
-            <p className="font-bold text-slate-800 text-lg">{customer?.full_name}</p>
-            <p className="text-slate-500 text-sm">{customer?.email}</p>
-          </div>
-        </div>
-        <div className="grid sm:grid-cols-2 gap-3 text-sm">
-          {customer?.phone && (
-            <div className="flex items-center gap-2 text-slate-600">
-              <Phone className="w-4 h-4 text-slate-300" />{customer.phone}
+      <div className="mt-6 max-w-2xl space-y-5">
+        {/* Identity card */}
+        <div className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200 dark:border-white/[0.06] p-6">
+          <div className="flex items-center gap-4 mb-5">
+            <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+              <User className="w-7 h-7 text-accent" />
             </div>
-          )}
-          {customer?.whatsapp && (
-            <div className="flex items-center gap-2 text-slate-600">
-              <MessageCircle className="w-4 h-4 text-slate-300" />WhatsApp: {customer.whatsapp}
+            <div>
+              <p className="font-bold text-slate-800 dark:text-white text-lg">{fullName}</p>
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-accent/10 text-accent mt-1">
+                <Shield className="w-3 h-3" />
+                {usuario.rol}
+              </span>
             </div>
-          )}
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            {usuario.email_laboral && (
+              <div className="flex items-start gap-3">
+                <Mail className="w-4 h-4 text-neutral-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-neutral-400 font-medium uppercase tracking-wide">Correo</p>
+                  <p className="text-sm text-slate-700 dark:text-white/80 mt-0.5">{usuario.email_laboral}</p>
+                </div>
+              </div>
+            )}
+            {usuario.celular_laboral && (
+              <div className="flex items-start gap-3">
+                <Phone className="w-4 h-4 text-neutral-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-neutral-400 font-medium uppercase tracking-wide">Teléfono</p>
+                  <p className="text-sm text-slate-700 dark:text-white/80 mt-0.5">{usuario.celular_laboral}</p>
+                </div>
+              </div>
+            )}
+            {usuario.oficina?.nombre && (
+              <div className="flex items-start gap-3">
+                <Building2 className="w-4 h-4 text-neutral-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-neutral-400 font-medium uppercase tracking-wide">Oficina</p>
+                  <p className="text-sm text-slate-700 dark:text-white/80 mt-0.5">{usuario.oficina.nombre}</p>
+                </div>
+              </div>
+            )}
+            {usuario.oficina?.domicilio && (
+              <div className="flex items-start gap-3">
+                <MapPin className="w-4 h-4 text-neutral-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-neutral-400 font-medium uppercase tracking-wide">Domicilio</p>
+                  <p className="text-sm text-slate-700 dark:text-white/80 mt-0.5">{usuario.oficina.domicilio}</p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Agent card */}
-      {(agent || office) && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 mb-4">
-          <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">Mi agente</h2>
-          <div className="flex items-center gap-4 mb-4">
-            {agent?.imagen_perfil_url ? (
-              <img src={agent.imagen_perfil_url} alt={agentName || ''} className="w-14 h-14 rounded-2xl object-cover" />
-            ) : (
-              <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center flex-shrink-0">
-                <Shield className="w-7 h-7 text-slate-400" />
-              </div>
-            )}
-            <div>
-              <p className="font-bold text-slate-800">{agentName || office?.nombre}</p>
-              {office?.nombre && agentName && <p className="text-slate-500 text-sm">{office.nombre}</p>}
-            </div>
-          </div>
-          <div className="grid sm:grid-cols-2 gap-3 text-sm">
-            {agent?.celular_laboral && (
-              <a href={`tel:${agent.celular_laboral}`} className="flex items-center gap-2 text-blue-600 hover:text-blue-700">
-                <Phone className="w-4 h-4" />{agent.celular_laboral}
-              </a>
-            )}
-            {agent?.email_laboral && (
-              <a href={`mailto:${agent.email_laboral}`} className="flex items-center gap-2 text-blue-600 hover:text-blue-700">
-                <Mail className="w-4 h-4" />{agent.email_laboral}
-              </a>
-            )}
-            {agent?.url_web_jiro && (
-              <a href={agent.url_web_jiro} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-600 hover:text-blue-700">
-                <Globe className="w-4 h-4" />Portal web
-              </a>
-            )}
-            {office?.whatsapp && (
-              <a href={`https://wa.me/${office.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-2 text-emerald-600 hover:text-emerald-700">
-                <MessageCircle className="w-4 h-4" />WhatsApp
-              </a>
-            )}
-            {office?.domicilio && (
-              <div className="flex items-center gap-2 text-slate-600 sm:col-span-2">
-                <MapPin className="w-4 h-4 text-slate-300" />{office.domicilio}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </Layout>
   );
 }
