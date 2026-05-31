@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, ArrowRight, ChevronLeft, RotateCcw, CircleCheck as CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useMoviAuth } from '../contexts/MoviAuthContext';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -38,24 +37,15 @@ export default function MoviLogin() {
   useEffect(() => { document.title = 'MOVI Digital'; }, []);
 
   const navigate = useNavigate();
-  const { loading: authLoading } = useMoviAuth();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [maskedEmail, setMaskedEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [verifying, setVerifying] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const codeInputRef = useRef<HTMLInputElement>(null);
-
-  // Once auth context has resolved after OTP verification, navigate
-  useEffect(() => {
-    if (!authLoading && verifying) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [authLoading, verifying, navigate]);
 
   useEffect(() => {
     return () => { if (cooldownRef.current) clearInterval(cooldownRef.current); };
@@ -145,8 +135,7 @@ export default function MoviLogin() {
         setError('Error al crear la sesión. Intenta de nuevo.');
         return;
       }
-      // Signal that we're waiting for AuthContext to load the profile
-      setVerifying(true);
+      navigate('/dashboard', { replace: true });
     } catch {
       setError('Error de conexión. Intenta de nuevo.');
     } finally {
