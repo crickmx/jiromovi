@@ -11,3 +11,63 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; background: #F8FAFC; color: #111827; -webkit-font-smoothing: antialiased; }
+
+/* ── MOVI Primary Sidebar Rail ──────────────────────────────────────────── */
+.sidebar-rail {
+  background: #0d1117;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.sidebar-rail-logo-btn {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  transition: background 0.15s ease;
+}
+.sidebar-rail-logo-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.sidebar-rail-sep {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-rail-btn {
+  color: rgba(255, 255, 255, 0.45);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.sidebar-rail-btn:hover {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.07);
+}
+.sidebar-rail-btn.active {
+  color: rgb(var(--movi-accent-rgb));
+  background: rgb(var(--movi-accent-rgb) / 0.14);
+  border-color: rgb(var(--movi-accent-rgb) / 0.25);
+}
+
+.sidebar-rail-avatar-ring {
+  padding: 2px;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  transition: border-color 0.15s ease;
+}
+.sidebar-rail-avatar-ring:hover {
+  border-color: rgb(var(--movi-accent-rgb) / 0.5);
+}
+
+.sidebar-rail-avatar-fallback {
+  background: rgb(var(--movi-accent-rgb) / 0.25);
+  color: rgb(var(--movi-accent-rgb));
+}
+
+.sidebar-rail-signout {
+  color: rgba(255, 255, 255, 0.30);
+  background: transparent;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.sidebar-rail-signout:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.10);
+}

@@ -139,24 +139,105 @@ Deno.serve(async (req: Request) => {
       userPhone = usuario.celular_laboral;
       userName = usuario.nombre;
     } else if (platform === 'chava') {
-      // Chava AI users — look up chava_agente_users, send via MOVI channels
+      // Chava AI users — look up chava_agente_users first
       const { data: chavaUser } = await supabase
         .from('chava_agente_users')
         .select('id, auth_user_id, email, nombre_completo, whatsapp, estatus')
         .eq('email', identifier)
         .maybeSingle();
 
-      if (!chavaUser || chavaUser.estatus === 'inactivo' || chavaUser.estatus === 'bloqueado') {
-        // Silent success — don't reveal whether user exists
+      if (chavaUser && chavaUser.estatus !== 'inactivo' && chavaUser.estatus !== 'bloqueado') {
+        userId = chavaUser.auth_user_id;
+        userEmail = chavaUser.email;
+        userPhone = chavaUser.whatsapp;
+        userName = chavaUser.nombre_completo;
+      } else if (!chavaUser) {
+        // Fallback: check if this is a MOVI user (usuarios table)
+        const { data: moviUser } = await supabase
+          .from('usuarios')
+          .select('id, nombre, apellidos, email_laboral, celular_laboral, estado')
+          .eq('email_laboral', identifier)
+          .is('deleted_at', null)
+          .maybeSingle();
+
+        if (moviUser && moviUser.estado === 'activo') {
+          // Auto-provision chava_agente_users record for this MOVI user
+          const authEmail = identifier;
+          const { data: authUser } = await supabase.auth.admin.getUserByEmail(authEmail);
+          const authId = authUser?.user?.id || null;
+
+          if (authId) {
+            const fullName = [moviUser.nombre, moviUser.apellidos].filter(Boolean).join(' ');
+            const { data: existing } = await supabase
+              .from('chava_agente_users')
+              .select('id, auth_user_id')
+              .eq('auth_user_id', authId)
+              .maybeSingle();
+
+            if (!existing) {
+              await supabase.from('chava_agente_users').insert({
+                auth_user_id: authId,
+                nombre_completo: fullName,
+                email: identifier,
+                whatsapp: moviUser.celular_laboral || null,
+                tipo_usuario: 'agente_movi',
+                estatus: 'activo',
+              });
+            }
+
+            userId = authId;
+            userEmail = identifier;
+            userPhone = moviUser.celular_laboral || null;
+            userName = moviUser.nombre;
+          }
+        }
+
+        if (!userId) {
+          // Fallback: check if this is a Seguwallet customer
+          const { data: swCustomer } = await supabase
+            .from('seguwallet_customers')
+            .select('auth_user_id, email, full_name, phone, whatsapp, status')
+            .eq('email', identifier)
+            .maybeSingle();
+
+          if (swCustomer && swCustomer.status === 'active') {
+            const authId = swCustomer.auth_user_id;
+            const { data: existing } = await supabase
+              .from('chava_agente_users')
+              .select('id')
+              .eq('auth_user_id', authId)
+              .maybeSingle();
+
+            if (!existing) {
+              await supabase.from('chava_agente_users').insert({
+                auth_user_id: authId,
+                nombre_completo: swCustomer.full_name,
+                email: identifier,
+                whatsapp: swCustomer.whatsapp || swCustomer.phone || null,
+                tipo_usuario: 'particular',
+                estatus: 'activo',
+              });
+            }
+
+            userId = authId;
+            userEmail = identifier;
+            userPhone = swCustomer.whatsapp || swCustomer.phone || null;
+            userName = swCustomer.full_name;
+          }
+        }
+
+        if (!userId) {
+          // User not found in any table — silent success
+          return new Response(JSON.stringify({ success: true }), {
+            status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      } else {
+        // Blocked or inactive chava user — silent success
         return new Response(JSON.stringify({ success: true }), {
           status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      userId = chavaUser.auth_user_id;
-      userEmail = chavaUser.email;
-      userPhone = chavaUser.whatsapp;
-      userName = chavaUser.nombre_completo;
-    } else {
       const { data: customer } = await supabase
         .from('seguwallet_customers')
         .select('id, auth_user_id, email, full_name, phone, whatsapp, status')

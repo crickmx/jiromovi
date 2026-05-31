@@ -2,8 +2,12 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MoviAuthProvider } from './contexts/MoviAuthContext';
 import { useMoviAuth } from './contexts/MoviAuthContext';
-import { SeguwalletAuthProvider, useSeguwalletAuth } from './seguwallet/lib/SeguwalletAuthContext';
 import { ChavaAgenteProvider } from './chava-agente/lib/ChavaAgenteContext';
+import { ImpersonationProvider } from './contexts/ImpersonationContext';
+import { SeguwalletProvider } from './seguwallet/lib/SeguwalletContext';
+import { AgentBrandProvider } from './seguwallet/lib/AgentBrandContext';
+import { SeguwalletProtectedRoute } from './seguwallet/components/SeguwalletProtectedRoute';
+import { SeguwalletLayout } from './seguwallet/components/SeguwalletLayout';
 import { type ReactNode } from 'react';
 
 // Seguwallet pages
@@ -39,32 +43,12 @@ const isChavaDomain = CHAVA_DOMAINS.includes(hostname);
 const isSeguwalletDomain = SEGUWALLET_DOMAINS.includes(hostname);
 const isMoviSplashDomain = MOVI_SPLASH_DOMAINS.includes(hostname);
 
-// ── Seguwallet private route ─────────────────────────────────────────────────
-function SwPrivateRoute({ children }: { children: ReactNode }) {
-  const { customer, loading } = useSeguwalletAuth();
-  console.log('[SwPrivateRoute] loading=', loading, 'customer=', !!customer);
-  if (loading) return <SwLoader />;
-  return customer ? <>{children}</> : <Navigate to="/login" replace />;
-}
-
 // ── MOVI private route ───────────────────────────────────────────────────────
 function MoviPrivateRoute({ children }: { children: ReactNode }) {
   const { usuario, loading } = useMoviAuth();
   console.log('[MoviPrivateRoute] loading=', loading, 'usuario=', !!usuario);
   if (loading) return <MoviLoader />;
   return usuario ? <>{children}</> : <Navigate to="/login" replace />;
-}
-
-function SwLoader() {
-  return (
-    <div className="min-h-screen flex items-center justify-center"
-      style={{ background: 'linear-gradient(135deg, #050e24 0%, #0a2260 50%, #030810 100%)' }}>
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-10 h-10 rounded-full border-4 border-blue-900 border-t-blue-400 animate-spin" />
-        <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>Cargando...</p>
-      </div>
-    </div>
-  );
 }
 
 function MoviLoader() {
@@ -95,21 +79,42 @@ function ChavaAgenteApp() {
 function SeguwalletApp() {
   return (
     <BrowserRouter>
-      <SeguwalletAuthProvider>
-        <Routes>
-          <Route path="/" element={<Navigate to="/seguwallet/dashboard" replace />} />
-          <Route path="/login" element={<SeguwalletLogin />} />
-          <Route path="/seguwallet/dashboard" element={<SwPrivateRoute><SeguwalletDashboard /></SwPrivateRoute>} />
-          <Route path="/seguwallet/polizas" element={<SwPrivateRoute><SeguwalletPolizas /></SwPrivateRoute>} />
-          <Route path="/seguwallet/perfil" element={<SwPrivateRoute><SeguwalletPerfil /></SwPrivateRoute>} />
-          <Route path="/seguwallet/chava" element={<SwPrivateRoute><SeguwalletChava /></SwPrivateRoute>} />
-          <Route path="/seguwallet/cotizar" element={<SwPrivateRoute><SeguwalletCotizar /></SwPrivateRoute>} />
-          <Route path="/seguwallet/aseguradoras" element={<SwPrivateRoute><SeguwalletAseguradoras /></SwPrivateRoute>} />
-          <Route path="/seguwallet/descargas" element={<SwPrivateRoute><SeguwalletDescargas /></SwPrivateRoute>} />
-          <Route path="/seguwallet/completar-perfil" element={<SwPrivateRoute><SeguwalletCompleteProfile /></SwPrivateRoute>} />
-          <Route path="*" element={<Navigate to="/seguwallet/dashboard" replace />} />
-        </Routes>
-      </SeguwalletAuthProvider>
+      <ImpersonationProvider>
+        <SeguwalletProvider>
+          <AgentBrandProvider>
+            <Routes>
+              <Route path="/" element={<Navigate to="/seguwallet/dashboard" replace />} />
+              <Route path="/login" element={<Navigate to="/seguwallet/login" replace />} />
+              <Route path="/seguwallet/login" element={<SeguwalletLogin />} />
+              <Route path="/seguwallet/dashboard" element={
+                <SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletDashboard /></SeguwalletLayout></SeguwalletProtectedRoute>
+              } />
+              <Route path="/seguwallet/polizas" element={
+                <SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletPolizas /></SeguwalletLayout></SeguwalletProtectedRoute>
+              } />
+              <Route path="/seguwallet/perfil" element={
+                <SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletPerfil /></SeguwalletLayout></SeguwalletProtectedRoute>
+              } />
+              <Route path="/seguwallet/chava" element={
+                <SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletChava /></SeguwalletLayout></SeguwalletProtectedRoute>
+              } />
+              <Route path="/seguwallet/cotizar" element={
+                <SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletCotizar /></SeguwalletLayout></SeguwalletProtectedRoute>
+              } />
+              <Route path="/seguwallet/aseguradoras" element={
+                <SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletAseguradoras /></SeguwalletLayout></SeguwalletProtectedRoute>
+              } />
+              <Route path="/seguwallet/descargas" element={
+                <SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletDescargas /></SeguwalletLayout></SeguwalletProtectedRoute>
+              } />
+              <Route path="/seguwallet/completa-perfil" element={
+                <SeguwalletProtectedRoute><SeguwalletCompleteProfile /></SeguwalletProtectedRoute>
+              } />
+              <Route path="*" element={<Navigate to="/seguwallet/dashboard" replace />} />
+            </Routes>
+          </AgentBrandProvider>
+        </SeguwalletProvider>
+      </ImpersonationProvider>
     </BrowserRouter>
   );
 }
