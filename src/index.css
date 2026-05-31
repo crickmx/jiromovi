@@ -1,23 +1,10 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer base {
-  * {
-    box-sizing: border-box;
-  }
-
-  html {
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
-  }
-
-  body {
-    @apply bg-white text-neutral-900 antialiased;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Helvetica Neue', sans-serif;
-  }
-
-  .dark body {
-    @apply bg-neutral-950 text-neutral-100;
-  }
+:root {
+  --sw-primary: #0F4C81;
+  --sw-accent: #10B981;
+  font-family: 'Inter', system-ui, sans-serif;
 }
+
+* { box-sizing: border-box; }
+body { margin: 0; background: #F8FAFC; color: #111827; -webkit-font-smoothing: antialiased; }

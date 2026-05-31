@@ -1,316 +1,132 @@
-import { ReactNode, useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { type ReactNode } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { Shield, Hop as Home, FileText, CreditCard, FolderOpen, User, LogOut, Sparkles, Menu, X } from 'lucide-react';
+import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useImpersonation } from '../contexts/ImpersonationContext';
-import { ImpersonationBanner } from './ImpersonationBanner';
-import { Menu, X, ChevronDown, LogOut } from 'lucide-react';
-import { NotificationBell } from './NotificationBell';
-import { ThemeToggle } from './ThemeToggle';
-import InstallAppButton from './InstallAppButton';
-import InstallBanner from './InstallBanner';
-import { cn } from '@/lib/utils';
-import { ScrollArea } from './ui/scroll-area';
-import { PrimarySidebar } from './layout/PrimarySidebar';
-import { SecondarySidebar } from './layout/SecondarySidebar';
-import { Breadcrumbs } from './layout/Breadcrumbs';
-import { WORKSPACES, NAV_ORDER, TOP_LEVEL_ITEMS, resolveWorkspace, isWorkspaceVisible, isItemVisible, isTopLevelItemVisible, buildBreadcrumbs } from '@/lib/workspaceConfig';
-import type { WorkspaceId, UserRole } from '@/lib/workspaceConfig';
 
-interface LayoutProps {
-  children: ReactNode;
-  hideHeader?: boolean;
-}
+const NAV = [
+  { to: '/seguwallet/dashboard', icon: Home, label: 'Inicio' },
+  { to: '/seguwallet/polizas', icon: FileText, label: 'Mis Pólizas' },
+  { to: '/seguwallet/cobranza', icon: CreditCard, label: 'Pagos' },
+  { to: '/seguwallet/documentos', icon: FolderOpen, label: 'Documentos' },
+  { to: '/seguwallet/chava', icon: Sparkles, label: 'Chava' },
+  { to: '/seguwallet/perfil', icon: User, label: 'Mi Perfil' },
+];
 
-const SIDEBAR_STORAGE_KEY = 'movi-sidebar-collapsed';
-
-export function Layout({ children, hideHeader = false }: LayoutProps) {
-  const { usuario, signOut } = useAuth();
-  const { isImpersonating, endImpersonation } = useImpersonation();
+export function Layout({ children }: { children: ReactNode }) {
+  const { customer, agent, office, signOut } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [mobileExpandedWorkspace, setMobileExpandedWorkspace] = useState<WorkspaceId | null>(null);
-  const [secondaryCollapsed, setSecondaryCollapsed] = useState(() => {
-    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
-      const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
-      return stored === 'true';
-    }
-    return false;
-  });
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
-      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(secondaryCollapsed));
-    }
-  }, [secondaryCollapsed]);
+  const accentColor = office?.accent_color || '#0F4C81';
+  const logoUrl = office?.logo_url || null;
+  const agentName = agent ? `${agent.nombre} ${agent.apellidos}` : office?.nombre || 'Seguwallet';
 
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [location.pathname]);
-
-  const userRole: UserRole = (usuario?.rol as UserRole) || 'Agente';
-
-  const { workspace, activeItem } = resolveWorkspace(location.pathname, userRole);
-  const breadcrumbs = buildBreadcrumbs(workspace, activeItem);
-
-  useEffect(() => {
-    if (mobileOpen && workspace) {
-      setMobileExpandedWorkspace(workspace.id);
-    }
-  }, [mobileOpen]);
-
-  useEffect(() => {
-    if (mobileOpen && window.innerWidth < 1024) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => { document.body.style.overflow = ''; };
-  }, [mobileOpen]);
-
-  const handleSignOut = async () => {
-    if (isImpersonating) {
-      await endImpersonation();
-      return;
-    }
+  async function handleSignOut() {
     await signOut();
     navigate('/login');
-  };
-
-  const hasSecondary = workspace !== null;
-
-  const getMainMargin = () => {
-    if (!hasSecondary) return "lg:ml-[72px]";
-    // collapsed: primary rail (72px) + thin expand tab (8px) = 80px
-    // expanded: primary rail (72px) + secondary panel (208px) = 280px
-    return secondaryCollapsed ? "lg:ml-[80px]" : "lg:ml-[280px]";
-  };
-
-  const bannerOffset = isImpersonating ? "top-[40px]" : "top-0";
+  }
 
   return (
-    <div className={cn("min-h-screen bg-[#f5f7fa] dark:bg-[#09090b]", isImpersonating && "pt-[40px]")}>
-      {/* Impersonation banner at very top */}
-      <ImpersonationBanner />
+    <div className="min-h-screen flex flex-col bg-slate-50">
+      {/* Top bar */}
+      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 flex items-center justify-between h-14">
+          <div className="flex items-center gap-3">
+            <button
+              className="md:hidden p-1.5 rounded-lg hover:bg-slate-100"
+              onClick={() => setMobileOpen(o => !o)}
+            >
+              {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+            {logoUrl ? (
+              <img src={logoUrl} alt={agentName} className="h-7 object-contain" />
+            ) : (
+              <div className="flex items-center gap-2">
+                <Shield className="w-6 h-6" style={{ color: accentColor }} />
+                <span className="font-bold text-slate-800 text-sm">{agentName}</span>
+              </div>
+            )}
+          </div>
 
-      {/* Desktop: Primary Sidebar (icon rail) */}
-      <aside className={cn("hidden lg:flex fixed left-0 z-40", bannerOffset, "bottom-0")}>
-        <PrimarySidebar
-          activeWorkspaceId={workspace?.id || null}
-          userRole={userRole}
-          usuario={usuario}
-          onSignOut={handleSignOut}
-        />
-      </aside>
-
-      {/* Desktop: Secondary Sidebar */}
-      {hasSecondary && (
-        <aside
-          className={cn(
-            "hidden lg:flex fixed z-30 transition-all duration-300 ease-smooth",
-            "left-[72px]",
-            bannerOffset,
-            "bottom-0"
-          )}
-        >
-          <SecondarySidebar
-            workspace={workspace}
-            activeItem={activeItem}
-            userRole={userRole}
-            collapsed={secondaryCollapsed}
-            onToggleCollapse={() => setSecondaryCollapsed(!secondaryCollapsed)}
-          />
-        </aside>
-      )}
-
-      {/* Mobile Drawer */}
-      {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-50">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setMobileOpen(false)}
-          />
-          <div className="absolute inset-y-0 left-0 w-[300px] bg-white dark:bg-[#111113] shadow-2xl flex flex-col animate-slide-in-left">
-            {/* Mobile header */}
-            <div className="flex items-center justify-between h-16 px-5 border-b border-neutral-100/80 dark:border-white/6">
-              <img src="/movirecurso_7.png" alt="MOVI" className="h-8 object-contain" />
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="p-2 rounded-xl text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:text-white dark:hover:bg-white/8 transition-all"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Vertical navigation */}
-            <ScrollArea className="flex-1">
-              <nav className="py-3 px-3">
-                {NAV_ORDER.map((entry, idx) => {
-                  if (entry.type === 'link') {
-                    const item = entry.item;
-                    if (!isTopLevelItemVisible(item, userRole)) return null;
-                    const Icon = item.icon;
-                    const isActive = location.pathname === item.path ||
-                      (item.matchPrefix && location.pathname.startsWith(item.path));
-
-                    return (
-                      <div key={`link-${idx}`} className="mb-0.5">
-                        <button
-                          onClick={() => { navigate(item.path); setMobileOpen(false); }}
-                          className={cn(
-                            "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[13px] font-semibold transition-all duration-200",
-                            isActive
-                              ? "bg-accent/8 text-accent dark:bg-accent/12 dark:text-white"
-                              : "text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-white/5"
-                          )}
-                        >
-                          <div className={cn(
-                            "w-8 h-8 rounded-xl flex items-center justify-center",
-                            isActive ? "bg-accent/10 dark:bg-accent/20" : "bg-neutral-100 dark:bg-white/8"
-                          )}>
-                            <Icon className={cn("w-4 h-4", isActive ? "text-accent" : "text-neutral-500 dark:text-white/50")} />
-                          </div>
-                          <span>{item.label}</span>
-                        </button>
-                      </div>
-                    );
-                  }
-
-                  const ws = entry.workspace;
-                  if (!isWorkspaceVisible(ws, userRole)) return null;
-                  const WsIcon = ws.icon;
-                  const isActiveWs = ws.id === workspace?.id;
-                  const isExpanded = mobileExpandedWorkspace === ws.id;
-                  const visibleItems = ws.items.filter(item => isItemVisible(item, userRole));
-
-                  return (
-                    <div key={ws.id} className="mb-0.5">
-                      <button
-                        onClick={() => setMobileExpandedWorkspace(isExpanded ? null : ws.id)}
-                        className={cn(
-                          "w-full flex items-center justify-between px-4 py-3 rounded-2xl text-[13px] font-semibold transition-all duration-200",
-                          isActiveWs
-                            ? "text-neutral-900 dark:text-white"
-                            : "text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-white/5"
-                        )}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={cn(
-                            "w-8 h-8 rounded-xl flex items-center justify-center",
-                            isActiveWs ? "bg-accent/10 dark:bg-accent/20" : "bg-neutral-100 dark:bg-white/8"
-                          )}>
-                            <WsIcon className={cn("w-4 h-4", isActiveWs ? "text-accent" : "text-neutral-500 dark:text-white/50")} />
-                          </div>
-                          <span>{ws.label}</span>
-                        </div>
-                        <ChevronDown className={cn(
-                          "w-4 h-4 text-neutral-400 transition-transform duration-300 ease-smooth",
-                          isExpanded && "rotate-180"
-                        )} />
-                      </button>
-
-                      {isExpanded && (
-                        <div className="ml-5 pl-4 border-l-2 border-neutral-100 dark:border-white/6 mt-1 mb-2 space-y-0.5 animate-fade-in">
-                          {visibleItems.map((item) => {
-                            const Icon = item.icon;
-                            const isActive = location.pathname === item.path ||
-                              (item.matchPrefix && !item.excludePrefixes?.some(ex => location.pathname.startsWith(ex)) && location.pathname.startsWith(item.path));
-
-                            return (
-                              <button
-                                key={item.path}
-                                onClick={() => { navigate(item.path); setMobileOpen(false); }}
-                                className={cn(
-                                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200",
-                                  isActive
-                                    ? "bg-accent/8 text-accent dark:bg-accent/12 dark:text-white"
-                                    : "text-neutral-500 dark:text-white/50 hover:bg-neutral-50 dark:hover:bg-white/5 hover:text-neutral-800 dark:hover:text-white/80"
-                                )}
-                              >
-                                <Icon className={cn("w-4 h-4 flex-shrink-0", isActive ? "text-accent" : "text-neutral-400 dark:text-white/35")} />
-                                <span className="truncate">{item.label}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </nav>
-            </ScrollArea>
-
-            {/* Mobile footer */}
-            <div className="border-t border-neutral-100 dark:border-white/6 p-4">
-              <button
-                onClick={handleSignOut}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[13px] font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Cerrar Sesion</span>
-              </button>
-            </div>
+          <div className="flex items-center gap-3">
+            {customer && (
+              <span className="hidden sm:block text-sm text-slate-600 font-medium">
+                {customer.full_name}
+              </span>
+            )}
+            <button
+              onClick={handleSignOut}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              title="Cerrar sesión"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
-      )}
+      </header>
 
-      {/* Main content area */}
-      <div
-        className={cn(
-          "min-h-screen transition-all duration-300 ease-smooth",
-          getMainMargin()
-        )}
-      >
+      <div className="flex flex-1 max-w-6xl mx-auto w-full">
+        {/* Sidebar */}
+        <aside className={`
+          fixed md:sticky top-14 left-0 h-[calc(100vh-3.5rem)] z-30
+          w-56 bg-white border-r border-slate-200 flex flex-col py-4
+          transition-transform duration-200
+          ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        `}>
+          <nav className="flex-1 px-3 space-y-0.5">
+            {NAV.map(({ to, icon: Icon, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                onClick={() => setMobileOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                    isActive
+                      ? 'text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  }`
+                }
+                style={({ isActive }) => isActive ? { backgroundColor: accentColor } : {}}
+              >
+                {({ isActive }) => (
+                  <>
+                    <Icon className={`w-4 h-4 flex-shrink-0 ${label === 'Chava' && !isActive ? 'text-emerald-500' : ''}`} />
+                    {label}
+                    {label === 'Chava' && (
+                      <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+                        isActive ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700'
+                      }`}>IA</span>
+                    )}
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </nav>
 
-          {!hideHeader && (
-            <>
-              {/* Mobile header */}
-              <header className={cn("lg:hidden sticky z-30 bg-white/80 dark:bg-[#111113]/80 backdrop-blur-xl border-b border-neutral-200/40 dark:border-white/5", bannerOffset)}>
-                <div className="flex items-center justify-between h-16 px-5">
-                  <button
-                    onClick={() => setMobileOpen(true)}
-                    className="p-2.5 -ml-2 text-neutral-600 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white rounded-xl hover:bg-neutral-100 dark:hover:bg-white/8 transition-all active:scale-95"
-                  >
-                    <Menu className="w-5 h-5" />
-                  </button>
-                  <img src="/movirecurso_7.png" alt="MOVI" className="h-7 object-contain" />
-                  <div className="flex items-center gap-1.5">
-                    <InstallAppButton variant="ghost" size="sm" showText={false} />
-                    <ThemeToggle />
-                    <NotificationBell />
-                  </div>
-                </div>
-              </header>
-
-              {/* Desktop header */}
-              <header className={cn("hidden lg:flex sticky z-20 bg-white/70 dark:bg-[#111113]/70 backdrop-blur-2xl border-b border-neutral-100/60 dark:border-white/4", bannerOffset)}>
-                <div className="w-full px-8 flex items-center h-16">
-                  <Breadcrumbs items={breadcrumbs} />
-                  <div className="flex items-center gap-2 ml-auto">
-                    <InstallAppButton variant="ghost" size="sm" />
-                    <ThemeToggle />
-                    <NotificationBell />
-                  </div>
-                </div>
-              </header>
-            </>
+          {agent && (
+            <div className="mx-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+              <p className="text-xs text-slate-400 mb-1">Tu agente</p>
+              {agent.imagen_perfil_url && (
+                <img src={agent.imagen_perfil_url} alt={agentName} className="w-8 h-8 rounded-full mb-1.5 object-cover" />
+              )}
+              <p className="text-xs font-semibold text-slate-700 leading-snug">{agentName}</p>
+              {agent.celular_laboral && (
+                <p className="text-xs text-slate-400 mt-0.5">{agent.celular_laboral}</p>
+              )}
+            </div>
           )}
+        </aside>
 
-          <main className={cn(
-            ['/cotizar/multicotizador', '/multicotizador-digital'].includes(location.pathname) || location.pathname.startsWith('/centro-contacto/')
-              ? 'h-screen overflow-hidden'
-              : 'w-full py-6 lg:py-8',
-            ['/espacio-jiro'].includes(location.pathname)
-              ? 'px-4 sm:px-6 lg:px-8'
-              : ['/cotizar/multicotizador', '/multicotizador-digital'].includes(location.pathname) || location.pathname.startsWith('/centro-contacto/')
-              ? ''
-              : 'max-w-[1400px] mx-auto px-5 sm:px-6 lg:px-10'
-          )}>
-              {children}
-          </main>
+        {/* Mobile overlay */}
+        {mobileOpen && (
+          <div className="fixed inset-0 z-20 bg-black/30 md:hidden" onClick={() => setMobileOpen(false)} />
+        )}
 
-          <InstallBanner />
+        {/* Main content */}
+        <main className="flex-1 min-w-0 p-4 md:p-6">
+          {children}
+        </main>
       </div>
     </div>
   );
