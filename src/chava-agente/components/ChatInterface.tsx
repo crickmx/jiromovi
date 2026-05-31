@@ -6,17 +6,6 @@ import FuentesPanel from './FuentesPanel';
 import { ChavaAvatar } from '../../components/chava/ChavaAvatar';
 import { Send, Loader as Loader2, User, Copy, Check } from 'lucide-react';
 
-const WELCOME_MESSAGE = `Hola, soy Chava Agente, tu experto en seguros impulsado por inteligencia artificial y respaldado por Grupo JIRO, con más de 50 años de experiencia en el sector asegurador mexicano.
-
-Puedo ayudarte con:
-• **Coberturas y productos** — vida, GMM, autos, daños, fianzas, empresariales
-• **Conceptos técnicos** — deducibles, coaseguros, sumas aseguradas, exclusiones
-• **Siniestros** — orientación sobre procesos y documentación
-• **Marco regulatorio** — CNSF, LISF, requisitos para agentes
-• **Argumentos de venta** — cómo presentar y comparar seguros
-
-¿En qué te puedo orientar hoy?`;
-
 const QUICK_PROMPTS = [
   '¿Qué cubre un seguro de Gastos Médicos Mayores?',
   '¿Cuál es la diferencia entre deducible y coaseguro?',

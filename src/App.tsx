@@ -17,6 +17,10 @@ import ChavaAgenteUsuariosAdmin from './chava-agente/pages/admin/ChavaAgenteUsua
 import ChavaAgenteConversacionesAdmin from './chava-agente/pages/admin/ChavaAgenteConversacionesAdmin';
 import ChavaAgenteTerminosAdmin from './chava-agente/pages/admin/ChavaAgenteTerminosAdmin';
 
+// Route everything to Chava Agente when running on agentedeseguros.ai
+const CHAVA_DOMAINS = ['agentedeseguros.ai', 'www.agentedeseguros.ai'];
+const isChavaDomain = CHAVA_DOMAINS.includes(window.location.hostname);
+
 function PrivateRoute({ children }: { children: ReactNode }) {
   const { customer, loading } = useAuth();
   if (loading) return (
@@ -30,12 +34,25 @@ function PrivateRoute({ children }: { children: ReactNode }) {
   return customer ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
-export default function App() {
+function ChavaAgenteApp() {
+  return (
+    <BrowserRouter>
+      <ChavaAgenteProvider>
+        <Routes>
+          <Route path="*" element={<ChavaAgenteLanding />} />
+        </Routes>
+      </ChavaAgenteProvider>
+    </BrowserRouter>
+  );
+}
+
+function SeguwalletApp() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          {/* Seguwallet routes */}
+          {/* Root redirects to dashboard (which redirects to login if unauthenticated) */}
+          <Route path="/" element={<Navigate to="/seguwallet/dashboard" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/seguwallet/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/seguwallet/polizas" element={<PrivateRoute><Polizas /></PrivateRoute>} />
@@ -74,4 +91,9 @@ export default function App() {
       </AuthProvider>
     </BrowserRouter>
   );
+}
+
+export default function App() {
+  if (isChavaDomain) return <ChavaAgenteApp />;
+  return <SeguwalletApp />;
 }

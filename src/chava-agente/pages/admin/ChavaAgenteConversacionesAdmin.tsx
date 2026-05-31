@@ -3,7 +3,7 @@ import { supabase } from '../../../lib/supabase';
 import type { ChavaConversation } from '../../lib/types';
 import { ChavaBrandLogo } from '../../../components/chava/ChavaBrandLogo';
 import { ChavaAvatar } from '../../../components/chava/ChavaAvatar';
-import { MessageSquare, Search, Trash2, Eye, User } from 'lucide-react';
+import { MessageSquare, Search, Trash2, Eye } from 'lucide-react';
 
 interface ConvWithUser extends ChavaConversation {
   chava_agente_users: { nombre_completo: string; email: string; tipo_usuario: string } | null;

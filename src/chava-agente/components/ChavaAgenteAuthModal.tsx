@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { useChavaAgente, type RegisterData } from '../lib/ChavaAgenteContext';
 import { TIPO_USUARIO_LABELS, type TipoUsuario } from '../lib/types';
 import { ChavaBrandLogo } from '../../components/chava/ChavaBrandLogo';
-import { X, Mail, ArrowRight, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Loader as Loader2, User, Phone, MapPin, Shield } from 'lucide-react';
+import { X, Mail, ArrowRight, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Loader as Loader2, User, Phone, MapPin } from 'lucide-react';
 
 type Step = 'choice' | 'login_email' | 'login_otp' | 'register_form' | 'register_otp' | 'success';
 
@@ -52,7 +52,7 @@ export default function ChavaAgenteAuthModal({ onClose, pendingMessage }: Props)
     }
   }
 
-  async function handleVerifyOtp(isRegister = false) {
+  async function handleVerifyOtp(_isRegister = false) {
     if (!otp.trim() || otp.length < 6) return;
     setError('');
     setLoading(true);
