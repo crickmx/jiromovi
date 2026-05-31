@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { trackCourseStart } from '../lib/activityLogger';
-import { Search, Plus, Video, Filter, Play, Clock, Award, Upload, X, Settings, Trash2, CreditCard as Edit2, FileText } from 'lucide-react';
+import { Search, Plus, Video, ListFilter as Filter, Play, Clock, Award, Upload, X, Settings, Trash2, CreditCard as Edit2, FileText } from 'lucide-react';
 import { VideoPlayer } from '../components/VideoPlayer';
 import { LessonDocuments } from '../components/segurosEducation/LessonDocuments';
 import { analyticsTracker } from '../lib/analyticsTracker';
@@ -873,18 +872,18 @@ export function SegurosEducationOnDemand() {
 
   if (loading) {
     return (
-      <Layout>
+      <>
         <SegurosEducationLayout sectionTitle="On Demand" sectionDescription="Biblioteca de lecciones grabadas">
           <div className="flex justify-center items-center py-16">
             <div className="w-8 h-8 border-[3px] border-[#1C37E0]/20 border-t-[#1C37E0] rounded-full animate-spin" />
           </div>
         </SegurosEducationLayout>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       <SegurosEducationLayout sectionTitle="On Demand" sectionDescription="Biblioteca de lecciones grabadas">
       <div className="space-y-5">
         {/* Section header */}
@@ -1632,6 +1631,6 @@ export function SegurosEducationOnDemand() {
         </div>
       )}
       </SegurosEducationLayout>
-    </Layout>
+    </>
   );
 }

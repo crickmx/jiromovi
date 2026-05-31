@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, Plus, CreditCard as Edit2, Trash2, Star, Clock, Search, X, Save, CircleAlert as AlertCircle, CircleCheck as CheckCircle, FileText, Download, Tag, Megaphone, RefreshCw, CloudDownload, CheckCircle2, XCircle, Loader2, BarChart3, Globe } from 'lucide-react';
-import { Layout } from '../components/Layout';
+import { BookOpen, Plus, CreditCard as Edit2, Trash2, Star, Clock, Search, X, Save, CircleAlert as AlertCircle, CircleCheck as CheckCircle, FileText, Download, Tag, Megaphone, RefreshCw, CloudDownload, CircleCheck as CheckCircle2, Circle as XCircle, Loader as Loader2, ChartBar as BarChart3, Globe } from 'lucide-react';
 import { PageHeader } from '../components/ui/page-header';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -313,15 +312,15 @@ export default function BaseConocimientoAdmin() {
 
   if (!esAdmin) {
     return (
-      <Layout>
+      <>
         <PageHeader title="Base de Conocimiento Admin" description="Solo administradores" />
         <div className="p-8 text-center text-gray-500">No tienes permisos para acceder a esta sección.</div>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       <PageHeader
         title="Base de Conocimiento"
         description={`Gestión de documentos y anuncios del Centro Digital · ${docs.length} documentos${pendingCount ? ` · ${pendingCount} pendientes de descarga` : ''}`}
@@ -910,7 +909,7 @@ export default function BaseConocimientoAdmin() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 }
 

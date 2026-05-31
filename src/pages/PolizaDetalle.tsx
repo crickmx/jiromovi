@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Sparkles, FileText, Calendar, Shield, Phone, Globe, AlertTriangle, Download } from 'lucide-react';
-import { Layout } from '../components/Layout';
+import { ArrowLeft, Sparkles, FileText, Calendar, Shield, Phone, Globe, TriangleAlert as AlertTriangle, Download } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -78,23 +77,23 @@ export default function PolizaDetalle() {
   }
 
   if (loading) return (
-    <Layout>
+    <>
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
       </div>
-    </Layout>
+    </>
   );
 
   if (!policy) return (
-    <Layout>
+    <>
       <div className="text-center py-16 text-slate-400">Póliza no encontrada.</div>
-    </Layout>
+    </>
   );
 
   const days = Math.ceil((new Date(policy.end_date).getTime() - Date.now()) / 86400000);
 
   return (
-    <Layout>
+    <>
       <div className="flex items-center gap-3 mb-5">
         <button onClick={() => navigate('/seguwallet/polizas')}
           className="p-2 rounded-xl hover:bg-slate-100 transition-colors text-slate-500">
@@ -224,6 +223,6 @@ export default function PolizaDetalle() {
           <p className="text-sm text-amber-700">{policy.notes}</p>
         </div>
       )}
-    </Layout>
+    </>
   );
 }

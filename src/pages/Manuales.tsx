@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { SegurosEducationLayout } from '../components/segurosEducation/SegurosEducationLayout';
 import { BookOpen, Search, Settings, ChevronRight, FileText, Layers } from 'lucide-react';
+import { Fragment } from 'react';
 
 interface Manual {
   id: string;
@@ -74,6 +75,7 @@ export default function Manuales() {
 
   return (
     <SegurosEducationLayout sectionTitle="Manuales" sectionDescription="Manuales operativos y de referencia">
+        <Fragment>
         <div className="space-y-5">
           {/* Search & Filters */}
           <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
@@ -169,6 +171,7 @@ export default function Manuales() {
             </div>
           )}
         </div>
+        </Fragment>
       </SegurosEducationLayout>
   );
 }

@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Package, Eye, Filter, Download, Search, Calendar, Trash2, BarChart3, ClipboardList } from 'lucide-react';
+import { Package, Eye, ListFilter as Filter, Download, Search, Calendar, Trash2, ChartBar as BarChart3, ClipboardList } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { obtenerTodosPedidos, eliminarPedido } from '../lib/storeUtils';
 import type { StorePedido } from '../lib/storeTypes';
@@ -252,16 +251,16 @@ export default function StorePedidos() {
 
   if (loading) {
     return (
-      <Layout>
+      <>
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
         </div>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <PageHeader
           title="Gestión de Pedidos"
@@ -531,6 +530,6 @@ export default function StorePedidos() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 }

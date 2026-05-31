@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Search, Plus, CreditCard as Edit2, Trash2, ExternalLink, Eye, Copy, Check, ChevronDown, ChevronRight, Key } from 'lucide-react';
@@ -315,16 +314,16 @@ export function AccesosNacional() {
 
   if (loading) {
     return (
-      <Layout>
+      <>
         <div className="flex items-center justify-center h-64">
           <div className="text-neutral-600">Cargando...</div>
         </div>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
         <PageHeader
           title="Accesos Nacional"
@@ -893,6 +892,6 @@ export function AccesosNacional() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 }

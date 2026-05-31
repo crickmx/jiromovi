@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Folder, Plus, Search, File, Download, Trash2, RotateCcw, Eye, Upload, Building2, Users, MoveVertical as MoreVertical, Archive, FileText, FileSpreadsheet, FileImage, FileVideo, FileAudio, Grid2x2 as Grid, List, BookOpen, Star, Clock, Tag, Filter, X, ChevronDown, ChevronRight, Megaphone, Shield, Car, Heart, Home, Briefcase, Globe, Zap } from 'lucide-react';
-import { Layout } from '../components/Layout';
+import { Folder, Plus, Search, File, Download, Trash2, RotateCcw, Eye, Upload, Building2, Users, MoveVertical as MoreVertical, Archive, FileText, FileSpreadsheet, FileImage, FileVideoCamera as FileVideo, File as FileAudio, Grid2x2 as Grid, List, BookOpen, Star, Clock, Tag, ListFilter as Filter, X, ChevronDown, ChevronRight, Megaphone, Shield, Car, Heart, Hop as Home, Briefcase, Globe, Zap } from 'lucide-react';
 import { PageHeader } from '../components/ui/page-header';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -373,7 +372,7 @@ export default function CentroDigital() {
   // ── Papelera view ──────────────────────────────────────────────────────────
   if (showPapelera && esAdmin) {
     return (
-      <Layout>
+      <>
         <PageHeader title="Papelera de archivos" description="Archivos eliminados">
           <Button variant="outline" onClick={() => setShowPapelera(false)}>
             Volver al Centro Digital
@@ -428,14 +427,14 @@ export default function CentroDigital() {
             </div>
           )}
         </div>
-      </Layout>
+      </>
     );
   }
 
   // ── Folder contents view ──────────────────────────────────────────────────
   if (carpetaSeleccionada) {
     return (
-      <Layout>
+      <>
         <PageHeader title={carpetaSeleccionada.nombre}
           description={carpetaSeleccionada.descripcion || 'Archivos de la carpeta'}>
           <div className="flex gap-2">
@@ -605,13 +604,13 @@ export default function CentroDigital() {
             </div>
           </div>
         )}
-      </Layout>
+      </>
     );
   }
 
   // ── Main view ──────────────────────────────────────────────────────────────
   return (
-    <Layout>
+    <>
       <PageHeader
         title="Centro Digital"
         description="Repositorio centralizado de documentos, archivos y base de conocimiento"
@@ -922,7 +921,7 @@ export default function CentroDigital() {
           onClose={() => { setShowCarpetaModal(false); setCarpetaEditar(null); }}
           onSuccess={async () => { setShowCarpetaModal(false); setCarpetaEditar(null); await cargarCarpetas(); }} />
       )}
-    </Layout>
+    </>
   );
 }
 

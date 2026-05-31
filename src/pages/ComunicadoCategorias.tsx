@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, CreditCard as Edit2, Trash2, FolderOpen } from 'lucide-react';
-import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { PageHeader } from '@/components/ui/page-header';
@@ -132,7 +131,7 @@ export default function ComunicadoCategorias() {
 
   if (!esAdmin) {
     return (
-      <Layout hideHeader>
+      <>
         <div className="max-w-4xl mx-auto py-12">
           <div className="bg-white rounded-xl border border-neutral-200 dark:border-white/10 p-12 text-center">
             <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
@@ -149,22 +148,22 @@ export default function ComunicadoCategorias() {
             </button>
           </div>
         </div>
-      </Layout>
+      </>
     );
   }
 
   if (loading) {
     return (
-      <Layout hideHeader>
+      <>
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
         </div>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout hideHeader>
+    <>
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -342,6 +341,6 @@ export default function ComunicadoCategorias() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 }

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Calendar, Video } from 'lucide-react';
-import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import {
   obtenerEventos,
@@ -148,18 +147,18 @@ export function SegurosEducationAulaDigital() {
 
   if (loading) {
     return (
-      <Layout>
+      <>
         <SegurosEducationLayout sectionTitle="Aula Virtual" sectionDescription="Capacitaciones y eventos en vivo">
           <div className="flex justify-center items-center py-16">
             <div className="w-8 h-8 border-[3px] border-[#1C37E0]/20 border-t-[#1C37E0] rounded-full animate-spin" />
           </div>
         </SegurosEducationLayout>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       <SegurosEducationLayout sectionTitle="Aula Virtual" sectionDescription="Capacitaciones y eventos en vivo">
       <div className="space-y-5">
         {/* Section header */}
@@ -226,6 +225,6 @@ export function SegurosEducationAulaDigital() {
         )}
       </div>
       </SegurosEducationLayout>
-    </Layout>
+    </>
   );
 }

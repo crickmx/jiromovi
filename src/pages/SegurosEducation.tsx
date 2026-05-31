@@ -1,12 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import {
-  Video, Calendar, Clock, Play, Award, TrendingUp, GraduationCap,
-  BarChart3, BookOpen, ArrowRight, CheckCircle2, ChevronRight, Zap
-} from 'lucide-react';
+import { Video, Calendar, Clock, Play, Award, TrendingUp, GraduationCap, ChartBar as BarChart3, BookOpen, ArrowRight, CircleCheck as CheckCircle2, ChevronRight, Zap } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { obtenerSesiones } from '../lib/aulaVirtualUtils';
@@ -177,7 +173,7 @@ export function SegurosEducation() {
   };
 
   return (
-    <Layout>
+    <>
       <SegurosEducationLayout>
         <div className="space-y-6">
 
@@ -439,6 +435,6 @@ export function SegurosEducation() {
 
         </div>
       </SegurosEducationLayout>
-    </Layout>
+    </>
   );
 }

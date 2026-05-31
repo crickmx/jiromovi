@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Calculator, Save, FileText, Plus, Trash2, Calendar, DollarSign, Users, ChevronDown, ChevronRight, Download, Search, CreditCard as Edit, ArrowLeftRight } from 'lucide-react';
-import { Layout } from '../components/Layout';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -595,26 +594,26 @@ export default function GMMCotizador() {
 
   if (loading) {
     return (
-      <Layout>
+      <>
         <div className="flex items-center justify-center h-96">
           <div className="text-gray-500">Cargando tarifas...</div>
         </div>
-      </Layout>
+      </>
     );
   }
 
   if (!tariffTables) {
     return (
-      <Layout>
+      <>
         <div className="flex items-center justify-center h-96">
           <div className="text-gray-500">No hay tarifas activas</div>
         </div>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       {/* Section header — unified Cotizar style */}
       <div className="max-w-7xl mx-auto px-6 pt-7 pb-2">
         <div className="flex items-center gap-4 mb-6">
@@ -1169,6 +1168,6 @@ export default function GMMCotizador() {
           </TabsContent>
         </Tabs>
       </div>
-    </Layout>
+    </>
   );
 }

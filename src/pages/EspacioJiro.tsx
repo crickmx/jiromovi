@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/ui/page-header';
 import { Section } from '../components/ui/section';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Building2, MapPin, Calendar, Clock, CheckCircle, XCircle, AlertCircle, Info, Search } from 'lucide-react';
+import { Building2, MapPin, Calendar, Clock, CircleCheck as CheckCircle, Circle as XCircle, CircleAlert as AlertCircle, Info, Search } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import { DIAS_SEMANA, DIAS_SEMANA_LABELS, validarHorario, getEstadoReservaBadgeClass, getEstadoReservaLabel, type DisponibilidadSemanal } from '../lib/espacioJiroUtils';
 import { cn } from '@/lib/utils';
@@ -261,12 +260,12 @@ export function EspacioJiro() {
 
   if (loading) {
     return (
-      <Layout hideHeader>
+      <>
         <div className="space-y-4">
           <div className="skeleton h-24 w-full" />
           <div className="skeleton h-64 w-full" />
         </div>
-      </Layout>
+      </>
     );
   }
 
@@ -284,7 +283,7 @@ export function EspacioJiro() {
   });
 
   return (
-    <Layout hideHeader>
+    <>
       <PageHeader
         title="Espacio JIRO"
         description={
@@ -721,6 +720,6 @@ export function EspacioJiro() {
             </div>
           </div>
         )}
-    </Layout>
+    </>
   );
 }

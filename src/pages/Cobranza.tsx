@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TriangleAlert as AlertTriangle, Clock, CircleCheck as CheckCircle2, Sparkles } from 'lucide-react';
-import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -42,7 +41,7 @@ export default function Cobranza() {
   }
 
   return (
-    <Layout>
+    <>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-slate-800">Pagos y Cobranza</h1>
@@ -116,6 +115,6 @@ export default function Cobranza() {
           ))}
         </div>
       )}
-    </Layout>
+    </>
   );
 }

@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
-import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/ui/page-header';
 import { User, Phone, Mail, MapPin, Shield, Building2 } from 'lucide-react';
 
@@ -13,7 +12,7 @@ export default function Perfil() {
   const fullName = `${usuario.nombre || ''} ${usuario.apellidos || ''}`.trim();
 
   return (
-    <Layout>
+    <>
       <PageHeader title="Mi Perfil" subtitle="Información de tu cuenta MOVI Digital." />
 
       <div className="mt-6 max-w-2xl space-y-5">
@@ -72,6 +71,6 @@ export default function Perfil() {
           </div>
         </div>
       </div>
-    </Layout>
+    </>
   );
 }

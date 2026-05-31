@@ -2,16 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { SegurosEducationLayout } from '../components/segurosEducation/SegurosEducationLayout';
-import {
-  GraduationCap,
-  BookOpen,
-  Award,
-  Clock,
-  CheckCircle2,
-  Play,
-  FileText,
-  TrendingUp
-} from 'lucide-react';
+import { GraduationCap, BookOpen, Award, Clock, CircleCheck as CheckCircle2, Play, FileText, TrendingUp } from 'lucide-react';
 import {
   obtenerModulosConProgreso,
   obtenerEstadisticasCurso,
@@ -83,16 +74,19 @@ export default function CursoCedulaA() {
 
   if (loading) {
     return (
-      <SegurosEducationLayout sectionTitle="Cédula A" sectionDescription="Preparación para examen CNSF">
-        <div className="flex justify-center items-center py-16">
-          <div className="w-8 h-8 border-[3px] border-[#1C37E0]/20 border-t-[#1C37E0] rounded-full animate-spin" />
-        </div>
-      </SegurosEducationLayout>
+      <>
+        <SegurosEducationLayout sectionTitle="Cédula A" sectionDescription="Preparación para examen CNSF">
+          <div className="flex justify-center items-center py-16">
+            <div className="w-8 h-8 border-[3px] border-[#1C37E0]/20 border-t-[#1C37E0] rounded-full animate-spin" />
+          </div>
+        </SegurosEducationLayout>
+      </>
     );
   }
 
   return (
-    <SegurosEducationLayout sectionTitle="Cédula A" sectionDescription="Preparación completa para examen CNSF">
+    <>
+      <SegurosEducationLayout sectionTitle="Cédula A" sectionDescription="Preparación completa para examen CNSF">
       <div className="space-y-6">
 
         {estadisticas && (
@@ -221,5 +215,6 @@ export default function CursoCedulaA() {
         </div>
       </div>
       </SegurosEducationLayout>
+    </>
   );
 }

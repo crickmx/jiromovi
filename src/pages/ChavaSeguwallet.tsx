@@ -5,7 +5,6 @@ import {
   ChevronDown, FileText, CreditCard, Shield, TriangleAlert as AlertTriangle,
   BookOpen, User, Database, Server, Brain, ChevronUp, ExternalLink, Info,
 } from 'lucide-react';
-import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -375,7 +374,7 @@ export default function ChavaSeguwallet() {
   }
 
   return (
-    <Layout>
+    <>
       <div className="flex flex-col h-[calc(100vh-7rem)] max-h-[800px]">
         {/* Header */}
         <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
@@ -580,6 +579,6 @@ export default function ChavaSeguwallet() {
           </p>
         </div>
       </div>
-    </Layout>
+    </>
   );
 }

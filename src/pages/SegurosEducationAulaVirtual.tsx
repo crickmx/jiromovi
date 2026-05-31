@@ -1,13 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Layout } from '../components/Layout';
 import { SegurosEducationLayout } from '../components/segurosEducation/SegurosEducationLayout';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import {
-  Calendar, Clock, Plus, Users, Video, AlertCircle,
-  Play, Pause, Link as LinkIcon, Copy, CheckCircle,
-  Download, FileVideo, Upload
-} from 'lucide-react';
+import { Calendar, Clock, Plus, Users, Video, CircleAlert as AlertCircle, Play, Pause, Link as LinkIcon, Copy, CircleCheck as CheckCircle, Download, FileVideoCamera as FileVideo, Upload } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { BaseModal } from '../components/BaseModal';
@@ -257,18 +252,18 @@ export function SegurosEducationAulaVirtual() {
 
   if (loading) {
     return (
-      <Layout>
+      <>
         <SegurosEducationLayout sectionTitle="Aula Virtual" sectionDescription="Capacitaciones en vivo con WebRTC">
           <div className="flex justify-center items-center py-16">
             <div className="w-8 h-8 border-[3px] border-[#1C37E0]/20 border-t-[#1C37E0] rounded-full animate-spin" />
           </div>
         </SegurosEducationLayout>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       <SegurosEducationLayout sectionTitle="Aula Virtual" sectionDescription="Capacitaciones en vivo con WebRTC">
       <div className="space-y-5">
         {/* Section header with actions */}
@@ -488,7 +483,7 @@ export function SegurosEducationAulaVirtual() {
         />
       )}
       </SegurosEducationLayout>
-    </Layout>
+    </>
   );
 }
 

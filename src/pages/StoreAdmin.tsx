@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Store, Package, Plus, CreditCard as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign } from 'lucide-react';
@@ -136,16 +135,16 @@ export default function StoreAdmin() {
 
   if (loading) {
     return (
-      <Layout>
+      <>
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
         </div>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <PageHeader
           title="Administración de MOVI Store"
@@ -378,7 +377,7 @@ export default function StoreAdmin() {
           />
         )}
       </div>
-    </Layout>
+    </>
   );
 }
 

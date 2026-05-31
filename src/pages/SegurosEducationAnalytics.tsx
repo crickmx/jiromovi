@@ -1,12 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import {
-  BarChart3, TrendingUp, Users, Clock, Award, Download,
-  Calendar, Filter, Search, Eye, Play, CheckCircle
-} from 'lucide-react';
+import { ChartBar as BarChart3, TrendingUp, Users, Clock, Award, Download, Calendar, ListFilter as Filter, Search, Eye, Play, CircleCheck as CheckCircle } from 'lucide-react';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { SegurosEducationLayout } from '../components/segurosEducation/SegurosEducationLayout';
@@ -298,18 +294,18 @@ export function SegurosEducationAnalytics() {
 
   if (loading) {
     return (
-      <Layout>
+      <>
         <SegurosEducationLayout sectionTitle="Analytics" sectionDescription="Métricas de Seguros Education">
           <div className="flex justify-center items-center py-16">
             <div className="w-8 h-8 border-[3px] border-[#1C37E0]/20 border-t-[#1C37E0] rounded-full animate-spin" />
           </div>
         </SegurosEducationLayout>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       <SegurosEducationLayout sectionTitle="Analytics" sectionDescription="Métricas de Seguros Education">
       <div className="space-y-5">
         {/* Section header */}
@@ -636,6 +632,6 @@ export function SegurosEducationAnalytics() {
         )}
       </div>
       </SegurosEducationLayout>
-    </Layout>
+    </>
   );
 }

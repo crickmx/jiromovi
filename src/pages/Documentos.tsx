@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
 import { FolderOpen, Download, FileText, Upload, Sparkles, Plus } from 'lucide-react';
-import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
@@ -75,7 +74,7 @@ export default function Documentos() {
   }
 
   return (
-    <Layout>
+    <>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-slate-800">Documentos</h1>
@@ -136,6 +135,6 @@ export default function Documentos() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 }

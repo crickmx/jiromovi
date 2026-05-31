@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Layout } from '../components/Layout';
 import { BookOpen, Search, Settings, ChevronRight, FileText, Layers } from 'lucide-react';
 import { SegurosEducationLayout } from '../components/segurosEducation/SegurosEducationLayout';
 
@@ -120,18 +119,18 @@ export function SegurosEducationManuales() {
 
   if (loading) {
     return (
-      <Layout>
+      <>
         <SegurosEducationLayout sectionTitle="Manuales" sectionDescription="Documentos operativos y de referencia">
           <div className="flex justify-center items-center py-16">
             <div className="w-8 h-8 border-[3px] border-[#1C37E0]/20 border-t-[#1C37E0] rounded-full animate-spin" />
           </div>
         </SegurosEducationLayout>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       <SegurosEducationLayout sectionTitle="Manuales" sectionDescription="Documentos operativos y de referencia">
         <div className="space-y-5">
           {/* Section header */}
@@ -237,6 +236,6 @@ export function SegurosEducationManuales() {
           )}
         </div>
       </SegurosEducationLayout>
-    </Layout>
+    </>
   );
 }

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Layout } from '../components/Layout';
 import { Container } from '../components/ui/container';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
@@ -69,19 +68,19 @@ export default function ComunicadoDetalle() {
 
   if (loading) {
     return (
-      <Layout hideHeader>
+      <>
         <Container size="lg">
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-3 border-accent border-t-transparent"></div>
           </div>
         </Container>
-      </Layout>
+      </>
     );
   }
 
   if (!puedeVer) {
     return (
-      <Layout hideHeader>
+      <>
         <Container size="lg">
           <div className="bg-white rounded-xl border border-neutral-200 shadow-ios p-8 sm:p-12 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
@@ -98,13 +97,13 @@ export default function ComunicadoDetalle() {
             </Button>
           </div>
         </Container>
-      </Layout>
+      </>
     );
   }
 
   if (!comunicado) {
     return (
-      <Layout hideHeader>
+      <>
         <Container size="lg">
           <div className="bg-white rounded-xl border border-neutral-200 shadow-ios p-8 sm:p-12 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
@@ -118,7 +117,7 @@ export default function ComunicadoDetalle() {
             </Button>
           </div>
         </Container>
-      </Layout>
+      </>
     );
   }
 
@@ -126,7 +125,7 @@ export default function ComunicadoDetalle() {
   const puedeEditar = esAdmin || (esGerente && comunicado.creado_por === usuario?.id);
 
   return (
-    <Layout hideHeader>
+    <>
       <Container size="lg">
         {/* Navegación y acciones */}
         <PageHeader
@@ -273,6 +272,6 @@ export default function ComunicadoDetalle() {
           </div>
         </article>
       </Container>
-    </Layout>
+    </>
   );
 }

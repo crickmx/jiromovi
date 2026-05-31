@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, Package, Settings, ShoppingBag } from 'lucide-react';
@@ -74,14 +73,14 @@ export default function Store() {
 
   if (loading) {
     return (
-      <Layout>
+      <>
         <LoadingState text="Cargando productos..." />
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       <div className="space-y-5">
         <PageHeader
           title="MOVI Store"
@@ -183,7 +182,7 @@ export default function Store() {
           />
         )}
       </div>
-    </Layout>
+    </>
   );
 }
 

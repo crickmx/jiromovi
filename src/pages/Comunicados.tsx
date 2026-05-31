@@ -1,13 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Layout } from '../components/Layout';
-import { PageHeader } from '../components/ui/page-header';
-import { Section } from '../components/ui/section';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { useAuth } from '../contexts/AuthContext';
-import { Plus, Calendar, Pin, FileText, Settings, Filter, X, ChevronRight } from 'lucide-react';
+import { Plus, Calendar, Pin, FileText, Settings, ListFilter as Filter, X, ChevronRight } from 'lucide-react';
 import { obtenerComunicados, obtenerCategoriasActivas } from '../lib/comunicadosUtils';
 import type { ComunicadoPublicacion, ComunicadoCategoria } from '../lib/comunicadosTypes';
 import { extraerTextoPlano, formatearFecha } from '../lib/comunicadosUtils';
@@ -132,18 +125,18 @@ export default function Comunicados() {
 
   if (loading) {
     return (
-      <Layout hideHeader>
+      <>
         <div className="space-y-4">
           <div className="skeleton h-24 w-full" />
           <div className="skeleton h-64 w-full" />
           <div className="skeleton h-64 w-full" />
         </div>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout hideHeader>
+    <>
       <div className="max-w-7xl mx-auto">
         <PageHeader
           title="Comunicados"
@@ -387,6 +380,6 @@ export default function Comunicados() {
           )}
         </div>
       </div>
-    </Layout>
+    </>
   );
 }

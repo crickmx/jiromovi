@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Send, Users, Building2, UserCheck, Megaphone, Bell, CheckCircle, MessageCircle } from 'lucide-react';
+import { Send, Users, Building2, UserCheck, Megaphone, Bell, CircleCheck as CheckCircle, MessageCircle } from 'lucide-react';
 import { crearNotificacionGlobal } from '../lib/notificationHelpers';
 import { PageHeader } from '@/components/ui/page-header';
 import { format } from 'date-fns';
@@ -26,9 +25,9 @@ interface NotificacionGlobal {
 
 export function CentroNotificaciones() {
   return (
-    <Layout>
+    <>
       <CentroNotificacionesContent />
-    </Layout>
+    </>
   );
 }
 

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, ChevronRight, Sparkles, Calendar } from 'lucide-react';
-import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -53,7 +52,7 @@ export default function Polizas() {
   }
 
   return (
-    <Layout>
+    <>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-slate-800">Mis Pólizas</h1>
@@ -115,6 +114,6 @@ export default function Polizas() {
           })}
         </div>
       )}
-    </Layout>
+    </>
   );
 }

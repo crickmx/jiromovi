@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
-import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/ui/page-header';
 import { HomeDashboardSummary } from '../components/home/HomeDashboardSummary';
 import { TramitesWidget } from '../components/TramitesWidget';
@@ -27,7 +26,7 @@ export default function Dashboard() {
   }
 
   return (
-    <Layout>
+    <>
       <PageHeader
         title={`${getGreeting()}, ${usuario.nombre || 'Agente'}`}
         subtitle="Aquí tienes un resumen de tu actividad reciente."
@@ -43,6 +42,6 @@ export default function Dashboard() {
 
         <ProgresoGamificacion />
       </div>
-    </Layout>
+    </>
   );
 }

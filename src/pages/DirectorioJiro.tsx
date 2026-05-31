@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Search, Mail, Phone, MapPin, Briefcase, Copy, Check, X, Users } from 'lucide-react';
@@ -153,14 +152,14 @@ export function DirectorioJiro() {
 
   if (loading) {
     return (
-      <Layout>
+      <>
         <LoadingState text="Cargando empleados..." />
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       <div className="space-y-6">
         <PageHeader
           title="Directorio JIRO"
@@ -390,6 +389,6 @@ export function DirectorioJiro() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 }
