@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Search, UserPlus, AlertCircle } from 'lucide-react';
+import { X, Search, UserPlus, CircleAlert as AlertCircle } from 'lucide-react';
 import { buscarUsuariosParaCompartir, invitarMiembro } from '../../lib/crmUtils';
 import type { SearchableUser, MemberRole } from '../../lib/crmTypes';
 import { useAuth } from '../../contexts/AuthContext';
@@ -24,7 +24,7 @@ export default function CompartirTableroModal({
   const [loading, setLoading] = useState(false);
   const [inviting, setInviting] = useState(false);
   const [error, setError] = useState('');
-  const { user } = useAuth();
+  const { usuario: user } = useAuth();
 
   useEffect(() => {
     if (searchQuery.length >= 2) {

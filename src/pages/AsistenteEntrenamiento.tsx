@@ -1,11 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  Bot, Settings, MessageSquare, Zap, Brain, FlaskConical, BookOpen, History,
-  Plus, Trash2, Save, X, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2,
-  XCircle, Loader2, Search, RefreshCw, Tag, Activity, ArrowLeft, Pencil,
-  ToggleLeft, ToggleRight, TrendingUp, Send,
-} from 'lucide-react';
+import { Bot, Settings, MessageSquare, Zap, Brain, FlaskConical, BookOpen, History, Plus, Trash2, Save, X, ChevronDown, ChevronUp, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle2, Circle as XCircle, Loader as Loader2, Search, RefreshCw, Tag, Activity, ArrowLeft, Pencil, ToggleLeft, ToggleRight, TrendingUp, Send } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { cn } from '@/lib/utils';
@@ -1037,7 +1032,7 @@ function TabLogs() {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AsistenteEntrenamiento() {
-  const { user } = useAuth();
+  const { usuario: user } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingRole, setCheckingRole] = useState(true);
   const [tab, setTab] = useState<Tab>('config');

@@ -1,19 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  LayoutGrid,
-  Plus,
-  Users,
-  Crown,
-  Shield,
-  Edit,
-  Eye,
-  Share2,
-  MoreVertical,
-  Trash2,
-  Edit3,
-  ArrowRight,
-} from 'lucide-react';
+import { LayoutGrid, Plus, Users, Crown, Shield, CreditCard as Edit, Eye, Share2, MoveVertical as MoreVertical, Trash2, CreditCard as Edit3, ArrowRight } from 'lucide-react';
 import { listarTableros, crearTablero, eliminarTablero, renombrarTablero } from '../../lib/crmUtils';
 import type { CRMBoardListItem } from '../../lib/crmTypes';
 import { useAuth } from '../../contexts/AuthContext';
@@ -33,7 +20,7 @@ export default function TablerosSeccion() {
   const [menuAbierto, setMenuAbierto] = useState<string | null>(null);
   const [editando, setEditando] = useState<string | null>(null);
   const [nombreEditar, setNombreEditar] = useState('');
-  const { user, usuario } = useAuth();
+  const { usuario } = useAuth();
 
   const rolPermitido = usuario?.rol && ['Empleado', 'Gerente', 'Administrador'].includes(usuario.rol);
   const esAgente = usuario?.rol === 'Agente';

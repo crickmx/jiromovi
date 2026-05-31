@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-  ArrowLeft, ArrowRight, Check, Save, Send, Loader2, AlertCircle,
-  User, MapPin, Shield, Paperclip, Eye, Clock,
-} from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Save, Send, Loader as Loader2, CircleAlert as AlertCircle, User, MapPin, Shield, Paperclip, Eye, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchQuoteFormTemplates, createQuoteForm, updateQuoteForm, submitQuoteForm, addQuoteFormHistory, fetchQuoteFormById } from '../lib/quoteFormUtils';
@@ -34,7 +31,7 @@ const DEFAULT_STEPS: WizardStep[] = [
 export default function QuoteFormWizard() {
   const { formType, formId } = useParams<{ formType?: string; formId?: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { usuario: user } = useAuth();
 
   const [template, setTemplate] = useState<QuoteFormTemplate | null>(null);
   const [currentStep, setCurrentStep] = useState(0);

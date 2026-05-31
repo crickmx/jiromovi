@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Switch } from '../components/ui/switch';
-import { ExternalLink, Save, CheckCircle2, AlertCircle, Star, GripVertical } from 'lucide-react';
+import { ExternalLink, Save, CircleCheck as CheckCircle2, CircleAlert as AlertCircle, Star, GripVertical } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -48,7 +48,8 @@ const DEFAULT_FEATURED_TYPES = [
 ];
 
 export default function MiPaginaWeb() {
-  const { user, usuario } = useAuth();
+  const { usuario } = useAuth();
+  const user = usuario;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [insurers, setInsurers] = useState<WebPageInsurer[]>([]);

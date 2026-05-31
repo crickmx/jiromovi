@@ -29,7 +29,8 @@ interface Policy {
 
 export default function PolizaDetalle() {
   const { id } = useParams<{ id: string }>();
-  const { customer } = useAuth();
+  const { usuario } = useAuth();
+  const customer = usuario ? { id: usuario.id } : null;
   const navigate = useNavigate();
   const [policy, setPolicy] = useState<Policy | null>(null);
   const [docs, setDocs] = useState<{ id: string; nombre_archivo: string; tipo_documento: string; archivo_url: string | null }[]>([]);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, ChevronDown, Wallet, AlertCircle } from 'lucide-react';
+import { X, ChevronDown, Wallet, CircleAlert as AlertCircle } from 'lucide-react';
 import { trackCrmAction } from '../../lib/activityLogger';
 import {
   crearContacto,
@@ -37,7 +37,7 @@ interface Props {
 }
 
 export default function ContactoModal({ contacto, seguwalletCustomerId, onClose, onSave }: Props) {
-  const { user } = useAuth();
+  const { usuario: user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [camposPersonalizados, setCamposPersonalizados] = useState<CRMCampoPersonalizado[]>([]);

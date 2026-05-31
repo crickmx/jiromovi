@@ -1,11 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  Bot, Plus, Pencil, Trash2, Globe, Lock, Save, X, Loader2, Search,
-  RefreshCw, Sparkles, CheckCircle2, ChevronDown, ChevronUp, Brain,
-  Settings, RotateCcw, History, Archive, Filter, Tag, Activity,
-  MessageSquare, List, BarChart2, AlertTriangle, Eye
-} from 'lucide-react';
+import { Bot, Plus, Pencil, Trash2, Globe, Lock, Save, X, Loader as Loader2, Search, RefreshCw, Sparkles, CircleCheck as CheckCircle2, ChevronDown, ChevronUp, Brain, Settings, RotateCcw, History, Archive, ListFilter as Filter, Tag, Activity, MessageSquare, List, ChartBar as BarChart2, TriangleAlert as AlertTriangle, Eye } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { cn } from '@/lib/utils';
@@ -966,7 +961,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function CentroContactoAsistentes() {
-  const { user } = useAuth();
+  const { usuario: user } = useAuth();
   const isAdmin = true; // Replace with real role check as needed
 
   const [assistants, setAssistants] = useState<CcAssistant[]>([]);

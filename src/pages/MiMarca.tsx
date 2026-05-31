@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Upload, X, Image as ImageIcon, CheckCircle2, AlertCircle, User, Save, RotateCcw } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, CircleCheck as CheckCircle2, CircleAlert as AlertCircle, User, Save, RotateCcw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { MiLogotipoEditor } from '../components/MiLogotipoEditor';
@@ -7,7 +7,7 @@ import { getDisplayName } from '../lib/utils';
 import { trackSettingsOpened, trackBrandingUpdated, trackProfileImageUpdated, trackLogoUpdated } from '../lib/activityLogger';
 
 export default function MiMarca() {
-  const { usuario, refreshUsuario } = useAuth();
+  const { usuario, reloadUsuario: refreshUsuario } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);

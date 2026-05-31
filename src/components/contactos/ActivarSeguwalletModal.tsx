@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Wallet, Loader2, CheckCircle, AlertCircle, Mail } from 'lucide-react';
+import { X, Wallet, Loader as Loader2, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Mail } from 'lucide-react';
 import { supabase, supabaseUrl } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import type { UnifiedContacto } from '../../lib/contactosTypes';
@@ -11,7 +11,7 @@ interface Props {
 }
 
 export default function ActivarSeguwalletModal({ contacto, onClose, onSuccess }: Props) {
-  const { user: currentUser } = useAuth();
+  const { usuario: currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);

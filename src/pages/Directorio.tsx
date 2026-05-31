@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, UserPlus, CreditCard as Edit, Trash2, ToggleLeft, ToggleRight, Users, Filter, Send, CheckCircle, Eye } from 'lucide-react';
+import { Search, UserPlus, CreditCard as Edit, Trash2, ToggleLeft, ToggleRight, Users, ListFilter as Filter, Send, CircleCheck as CheckCircle, Eye } from 'lucide-react';
 import { UserModal } from '../components/UserModal';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
 
 export function Directorio() {
-  const { usuario: currentUser, refreshUsuario } = useAuth();
+  const { usuario: currentUser, reloadUsuario: refreshUsuario } = useAuth();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
   const [searchTerm, setSearchTerm] = useState('');

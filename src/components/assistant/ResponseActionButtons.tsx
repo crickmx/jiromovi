@@ -13,7 +13,7 @@ interface ResponseActionButtonsProps {
 export function ResponseActionButtons({ actions }: ResponseActionButtonsProps) {
   const navigate = useNavigate();
   const { closeAssistant, sendMessage } = useAssistant();
-  const { user } = useAuth();
+  const { usuario: user } = useAuth();
 
   const handleAction = async (action: ActionButton) => {
     if (user?.id) {

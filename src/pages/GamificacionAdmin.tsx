@@ -26,7 +26,7 @@ import { PageHeader } from '../components/ui/page-header';
 import { cn } from '../lib/utils';
 
 export default function GamificacionAdmin() {
-  const { user } = useAuth();
+  const { usuario: user } = useAuth();
   const [ranking, setRanking] = useState<RankingEntry[]>([]);
   const [estadisticas, setEstadisticas] = useState<EstadisticasGamificacion | null>(null);
   const [misiones, setMisiones] = useState<AgentMission[]>([]);

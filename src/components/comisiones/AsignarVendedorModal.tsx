@@ -12,7 +12,7 @@ interface Props {
 }
 
 export default function AsignarVendedorModal({ batchId, vendor, onClose, onSuccess }: Props) {
-  const { user } = useAuth();
+  const { usuario: user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [busqueda, setBusqueda] = useState('');

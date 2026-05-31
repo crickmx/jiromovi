@@ -16,7 +16,7 @@ interface ContactoConCumpleanos {
 
 export default function CumpleanosContactos() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { usuario: user } = useAuth();
   const [contactos, setContactos] = useState<ContactoConCumpleanos[]>([]);
   const [loading, setLoading] = useState(true);
   const [periodo, setPeriodo] = useState<'semana' | 'mes' | 'trimestre'>('mes');
