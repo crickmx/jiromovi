@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ChavaAgenteProvider } from './chava-agente/lib/ChavaAgenteContext';
 import { type ReactNode } from 'react';
 
 import Login from './pages/Login';
@@ -10,6 +11,11 @@ import Cobranza from './pages/Cobranza';
 import Documentos from './pages/Documentos';
 import Perfil from './pages/Perfil';
 import ChavaSeguwallet from './pages/ChavaSeguwallet';
+
+import ChavaAgenteLanding from './chava-agente/pages/ChavaAgenteLanding';
+import ChavaAgenteUsuariosAdmin from './chava-agente/pages/admin/ChavaAgenteUsuariosAdmin';
+import ChavaAgenteConversacionesAdmin from './chava-agente/pages/admin/ChavaAgenteConversacionesAdmin';
+import ChavaAgenteTerminosAdmin from './chava-agente/pages/admin/ChavaAgenteTerminosAdmin';
 
 function PrivateRoute({ children }: { children: ReactNode }) {
   const { customer, loading } = useAuth();
@@ -29,6 +35,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          {/* Seguwallet routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/seguwallet/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/seguwallet/polizas" element={<PrivateRoute><Polizas /></PrivateRoute>} />
@@ -37,6 +44,31 @@ export default function App() {
           <Route path="/seguwallet/documentos" element={<PrivateRoute><Documentos /></PrivateRoute>} />
           <Route path="/seguwallet/chava" element={<PrivateRoute><ChavaSeguwallet /></PrivateRoute>} />
           <Route path="/seguwallet/perfil" element={<PrivateRoute><Perfil /></PrivateRoute>} />
+
+          {/* Chava Agente — public platform */}
+          <Route path="/chava-agente" element={
+            <ChavaAgenteProvider>
+              <ChavaAgenteLanding />
+            </ChavaAgenteProvider>
+          } />
+
+          {/* Chava Agente — MOVI admin */}
+          <Route path="/admin/chava-agente/usuarios" element={
+            <ChavaAgenteProvider>
+              <ChavaAgenteUsuariosAdmin />
+            </ChavaAgenteProvider>
+          } />
+          <Route path="/admin/chava-agente/conversaciones" element={
+            <ChavaAgenteProvider>
+              <ChavaAgenteConversacionesAdmin />
+            </ChavaAgenteProvider>
+          } />
+          <Route path="/admin/chava-agente/terminos" element={
+            <ChavaAgenteProvider>
+              <ChavaAgenteTerminosAdmin />
+            </ChavaAgenteProvider>
+          } />
+
           <Route path="*" element={<Navigate to="/seguwallet/dashboard" replace />} />
         </Routes>
       </AuthProvider>
