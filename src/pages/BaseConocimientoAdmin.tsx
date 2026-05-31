@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, Plus, CreditCard as Edit2, Trash2, Star, Clock, Eye, EyeOff, Search, Filter, X, Save, CircleAlert as AlertCircle, CircleCheck as CheckCircle, Upload, FileText, Download, Tag, ChevronDown, Building2, Layers, Megaphone, ToggleLeft, ToggleRight, RefreshCw } from 'lucide-react';
+import { BookOpen, Plus, CreditCard as Edit2, Trash2, Star, Clock, Search, X, Save, CircleAlert as AlertCircle, CircleCheck as CheckCircle, FileText, Download, Tag, Megaphone, RefreshCw, CloudDownload, CheckCircle2, XCircle, Loader2, BarChart3, Globe } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/ui/page-header';
 import { Button } from '../components/ui/button';
@@ -38,6 +38,22 @@ interface Ad {
   activo: boolean;
 }
 
+interface DownloadResult {
+  id: string;
+  titulo: string;
+  status: 'downloaded' | 'skipped' | 'error';
+  storage_path?: string;
+  error?: string;
+}
+
+interface DownloadSummary {
+  total_processed: number;
+  downloaded: number;
+  skipped: number;
+  errors: number;
+  results: DownloadResult[];
+}
+
 const EMPTY_DOC: Omit<Doc, 'id' | 'created_at'> = {
   titulo: '',
   descripcion: '',
@@ -73,12 +89,20 @@ function ToggleBtn({ value, onChange }: { value: boolean; onChange: (v: boolean)
 
 export default function BaseConocimientoAdmin() {
   const { usuario } = useAuth();
-  const [tab, setTab] = useState<'documentos' | 'anuncios'>('documentos');
+  const [tab, setTab] = useState<'documentos' | 'anuncios' | 'importar'>('documentos');
   const [docs, setDocs] = useState<Doc[]>([]);
   const [ads, setAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState('');
   const [filtroAseg, setFiltroAseg] = useState('');
+
+  // Bulk download state
+  const [downloadRunning, setDownloadRunning] = useState(false);
+  const [downloadSummary, setDownloadSummary] = useState<DownloadSummary | null>(null);
+  const [downloadOffset, setDownloadOffset] = useState(0);
+  const [downloadLimit] = useState(5);
+  const [downloadAseg, setDownloadAseg] = useState('');
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
 
   // Modal state
   const [showDocModal, setShowDocModal] = useState(false);
@@ -106,7 +130,52 @@ export default function BaseConocimientoAdmin() {
   useEffect(() => {
     if (!esAdmin) return;
     load();
+    loadPendingCount();
   }, [esAdmin]);
+
+  async function loadPendingCount() {
+    const { count } = await supabase
+      .from('digital_center_documents')
+      .select('id', { count: 'exact', head: true })
+      .is('storage_path', null)
+      .eq('activo', true);
+    setPendingCount(count ?? 0);
+  }
+
+  async function runBulkDownload(dryRun = false) {
+    setDownloadRunning(true);
+    setDownloadSummary(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bulk-download-docs`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({
+            limit: downloadLimit,
+            offset: downloadOffset,
+            aseguradora: downloadAseg || undefined,
+            dry_run: dryRun,
+          }),
+        }
+      );
+      const json = await res.json();
+      if (!dryRun && json.total_processed > 0) {
+        setDownloadOffset(o => o + downloadLimit);
+        await load();
+        await loadPendingCount();
+      }
+      setDownloadSummary(json);
+    } catch (e) {
+      showMsg('err', 'Error al ejecutar descarga');
+    } finally {
+      setDownloadRunning(false);
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -255,17 +324,18 @@ export default function BaseConocimientoAdmin() {
     <Layout>
       <PageHeader
         title="Base de Conocimiento"
-        description={`Gestión de documentos y anuncios del Centro Digital · ${docs.length} documentos`}
+        description={`Gestión de documentos y anuncios del Centro Digital · ${docs.length} documentos${pendingCount ? ` · ${pendingCount} pendientes de descarga` : ''}`}
       >
         <div className="flex gap-2">
           <Button variant="outline" onClick={load}>
             <RefreshCw className="w-4 h-4 mr-2" />Recargar
           </Button>
-          {tab === 'documentos' ? (
+          {tab === 'documentos' && (
             <Button onClick={openNewDoc}>
               <Plus className="w-4 h-4 mr-2" />Nuevo documento
             </Button>
-          ) : (
+          )}
+          {tab === 'anuncios' && (
             <Button onClick={openNewAd}>
               <Plus className="w-4 h-4 mr-2" />Nuevo anuncio
             </Button>
@@ -284,13 +354,15 @@ export default function BaseConocimientoAdmin() {
       {/* Tabs */}
       <div className="px-6 border-b border-gray-100 bg-white">
         <div className="flex gap-1">
-          {(['documentos', 'anuncios'] as const).map(t => (
+          {(['documentos', 'anuncios', 'importar'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-2 ${tab === t ? 'border-accent text-accent' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-              {t === 'documentos' ? <BookOpen className="w-4 h-4" /> : <Megaphone className="w-4 h-4" />}
-              {t === 'documentos' ? 'Documentos' : 'Anuncios / Promociones'}
+              {t === 'documentos' && <BookOpen className="w-4 h-4" />}
+              {t === 'anuncios' && <Megaphone className="w-4 h-4" />}
+              {t === 'importar' && <CloudDownload className="w-4 h-4" />}
+              {t === 'documentos' ? 'Documentos' : t === 'anuncios' ? 'Anuncios' : 'Importar / Descargar'}
               <span className="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full">
-                {t === 'documentos' ? docs.length : ads.length}
+                {t === 'documentos' ? docs.length : t === 'anuncios' ? ads.length : (pendingCount ?? '…')}
               </span>
             </button>
           ))}
@@ -459,9 +531,156 @@ export default function BaseConocimientoAdmin() {
             )}
           </div>
         )}
-      </div>
+        {/* ── Importar / Descargar tab ── */}
+        {tab === 'importar' && (
+          <div className="space-y-6 max-w-3xl">
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-white rounded-xl border p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">{docs.length}</p>
+                    <p className="text-xs text-gray-500">Total documentos</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-xl border p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">{docs.filter(d => d.storage_path).length}</p>
+                    <p className="text-xs text-gray-500">Descargados a Storage</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-xl border p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center">
+                    <CloudDownload className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">{pendingCount ?? '…'}</p>
+                    <p className="text-xs text-gray-500">Pendientes de descarga</p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-      {/* ── Document Modal ─────────────────────────────────────────────────────── */}
+            {/* Download control panel */}
+            <div className="bg-white rounded-xl border p-6 space-y-4">
+              <div>
+                <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                  <CloudDownload className="w-5 h-5 text-accent" />
+                  Descarga masiva desde URLs originales
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Descarga documentos desde sus URLs originales y los almacena en Supabase Storage.
+                  Ejecuta en lotes de {downloadLimit} documentos para evitar timeouts.
+                </p>
+              </div>
+
+              <div className="flex gap-3 items-end">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Filtrar por aseguradora (opcional)</label>
+                  <select value={downloadAseg} onChange={e => setDownloadAseg(e.target.value)}
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-accent/20">
+                    <option value="">Todas las aseguradoras</option>
+                    {[...new Set(docs.map(d => d.aseguradora).filter(Boolean))].map(a => (
+                      <option key={a} value={a!}>{a}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="text-center min-w-[80px]">
+                  <p className="text-xs text-gray-500 mb-1">Offset actual</p>
+                  <div className="flex items-center gap-1">
+                    <input type="number" value={downloadOffset} onChange={e => setDownloadOffset(Math.max(0, +e.target.value))}
+                      className="w-16 text-sm text-center border border-gray-200 rounded-lg px-2 py-2 focus:outline-none" min={0} />
+                    <button onClick={() => setDownloadOffset(0)} className="text-xs text-gray-400 hover:text-gray-600 px-1">Reset</button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => runBulkDownload(true)} disabled={downloadRunning}>
+                  {downloadRunning ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <BarChart3 className="w-4 h-4 mr-2" />}
+                  Vista previa (dry run)
+                </Button>
+                <Button onClick={() => runBulkDownload(false)} disabled={downloadRunning || pendingCount === 0}>
+                  {downloadRunning
+                    ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Descargando...</>
+                    : <><CloudDownload className="w-4 h-4 mr-2" />Descargar lote ({downloadLimit})</>
+                  }
+                </Button>
+                {pendingCount === 0 && (
+                  <span className="flex items-center text-sm text-emerald-600 gap-1.5">
+                    <CheckCircle2 className="w-4 h-4" />Todos descargados
+                  </span>
+                )}
+              </div>
+
+              <p className="text-xs text-gray-400">
+                Tip: Ejecuta varios lotes haciendo clic repetidamente. El offset avanza automáticamente.
+                Para reiniciar, presiona "Reset" en el offset.
+              </p>
+            </div>
+
+            {/* Results */}
+            {downloadSummary && (
+              <div className="bg-white rounded-xl border overflow-hidden">
+                <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-gray-700">Resultado del lote</h4>
+                  <div className="flex gap-3 text-xs">
+                    <span className="text-emerald-600 font-medium">{downloadSummary.downloaded} descargados</span>
+                    <span className="text-amber-600 font-medium">{downloadSummary.skipped} omitidos</span>
+                    <span className="text-red-500 font-medium">{downloadSummary.errors} errores</span>
+                  </div>
+                </div>
+                {'docs' in downloadSummary ? (
+                  <div className="p-4">
+                    <p className="text-sm text-gray-500 mb-3">Vista previa — documentos pendientes:</p>
+                    <div className="space-y-1">
+                      {(downloadSummary as any).docs?.map((d: any) => (
+                        <div key={d.id} className="flex items-center gap-2 text-sm py-1 border-b border-gray-50 last:border-0">
+                          <Globe className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
+                          <span className="font-medium text-gray-700 flex-1 truncate">{d.titulo}</span>
+                          <span className="text-xs text-gray-400">{d.aseguradora}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {downloadSummary.results?.map(r => (
+                      <div key={r.id} className="px-4 py-2.5 flex items-center gap-3">
+                        {r.status === 'downloaded' && <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />}
+                        {r.status === 'error' && <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />}
+                        {r.status === 'skipped' && <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />}
+                        <span className="text-sm text-gray-700 flex-1 truncate">{r.titulo}</span>
+                        {r.storage_path && <span className="text-xs text-gray-400 truncate max-w-[200px]">{r.storage_path}</span>}
+                        {r.error && <span className="text-xs text-red-400 truncate max-w-[200px]">{r.error}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Knowledge base summary */}
+            <div className="bg-white rounded-xl border p-5">
+              <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-gray-400" />
+                Estado de Chava IA
+              </h4>
+              <ChavaKnowledgeStats />
+            </div>
+          </div>
+        )}
+      </div>
       {showDocModal && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl w-full max-w-2xl my-8 shadow-2xl">
@@ -692,5 +911,45 @@ export default function BaseConocimientoAdmin() {
         </div>
       )}
     </Layout>
+  );
+}
+
+function ChavaKnowledgeStats() {
+  const [stats, setStats] = useState<{ total: number; indexados: number; fragmentos: number } | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      const [docsRes, fragRes] = await Promise.all([
+        supabase.from('chava_documentos')
+          .select('id, estado', { count: 'exact' })
+          .eq('acceso', 'todos'),
+        supabase.from('chava_fragmentos')
+          .select('id', { count: 'exact' }),
+      ]);
+      const total = docsRes.count ?? 0;
+      const indexados = (docsRes.data || []).filter(d => d.estado === 'ready').length;
+      const fragmentos = fragRes.count ?? 0;
+      setStats({ total, indexados, fragmentos });
+    }
+    load();
+  }, []);
+
+  if (!stats) return <div className="text-sm text-gray-400">Cargando...</div>;
+
+  return (
+    <div className="grid grid-cols-3 gap-4 text-center">
+      <div>
+        <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+        <p className="text-xs text-gray-500 mt-0.5">Documentos indexados</p>
+      </div>
+      <div>
+        <p className="text-2xl font-bold text-emerald-600">{stats.indexados}</p>
+        <p className="text-xs text-gray-500 mt-0.5">Estado "ready"</p>
+      </div>
+      <div>
+        <p className="text-2xl font-bold text-blue-600">{stats.fragmentos}</p>
+        <p className="text-xs text-gray-500 mt-0.5">Fragmentos de texto</p>
+      </div>
+    </div>
   );
 }
