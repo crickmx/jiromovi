@@ -11,7 +11,8 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { BaseModal } from '../components/BaseModal';
-import { PublicarOnDemandModal, PublicarOnDemandData } from '../components/PublicarOnDemandModal';
+import { PublicarOnDemandModal } from '../components/PublicarOnDemandModal';
+import type { PublicarOnDemandData } from '../components/PublicarOnDemandModal';
 import {
   obtenerSesiones,
   obtenerGrabaciones,

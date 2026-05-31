@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Folder, Plus, Search, File, Download, Trash2, RotateCcw, Eye, Upload, Building2, Users, MoveVertical as MoreVertical, Archive, FileText, FileSpreadsheet, FileImage, FileVideo, FileAudio, Grid2x2 as Grid, List, BookOpen, Star, Clock, Tag, Filter, X, ChevronDown, ChevronRight, Megaphone, Shield, Car, Heart, Chrome as Home, Briefcase, Globe, Zap } from 'lucide-react';
+import { Folder, Plus, Search, File, Download, Trash2, RotateCcw, Eye, Upload, Building2, Users, MoveVertical as MoreVertical, Archive, FileText, FileSpreadsheet, FileImage, FileVideo, FileAudio, Grid2x2 as Grid, List, BookOpen, Star, Clock, Tag, Filter, X, ChevronDown, ChevronRight, Megaphone, Shield, Car, Heart, Home, Briefcase, Globe, Zap } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/ui/page-header';
 import { Button } from '../components/ui/button';

@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import { Phone, Mail, MessageCircle, Loader2, ChevronLeft, ChevronRight, ArrowUp, Car, ExternalLink, Search, X, ChevronDown } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { getPublicWebPageBySlug } from '../lib/webPagesUtils';
@@ -425,18 +424,6 @@ export default function PaginaPublicaAsesor() {
 
   return (
     <>
-      <Helmet>
-        <title>{pageTitle}</title>
-        <meta name="description" content={metaDescription} />
-        <meta property="og:title" content={pageTitle} />
-        <meta property="og:description" content={metaDescription} />
-        <meta property="og:type" content="profile" />
-        {user.photo_url && <meta property="og:image" content={user.photo_url} />}
-        <meta name="robots" content="index, follow" />
-        <link rel="canonical" href={`https://agentedeseguros.website/${slug}`} />
-        <script src={`https://www.google.com/recaptcha/api.js?render=${import.meta.env.VITE_RECAPTCHA_SITE_KEY}`} async defer />
-      </Helmet>
-
       <div className="bg-white min-h-screen overflow-x-hidden pb-16 md:pb-0">
         <div
           className="fixed inset-0 pointer-events-none z-0 opacity-30"

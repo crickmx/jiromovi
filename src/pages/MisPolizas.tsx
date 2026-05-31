@@ -6,7 +6,7 @@ import {
   ChevronDown, ChevronUp, AlertCircle, FolderOpen, Calendar,
   Shield,
 } from 'lucide-react';
-import { SicasPoliza } from '../lib/misPolizasTypes';
+import type { SicasPoliza } from '../lib/misPolizasTypes';
 import { PageHeader } from '@/components/ui/page-header';
 import { SicasDigitalCenterViewer } from '@/components/sicasDigitalCenter/SicasDigitalCenterViewer';
 

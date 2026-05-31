@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Building2, Plus, CreditCard as Edit, Trash2, ToggleLeft, ToggleRight, Users, Phone, Mail, MapPin, Facebook, Instagram, X, Settings, Layers } from 'lucide-react';
+import { Building2, Plus, CreditCard as Edit, Trash2, ToggleLeft, ToggleRight, Users, Phone, Mail, MapPin, Share2 as Facebook, Camera as Instagram, X, Settings, Layers } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import { AreasManager } from '../components/AreasManager';
 import { OficinaLogoEditor } from '../components/OficinaLogoEditor';
