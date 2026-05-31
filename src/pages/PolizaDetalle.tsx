@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Sparkles, FileText, Calendar, Shield, Phone, Globe, TriangleAlert as AlertTriangle, Download } from 'lucide-react';
+import { ArrowLeft, Sparkles, FileText, Calendar, Shield, Phone, Globe, AlertTriangle, Download } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';

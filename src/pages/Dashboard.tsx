@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, CreditCard, FolderOpen, Sparkles, ChevronRight, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle2, Clock } from 'lucide-react';
+import { FileText, CreditCard, FolderOpen, Sparkles, ChevronRight, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
