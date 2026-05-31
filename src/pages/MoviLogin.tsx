@@ -214,7 +214,7 @@ export default function MoviLogin() {
           {/* LEFT COLUMN */}
           <div className="hidden lg:flex lg:w-[52%] xl:w-[55%] flex-col items-start justify-between px-16 xl:px-24 py-14">
             <div>
-              <img src="/logojiro.png" alt="MOVI Digital" className="h-10 w-auto" />
+              <img src="/movirecurso_1.png" alt="MOVI Digital" className="h-10 w-auto" />
             </div>
 
             <div className="max-w-md">
@@ -223,9 +223,9 @@ export default function MoviLogin() {
                 Plataforma de gestión
               </p>
               <h1 className="text-4xl xl:text-5xl font-extrabold text-white leading-[1.1] tracking-tight">
-                El sistema<br />digital para<br />
+                Tu<br />
                 <span style={{ background: 'linear-gradient(90deg, #0D6EFD, #00c8e0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                  agentes de seguros
+                  oficina virtual
                 </span>
               </h1>
               <p className="mt-5 text-base leading-relaxed max-w-sm"
@@ -266,7 +266,7 @@ export default function MoviLogin() {
 
             {/* Mobile logo */}
             <div className="lg:hidden mb-10 text-center">
-              <img src="/logojiro.png" alt="MOVI Digital" className="h-10 w-auto mx-auto mb-2" />
+              <img src="/movirecurso_1.png" alt="MOVI Digital" className="h-10 w-auto mx-auto mb-2" />
               <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'rgba(13,110,253,0.7)' }}>MOVI Digital</p>
             </div>
 

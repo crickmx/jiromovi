@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useChavaAgente } from '../lib/ChavaAgenteContext';
 import ChatInterface from '../components/ChatInterface';
 import ConversationSidebar from '../components/ConversationSidebar';
@@ -15,6 +15,7 @@ const PILLARS = [
 ];
 
 export default function ChavaAgenteLanding() {
+  useEffect(() => { document.title = 'Chava AI'; }, []);
   const { chavaUser, loading, logout } = useChavaAgente();
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
