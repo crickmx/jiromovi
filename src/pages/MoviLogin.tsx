@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, ArrowRight, ChevronLeft, RotateCcw, CircleCheck as CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useMoviAuth } from '../contexts/MoviAuthContext';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -38,7 +38,7 @@ export default function MoviLogin() {
   useEffect(() => { document.title = 'MOVI Digital'; }, []);
 
   const navigate = useNavigate();
-  const { loading: authLoading } = useAuth();
+  const { loading: authLoading } = useMoviAuth();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');

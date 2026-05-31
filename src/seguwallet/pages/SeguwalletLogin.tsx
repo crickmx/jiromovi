@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, ArrowRight, ChevronLeft, RotateCcw, CircleCheck as CheckCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useSeguwalletAuth } from '../lib/SeguwalletAuthContext';
 const SEGUWALLET_LOGO = '/seguwallet-logo.png';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
@@ -57,7 +57,7 @@ export function SeguwalletLogin() {
   useEffect(() => { document.title = 'Seguwallet'; }, []);
 
   const navigate = useNavigate();
-  const { loading: authLoading } = useAuth();
+  const { loading: authLoading } = useSeguwalletAuth();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');

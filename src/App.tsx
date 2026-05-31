@@ -1,6 +1,8 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { MoviAuthProvider } from './contexts/MoviAuthContext';
+import { useMoviAuth } from './contexts/MoviAuthContext';
+import { SeguwalletAuthProvider, useSeguwalletAuth } from './seguwallet/lib/SeguwalletAuthContext';
 import { ChavaAgenteProvider } from './chava-agente/lib/ChavaAgenteContext';
 import { type ReactNode } from 'react';
 
@@ -36,18 +38,19 @@ const MOVI_SPLASH_DOMAINS = ['movi.digital', 'www.movi.digital'];
 const isChavaDomain = CHAVA_DOMAINS.includes(hostname);
 const isSeguwalletDomain = SEGUWALLET_DOMAINS.includes(hostname);
 const isMoviSplashDomain = MOVI_SPLASH_DOMAINS.includes(hostname);
-// app.movi.digital, localhost, and anything else → full MOVI app
 
 // ── Seguwallet private route ─────────────────────────────────────────────────
 function SwPrivateRoute({ children }: { children: ReactNode }) {
-  const { customer, loading } = useAuth();
+  const { customer, loading } = useSeguwalletAuth();
+  console.log('[SwPrivateRoute] loading=', loading, 'customer=', !!customer);
   if (loading) return <SwLoader />;
   return customer ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
 // ── MOVI private route ───────────────────────────────────────────────────────
 function MoviPrivateRoute({ children }: { children: ReactNode }) {
-  const { usuario, loading } = useAuth();
+  const { usuario, loading } = useMoviAuth();
+  console.log('[MoviPrivateRoute] loading=', loading, 'usuario=', !!usuario);
   if (loading) return <MoviLoader />;
   return usuario ? <>{children}</> : <Navigate to="/login" replace />;
 }
@@ -92,7 +95,7 @@ function ChavaAgenteApp() {
 function SeguwalletApp() {
   return (
     <BrowserRouter>
-      <AuthProvider>
+      <SeguwalletAuthProvider>
         <Routes>
           <Route path="/" element={<Navigate to="/seguwallet/dashboard" replace />} />
           <Route path="/login" element={<SeguwalletLogin />} />
@@ -106,7 +109,7 @@ function SeguwalletApp() {
           <Route path="/seguwallet/completar-perfil" element={<SwPrivateRoute><SeguwalletCompleteProfile /></SwPrivateRoute>} />
           <Route path="*" element={<Navigate to="/seguwallet/dashboard" replace />} />
         </Routes>
-      </AuthProvider>
+      </SeguwalletAuthProvider>
     </BrowserRouter>
   );
 }
@@ -185,7 +188,7 @@ function MoviSplash() {
 function MoviApp() {
   return (
     <BrowserRouter>
-      <AuthProvider>
+      <MoviAuthProvider>
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/login" element={<MoviLogin />} />
@@ -213,7 +216,7 @@ function MoviApp() {
             </MoviPrivateRoute>
           } />
         </Routes>
-      </AuthProvider>
+      </MoviAuthProvider>
     </BrowserRouter>
   );
 }
