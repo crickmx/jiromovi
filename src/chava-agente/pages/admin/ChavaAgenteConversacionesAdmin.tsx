@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import type { ChavaConversation } from '../../lib/types';
-import { MessageSquare, Search, Trash2, Eye, Bot } from 'lucide-react';
+import { ChavaBrandLogo } from '../../../components/chava/ChavaBrandLogo';
+import { ChavaAvatar } from '../../../components/chava/ChavaAvatar';
+import { MessageSquare, Search, Trash2, Eye, User } from 'lucide-react';
 
 interface ConvWithUser extends ChavaConversation {
   chava_agente_users: { nombre_completo: string; email: string; tipo_usuario: string } | null;
@@ -56,10 +58,14 @@ export default function ChavaAgenteConversacionesAdmin() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          <MessageSquare className="w-6 h-6 text-cyan-600" />
-          Conversaciones — Chava Agente
-        </h1>
+        <div className="flex items-center gap-3 mb-1">
+          <ChavaBrandLogo size="sm" theme="light" showDomain={false} />
+          <div className="w-px h-6 bg-slate-200" />
+          <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-slate-500" />
+            Conversaciones
+          </h1>
+        </div>
         <p className="text-sm text-slate-500 mt-1">Revisa y modera las conversaciones de la plataforma.</p>
       </div>
 
@@ -118,10 +124,13 @@ export default function ChavaAgenteConversacionesAdmin() {
                   <div className="flex items-center justify-center py-8"><div className="w-5 h-5 border-2 border-slate-200 border-t-slate-600 rounded-full animate-spin" /></div>
                 ) : messages.map(m => (
                   <div key={m.id} className={`flex gap-2 ${m.rol === 'user' ? 'flex-row-reverse' : ''}`}>
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${m.rol === 'user' ? 'bg-slate-700' : 'bg-gradient-to-br from-cyan-500 to-cyan-700'}`}>
-                      {m.rol === 'assistant' ? <Bot className="w-3.5 h-3.5 text-white" /> : <span className="text-[10px] text-white font-bold">U</span>}
+                    <div className="flex-shrink-0">
+                      {m.rol === 'assistant'
+                        ? <ChavaAvatar size="sm" />
+                        : <div className="w-7 h-7 rounded-full flex items-center justify-center bg-slate-700"><span className="text-[10px] text-white font-bold">U</span></div>
+                      }
                     </div>
-                    <div className={`max-w-[80%] px-3 py-2 rounded-xl text-xs leading-relaxed ${m.rol === 'user' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-800'}`}>
+                    <div className={`max-w-[80%] px-3 py-2 rounded-xl text-xs leading-relaxed ${m.rol === 'user' ? 'text-white' : 'bg-slate-100 text-slate-800'}`} style={m.rol === 'user' ? { background: 'linear-gradient(135deg, #0D6EFD, #0047bb)' } : {}}>
                       {m.contenido}
                       {m.tiempo_ms && <p className="text-[10px] opacity-50 mt-1">{m.tiempo_ms}ms</p>}
                     </div>

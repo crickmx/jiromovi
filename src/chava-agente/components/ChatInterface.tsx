@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useChavaAgente } from '../lib/ChavaAgenteContext';
-import type { ChatMessage, ChavaConversation } from '../lib/types';
+import type { ChatMessage } from '../lib/types';
 import FuentesPanel from './FuentesPanel';
-import { Send, Loader as Loader2, Bot, User, Copy, Check, RefreshCw } from 'lucide-react';
+import { ChavaAvatar } from '../../components/chava/ChavaAvatar';
+import { Send, Loader as Loader2, User, Copy, Check } from 'lucide-react';
 
 const WELCOME_MESSAGE = `Hola, soy Chava Agente, tu experto en seguros impulsado por inteligencia artificial y respaldado por Grupo JIRO, con más de 50 años de experiencia en el sector asegurador mexicano.
 
@@ -222,17 +223,17 @@ export default function ChatInterface({ conversationId, onConversationCreated, o
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 custom-scrollbar">
         {loadingHistory ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
+            <Loader2 className="w-6 h-6 animate-spin" style={{ color: '#00E5FF' }} />
           </div>
         ) : isEmpty ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4 min-h-[300px]">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-cyan-700 flex items-center justify-center mb-4 shadow-lg shadow-cyan-500/20">
-              <Bot className="w-8 h-8 text-white" />
+            <div className="mb-5">
+              <ChavaAvatar size="xl" animate />
             </div>
-            <h3 className="text-lg font-semibold text-slate-800 mb-1">
+            <h3 className="text-lg font-semibold mb-1" style={{ color: 'rgba(255,255,255,0.9)' }}>
               {chavaUser ? `Hola, ${chavaUser.nombre_completo.split(' ')[0]}` : '¿En qué te puedo ayudar?'}
             </h3>
-            <p className="text-sm text-slate-500 max-w-sm leading-relaxed mb-6">
+            <p className="text-sm max-w-sm leading-relaxed mb-6" style={{ color: 'rgba(255,255,255,0.45)' }}>
               Soy Chava Agente, tu experto en seguros. Pregúntame lo que necesites.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
@@ -240,7 +241,10 @@ export default function ChatInterface({ conversationId, onConversationCreated, o
                 <button
                   key={i}
                   onClick={() => sendMessage(p)}
-                  className="text-left px-3.5 py-3 rounded-xl border border-slate-200 hover:border-cyan-300 hover:bg-cyan-50/50 text-xs text-slate-600 hover:text-slate-800 transition-all leading-snug"
+                  className="text-left px-3.5 py-3 rounded-xl text-xs transition-all leading-snug"
+                  style={{ border: '1px solid rgba(0,229,255,0.15)', color: 'rgba(255,255,255,0.6)', background: 'rgba(0,229,255,0.04)' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(0,229,255,0.35)'; e.currentTarget.style.color = 'rgba(255,255,255,0.85)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(0,229,255,0.15)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; }}
                 >
                   {p}
                 </button>
@@ -251,20 +255,24 @@ export default function ChatInterface({ conversationId, onConversationCreated, o
           messages.map((msg) => (
             <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
               {/* Avatar */}
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'user' ? 'bg-slate-800' : 'bg-gradient-to-br from-cyan-500 to-cyan-700'}`}>
-                {msg.role === 'user'
-                  ? <User className="w-4 h-4 text-white" />
-                  : <Bot className="w-4 h-4 text-white" />
-                }
-              </div>
+              {msg.role === 'user' ? (
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                  <User className="w-4 h-4 text-white opacity-70" />
+                </div>
+              ) : (
+                <ChavaAvatar size="sm" className="flex-shrink-0" />
+              )}
 
               {/* Bubble */}
               <div className={`flex-1 max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'} flex flex-col`}>
                 <div className={`group relative px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                   msg.role === 'user'
-                    ? 'bg-slate-800 text-white rounded-tr-sm ml-auto'
-                    : 'bg-white border border-slate-200 text-slate-800 rounded-tl-sm shadow-sm'
-                }`}>
+                    ? 'rounded-tr-sm ml-auto text-white'
+                    : 'rounded-tl-sm shadow-sm'
+                }`} style={msg.role === 'user'
+                  ? { background: 'linear-gradient(135deg, #0D6EFD, #0047bb)' }
+                  : { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.88)' }
+                }>
                   {msg.loading ? (
                     <div className="flex items-center gap-2 text-slate-400">
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -278,11 +286,12 @@ export default function ChatInterface({ conversationId, onConversationCreated, o
                   {!msg.loading && msg.role === 'assistant' && (
                     <button
                       onClick={() => copyMessage(msg.id, msg.content)}
-                      className="absolute -bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white border border-slate-200 rounded-lg p-1 shadow-sm"
+                      className="absolute -bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg p-1 shadow-sm"
+                      style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
                     >
                       {copiedId === msg.id
-                        ? <Check className="w-3 h-3 text-emerald-500" />
-                        : <Copy className="w-3 h-3 text-slate-400" />
+                        ? <Check className="w-3 h-3 text-emerald-400" />
+                        : <Copy className="w-3 h-3" style={{ color: 'rgba(255,255,255,0.4)' }} />
                       }
                     </button>
                   )}
@@ -297,7 +306,7 @@ export default function ChatInterface({ conversationId, onConversationCreated, o
 
                 {/* Disclaimer */}
                 {!msg.loading && msg.role === 'assistant' && (
-                  <p className="text-[10px] text-slate-400 mt-1.5 px-1 leading-relaxed max-w-prose">
+                  <p className="text-[10px] mt-1.5 px-1 leading-relaxed max-w-prose" style={{ color: 'rgba(255,255,255,0.25)' }}>
                     Información orientativa. Verifica con tu agente o aseguradora antes de tomar decisiones.
                   </p>
                 )}
@@ -309,9 +318,11 @@ export default function ChatInterface({ conversationId, onConversationCreated, o
       </div>
 
       {/* Input */}
-      <div className="border-t border-slate-200 bg-white p-4">
+      <div className="p-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}>
         <div className="max-w-3xl mx-auto">
-          <div className="relative flex items-end gap-2 bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm focus-within:border-cyan-400 focus-within:ring-2 focus-within:ring-cyan-400/20 transition-all">
+          <div className="relative flex items-end gap-2 rounded-2xl px-4 py-3 transition-all" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+            onFocus={() => {}} /* ring via focus-within on parent */
+          >
             <textarea
               ref={textareaRef}
               value={input}
@@ -324,22 +335,22 @@ export default function ChatInterface({ conversationId, onConversationCreated, o
               }}
               placeholder="Haz una pregunta sobre seguros..."
               rows={1}
-              className="flex-1 resize-none text-sm text-slate-800 placeholder-slate-400 focus:outline-none bg-transparent leading-relaxed"
-              style={{ maxHeight: '160px', minHeight: '24px' }}
+              className="flex-1 resize-none text-sm focus:outline-none bg-transparent leading-relaxed"
+              style={{ maxHeight: '160px', minHeight: '24px', color: 'rgba(255,255,255,0.85)', caretColor: '#00E5FF' }}
             />
             <button
               onClick={() => sendMessage()}
               disabled={!input.trim() || sending}
-              className={`flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
-                input.trim() && !sending
-                  ? 'bg-cyan-500 hover:bg-cyan-600 text-white shadow-sm shadow-cyan-500/30'
-                  : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-              }`}
+              className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all"
+              style={input.trim() && !sending
+                ? { background: 'linear-gradient(135deg, #0D6EFD, #00c8e0)', color: 'white' }
+                : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.25)', cursor: 'not-allowed' }
+              }
             >
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
           </div>
-          <p className="text-[10px] text-slate-400 text-center mt-2">
+          <p className="text-[10px] text-center mt-2" style={{ color: 'rgba(255,255,255,0.2)' }}>
             Chava Agente puede cometer errores. Verifica la información importante con fuentes oficiales.
           </p>
         </div>
@@ -348,7 +359,9 @@ export default function ChatInterface({ conversationId, onConversationCreated, o
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0,229,255,0.2); }
+        .custom-scrollbar textarea::placeholder { color: rgba(255,255,255,0.3) !important; }
       `}</style>
     </div>
   );

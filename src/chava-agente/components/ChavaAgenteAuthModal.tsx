@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useChavaAgente, type RegisterData } from '../lib/ChavaAgenteContext';
 import { TIPO_USUARIO_LABELS, type TipoUsuario } from '../lib/types';
+import { ChavaBrandLogo } from '../../components/chava/ChavaBrandLogo';
 import { X, Mail, ArrowRight, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Loader as Loader2, User, Phone, MapPin, Shield } from 'lucide-react';
 
 type Step = 'choice' | 'login_email' | 'login_otp' | 'register_form' | 'register_otp' | 'success';
@@ -99,24 +100,21 @@ export default function ChavaAgenteAuthModal({ onClose, pendingMessage }: Props)
       <div className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-6 py-5 flex items-center justify-between">
+        <div className="px-6 py-5 flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #0D6EFD 0%, #0A183D 100%)' }}>
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center">
-              <Shield className="w-5 h-5 text-cyan-400" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-400 leading-none mb-0.5">Chava Agente</p>
-              <p className="text-sm font-semibold text-white leading-none">
-                {step === 'choice' && 'Accede a tu cuenta'}
-                {(step === 'login_email' || step === 'login_otp') && 'Iniciar sesión'}
-                {(step === 'register_form' || step === 'register_otp') && 'Crear cuenta'}
-                {step === 'success' && 'Bienvenido'}
-              </p>
-            </div>
+            <ChavaBrandLogo size="sm" animate />
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-3">
+            <p className="text-sm font-medium text-white opacity-80">
+              {step === 'choice' && 'Accede a tu cuenta'}
+              {(step === 'login_email' || step === 'login_otp') && 'Iniciar sesión'}
+              {(step === 'register_form' || step === 'register_otp') && 'Crear cuenta'}
+              {step === 'success' && 'Bienvenido'}
+            </p>
+            <button onClick={onClose} className="text-white/50 hover:text-white transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <div className="p-6">

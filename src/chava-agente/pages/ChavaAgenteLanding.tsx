@@ -3,9 +3,12 @@ import { useChavaAgente } from '../lib/ChavaAgenteContext';
 import ChatInterface from '../components/ChatInterface';
 import ConversationSidebar from '../components/ConversationSidebar';
 import ChavaAgenteAuthModal from '../components/ChavaAgenteAuthModal';
+import { ChavaBrandLogo } from '../../components/chava/ChavaBrandLogo';
+import { ChavaAvatar } from '../../components/chava/ChavaAvatar';
 import {
-  Shield, Bot, BookOpen, Scale, FileText, Cpu, Users, Star,
-  Menu, X, LogOut, MessageSquare, ChevronRight, Building2, Zap, Award
+  Shield, BookOpen, Scale, FileText, Cpu, Users,
+  Star, Menu, LogOut, MessageSquare, ChevronRight,
+  Building2, Zap, Award, Sparkles,
 } from 'lucide-react';
 
 const AUDIENCE_ITEMS = [
@@ -16,10 +19,10 @@ const AUDIENCE_ITEMS = [
 ];
 
 const CAPABILITIES = [
-  { icon: BookOpen, label: 'Base de conocimiento\ninstitucional', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
-  { icon: Scale, label: 'Marco regulatorio\nCNSF · LISF', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
-  { icon: FileText, label: 'Análisis de pólizas\ny condiciones', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
-  { icon: Cpu, label: 'IA especializada\nen seguros MX', color: 'text-cyan-600', bg: 'bg-cyan-50', border: 'border-cyan-200' },
+  { icon: BookOpen, label: 'Base de conocimiento\ninstitucional', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
+  { icon: Scale, label: 'Marco regulatorio\nCNSF · LISF', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
+  { icon: FileText, label: 'Análisis de pólizas\ny condiciones', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+  { icon: Cpu, label: 'IA especializada\nen seguros MX', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', color: '' },
 ];
 
 export default function ChavaAgenteLanding() {
@@ -27,12 +30,9 @@ export default function ChavaAgenteLanding() {
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingMsg, setPendingMsg] = useState('');
-  const [showSidebar, setShowSidebar] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  useEffect(() => {
-    if (chavaUser) setShowSidebar(true);
-  }, [chavaUser]);
+  useEffect(() => {}, [chavaUser]);
 
   function handleAuthRequired(msg: string) {
     setPendingMsg(msg);
@@ -46,33 +46,25 @@ export default function ChavaAgenteLanding() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-cyan-200 border-t-cyan-500 rounded-full animate-spin" />
-          <p className="text-sm text-slate-500">Cargando Chava Agente...</p>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0A183D' }}>
+        <div className="flex flex-col items-center gap-4">
+          <ChavaAvatar size="lg" animate />
+          <p className="text-sm text-slate-400">Cargando Chava Agente...</p>
         </div>
       </div>
     );
   }
 
-  // Authenticated view with sidebar
+  // Authenticated view
   if (chavaUser) {
     return (
-      <div className="flex h-screen bg-slate-50 overflow-hidden">
+      <div className="flex h-screen overflow-hidden" style={{ background: '#0A183D' }}>
         {/* Sidebar — desktop */}
-        <div className="hidden lg:flex flex-col w-72 flex-shrink-0 border-r border-slate-200 overflow-hidden">
-          <div className="bg-slate-900 h-full flex flex-col">
+        <div className="hidden lg:flex flex-col w-72 flex-shrink-0 border-r overflow-hidden" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+          <div className="h-full flex flex-col" style={{ background: 'rgba(255,255,255,0.03)' }}>
             {/* Logo */}
-            <div className="px-5 py-4 border-b border-slate-700/50">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center">
-                  <Bot className="w-4.5 h-4.5 text-cyan-400" style={{ width: '1.125rem', height: '1.125rem' }} />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-white leading-none">Chava Agente</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Experto en seguros — Grupo JIRO</p>
-                </div>
-              </div>
+            <div className="px-5 py-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+              <ChavaBrandLogo size="sm" />
             </div>
             <div className="flex-1 overflow-hidden">
               <ConversationSidebar
@@ -82,10 +74,10 @@ export default function ChavaAgenteLanding() {
               />
             </div>
             {/* User footer */}
-            <div className="border-t border-slate-700/50 p-3">
+            <div className="border-t p-3" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
               <div className="flex items-center gap-2.5 px-2 py-2 rounded-xl">
-                <div className="w-7 h-7 rounded-full bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center flex-shrink-0">
-                  <span className="text-[11px] font-bold text-cyan-400">
+                <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(0,229,255,0.12)', border: '1px solid rgba(0,229,255,0.3)' }}>
+                  <span className="text-[11px] font-bold" style={{ color: '#00E5FF' }}>
                     {chavaUser.nombre_completo.charAt(0).toUpperCase()}
                   </span>
                 </div>
@@ -93,7 +85,7 @@ export default function ChavaAgenteLanding() {
                   <p className="text-xs font-medium text-slate-200 truncate">{chavaUser.nombre_completo}</p>
                   <p className="text-[10px] text-slate-500 truncate">{chavaUser.email}</p>
                 </div>
-                <button onClick={logout} title="Cerrar sesión" className="text-slate-500 hover:text-slate-300 transition-colors p-1 rounded-lg hover:bg-slate-700/50">
+                <button onClick={logout} title="Cerrar sesión" className="text-slate-500 hover:text-slate-300 transition-colors p-1 rounded-lg hover:bg-white/5">
                   <LogOut className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -104,7 +96,7 @@ export default function ChavaAgenteLanding() {
         {/* Mobile sidebar overlay */}
         {mobileSidebarOpen && (
           <div className="fixed inset-0 z-40 flex lg:hidden">
-            <div className="absolute inset-0 bg-black/60" onClick={() => setMobileSidebarOpen(false)} />
+            <div className="absolute inset-0 bg-black/70" onClick={() => setMobileSidebarOpen(false)} />
             <div className="relative z-10 w-72">
               <ConversationSidebar
                 activeId={activeConvId}
@@ -119,14 +111,11 @@ export default function ChavaAgenteLanding() {
         {/* Main chat area */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Mobile header */}
-          <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white">
-            <button onClick={() => setMobileSidebarOpen(true)} className="text-slate-600 hover:text-slate-800">
+          <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.03)' }}>
+            <button onClick={() => setMobileSidebarOpen(true)} className="text-slate-400 hover:text-white">
               <Menu className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-2">
-              <Bot className="w-4 h-4 text-cyan-500" />
-              <p className="text-sm font-semibold text-slate-800">Chava Agente</p>
-            </div>
+            <ChavaBrandLogo size="sm" showDomain={false} />
           </div>
 
           <ChatInterface
@@ -148,46 +137,50 @@ export default function ChavaAgenteLanding() {
 
   // Landing page (unauthenticated)
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(160deg, #0a1836 0%, #0A183D 40%, #071020 100%)' }}>
+      {/* Grid pattern overlay */}
+      <div className="fixed inset-0 pointer-events-none" style={{
+        backgroundImage: 'linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px)',
+        backgroundSize: '48px 48px',
+      }} />
+
+      {/* Glow blobs */}
+      <div className="fixed top-0 right-0 w-[600px] h-[600px] pointer-events-none" style={{ background: 'radial-gradient(ellipse at 80% 10%, rgba(13,110,253,0.12) 0%, transparent 60%)' }} />
+      <div className="fixed bottom-0 left-0 w-[500px] h-[500px] pointer-events-none" style={{ background: 'radial-gradient(ellipse at 20% 90%, rgba(0,229,255,0.07) 0%, transparent 60%)' }} />
+
       {/* Navbar */}
-      <nav className="px-6 py-4 flex items-center justify-between border-b border-white/5">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center">
-            <Bot className="w-4.5 h-4.5 text-cyan-400" style={{ width: '1.125rem', height: '1.125rem' }} />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-white">Chava Agente</p>
-            <p className="text-[10px] text-slate-400">by Grupo JIRO</p>
-          </div>
-        </div>
+      <nav className="relative px-6 py-4 flex items-center justify-between border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+        <ChavaBrandLogo size="md" animate />
         <button
           onClick={() => setShowAuthModal(true)}
-          className="text-sm text-slate-300 hover:text-white border border-slate-600 hover:border-slate-400 px-4 py-2 rounded-xl transition-all"
+          className="text-sm font-medium transition-all px-4 py-2 rounded-xl"
+          style={{ color: 'rgba(255,255,255,0.75)', border: '1px solid rgba(255,255,255,0.12)' }}
+          onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(0,229,255,0.4)')}
+          onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)')}
         >
           Iniciar sesión
         </button>
       </nav>
 
       {/* Hero / Main content */}
-      <div className="flex-1 flex flex-col lg:flex-row">
+      <div className="relative flex-1 flex flex-col lg:flex-row">
 
-        {/* Left panel — branding & info */}
-        <div className="lg:w-[46%] flex flex-col justify-between px-8 py-10 lg:px-12 lg:py-12 border-b lg:border-b-0 lg:border-r border-white/5">
-          {/* Headline */}
+        {/* Left panel */}
+        <div className="lg:w-[46%] flex flex-col justify-between px-8 py-10 lg:px-12 lg:py-12 border-b lg:border-b-0 lg:border-r" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
           <div>
-            <div className="inline-flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/20 rounded-full px-3.5 py-1.5 mb-6">
-              <Star className="w-3.5 h-3.5 text-cyan-400 fill-cyan-400" />
-              <span className="text-xs text-cyan-300 font-medium">Impulsado por IA + 50 años de experiencia</span>
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 mb-6" style={{ background: 'rgba(0,229,255,0.08)', border: '1px solid rgba(0,229,255,0.2)' }}>
+              <Star className="w-3.5 h-3.5 fill-current" style={{ color: '#00E5FF' }} />
+              <span className="text-xs font-medium" style={{ color: '#00E5FF' }}>Impulsado por IA + 50 años de experiencia</span>
             </div>
 
+            {/* Headline */}
             <h1 className="text-3xl lg:text-4xl font-bold text-white leading-tight mb-4">
               Tu experto en seguros,<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-cyan-200">
-                disponible 24/7
-              </span>
+              <span className="font-extrabold" style={{ color: '#00E5FF' }}>disponible 24/7</span>
             </h1>
 
-            <p className="text-slate-400 text-base leading-relaxed mb-8 max-w-md">
+            <p className="text-base leading-relaxed mb-8 max-w-md" style={{ color: 'rgba(255,255,255,0.5)' }}>
               Chava Agente combina inteligencia artificial con el conocimiento institucional de Grupo JIRO para darte respuestas precisas sobre seguros, coberturas, siniestros y el marco regulatorio mexicano.
             </p>
 
@@ -196,11 +189,21 @@ export default function ChavaAgenteLanding() {
               {CAPABILITIES.map((cap, i) => {
                 const Icon = cap.icon;
                 return (
-                  <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-3.5 hover:bg-white/8 transition-colors">
+                  <div key={i} className="rounded-xl p-3.5 transition-all" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
                     <div className={`w-8 h-8 rounded-lg ${cap.bg} border ${cap.border} flex items-center justify-center mb-2`}>
-                      <Icon className={`w-4 h-4 ${cap.color}`} />
+                      {i === 3 ? (
+                        <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
+                          <circle cx="8" cy="8" r="3" stroke="#00E5FF" strokeWidth="1.5" />
+                          <line x1="8" y1="1" x2="8" y2="4" stroke="#00E5FF" strokeWidth="1.2" />
+                          <line x1="8" y1="12" x2="8" y2="15" stroke="#00E5FF" strokeWidth="1.2" />
+                          <line x1="1" y1="8" x2="4" y2="8" stroke="#00E5FF" strokeWidth="1.2" />
+                          <line x1="12" y1="8" x2="15" y2="8" stroke="#00E5FF" strokeWidth="1.2" />
+                        </svg>
+                      ) : (
+                        <Icon className={`w-4 h-4 ${cap.color}`} />
+                      )}
                     </div>
-                    <p className="text-xs text-slate-300 font-medium leading-snug whitespace-pre-line">{cap.label}</p>
+                    <p className="text-xs font-medium leading-snug whitespace-pre-line" style={{ color: 'rgba(255,255,255,0.7)' }}>{cap.label}</p>
                   </div>
                 );
               })}
@@ -208,18 +211,18 @@ export default function ChavaAgenteLanding() {
 
             {/* Audience */}
             <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wider font-medium mb-3">Para quién es</p>
-              <div className="space-y-2">
+              <p className="text-xs uppercase tracking-wider font-medium mb-3" style={{ color: 'rgba(255,255,255,0.3)' }}>Para quién es</p>
+              <div className="space-y-1">
                 {AUDIENCE_ITEMS.map((item, i) => {
                   const Icon = item.icon;
                   return (
-                    <div key={i} className="flex items-start gap-3 py-2.5 px-3 rounded-xl hover:bg-white/5 transition-colors">
-                      <div className="w-7 h-7 rounded-lg bg-slate-700/60 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <Icon className="w-3.5 h-3.5 text-slate-400" />
+                    <div key={i} className="flex items-start gap-3 py-2.5 px-3 rounded-xl transition-colors" style={{ cursor: 'default' }}>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: 'rgba(0,229,255,0.08)', border: '1px solid rgba(0,229,255,0.15)' }}>
+                        <Icon className="w-3.5 h-3.5" style={{ color: '#00E5FF' }} />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-slate-200">{item.title}</p>
-                        <p className="text-xs text-slate-500 mt-0.5 leading-snug">{item.desc}</p>
+                        <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.85)' }}>{item.title}</p>
+                        <p className="text-xs mt-0.5 leading-snug" style={{ color: 'rgba(255,255,255,0.4)' }}>{item.desc}</p>
                       </div>
                     </div>
                   );
@@ -229,50 +232,44 @@ export default function ChavaAgenteLanding() {
           </div>
 
           {/* Trust badges */}
-          <div className="flex items-center gap-4 mt-8 pt-6 border-t border-white/5">
-            <div className="flex items-center gap-1.5">
-              <Shield className="w-4 h-4 text-slate-500" />
-              <span className="text-xs text-slate-500">Datos protegidos</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <MessageSquare className="w-4 h-4 text-slate-500" />
-              <span className="text-xs text-slate-500">Historial guardado</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Bot className="w-4 h-4 text-slate-500" />
-              <span className="text-xs text-slate-500">GPT-4o mini</span>
-            </div>
+          <div className="flex items-center gap-5 mt-8 pt-6" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            {[
+              { icon: Shield, label: 'Datos protegidos' },
+              { icon: MessageSquare, label: 'Historial guardado' },
+              { icon: Sparkles, label: 'GPT-4o mini' },
+            ].map(({ icon: Icon, label }) => (
+              <div key={label} className="flex items-center gap-1.5">
+                <Icon className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.25)' }} />
+                <span className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>{label}</span>
+              </div>
+            ))}
           </div>
         </div>
 
         {/* Right panel — live chat */}
-        <div className="flex-1 flex flex-col">
-          <div className="flex-1 flex flex-col bg-slate-50 lg:bg-white overflow-hidden relative">
-            {/* Chat glass overlay */}
-            <div className="flex-1 overflow-hidden flex flex-col">
-              <ChatInterface
-                conversationId={null}
-                onConversationCreated={() => {}}
-                onAuthRequired={handleAuthRequired}
-              />
-            </div>
+        <div className="flex-1 flex flex-col overflow-hidden" style={{ background: 'rgba(255,255,255,0.015)' }}>
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <ChatInterface
+              conversationId={null}
+              onConversationCreated={() => {}}
+              onAuthRequired={handleAuthRequired}
+            />
+          </div>
 
-            {/* Auth prompt bar */}
-            {!chavaUser && (
-              <div className="border-t border-slate-200 bg-gradient-to-r from-slate-50 to-cyan-50/50 px-4 py-3 flex items-center gap-3">
-                <div className="flex-1">
-                  <p className="text-xs font-medium text-slate-700">Guarda tu historial de conversaciones</p>
-                  <p className="text-[10px] text-slate-500">Crea una cuenta gratuita o inicia sesión</p>
-                </div>
-                <button
-                  onClick={() => setShowAuthModal(true)}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-white bg-cyan-500 hover:bg-cyan-600 px-3.5 py-2 rounded-xl transition-colors flex-shrink-0"
-                >
-                  Crear cuenta
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
+          {/* Auth prompt bar */}
+          <div className="border-t px-4 py-3 flex items-center gap-3" style={{ borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(0,229,255,0.04)' }}>
+            <div className="flex-1">
+              <p className="text-xs font-medium text-white">Guarda tu historial de conversaciones</p>
+              <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>Crea una cuenta gratuita o inicia sesión</p>
+            </div>
+            <button
+              onClick={() => setShowAuthModal(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-white px-3.5 py-2 rounded-xl transition-all flex-shrink-0 hover:opacity-90 active:scale-95"
+              style={{ background: 'linear-gradient(135deg, #0D6EFD, #00c8e0)' }}
+            >
+              Crear cuenta
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
       </div>

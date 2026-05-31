@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
-  Sparkles, Send, RotateCcw, Phone, Mail, MessageCircle, Globe, X,
+  Send, RotateCcw, Phone, Mail, MessageCircle, Globe, X,
   ChevronDown, FileText, CreditCard, Shield, TriangleAlert as AlertTriangle,
   BookOpen, User, Database, Server, Brain, ChevronUp, ExternalLink, Info,
 } from 'lucide-react';
@@ -380,9 +380,21 @@ export default function ChavaSeguwallet() {
         {/* Header */}
         <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
           <div className="relative">
-            <div className="w-11 h-11 rounded-2xl flex items-center justify-center shadow-sm"
-              style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)` }}>
-              <Sparkles className="w-5 h-5 text-white" />
+            <div className="w-11 h-11 rounded-2xl flex items-center justify-center shadow-md overflow-hidden"
+              style={{ background: 'linear-gradient(135deg, #0D6EFD 0%, #0A183D 100%)' }}>
+              {/* Mini elephant icon */}
+              <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
+                <ellipse cx="5" cy="11" rx="3.5" ry="5" fill="#1a3a6e" />
+                <ellipse cx="19" cy="11" rx="3.5" ry="5" fill="#1a3a6e" />
+                <ellipse cx="12" cy="11" rx="7.5" ry="7" fill="#1a3a6e" />
+                <circle cx="9.5" cy="9.5" r="1.6" fill="#00E5FF" />
+                <circle cx="14.5" cy="9.5" r="1.6" fill="#00E5FF" />
+                <circle cx="9.5" cy="9.5" r="0.7" fill="#002233" />
+                <circle cx="14.5" cy="9.5" r="0.7" fill="#002233" />
+                <circle cx="10" cy="9" r="0.45" fill="white" opacity="0.9" />
+                <circle cx="15" cy="9" r="0.45" fill="white" opacity="0.9" />
+                <path d="M10.5 13.5 Q12 15 13.5 13.5" stroke="#00E5FF" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.7" />
+              </svg>
             </div>
             <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-white" />
           </div>
@@ -462,17 +474,25 @@ export default function ChavaSeguwallet() {
           {messages.map(msg => (
             <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               {msg.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mr-2 mt-0.5 shadow-sm"
-                  style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)` }}>
-                  <Sparkles className="w-4 h-4 text-white" />
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mr-2 mt-0.5 shadow-sm overflow-hidden"
+                  style={{ background: 'linear-gradient(135deg, #0D6EFD 0%, #0A183D 100%)' }}>
+                  <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5">
+                    <ellipse cx="4.5" cy="11" rx="3" ry="4.5" fill="#1a3a6e" />
+                    <ellipse cx="19.5" cy="11" rx="3" ry="4.5" fill="#1a3a6e" />
+                    <ellipse cx="12" cy="11" rx="7.5" ry="7" fill="#1a3a6e" />
+                    <circle cx="9.5" cy="9.5" r="1.6" fill="#00E5FF" />
+                    <circle cx="14.5" cy="9.5" r="1.6" fill="#00E5FF" />
+                    <circle cx="9.5" cy="9.5" r="0.7" fill="#002233" />
+                    <circle cx="14.5" cy="9.5" r="0.7" fill="#002233" />
+                  </svg>
                 </div>
               )}
               <div className={`max-w-[80%] ${msg.role === 'user' ? '' : 'flex-1'}`}>
                 <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                   msg.role === 'user'
-                    ? 'bg-blue-600 text-white rounded-tr-md'
+                    ? 'text-white rounded-tr-md'
                     : 'bg-white border border-slate-100 text-slate-800 rounded-tl-md shadow-sm'
-                }`}>
+                }`} style={msg.role === 'user' ? { background: 'linear-gradient(135deg, #0D6EFD, #0047bb)' } : {}}>
                   <span dangerouslySetInnerHTML={{ __html: renderContent(msg.content) }} />
                 </div>
                 {/* Citations panel — only for assistant messages with sources */}
@@ -487,9 +507,17 @@ export default function ChavaSeguwallet() {
 
           {sending && (
             <div className="flex justify-start">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mr-2"
-                style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)` }}>
-                <Sparkles className="w-4 h-4 text-white" />
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mr-2 overflow-hidden"
+                style={{ background: 'linear-gradient(135deg, #0D6EFD 0%, #0A183D 100%)' }}>
+                <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5">
+                  <ellipse cx="4.5" cy="11" rx="3" ry="4.5" fill="#1a3a6e" />
+                  <ellipse cx="19.5" cy="11" rx="3" ry="4.5" fill="#1a3a6e" />
+                  <ellipse cx="12" cy="11" rx="7.5" ry="7" fill="#1a3a6e" />
+                  <circle cx="9.5" cy="9.5" r="1.6" fill="#00E5FF" />
+                  <circle cx="14.5" cy="9.5" r="1.6" fill="#00E5FF" />
+                  <circle cx="9.5" cy="9.5" r="0.7" fill="#002233" />
+                  <circle cx="14.5" cy="9.5" r="0.7" fill="#002233" />
+                </svg>
               </div>
               <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-md px-4 py-3 shadow-sm">
                 <div className="flex items-center gap-1.5 text-sm text-slate-400">
@@ -542,7 +570,7 @@ export default function ChavaSeguwallet() {
               onClick={() => sendMessage()}
               disabled={!input.trim() || sending}
               className="w-9 h-9 rounded-xl flex items-center justify-center text-white transition-all flex-shrink-0 disabled:opacity-40 hover:opacity-90 active:scale-95"
-              style={{ background: input.trim() ? `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)` : '#CBD5E1' }}
+              style={{ background: input.trim() ? 'linear-gradient(135deg, #0D6EFD, #00c8e0)' : '#CBD5E1' }}
             >
               <Send className="w-4 h-4" />
             </button>

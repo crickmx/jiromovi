@@ -330,6 +330,9 @@ export default function Chava() {
               <span className="text-xs font-medium text-neutral-500 dark:text-white/40">
                 Tu asistente inteligente de MOVI
               </span>
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(0,229,255,0.1)', color: '#00b8cc', border: '1px solid rgba(0,229,255,0.2)' }}>
+                agentedeseguros.ai
+              </span>
             </div>
           </div>
         </div>
@@ -499,9 +502,10 @@ export default function Chava() {
                       className={cn(
                         "max-w-[75%] rounded-2xl px-4 py-3 shadow-sm",
                         isUser
-                          ? "bg-gradient-to-br from-cyan-600 to-blue-700 rounded-br-md"
+                          ? "rounded-br-md"
                           : "bg-white dark:bg-white/[0.05] border border-neutral-100 dark:border-white/8 text-neutral-800 dark:text-white/80 rounded-bl-md"
                       )}
+                      style={isUser ? { background: 'linear-gradient(135deg, #0D6EFD, #0047bb)' } : {}}
                     >
                       {isUser ? (
                         <p className="text-sm whitespace-pre-wrap leading-relaxed text-white font-medium">{message.contenido}</p>
@@ -655,8 +659,9 @@ export default function Chava() {
                   "p-3 rounded-xl transition-all duration-200 shadow-sm",
                   (!inputText.trim() && attachedFiles.length === 0) || isSendingMessage
                     ? "bg-neutral-100 dark:bg-white/5 text-neutral-300 dark:text-white/15 cursor-not-allowed"
-                    : "bg-gradient-to-br from-cyan-500 to-blue-600 text-white hover:shadow-md hover:shadow-cyan-500/20 active:scale-95"
+                    : "text-white hover:shadow-md hover:shadow-blue-500/20 active:scale-95"
                 )}
+                style={(!inputText.trim() && attachedFiles.length === 0) || isSendingMessage ? {} : { background: 'linear-gradient(135deg, #0D6EFD, #00c8e0)' }}
               >
                 <Send className="h-4.5 w-4.5" />
               </button>

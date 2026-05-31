@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import type { ChavaUser, TipoUsuario } from '../../lib/types';
 import { TIPO_USUARIO_LABELS } from '../../lib/types';
-import { Users, Search, Shield, ShieldOff, Eye, ListFilter as Filter } from 'lucide-react';
+import { ChavaBrandLogo } from '../../../components/chava/ChavaBrandLogo';
+import { Users, Search, Shield, ShieldOff, ListFilter as Filter } from 'lucide-react';
 
 export default function ChavaAgenteUsuariosAdmin() {
   const [users, setUsers] = useState<ChavaUser[]>([]);
@@ -63,10 +64,14 @@ export default function ChavaAgenteUsuariosAdmin() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          <Users className="w-6 h-6 text-cyan-600" />
-          Usuarios — Chava Agente
-        </h1>
+        <div className="flex items-center gap-3 mb-1">
+          <ChavaBrandLogo size="sm" theme="light" showDomain={false} />
+          <div className="w-px h-6 bg-slate-200" />
+          <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+            <Users className="w-5 h-5 text-slate-500" />
+            Usuarios
+          </h1>
+        </div>
         <p className="text-sm text-slate-500 mt-1">Gestiona los usuarios registrados en la plataforma.</p>
       </div>
 
