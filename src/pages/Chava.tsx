@@ -118,9 +118,14 @@ export default function Chava() {
 
   useEffect(() => {
     trackAssistantOpened();
-    openAssistant();
     loadSuggestions();
   }, []);
+
+  useEffect(() => {
+    if (usuario?.id) {
+      openAssistant();
+    }
+  }, [usuario?.id]);
 
   useEffect(() => {
     if (contextMessages.length > 0) {
