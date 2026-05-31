@@ -36,7 +36,7 @@ export function ChavaBrandLogo({
       <ChavaAvatar size={avatarSize} animate={animate} />
       <div>
         <p className={cn(titleClass, theme === 'dark' ? 'text-white' : 'text-slate-900')}>
-          CHAVA AGENTE
+          CHAVA AI
         </p>
         {showDomain && (
           <p className={cn(domainClass, 'font-medium')} style={{ color: '#00E5FF' }}>
