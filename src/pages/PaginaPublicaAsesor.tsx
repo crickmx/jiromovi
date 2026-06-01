@@ -432,9 +432,9 @@ export default function PaginaPublicaAsesor() {
   return (
     <>
       <Helmet>
-        <title>{user.name} - Asesor de Seguros</title>
+        <title>{user.name}{user.office?.name ? ` - ${user.office.name}` : ' - Asesor de Seguros'}</title>
         <meta name="description" content={seoText} />
-        <meta property="og:title" content={`${user.name} - Asesor de Seguros`} />
+        <meta property="og:title" content={`${user.name}${user.office?.name ? ` - ${user.office.name}` : ' - Asesor de Seguros'}`} />
         <meta property="og:description" content={seoText} />
         {user.photo_url && <meta property="og:image" content={user.photo_url} />}
         <meta name="robots" content="index, follow" />
