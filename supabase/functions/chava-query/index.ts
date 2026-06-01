@@ -88,7 +88,7 @@ Deno.serve(async (req: Request) => {
 
     const config: Record<string, any> = {};
     for (const c of configs || []) {
-      config[c.clave] = typeof c.valor === "string" ? JSON.parse(c.valor) : c.valor;
+      config[c.clave] = c.valor;
     }
 
     const modeloIA = config.modelo_ia || "gpt-4o-mini";
