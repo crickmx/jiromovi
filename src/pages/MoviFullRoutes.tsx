@@ -92,6 +92,7 @@ const ActividadUsuarios = lazy(() => import('./ActividadUsuarios'));
 const CargaMasivaUsuarios = lazy(() => import('./CargaMasivaUsuarios'));
 const AdminDigital = lazy(() => import('./AdminDigital'));
 const BaseConocimientoAdmin = lazy(() => import('./BaseConocimientoAdmin'));
+const ImportacionMasivaCentroDigital = lazy(() => import('./ImportacionMasivaCentroDigital'));
 const RegimenFiscalAdmin = lazy(() => import('./RegimenFiscalAdmin'));
 const RegimenFiscalEditor = lazy(() => import('./RegimenFiscalEditor'));
 const MapeoVendedoresAdmin = lazy(() => import('./MapeoVendedoresAdmin'));
@@ -229,6 +230,7 @@ export default function MoviFullRoutes() {
           <Route path="/carga-masiva-usuarios" element={<ProtectedRoute requireAdmin><CargaMasivaUsuarios /></ProtectedRoute>} />
           <Route path="/admin-digital" element={<ProtectedRoute requireAdmin><AdminDigital /></ProtectedRoute>} />
           <Route path="/admin/base-conocimiento" element={<ProtectedRoute requireAdmin><BaseConocimientoAdmin /></ProtectedRoute>} />
+          <Route path="/admin/importacion-masiva" element={<ProtectedRoute requireAdmin><ImportacionMasivaCentroDigital /></ProtectedRoute>} />
           <Route path="/comisiones/regimen-fiscal" element={<ProtectedRoute requireAdmin><RegimenFiscalAdmin /></ProtectedRoute>} />
           <Route path="/comisiones/regimen-fiscal/:id" element={<ProtectedRoute requireAdmin><RegimenFiscalEditor /></ProtectedRoute>} />
           <Route path="/comisiones/mapeo-vendedores" element={<ProtectedRoute requireAdmin><MapeoVendedoresAdmin /></ProtectedRoute>} />

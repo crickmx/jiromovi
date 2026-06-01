@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartBar as BarChart3, Video, BookMarked, BadgeCheck, Compass, Calculator, Smartphone, Mail, MessageSquare, Bell, Sparkles, Brain } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartBar as BarChart3, Video, BookMarked, BadgeCheck, Compass, Calculator, Smartphone, Mail, MessageSquare, Bell, Sparkles, Brain, Database } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
@@ -156,6 +156,7 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/carga-masiva-usuarios', label: 'Carga Masiva', icon: Users, visibleTo: ADMIN_ONLY },
     { path: '/admin-digital', label: 'Admin Digital', icon: CreditCard, visibleTo: ADMIN_ONLY },
     { path: '/admin/base-conocimiento', label: 'Base Conocimiento', icon: BookOpen, visibleTo: ADMIN_ONLY },
+    { path: '/admin/importacion-masiva', label: 'Importación Masiva', icon: Database, visibleTo: ADMIN_ONLY },
     { path: '/comisiones/regimen-fiscal', label: 'Regimen Fiscal', icon: DollarSign, visibleTo: ADMIN_ONLY, matchPrefix: true },
     { path: '/comisiones/mapeo-vendedores', label: 'Mapeo Vendedores', icon: Users, visibleTo: ADMIN_ONLY },
     { path: '/produccion/configuracion', label: 'Config Produccion', icon: Settings, visibleTo: ADMIN_ONLY },
