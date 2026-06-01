@@ -7,9 +7,15 @@ import { extraerTextoPlano, formatearFecha } from '../lib/comunicadosUtils';
 import { cn } from '@/lib/utils';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
 import { trackAnnouncementListViewed, trackAnnouncementOpened } from '../lib/activityLogger';
+import { useMoviAuth } from '../contexts/MoviAuthContext';
+import { PageHeader } from '@/components/ui/page-header';
+import { Section } from '@/components/ui/section';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 export default function Comunicados() {
-  const { usuario } = useAuth();
+  const { usuario } = useMoviAuth();
   const navigate = useNavigate();
   const [comunicados, setComunicados] = useState<ComunicadoPublicacion[]>([]);
   const [loading, setLoading] = useState(true);
