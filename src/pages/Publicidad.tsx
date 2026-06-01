@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Image, Video, Plus, ListFilter as Filter, Trash2, Palette, Sparkles } from 'lucide-react';
+import { Image, Video, Plus, ListFilter as Filter, Trash2, Palette, Sparkles, TriangleAlert as AlertTriangle } from 'lucide-react';
 import { NuevaPlantillaModal } from '../components/NuevaPlantillaModal';
 import { PersonalizarPlantillaModal } from '../components/PersonalizarPlantillaModal';
 import { PlanMKTPremiumBlock } from '../components/PlanMKTPremiumBlock';
@@ -11,6 +11,7 @@ import { trackPublicityCreated } from '../lib/activityLogger';
 import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/ui/loading-state';
 import { EmptyState } from '@/components/ui/empty-state';
+import { resolveImageUrl } from '../lib/storageUtils';
 
 const CATEGORIAS_LIST = [
   'Redes Sociales', 'Campanas', 'Promociones', 'Eventos', 'Presentaciones',
@@ -58,7 +59,60 @@ interface Diseno {
   } | null;
 }
 
-export function Publicidad() {
+// Reusable image with skeleton loading + error fallback for publicity cards
+function PlantillaImage({
+  src,
+  alt,
+  tipo,
+  objectFit = 'cover',
+}: {
+  src: string | null | undefined;
+  alt: string;
+  tipo: 'imagen' | 'video';
+  objectFit?: 'cover' | 'contain';
+}) {
+  const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+  const resolved = resolveImageUrl(src);
+
+  if (!resolved) {
+    return (
+      <div className="w-full h-full flex items-center justify-center absolute inset-0">
+        {tipo === 'imagen' ? (
+          <Image className="w-12 h-12 text-neutral-300 dark:text-white/20" />
+        ) : (
+          <Video className="w-12 h-12 text-neutral-300 dark:text-white/20" />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {status === 'loading' && (
+        <div className="absolute inset-0 bg-neutral-200 dark:bg-neutral-700 animate-pulse" />
+      )}
+      {status === 'error' && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+          <AlertTriangle className="w-8 h-8 text-neutral-400" />
+          <span className="text-xs text-neutral-400">No disponible</span>
+        </div>
+      )}
+      <img
+        src={resolved}
+        alt={alt}
+        loading="lazy"
+        className={`w-full h-full transition-opacity duration-300 ${objectFit === 'contain' ? 'object-contain' : 'object-cover'} ${status === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
+        onLoad={() => setStatus('loaded')}
+        onError={() => {
+          console.warn('[Publicidad] Image failed to load:', src);
+          setStatus('error');
+        }}
+      />
+    </>
+  );
+}
+
+export default function Publicidad() {
   const { usuario } = useAuth();
   const [activeTab, setActiveTab] = useState<'biblioteca' | 'mis-disenos'>('biblioteca');
   const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
@@ -348,27 +402,11 @@ export function Publicidad() {
                   className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden hover:border-neutral-300 dark:hover:border-white/15 hover:shadow-sm transition-all duration-200"
                 >
                   <div className="relative aspect-[4/5] bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
-                    {plantilla.miniatura_url ? (
-                      <img
-                        src={plantilla.miniatura_url}
-                        alt={plantilla.titulo || plantilla.categoria}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                        onError={(e) => {
-                          const target = e.currentTarget;
-                          target.style.display = 'none';
-                          const fallback = target.nextElementSibling as HTMLElement;
-                          if (fallback) fallback.style.display = 'flex';
-                        }}
-                      />
-                    ) : null}
-                    <div className={`w-full h-full items-center justify-center absolute inset-0 ${plantilla.miniatura_url ? 'hidden' : 'flex'}`}>
-                      {plantilla.tipo === 'imagen' ? (
-                        <Image className="w-12 h-12 text-neutral-300 dark:text-white/20" />
-                      ) : (
-                        <Video className="w-12 h-12 text-neutral-300 dark:text-white/20" />
-                      )}
-                    </div>
+                    <PlantillaImage
+                      src={plantilla.miniatura_url || plantilla.archivo_url}
+                      alt={plantilla.titulo || plantilla.categoria}
+                      tipo={plantilla.tipo}
+                    />
                     <div className="absolute top-2 left-2 right-2 flex items-center justify-between">
                       <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${
                         plantilla.tipo === 'imagen'
@@ -438,23 +476,12 @@ export function Publicidad() {
                   onClick={() => setSelectedDiseno(diseno)}
                 >
                   <div className="relative aspect-[4/5] bg-neutral-50 dark:bg-neutral-800 overflow-hidden">
-                    {diseno.archivo_resultante_url ? (
-                      <img
-                        src={diseno.archivo_resultante_url}
-                        alt="Diseno personalizado"
-                        className="w-full h-full object-contain"
-                        loading="lazy"
-                        onError={(e) => {
-                          const target = e.currentTarget;
-                          target.style.display = 'none';
-                          const fallback = target.nextElementSibling as HTMLElement;
-                          if (fallback) fallback.style.display = 'flex';
-                        }}
-                      />
-                    ) : null}
-                    <div className={`w-full h-full items-center justify-center absolute inset-0 ${diseno.archivo_resultante_url ? 'hidden' : 'flex'}`}>
-                      <Image className="w-12 h-12 text-neutral-300 dark:text-white/20" />
-                    </div>
+                    <PlantillaImage
+                      src={diseno.archivo_resultante_url}
+                      alt="Diseno personalizado"
+                      tipo="imagen"
+                      objectFit="contain"
+                    />
                     {/* Overlay on hover */}
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 dark:group-hover:bg-white/5 transition-all duration-200 flex items-center justify-center">
                       <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 px-3 py-1.5 bg-white/90 dark:bg-neutral-900/90 text-neutral-900 dark:text-white text-xs font-medium rounded-full shadow-sm">
@@ -559,4 +586,3 @@ export function Publicidad() {
     </div>
   );
 }
-export default Publicidad;

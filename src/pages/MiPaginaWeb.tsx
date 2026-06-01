@@ -5,8 +5,7 @@ import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Switch } from '../components/ui/switch';
-import { ExternalLink, Save, CircleCheck as CheckCircle2, CircleAlert as AlertCircle, Star, GripVertical } from 'lucide-react';
+import { ExternalLink, Save, CircleCheck as CheckCircle2, CircleAlert as AlertCircle, Star, GripVertical, Globe } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -47,11 +46,15 @@ const DEFAULT_FEATURED_TYPES = [
   'empresa_paquete'
 ];
 
+const CORPORATE_COLORS = { primary: '#1e40af', secondary: '#059669' };
+
 export default function MiPaginaWeb() {
   const { usuario } = useAuth();
   const user = usuario;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [saveMessage, setSaveMessage] = useState('');
   const [insurers, setInsurers] = useState<WebPageInsurer[]>([]);
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
   const [featuredIds, setFeaturedIds] = useState<Set<string>>(new Set());
@@ -61,7 +64,7 @@ export default function MiPaginaWeb() {
     primary_color: DEFAULT_COLORS.primary,
     secondary_color: DEFAULT_COLORS.secondary,
     custom_text: DEFAULT_TEXT,
-    is_published: false,
+    is_published: true,
     selected_insurer_ids: [],
     selected_category_ids: []
   });
@@ -74,7 +77,7 @@ export default function MiPaginaWeb() {
     if (!user?.id) return;
 
     try {
-      const [insurersData, existingConfig, templatesData, featuredData] = await Promise.all([
+      const [insurersData, existingConfig, templatesData, featuredData, officeData] = await Promise.all([
         getActiveInsurers(),
         getUserWebPageConfig(user.id),
         supabase
@@ -87,13 +90,29 @@ export default function MiPaginaWeb() {
           .from('user_web_featured_forms')
           .select('form_template_id, featured_order')
           .eq('user_id', user.id)
-          .order('featured_order')
+          .order('featured_order'),
+        supabase
+          .from('usuarios')
+          .select('oficina_id, oficinas(accent_color, secondary_color)')
+          .eq('id', user.id)
+          .maybeSingle()
       ]);
 
       setInsurers(insurersData);
 
       if (existingConfig) {
-        setConfig(existingConfig);
+        setConfig({ ...existingConfig, is_published: true });
+      } else {
+        // Inherit colors from office if available
+        const office = (officeData.data as any)?.oficinas;
+        const primaryColor = office?.accent_color || CORPORATE_COLORS.primary;
+        const secondaryColor = office?.secondary_color || CORPORATE_COLORS.secondary;
+        setConfig(prev => ({
+          ...prev,
+          primary_color: primaryColor,
+          secondary_color: secondaryColor,
+          is_published: true
+        }));
       }
 
       const allTemplates: FormTemplate[] = templatesData.data || [];
@@ -131,7 +150,8 @@ export default function MiPaginaWeb() {
 
     try {
       setSaving(true);
-      await saveUserWebPageConfig(user.id, config);
+      setSaveStatus('idle');
+      await saveUserWebPageConfig(user.id, { ...config, is_published: true });
 
       await supabase
         .from('user_web_featured_forms')
@@ -150,10 +170,13 @@ export default function MiPaginaWeb() {
           .insert(rows);
       }
 
-      alert('Configuracion guardada exitosamente');
+      setSaveStatus('success');
+      setSaveMessage('Configuracion guardada exitosamente');
+      setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
       console.error('Error saving config:', error);
-      alert('Error al guardar la configuracion');
+      setSaveStatus('error');
+      setSaveMessage('Error al guardar la configuracion');
     } finally {
       setSaving(false);
     }
@@ -240,7 +263,10 @@ export default function MiPaginaWeb() {
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-12rem)]">
           <Card className="p-4">
-            <h2 className="text-base font-semibold mb-3">Estado de Publicacion</h2>
+            <h2 className="text-base font-semibold mb-3 flex items-center gap-2">
+              <Globe className="w-4 h-4 text-blue-600" />
+              Tu Pagina Web
+            </h2>
 
             {!usuario?.web_slug ? (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
@@ -255,39 +281,22 @@ export default function MiPaginaWeb() {
                 </div>
               </div>
             ) : (
-              <div>
-                <div className="flex items-center gap-3 mb-3">
-                  <Switch
-                    checked={config.is_published}
-                    onCheckedChange={(checked) => setConfig(prev => ({ ...prev, is_published: checked }))}
-                    disabled={!usuario?.web_slug}
-                  />
-                  <div>
-                    <Label className="text-sm">
-                      {config.is_published ? 'Pagina Publicada' : 'Pagina No Publicada'}
-                    </Label>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="flex gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-green-800 mb-1">Tu pagina esta en linea</p>
+                    <a
+                      href={`https://agentedeseguros.website/${usuario?.web_slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-green-700 hover:text-green-800 font-medium"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      agentedeseguros.website/{usuario?.web_slug}
+                    </a>
                   </div>
                 </div>
-
-                {config.is_published && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                    <div className="flex gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-                      <div className="text-sm">
-                        <p className="font-medium text-green-800 mb-1">Tu pagina esta en linea</p>
-                        <a
-                          href={`https://agentedeseguros.website/${usuario?.web_slug}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-green-700 hover:text-green-800 font-medium"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          Ver pagina publica
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </Card>
@@ -482,7 +491,19 @@ export default function MiPaginaWeb() {
             </div>
           </Card>
 
-          <div className="sticky bottom-0 bg-white pt-2 pb-4">
+          <div className="sticky bottom-0 bg-white pt-2 pb-4 space-y-2">
+            {saveStatus === 'success' && (
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800">
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                {saveMessage}
+              </div>
+            )}
+            {saveStatus === 'error' && (
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {saveMessage}
+              </div>
+            )}
             <Button onClick={handleSave} disabled={saving} className="w-full">
               <Save className="w-4 h-4 mr-2" />
               {saving ? 'Guardando...' : 'Guardar Configuracion'}
