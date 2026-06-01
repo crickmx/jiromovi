@@ -434,12 +434,46 @@ export function MisCorreos() {
           <div className="bg-white dark:bg-neutral-800/50 rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-white/10 sticky top-0 bg-white dark:bg-neutral-800/50">
               <h2 className="text-xl font-bold text-neutral-900 dark:text-white">Detalle del Correo</h2>
-              <button
-                onClick={() => setSelectedEmail(null)}
-                className="text-neutral-400 hover:text-neutral-600 dark:text-white/40 dark:hover:text-white/70"
-              >
-                <X className="w-6 h-6" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setComposeData({
+                      para: selectedEmail.remitente_email,
+                      cc: '',
+                      bcc: '',
+                      asunto: `Re: ${selectedEmail.asunto || ''}`,
+                      cuerpo: `\n\n--- Mensaje original de ${selectedEmail.remitente_nombre || selectedEmail.remitente_email} ---\n${selectedEmail.cuerpo_texto || ''}`,
+                    });
+                    setSelectedEmail(null);
+                    setShowCompose(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-lg transition"
+                >
+                  <Send className="w-4 h-4" /> Responder
+                </button>
+                <button
+                  onClick={() => {
+                    setComposeData({
+                      para: '',
+                      cc: '',
+                      bcc: '',
+                      asunto: `Fwd: ${selectedEmail.asunto || ''}`,
+                      cuerpo: `\n\n--- Mensaje reenviado ---\nDe: ${selectedEmail.remitente_nombre || selectedEmail.remitente_email}\nAsunto: ${selectedEmail.asunto || ''}\n\n${selectedEmail.cuerpo_texto || ''}`,
+                    });
+                    setSelectedEmail(null);
+                    setShowCompose(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-lg transition"
+                >
+                  <Send className="w-4 h-4 rotate-180" /> Reenviar
+                </button>
+                <button
+                  onClick={() => setSelectedEmail(null)}
+                  className="text-neutral-400 hover:text-neutral-600 dark:text-white/40 dark:hover:text-white/70 p-1"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
             </div>
 
             <div className="p-6">

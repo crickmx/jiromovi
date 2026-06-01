@@ -34,7 +34,7 @@ const SeguwalletAdmin = lazy(() => import('./SeguwalletAdmin'));
 
 // Centro de Contacto
 const CentroContactoHub = lazy(() => import('./CentroContactoHub'));
-const MiWhatsApp = lazy(() => import('./MiWhatsApp'));
+const CentroContactoUnificado = lazy(() => import('./CentroContactoUnificado'));
 const MisCorreos = lazy(() => import('./MisCorreos'));
 const Chat = lazy(() => import('./Chat'));
 const DirectorioJiro = lazy(() => import('./DirectorioJiro'));
@@ -172,7 +172,7 @@ export default function MoviFullRoutes() {
 
           {/* Centro de Contacto */}
           <Route path="/centro-contacto" element={<ProtectedRoute><CentroContactoHub /></ProtectedRoute>} />
-          <Route path="/centro-contacto/whatsapp" element={<ProtectedRoute><MiWhatsApp /></ProtectedRoute>} />
+          <Route path="/centro-contacto/whatsapp" element={<ProtectedRoute><CentroContactoUnificado /></ProtectedRoute>} />
           <Route path="/centro-contacto/email" element={<ProtectedRoute><MisCorreos /></ProtectedRoute>} />
           <Route path="/centro-contacto/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
           <Route path="/directorio-jiro" element={<ProtectedRoute><DirectorioJiro /></ProtectedRoute>} />
