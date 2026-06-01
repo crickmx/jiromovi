@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 52" fill="none">
+  <defs>
+    <!-- Elephant head gradient -->
+    <linearGradient id="elGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#60B4FF"/>
+      <stop offset="100%" stop-color="#1E6FD9"/>
+    </linearGradient>
+    <!-- Ear gradient -->
+    <linearGradient id="earGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#90CFFF"/>
+      <stop offset="100%" stop-color="#3A8FE8"/>
+    </linearGradient>
+    <!-- Inner ear -->
+    <linearGradient id="innerEar" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFB3CC"/>
+      <stop offset="100%" stop-color="#FF7AAA"/>
+    </linearGradient>
+    <!-- Glow for icon bg -->
+    <radialGradient id="bgGlow" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#1845A0"/>
+      <stop offset="100%" stop-color="#060f25"/>
+    </radialGradient>
+    <!-- Cyan text gradient -->
+    <linearGradient id="cyanGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00E5FF"/>
+      <stop offset="100%" stop-color="#38BDF8"/>
+    </linearGradient>
+    <!-- White text gradient -->
+    <linearGradient id="whiteGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#C8E0FF"/>
+    </linearGradient>
+    <!-- Headset band gradient -->
+    <linearGradient id="headsetGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1A1A2E"/>
+      <stop offset="100%" stop-color="#0D0D1A"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#00000060"/>
+    </filter>
+    <filter id="glowFilter" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- ══ Icon container (rounded square) ══ -->
+  <rect x="1" y="1" width="50" height="50" rx="14" fill="url(#bgGlow)" filter="url(#softShadow)"/>
+  <!-- Subtle grid lines inside icon -->
+  <rect x="1" y="1" width="50" height="50" rx="14" fill="none" stroke="rgba(0,229,255,0.12)" stroke-width="1"/>
+
+  <!-- ══ Elephant illustration ══ -->
+  <!-- Left ear (big, round) -->
+  <ellipse cx="14" cy="28" rx="9" ry="11" fill="url(#earGrad)" opacity="0.95"/>
+  <!-- Left inner ear -->
+  <ellipse cx="14.5" cy="28" rx="5.5" ry="7" fill="url(#innerEar)" opacity="0.7"/>
+
+  <!-- Head -->
+  <ellipse cx="26" cy="27" rx="13" ry="14" fill="url(#elGrad)" filter="url(#softShadow)"/>
+
+  <!-- Trunk (curves down-left) -->
+  <path d="M 20 36 Q 16 40 17 44 Q 18 47 21 46 Q 23 45 22 42 Q 21 40 23 38 Z" fill="url(#elGrad)"/>
+  <!-- Trunk highlight -->
+  <path d="M 21 37 Q 18 41 19 44" stroke="rgba(255,255,255,0.25)" stroke-width="1" fill="none" stroke-linecap="round"/>
+
+  <!-- Forehead highlight -->
+  <ellipse cx="26" cy="21" rx="7" ry="5" fill="rgba(255,255,255,0.18)"/>
+
+  <!-- Eyes -->
+  <!-- Left eye white -->
+  <ellipse cx="21" cy="25" rx="3.2" ry="3.5" fill="white"/>
+  <!-- Right eye white -->
+  <ellipse cx="31" cy="25" rx="3.2" ry="3.5" fill="white"/>
+  <!-- Left pupil -->
+  <ellipse cx="21.6" cy="25.4" rx="2" ry="2.2" fill="#1A2A4A"/>
+  <!-- Right pupil -->
+  <ellipse cx="31.6" cy="25.4" rx="2" ry="2.2" fill="#1A2A4A"/>
+  <!-- Eye shine left -->
+  <circle cx="22.2" cy="24.3" r="0.7" fill="white"/>
+  <!-- Eye shine right -->
+  <circle cx="32.2" cy="24.3" r="0.7" fill="white"/>
+  <!-- Eyelash top left -->
+  <path d="M 18.5 22.5 Q 21 21 23.5 22.5" stroke="#1A2A4A" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+  <!-- Eyelash top right -->
+  <path d="M 28.5 22.5 Q 31 21 33.5 22.5" stroke="#1A2A4A" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+
+  <!-- Smile -->
+  <path d="M 22 31 Q 26 34 30 31" stroke="#1A2A4A" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+
+  <!-- ══ Headset ══ -->
+  <!-- Band over head -->
+  <path d="M 15 23 Q 26 12 37 23" stroke="url(#headsetGrad)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <!-- Left earpiece -->
+  <rect x="12" y="21" width="6" height="8" rx="3" fill="#111827"/>
+  <rect x="13" y="22" width="4" height="6" rx="2" fill="#1E3A5F"/>
+  <!-- Right earpiece -->
+  <rect x="34" y="21" width="6" height="8" rx="3" fill="#111827"/>
+  <rect x="35" y="22" width="4" height="6" rx="2" fill="#1E3A5F"/>
+  <!-- Microphone arm -->
+  <path d="M 13 28 Q 10 32 11 36" stroke="#111827" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <!-- Mic capsule -->
+  <rect x="9" y="35" width="5" height="3" rx="1.5" fill="#00E5FF" opacity="0.9"/>
+  <!-- Mic glow -->
+  <rect x="9" y="35" width="5" height="3" rx="1.5" fill="none" stroke="rgba(0,229,255,0.5)" stroke-width="0.5"/>
+
+  <!-- Cyan dot accent (live indicator) -->
+  <circle cx="42" cy="11" r="3" fill="#00E5FF" opacity="0.9"/>
+  <circle cx="42" cy="11" r="3" fill="none" stroke="rgba(0,229,255,0.4)" stroke-width="1.5"/>
+
+  <!-- ══ Wordmark ══ -->
+  <!-- "Chava" — bold white -->
+  <text x="62" y="33" font-family="'SF Pro Display', 'Inter', 'Helvetica Neue', Arial, sans-serif"
+    font-size="26" font-weight="800" letter-spacing="-0.5"
+    fill="url(#whiteGrad)">Chava</text>
+
+  <!-- "AI" badge (cyan rounded pill) -->
+  <rect x="162" y="8" width="28" height="18" rx="6" fill="url(#cyanGrad)" opacity="0.92"/>
+  <text x="176" y="21" font-family="'SF Pro Display', 'Inter', 'Helvetica Neue', Arial, sans-serif"
+    font-size="11" font-weight="900" letter-spacing="0.5"
+    text-anchor="middle"
+    fill="#060f25">AI</text>
+
+  <!-- Domain tagline -->
+  <text x="62" y="46" font-family="'SF Pro Display', 'Inter', 'Helvetica Neue', Arial, sans-serif"
+    font-size="10.5" font-weight="500" letter-spacing="0.2"
+    fill="#00E5FF" opacity="0.75">agentedeseguros.ai</text>
+</svg>

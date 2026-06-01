@@ -17,35 +17,46 @@ export function ChavaBrandLogo({
   animate = false,
   theme = 'dark',
 }: ChavaBrandLogoProps) {
-  const logoH = { sm: 'h-6', md: 'h-8', lg: 'h-11' }[size];
-  const domainClass = { sm: 'text-[10px]', md: 'text-xs', lg: 'text-sm' }[size];
-  const titleClass = { sm: 'text-sm font-bold tracking-wide', md: 'text-base font-bold tracking-wide', lg: 'text-xl font-bold tracking-wide' }[size];
+  // Logo SVG includes wordmark + AI badge + domain — height drives all proportions
+  const logoH  = { sm: 'h-7', md: 'h-9', lg: 'h-12' }[size];
+  const fallbackTitle = { sm: 'text-sm', md: 'text-base', lg: 'text-xl' }[size];
+  const fallbackDomain = { sm: 'text-[9px]', md: 'text-[10px]', lg: 'text-xs' }[size];
   const avatarSize = size === 'sm' ? 'sm' : size === 'lg' ? 'lg' : 'md';
 
   return (
     <div className={cn('flex items-center gap-2.5', className)}>
       <ChavaAvatar size={avatarSize} animate={animate} />
-      <div className="flex flex-col justify-center">
-        <img
-          src="/logo_color.svg"
-          alt="Chava AI"
-          className={cn(logoH, 'w-auto object-contain')}
-          style={{ mixBlendMode: 'screen' }}
-          onError={e => {
-            const img = e.currentTarget as HTMLImageElement;
-            img.style.display = 'none';
-            const fallback = img.nextElementSibling as HTMLElement | null;
-            if (fallback) fallback.style.display = 'block';
-          }}
-        />
-        {/* fallback text if SVG fails */}
-        <p className={cn(titleClass, 'hidden', theme === 'dark' ? 'text-white' : 'text-slate-900')}>
-          CHAVA AI
-        </p>
+
+      {/* New branded wordmark SVG */}
+      <img
+        src="/chava-ai-logo.svg"
+        alt="Chava AI"
+        className={cn(logoH, 'w-auto object-contain flex-shrink-0')}
+        onError={e => {
+          const img = e.currentTarget as HTMLImageElement;
+          img.style.display = 'none';
+          const fallback = img.nextElementSibling as HTMLElement | null;
+          if (fallback) fallback.style.removeProperty('display');
+        }}
+      />
+
+      {/* Text fallback — hidden unless SVG fails */}
+      <div className="flex-col justify-center" style={{ display: 'none' }}>
+        <div className="flex items-center gap-1.5">
+          <span className={cn('font-black tracking-tight leading-none', fallbackTitle, theme === 'dark' ? 'text-white' : 'text-slate-900')}>
+            Chava
+          </span>
+          <span
+            className={cn('font-black leading-none px-1.5 py-0.5 rounded-md', { sm: 'text-[8px]', md: 'text-[9px]', lg: 'text-[11px]' }[size])}
+            style={{ background: 'linear-gradient(135deg,#00E5FF,#38BDF8)', color: '#060f25' }}
+          >
+            AI
+          </span>
+        </div>
         {showDomain && (
-          <p className={cn(domainClass, 'font-medium')} style={{ color: '#00E5FF' }}>
+          <span className={cn('font-medium', fallbackDomain)} style={{ color: '#00E5FF' }}>
             agentedeseguros.ai
-          </p>
+          </span>
         )}
       </div>
     </div>

@@ -175,10 +175,9 @@ export default function ChavaAgenteLanding() {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <img
-                      src="/logo_color.svg"
+                      src="/chava-ai-logo.svg"
                       alt="Chava AI"
-                      className="h-8 w-auto object-contain"
-                      style={{ mixBlendMode: 'screen' }}
+                      className="h-9 w-auto object-contain"
                       onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                     />
                     <span className="hidden text-xl font-black tracking-tight text-white">CHAVA AI</span>

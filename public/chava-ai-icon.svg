@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1845A0"/>
+      <stop offset="100%" stop-color="#060f25"/>
+    </linearGradient>
+    <radialGradient id="bgGlow" cx="50%" cy="35%" r="55%">
+      <stop offset="0%" stop-color="#1D55B8"/>
+      <stop offset="100%" stop-color="#060c1e"/>
+    </radialGradient>
+    <linearGradient id="elBody" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#70C0FF"/>
+      <stop offset="100%" stop-color="#2178D8"/>
+    </linearGradient>
+    <linearGradient id="earColor" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#95D5FF"/>
+      <stop offset="100%" stop-color="#4A9FEF"/>
+    </linearGradient>
+    <linearGradient id="innerEarColor" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFBBCC"/>
+      <stop offset="100%" stop-color="#FF88AA"/>
+    </linearGradient>
+    <filter id="drop" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#00000080"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="48" height="48" rx="13" fill="url(#bgGlow)"/>
+  <rect width="48" height="48" rx="13" fill="none" stroke="rgba(0,229,255,0.15)" stroke-width="1"/>
+
+  <!-- Subtle radial highlight top-center -->
+  <ellipse cx="24" cy="8" rx="16" ry="10" fill="rgba(0,229,255,0.06)"/>
+
+  <!-- Left ear -->
+  <ellipse cx="11" cy="26" rx="7.5" ry="9.5" fill="url(#earColor)"/>
+  <ellipse cx="11.5" cy="26" rx="4.5" ry="6" fill="url(#innerEarColor)" opacity="0.75"/>
+
+  <!-- Head -->
+  <ellipse cx="24" cy="25" rx="12" ry="13" fill="url(#elBody)" filter="url(#drop)"/>
+
+  <!-- Forehead shine -->
+  <ellipse cx="24" cy="19" rx="7" ry="5" fill="rgba(255,255,255,0.16)"/>
+
+  <!-- Trunk -->
+  <path d="M 19 34 Q 15 39 16 43 Q 17 46 20 45 Q 22 44 21 41 Q 20 38 22 36 Z" fill="url(#elBody)"/>
+  <path d="M 20 35 Q 17 39 18 43" stroke="rgba(255,255,255,0.22)" stroke-width="0.9" fill="none" stroke-linecap="round"/>
+
+  <!-- Eyes - whites -->
+  <ellipse cx="19.5" cy="23.5" rx="3" ry="3.2" fill="white"/>
+  <ellipse cx="28.5" cy="23.5" rx="3" ry="3.2" fill="white"/>
+  <!-- Pupils -->
+  <ellipse cx="20.1" cy="23.9" rx="1.8" ry="2" fill="#0F1F3A"/>
+  <ellipse cx="29.1" cy="23.9" rx="1.8" ry="2" fill="#0F1F3A"/>
+  <!-- Shine -->
+  <circle cx="20.7" cy="22.9" r="0.65" fill="white"/>
+  <circle cx="29.7" cy="22.9" r="0.65" fill="white"/>
+  <!-- Eyebrows -->
+  <path d="M 17 21 Q 19.5 19.5 22 21" stroke="#0F1F3A" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+  <path d="M 26 21 Q 28.5 19.5 31 21" stroke="#0F1F3A" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+
+  <!-- Smile -->
+  <path d="M 20 29 Q 24 32.5 28 29" stroke="#0F1F3A" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+
+  <!-- Headset band -->
+  <path d="M 13.5 21.5 Q 24 10 34.5 21.5" stroke="#111827" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <!-- Left cup -->
+  <rect x="10.5" y="19" width="6" height="8" rx="3" fill="#111827"/>
+  <rect x="11.5" y="20" width="4" height="6" rx="2" fill="#1A3A5C"/>
+  <!-- Right cup -->
+  <rect x="31.5" y="19" width="6" height="8" rx="3" fill="#111827"/>
+  <rect x="32.5" y="20" width="4" height="6" rx="2" fill="#1A3A5C"/>
+  <!-- Mic arm -->
+  <path d="M 11.5 26 Q 9 30 10 34" stroke="#111827" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+  <!-- Mic capsule -->
+  <rect x="8.5" y="33" width="4.5" height="3" rx="1.5" fill="#00E5FF" opacity="0.95"/>
+
+  <!-- AI badge (top-right) -->
+  <rect x="33" y="5" width="12" height="9" rx="3.5" fill="#00E5FF" opacity="0.9"/>
+  <text x="39" y="12" font-family="'SF Pro Display', 'Inter', Arial, sans-serif"
+    font-size="6" font-weight="900" letter-spacing="0.3"
+    text-anchor="middle" fill="#060f25">AI</text>
+</svg>
