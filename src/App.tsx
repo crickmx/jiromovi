@@ -40,11 +40,14 @@ const CHAVA_DOMAINS = ['agentedeseguros.ai', 'www.agentedeseguros.ai'];
 const SEGUWALLET_DOMAINS = ['seguwallet.mx', 'www.seguwallet.mx', 'app.seguwallet.mx'];
 const MOVI_SPLASH_DOMAINS = ['movi.digital', 'www.movi.digital'];
 const PUBLIC_PROFILE_DOMAINS = ['agentedeseguros.website', 'www.agentedeseguros.website'];
+const MOVI_APP_DOMAINS = ['app.movi.digital', 'localhost', '127.0.0.1'];
 
 const isChavaDomain = CHAVA_DOMAINS.includes(hostname);
 const isSeguwalletDomain = SEGUWALLET_DOMAINS.includes(hostname);
 const isMoviSplashDomain = MOVI_SPLASH_DOMAINS.includes(hostname);
 const isPublicProfileDomain = PUBLIC_PROFILE_DOMAINS.includes(hostname);
+// Only load the full authenticated MOVI app on known app domains or localhost
+const isMoviAppDomain = MOVI_APP_DOMAINS.includes(hostname) || hostname.startsWith('192.168.');
 
 // ── MOVI private route ───────────────────────────────────────────────────────
 function MoviPrivateRoute({ children }: { children: ReactNode }) {
@@ -269,5 +272,7 @@ export default function App() {
   if (isSeguwalletDomain) return <SeguwalletApp />;
   if (isMoviSplashDomain) return <MoviSplashApp />;
   if (isPublicProfileDomain) return <PublicProfileApp />;
-  return <MoviApp />;
+  if (isMoviAppDomain) return <MoviApp />;
+  // Unknown domain (Bolt preview, StackBlitz, etc.) — show splash
+  return <MoviSplashApp />;
 }
