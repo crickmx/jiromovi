@@ -49,6 +49,7 @@ export interface ChavaConversation {
   titulo: string;
   modelo: string | null;
   total_mensajes: number;
+  source_platform: 'movi' | 'seguwallet' | 'chava_agente';
   deleted_at: string | null;
   created_at: string;
   updated_at: string;

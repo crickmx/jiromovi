@@ -189,7 +189,7 @@ export default function ChavaAgenteLanding() {
             <div className="flex items-center gap-3 pt-5" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
               <span className="text-[10px] uppercase tracking-wider font-medium" style={{ color: 'rgba(255,255,255,0.2)' }}>Desarrollado por</span>
               <img
-                src="https://jiro.mx/wp-content/uploads/2021/10/Grupo-Jiro-Logo-Blanco-01.png"
+                src="/logojiro.png"
                 alt="Grupo JIRO"
                 className="h-5 object-contain opacity-40 hover:opacity-60 transition-opacity"
               />
