@@ -33,9 +33,10 @@ const MiProgreso = lazy(() => import('./MiProgreso'));
 const SeguwalletAdmin = lazy(() => import('./SeguwalletAdmin'));
 
 // Centro de Contacto
+const CentroContactoLayout = lazy(() => import('./CentroContactoLayout'));
 const CentroContactoHub = lazy(() => import('./CentroContactoHub'));
 const CentroContactoUnificado = lazy(() => import('./CentroContactoUnificado'));
-const MisCorreos = lazy(() => import('./MisCorreos'));
+const GestorEmails = lazy(() => import('./GestorEmails'));
 const Chat = lazy(() => import('./Chat'));
 const DirectorioJiro = lazy(() => import('./DirectorioJiro'));
 const CentroNotificaciones = lazy(() => import('./CentroNotificaciones'));
@@ -170,13 +171,17 @@ export default function MoviFullRoutes() {
           <Route path="/mi-progreso" element={<ProtectedRoute><MiProgreso /></ProtectedRoute>} />
           <Route path="/seguwallet-admin" element={<ProtectedRoute><SeguwalletAdmin /></ProtectedRoute>} />
 
-          {/* Centro de Contacto */}
-          <Route path="/centro-contacto" element={<ProtectedRoute><CentroContactoHub /></ProtectedRoute>} />
-          <Route path="/centro-contacto/whatsapp" element={<ProtectedRoute><CentroContactoUnificado /></ProtectedRoute>} />
-          <Route path="/centro-contacto/email" element={<ProtectedRoute><MisCorreos /></ProtectedRoute>} />
-          <Route path="/centro-contacto/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+          {/* Centro de Contacto — nested under CentroContactoLayout */}
+          <Route path="/centro-contacto" element={<ProtectedRoute><CentroContactoLayout /></ProtectedRoute>}>
+            <Route index element={<CentroContactoHub />} />
+            <Route path="whatsapp" element={<CentroContactoUnificado />} />
+            <Route path="email" element={<GestorEmails />} />
+            <Route path="chat" element={<Chat />} />
+            <Route path="notificaciones" element={<ProtectedRoute requireAdmin><CentroNotificaciones /></ProtectedRoute>} />
+          </Route>
           <Route path="/directorio-jiro" element={<ProtectedRoute><DirectorioJiro /></ProtectedRoute>} />
-          <Route path="/centro-contacto/notificaciones" element={<ProtectedRoute requireAdmin><CentroNotificaciones /></ProtectedRoute>} />
+          {/* Legacy email redirect */}
+          <Route path="/mercadotecnia/gestor-emails" element={<Navigate to="/centro-contacto/email" replace />} />
 
           {/* Cotizar */}
           <Route path="/cotizar" element={<ProtectedRoute><CotizarHub /></ProtectedRoute>} />

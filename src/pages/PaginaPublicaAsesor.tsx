@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { Phone, Mail, MessageCircle, Loader as Loader2, ChevronLeft, ChevronRight, ArrowUp, Car, ExternalLink, Search, X, ChevronDown, Award, Smartphone, Shield, Star } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { getPublicWebPageBySlug } from '../lib/webPagesUtils';
@@ -447,6 +448,14 @@ export default function PaginaPublicaAsesor() {
 
   return (
     <>
+      <Helmet>
+        <title>{user.name} - Oficina del Agente</title>
+        <meta name="description" content={seoText} />
+        <meta property="og:title" content={`${user.name} - Oficina del Agente`} />
+        <meta property="og:description" content={seoText} />
+        {user.photo_url && <meta property="og:image" content={user.photo_url} />}
+        <meta name="robots" content="index, follow" />
+      </Helmet>
       <div className="bg-white min-h-screen overflow-x-hidden pb-16 md:pb-0">
         {/* Ambient background */}
         <div
