@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import {
   Phone, Mail, MessageCircle, Loader as Loader2,
   ChevronLeft, ChevronRight, ArrowUp, Car, ExternalLink,
-  Search, X, ChevronDown, Award, Smartphone, Globe,
+  Search, X, ChevronDown, Award, Smartphone, Globe, Menu,
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { getPublicWebPageBySlug } from '../lib/webPagesUtils';
@@ -210,6 +210,7 @@ export default function PaginaPublicaAsesor() {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [showAllFeatured, setShowAllFeatured] = useState(false);
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!slug) { setNotFound(true); setLoading(false); return; }
@@ -221,6 +222,7 @@ export default function PaginaPublicaAsesor() {
       const y = window.scrollY;
       setShowScrollTop(y > 400);
       setNavScrolled(y > 60);
+      if (mobileMenuOpen) setMobileMenuOpen(false);
       const sections = NAV_ITEMS.map(n => document.getElementById(n.id));
       let current = 'inicio';
       for (const sec of sections) {
@@ -230,7 +232,7 @@ export default function PaginaPublicaAsesor() {
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [mobileMenuOpen]);
 
   useEffect(() => {
     if (!data?.insurers || data.insurers.length <= 4 || !isAutoScrolling) return;
@@ -472,9 +474,9 @@ export default function PaginaPublicaAsesor() {
               )}
             </button>
 
-            {/* Menu centrado — grow + flex justify-center */}
-            <div className="flex-1 flex items-center justify-center">
-              <div className="hidden md:flex items-center gap-1">
+            {/* Menu centrado — desktop only */}
+            <div className="flex-1 hidden md:flex items-center justify-center">
+              <div className="flex items-center gap-1">
                 {NAV_ITEMS.map(item => (
                   <button
                     key={item.id}
@@ -492,7 +494,10 @@ export default function PaginaPublicaAsesor() {
               </div>
             </div>
 
-            {/* CTA WhatsApp — derecha */}
+            {/* Spacer mobile */}
+            <div className="flex-1 md:hidden" />
+
+            {/* CTA WhatsApp — derecha desktop */}
             <a
               href={whatsappLink}
               target="_blank"
@@ -504,25 +509,57 @@ export default function PaginaPublicaAsesor() {
               WhatsApp
             </a>
 
-            {/* Mobile: hamburger placeholder — scroll horizontal */}
-            <div className="md:hidden flex-1 flex items-center justify-center overflow-x-auto scrollbar-hide">
-              <div className="flex items-center gap-0.5 px-1">
-                {NAV_ITEMS.map(item => (
-                  <button
-                    key={item.id}
-                    onClick={() => scrollToSection(item.id)}
-                    className={`flex-shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
-                      activeSection === item.id ? 'text-white' : 'text-gray-600'
-                    }`}
-                    style={activeSection === item.id ? { backgroundColor: primaryColor } : {}}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+            {/* Mobile: hamburger button */}
+            <button
+              onClick={() => setMobileMenuOpen(v => !v)}
+              className="md:hidden flex items-center justify-center w-10 h-10 rounded-xl text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0"
+              aria-label="Menu"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
+
+          {/* Mobile drawer menu */}
+          <div className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
+            mobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+          }`}>
+            <div className="bg-white border-t border-gray-100 shadow-xl px-4 py-3 space-y-1">
+              {NAV_ITEMS.map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => { scrollToSection(item.id); setMobileMenuOpen(false); }}
+                  className={`w-full flex items-center px-4 py-3.5 rounded-xl text-sm font-semibold transition-all text-left ${
+                    activeSection === item.id ? 'text-white' : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                  style={activeSection === item.id ? { backgroundColor: primaryColor } : {}}
+                >
+                  {item.label}
+                </button>
+              ))}
+              <div className="pt-2 pb-1">
+                <a
+                  href={whatsappLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl text-sm font-bold text-white transition-all hover:brightness-90"
+                  style={{ backgroundColor: primaryColor }}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Escribir por WhatsApp
+                </a>
               </div>
             </div>
           </div>
         </nav>
+
+        {/* Overlay for mobile menu */}
+        {mobileMenuOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/20 md:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+        )}
 
         {/* ═══════════════════════════════════════
             HERO — identificación + formulario
@@ -1146,29 +1183,6 @@ export default function PaginaPublicaAsesor() {
                     </a>
                   )}
                 </div>
-
-                {/* Especialidades */}
-                {processedLinks.length > 0 && (
-                  <div className="w-full">
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Especialidades</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {[...new Set(processedLinks.slice(0, 8).map(l => l.displayName))].map(sp => (
-                        <span
-                          key={sp}
-                          className="text-xs px-2.5 py-1 rounded-full font-medium"
-                          style={{ backgroundColor: `${primaryColor}10`, color: primaryColor }}
-                        >
-                          {sp}
-                        </span>
-                      ))}
-                      {processedLinks.length > 8 && (
-                        <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-500">
-                          +{processedLinks.length - 8}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Columna derecha: bio */}

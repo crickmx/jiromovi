@@ -10,9 +10,11 @@ interface Props {
   userRole: UserRole;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  mobileMode?: boolean;
+  onMobileItemClick?: () => void;
 }
 
-export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, onToggleCollapse }: Props) {
+export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, onToggleCollapse, mobileMode, onMobileItemClick }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -27,8 +29,13 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
     return false;
   };
 
-  // When collapsed: render a slim expand-tab so user can re-open without icons duplicating the rail
-  if (collapsed) {
+  const handleNav = (path: string) => {
+    navigate(path);
+    onMobileItemClick?.();
+  };
+
+  // When collapsed (desktop only): render a slim expand-tab
+  if (collapsed && !mobileMode) {
     return (
       <div className="flex flex-col h-full w-[8px] relative group">
         {/* Invisible wider hit area + visible indicator strip */}
@@ -73,13 +80,15 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
             {workspace.label}
           </span>
         </div>
-        <button
-          onClick={onToggleCollapse}
-          aria-label="Colapsar menú"
-          className="p-1.5 rounded-xl text-neutral-400 hover:text-accent hover:bg-accent/5 dark:hover:bg-accent/10 transition-all flex-shrink-0"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
+        {!mobileMode && (
+          <button
+            onClick={onToggleCollapse}
+            aria-label="Colapsar menú"
+            className="p-1.5 rounded-xl text-neutral-400 hover:text-accent hover:bg-accent/5 dark:hover:bg-accent/10 transition-all flex-shrink-0"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* Separator */}
@@ -93,9 +102,10 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
           return (
             <button
               key={item.path}
-              onClick={() => navigate(item.path)}
+              onClick={() => handleNav(item.path)}
               className={cn(
                 "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200",
+                mobileMode ? "py-3.5" : "py-2.5",
                 "active:scale-[0.97] text-left",
                 active
                   ? "bg-accent/8 text-accent dark:bg-accent/12 font-semibold"

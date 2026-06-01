@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { LogOut, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { NAV_ORDER, isWorkspaceVisible, isTopLevelItemVisible } from '@/lib/workspaceConfig';
 import type { WorkspaceId, UserRole } from '@/lib/workspaceConfig';
@@ -11,11 +11,13 @@ interface Props {
   userRole: UserRole;
   usuario: { nombre?: string; apellidos?: string; imagen_perfil_url?: string; rol?: string } | null;
   onSignOut: () => void;
+  mobileMode?: boolean;
+  onMobileClose?: () => void;
 }
 
 const TOOLTIP_CLS = "text-xs font-semibold bg-slate-900 text-white border-slate-700/60 shadow-xl rounded-xl px-3 py-1.5";
 
-export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut }: Props) {
+export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut, mobileMode, onMobileClose }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -31,14 +33,27 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
     return false;
   };
 
+  const handleNav = (path: string) => {
+    navigate(path);
+    onMobileClose?.();
+  };
+
   return (
     <TooltipProvider delayDuration={200}>
       <div className="sidebar-rail flex flex-col h-full w-[72px] items-center">
 
-        {/* Logo */}
-        <div className="flex items-center justify-center h-16 w-full">
+        {/* Logo / Close button on mobile */}
+        <div className="flex items-center justify-center h-16 w-full relative">
+          {mobileMode && (
+            <button
+              onClick={onMobileClose}
+              className="absolute top-3 right-1 p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => handleNav('/dashboard')}
             className="sidebar-rail-logo-btn w-11 h-11 rounded-2xl flex items-center justify-center"
           >
             <img
@@ -61,11 +76,24 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
               const Icon = item.icon;
               const isActive = isTopLevelActive(item.path, item.matchPrefix);
 
+              if (mobileMode) {
+                return (
+                  <button
+                    key={`link-${idx}`}
+                    onClick={() => handleNav(item.path)}
+                    className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90', isActive && 'active')}
+                    title={item.label}
+                  >
+                    <Icon className="w-[18px] h-[18px]" />
+                  </button>
+                );
+              }
+
               return (
                 <Tooltip key={`link-${idx}`}>
                   <TooltipTrigger asChild>
                     <button
-                      onClick={() => navigate(item.path)}
+                      onClick={() => handleNav(item.path)}
                       className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90', isActive && 'active')}
                     >
                       <Icon className="w-[18px] h-[18px]" />
@@ -84,11 +112,24 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
             const isActive = ws.id === activeWorkspaceId;
             const firstPath = ws.items[0]?.path || '/dashboard';
 
+            if (mobileMode) {
+              return (
+                <button
+                  key={ws.id}
+                  onClick={() => handleNav(firstPath)}
+                  className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90', isActive && 'active')}
+                  title={ws.label}
+                >
+                  <Icon className="w-[18px] h-[18px]" />
+                </button>
+              );
+            }
+
             return (
               <Tooltip key={ws.id}>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={() => navigate(firstPath)}
+                    onClick={() => handleNav(firstPath)}
                     className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90', isActive && 'active')}
                   >
                     <Icon className="w-[18px] h-[18px]" />
@@ -106,38 +147,62 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
         <div className="flex flex-col items-center gap-2.5 pb-4 pt-3 w-full">
           <div className="sidebar-rail-sep w-8 h-px mb-1" />
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => navigate('/perfil')}
-                className="sidebar-rail-avatar-ring rounded-2xl transition-all duration-200 hover:scale-105 active:scale-95"
-              >
-                <Avatar className="h-9 w-9 rounded-xl">
-                  <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} className="rounded-xl" />
-                  <AvatarFallback className="sidebar-rail-avatar-fallback text-xs font-bold rounded-xl">
-                    {getInitials()}
-                  </AvatarFallback>
-                </Avatar>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={10} className={TOOLTIP_CLS}>
-              {usuario?.nombre} {usuario?.apellidos}
-            </TooltipContent>
-          </Tooltip>
+          {mobileMode ? (
+            <button
+              onClick={() => handleNav('/perfil')}
+              className="sidebar-rail-avatar-ring rounded-2xl transition-all duration-200 hover:scale-105 active:scale-95"
+            >
+              <Avatar className="h-9 w-9 rounded-xl">
+                <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} className="rounded-xl" />
+                <AvatarFallback className="sidebar-rail-avatar-fallback text-xs font-bold rounded-xl">
+                  {getInitials()}
+                </AvatarFallback>
+              </Avatar>
+            </button>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => handleNav('/perfil')}
+                  className="sidebar-rail-avatar-ring rounded-2xl transition-all duration-200 hover:scale-105 active:scale-95"
+                >
+                  <Avatar className="h-9 w-9 rounded-xl">
+                    <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} className="rounded-xl" />
+                    <AvatarFallback className="sidebar-rail-avatar-fallback text-xs font-bold rounded-xl">
+                      {getInitials()}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={10} className={TOOLTIP_CLS}>
+                {usuario?.nombre} {usuario?.apellidos}
+              </TooltipContent>
+            </Tooltip>
+          )}
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={onSignOut}
-                className="sidebar-rail-signout w-9 h-9 rounded-xl flex items-center justify-center active:scale-90"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={10} className={TOOLTIP_CLS}>
-              Cerrar Sesión
-            </TooltipContent>
-          </Tooltip>
+          {mobileMode ? (
+            <button
+              onClick={onSignOut}
+              className="sidebar-rail-signout w-9 h-9 rounded-xl flex items-center justify-center active:scale-90"
+              title="Cerrar Sesión"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onSignOut}
+                  className="sidebar-rail-signout w-9 h-9 rounded-xl flex items-center justify-center active:scale-90"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={10} className={TOOLTIP_CLS}>
+                Cerrar Sesión
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </div>
     </TooltipProvider>
