@@ -9,11 +9,14 @@ type Step = 'choice' | 'login_email' | 'login_otp' | 'register_form' | 'register
 interface Props {
   onClose: () => void;
   pendingMessage?: string;
+  initialView?: 'login' | 'register';
 }
 
-export default function ChavaAgenteAuthModal({ onClose, pendingMessage }: Props) {
+export default function ChavaAgenteAuthModal({ onClose, pendingMessage, initialView }: Props) {
   const { login, register, verifyCode, terms } = useChavaAgente();
-  const [step, setStep] = useState<Step>('choice');
+  const [step, setStep] = useState<Step>(
+    initialView === 'register' ? 'register_form' : initialView === 'login' ? 'login_email' : 'choice'
+  );
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
