@@ -5,15 +5,15 @@ import ConversationSidebar from '../components/ConversationSidebar';
 import ChavaAgenteAuthModal from '../components/ChavaAgenteAuthModal';
 import { ChavaBrandLogo } from '../../components/chava/ChavaBrandLogo';
 import { ChavaAvatar } from '../../components/chava/ChavaAvatar';
-import { LogOut, ChevronRight, Menu, Check } from 'lucide-react';
+import { LogOut, ChevronRight, Menu, Check, Sparkles } from 'lucide-react';
 
 const COMPACT_BENEFITS = [
   'Dudas frecuentes de seguros',
   'Comparativos de coberturas',
-  'Situaciones reales: siniestros y cobranza',
-  'Explicación de pólizas y condiciones',
-  'Apoyo para agentes y asegurados',
-  'Disponible 24/7, sin esperas',
+  'Situaciones reales: siniestros',
+  'Explicación de pólizas',
+  'Apoyo para agentes',
+  'Disponible 24/7',
 ];
 
 // ─── Authenticated layout ─────────────────────────────────────────────────────
@@ -95,6 +95,69 @@ function AuthenticatedLayout({
   );
 }
 
+// ─── Platform access card ──────────────────────────────────────────────────────
+
+function PlatformCard({
+  onClick,
+  accentRgb,
+  icon,
+  title,
+  subtitle,
+  cta,
+}: {
+  onClick: () => void;
+  accentRgb: string;
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  cta: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="group flex flex-col rounded-2xl p-4 transition-all duration-200 text-left w-full"
+      style={{
+        background: `rgba(${accentRgb},0.06)`,
+        border: `1px solid rgba(${accentRgb},0.18)`,
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.background = `rgba(${accentRgb},0.11)`;
+        e.currentTarget.style.borderColor = `rgba(${accentRgb},0.38)`;
+        e.currentTarget.style.transform = 'translateY(-1px)';
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.background = `rgba(${accentRgb},0.06)`;
+        e.currentTarget.style.borderColor = `rgba(${accentRgb},0.18)`;
+        e.currentTarget.style.transform = 'translateY(0)';
+      }}
+    >
+      {/* Icon + title row */}
+      <div className="flex items-center gap-3 mb-3">
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: `rgba(${accentRgb},0.14)` }}
+        >
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-white leading-tight">{title}</p>
+          <p className="text-[11px] leading-tight mt-0.5" style={{ color: 'rgba(255,255,255,0.42)' }}>{subtitle}</p>
+        </div>
+      </div>
+      {/* CTA row */}
+      <div
+        className="flex items-center justify-between w-full rounded-xl px-3 py-2"
+        style={{ background: `rgba(${accentRgb},0.1)` }}
+      >
+        <span className="text-xs font-semibold" style={{ color: `rgba(${accentRgb === '13,110,253' ? '120,180,255' : '52,211,153'},1)` }}>
+          {cta}
+        </span>
+        <ChevronRight className="w-3.5 h-3.5 opacity-60 group-hover:translate-x-0.5 transition-transform" style={{ color: `rgba(${accentRgb === '13,110,253' ? '120,180,255' : '52,211,153'},0.8)` }} />
+      </div>
+    </button>
+  );
+}
+
 // ─── Landing page ─────────────────────────────────────────────────────────────
 
 export default function ChavaAgenteLanding() {
@@ -133,24 +196,27 @@ export default function ChavaAgenteLanding() {
 
   return (
     <>
-      {/* Full-screen container — no scroll */}
+      {/* Root — full viewport, no scroll */}
       <div
         className="h-screen overflow-hidden flex flex-col"
-        style={{ background: 'linear-gradient(160deg, #060f25 0%, #0A183D 55%, #071020 100%)' }}
+        style={{ background: 'linear-gradient(160deg, #060f25 0%, #091730 55%, #071020 100%)' }}
       >
-        {/* Background decoration */}
+        {/* Subtle grid background */}
         <div className="fixed inset-0 pointer-events-none" style={{
-          backgroundImage: 'linear-gradient(rgba(0,229,255,0.013) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.013) 1px, transparent 1px)',
-          backgroundSize: '64px 64px', zIndex: 0,
+          backgroundImage: 'linear-gradient(rgba(0,229,255,0.012) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.012) 1px, transparent 1px)',
+          backgroundSize: '72px 72px', zIndex: 0,
         }} />
-        <div className="fixed top-0 right-1/3 w-[500px] h-[400px] pointer-events-none" style={{ background: 'radial-gradient(ellipse at 60% 0%, rgba(13,110,253,0.1) 0%, transparent 65%)', zIndex: 0 }} />
+        {/* Top glow blob */}
+        <div className="fixed top-0 left-1/3 w-[600px] h-[300px] pointer-events-none" style={{
+          background: 'radial-gradient(ellipse at 40% 0%, rgba(13,110,253,0.09) 0%, transparent 65%)', zIndex: 0,
+        }} />
 
-        {/* ── Mobile header ──────────────────────────────────────────── */}
-        <div className="relative z-10 lg:hidden flex items-center justify-between px-5 py-3 flex-shrink-0 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+        {/* ── Mobile nav ──────────────────────────────────────────────── */}
+        <div className="relative z-10 lg:hidden flex items-center justify-between px-4 py-3 flex-shrink-0 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
           <ChavaBrandLogo size="sm" showDomain={false} />
           <div className="flex items-center gap-2">
             <button onClick={openLogin} className="text-xs font-medium px-2.5 py-1.5 rounded-lg" style={{ color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              Iniciar sesión
+              Entrar
             </button>
             <button onClick={openRegister} className="text-xs font-semibold px-2.5 py-1.5 rounded-lg text-white" style={{ background: 'linear-gradient(135deg, #0D6EFD, #00c8e0)' }}>
               Crear cuenta
@@ -158,137 +224,201 @@ export default function ChavaAgenteLanding() {
           </div>
         </div>
 
-        {/* ── Main split — fills remaining height ────────────────────── */}
-        <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
+        {/* ── Main two-column layout ───────────────────────────────────── */}
+        <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
 
-          {/* ── LEFT PANEL ───────────────────────────────────────────── */}
+          {/* ════════ LEFT PANEL ════════ */}
           <div
-            className="w-full lg:w-[42%] xl:w-[40%] flex-shrink-0 flex flex-col overflow-hidden border-b lg:border-b-0 lg:border-r"
+            className="w-full lg:w-[42%] xl:w-[38%] flex-shrink-0 flex flex-col overflow-hidden border-b lg:border-b-0 lg:border-r"
             style={{ borderColor: 'rgba(255,255,255,0.06)' }}
           >
-            {/* Scrollable inner — handles edge case where viewport is very short */}
-            <div className="flex-1 flex flex-col overflow-y-auto px-6 lg:px-9 xl:px-11 py-5 lg:py-7 chava-left-scroll">
+            {/* Inner: flex column that fills height and distributes space */}
+            <div className="flex-1 flex flex-col overflow-y-auto px-7 lg:px-9 xl:px-10 py-6 lg:py-0 chava-left-scroll">
 
-              {/* Brand hero */}
-              <div className="flex items-center gap-4 mb-5">
-                <ChavaAvatar size="lg" animate className="flex-shrink-0" />
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
+              {/* ── BLOQUE 1+2+3: Brand hero ─────────────────────────── */}
+              <div className="lg:pt-8 xl:pt-10 mb-5">
+                {/* Avatar + wordmark */}
+                <div className="flex items-center gap-4 mb-5">
+                  <ChavaAvatar size="xl" animate className="flex-shrink-0" />
+                  <div>
                     <img
                       src="/chava-ai-logo.svg"
                       alt="Chava AI"
-                      className="h-9 w-auto object-contain"
+                      className="h-10 w-auto object-contain mb-1"
                       onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                     />
-                    <span className="hidden text-xl font-black tracking-tight text-white">CHAVA AI</span>
-                  </div>
-                  <h1 className="text-xl lg:text-2xl font-bold text-white leading-tight">
-                    Tu experto en seguros,{' '}
-                    <span style={{ color: '#00E5FF' }}>disponible 24/7</span>
-                  </h1>
-                  <div className="flex items-center gap-1.5 mt-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                      IA especializada en seguros · En línea
-                    </span>
+                    {/* Live badge */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+                      <span className="text-[10px] font-medium" style={{ color: 'rgba(255,255,255,0.38)' }}>
+                        IA especializada en seguros · En línea
+                      </span>
+                    </div>
                   </div>
                 </div>
+
+                {/* Headline */}
+                <h1 className="text-[22px] lg:text-2xl xl:text-[26px] font-extrabold text-white leading-[1.2] mb-2">
+                  Tu experto en seguros,{' '}
+                  <span style={{ color: '#00E5FF' }}>disponible 24/7</span>
+                </h1>
+
+                {/* Subtitle */}
+                <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.42)' }}>
+                  Resuelve dudas, compara coberturas y entiende tus pólizas con inteligencia artificial especializada.
+                </p>
               </div>
 
-              {/* Compact benefits */}
-              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 mb-5">
-                {COMPACT_BENEFITS.map(b => (
-                  <div key={b} className="flex items-start gap-1.5">
-                    <Check className="w-3 h-3 flex-shrink-0 mt-0.5" style={{ color: '#00E5FF' }} />
-                    <span className="text-[11px] leading-tight" style={{ color: 'rgba(255,255,255,0.5)' }}>{b}</span>
-                  </div>
-                ))}
+              {/* ── BLOQUE 4: Benefits ───────────────────────────────── */}
+              <div className="mb-5">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                  {COMPACT_BENEFITS.map(b => (
+                    <div key={b} className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(0,229,255,0.1)' }}>
+                        <Check className="w-2.5 h-2.5" style={{ color: '#00E5FF' }} />
+                      </div>
+                      <span className="text-[11px] leading-tight font-medium" style={{ color: 'rgba(255,255,255,0.52)' }}>{b}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Divider */}
-              <div className="mb-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }} />
+              <div className="mb-5" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }} />
 
-              {/* Access label */}
-              <p className="text-[10px] font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                Accede con tu plataforma
-              </p>
-
-              {/* MOVI + Seguwallet */}
-              <div className="grid grid-cols-2 gap-2.5 mb-3">
-                <button
-                  onClick={openLogin}
-                  className="flex items-center gap-2.5 rounded-xl p-3 transition-all duration-150 text-left"
-                  style={{ background: 'rgba(13,110,253,0.06)', border: '1px solid rgba(13,110,253,0.2)' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(13,110,253,0.12)'; e.currentTarget.style.borderColor = 'rgba(13,110,253,0.4)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(13,110,253,0.06)'; e.currentTarget.style.borderColor = 'rgba(13,110,253,0.2)'; }}
-                >
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(13,110,253,0.15)' }}>
-                    <img src="/logojiro.png" alt="MOVI" className="h-4 w-auto object-contain" style={{ mixBlendMode: 'screen' }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-white leading-tight">MOVI Digital</p>
-                    <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.38)' }}>Agentes y equipos</p>
-                  </div>
-                </button>
-
-                <button
-                  onClick={openLogin}
-                  className="flex items-center gap-2.5 rounded-xl p-3 transition-all duration-150 text-left"
-                  style={{ background: 'rgba(52,211,153,0.05)', border: '1px solid rgba(52,211,153,0.18)' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(52,211,153,0.1)'; e.currentTarget.style.borderColor = 'rgba(52,211,153,0.38)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(52,211,153,0.05)'; e.currentTarget.style.borderColor = 'rgba(52,211,153,0.18)'; }}
-                >
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(52,211,153,0.12)' }}>
-                    <img src="/seguwallet-logo.png" alt="Seguwallet" className="h-4 w-auto object-contain" style={{ mixBlendMode: 'screen' }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-white leading-tight">Seguwallet</p>
-                    <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.38)' }}>Asegurados</p>
-                  </div>
-                </button>
-              </div>
-
-              {/* Register CTA */}
-              <div className="rounded-xl p-3 mb-4" style={{ background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.12)' }}>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-white">¿No tienes cuenta?</p>
-                    <p className="text-[10px] mt-0.5 leading-tight" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                      Gratis · Acceso inmediato · Sin tarjeta
-                    </p>
-                  </div>
-                  <button
-                    onClick={openRegister}
-                    className="flex-shrink-0 flex items-center gap-1.5 text-xs font-semibold text-white px-3.5 py-2 rounded-xl transition-all hover:opacity-90 active:scale-95"
-                    style={{ background: 'linear-gradient(135deg, #0D6EFD, #00c8e0)' }}
-                  >
-                    Crear cuenta
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
+              {/* ── BLOQUE 5: Platform access ────────────────────────── */}
+              <div className="mb-4">
+                <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: 'rgba(255,255,255,0.22)' }}>
+                  Accede con tu plataforma
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <PlatformCard
+                    onClick={openLogin}
+                    accentRgb="13,110,253"
+                    icon={
+                      /* movirecurso_2 = white MOVI logo, perfect for dark bg */
+                      <img
+                        src="/movirecurso_2.png"
+                        alt="MOVI Digital"
+                        className="h-5 w-auto object-contain"
+                        onError={e => {
+                          const img = e.currentTarget as HTMLImageElement;
+                          img.style.display = 'none';
+                          // Fallback: show M letter
+                          const span = document.createElement('span');
+                          span.textContent = 'M';
+                          span.style.cssText = 'color:#7ab4ff;font-weight:900;font-size:14px';
+                          img.parentElement?.appendChild(span);
+                        }}
+                      />
+                    }
+                    title="MOVI Digital"
+                    subtitle="Para agentes y equipos"
+                    cta="Iniciar sesión"
+                  />
+                  <PlatformCard
+                    onClick={openLogin}
+                    accentRgb="52,211,153"
+                    icon={
+                      <img
+                        src="/seguwallet-logo.png"
+                        alt="Seguwallet"
+                        className="h-6 w-auto object-contain"
+                        style={{ mixBlendMode: 'screen' }}
+                        onError={e => {
+                          const img = e.currentTarget as HTMLImageElement;
+                          img.style.display = 'none';
+                          const span = document.createElement('span');
+                          span.textContent = 'S';
+                          span.style.cssText = 'color:#34d399;font-weight:900;font-size:14px';
+                          img.parentElement?.appendChild(span);
+                        }}
+                      />
+                    }
+                    title="Seguwallet"
+                    subtitle="Para asegurados"
+                    cta="Iniciar sesión"
+                  />
                 </div>
               </div>
 
-              {/* Spacer pushes footer down */}
+              {/* ── BLOQUE 6: Register CTA ───────────────────────────── */}
+              <div
+                className="rounded-2xl p-4 mb-5"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(13,110,253,0.1) 0%, rgba(0,229,255,0.06) 100%)',
+                  border: '1px solid rgba(0,229,255,0.18)',
+                }}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <Sparkles className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#00E5FF' }} />
+                  <p className="text-sm font-bold text-white">¿No tienes cuenta?</p>
+                </div>
+                <p className="text-[11px] mb-3 leading-snug" style={{ color: 'rgba(255,255,255,0.42)' }}>
+                  Acceso gratuito e inmediato. Sin tarjeta de crédito.
+                </p>
+                <button
+                  onClick={openRegister}
+                  className="w-full flex items-center justify-center gap-2 text-sm font-bold text-white py-2.5 rounded-xl transition-all hover:opacity-90 active:scale-[0.98]"
+                  style={{ background: 'linear-gradient(135deg, #0D6EFD, #00c8e0)' }}
+                >
+                  Crear cuenta gratis
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Spacer — pushes footer to bottom */}
               <div className="flex-1" />
 
-              {/* Institutional footer */}
-              <div className="flex items-center gap-4 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <span className="text-[9px] uppercase tracking-wider font-medium flex-shrink-0" style={{ color: 'rgba(255,255,255,0.18)' }}>Desarrollado por</span>
-                <img src="/logojiro.png" alt="Grupo JIRO" className="h-4 object-contain opacity-25 hover:opacity-40 transition-opacity" style={{ mixBlendMode: 'screen' }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-                <img src="/seguwallet-logo.png" alt="Seguwallet" className="h-3 object-contain opacity-20 hover:opacity-35 transition-opacity" style={{ mixBlendMode: 'screen' }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+              {/* ── BLOQUE 7: Institutional footer ──────────────────── */}
+              <div
+                className="flex items-center gap-3 py-4 lg:pb-6"
+                style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
+              >
+                <span className="text-[9px] uppercase tracking-widest font-semibold flex-shrink-0" style={{ color: 'rgba(255,255,255,0.16)' }}>
+                  Desarrollado por
+                </span>
+                {/* JIRO logo: has white bg, use screen blend */}
+                <img
+                  src="/logojiro.png"
+                  alt="Grupo JIRO"
+                  className="h-3.5 w-auto object-contain flex-shrink-0"
+                  style={{ mixBlendMode: 'screen', opacity: 0.45 }}
+                  onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                />
+                <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: '10px' }}>·</span>
+                {/* MOVI icon only for footer — transparent bg, no blend needed */}
+                <img
+                  src="/movirecurso_7.png"
+                  alt="MOVI Digital"
+                  className="h-3.5 w-auto object-contain flex-shrink-0"
+                  style={{ opacity: 0.35 }}
+                  onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                />
               </div>
             </div>
           </div>
 
-          {/* ── RIGHT PANEL: Chat ─────────────────────────────────────── */}
-          <div className="relative z-10 flex-1 flex flex-col overflow-hidden" style={{ background: 'rgba(255,255,255,0.005)' }}>
-            {/* Chat header (desktop) */}
-            <div className="hidden lg:flex items-center gap-2.5 px-6 py-3 border-b flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}>
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs font-medium flex-1" style={{ color: 'rgba(255,255,255,0.45)' }}>Chava AI · En línea</span>
-              <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.2)' }}>agentedeseguros.ai</span>
+          {/* ════════ RIGHT PANEL: Chat ════════ */}
+          <div
+            className="relative z-10 flex-1 flex flex-col overflow-hidden min-w-0"
+            style={{ background: 'rgba(255,255,255,0.005)' }}
+          >
+            {/* Chat topbar — desktop only */}
+            <div
+              className="hidden lg:flex items-center gap-3 px-6 py-3 border-b flex-shrink-0"
+              style={{ borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}
+            >
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+              <span className="text-xs font-medium flex-1" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                Chava AI · En línea
+              </span>
+              <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.18)' }}>
+                agentedeseguros.ai
+              </span>
             </div>
 
+            {/* Chat area */}
             <div className="flex-1 overflow-hidden flex flex-col min-h-0">
               <ChatInterface
                 conversationId={null}
@@ -297,25 +427,28 @@ export default function ChavaAgenteLanding() {
               />
             </div>
 
-            {/* Conversion bar */}
-            <div className="border-t px-4 py-2.5 flex items-center gap-3 flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.07)', background: 'rgba(0,229,255,0.02)' }}>
+            {/* Conversion bar — bottom of chat */}
+            <div
+              className="border-t px-4 py-2.5 flex items-center gap-3 flex-shrink-0"
+              style={{ borderColor: 'rgba(255,255,255,0.07)', background: 'rgba(0,229,255,0.018)' }}
+            >
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-white">Guarda tu historial</p>
-                <p className="text-[10px] truncate" style={{ color: 'rgba(255,255,255,0.3)' }}>Crea una cuenta gratuita o inicia sesión</p>
+                <p className="text-xs font-semibold text-white leading-tight">Guarda tu historial</p>
+                <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.28)' }}>Crea una cuenta gratuita o inicia sesión</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   onClick={openLogin}
-                  className="hidden sm:block text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
-                  style={{ color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.1)' }}
-                  onMouseEnter={e => (e.currentTarget.style.color = 'white')}
-                  onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.55)')}
+                  className="hidden sm:block text-xs font-medium px-3 py-1.5 rounded-lg transition-all"
+                  style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.09)' }}
+                  onMouseEnter={e => { e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.09)'; }}
                 >
                   Iniciar sesión
                 </button>
                 <button
                   onClick={openRegister}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-white px-3.5 py-1.5 rounded-lg transition-all hover:opacity-90 active:scale-95"
+                  className="flex items-center gap-1.5 text-xs font-bold text-white px-3.5 py-1.5 rounded-lg transition-all hover:opacity-90 active:scale-95"
                   style={{ background: 'linear-gradient(135deg, #0D6EFD, #00c8e0)' }}
                 >
                   Crear cuenta
@@ -336,6 +469,7 @@ export default function ChavaAgenteLanding() {
       )}
 
       <style>{`
+        .chava-left-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.07) transparent; }
         .chava-left-scroll::-webkit-scrollbar { width: 3px; }
         .chava-left-scroll::-webkit-scrollbar-track { background: transparent; }
         .chava-left-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.07); border-radius: 2px; }
