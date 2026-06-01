@@ -51,15 +51,22 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
   const handleGenerateCopy = async () => {
     setGenerating(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No session');
+      // Refresh session to ensure we have a valid, non-expired token
+      let accessToken: string | undefined;
+      const { data: refreshed } = await supabase.auth.refreshSession();
+      accessToken = refreshed.session?.access_token;
+      if (!accessToken) {
+        const { data: existing } = await supabase.auth.getSession();
+        accessToken = existing.session?.access_token;
+      }
+      if (!accessToken) throw new Error('No session');
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-design-copy`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${session.access_token}`,
+            'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
             'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
           },
