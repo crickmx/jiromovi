@@ -4,11 +4,7 @@ import { supabase } from '../lib/supabase';
 import { PageHeader } from '@/components/ui/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
 import { Button } from '@/components/ui/button';
-import {
-  Users, Plus, Search, Trash2, Save, X, Mail, Phone,
-  Building2, Calendar, ListFilter as Filter, Shield, CreditCard,
-  UserCheck, Briefcase, RefreshCw,
-} from 'lucide-react';
+import { Users, Plus, Search, Trash2, Save, X, Mail, Phone, Building2, Calendar, ListFilter as Filter, Shield, CreditCard, UserCheck, Briefcase, RefreshCw, CreditCard as Edit2, Eye, MoveVertical as MoreVertical, ExternalLink, ChevronRight } from 'lucide-react';
 
 type FuenteContacto = 'email' | 'crm' | 'seguwallet' | 'manual';
 
@@ -58,6 +54,7 @@ export function Contactos() {
   const [filtroFuente, setFiltroFuente] = useState<FiltroFuente>('todos');
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [formData, setFormData] = useState({
     nombre: '',
@@ -265,27 +262,53 @@ export function Contactos() {
     setSaving(true);
     setMessage(null);
     try {
-      const { error } = await supabase.from('contactos').insert({
-        usuario_id: usuario.id,
-        nombre: formData.nombre.trim() || null,
-        apellido: formData.apellido.trim() || null,
-        email: formData.email.trim().toLowerCase(),
-        celular: formData.celular.trim() || null,
-        empresa: formData.empresa.trim() || null,
-        comentarios: formData.comentarios.trim() || null,
-        origen: 'manual',
-      });
-      if (error) {
-        if (error.code === '23505') throw new Error('Ya existe un contacto con este email');
-        throw error;
+      if (editingId) {
+        const { error } = await supabase.from('contactos').update({
+          nombre: formData.nombre.trim() || null,
+          apellido: formData.apellido.trim() || null,
+          email: formData.email.trim().toLowerCase(),
+          celular: formData.celular.trim() || null,
+          empresa: formData.empresa.trim() || null,
+          comentarios: formData.comentarios.trim() || null,
+        }).eq('id', editingId);
+        if (error) throw error;
+        setMessage({ type: 'success', text: 'Contacto actualizado exitosamente' });
+      } else {
+        const { error } = await supabase.from('contactos').insert({
+          usuario_id: usuario.id,
+          nombre: formData.nombre.trim() || null,
+          apellido: formData.apellido.trim() || null,
+          email: formData.email.trim().toLowerCase(),
+          celular: formData.celular.trim() || null,
+          empresa: formData.empresa.trim() || null,
+          comentarios: formData.comentarios.trim() || null,
+          origen: 'manual',
+        });
+        if (error) {
+          if (error.code === '23505') throw new Error('Ya existe un contacto con este email');
+          throw error;
+        }
+        setMessage({ type: 'success', text: 'Contacto agregado exitosamente' });
       }
-      setMessage({ type: 'success', text: 'Contacto agregado exitosamente' });
       setShowModal(false);
+      setEditingId(null);
       loadAllContactos(true);
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Error al guardar contacto' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteContacto = async (contactoId: string) => {
+    if (!confirm('¿Eliminar este contacto? Esta acción no se puede deshacer.')) return;
+    try {
+      const { error } = await supabase.from('contactos').delete().eq('id', contactoId);
+      if (error) throw error;
+      setMessage({ type: 'success', text: 'Contacto eliminado' });
+      loadAllContactos(true);
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Error al eliminar contacto' });
     }
   };
 
@@ -319,6 +342,7 @@ export function Contactos() {
           </Button>
           <Button onClick={() => {
             setFormData({ nombre: '', apellido: '', email: '', celular: '', empresa: '', comentarios: '' });
+            setEditingId(null);
             setShowModal(true);
           }}>
             <Plus className="w-4 h-4" />
@@ -418,6 +442,7 @@ export function Contactos() {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-neutral-600 dark:text-white/60 uppercase tracking-wider">Estatus</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-neutral-600 dark:text-white/60 uppercase tracking-wider">Última actividad</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-neutral-600 dark:text-white/60 uppercase tracking-wider">Fuente</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-neutral-600 dark:text-white/60 uppercase tracking-wider">Acciones</th>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-transparent divide-y divide-neutral-200 dark:divide-white/10">
@@ -485,6 +510,60 @@ export function Contactos() {
                           {FUENTE_LABEL[c.fuente]}
                         </span>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {/* Ver en módulo origen */}
+                          {c.fuente === 'crm' && (
+                            <a
+                              href={`/mi-crm`}
+                              title="Ver en CRM"
+                              className="p-1.5 rounded-lg text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                          {c.fuente === 'seguwallet' && (
+                            <a
+                              href={`/seguwallet-admin`}
+                              title="Ver en Seguwallet"
+                              className="p-1.5 rounded-lg text-neutral-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition"
+                            >
+                              <Shield className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                          {/* Editar (sólo contactos manuales/email) */}
+                          {(c.fuente === 'manual' || c.fuente === 'email') && (
+                            <button
+                              title="Editar"
+                              onClick={() => {
+                                setFormData({
+                                  nombre: c.nombre.split(' ')[0] || '',
+                                  apellido: c.nombre.split(' ').slice(1).join(' ') || '',
+                                  email: c.email,
+                                  celular: c.celular || '',
+                                  empresa: c.empresa || '',
+                                  comentarios: '',
+                                });
+                                setEditingId(c.fuente_id);
+                                setShowModal(true);
+                              }}
+                              className="p-1.5 rounded-lg text-neutral-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {/* Eliminar (sólo contactos manuales) */}
+                          {c.fuente === 'manual' && (
+                            <button
+                              title="Eliminar"
+                              onClick={() => handleDeleteContacto(c.fuente_id)}
+                              className="p-1.5 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
@@ -499,8 +578,10 @@ export function Contactos() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl max-w-lg w-full my-8 flex flex-col">
             <div className="bg-neutral-50 dark:bg-white/3 px-6 py-4 flex items-center justify-between rounded-t-2xl border-b border-neutral-200 dark:border-white/10">
-              <h2 className="text-lg font-bold text-neutral-900 dark:text-white">Nuevo Contacto Manual</h2>
-              <button onClick={() => setShowModal(false)} className="text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/5 p-2 rounded-lg transition">
+              <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
+                {editingId ? 'Editar Contacto' : 'Nuevo Contacto Manual'}
+              </h2>
+              <button onClick={() => { setShowModal(false); setEditingId(null); }} className="text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/5 p-2 rounded-lg transition">
                 <X className="w-5 h-5" />
               </button>
             </div>

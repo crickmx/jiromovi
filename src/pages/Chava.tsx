@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
 import { getSuggestionsForRoute } from '../lib/suggestionsService';
 import { formatRelativeTime } from '../lib/assistantUtils';
-import { parseStructuredResponse } from '../lib/responseParser';
+import { parseStructuredResponse, normalizeChavaResponse } from '../lib/responseParser';
 import { sendChavaMessage } from '../lib/assistantService';
 import type { AssistantSuggestion, AssistantMessage, RAGSource } from '../lib/assistantTypes';
 import { Button } from '../components/ui/button';
@@ -442,9 +442,6 @@ export default function Chava() {
             <div className="space-y-5">
               {messages.map((message, idx) => {
                 const isUser = message.rol === 'user';
-                const structuredResponse = message.respuesta_estructurada_json
-                  ? parseStructuredResponse(message.respuesta_estructurada_json)
-                  : null;
 
                 return (
                   <div
@@ -458,41 +455,66 @@ export default function Chava() {
                       </div>
                     )}
                     <div className={cn('max-w-[78%] group relative')}>
-                      <div
-                        className={cn('rounded-2xl px-4 py-3 text-sm leading-relaxed', isUser ? 'rounded-br-md text-white' : 'rounded-bl-md')}
-                        style={isUser
-                          ? { background: 'linear-gradient(135deg, #0D6EFD, #0047bb)' }
-                          : { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.88)' }
-                        }
-                      >
-                        {isUser ? (
-                          <p className="whitespace-pre-wrap font-medium">{message.contenido}</p>
-                        ) : structuredResponse ? (
-                          <>
-                            <ResponseMessage response={structuredResponse} />
-                            <SourcesPanel sources={message.web_sources ?? []} confidence={message.router_confidence} ragSources={message.rag_fuentes} />
-                          </>
-                        ) : (
-                          <>
-                            <p className="whitespace-pre-wrap">{message.contenido}</p>
-                            <SourcesPanel sources={message.web_sources ?? []} confidence={message.router_confidence} ragSources={message.rag_fuentes} />
-                          </>
-                        )}
+                      {isUser ? (
+                        <div
+                          className="rounded-2xl rounded-br-md px-4 py-3 text-sm leading-relaxed"
+                          style={{ background: 'linear-gradient(135deg, #0D6EFD, #0047bb)' }}
+                        >
+                          <p className="whitespace-pre-wrap font-medium text-white">{message.contenido}</p>
+                        </div>
+                      ) : (() => {
+                        // Normalize before rendering — blocks internal prompts and raw JSON
+                        const normalized = normalizeChavaResponse(
+                          message.contenido,
+                          message.respuesta_estructurada_json
+                        );
 
-                        {/* Copy button for assistant */}
-                        {!isUser && (
-                          <button
-                            onClick={() => copyMessage(message.id, message.contenido)}
-                            className="absolute -bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg p-1 shadow-sm"
-                            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
+                        if (!normalized.safe) {
+                          return (
+                            <div
+                              className="rounded-2xl rounded-bl-md px-4 py-3 text-sm leading-relaxed"
+                              style={{ background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.25)', color: 'rgba(253,230,138,0.9)' }}
+                            >
+                              <p className="whitespace-pre-wrap">{normalized.error}</p>
+                            </div>
+                          );
+                        }
+
+                        const structuredResponse = normalized.structured
+                          ? parseStructuredResponse(normalized.structured)
+                          : null;
+
+                        return (
+                          <div
+                            className="rounded-2xl rounded-bl-md px-4 py-3 text-sm leading-relaxed"
+                            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.88)' }}
                           >
-                            {copiedId === message.id
-                              ? <Check className="w-3 h-3 text-emerald-400" />
-                              : <Copy className="w-3 h-3" style={{ color: 'rgba(255,255,255,0.4)' }} />
-                            }
-                          </button>
-                        )}
-                      </div>
+                            {structuredResponse ? (
+                              <>
+                                <ResponseMessage response={structuredResponse} />
+                                <SourcesPanel sources={message.web_sources ?? []} confidence={message.router_confidence} ragSources={message.rag_fuentes} />
+                              </>
+                            ) : (
+                              <>
+                                <p className="whitespace-pre-wrap">{normalized.text}</p>
+                                <SourcesPanel sources={message.web_sources ?? []} confidence={message.router_confidence} ragSources={message.rag_fuentes} />
+                              </>
+                            )}
+
+                            {/* Copy button */}
+                            <button
+                              onClick={() => copyMessage(message.id, normalized.text)}
+                              className="absolute -bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg p-1 shadow-sm"
+                              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
+                            >
+                              {copiedId === message.id
+                                ? <Check className="w-3 h-3 text-emerald-400" />
+                                : <Copy className="w-3 h-3" style={{ color: 'rgba(255,255,255,0.4)' }} />
+                              }
+                            </button>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 );

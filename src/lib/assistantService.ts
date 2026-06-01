@@ -96,6 +96,7 @@ export async function getConversationMessages(
     .from('mensajes_chatgpt')
     .select('*')
     .eq('conversacion_id', conversacionId)
+    .eq('visible_to_user', true)
     .order('created_at', { ascending: true })
     .limit(limit);
 

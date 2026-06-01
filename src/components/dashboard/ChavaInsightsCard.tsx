@@ -26,60 +26,15 @@ interface Props {
 const STORAGE_KEY_PREFIX = 'chava_dashboard_cache_';
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 min
 
-function buildContextPrompt(usuario: Usuario): string {
+// Internal prompt — never shown to user, only sent server-side
+function buildDashboardContext(usuario: Usuario): object {
   const nombre = usuario.nombre_completo || usuario.nombre || 'Usuario';
   const rol = usuario.rol;
   const oficina = (usuario.oficina as any)?.nombre || 'tu oficina';
   const now = new Date();
   const fecha = now.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
-
-  return `Eres Chava, el asistente inteligente de MOVI Digital.
-
-El usuario es ${nombre}, con rol "${rol}" en la oficina "${oficina}".
-Hoy es ${fecha}.
-
-Genera un análisis JSON con este formato EXACTO (sin markdown, solo JSON):
-{
-  "saludo": "mensaje breve de bienvenida personalizado según hora del día",
-  "resumen": "resumen ejecutivo de 1-2 oraciones según el rol del usuario",
-  "recomendaciones": ["recomendación 1", "recomendación 2", "recomendación 3"],
-  "alertas": ["alerta importante si aplica"],
-  "oportunidades": ["oportunidad detectada 1", "oportunidad detectada 2"],
-  "ctas": [
-    {"label": "texto del botón", "path": "/ruta", "variant": "primary"},
-    {"label": "texto del botón", "path": "/ruta", "variant": "secondary"},
-    {"label": "texto del botón", "path": "/ruta", "variant": "secondary"}
-  ]
-}
-
-CTAs válidos según el rol "${rol}":
-${rol === 'Administrador' ? `
-- {"label": "Ver producción global", "path": "/produccion/total", "variant": "primary"}
-- {"label": "Administrar usuarios", "path": "/directorio", "variant": "secondary"}
-- {"label": "Ver diagnóstico", "path": "/admin/diagnostico", "variant": "secondary"}
-- {"label": "Configurar SICAS", "path": "/produccion/configuracion", "variant": "secondary"}
-- {"label": "Ver trámites activos", "path": "/tramites", "variant": "secondary"}
-- {"label": "Notificaciones", "path": "/admin/transaccionales", "variant": "secondary"}` : ''}
-${rol === 'Gerente' ? `
-- {"label": "Ver producción equipo", "path": "/produccion/total", "variant": "primary"}
-- {"label": "Revisar trámites", "path": "/tramites", "variant": "secondary"}
-- {"label": "Ver mi equipo", "path": "/directorio", "variant": "secondary"}
-- {"label": "Ver comisiones", "path": "/mis-comisiones", "variant": "secondary"}
-- {"label": "Centro de contacto", "path": "/centro-contacto", "variant": "secondary"}` : ''}
-${rol === 'Empleado' ? `
-- {"label": "Ver trámites asignados", "path": "/tramites", "variant": "primary"}
-- {"label": "Abrir centro de contacto", "path": "/centro-contacto", "variant": "secondary"}
-- {"label": "Ver mis contactos", "path": "/contactos", "variant": "secondary"}
-- {"label": "Revisar comunicados", "path": "/comunicados", "variant": "secondary"}` : ''}
-${rol === 'Agente' || rol === 'Ejecutivo' ? `
-- {"label": "Ver mi producción", "path": "/mi-produccion-sicas-live", "variant": "primary"}
-- {"label": "Mis comisiones", "path": "/mis-comisiones", "variant": "secondary"}
-- {"label": "Mi página web", "path": "/mercadotecnia/mi-pagina-web", "variant": "secondary"}
-- {"label": "Centro Digital", "path": "/centro-digital", "variant": "secondary"}
-- {"label": "Mis trámites", "path": "/tramites", "variant": "secondary"}
-- {"label": "Hablar con Chava", "path": "/chava", "variant": "secondary"}` : ''}
-
-Responde SOLO con el JSON. Sin markdown, sin explicaciones.`;
+  const hora = now.getHours();
+  return { nombre, rol, oficina, fecha, hora };
 }
 
 export function ChavaInsightsCard({ usuario }: Props) {
@@ -119,7 +74,7 @@ export function ChavaInsightsCard({ usuario }: Props) {
       if (!session) throw new Error('No session');
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const prompt = buildContextPrompt(usuario);
+      const context = buildDashboardContext(usuario);
 
       const res = await fetch(`${supabaseUrl}/functions/v1/chava-query`, {
         method: 'POST',
@@ -128,10 +83,16 @@ export function ChavaInsightsCard({ usuario }: Props) {
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          mensaje: prompt,
+          // Use dashboard_context mode — the edge function uses this to build the internal prompt
+          // The user never sees this payload in the UI
           modulo: 'dashboard',
           ruta: '/dashboard',
-          parametros: { dashboard_context: true },
+          parametros: {
+            dashboard_context: true,
+            usuario_context: context,
+          },
+          // Generic user-visible text — NOT the internal prompt
+          mensaje: 'Genera mi análisis del día',
         }),
       });
 
@@ -140,17 +101,30 @@ export function ChavaInsightsCard({ usuario }: Props) {
       const json = await res.json();
       const text: string = json.respuesta || json.mensaje || '';
 
-      // Extract JSON from response
+      // Safety: never show text that looks like an internal prompt
+      if (!text || text.length < 5) throw new Error('Empty response');
+
+      // Extract and parse JSON from response
       const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('Invalid response format');
+      if (!jsonMatch) throw new Error('No JSON in response');
 
       const parsed: ChavaAnalysis = JSON.parse(jsonMatch[0]);
+
+      // Validate schema
+      if (!parsed.saludo || !parsed.resumen) throw new Error('Invalid schema');
+
+      // Sanitize arrays
+      parsed.recomendaciones = Array.isArray(parsed.recomendaciones) ? parsed.recomendaciones.filter(s => typeof s === 'string') : [];
+      parsed.alertas = Array.isArray(parsed.alertas) ? parsed.alertas.filter(s => typeof s === 'string') : [];
+      parsed.oportunidades = Array.isArray(parsed.oportunidades) ? parsed.oportunidades.filter(s => typeof s === 'string') : [];
+      parsed.ctas = Array.isArray(parsed.ctas) ? parsed.ctas.filter(c => c && typeof c.label === 'string' && typeof c.path === 'string') : [];
+
       setAnalysis(parsed);
       saveToCache(parsed);
     } catch (err) {
       console.error('Chava dashboard error:', err);
-      const fallback = getFallbackAnalysis(usuario);
-      setAnalysis(fallback);
+      // Always use static fallback — never expose error details to user
+      setAnalysis(getFallbackAnalysis(usuario));
     } finally {
       setLoading(false);
     }

@@ -8,7 +8,8 @@ export type WorkspaceId =
   | 'mercadotecnia'
   | 'operaciones'
   | 'seguros-education'
-  | 'administracion';
+  | 'administracion'
+  | 'inteligencia-artificial';
 
 export type UserRole = 'Administrador' | 'Gerente' | 'Empleado' | 'Agente' | 'Ejecutivo';
 
@@ -155,18 +156,28 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/actividad-usuarios', label: 'Actividad', icon: Activity, visibleTo: ADMIN_ONLY },
     { path: '/carga-masiva-usuarios', label: 'Carga Masiva', icon: Users, visibleTo: ADMIN_ONLY },
     { path: '/admin-digital', label: 'Admin Digital', icon: CreditCard, visibleTo: ADMIN_ONLY },
-    { path: '/admin/base-conocimiento', label: 'Base Conocimiento', icon: BookOpen, visibleTo: ADMIN_ONLY },
     { path: '/admin/importacion-masiva', label: 'Importación Masiva', icon: Database, visibleTo: ADMIN_ONLY },
     { path: '/comisiones/regimen-fiscal', label: 'Regimen Fiscal', icon: DollarSign, visibleTo: ADMIN_ONLY, matchPrefix: true },
     { path: '/comisiones/mapeo-vendedores', label: 'Mapeo Vendedores', icon: Users, visibleTo: ADMIN_ONLY },
     { path: '/produccion/configuracion', label: 'Config Produccion', icon: Settings, visibleTo: ADMIN_ONLY },
     { path: '/sicas/salud', label: 'SICAS Salud', icon: Activity, visibleTo: ADMIN_ONLY },
-    { path: '/admin/asistentes', label: 'Asistentes IA', icon: Bot, visibleTo: ADMIN_GERENTE, matchPrefix: true },
-    { path: '/admin/chava-ia', label: 'Chava IA', icon: Brain, visibleTo: ADMIN_ONLY },
-    { path: '/admin/chava-inteligencia', label: 'Inteligencia Chava AI', icon: Sparkles, visibleTo: ADMIN_ONLY },
     { path: '/firmas-email', label: 'Firmas Email', icon: FileText, visibleTo: ADMIN_ONLY },
     { path: '/admin/transaccionales', label: 'Transaccionales', icon: Send, visibleTo: ADMIN_ONLY },
     { path: '/admin/diagnostico', label: 'Diagnostico', icon: Activity, visibleTo: ADMIN_ONLY },
+  ],
+};
+
+const WORKSPACE_IA: WorkspaceDefinition = {
+  id: 'inteligencia-artificial',
+  label: 'Inteligencia Artificial',
+  icon: Brain,
+  visibleTo: ADMIN_GERENTE,
+  items: [
+    { path: '/admin/chava-inteligencia', label: 'Dashboard IA', icon: BarChart3, visibleTo: ADMIN_ONLY },
+    { path: '/admin/base-conocimiento', label: 'Base Conocimiento', icon: BookOpen, visibleTo: ADMIN_ONLY },
+    { path: '/admin/asistentes', label: 'Entrenamiento', icon: Bot, visibleTo: ADMIN_GERENTE, matchPrefix: true },
+    { path: '/admin/automatizacion-ia', label: 'Robots', icon: Sparkles, visibleTo: ADMIN_ONLY, matchPrefix: true },
+    { path: '/admin/chava-ia', label: 'Auditoria', icon: Activity, visibleTo: ADMIN_ONLY },
   ],
 };
 
@@ -177,6 +188,7 @@ export const WORKSPACES: WorkspaceDefinition[] = [
   WORKSPACE_OPERACIONES,
   WORKSPACE_MERCADOTECNIA,
   WORKSPACE_SEGUROS_EDUCATION,
+  WORKSPACE_IA,
   WORKSPACE_ADMIN,
 ];
 
@@ -192,6 +204,7 @@ export const NAV_ORDER: NavEntry[] = [
   { type: 'workspace', workspace: WORKSPACE_SEGUROS_EDUCATION },
   { type: 'link', item: { path: '/store', label: 'MOVI Store', icon: ShoppingBag, visibleTo: ALL_ROLES } },
   { type: 'link', item: { path: '/comunicados', label: 'Comunicados', icon: FileText, visibleTo: ALL_ROLES, matchPrefix: true } },
+  { type: 'workspace', workspace: WORKSPACE_IA },
   { type: 'workspace', workspace: WORKSPACE_ADMIN },
 ];
 
