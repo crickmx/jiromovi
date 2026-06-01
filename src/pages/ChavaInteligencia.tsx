@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Brain, TrendingUp, Target, Lightbulb, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle2, Circle as XCircle, Clock, RefreshCw, Loader as Loader2, MessageSquare, Users, Zap, ChevronRight, Eye, ThumbsUp, ThumbsDown, ChartBar as BarChart3, Search, BookOpen, Sparkles, ArrowUp, ArrowDown, Minus } from 'lucide-react';
+import { Brain, TrendingUp, Target, Lightbulb, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle2, Circle as XCircle, RefreshCw, Loader as Loader2, MessageSquare, Users, ThumbsUp, ThumbsDown, ChartBar as BarChart3, BookOpen, Sparkles } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { cn } from '@/lib/utils';
 import { supabase } from '../lib/supabase';
@@ -125,14 +125,12 @@ function DashboardTab({ days, refreshKey }: { days: number; refreshKey: number }
   const conocimiento = data.conocimiento || {};
 
   const kpis = [
-    { label: 'Consultas totales', value: uso.total_consultas ?? 0, icon: MessageSquare, color: 'text-blue-500' },
+    { label: 'Consultas totales', value: uso.total_interacciones ?? 0, icon: MessageSquare, color: 'text-blue-500' },
     { label: 'Usuarios únicos', value: uso.usuarios_unicos ?? 0, icon: Users, color: 'text-cyan-500' },
-    { label: 'Tiempo promedio', value: uso.tiempo_promedio_ms ? `${Math.round(uso.tiempo_promedio_ms)}ms` : 'N/A', icon: Clock, color: 'text-emerald-500' },
-    { label: 'Tokens utilizados', value: (uso.total_tokens ?? 0).toLocaleString(), icon: Zap, color: 'text-amber-500' },
-    { label: 'Leads detectados', value: comercial.total_leads ?? 0, icon: Target, color: 'text-rose-500' },
+    { label: 'Leads detectados', value: comercial.leads_detectados ?? 0, icon: Target, color: 'text-rose-500' },
     { label: 'Leads alta calidad', value: comercial.leads_alta_calidad ?? 0, icon: Sparkles, color: 'text-orange-500' },
-    { label: 'Brechas de conocimiento', value: conocimiento.total_brechas ?? 0, icon: BookOpen, color: 'text-violet-500' },
-    { label: 'Brechas pendientes', value: conocimiento.pendientes ?? 0, icon: AlertTriangle, color: 'text-red-500' },
+    { label: 'Brechas de conocimiento', value: conocimiento.sin_documentacion ?? 0, icon: BookOpen, color: 'text-amber-500' },
+    { label: 'Brechas pendientes', value: conocimiento.pendientes_revision ?? 0, icon: AlertTriangle, color: 'text-red-500' },
   ];
 
   const insights: any[] = data.insights_recientes || [];
@@ -156,10 +154,10 @@ function DashboardTab({ days, refreshKey }: { days: number; refreshKey: number }
       </div>
 
       {/* Top intents mini-chart */}
-      {(uso.top_intents || []).length > 0 && (
+      {(conocimiento.top_intents || []).length > 0 && (
         <div className="p-5 bg-white dark:bg-white/[0.03] rounded-xl border border-neutral-200/60 dark:border-white/8">
           <h3 className="text-sm font-semibold text-neutral-700 dark:text-white/70 mb-4">Top Intents</h3>
-          <IntentBar intents={uso.top_intents} />
+          <IntentBar intents={conocimiento.top_intents} />
         </div>
       )}
 
@@ -215,14 +213,14 @@ function IntentsTab({ days, refreshKey }: { days: number; refreshKey: number }) 
     const [trendsRes, analyticsRes] = await Promise.all([
       supabase
         .from('chava_topic_trends')
-        .select('intent_codigo, plataforma, total_menciones, fecha')
+        .select('intent_codigo, plataforma, conteo, fecha')
         .eq('periodo', 'diario')
         .gte('fecha', since.toISOString().split('T')[0])
-        .order('total_menciones', { ascending: false })
+        .order('conteo', { ascending: false })
         .limit(200),
       supabase
         .from('chava_interaction_analytics')
-        .select('intent_principal, producto_detectado, plataforma, created_at')
+        .select('intent_principal, producto_detectado, plataforma_origen, created_at')
         .gte('created_at', since.toISOString())
         .limit(500),
     ]);
@@ -235,7 +233,7 @@ function IntentsTab({ days, refreshKey }: { days: number; refreshKey: number }) 
   if (loading) return <LoadingState />;
 
   // Aggregate by intent
-  const filtered = analytics.filter(a => platform === 'todos' || a.plataforma === platform);
+  const filtered = analytics.filter(a => platform === 'todos' || a.plataforma_origen === platform);
   const intentMap: Record<string, number> = {};
   for (const a of filtered) {
     const key = a.intent_principal || 'otro';
@@ -368,16 +366,16 @@ function LeadsTab({ days, refreshKey }: { days: number; refreshKey: number }) {
     setLoading(false);
   };
 
-  const updateStatus = async (id: string, estatus: string) => {
+  const updateStatus = async (id: string, estado: string) => {
     setUpdating(id);
-    await supabase.from('chava_lead_signals').update({ estatus }).eq('id', id);
+    await supabase.from('chava_lead_signals').update({ estado }).eq('id', id);
     await load();
     setUpdating(null);
   };
 
   if (loading) return <LoadingState />;
 
-  const byQuality = (q: string) => leads.filter(l => l.calidad_lead === q).length;
+  const byQuality = (q: string) => leads.filter(l => l.calidad === q).length;
 
   return (
     <div className="space-y-5">
@@ -406,26 +404,26 @@ function LeadsTab({ days, refreshKey }: { days: number; refreshKey: number }) {
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <QualityBadge quality={lead.calidad_lead} />
-                      <StatusBadge status={lead.estatus} />
-                      {lead.producto_interes && (
-                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 capitalize font-medium">{lead.producto_interes}</span>
-                      )}
-                      {lead.estado && (
-                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-white/5 text-neutral-500">{lead.estado}</span>
+                      <QualityBadge quality={lead.calidad} />
+                      <StatusBadge status={lead.estado} />
+                      {lead.producto && (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 capitalize font-medium">{lead.producto}</span>
                       )}
                     </div>
-                    <p className="text-sm text-neutral-700 dark:text-white/70 line-clamp-2">{lead.extracto_conversacion}</p>
+                    {lead.datos_capturados && Object.keys(lead.datos_capturados).length > 0 && (
+                      <p className="text-sm text-neutral-700 dark:text-white/70 line-clamp-2">
+                        {Object.entries(lead.datos_capturados).map(([k, v]) => `${k}: ${v}`).join(' | ')}
+                      </p>
+                    )}
                     <div className="flex items-center gap-3 mt-2">
-                      <span className="text-[11px] text-neutral-400">{lead.plataforma}</span>
                       {lead.chava_agente_users?.nombre_completo && (
                         <span className="text-[11px] text-neutral-400">{lead.chava_agente_users.nombre_completo}</span>
                       )}
                       <span className="text-[11px] text-neutral-400">{new Date(lead.created_at).toLocaleString()}</span>
                     </div>
-                    {lead.datos_precalificacion && Object.keys(lead.datos_precalificacion).length > 0 && (
+                    {lead.datos_capturados && Object.keys(lead.datos_capturados).length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1">
-                        {Object.entries(lead.datos_precalificacion).map(([k, v]) => (
+                        {Object.entries(lead.datos_capturados).map(([k, v]) => (
                           <span key={k} className="text-[11px] px-2 py-0.5 rounded bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400">
                             {k}: {String(v)}
                           </span>
@@ -434,7 +432,7 @@ function LeadsTab({ days, refreshKey }: { days: number; refreshKey: number }) {
                     )}
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    {lead.estatus === 'nuevo' && (
+                    {lead.estado === 'nuevo' && (
                       <>
                         <Button size="sm" variant="ghost" className="gap-1 text-emerald-600 hover:text-emerald-700 text-xs"
                           disabled={updating === lead.id}
@@ -473,17 +471,17 @@ function ConocimientoTab({ refreshKey }: { refreshKey: number }) {
     let q = supabase
       .from('chava_knowledge_review_queue')
       .select('*')
-      .order('frecuencia', { ascending: false })
+      .order('frecuencia_consultas', { ascending: false })
       .limit(100);
-    if (filter !== 'todos') q = q.eq('estatus', filter);
+    if (filter !== 'todos') q = q.eq('estado', filter);
     const { data } = await q;
     setItems(data || []);
     setLoading(false);
   };
 
-  const updateStatus = async (id: string, estatus: string) => {
+  const updateStatus = async (id: string, estado: string) => {
     setUpdating(id);
-    await supabase.from('chava_knowledge_review_queue').update({ estatus, revisado_at: new Date().toISOString() }).eq('id', id);
+    await supabase.from('chava_knowledge_review_queue').update({ estado, revisado_at: new Date().toISOString() }).eq('id', id);
     await load();
     setUpdating(null);
   };
@@ -514,35 +512,35 @@ function ConocimientoTab({ refreshKey }: { refreshKey: number }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <span className="text-xs font-semibold text-neutral-500 dark:text-white/40 bg-neutral-100 dark:bg-white/5 px-2 py-0.5 rounded-full">
-                        {INTENT_LABELS[item.intent_codigo] || item.intent_codigo}
+                        {item.titulo || item.tipo}
                       </span>
-                      {item.plataforma_origen && (
-                        <span className="text-xs text-neutral-400">{item.plataforma_origen}</span>
+                      {item.plataforma_destino && (
+                        <span className="text-xs text-neutral-400">{item.plataforma_destino}</span>
                       )}
                       <span className="text-xs font-bold text-amber-600 flex items-center gap-1">
-                        <TrendingUp className="h-3 w-3" />{item.frecuencia}x
+                        <TrendingUp className="h-3 w-3" />{item.frecuencia_consultas}x
                       </span>
-                      <StatusBadge status={item.estatus} />
+                      <StatusBadge status={item.estado} />
                     </div>
 
-                    {item.pregunta_ejemplo && (
+                    {item.descripcion && (
                       <div className="mb-2 px-3 py-2 rounded-lg bg-neutral-50 dark:bg-white/[0.02] border-l-2 border-neutral-200 dark:border-white/10">
-                        <p className="text-xs text-neutral-500 dark:text-white/30 mb-0.5">Ejemplo de pregunta</p>
-                        <p className="text-sm text-neutral-700 dark:text-white/70 italic">"{item.pregunta_ejemplo}"</p>
+                        <p className="text-xs text-neutral-500 dark:text-white/30 mb-0.5">Descripción</p>
+                        <p className="text-sm text-neutral-700 dark:text-white/70 italic">"{item.descripcion}"</p>
                       </div>
                     )}
 
-                    {item.sugerencia_contenido && (
+                    {item.contenido_sugerido && (
                       <div className="px-3 py-2 rounded-lg bg-cyan-50 dark:bg-cyan-500/5 border-l-2 border-cyan-300 dark:border-cyan-500/30">
                         <p className="text-xs text-cyan-600 dark:text-cyan-400 mb-0.5">Sugerencia de contenido</p>
-                        <p className="text-sm text-neutral-700 dark:text-white/70">{item.sugerencia_contenido}</p>
+                        <p className="text-sm text-neutral-700 dark:text-white/70">{item.contenido_sugerido}</p>
                       </div>
                     )}
 
                     <p className="text-[11px] text-neutral-400 mt-2">{new Date(item.created_at).toLocaleString()}</p>
                   </div>
 
-                  {item.estatus === 'pendiente' && (
+                  {item.estado === 'pendiente' && (
                     <div className="flex flex-col gap-1.5 flex-shrink-0">
                       <Button size="sm" variant="ghost" className="gap-1 text-emerald-600 hover:text-emerald-700 text-xs h-8"
                         disabled={updating === item.id}
@@ -580,17 +578,17 @@ function MejorasTab({ refreshKey }: { refreshKey: number }) {
     let q = supabase
       .from('chava_improvement_suggestions')
       .select('*')
-      .order('frecuencia_reportes', { ascending: false })
+      .order('frecuencia_detecciones', { ascending: false })
       .limit(100);
-    if (filter !== 'todos') q = q.eq('estatus', filter);
+    if (filter !== 'todos') q = q.eq('estado', filter);
     const { data } = await q;
     setItems(data || []);
     setLoading(false);
   };
 
-  const updateStatus = async (id: string, estatus: string) => {
+  const updateStatus = async (id: string, estado: string) => {
     setUpdating(id);
-    await supabase.from('chava_improvement_suggestions').update({ estatus }).eq('id', id);
+    await supabase.from('chava_improvement_suggestions').update({ estado }).eq('id', id);
     await load();
     setUpdating(null);
   };
@@ -630,33 +628,33 @@ function MejorasTab({ refreshKey }: { refreshKey: number }) {
                           {item.plataforma}
                         </span>
                       )}
-                      {item.tipo_mejora && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-white/5 text-neutral-500 capitalize">{item.tipo_mejora}</span>
+                      {item.tipo && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-white/5 text-neutral-500 capitalize">{item.tipo}</span>
                       )}
                       <span className="text-xs font-bold text-amber-600 flex items-center gap-1">
-                        <TrendingUp className="h-3 w-3" />{item.frecuencia_reportes}x
+                        <TrendingUp className="h-3 w-3" />{item.frecuencia_detecciones}x
                       </span>
-                      <StatusBadge status={item.estatus} />
+                      <StatusBadge status={item.estado} />
                     </div>
                     <p className="text-sm font-semibold text-neutral-800 dark:text-white/80 mb-1">{item.titulo}</p>
                     <p className="text-sm text-neutral-600 dark:text-white/50">{item.descripcion}</p>
                     <p className="text-[11px] text-neutral-400 mt-2">{new Date(item.created_at).toLocaleString()}</p>
                   </div>
 
-                  {item.estatus === 'pendiente' && (
-                    <div className="flex flex-col gap-1.5 flex-shrink-0">
-                      <Button size="sm" variant="ghost" className="gap-1 text-emerald-600 hover:text-emerald-700 text-xs h-8"
-                        disabled={updating === item.id}
-                        onClick={() => updateStatus(item.id, 'aceptado')}>
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Aceptar
-                      </Button>
-                      <Button size="sm" variant="ghost" className="gap-1 text-red-500 hover:text-red-600 text-xs h-8"
-                        disabled={updating === item.id}
-                        onClick={() => updateStatus(item.id, 'descartado')}>
-                        <XCircle className="h-3.5 w-3.5" /> Descartar
-                      </Button>
-                    </div>
-                  )}
+                    {item.estado === 'pendiente' && (
+                      <div className="flex flex-col gap-1.5 flex-shrink-0">
+                        <Button size="sm" variant="ghost" className="gap-1 text-emerald-600 hover:text-emerald-700 text-xs h-8"
+                          disabled={updating === item.id}
+                          onClick={() => updateStatus(item.id, 'aceptado')}>
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Aceptar
+                        </Button>
+                        <Button size="sm" variant="ghost" className="gap-1 text-red-500 hover:text-red-600 text-xs h-8"
+                          disabled={updating === item.id}
+                          onClick={() => updateStatus(item.id, 'descartado')}>
+                          <XCircle className="h-3.5 w-3.5" /> Descartar
+                        </Button>
+                      </div>
+                    )}
                 </div>
               </div>
             ))}

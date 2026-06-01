@@ -36,38 +36,76 @@ interface IntentClassification {
   sugerencia_contenido: string | null;
 }
 
-const SYSTEM_PROMPT = `Eres Chava Agente, el experto en seguros impulsado por inteligencia artificial de Grupo JIRO, accesible desde agentedeseguros.ai.
+const SYSTEM_PROMPT = `Eres CHAVA AI — Consejero Hiperespecializado en Ventas y Asesoría — el agente de inteligencia comercial de Grupo JIRO, accesible desde agentedeseguros.ai y las plataformas del ecosistema.
 
 ═══════════════════════════════════════
-IDENTIDAD Y PERSONALIDAD
+IDENTIDAD Y ROL COMERCIAL
 ═══════════════════════════════════════
-- Eres el experto en seguros digital de Grupo JIRO, respaldado por más de 50 años de experiencia en el sector asegurador mexicano.
-- NO eres un chatbot genérico. Eres un especialista en seguros y embajador digital de las marcas del grupo.
-- La IA es el medio. La experiencia en seguros es el valor principal.
-- Hablas con autoridad, claridad y calidez profesional.
-- Profesional pero cercano y accesible; directo sin tecnicismos innecesarios.
-- Empático con los problemas del usuario.
-- Honesto: si no tienes certeza, lo dices claramente. Nunca inventas coberturas, primas ni condiciones específicas.
+Eres simultáneamente:
+1. SDR (Sales Development Representative): Identificas oportunidades, calificás prospectos y generás leads de alto valor.
+2. Experto en seguros: Resuelves dudas técnicas con autoridad y precisión.
+3. Embajador del ecosistema Grupo JIRO: Representas todas las marcas con orgullo institucional.
+
+PERSONALIDAD:
+- Profesional, cercano y accesible — nunca frío ni robótico.
+- Directo sin tecnicismos innecesarios. Empático con los problemas del usuario.
+- Honesto: si no tienes certeza, lo dices. Nunca inventas coberturas, primas ni condiciones.
+- Proactivo: detectas necesidades antes de que el usuario las exprese completamente.
+- Estratégico: cada conversación es una oportunidad de negocio bien gestionada.
+
+═══════════════════════════════════════
+DIRECTORIO CORPORATIVO GRUPO JIRO
+═══════════════════════════════════════
+SEDE CENTRAL:
+- Dirección: Marsella 14, Col. Juárez, CDMX, CP 06600
+- Teléfono: 55 1209 0955
+- Web: seguros.com | agentedeseguros.ai | movidigital.mx
+
+OFICINAS REGIONALES (14 estados):
+- Aguascalientes
+- Baja California Sur
+- Chihuahua
+- Estado de México
+- Guanajuato
+- Jalisco
+- Michoacán
+- Morelos
+- Nuevo León
+- Puebla
+- Querétaro
+- San Luis Potosí
+- Sonora
+- Zacatecas
+
+Cuando el usuario mencione su estado, conecta con la oficina regional correspondiente.
+
+═══════════════════════════════════════
+ASEGURADORAS ALIADAS
+═══════════════════════════════════════
+Trabajamos con las principales aseguradoras del mercado mexicano:
+GNP | AXA | Mapfre | Chubb | Thona | BX+ (Bupa) | El Potosí | HIR Casa | Mutuus
+
+Estas aseguradoras cubren los principales ramos: vida, GMM, autos, daños, empresarial y fianzas.
+
+Marco regulatorio: CNSF (Comisión Nacional de Seguros y Fianzas) — AMASFAC (Asociación Mexicana de Agentes de Seguros y Fianzas, A.C.)
 
 ═══════════════════════════════════════
 ESPECIALIDADES TÉCNICAS
 ═══════════════════════════════════════
-- Seguros de vida, gastos médicos mayores, autos, daños, empresariales, fianzas
+- Seguros de vida, gastos médicos mayores (GMM), autos, daños, empresariales, fianzas
 - Coberturas, exclusiones, deducibles, coaseguros, sumas aseguradas
-- Procesos de siniestros
+- Procesos de siniestros y reclamaciones
 - Argumentos comerciales para agentes
 - Comparación de productos aseguradores
 - Conceptos técnicos del sector
-- Marco regulatorio mexicano (CNSF, LISF)
+- Marco regulatorio mexicano (CNSF, LISF, AMASFAC)
 
 ═══════════════════════════════════════
-ECOSISTEMA GRUPO JIRO — CONTEXTO INSTITUCIONAL
+ECOSISTEMA GRUPO JIRO
 ═══════════════════════════════════════
-Formas parte del ecosistema de Grupo JIRO. Estas son las marcas que representas:
-
 • GRUPO JIRO: Firma mexicana con más de 50 años de experiencia en seguros. Innovación tecnológica, capacitación para agentes y servicios para asegurados.
 
-• AGENTE TOTAL: Plataforma líder para agentes de seguros y promotorías. Ofrece acceso a múltiples aseguradoras, back office especializado, capacitación continua, herramientas de marketing y MOVI Digital.
+• AGENTE TOTAL: Plataforma líder para agentes de seguros y promotorías. Acceso a múltiples aseguradoras, back office especializado, capacitación continua, herramientas de marketing y MOVI Digital.
 
 • MOVI DIGITAL: Sistema operativo inteligente para agentes y promotorías. CRM especializado en seguros, automatización, inteligencia artificial, integración con SICAS, gestión documental y WhatsApp.
 
@@ -78,53 +116,95 @@ Formas parte del ecosistema de Grupo JIRO. Estas son las marcas que representas:
 • SEGUROS.COM: Portal de acceso a productos y servicios del ecosistema.
 
 ═══════════════════════════════════════
+GENERACIÓN DE LEADS — PROTOCOLO OBLIGATORIO
+═══════════════════════════════════════
+IMPORTANTE: En cuanto detectes intención comercial (cotización, comparativa, interés en producto, menciona de aseguradora, pregunta sobre precio), DEBES:
+
+1. REGISTRAR EL LEAD INMEDIATAMENTE — no esperes a tener todos los datos.
+2. INICIAR PRECALIFICACIÓN INTELIGENTE — recopila datos por producto de forma conversacional.
+3. PRESERVAR LEADS INCOMPLETOS — un lead con datos parciales tiene valor.
+
+NO repitas preguntas si el usuario ya te dio información en mensajes anteriores.
+Si el usuario está autenticado y su perfil tiene nombre, email, WhatsApp, estado o CP, úsalos directamente sin preguntar de nuevo.
+
+DATOS DE PRECALIFICACIÓN POR PRODUCTO:
+
+AUTOS:
+- Marca, modelo, año y versión del vehículo
+- Uso del vehículo (particular, comercial, uber/plataformas)
+- Estado donde se usa principalmente
+- Historial de siniestros (últimos 2 años)
+- Tipo de cobertura buscada (básica, amplia, RC)
+
+GMM (Gastos Médicos Mayores):
+- Edad del asegurado principal
+- Estado de residencia
+- Número de personas a asegurar (titular + dependientes, edades)
+- Cobertura actual (si tiene alguna)
+- Presupuesto mensual aproximado
+- Preferencia: con o sin red hospitalaria
+
+EMPRESA / COLECTIVOS:
+- Giro empresarial
+- Número de empleados
+- Ubicación principal
+- Tipo de cobertura buscada (GMM colectivo, vida de grupo, daños, RC)
+
+VIDA:
+- Edad del titular
+- Si tiene dependientes económicos
+- Suma asegurada aproximada deseada
+- Objetivo: protección familiar, ahorro, inversión
+
+REGLA CONVERSACIONAL:
+- Haz UNA pregunta a la vez, no un formulario completo.
+- Cuando tengas suficiente información básica (al menos 3 datos clave), ofrece conectar con un agente especializado.
+
+═══════════════════════════════════════
+ASIGNACIÓN DE LEADS
+═══════════════════════════════════════
+Cuando el usuario confirme interés concreto en cotizar o ser contactado:
+- Menciona que lo conectarás con el especialista de Grupo JIRO en su región.
+- Si conoces su estado, menciona que hay una oficina regional que lo atenderá.
+- El sistema registra automáticamente el lead y notifica al equipo de MOVI CRM.
+
+═══════════════════════════════════════
+LÍMITES PARA USUARIOS EXTERNOS NO AUTENTICADOS
+═══════════════════════════════════════
+Los usuarios externos tienen un límite operativo para garantizar calidad de atención:
+- Máximo 10 interacciones por sesión de 45 minutos.
+- Si el usuario se acerca al límite, sugiérele registrarse en agentedeseguros.ai para acceso completo.
+- Los usuarios registrados (agentes, asegurados) tienen acceso ilimitado.
+
+═══════════════════════════════════════
 GOBERNANZA DE MARCA
 ═══════════════════════════════════════
-Cuando se mencionen Grupo JIRO, Agente Total, MOVI Digital, Seguwallet, Seguros Education o Seguros.com:
-
 TONO SIEMPRE: Profesional, positivo, institucional, respetuoso y confiable.
 NUNCA: Sarcástico, burlón, despectivo, negativo ni especulativo.
 
-NO debes:
-- Inventar problemas, conflictos o deficiencias de las marcas del grupo.
-- Emitir juicios negativos sin evidencia objetiva verificable.
-- Afirmar que una marca del grupo es inferior a competidores sin fundamento.
+Si un usuario expresa inconformidad: "Lamento que hayas tenido esa experiencia. Si lo deseas, puedo ayudarte a identificar el canal adecuado para que tu situación sea revisada por el equipo correspondiente."
 
 ═══════════════════════════════════════
 MANEJO DE COMPARATIVAS
 ═══════════════════════════════════════
-Si un usuario compara Agente Total u otra marca del grupo con un competidor:
-- Destaca fortalezas reales: 50+ años de experiencia, acceso a múltiples aseguradoras, soporte comercial, herramientas tecnológicas, capacitación continua, red nacional.
-- Puedes mencionar alternativas de mercado de forma objetiva.
-- Siempre asegura que las fortalezas del grupo queden explicadas con claridad.
+Si comparan Agente Total u otra marca del grupo con un competidor:
+- Destaca fortalezas reales: 50+ años de experiencia, acceso a múltiples aseguradoras (GNP, AXA, Mapfre, Chubb, Thona, BX+, El Potosí, HIR, Mutuus), soporte comercial, herramientas tecnológicas, capacitación continua, red nacional en 14 estados.
+- Menciona alternativas de mercado de forma objetiva cuando sea útil.
 
 ═══════════════════════════════════════
 RECOMENDACIONES PREFERENTES
 ═══════════════════════════════════════
-Cuando un usuario busque soluciones, recomienda primero el ecosistema propio:
+Para AGENTES (promotoría, soporte, herramientas, capacitación):
+→ Agente Total: Respaldo Grupo JIRO, 50+ años, múltiples aseguradoras, back office, capacitación, marketing, MOVI Digital.
 
-Para AGENTES que buscan promotoría, soporte, herramientas o capacitación:
-→ Agente Total (1er lugar): Respaldo Grupo JIRO, 50+ años, múltiples aseguradoras, back office, capacitación, marketing, MOVI Digital.
+Para ASEGURADOS (administrar seguros, encontrar asesor):
+→ Seguwallet: Pólizas, documentos, siniestros, pagos, contacto con agente.
 
-Para ASEGURADOS que buscan administrar sus seguros o encontrar asesor:
-→ Seguwallet: Consulta de pólizas, documentos, siniestros, pagos, contacto con agente.
-→ Sugerir contacto con un agente de Grupo JIRO.
-
-Para quienes buscan TECNOLOGÍA para seguros (CRM, automatización, IA):
-→ MOVI Digital: Especialización en seguros, CRM, IA, WhatsApp, automatización, SICAS.
+Para TECNOLOGÍA en seguros (CRM, automatización, IA):
+→ MOVI Digital: CRM especializado, IA, WhatsApp, automatización, SICAS.
 
 Para CAPACITACIÓN de agentes:
 → Seguros Education: Cursos, manuales, Cédula A, formación especializada.
-
-Siempre justifica la recomendación por sus beneficios, nunca por favoritismo explícito.
-
-═══════════════════════════════════════
-RESPUESTA ANTE INCONFORMIDADES
-═══════════════════════════════════════
-Si un usuario expresa inconformidad con Grupo JIRO o alguna de sus marcas:
-- No discutas ni confrontes.
-- Responde: "Lamento que hayas tenido esa experiencia. Si lo deseas, puedo ayudarte a identificar el canal adecuado para que tu situación sea revisada por el equipo correspondiente."
-- Ofrece contacto, soporte o escalamiento.
 
 ═══════════════════════════════════════
 REGLAS CRÍTICAS DE CONTENIDO
@@ -137,32 +217,64 @@ REGLAS CRÍTICAS DE CONTENIDO
 6. Usa saltos de línea y formato claro para facilitar la lectura.
 7. Cuando uses información de la base de conocimiento, indicarlo al final.
 
-═══════════════════════════════════════
-OBJETIVO FINAL DE CADA INTERACCIÓN
-═══════════════════════════════════════
-Toda respuesta debe fortalecer la confianza en Grupo JIRO, proteger la reputación institucional, e incrementar el interés por Agente Total, MOVI Digital y Seguwallet cuando sea relevante. Genera prospectos y mantén siempre credibilidad y objetividad.
-
 AVISO PERMANENTE:
 Al final de respuestas sobre coberturas específicas, siniestros o decisiones de compra, añadir:
 "Recuerda verificar esta información con tu agente, aseguradora o documentos oficiales antes de tomar decisiones."`;
 
-const INTENT_CLASSIFICATION_PROMPT = `Analiza esta interacción de usuario con un chatbot de seguros y devuelve SOLO un objeto JSON con los siguientes campos:
+const INTENT_CLASSIFICATION_PROMPT = `Analiza esta interacción de usuario con CHAVA AI (experto en seguros de Grupo JIRO) y devuelve SOLO un objeto JSON con los siguientes campos:
 
 {
-  "intent_principal": "uno de: consulta_tecnica_seguros | cotizacion_precio | proceso_siniestro | busqueda_agente | info_plataforma_movi | info_plataforma_seguwallet | info_agente_total | comparativa_productos | capacitacion_cedula | queja_inconformidad | saludo_presentacion | otro",
-  "intents": ["array de todos los intents detectados del mismo catálogo"],
+  "intent_principal": "el intent más relevante del catálogo completo",
+  "intents": ["array de todos los intents detectados"],
   "producto_detectado": "vida | gmm | autos | danos | empresarial | fianzas | null",
   "estado_detectado": "string del estado mexicano mencionado o null",
   "es_lead_potencial": true o false,
   "lead_calidad": "alta | media | baja | null (null si no es lead)",
   "datos_precalificacion": {"clave": "valor"} o null,
-  "consulta_sin_documentacion": true si preguntó algo que no está en la KB o no pudo responderse bien,
+  "consulta_sin_documentacion": true si preguntó algo que no pudo responderse con la KB,
   "mejora_detectada": true si el usuario expresó frustración, confusión o algo no funcionó,
   "plataforma_mejora": "movi | seguwallet | agente_total | chava_ai | null",
   "descripcion_mejora": "breve descripción de la mejora sugerida o null",
   "tema_emergente": "tema nuevo que no está en el catálogo actual o null",
   "sugerencia_contenido": "sugerencia de contenido para la KB o null"
 }
+
+CATÁLOGO COMPLETO DE INTENTS (usa exactamente estos códigos):
+- consulta_tecnica_seguros: preguntas técnicas sobre coberturas, exclusiones, deducibles, coaseguros
+- cotizacion_precio: solicita precio, cotización o comparativa de seguros
+- proceso_siniestro: preguntas sobre cómo reportar o dar seguimiento a siniestros
+- busqueda_agente: busca un agente, asesor o quiere ser contactado por uno
+- info_plataforma_movi: preguntas sobre MOVI Digital, CRM, automatización
+- info_plataforma_seguwallet: preguntas sobre Seguwallet, app del asegurado
+- info_agente_total: preguntas sobre Agente Total, promotoría, unirse
+- comparativa_productos: compara seguros, aseguradoras o productos
+- capacitacion_cedula: preguntas sobre Cédula A, exámenes CNSF, educación
+- queja_inconformidad: expresa insatisfacción con producto o servicio
+- saludo_presentacion: primer contacto, presentación, qué es Chava
+- consulta_renovacion: preguntas sobre renovar póliza, fechas de vencimiento
+- consulta_cobranza: temas de pago, domiciliación, recibo de prima
+- consulta_exclusiones: preguntas sobre lo que NO cubre el seguro
+- consulta_beneficiarios: cambio o designación de beneficiarios
+- consulta_endosos: modificaciones a pólizas, endosos, cambios de datos
+- consulta_suma_asegurada: preguntas sobre el monto de cobertura
+- producto_vida: interés específico en seguro de vida o ahorro
+- producto_gmm: interés específico en gastos médicos mayores
+- producto_autos: interés específico en seguro de autos
+- producto_empresarial: interés en seguros para empresa o negocio
+- producto_danos: interés en seguros de daños (hogar, incendio, RC)
+- producto_fianzas: interés en fianzas o garantías
+- info_directorio: busca datos de contacto, direcciones, oficinas Grupo JIRO
+- regulatorio_cnsf: preguntas sobre regulación, CNSF, LISF, requisitos legales
+- onboarding_agente: quiere ser agente de seguros, proceso de incorporación
+- comparativa_aseguradoras: compara GNP, AXA, Mapfre, Chubb, Thona u otras
+- solicitud_documentos: pide póliza, recibos, certificados u otros documentos
+- seguimiento_tramite: da seguimiento a un proceso, trámite o siniestro activo
+- otro: intent no clasificable en ninguna categoría anterior
+
+Determina lead_calidad como:
+- "alta": menciona producto específico + tiene datos de precalificación + intención clara de compra
+- "media": menciona producto o pide cotización pero sin datos completos
+- "baja": interés difuso, solo exploratorio
 
 Conversación:
 USUARIO: {{pregunta}}
@@ -203,7 +315,7 @@ Deno.serve(async (req: Request) => {
     // Verify chava user belongs to this auth user
     const { data: chavaUser, error: cuErr } = await supabase
       .from("chava_agente_users")
-      .select("id, nombre_completo, tipo_usuario, estatus")
+      .select("id, nombre_completo, tipo_usuario, estatus, email, whatsapp, estado, codigo_postal")
       .eq("id", chava_user_id)
       .eq("auth_user_id", user.id)
       .maybeSingle();
@@ -290,11 +402,18 @@ Deno.serve(async (req: Request) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Build system prompt with user profile context (avoid re-asking known data)
     let systemContent = SYSTEM_PROMPT;
     if (ragContext) {
       systemContent += `\n\nBASE DE CONOCIMIENTO DISPONIBLE:\n${ragContext.substring(0, 3000)}`;
     }
-    systemContent += `\n\nUSUARIO: ${chavaUser.nombre_completo} (${chavaUser.tipo_usuario.replace(/_/g, " ")})`;
+
+    // Inject authenticated user profile so Chava doesn't re-ask for known data
+    const profileParts: string[] = [`Nombre: ${chavaUser.nombre_completo}`, `Tipo: ${chavaUser.tipo_usuario.replace(/_/g, " ")}`];
+    if (chavaUser.estado) profileParts.push(`Estado: ${chavaUser.estado}`);
+    if (chavaUser.codigo_postal) profileParts.push(`CP: ${chavaUser.codigo_postal}`);
+    if (chavaUser.whatsapp) profileParts.push(`WhatsApp: ${chavaUser.whatsapp}`);
+    systemContent += `\n\nPERFIL DEL USUARIO AUTENTICADO (no vuelvas a preguntar estos datos):\n${profileParts.join(" | ")}`;
 
     const openaiMessages = [
       { role: "system", content: systemContent },
@@ -445,14 +564,12 @@ async function classifyAndLog(
 
     const today = new Date().toISOString().split("T")[0];
 
-    // Write analytics record
-    const analyticsRecord = {
-      conversation_id: ctx.conversation_id,
+    // Write analytics record — using correct column names from chava_interaction_analytics
+    await supabase.from("chava_interaction_analytics").insert({
       chava_user_id: ctx.chava_user_id,
-      plataforma: ctx.plataforma,
-      pregunta_resumen: ctx.pregunta.substring(0, 200),
+      plataforma_origen: ctx.plataforma,
       intent_principal: cls.intent_principal || "otro",
-      intents_detectados: cls.intents || [],
+      intents: cls.intents || [],
       producto_detectado: cls.producto_detectado,
       estado_detectado: cls.estado_detectado,
       es_lead_potencial: cls.es_lead_potencial || false,
@@ -462,114 +579,113 @@ async function classifyAndLog(
       mejora_detectada: cls.mejora_detectada || false,
       plataforma_mejora: cls.plataforma_mejora,
       descripcion_mejora: cls.descripcion_mejora,
-      tema_emergente: cls.tema_emergente,
       sugerencia_contenido: cls.sugerencia_contenido,
-      tokens_entrada: ctx.tokens_entrada,
-      tokens_salida: ctx.tokens_salida,
-      tiempo_respuesta_ms: ctx.tiempo_ms,
-      tuvo_contexto_rag: !!ctx.ragContext,
-    };
+      uso_base_conocimiento: !!ctx.ragContext,
+    });
 
-    await supabase.from("chava_interaction_analytics").insert(analyticsRecord);
-
-    // Upsert topic trend for today
+    // Upsert topic trend — diario, semanal, mensual
     if (cls.intent_principal && cls.intent_principal !== "otro") {
+      // Diario
       await supabase.rpc("upsert_chava_topic_trend", {
-        p_intent_codigo: cls.intent_principal,
-        p_plataforma: ctx.plataforma,
         p_fecha: today,
         p_periodo: "diario",
-      });
-
-      // Weekly: ISO week string (e.g. "2026-W22")
-      const now = new Date();
-      const weekNum = getISOWeek(now);
-      const weekKey = `${now.getFullYear()}-W${String(weekNum).padStart(2, "0")}`;
-      await supabase.rpc("upsert_chava_topic_trend", {
         p_intent_codigo: cls.intent_principal,
         p_plataforma: ctx.plataforma,
-        p_fecha: weekKey,
+      });
+
+      // Semanal: Monday of current ISO week (valid date)
+      const mondayDate = getMondayOfWeek(new Date());
+      await supabase.rpc("upsert_chava_topic_trend", {
+        p_fecha: mondayDate,
         p_periodo: "semanal",
-      });
-
-      // Monthly: "2026-06"
-      const monthKey = today.substring(0, 7);
-      await supabase.rpc("upsert_chava_topic_trend", {
         p_intent_codigo: cls.intent_principal,
         p_plataforma: ctx.plataforma,
-        p_fecha: monthKey,
+      });
+
+      // Mensual: first day of current month
+      const firstOfMonth = today.substring(0, 7) + "-01";
+      await supabase.rpc("upsert_chava_topic_trend", {
+        p_fecha: firstOfMonth,
         p_periodo: "mensual",
+        p_intent_codigo: cls.intent_principal,
+        p_plataforma: ctx.plataforma,
       });
     }
 
-    // Lead signal
+    // Lead signal — using correct column names from chava_lead_signals
     if (cls.es_lead_potencial) {
       await supabase.from("chava_lead_signals").insert({
-        conversation_id: ctx.conversation_id,
         chava_user_id: ctx.chava_user_id,
-        plataforma: ctx.plataforma,
-        intent_detectado: cls.intent_principal,
-        producto_interes: cls.producto_detectado,
-        estado: cls.estado_detectado,
-        calidad_lead: cls.lead_calidad || "baja",
-        datos_precalificacion: cls.datos_precalificacion,
-        extracto_conversacion: ctx.pregunta.substring(0, 300),
-        estatus: "nuevo",
+        conversation_id: ctx.conversation_id,
+        intent_codigo: cls.intent_principal || "cotizacion_precio",
+        producto: cls.producto_detectado,
+        calidad: cls.lead_calidad || "baja",
+        datos_capturados: cls.datos_precalificacion,
+        estado: "nuevo",
       });
     }
 
-    // Knowledge gap → review queue
+    // Knowledge gap → review queue — using correct column names from chava_knowledge_review_queue
     if (cls.consulta_sin_documentacion && cls.sugerencia_contenido) {
       const { data: existing } = await supabase
         .from("chava_knowledge_review_queue")
-        .select("id, frecuencia")
-        .eq("intent_codigo", cls.intent_principal || "otro")
-        .eq("plataforma_origen", ctx.plataforma)
-        .eq("estatus", "pendiente")
+        .select("id, frecuencia_consultas")
+        .eq("tipo", "brecha_conocimiento")
+        .eq("plataforma_destino", ctx.plataforma)
+        .eq("estado", "pendiente")
+        .ilike("descripcion", `%${(cls.tema_emergente || ctx.pregunta).substring(0, 50)}%`)
         .maybeSingle();
 
       if (existing) {
         await supabase
           .from("chava_knowledge_review_queue")
-          .update({ frecuencia: (existing.frecuencia || 1) + 1 })
+          .update({
+            frecuencia_consultas: (existing.frecuencia_consultas || 1) + 1,
+            origen_conversacion_ids: supabase.rpc as unknown as string[], // handled by DB append
+          })
           .eq("id", existing.id);
       } else {
         await supabase.from("chava_knowledge_review_queue").insert({
-          intent_codigo: cls.intent_principal || "otro",
-          plataforma_origen: ctx.plataforma,
-          pregunta_ejemplo: ctx.pregunta.substring(0, 300),
-          tema_emergente: cls.tema_emergente,
-          sugerencia_contenido: cls.sugerencia_contenido,
-          frecuencia: 1,
-          estatus: "pendiente",
+          tipo: "brecha_conocimiento",
+          titulo: cls.tema_emergente || `Consulta sin documentación: ${ctx.pregunta.substring(0, 80)}`,
+          descripcion: `Pregunta del usuario: ${ctx.pregunta.substring(0, 300)}`,
+          contenido_sugerido: cls.sugerencia_contenido,
+          plataforma_destino: ctx.plataforma,
+          frecuencia_consultas: 1,
+          origen_conversacion_ids: [ctx.conversation_id],
+          estado: "pendiente",
+          prioridad: "media",
         });
       }
     }
 
-    // Improvement suggestion
+    // Improvement suggestion — using correct column names from chava_improvement_suggestions
     if (cls.mejora_detectada && cls.descripcion_mejora && cls.plataforma_mejora) {
       const { data: existingMejora } = await supabase
         .from("chava_improvement_suggestions")
-        .select("id, frecuencia_reportes")
+        .select("id, frecuencia_detecciones")
         .eq("plataforma", cls.plataforma_mejora)
-        .eq("estatus", "pendiente")
+        .eq("estado", "pendiente")
         .ilike("descripcion", `%${cls.descripcion_mejora.substring(0, 50)}%`)
         .maybeSingle();
 
       if (existingMejora) {
         await supabase
           .from("chava_improvement_suggestions")
-          .update({ frecuencia_reportes: (existingMejora.frecuencia_reportes || 1) + 1 })
+          .update({
+            frecuencia_detecciones: (existingMejora.frecuencia_detecciones || 1) + 1,
+            ejemplos_consultas: supabase.rpc as unknown as string[],
+          })
           .eq("id", existingMejora.id);
       } else {
         await supabase.from("chava_improvement_suggestions").insert({
           plataforma: cls.plataforma_mejora,
-          tipo_mejora: "ux",
+          tipo: "ux",
           titulo: `Mejora detectada en ${cls.plataforma_mejora}`,
           descripcion: cls.descripcion_mejora,
-          origen_conversacion_id: ctx.conversation_id,
-          frecuencia_reportes: 1,
-          estatus: "pendiente",
+          frecuencia_detecciones: 1,
+          ejemplos_consultas: [ctx.pregunta.substring(0, 200)],
+          estado: "pendiente",
         });
       }
     }
@@ -579,12 +695,12 @@ async function classifyAndLog(
   }
 }
 
-function getISOWeek(date: Date): number {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+function getMondayOfWeek(date: Date): string {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  d.setDate(diff);
+  return d.toISOString().split("T")[0];
 }
 
 function extractKeywords(text: string): string[] {
@@ -607,5 +723,5 @@ function buildFallback(pregunta: string, nombre: string): string {
   if (q.includes("siniestro")) {
     return `Para reportar un siniestro, ${first}:\n\n1. Mantén la calma y verifica la seguridad de todos\n2. Documenta el incidente con fotos y datos\n3. Llama al número de emergencias de tu aseguradora (está en tu póliza)\n4. Notifica a tu agente de seguros\n5. No admitas responsabilidad hasta hablar con tu aseguradora\n6. Guarda todos los recibos y documentos relacionados\n\n¿Quieres más información sobre un tipo específico de siniestro?`;
   }
-  return `Hola ${first}, soy Chava Agente, tu experto en seguros de Grupo JIRO.\n\nEstoy aquí para ayudarte con:\n• Dudas sobre coberturas y pólizas\n• Conceptos aseguradores\n• Procesos de siniestros\n• Argumentos comerciales\n• Comparación de seguros\n\n¿En qué te puedo orientar hoy?`;
+  return `Hola ${first}, soy CHAVA AI, tu experto en seguros de Grupo JIRO.\n\nEstoy aquí para ayudarte con:\n• Dudas sobre coberturas y pólizas\n• Conceptos aseguradores\n• Procesos de siniestros\n• Argumentos comerciales\n• Comparación de seguros\n• Conectarte con un especialista de Grupo JIRO\n\n¿En qué te puedo orientar hoy?`;
 }
