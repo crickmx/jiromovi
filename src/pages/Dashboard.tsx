@@ -4,6 +4,7 @@ import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { DashboardHero } from '../components/dashboard/DashboardHero';
 import { ChavaInsightsCard } from '../components/dashboard/ChavaInsightsCard';
 import { WidgetGrid } from '../components/dashboard/WidgetGrid';
+import { AccesosRapidosWidget } from '../components/dashboard/DashboardWidgets';
 
 export default function Dashboard() {
   useEffect(() => { document.title = 'Dashboard · MOVI Digital'; }, []);
@@ -18,13 +19,16 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 pb-8">
-      {/* Hero: greeting, name, role, office */}
+      {/* Hero: greeting, avatar, office */}
       <DashboardHero usuario={usuario} />
 
       {/* Chava AI Insights */}
       <ChavaInsightsCard usuario={usuario} />
 
-      {/* Modular widget grid */}
+      {/* Accesos Rápidos — always pinned after Chava */}
+      <AccesosRapidosWidget usuario={usuario} />
+
+      {/* Modular widget grid — skips chava_insights and accesos_rapidos */}
       <WidgetGrid usuario={usuario} />
     </div>
   );

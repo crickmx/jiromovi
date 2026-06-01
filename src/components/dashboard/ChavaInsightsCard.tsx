@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Sparkles, RefreshCw, ArrowRight, CircleAlert as AlertCircle, Zap } from 'lucide-react';
+import { Sparkles, RefreshCw, ArrowRight, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import type { Usuario } from '@/contexts/MoviAuthContext';
@@ -85,7 +85,6 @@ Responde SOLO con el JSON. Sin markdown, sin explicaciones.`;
 export function ChavaInsightsCard({ usuario }: Props) {
   const [analysis, setAnalysis] = useState<ChavaAnalysis | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
 
   const cacheKey = `${STORAGE_KEY_PREFIX}${usuario.id}`;
 
@@ -114,7 +113,6 @@ export function ChavaInsightsCard({ usuario }: Props) {
     }
 
     setLoading(true);
-    setError(false);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -151,10 +149,8 @@ export function ChavaInsightsCard({ usuario }: Props) {
       saveToCache(parsed);
     } catch (err) {
       console.error('Chava dashboard error:', err);
-      // Fallback analysis
       const fallback = getFallbackAnalysis(usuario);
       setAnalysis(fallback);
-      setError(true);
     } finally {
       setLoading(false);
     }
@@ -187,11 +183,6 @@ export function ChavaInsightsCard({ usuario }: Props) {
                 <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-400 border border-cyan-400/20">
                   agentedeseguros.ai
                 </span>
-                {error && (
-                  <span className="text-[10px] text-amber-400/70 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" /> modo offline
-                  </span>
-                )}
               </div>
               <p className="text-xs text-white/40 mt-0.5">Análisis inteligente para tu rol</p>
             </div>
@@ -224,28 +215,38 @@ export function ChavaInsightsCard({ usuario }: Props) {
           )}
         </div>
 
-        {/* CTAs */}
-        {analysis.ctas.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {analysis.ctas.map((cta, i) => (
-              <a
-                key={i}
-                href={cta.path}
-                onClick={e => { e.preventDefault(); window.location.href = cta.path; }}
-                className={cn(
-                  'inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all',
-                  cta.variant === 'primary'
-                    ? 'bg-cyan-500 text-white hover:bg-cyan-400 shadow-lg shadow-cyan-500/25'
-                    : 'bg-white/8 text-white/75 hover:bg-white/12 border border-white/10'
-                )}
-              >
-                {cta.variant === 'primary' && <Zap className="w-3 h-3" />}
-                {cta.label}
-                <ArrowRight className="w-3 h-3 opacity-60" />
-              </a>
-            ))}
-          </div>
-        )}
+        {/* CTAs — permanent + dynamic */}
+        {(() => {
+          const permanentCtas: CTA[] = [
+            { label: 'Mi Página Web', path: '/mercadotecnia/mi-pagina-web', variant: 'primary' },
+            { label: 'Hablar con Chava IA', path: '/chava', variant: 'secondary' },
+          ];
+          const dynamicCtas = (analysis.ctas || []).filter(
+            c => c.path !== '/mercadotecnia/mi-pagina-web' && c.path !== '/chava'
+          );
+          const allCtas = [...permanentCtas, ...dynamicCtas];
+          return (
+            <div className="flex flex-wrap gap-2">
+              {allCtas.map((cta, i) => (
+                <a
+                  key={i}
+                  href={cta.path}
+                  onClick={e => { e.preventDefault(); window.location.href = cta.path; }}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all',
+                    cta.variant === 'primary'
+                      ? 'bg-cyan-500 text-white hover:bg-cyan-400 shadow-lg shadow-cyan-500/25'
+                      : 'bg-white/8 text-white/75 hover:bg-white/12 border border-white/10'
+                  )}
+                >
+                  {cta.variant === 'primary' && <Zap className="w-3 h-3" />}
+                  {cta.label}
+                  <ArrowRight className="w-3 h-3 opacity-60" />
+                </a>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* Disclaimer */}
         <p className="mt-4 text-[10px] text-white/20 leading-relaxed">

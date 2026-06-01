@@ -7,14 +7,6 @@ interface Props {
   usuario: Usuario;
 }
 
-const ROLE_LABELS: Record<string, string> = {
-  Administrador: 'Administrador',
-  Gerente: 'Gerente de Oficina',
-  Empleado: 'Empleado',
-  Agente: 'Agente de Seguros',
-  Ejecutivo: 'Ejecutivo',
-};
-
 function getGreeting(): string {
   const h = new Date().getHours();
   if (h < 12) return 'Buenos días';
@@ -40,12 +32,10 @@ export function DashboardHero({ usuario }: Props) {
   const dateStr = useMemo(() => capitalize(formatDate()), []);
 
   const nombre = usuario.nombre || usuario.nombre_completo?.split(' ')[0] || 'Usuario';
-  const roleLabel = ROLE_LABELS[usuario.rol] ?? usuario.rol;
   const oficina = (usuario.oficina as any);
   const oficinaNombre = oficina?.nombre;
   const logoUrl = oficina?.logo_url;
 
-  // Build initials fallback
   const initials = nombre.charAt(0).toUpperCase();
 
   return (
@@ -76,18 +66,12 @@ export function DashboardHero({ usuario }: Props) {
           <h1 className="text-xl font-bold text-neutral-900 dark:text-white leading-tight">
             {nombre}
           </h1>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
-            <span className="text-xs text-neutral-500 dark:text-white/40 font-medium">{roleLabel}</span>
-            {oficinaNombre && (
-              <>
-                <span className="text-neutral-200 dark:text-white/15">·</span>
-                <span className="flex items-center gap-1 text-xs text-neutral-500 dark:text-white/40">
-                  <MapPin className="w-3 h-3 flex-shrink-0" />
-                  {oficinaNombre}
-                </span>
-              </>
-            )}
-          </div>
+          {oficinaNombre && (
+            <span className="flex items-center gap-1 text-xs text-neutral-500 dark:text-white/40 mt-0.5">
+              <MapPin className="w-3 h-3 flex-shrink-0" />
+              {oficinaNombre}
+            </span>
+          )}
         </div>
       </div>
 

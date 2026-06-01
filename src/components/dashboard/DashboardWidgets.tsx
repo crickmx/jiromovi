@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, DollarSign, ClipboardList, Building2, Users, UserCheck, FileText, Bell, Activity, ChartBar as BarChart3, Zap, Trophy, TriangleAlert as AlertTriangle, ArrowRight, RefreshCw, Shield, ChevronRight } from 'lucide-react';
+import { TrendingUp, DollarSign, ClipboardList, Building2, Users, UserCheck, FileText, Bell, Activity, ChartBar as BarChart3, Zap, Trophy, TriangleAlert as AlertTriangle, ArrowRight, RefreshCw, Shield, ChevronRight, Globe, MessageCircle, ChartBar as BarChart2, Settings } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import type { Usuario } from '@/contexts/MoviAuthContext';
@@ -646,40 +646,44 @@ export function ProduccionMensualWidget({ usuario }: { usuario: Usuario }) {
 
 // ── Widget: Accesos Rápidos ───────────────────────────────────────────────────
 
-const QUICK_ACTIONS: Record<string, Array<{ label: string; path: string; icon: React.ReactNode; color: string }>> = {
+type QuickAction = { label: string; path: string; icon: React.ReactNode; color: string; bg: string };
+
+const QUICK_ACTIONS: Record<string, QuickAction[]> = {
   Administrador: [
-    { label: 'Usuarios', path: '/directorio', icon: <Users className="w-4 h-4" />, color: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10' },
-    { label: 'Producción', path: '/produccion/total', icon: <TrendingUp className="w-4 h-4" />, color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10' },
-    { label: 'Diagnóstico', path: '/admin/diagnostico', icon: <Activity className="w-4 h-4" />, color: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10' },
-    { label: 'Notificaciones', path: '/admin/transaccionales', icon: <Bell className="w-4 h-4" />, color: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10' },
-    { label: 'Oficinas', path: '/oficinas', icon: <Building2 className="w-4 h-4" />, color: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10' },
-    { label: 'Trámites', path: '/tramites', icon: <ClipboardList className="w-4 h-4" />, color: 'text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-500/10' },
+    { label: 'Producción', path: '/produccion/total', icon: <TrendingUp className="w-5 h-5" />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+    { label: 'Usuarios', path: '/directorio', icon: <Users className="w-5 h-5" />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+    { label: 'Contactos', path: '/contactos', icon: <MessageCircle className="w-5 h-5" />, color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-500/10' },
+    { label: 'Centro Contacto', path: '/centro-contacto', icon: <Activity className="w-5 h-5" />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
+    { label: 'SICAS', path: '/produccion/sicas-live', icon: <BarChart2 className="w-5 h-5" />, color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-500/10' },
+    { label: 'Diagnóstico', path: '/admin/diagnostico', icon: <Settings className="w-5 h-5" />, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-500/10' },
+    { label: 'Chava IA', path: '/chava', icon: <Zap className="w-5 h-5" />, color: 'text-neutral-600 dark:text-white/60', bg: 'bg-neutral-100 dark:bg-white/8' },
+    { label: 'Notificaciones', path: '/admin/transaccionales', icon: <Bell className="w-5 h-5" />, color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-500/10' },
   ],
   Gerente: [
-    { label: 'Producción', path: '/produccion/total', icon: <TrendingUp className="w-4 h-4" />, color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10' },
-    { label: 'Equipo', path: '/directorio', icon: <Users className="w-4 h-4" />, color: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10' },
-    { label: 'Trámites', path: '/tramites', icon: <ClipboardList className="w-4 h-4" />, color: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10' },
-    { label: 'Comisiones', path: '/mis-comisiones', icon: <DollarSign className="w-4 h-4" />, color: 'text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-500/10' },
-    { label: 'CRM', path: '/mi-crm', icon: <Users className="w-4 h-4" />, color: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10' },
-    { label: 'Contacto', path: '/centro-contacto', icon: <Activity className="w-4 h-4" />, color: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10' },
+    { label: 'Producción', path: '/produccion/total', icon: <TrendingUp className="w-5 h-5" />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+    { label: 'Equipo', path: '/directorio', icon: <Users className="w-5 h-5" />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+    { label: 'Trámites', path: '/tramites', icon: <ClipboardList className="w-5 h-5" />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
+    { label: 'Comisiones', path: '/mis-comisiones', icon: <DollarSign className="w-5 h-5" />, color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-500/10' },
+    { label: 'CRM', path: '/mi-crm', icon: <MessageCircle className="w-5 h-5" />, color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-500/10' },
+    { label: 'Chava IA', path: '/chava', icon: <Zap className="w-5 h-5" />, color: 'text-neutral-600 dark:text-white/60', bg: 'bg-neutral-100 dark:bg-white/8' },
   ],
   Empleado: [
-    { label: 'Trámites', path: '/tramites', icon: <ClipboardList className="w-4 h-4" />, color: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10' },
-    { label: 'Contacto', path: '/centro-contacto', icon: <Activity className="w-4 h-4" />, color: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10' },
-    { label: 'Contactos', path: '/contactos', icon: <Users className="w-4 h-4" />, color: 'text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-500/10' },
-    { label: 'Comunicados', path: '/comunicados', icon: <Bell className="w-4 h-4" />, color: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10' },
-    { label: 'CRM', path: '/mi-crm', icon: <Users className="w-4 h-4" />, color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10' },
-    { label: 'Chava', path: '/chava', icon: <Zap className="w-4 h-4" />, color: 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-white/8' },
+    { label: 'Trámites', path: '/tramites', icon: <ClipboardList className="w-5 h-5" />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
+    { label: 'Centro Contacto', path: '/centro-contacto', icon: <Activity className="w-5 h-5" />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+    { label: 'Contactos', path: '/contactos', icon: <MessageCircle className="w-5 h-5" />, color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-500/10' },
+    { label: 'Comunicados', path: '/comunicados', icon: <Bell className="w-5 h-5" />, color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-500/10' },
+    { label: 'CRM', path: '/mi-crm', icon: <Users className="w-5 h-5" />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+    { label: 'Chava IA', path: '/chava', icon: <Zap className="w-5 h-5" />, color: 'text-neutral-600 dark:text-white/60', bg: 'bg-neutral-100 dark:bg-white/8' },
   ],
 };
 
-const DEFAULT_QUICK_ACTIONS = [
-  { label: 'Mi Producción', path: '/mi-produccion-sicas-live', icon: <TrendingUp className="w-4 h-4" />, color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10' },
-  { label: 'Comisiones', path: '/mis-comisiones', icon: <DollarSign className="w-4 h-4" />, color: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10' },
-  { label: 'Mi Página', path: '/mercadotecnia/mi-pagina-web', icon: <Building2 className="w-4 h-4" />, color: 'text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-500/10' },
-  { label: 'Centro Digital', path: '/centro-digital', icon: <Activity className="w-4 h-4" />, color: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10' },
-  { label: 'Trámites', path: '/tramites', icon: <ClipboardList className="w-4 h-4" />, color: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10' },
-  { label: 'Chava', path: '/chava', icon: <Zap className="w-4 h-4" />, color: 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-white/8' },
+const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
+  { label: 'Mi Página Web', path: '/mercadotecnia/mi-pagina-web', icon: <Globe className="w-5 h-5" />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+  { label: 'Mi Producción', path: '/mi-produccion-sicas-live', icon: <TrendingUp className="w-5 h-5" />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+  { label: 'Comisiones', path: '/mis-comisiones', icon: <DollarSign className="w-5 h-5" />, color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-500/10' },
+  { label: 'Contactos', path: '/contactos', icon: <MessageCircle className="w-5 h-5" />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
+  { label: 'Centro Digital', path: '/centro-digital', icon: <Activity className="w-5 h-5" />, color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-500/10' },
+  { label: 'Chava IA', path: '/chava', icon: <Zap className="w-5 h-5" />, color: 'text-neutral-600 dark:text-white/60', bg: 'bg-neutral-100 dark:bg-white/8' },
 ];
 
 export function AccesosRapidosWidget({ usuario }: { usuario: Usuario }) {
@@ -687,24 +691,32 @@ export function AccesosRapidosWidget({ usuario }: { usuario: Usuario }) {
   const actions = QUICK_ACTIONS[usuario.rol] || DEFAULT_QUICK_ACTIONS;
 
   return (
-    <div className="rounded-2xl border border-neutral-100 dark:border-white/8 bg-white dark:bg-white/[0.02] p-4">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-7 h-7 rounded-lg bg-neutral-100 dark:bg-white/6 flex items-center justify-center">
-          <Zap className="w-3.5 h-3.5 text-neutral-500 dark:text-white/40" />
+    <div className="rounded-2xl border border-neutral-100 dark:border-white/8 bg-white dark:bg-white/[0.02] p-5">
+      <div className="flex items-center gap-2.5 mb-5">
+        <div className="w-8 h-8 rounded-xl bg-neutral-100 dark:bg-white/6 flex items-center justify-center">
+          <Zap className="w-4 h-4 text-neutral-500 dark:text-white/40" />
         </div>
-        <h3 className="text-sm font-semibold text-neutral-700 dark:text-white/70">Accesos Rápidos</h3>
+        <div>
+          <h3 className="text-sm font-semibold text-neutral-800 dark:text-white/80">Accesos Rápidos</h3>
+          <p className="text-[11px] text-neutral-400 dark:text-white/30">Módulos frecuentes</p>
+        </div>
       </div>
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
         {actions.map((action, i) => (
           <button
             key={i}
             onClick={() => nav(action.path)}
-            className="flex flex-col items-center gap-2 p-3 rounded-xl border border-neutral-100 dark:border-white/6 hover:border-neutral-200 dark:hover:border-white/10 hover:shadow-sm transition-all group"
+            className="group flex flex-col items-center gap-2.5 p-3 rounded-xl border border-neutral-100 dark:border-white/6 hover:border-neutral-200 dark:hover:border-white/12 hover:bg-neutral-50 dark:hover:bg-white/4 hover:shadow-sm transition-all duration-200"
           >
-            <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110', action.color)}>
+            <div className={cn(
+              'w-10 h-10 rounded-xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110',
+              action.bg, action.color
+            )}>
               {action.icon}
             </div>
-            <span className="text-xs font-medium text-neutral-600 dark:text-white/50 text-center leading-tight">{action.label}</span>
+            <span className="text-[11px] font-medium text-neutral-500 dark:text-white/45 text-center leading-tight group-hover:text-neutral-700 dark:group-hover:text-white/70 transition-colors">
+              {action.label}
+            </span>
           </button>
         ))}
       </div>
