@@ -238,21 +238,6 @@ Deno.serve(async (req: Request) => {
           status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      const { data: customer } = await supabase
-        .from('seguwallet_customers')
-        .select('id, auth_user_id, email, full_name, phone, whatsapp, status')
-        .eq('email', identifier)
-        .maybeSingle();
-
-      if (!customer || customer.status === 'blocked' || customer.status === 'inactive') {
-        return new Response(JSON.stringify({ success: true }), {
-          status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      userId = customer.auth_user_id;
-      userEmail = customer.email;
-      userPhone = customer.whatsapp || customer.phone;
-      userName = customer.full_name;
     }
 
     if (!userId) {

@@ -117,6 +117,11 @@ export default function ChavaAgenteAuthModal({ onClose, pendingMessage, initialV
         terms_version: terms?.version || '1.0',
       };
       const result = await register(regData);
+      if (result.direct_access) {
+        setStep('success');
+        setTimeout(() => onClose(), 1400);
+        return;
+      }
       setEmailSent(result.email_sent);
       setWhatsappSent(result.whatsapp_sent);
       setMaskedEmail(result.masked_email);

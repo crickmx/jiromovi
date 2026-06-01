@@ -7,7 +7,7 @@ interface ChavaAgenteContextValue {
   terms: ChavaTerms | null;
   loading: boolean;
   login: (email: string) => Promise<{ email_sent: boolean; whatsapp_sent: boolean; masked_email: string | null }>;
-  register: (data: RegisterData) => Promise<{ email_sent: boolean; whatsapp_sent: boolean; masked_email: string | null }>;
+  register: (data: RegisterData) => Promise<{ email_sent: boolean; whatsapp_sent: boolean; masked_email: string | null; direct_access?: boolean }>;
   verifyCode: (email: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -146,6 +146,12 @@ export function ChavaAgenteProvider({ children }: { children: ReactNode }) {
           estatus: 'activo',
         });
       }
+    }
+
+    // If Supabase already issued a session (email confirmation disabled), grant direct access
+    if (signUpData?.session && authUserId) {
+      await loadChavaUser(authUserId);
+      return { direct_access: true, email_sent: false, whatsapp_sent: false, masked_email: null };
     }
 
     // Store pending registration data to finalize after code verification
