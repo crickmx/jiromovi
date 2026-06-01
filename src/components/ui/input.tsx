@@ -1,9 +1,7 @@
 import * as React from "react"
-
 import { cn } from "@/lib/utils"
 
-export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {}
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, ...props }, ref) => {
@@ -11,11 +9,24 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       <input
         type={type}
         className={cn(
-          "flex h-10 w-full rounded-xl border border-neutral-200/80 dark:border-white/12 bg-white dark:bg-white/5 px-3.5 py-2 text-sm text-neutral-900 dark:text-white",
-          "ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium",
+          // Layout
+          "flex h-10 w-full",
+          // Shape — matches Select, Button radius
+          "rounded-xl",
+          // Border + background
+          "border border-neutral-200/80 dark:border-white/12",
+          "bg-white dark:bg-white/5",
+          // Spacing + typography
+          "px-3.5 py-2 text-sm text-neutral-900 dark:text-white",
+          // Placeholder
           "placeholder:text-neutral-400 dark:placeholder:text-white/30",
+          // File input reset
+          "file:border-0 file:bg-transparent file:text-sm file:font-medium",
+          // Focus
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/20 focus-visible:border-accent/60",
+          // Disabled
           "disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-neutral-50 dark:disabled:bg-white/3",
+          // Transition
           "transition-all duration-200",
           className
         )}

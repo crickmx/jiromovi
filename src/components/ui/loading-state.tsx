@@ -6,6 +6,7 @@ interface LoadingStateProps {
   className?: string;
   text?: string;
   lines?: number;
+  compact?: boolean;
 }
 
 export function LoadingState({
@@ -13,16 +14,19 @@ export function LoadingState({
   className,
   text,
   lines = 4,
+  compact = false,
 }: LoadingStateProps) {
+  const padding = compact ? 'py-10' : 'py-16';
+
   if (variant === 'skeleton') {
     return (
       <div className={cn("space-y-4 animate-fade-in", className)}>
-        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-7 w-44" />
         <div className="space-y-3">
           {Array.from({ length: lines }).map((_, i) => (
             <Skeleton
               key={i}
-              className="h-5"
+              className="h-4"
               style={{ width: `${85 - i * 10}%` }}
             />
           ))}
@@ -33,7 +37,7 @@ export function LoadingState({
 
   if (variant === 'dots') {
     return (
-      <div className={cn("flex flex-col items-center justify-center py-16", className)}>
+      <div className={cn("flex flex-col items-center justify-center", padding, className)}>
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-accent animate-bounce [animation-delay:0ms]" />
           <span className="w-2 h-2 rounded-full bg-accent animate-bounce [animation-delay:150ms]" />
@@ -46,15 +50,18 @@ export function LoadingState({
     );
   }
 
+  // Default: spinner
   return (
-    <div className={cn("flex flex-col items-center justify-center py-16", className)}>
-      <div className="h-9 w-9 rounded-full border-[2.5px] border-neutral-200 dark:border-white/10 border-t-accent animate-spin" />
+    <div className={cn("flex flex-col items-center justify-center", padding, className)}>
+      <div className="h-8 w-8 rounded-full border-2 border-neutral-200 dark:border-white/10 border-t-accent animate-spin" />
       {text && (
         <p className="mt-4 text-sm text-neutral-500 dark:text-white/50">{text}</p>
       )}
     </div>
   );
 }
+
+// ── Table Skeleton ─────────────────────────────────────────────────────────────
 
 interface TableSkeletonProps {
   rows?: number;
@@ -64,29 +71,30 @@ interface TableSkeletonProps {
 
 export function TableSkeleton({ rows = 5, columns = 4, className }: TableSkeletonProps) {
   return (
-    <div className={cn("space-y-3 animate-fade-in", className)}>
-      <div className="flex gap-4 px-4 py-3">
+    <div className={cn("space-y-0 animate-fade-in", className)}>
+      {/* Header row */}
+      <div className="flex gap-4 px-4 py-3 border-b border-neutral-100 dark:border-white/8 bg-neutral-50 dark:bg-white/3 rounded-t-xl">
         {Array.from({ length: columns }).map((_, i) => (
-          <Skeleton key={i} className="h-4 flex-1" />
+          <Skeleton key={i} className="h-3.5 flex-1" />
         ))}
       </div>
+      {/* Data rows */}
       {Array.from({ length: rows }).map((_, rowIdx) => (
         <div
           key={rowIdx}
-          className="flex gap-4 px-4 py-3 border-t border-neutral-100 dark:border-white/5"
+          className="flex gap-4 px-4 py-4 border-b border-neutral-100 dark:border-white/5 last:border-0"
+          style={{ opacity: 1 - rowIdx * 0.08 }}
         >
           {Array.from({ length: columns }).map((_, colIdx) => (
-            <Skeleton
-              key={colIdx}
-              className="h-4 flex-1"
-              style={{ opacity: 1 - rowIdx * 0.1 }}
-            />
+            <Skeleton key={colIdx} className="h-4 flex-1" />
           ))}
         </div>
       ))}
     </div>
   );
 }
+
+// ── Card Skeleton ──────────────────────────────────────────────────────────────
 
 interface CardSkeletonProps {
   count?: number;
@@ -99,10 +107,10 @@ export function CardSkeleton({ count = 3, className }: CardSkeletonProps) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="bg-white dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-5 space-y-3"
+          className="bg-white dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-5 space-y-3"
         >
           <div className="flex items-center gap-3">
-            <Skeleton className="h-10 w-10 rounded-xl" />
+            <Skeleton className="h-10 w-10 rounded-xl flex-shrink-0" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-3 w-1/2" />

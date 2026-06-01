@@ -3,6 +3,8 @@ import { FolderOpen, Download, FileText, Upload, Sparkles, Plus } from 'lucide-r
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
+import { LoadingState } from '../components/ui/loading-state';
+import { EmptyState } from '../components/ui/empty-state';
 
 interface Doc {
   id: string;
@@ -77,18 +79,20 @@ export default function Documentos() {
     <>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Documentos</h1>
-          <p className="text-slate-500 text-sm mt-0.5">{docs.length} archivo{docs.length !== 1 ? 's' : ''}</p>
+          <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Documentos</h1>
+          <p className="text-neutral-500 dark:text-white/50 text-sm mt-0.5">{docs.length} archivo{docs.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => navigate('/seguwallet/chava', { state: { modulo: 'documentos' } })}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-sm font-medium hover:bg-emerald-100 transition-colors">
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-sm font-medium hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors">
             <Sparkles className="w-4 h-4" />Ayúdame
           </button>
           <button onClick={() => fileRef.current?.click()}
             disabled={uploading}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-60">
-            {uploading ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
+            {uploading
+              ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              : <Plus className="w-4 h-4" />}
             Subir
           </button>
           <input ref={fileRef} type="file" className="hidden" onChange={handleUpload}
@@ -97,36 +101,32 @@ export default function Documentos() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-48">
-          <div className="w-8 h-8 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-        </div>
+        <LoadingState compact />
       ) : docs.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center">
-          <FolderOpen className="w-12 h-12 text-slate-200 mx-auto mb-3" />
-          <p className="font-semibold text-slate-600 mb-1">Sin documentos</p>
-          <p className="text-sm text-slate-400 mb-4">Sube tus pólizas, condiciones generales o cualquier documento.</p>
-          <button onClick={() => fileRef.current?.click()}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors">
-            <Upload className="w-4 h-4" />Subir documento
-          </button>
-        </div>
+        <EmptyState
+          icon={FolderOpen}
+          title="Sin documentos"
+          description="Sube tus pólizas, condiciones generales o cualquier documento."
+          action={{ label: 'Subir documento', onClick: () => fileRef.current?.click() }}
+          compact
+        />
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-          <div className="divide-y divide-slate-50">
+        <div className="bg-white dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 overflow-hidden">
+          <div className="divide-y divide-neutral-100 dark:divide-white/5">
             {docs.map(doc => (
-              <div key={doc.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-4 h-4 text-blue-600" />
+              <div key={doc.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-neutral-50 dark:hover:bg-white/4 transition-colors">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-500/15 flex items-center justify-center flex-shrink-0">
+                  <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-800 truncate">{doc.nombre_archivo}</p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-sm font-medium text-neutral-800 dark:text-white truncate">{doc.nombre_archivo}</p>
+                  <p className="text-xs text-neutral-400 dark:text-white/30">
                     {doc.tipo_documento} · {formatSize(doc.size_bytes)} · {new Date(doc.created_at).toLocaleDateString('es-MX')}
                   </p>
                 </div>
                 {doc.archivo_url && (
                   <a href={doc.archivo_url} target="_blank" rel="noopener noreferrer"
-                    className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                    className="p-2 rounded-lg text-neutral-400 dark:text-white/30 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/15 transition-colors">
                     <Download className="w-4 h-4" />
                   </a>
                 )}

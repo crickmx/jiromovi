@@ -66,9 +66,9 @@ const FUENTE_CONFIG: Record<Fuente['tipo'], {
   movi: {
     label: 'MOVI',
     icon: <Server className="w-3 h-3" />,
-    color: 'text-slate-700',
-    bg: 'bg-slate-100',
-    border: 'border-slate-200',
+    color: 'text-neutral-700 dark:text-white/70',
+    bg: 'bg-neutral-100 dark:bg-white/8',
+    border: 'border-neutral-200 dark:border-white/10',
   },
   conocimiento: {
     label: 'Base de conocimiento',
@@ -87,9 +87,9 @@ const FUENTE_CONFIG: Record<Fuente['tipo'], {
   ia: {
     label: 'Inferencia IA',
     icon: <Brain className="w-3 h-3" />,
-    color: 'text-slate-500',
-    bg: 'bg-slate-50',
-    border: 'border-slate-100',
+    color: 'text-neutral-500 dark:text-white/50',
+    bg: 'bg-neutral-50 dark:bg-white/4',
+    border: 'border-neutral-100 dark:border-white/8',
   },
 };
 
@@ -126,7 +126,7 @@ function FuentesPanel({ fuentes, confianza }: { fuentes: Fuente[]; confianza?: '
         )}
         <button
           onClick={() => setOpen(o => !o)}
-          className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors ml-auto"
+          className="inline-flex items-center gap-1 text-xs text-neutral-400 dark:text-white/30 hover:text-neutral-600 dark:hover:text-white/60 transition-colors ml-auto"
         >
           <Info className="w-3 h-3" />
           {open ? 'Ocultar fuentes' : 'Ver fuentes'}
@@ -136,7 +136,7 @@ function FuentesPanel({ fuentes, confianza }: { fuentes: Fuente[]; confianza?: '
 
       {/* Expanded panel */}
       {open && (
-        <div className="rounded-xl border border-slate-100 bg-slate-50 divide-y divide-slate-100 overflow-hidden text-xs">
+        <div className="rounded-xl border border-neutral-100 dark:border-white/8 bg-neutral-50 dark:bg-white/3 divide-y divide-neutral-100 dark:divide-white/5 overflow-hidden text-xs">
           {fuentes.map((f, i) => {
             const cfg = FUENTE_CONFIG[f.tipo];
             const fConf = CONFIANZA_CONFIG[f.confianza];
@@ -149,19 +149,19 @@ function FuentesPanel({ fuentes, confianza }: { fuentes: Fuente[]; confianza?: '
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className={`font-semibold ${cfg.color}`}>{cfg.label}</span>
                     {f.modulo && (
-                      <span className="text-slate-400">· {f.modulo}</span>
+                      <span className="text-neutral-400 dark:text-white/30">· {f.modulo}</span>
                     )}
                     <span className={`inline-flex items-center gap-0.5 ${fConf.text}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${fConf.dot}`} />
                       {fConf.label}
                     </span>
                   </div>
-                  <p className="text-slate-500 mt-0.5 leading-snug">{f.descripcion}</p>
+                  <p className="text-neutral-500 dark:text-white/50 mt-0.5 leading-snug">{f.descripcion}</p>
                   {f.documento && (
-                    <p className="text-slate-400 mt-0.5">Documento: {f.documento}</p>
+                    <p className="text-neutral-400 dark:text-white/30 mt-0.5">Documento: {f.documento}</p>
                   )}
                   {f.fecha_actualizacion && (
-                    <p className="text-slate-400 mt-0.5">
+                    <p className="text-neutral-400 dark:text-white/30 mt-0.5">
                       Actualizado: {new Date(f.fecha_actualizacion).toLocaleDateString('es-MX', {
                         day: '2-digit', month: 'short', year: 'numeric',
                         hour: '2-digit', minute: '2-digit',
@@ -179,7 +179,7 @@ function FuentesPanel({ fuentes, confianza }: { fuentes: Fuente[]; confianza?: '
               </div>
             );
           })}
-          <div className="px-3 py-2 text-slate-400 bg-white">
+          <div className="px-3 py-2 text-neutral-400 dark:text-white/30 bg-white dark:bg-neutral-800/60">
             Chava usa exclusivamente información real de tus cuentas vinculadas. La IA complementa con conocimiento general de seguros cuando corresponde.
           </div>
         </div>
@@ -377,7 +377,7 @@ export default function ChavaSeguwallet() {
     <>
       <div className="flex flex-col h-[calc(100vh-7rem)] max-h-[800px]">
         {/* Header */}
-        <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+        <div className="flex items-center gap-3 pb-4 border-b border-neutral-100 dark:border-white/8">
           <div className="relative">
             <div className="w-11 h-11 rounded-2xl flex items-center justify-center shadow-md overflow-hidden"
               style={{ background: 'linear-gradient(135deg, #0D6EFD 0%, #0A183D 100%)' }}>
@@ -398,7 +398,7 @@ export default function ChavaSeguwallet() {
             <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-white" />
           </div>
           <div className="flex-1">
-            <p className="font-bold text-slate-800">Chava</p>
+            <p className="font-bold text-neutral-800 dark:text-white">Chava</p>
             <p className="text-xs text-emerald-600 font-medium flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
               En línea · Asistente digital de seguros
@@ -407,14 +407,14 @@ export default function ChavaSeguwallet() {
           <div className="flex gap-2">
             <button
               onClick={() => setShowAgent(s => !s)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-neutral-200 dark:border-white/10 text-xs text-neutral-600 dark:text-white/60 hover:bg-neutral-50 dark:hover:bg-white/4 transition-colors"
             >
               <Phone className="w-3.5 h-3.5" />
               Mi agente
               <ChevronDown className={`w-3 h-3 transition-transform ${showAgent ? 'rotate-180' : ''}`} />
             </button>
             <button onClick={resetConversation}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              className="p-1.5 rounded-xl text-neutral-400 dark:text-white/30 hover:text-neutral-600 dark:hover:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/8 transition-colors"
               title="Nueva conversación">
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -423,46 +423,46 @@ export default function ChavaSeguwallet() {
 
         {/* Agent panel */}
         {showAgent && (agent || office) && (
-          <div className="my-3 p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-start gap-3">
+          <div className="my-3 p-4 rounded-2xl bg-neutral-50 dark:bg-white/4 border border-neutral-100 dark:border-white/8 flex items-start gap-3">
             {agent?.imagen_perfil_url ? (
               <img src={agent.imagen_perfil_url} alt={agentName} className="w-11 h-11 rounded-xl object-cover flex-shrink-0" />
             ) : (
-              <div className="w-11 h-11 rounded-xl bg-slate-200 flex items-center justify-center flex-shrink-0">
-                <User className="w-5 h-5 text-slate-400" />
+              <div className="w-11 h-11 rounded-xl bg-neutral-200 dark:bg-white/10 flex items-center justify-center flex-shrink-0">
+                <User className="w-5 h-5 text-neutral-400 dark:text-white/30" />
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-slate-800 text-sm">{agentName}</p>
-              {office?.nombre && <p className="text-xs text-slate-500">{office.nombre}</p>}
+              <p className="font-semibold text-neutral-800 dark:text-white text-sm">{agentName}</p>
+              {office?.nombre && <p className="text-xs text-neutral-500 dark:text-white/50">{office.nombre}</p>}
               <div className="flex flex-wrap gap-2 mt-2">
                 {(agent?.celular_laboral || office?.telefono) && (
                   <a href={`tel:${agent?.celular_laboral || office?.telefono}`}
-                    className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">
+                    className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors">
                     <Phone className="w-3 h-3" />Llamar
                   </a>
                 )}
                 {(agent?.celular_laboral || office?.whatsapp) && (
                   <a href={`https://wa.me/${(agent?.celular_laboral || office?.whatsapp || '').replace(/\D/g, '')}`}
                     target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors">
+                    className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors">
                     <MessageCircle className="w-3 h-3" />WhatsApp
                   </a>
                 )}
                 {(agent?.email_laboral || office?.email) && (
                   <a href={`mailto:${agent?.email_laboral || office?.email}`}
-                    className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors">
+                    className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-neutral-100 dark:bg-white/8 text-neutral-700 dark:text-white/60 hover:bg-neutral-200 dark:hover:bg-white/12 transition-colors">
                     <Mail className="w-3 h-3" />Email
                   </a>
                 )}
                 {(agent?.url_web_jiro || office?.sitio_web) && (
                   <a href={agent?.url_web_jiro || office?.sitio_web || '#'} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors">
+                    className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-neutral-100 dark:bg-white/8 text-neutral-700 dark:text-white/60 hover:bg-neutral-200 dark:hover:bg-white/12 transition-colors">
                     <Globe className="w-3 h-3" />Web
                   </a>
                 )}
               </div>
             </div>
-            <button onClick={() => setShowAgent(false)} className="text-slate-300 hover:text-slate-500">
+            <button onClick={() => setShowAgent(false)} className="text-neutral-300 dark:text-white/20 hover:text-neutral-500 dark:hover:text-white/50">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -490,7 +490,7 @@ export default function ChavaSeguwallet() {
                 <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                   msg.role === 'user'
                     ? 'text-white rounded-tr-md'
-                    : 'bg-white border border-slate-100 text-slate-800 rounded-tl-md shadow-sm'
+                    : 'bg-white dark:bg-neutral-800/60 border border-neutral-100 dark:border-white/8 text-neutral-800 dark:text-white rounded-tl-md shadow-sm'
                 }`} style={msg.role === 'user' ? { background: 'linear-gradient(135deg, #0D6EFD, #0047bb)' } : {}}>
                   <span dangerouslySetInnerHTML={{ __html: renderContent(msg.content) }} />
                 </div>
@@ -518,11 +518,11 @@ export default function ChavaSeguwallet() {
                   <circle cx="14.5" cy="9.5" r="0.7" fill="#002233" />
                 </svg>
               </div>
-              <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-md px-4 py-3 shadow-sm">
-                <div className="flex items-center gap-1.5 text-sm text-slate-400">
+              <div className="bg-white dark:bg-neutral-800/60 border border-neutral-100 dark:border-white/8 rounded-2xl rounded-tl-md px-4 py-3 shadow-sm">
+                <div className="flex items-center gap-1.5 text-sm text-neutral-400 dark:text-white/30">
                   <div className="flex gap-1">
                     {[0, 1, 2].map(i => (
-                      <div key={i} className="w-2 h-2 rounded-full bg-slate-300 animate-bounce"
+                      <div key={i} className="w-2 h-2 rounded-full bg-neutral-300 dark:bg-white/20 animate-bounce"
                         style={{ animationDelay: `${i * 0.15}s` }} />
                     ))}
                   </div>
@@ -542,7 +542,7 @@ export default function ChavaSeguwallet() {
                 <button
                   key={action.label}
                   onClick={() => sendMessage(action.prompt)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs text-slate-600 bg-white hover:bg-slate-50 hover:border-slate-300 transition-all"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-neutral-200 dark:border-white/10 text-xs text-neutral-600 dark:text-white/60 bg-white dark:bg-neutral-800/60 hover:bg-neutral-50 dark:hover:bg-white/4 hover:border-neutral-300 dark:hover:border-white/15 transition-all"
                 >
                   {action.icon}
                   {action.label}
@@ -553,8 +553,8 @@ export default function ChavaSeguwallet() {
         )}
 
         {/* Input */}
-        <div className="pt-3 border-t border-slate-100">
-          <div className="flex items-end gap-2 bg-white rounded-2xl border border-slate-200 px-4 py-3 focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+        <div className="pt-3 border-t border-neutral-100 dark:border-white/8">
+          <div className="flex items-end gap-2 bg-white dark:bg-neutral-800/60 rounded-2xl border border-neutral-200 dark:border-white/10 px-4 py-3 focus-within:border-blue-300 dark:focus-within:border-blue-500/50 focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-500/10 transition-all">
             <textarea
               ref={inputRef}
               value={input}
@@ -562,19 +562,19 @@ export default function ChavaSeguwallet() {
               onKeyDown={handleKeyDown}
               placeholder="Escribe tu pregunta..."
               rows={1}
-              className="flex-1 text-sm text-slate-800 placeholder-slate-400 resize-none outline-none bg-transparent leading-relaxed max-h-24"
+              className="flex-1 text-sm text-neutral-800 dark:text-white placeholder-neutral-400 dark:placeholder-white/30 resize-none outline-none bg-transparent leading-relaxed max-h-24"
               style={{ minHeight: '24px' }}
             />
             <button
               onClick={() => sendMessage()}
               disabled={!input.trim() || sending}
               className="w-9 h-9 rounded-xl flex items-center justify-center text-white transition-all flex-shrink-0 disabled:opacity-40 hover:opacity-90 active:scale-95"
-              style={{ background: input.trim() ? 'linear-gradient(135deg, #0D6EFD, #00c8e0)' : '#CBD5E1' }}
+              style={{ background: input.trim() ? 'linear-gradient(135deg, #0D6EFD, #00c8e0)' : 'rgb(212 212 212)' }}
             >
               <Send className="w-4 h-4" />
             </button>
           </div>
-          <p className="text-xs text-center text-slate-300 mt-2">
+          <p className="text-xs text-center text-neutral-300 dark:text-white/20 mt-2">
             Chava indica siempre las fuentes de la información. Para decisiones importantes, consulta con tu agente.
           </p>
         </div>

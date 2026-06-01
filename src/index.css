@@ -1,46 +1,168 @@
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   MOVI Digital – Global Design System
+   ───────────────────────────────────────────────────────────────────────────── */
+
 :root {
   --sw-primary: #0F4C81;
   --sw-accent: #10B981;
-  /* MOVI Digital default accent (overridden per-office by themeUtils.applyTheme) */
+
+  /* Dynamic per-office accent (overridden by themeUtils.applyTheme) */
   --movi-accent-rgb: 22, 66, 129;
   --movi-accent-foreground-rgb: 255, 255, 255;
+  --movi-accent-hover-rgb: 42, 86, 149;
+  --movi-accent-dark-rgb: 2, 46, 109;
+
+  /* Semantic surface tokens */
+  --bg-base:       #F8FAFC;
+  --bg-card:       #FFFFFF;
+  --bg-card-hover: #F9FAFB;
+
+  /* Border tokens */
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-base:   rgba(0, 0, 0, 0.09);
+  --border-strong: rgba(0, 0, 0, 0.14);
+
+  /* Shadow tokens */
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+  --shadow-md:  0 4px 12px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.03);
+  --shadow-lg:  0 8px 28px rgba(0,0,0,0.08), 0 4px 10px rgba(0,0,0,0.04);
+  --shadow-xl:  0 20px 40px rgba(0,0,0,0.10), 0 8px 16px rgba(0,0,0,0.05);
+
+  /* Radius tokens */
+  --radius-sm:  8px;
+  --radius-md:  12px;
+  --radius-lg:  16px;
+  --radius-xl:  20px;
+  --radius-full: 9999px;
+
+  /* Spacing scale (8px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
   font-family: 'Inter', system-ui, sans-serif;
+  font-feature-settings: 'cv01', 'cv03', 'cv04', 'cv09';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-* { box-sizing: border-box; }
-body { margin: 0; background: #F8FAFC; color: #111827; -webkit-font-smoothing: antialiased; }
+/* ── Dark mode surface tokens ───────────────────────────────────────────────── */
+.dark {
+  --bg-base:       #0F1117;
+  --bg-card:       rgba(255,255,255,0.04);
+  --bg-card-hover: rgba(255,255,255,0.06);
+  --border-subtle: rgba(255,255,255,0.06);
+  --border-base:   rgba(255,255,255,0.08);
+  --border-strong: rgba(255,255,255,0.13);
+}
 
-/* ── MOVI Primary Sidebar Rail ──────────────────────────────────────────── */
+/* ── Base reset ─────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-base);
+  color: #111827;
+  min-height: 100dvh;
+}
+
+.dark body {
+  color: rgba(255,255,255,0.87);
+}
+
+/* ── Focus-visible system ──────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid rgb(var(--movi-accent-rgb) / 0.5);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ── Scrollbars ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.12);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.22);
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.12);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.22);
+}
+
+/* ── Selection ─────────────────────────────────────────────────────────────── */
+::selection {
+  background: rgb(var(--movi-accent-rgb) / 0.15);
+  color: inherit;
+}
+
+/* ── Typography baseline ────────────────────────────────────────────────────── */
+p, li { line-height: 1.6; }
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+
+/* ── Links ─────────────────────────────────────────────────────────────────── */
+a { color: inherit; text-decoration: none; }
+
+/* ── Image ─────────────────────────────────────────────────────────────────── */
+img, video { max-width: 100%; display: block; }
+
+/* ── Utility: hide scrollbar while keeping scroll ──────────────────────────── */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   MOVI Primary Sidebar Rail
+   ───────────────────────────────────────────────────────────────────────────── */
 .sidebar-rail {
   background: #0d1117;
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  border-right: 1px solid rgba(255,255,255,0.06);
   flex-shrink: 0;
 }
 
 .sidebar-rail-logo-btn {
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.10);
   transition: background 0.15s ease;
 }
 .sidebar-rail-logo-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255,255,255,0.12);
 }
 
 .sidebar-rail-sep {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255,255,255,0.08);
 }
 
 .sidebar-rail-btn {
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255,255,255,0.45);
   background: transparent;
   border: 1px solid transparent;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 .sidebar-rail-btn:hover {
-  color: rgba(255, 255, 255, 0.85);
-  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.07);
 }
 .sidebar-rail-btn.active {
   color: rgb(var(--movi-accent-rgb));
@@ -50,7 +172,7 @@ body { margin: 0; background: #F8FAFC; color: #111827; -webkit-font-smoothing: a
 
 .sidebar-rail-avatar-ring {
   padding: 2px;
-  border: 2px solid rgba(255, 255, 255, 0.12);
+  border: 2px solid rgba(255,255,255,0.12);
   transition: border-color 0.15s ease;
 }
 .sidebar-rail-avatar-ring:hover {
@@ -63,11 +185,108 @@ body { margin: 0; background: #F8FAFC; color: #111827; -webkit-font-smoothing: a
 }
 
 .sidebar-rail-signout {
-  color: rgba(255, 255, 255, 0.30);
+  color: rgba(255,255,255,0.30);
   background: transparent;
   transition: color 0.15s ease, background 0.15s ease;
 }
 .sidebar-rail-signout:hover {
   color: #ef4444;
-  background: rgba(239, 68, 68, 0.10);
+  background: rgba(239,68,68,0.10);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Layout helpers
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Standard page content wrapper */
+.page-content {
+  padding: var(--space-6);
+  max-width: 1440px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .page-content { padding: var(--space-4); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Shimmer animation (for skeleton loaders)
+   ───────────────────────────────────────────────────────────────────────────── */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(0,0,0,0.04) 0%,
+    rgba(0,0,0,0.08) 50%,
+    rgba(0,0,0,0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-move 1.8s ease-in-out infinite;
+}
+.dark .shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.04) 0%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0.04) 100%
+  );
+  background-size: 200% 100%;
+}
+@keyframes shimmer-move {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Table baseline
+   ───────────────────────────────────────────────────────────────────────────── */
+.movi-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem; /* 13px */
+}
+.movi-table thead tr {
+  background: #F9FAFB;
+  border-bottom: 1px solid #E5E7EB;
+}
+.dark .movi-table thead tr {
+  background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.movi-table thead th {
+  padding: 10px 16px;
+  font-weight: 600;
+  text-align: left;
+  color: #6B7280;
+  letter-spacing: 0.02em;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.dark .movi-table thead th {
+  color: rgba(255,255,255,0.40);
+}
+.movi-table tbody tr {
+  border-bottom: 1px solid #F3F4F6;
+  transition: background 0.1s ease;
+}
+.dark .movi-table tbody tr {
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.movi-table tbody tr:hover {
+  background: #F9FAFB;
+}
+.dark .movi-table tbody tr:hover {
+  background: rgba(255,255,255,0.03);
+}
+.movi-table tbody tr:last-child {
+  border-bottom: none;
+}
+.movi-table tbody td {
+  padding: 12px 16px;
+  color: #374151;
+  vertical-align: middle;
+}
+.dark .movi-table tbody td {
+  color: rgba(255,255,255,0.75);
 }
