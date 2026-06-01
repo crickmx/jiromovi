@@ -20,6 +20,22 @@ interface Fuente {
   confianza: "alta" | "media" | "baja";
 }
 
+interface IntentClassification {
+  intent_principal: string;
+  intents: string[];
+  producto_detectado: string | null;
+  estado_detectado: string | null;
+  es_lead_potencial: boolean;
+  lead_calidad: "alta" | "media" | "baja" | null;
+  datos_precalificacion: Record<string, string> | null;
+  consulta_sin_documentacion: boolean;
+  mejora_detectada: boolean;
+  plataforma_mejora: string | null;
+  descripcion_mejora: string | null;
+  tema_emergente: string | null;
+  sugerencia_contenido: string | null;
+}
+
 const SYSTEM_PROMPT = `Eres Chava Agente, el experto en seguros impulsado por inteligencia artificial de Grupo JIRO, accesible desde agentedeseguros.ai.
 
 ═══════════════════════════════════════
@@ -130,6 +146,28 @@ AVISO PERMANENTE:
 Al final de respuestas sobre coberturas específicas, siniestros o decisiones de compra, añadir:
 "Recuerda verificar esta información con tu agente, aseguradora o documentos oficiales antes de tomar decisiones."`;
 
+const INTENT_CLASSIFICATION_PROMPT = `Analiza esta interacción de usuario con un chatbot de seguros y devuelve SOLO un objeto JSON con los siguientes campos:
+
+{
+  "intent_principal": "uno de: consulta_tecnica_seguros | cotizacion_precio | proceso_siniestro | busqueda_agente | info_plataforma_movi | info_plataforma_seguwallet | info_agente_total | comparativa_productos | capacitacion_cedula | queja_inconformidad | saludo_presentacion | otro",
+  "intents": ["array de todos los intents detectados del mismo catálogo"],
+  "producto_detectado": "vida | gmm | autos | danos | empresarial | fianzas | null",
+  "estado_detectado": "string del estado mexicano mencionado o null",
+  "es_lead_potencial": true o false,
+  "lead_calidad": "alta | media | baja | null (null si no es lead)",
+  "datos_precalificacion": {"clave": "valor"} o null,
+  "consulta_sin_documentacion": true si preguntó algo que no está en la KB o no pudo responderse bien,
+  "mejora_detectada": true si el usuario expresó frustración, confusión o algo no funcionó,
+  "plataforma_mejora": "movi | seguwallet | agente_total | chava_ai | null",
+  "descripcion_mejora": "breve descripción de la mejora sugerida o null",
+  "tema_emergente": "tema nuevo que no está en el catálogo actual o null",
+  "sugerencia_contenido": "sugerencia de contenido para la KB o null"
+}
+
+Conversación:
+USUARIO: {{pregunta}}
+CHAVA: {{respuesta}}`;
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -172,6 +210,11 @@ Deno.serve(async (req: Request) => {
 
     if (cuErr || !chavaUser) throw new Error("Usuario no autorizado");
     if (chavaUser.estatus === "bloqueado") throw new Error("Cuenta bloqueada");
+
+    // Detect platform from user type
+    const plataforma = chavaUser.tipo_usuario === "asegurado" ? "seguwallet"
+      : chavaUser.tipo_usuario === "agente" ? "movi"
+      : "chava_agente";
 
     // Get conversation history (last 8 messages)
     const { data: historial } = await supabase
@@ -224,7 +267,7 @@ Deno.serve(async (req: Request) => {
         if (docs && docs.length > 0) {
           fuentes.push({
             tipo: "conocimiento",
-            descripcion: `${docs.length} documento${docs.length > 1 ? "s" : ""} del Centro Digital: ${docs.map(d => d.titulo).join(", ")}`,
+            descripcion: `${docs.length} documento${docs.length > 1 ? "s" : ""} del Centro Digital: ${docs.map((d: { titulo: string }) => d.titulo).join(", ")}`,
             documento: "Centro Digital Grupo JIRO",
             confianza: "alta",
           });
@@ -236,7 +279,6 @@ Deno.serve(async (req: Request) => {
 
     const openaiKey = Deno.env.get("OPENAI_API_KEY");
     if (!openaiKey) {
-      // Fallback
       fuentes.push({ tipo: "ia", descripcion: "Respuesta generada sin modelo de IA", confianza: "baja" });
       const fallback = buildFallback(pregunta, chavaUser.nombre_completo);
       return new Response(JSON.stringify({
@@ -288,7 +330,6 @@ Deno.serve(async (req: Request) => {
     const tokens_entrada = aiJson.usage?.prompt_tokens || 0;
     const tokens_salida = aiJson.usage?.completion_tokens || 0;
 
-    // Determine if AI inference was significant
     const isGeneralQuestion = !ragContext || pregunta.toLowerCase().match(
       /(cómo|qué es|explica|diferencia|significa|concepto|define|cuándo)/
     );
@@ -305,11 +346,27 @@ Deno.serve(async (req: Request) => {
       : fuentes.some(f => f.tipo === "ia" && f.confianza === "alta") ? "media"
       : "baja";
 
-    // Update last_access
-    await supabase
+    // Update last_access (non-blocking)
+    supabase
       .from("chava_agente_users")
       .update({ ultimo_acceso: new Date().toISOString() })
-      .eq("id", chava_user_id);
+      .eq("id", chava_user_id)
+      .then(() => {});
+
+    // Fire-and-forget: intent classification + analytics logging
+    EdgeRuntime.waitUntil(
+      classifyAndLog(supabase, openaiKey, {
+        pregunta,
+        respuesta,
+        conversation_id,
+        chava_user_id,
+        plataforma,
+        tokens_entrada,
+        tokens_salida,
+        tiempo_ms: Date.now() - startTime,
+        ragContext,
+      })
+    );
 
     return new Response(JSON.stringify({
       respuesta,
@@ -334,6 +391,201 @@ Deno.serve(async (req: Request) => {
     });
   }
 });
+
+async function classifyAndLog(
+  supabase: ReturnType<typeof createClient>,
+  openaiKey: string,
+  ctx: {
+    pregunta: string;
+    respuesta: string;
+    conversation_id: string;
+    chava_user_id: string;
+    plataforma: string;
+    tokens_entrada: number;
+    tokens_salida: number;
+    tiempo_ms: number;
+    ragContext: string;
+  }
+) {
+  try {
+    const classPrompt = INTENT_CLASSIFICATION_PROMPT
+      .replace("{{pregunta}}", ctx.pregunta.substring(0, 500))
+      .replace("{{respuesta}}", ctx.respuesta.substring(0, 600));
+
+    const classRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${openaiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: "Eres un clasificador de intents. Responde SOLO con JSON válido, sin markdown." },
+          { role: "user", content: classPrompt },
+        ],
+        max_tokens: 400,
+        temperature: 0.1,
+        response_format: { type: "json_object" },
+      }),
+    });
+
+    if (!classRes.ok) return;
+
+    const classJson = await classRes.json();
+    const rawContent = classJson.choices?.[0]?.message?.content;
+    if (!rawContent) return;
+
+    let cls: IntentClassification;
+    try {
+      cls = JSON.parse(rawContent);
+    } catch {
+      return;
+    }
+
+    const today = new Date().toISOString().split("T")[0];
+
+    // Write analytics record
+    const analyticsRecord = {
+      conversation_id: ctx.conversation_id,
+      chava_user_id: ctx.chava_user_id,
+      plataforma: ctx.plataforma,
+      pregunta_resumen: ctx.pregunta.substring(0, 200),
+      intent_principal: cls.intent_principal || "otro",
+      intents_detectados: cls.intents || [],
+      producto_detectado: cls.producto_detectado,
+      estado_detectado: cls.estado_detectado,
+      es_lead_potencial: cls.es_lead_potencial || false,
+      lead_calidad: cls.lead_calidad,
+      datos_precalificacion: cls.datos_precalificacion,
+      consulta_sin_documentacion: cls.consulta_sin_documentacion || false,
+      mejora_detectada: cls.mejora_detectada || false,
+      plataforma_mejora: cls.plataforma_mejora,
+      descripcion_mejora: cls.descripcion_mejora,
+      tema_emergente: cls.tema_emergente,
+      sugerencia_contenido: cls.sugerencia_contenido,
+      tokens_entrada: ctx.tokens_entrada,
+      tokens_salida: ctx.tokens_salida,
+      tiempo_respuesta_ms: ctx.tiempo_ms,
+      tuvo_contexto_rag: !!ctx.ragContext,
+    };
+
+    await supabase.from("chava_interaction_analytics").insert(analyticsRecord);
+
+    // Upsert topic trend for today
+    if (cls.intent_principal && cls.intent_principal !== "otro") {
+      await supabase.rpc("upsert_chava_topic_trend", {
+        p_intent_codigo: cls.intent_principal,
+        p_plataforma: ctx.plataforma,
+        p_fecha: today,
+        p_periodo: "diario",
+      });
+
+      // Weekly: ISO week string (e.g. "2026-W22")
+      const now = new Date();
+      const weekNum = getISOWeek(now);
+      const weekKey = `${now.getFullYear()}-W${String(weekNum).padStart(2, "0")}`;
+      await supabase.rpc("upsert_chava_topic_trend", {
+        p_intent_codigo: cls.intent_principal,
+        p_plataforma: ctx.plataforma,
+        p_fecha: weekKey,
+        p_periodo: "semanal",
+      });
+
+      // Monthly: "2026-06"
+      const monthKey = today.substring(0, 7);
+      await supabase.rpc("upsert_chava_topic_trend", {
+        p_intent_codigo: cls.intent_principal,
+        p_plataforma: ctx.plataforma,
+        p_fecha: monthKey,
+        p_periodo: "mensual",
+      });
+    }
+
+    // Lead signal
+    if (cls.es_lead_potencial) {
+      await supabase.from("chava_lead_signals").insert({
+        conversation_id: ctx.conversation_id,
+        chava_user_id: ctx.chava_user_id,
+        plataforma: ctx.plataforma,
+        intent_detectado: cls.intent_principal,
+        producto_interes: cls.producto_detectado,
+        estado: cls.estado_detectado,
+        calidad_lead: cls.lead_calidad || "baja",
+        datos_precalificacion: cls.datos_precalificacion,
+        extracto_conversacion: ctx.pregunta.substring(0, 300),
+        estatus: "nuevo",
+      });
+    }
+
+    // Knowledge gap → review queue
+    if (cls.consulta_sin_documentacion && cls.sugerencia_contenido) {
+      const { data: existing } = await supabase
+        .from("chava_knowledge_review_queue")
+        .select("id, frecuencia")
+        .eq("intent_codigo", cls.intent_principal || "otro")
+        .eq("plataforma_origen", ctx.plataforma)
+        .eq("estatus", "pendiente")
+        .maybeSingle();
+
+      if (existing) {
+        await supabase
+          .from("chava_knowledge_review_queue")
+          .update({ frecuencia: (existing.frecuencia || 1) + 1 })
+          .eq("id", existing.id);
+      } else {
+        await supabase.from("chava_knowledge_review_queue").insert({
+          intent_codigo: cls.intent_principal || "otro",
+          plataforma_origen: ctx.plataforma,
+          pregunta_ejemplo: ctx.pregunta.substring(0, 300),
+          tema_emergente: cls.tema_emergente,
+          sugerencia_contenido: cls.sugerencia_contenido,
+          frecuencia: 1,
+          estatus: "pendiente",
+        });
+      }
+    }
+
+    // Improvement suggestion
+    if (cls.mejora_detectada && cls.descripcion_mejora && cls.plataforma_mejora) {
+      const { data: existingMejora } = await supabase
+        .from("chava_improvement_suggestions")
+        .select("id, frecuencia_reportes")
+        .eq("plataforma", cls.plataforma_mejora)
+        .eq("estatus", "pendiente")
+        .ilike("descripcion", `%${cls.descripcion_mejora.substring(0, 50)}%`)
+        .maybeSingle();
+
+      if (existingMejora) {
+        await supabase
+          .from("chava_improvement_suggestions")
+          .update({ frecuencia_reportes: (existingMejora.frecuencia_reportes || 1) + 1 })
+          .eq("id", existingMejora.id);
+      } else {
+        await supabase.from("chava_improvement_suggestions").insert({
+          plataforma: cls.plataforma_mejora,
+          tipo_mejora: "ux",
+          titulo: `Mejora detectada en ${cls.plataforma_mejora}`,
+          descripcion: cls.descripcion_mejora,
+          origen_conversacion_id: ctx.conversation_id,
+          frecuencia_reportes: 1,
+          estatus: "pendiente",
+        });
+      }
+    }
+
+  } catch (err) {
+    console.error("Analytics logging error (non-fatal):", err instanceof Error ? err.message : String(err));
+  }
+}
+
+function getISOWeek(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
 
 function extractKeywords(text: string): string[] {
   const stopwords = new Set(["qué", "cómo", "cuál", "cuándo", "dónde", "por", "para", "con", "sin", "una", "uno", "los", "las", "del", "que", "es", "en", "de", "la", "el"]);

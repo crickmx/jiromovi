@@ -99,6 +99,7 @@ const ProduccionConfiguracion = lazy(() => import('./ProduccionConfiguracion'));
 const SicasSaludAdmin = lazy(() => import('./SicasSaludAdmin'));
 const AsistenteEntrenamiento = lazy(() => import('./AsistenteEntrenamiento'));
 const ChavaAdmin = lazy(() => import('./ChavaAdmin'));
+const ChavaInteligencia = lazy(() => import('./ChavaInteligencia'));
 const FirmasEmail = lazy(() => import('./FirmasEmail'));
 const NotificacionesTransaccionales = lazy(() => import('./NotificacionesTransaccionales'));
 const DiagnosticoWebhook = lazy(() => import('./DiagnosticoWebhook'));
@@ -235,6 +236,7 @@ export default function MoviFullRoutes() {
           <Route path="/admin/asistentes" element={<ProtectedRoute requireAdminOrGerente><AsistenteEntrenamiento /></ProtectedRoute>} />
           <Route path="/admin/asistentes/:id" element={<ProtectedRoute requireAdminOrGerente><AsistenteEntrenamiento /></ProtectedRoute>} />
           <Route path="/admin/chava-ia" element={<ProtectedRoute requireAdmin><ChavaAdmin /></ProtectedRoute>} />
+          <Route path="/admin/chava-inteligencia" element={<ProtectedRoute requireAdmin><ChavaInteligencia /></ProtectedRoute>} />
           <Route path="/firmas-email" element={<ProtectedRoute requireAdmin><FirmasEmail /></ProtectedRoute>} />
           <Route path="/admin/transaccionales" element={<ProtectedRoute requireAdmin><NotificacionesTransaccionales /></ProtectedRoute>} />
           <Route path="/admin/diagnostico" element={<ProtectedRoute requireAdmin><DiagnosticoWebhook /></ProtectedRoute>} />

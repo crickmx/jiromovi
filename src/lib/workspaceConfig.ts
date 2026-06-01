@@ -162,6 +162,7 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/sicas/salud', label: 'SICAS Salud', icon: Activity, visibleTo: ADMIN_ONLY },
     { path: '/admin/asistentes', label: 'Asistentes IA', icon: Bot, visibleTo: ADMIN_GERENTE, matchPrefix: true },
     { path: '/admin/chava-ia', label: 'Chava IA', icon: Brain, visibleTo: ADMIN_ONLY },
+    { path: '/admin/chava-inteligencia', label: 'Inteligencia Chava AI', icon: Sparkles, visibleTo: ADMIN_ONLY },
     { path: '/firmas-email', label: 'Firmas Email', icon: FileText, visibleTo: ADMIN_ONLY },
     { path: '/admin/transaccionales', label: 'Transaccionales', icon: Send, visibleTo: ADMIN_ONLY },
     { path: '/admin/diagnostico', label: 'Diagnostico', icon: Activity, visibleTo: ADMIN_ONLY },
