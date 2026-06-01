@@ -91,6 +91,22 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Resolve the destination folder name for storage path derivation
+    let carpetaNombre: string | null = null;
+    if (job.carpeta_destino_id) {
+      const { data: carpeta } = await supabase
+        .from("centro_digital_carpetas")
+        .select("nombre")
+        .eq("id", job.carpeta_destino_id)
+        .maybeSingle();
+      carpetaNombre = carpeta?.nombre ?? null;
+    }
+
+    // Derive a safe folder prefix: sanitized folder name + id prefix for uniqueness
+    const folderPrefix = carpetaNombre
+      ? slugify(carpetaNombre)
+      : (job.carpeta_destino_id ? job.carpeta_destino_id.substring(0, 8) : "sin-carpeta");
+
     // Update job state to downloading
     await supabase
       .from("bulk_import_jobs")
@@ -117,7 +133,6 @@ Deno.serve(async (req: Request) => {
         .eq("estado", "downloading");
 
       if (!count || count === 0) {
-        // All done - update job stats and mark complete
         await finalizeJob(supabase, job_id);
       }
 
@@ -143,7 +158,7 @@ Deno.serve(async (req: Request) => {
     const results: any[] = [];
 
     for (const item of pendingItems) {
-      const result = await processItem(supabase, item, job);
+      const result = await processItem(supabase, item, job, folderPrefix);
       results.push(result);
     }
 
@@ -204,7 +219,7 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-async function processItem(supabase: any, item: any, job: any): Promise<any> {
+async function processItem(supabase: any, item: any, job: any, folderPrefix: string): Promise<any> {
   try {
     // Download the file
     const controller = new AbortController();
@@ -292,7 +307,7 @@ async function processItem(supabase: any, item: any, job: any): Promise<any> {
     }
 
     // Determine filename
-    const filename = item.nombre_archivo_original
+    const baseFilename = item.nombre_archivo_original
       || extractFilenameFromDisposition(response.headers.get("content-disposition"))
       || `${sanitizeFilename(item.titulo)}.${item.extension || "pdf"}`;
 
@@ -301,8 +316,13 @@ async function processItem(supabase: any, item: any, job: any): Promise<any> {
       || contentType.split(";")[0].trim()
       || "application/octet-stream";
 
-    // Upload to Supabase Storage
-    const storagePath = `bulk-imports/${job.id}/${item.id}/${filename}`;
+    // Build storage path using the correct centro-digital folder convention:
+    // centro-digital/{folder-slug}/{timestamp}_{safeFilename}
+    const timestamp = Date.now();
+    const safeFilename = sanitizeFilename(baseFilename.replace(/\.[^.]+$/, ""))
+      + "." + (item.extension || getExtensionFromMime(mimeType) || "bin");
+    const storagePath = `${folderPrefix}/${timestamp}_${safeFilename}`;
+
     const blob = new Blob([arrayBuffer], { type: mimeType });
 
     const { error: uploadError } = await supabase.storage
@@ -317,7 +337,21 @@ async function processItem(supabase: any, item: any, job: any): Promise<any> {
       return { id: item.id, success: false, error: uploadError.message };
     }
 
-    // Create Centro Digital archivo record
+    // Verify file actually exists in storage before creating DB records
+    const { data: verifyList, error: verifyErr } = await supabase.storage
+      .from("centro-digital-files")
+      .list(storagePath.substring(0, storagePath.lastIndexOf("/")), {
+        search: storagePath.substring(storagePath.lastIndexOf("/") + 1),
+        limit: 1,
+      });
+
+    if (verifyErr || !verifyList || verifyList.length === 0) {
+      // Upload reported success but file can't be found — don't create orphan DB records
+      await markItemError(supabase, item.id, "Archivo subido pero no verificable en storage");
+      return { id: item.id, success: false, error: "Storage verification failed" };
+    }
+
+    // Create Centro Digital archivo record with the correct carpeta_id
     const carpetaId = job.carpeta_destino_id;
     let archivoId: string | null = null;
 
@@ -326,8 +360,8 @@ async function processItem(supabase: any, item: any, job: any): Promise<any> {
         .from("centro_digital_archivos")
         .insert({
           carpeta_id: carpetaId,
-          nombre: item.titulo || filename,
-          nombre_original: filename,
+          nombre: item.titulo || baseFilename,
+          nombre_original: baseFilename,
           ruta_storage: storagePath,
           tipo_mime: mimeType,
           tamano_bytes: fileSize,
@@ -338,16 +372,23 @@ async function processItem(supabase: any, item: any, job: any): Promise<any> {
         .select("id")
         .single();
 
-      if (!archivoErr && archivo) {
+      if (archivoErr) {
+        // Roll back storage upload to avoid orphan files
+        await supabase.storage.from("centro-digital-files").remove([storagePath]);
+        await markItemError(supabase, item.id, `Error al registrar archivo: ${archivoErr.message}`);
+        return { id: item.id, success: false, error: archivoErr.message };
+      }
+
+      if (archivo) {
         archivoId = archivo.id;
       }
     }
 
-    // Also insert into digital_center_documents for global visibility
-    await supabase
+    // Also insert into digital_center_documents for global visibility / Chava AI search
+    const { error: docErr } = await supabase
       .from("digital_center_documents")
       .insert({
-        titulo: item.titulo || filename,
+        titulo: item.titulo || baseFilename,
         descripcion: item.descripcion,
         aseguradora: item.aseguradora,
         ramo: item.ramo,
@@ -358,7 +399,7 @@ async function processItem(supabase: any, item: any, job: any): Promise<any> {
         storage_path: storagePath,
         tamano_bytes: fileSize,
         file_hash: hash,
-        file_name: filename,
+        file_name: baseFilename,
         file_extension: item.extension,
         file_mime_type: mimeType,
         activo: true,
@@ -366,7 +407,11 @@ async function processItem(supabase: any, item: any, job: any): Promise<any> {
         subido_por: job.iniciado_por,
       });
 
-    // Update item as stored
+    if (docErr) {
+      console.error("digital_center_documents insert error (non-fatal):", docErr.message);
+    }
+
+    // Update item as stored with correct folder association
     await supabase
       .from("bulk_import_items")
       .update({
@@ -375,13 +420,13 @@ async function processItem(supabase: any, item: any, job: any): Promise<any> {
         hash_contenido: hash,
         tamano_bytes: fileSize,
         tipo_mime_detectado: mimeType,
-        nombre_archivo_original: filename,
+        nombre_archivo_original: baseFilename,
         archivo_centro_digital_id: archivoId,
         updated_at: new Date().toISOString(),
       })
       .eq("id", item.id);
 
-    return { id: item.id, success: true, filename };
+    return { id: item.id, success: true, filename: baseFilename };
   } catch (err: any) {
     console.error(`Error processing item ${item.id}:`, err);
     await markItemError(supabase, item.id, `Error inesperado: ${err.message}`);
@@ -401,7 +446,6 @@ async function markItemError(supabase: any, itemId: string, mensaje: string) {
 }
 
 async function finalizeJob(supabase: any, jobId: string) {
-  // Get final counts
   const states = ["downloaded", "stored", "indexed", "error", "duplicate", "skipped"];
   const counts: Record<string, number> = {};
 
@@ -437,8 +481,41 @@ function extractFilenameFromDisposition(header: string | null): string | null {
 
 function sanitizeFilename(name: string): string {
   return name
-    .replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ\s\-_]/g, "")
+    .replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ\s\-_\.]/g, "")
     .replace(/\s+/g, "-")
-    .substring(0, 100)
+    .substring(0, 80)
     .toLowerCase();
+}
+
+/** Convert a folder name to a URL-safe slug for use in storage paths */
+function slugify(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s\-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .substring(0, 50) || "sin-carpeta";
+}
+
+function getExtensionFromMime(mime: string): string | null {
+  const map: Record<string, string> = {
+    "application/pdf": "pdf",
+    "application/msword": "doc",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+    "application/vnd.ms-excel": "xls",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+    "application/vnd.ms-powerpoint": "ppt",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+    "text/plain": "txt",
+    "text/csv": "csv",
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/gif": "gif",
+    "image/webp": "webp",
+    "application/zip": "zip",
+  };
+  return map[mime] || null;
 }

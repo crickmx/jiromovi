@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Image, Video, Plus, ListFilter as Filter, Trash2, Palette, Sparkles, TriangleAlert as AlertTriangle } from 'lucide-react';
+import { Image, Video, Plus, ListFilter as Filter, Trash2, Palette, Sparkles, TriangleAlert as AlertTriangle, RefreshCw } from 'lucide-react';
 import { NuevaPlantillaModal } from '../components/NuevaPlantillaModal';
 import { PersonalizarPlantillaModal } from '../components/PersonalizarPlantillaModal';
 import { PlanMKTPremiumBlock } from '../components/PlanMKTPremiumBlock';
@@ -31,6 +31,7 @@ interface Plantilla {
   ramo: string;
   archivo_url: string;
   miniatura_url: string | null;
+  thumbnail_url: string | null;
   ancho: number | null;
   alto: number | null;
   duracion: number | null;
@@ -45,6 +46,9 @@ interface Diseno {
   id: string;
   plantilla_id: string;
   archivo_resultante_url: string | null;
+  thumbnail_url: string | null;
+  rendered_storage_path: string | null;
+  needs_regeneration: boolean;
   created_at: string;
   ai_copy: any | null;
   ai_copy_generated_at: string | null;
@@ -74,14 +78,19 @@ function PlantillaImage({
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
   const resolved = resolveImageUrl(src);
 
+  useEffect(() => {
+    setStatus(resolved ? 'loading' : 'error');
+  }, [resolved]);
+
   if (!resolved) {
     return (
-      <div className="w-full h-full flex items-center justify-center absolute inset-0">
+      <div className="w-full h-full flex flex-col items-center justify-center absolute inset-0 gap-1.5">
         {tipo === 'imagen' ? (
-          <Image className="w-12 h-12 text-neutral-300 dark:text-white/20" />
+          <Image className="w-10 h-10 text-neutral-300 dark:text-white/20" />
         ) : (
-          <Video className="w-12 h-12 text-neutral-300 dark:text-white/20" />
+          <Video className="w-10 h-10 text-neutral-300 dark:text-white/20" />
         )}
+        <span className="text-[10px] text-neutral-400 dark:text-white/30">Sin imagen</span>
       </div>
     );
   }
@@ -92,9 +101,13 @@ function PlantillaImage({
         <div className="absolute inset-0 bg-neutral-200 dark:bg-neutral-700 animate-pulse" />
       )}
       {status === 'error' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-          <AlertTriangle className="w-8 h-8 text-neutral-400" />
-          <span className="text-xs text-neutral-400">No disponible</span>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
+          {tipo === 'imagen' ? (
+            <Image className="w-10 h-10 text-neutral-300 dark:text-white/20" />
+          ) : (
+            <Video className="w-10 h-10 text-neutral-300 dark:text-white/20" />
+          )}
+          <span className="text-[10px] text-neutral-400 dark:text-white/30">Vista previa no disponible</span>
         </div>
       )}
       <img
@@ -403,7 +416,7 @@ export default function Publicidad() {
                 >
                   <div className="relative aspect-[4/5] bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
                     <PlantillaImage
-                      src={plantilla.miniatura_url || plantilla.archivo_url}
+                      src={plantilla.thumbnail_url || plantilla.miniatura_url || plantilla.archivo_url}
                       alt={plantilla.titulo || plantilla.categoria}
                       tipo={plantilla.tipo}
                     />
@@ -469,76 +482,114 @@ export default function Publicidad() {
             />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {disenos.map(diseno => (
-                <div
-                  key={diseno.id}
-                  className="group bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden hover:border-accent/40 dark:hover:border-accent/30 hover:shadow-md transition-all duration-200 cursor-pointer"
-                  onClick={() => setSelectedDiseno(diseno)}
-                >
-                  <div className="relative aspect-[4/5] bg-neutral-50 dark:bg-neutral-800 overflow-hidden">
-                    <PlantillaImage
-                      src={diseno.archivo_resultante_url}
-                      alt="Diseno personalizado"
-                      tipo="imagen"
-                      objectFit="contain"
-                    />
-                    {/* Overlay on hover */}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 dark:group-hover:bg-white/5 transition-all duration-200 flex items-center justify-center">
-                      <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 px-3 py-1.5 bg-white/90 dark:bg-neutral-900/90 text-neutral-900 dark:text-white text-xs font-medium rounded-full shadow-sm">
-                        Ver detalle
-                      </span>
-                    </div>
-                    {/* AI Copy badge */}
-                    {diseno.ai_copy && (
-                      <div className="absolute top-2 right-2">
-                        <span className="flex items-center gap-1 px-2 py-0.5 bg-accent/90 text-white text-xs font-medium rounded-full shadow-sm">
-                          <Sparkles className="w-3 h-3" />
-                          Copy IA
+              {disenos.map(diseno => {
+                const previewUrl = diseno.thumbnail_url || diseno.archivo_resultante_url;
+                const hasImage = !!previewUrl;
+                return (
+                  <div
+                    key={diseno.id}
+                    className="group bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden hover:border-accent/40 dark:hover:border-accent/30 hover:shadow-md transition-all duration-200 cursor-pointer"
+                    onClick={() => setSelectedDiseno(diseno)}
+                  >
+                    <div className="relative aspect-[4/5] bg-neutral-50 dark:bg-neutral-800 overflow-hidden">
+                      <PlantillaImage
+                        src={previewUrl}
+                        alt="Diseno personalizado"
+                        tipo="imagen"
+                        objectFit="contain"
+                      />
+                      {/* Overlay on hover */}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 dark:group-hover:bg-white/5 transition-all duration-200 flex items-center justify-center">
+                        <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 px-3 py-1.5 bg-white/90 dark:bg-neutral-900/90 text-neutral-900 dark:text-white text-xs font-medium rounded-full shadow-sm">
+                          Ver detalle
                         </span>
                       </div>
-                    )}
-                  </div>
-                  <div className="p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex flex-wrap gap-1.5">
-                        {diseno.publicidad_plantillas?.categoria && (
-                          <span className="inline-block px-2 py-0.5 bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-white/60 text-xs rounded-md font-medium">
-                            {diseno.publicidad_plantillas.categoria}
+                      {/* AI Copy badge */}
+                      {diseno.ai_copy && (
+                        <div className="absolute top-2 right-2">
+                          <span className="flex items-center gap-1 px-2 py-0.5 bg-accent/90 text-white text-xs font-medium rounded-full shadow-sm">
+                            <Sparkles className="w-3 h-3" />
+                            Copy IA
                           </span>
-                        )}
-                        {diseno.publicidad_plantillas?.ramo && (
-                          <span className="inline-block px-2 py-0.5 bg-accent/10 text-accent text-xs rounded-md font-medium">
-                            {diseno.publicidad_plantillas.ramo}
+                        </div>
+                      )}
+                      {/* Needs regeneration badge */}
+                      {(!hasImage || diseno.needs_regeneration) && (
+                        <div className="absolute top-2 left-2">
+                          <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-500/90 text-white text-xs font-medium rounded-full shadow-sm">
+                            <AlertTriangle className="w-3 h-3" />
+                            Regenerar
                           </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex flex-wrap gap-1.5">
+                          {diseno.publicidad_plantillas?.categoria && (
+                            <span className="inline-block px-2 py-0.5 bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-white/60 text-xs rounded-md font-medium">
+                              {diseno.publicidad_plantillas.categoria}
+                            </span>
+                          )}
+                          {diseno.publicidad_plantillas?.ramo && (
+                            <span className="inline-block px-2 py-0.5 bg-accent/10 text-accent text-xs rounded-md font-medium">
+                              {diseno.publicidad_plantillas.ramo}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-xs text-neutral-500 dark:text-white/40 mb-3">
+                        {new Date(diseno.created_at).toLocaleDateString('es-MX', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric'
+                        })}
+                      </p>
+                      <div className="flex gap-2">
+                        {(!hasImage || diseno.needs_regeneration) ? (
+                          <Button
+                            size="sm"
+                            className="flex-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Re-open the personalizar modal for this design's template
+                              const plantilla = plantillas.find(p => p.id === diseno.plantilla_id);
+                              if (plantilla) {
+                                setSelectedPlantilla(plantilla);
+                                setShowPersonalizarModal(true);
+                              } else {
+                                // Load the plantilla on demand
+                                supabase.from('publicidad_plantillas').select('*').eq('id', diseno.plantilla_id).single()
+                                  .then(({ data }) => {
+                                    if (data) { setSelectedPlantilla(data); setShowPersonalizarModal(true); }
+                                  });
+                              }
+                            }}
+                          >
+                            <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                            Regenerar diseno
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            className="flex-1"
+                            onClick={(e) => { e.stopPropagation(); handleDescargarDiseno(diseno.archivo_resultante_url || diseno.thumbnail_url || ''); }}
+                          >
+                            Descargar
+                          </Button>
                         )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleEliminarDiseno(diseno); }}
+                          className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all"
+                          title="Eliminar diseno"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
-                    <p className="text-xs text-neutral-500 dark:text-white/40 mb-3">
-                      {new Date(diseno.created_at).toLocaleDateString('es-MX', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric'
-                      })}
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        className="flex-1"
-                        onClick={(e) => { e.stopPropagation(); handleDescargarDiseno(diseno.archivo_resultante_url || ''); }}
-                      >
-                        Descargar
-                      </Button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleEliminarDiseno(diseno); }}
-                        className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all"
-                        title="Eliminar diseno"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

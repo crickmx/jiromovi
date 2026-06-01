@@ -332,6 +332,42 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
       if (blobErr) throw blobErr;
       const { data: { publicUrl: resultUrl } } = supabase.storage.from('publicidad-disenos').getPublicUrl(resultName);
 
+      // Generate thumbnail at 400px wide
+      let thumbnailUrl: string | null = null;
+      try {
+        const thumbCanvas = document.createElement('canvas');
+        const src = canvasRef.current;
+        if (src) {
+          const scale = Math.min(1, 400 / src.width);
+          thumbCanvas.width = Math.round(src.width * scale);
+          thumbCanvas.height = Math.round(src.height * scale);
+          const tCtx = thumbCanvas.getContext('2d');
+          if (tCtx) {
+            tCtx.drawImage(src, 0, 0, thumbCanvas.width, thumbCanvas.height);
+            const thumbBlob: Blob = await new Promise((res, rej) =>
+              thumbCanvas.toBlob(b => b ? res(b) : rej(new Error('thumb blob')), 'image/jpeg', 0.85)
+            );
+            const thumbName = `${usuario.id}/${Date.now()}_thumb.jpg`;
+            const { error: thumbErr } = await supabase.storage.from('publicidad-disenos').upload(thumbName, thumbBlob);
+            if (!thumbErr) {
+              const { data: { publicUrl } } = supabase.storage.from('publicidad-disenos').getPublicUrl(thumbName);
+              thumbnailUrl = publicUrl;
+            }
+          }
+        }
+      } catch { /* thumbnail is non-critical */ }
+
+      const customConfig = {
+        nombreCompleto,
+        contactoWeb,
+        contactoTelefono,
+        styleNombre,
+        styleWeb,
+        styleTel,
+        primaryColor,
+        secondaryColor,
+      };
+
       const { error: dbErr, data: disenoData } = await supabase
         .from('publicidad_disenos')
         .insert({
@@ -341,6 +377,10 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
           texto_personalizado: { nombreCompleto, urlJiro: contactoWeb, urlMulticotizador: contactoTelefono },
           estilo_texto: { nombreCompleto: styleNombre, urlJiro: styleWeb, urlMulticotizador: styleTel },
           archivo_resultante_url: resultUrl,
+          thumbnail_url: thumbnailUrl || resultUrl,
+          rendered_storage_path: resultName,
+          custom_config_json: customConfig,
+          needs_regeneration: false,
         })
         .select('id')
         .single();
