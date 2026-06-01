@@ -112,5 +112,7 @@ export const ACCIONES_AUDITORIA: Record<string, string> = {
   archivo_editado: 'Archivo editado',
   archivo_eliminado: 'Archivo eliminado',
   archivo_restaurado: 'Archivo restaurado',
-  archivo_descargado: 'Archivo descargado'
+  archivo_descargado: 'Archivo descargado',
+  archivo_reparado: 'Archivo reparado (sin respaldo en Storage)',
+  integridad_verificada: 'Integridad verificada',
 };

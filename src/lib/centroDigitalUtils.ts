@@ -220,14 +220,27 @@ export async function subirArchivo(upload: ArchivoUpload): Promise<void> {
   if (!user) throw new Error('Usuario no autenticado');
 
   const timestamp = Date.now();
-  const extension = upload.file.name.split('.').pop();
-  const rutaStorage = `${upload.carpeta_id}/${timestamp}_${Math.random().toString(36).substring(7)}.${extension}`;
+  const extension = upload.file.name.split('.').pop() || 'bin';
+  const safeName = upload.file.name
+    .replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ.\-_]/g, '_')
+    .substring(0, 100);
+  const rutaStorage = `${upload.carpeta_id}/${timestamp}_${safeName}`;
 
   const { error: storageError } = await supabase.storage
     .from('centro-digital-files')
     .upload(rutaStorage, upload.file);
 
   if (storageError) throw storageError;
+
+  // Verify the file actually exists in storage before creating DB record
+  const { data: exists } = await supabase.storage
+    .from('centro-digital-files')
+    .list(upload.carpeta_id, { search: `${timestamp}_${safeName}` });
+
+  if (!exists || exists.length === 0) {
+    await supabase.storage.from('centro-digital-files').remove([rutaStorage]);
+    throw new Error('El archivo no se pudo verificar en el almacenamiento. Intenta de nuevo.');
+  }
 
   const { data: archivo, error: dbError } = await supabase
     .from('centro_digital_archivos')
@@ -393,6 +406,96 @@ async function registrarAuditoria(
     usuario_id: user?.id || null,
     detalles
   });
+}
+
+export interface IntegrityReport {
+  orphanedDbRecords: Array<{ id: string; nombre: string; ruta_storage: string; carpeta_id: string }>;
+  missingStoragePaths: Array<{ id: string; nombre: string; ruta_storage: string; carpeta_id: string }>;
+  totalDbRecords: number;
+  checkedAt: string;
+}
+
+export async function verifyStorageIntegrity(
+  carpetaId?: string,
+  onProgress?: (checked: number, total: number) => void
+): Promise<IntegrityReport> {
+  // Fetch all active DB records (optionally scoped to a folder)
+  let query = supabase
+    .from('centro_digital_archivos')
+    .select('id, nombre, ruta_storage, carpeta_id')
+    .eq('estado', 'activo');
+
+  if (carpetaId) {
+    query = query.eq('carpeta_id', carpetaId);
+  }
+
+  const { data: records, error } = await query;
+  if (error) throw error;
+
+  const allRecords = records || [];
+  const missingStoragePaths: IntegrityReport['missingStoragePaths'] = [];
+
+  // Check each record against storage in batches of 10
+  const batchSize = 10;
+  for (let i = 0; i < allRecords.length; i += batchSize) {
+    const batch = allRecords.slice(i, i + batchSize);
+    await Promise.all(
+      batch.map(async (record) => {
+        // Extract folder prefix from ruta_storage
+        const parts = record.ruta_storage.split('/');
+        const prefix = parts.slice(0, -1).join('/');
+        const filename = parts[parts.length - 1];
+
+        const { data: listed } = await supabase.storage
+          .from('centro-digital-files')
+          .list(prefix, { search: filename });
+
+        const found = (listed || []).some(f => f.name === filename);
+        if (!found) {
+          missingStoragePaths.push(record);
+        }
+      })
+    );
+
+    if (onProgress) {
+      onProgress(Math.min(i + batchSize, allRecords.length), allRecords.length);
+    }
+  }
+
+  return {
+    orphanedDbRecords: missingStoragePaths,
+    missingStoragePaths,
+    totalDbRecords: allRecords.length,
+    checkedAt: new Date().toISOString(),
+  };
+}
+
+export async function repairBrokenRecords(
+  records: Array<{ id: string }>
+): Promise<{ repaired: number; failed: number }> {
+  let repaired = 0;
+  let failed = 0;
+
+  for (const record of records) {
+    const { error } = await supabase
+      .from('centro_digital_archivos')
+      .update({
+        estado: 'papelera',
+        fecha_eliminacion: new Date().toISOString()
+      })
+      .eq('id', record.id);
+
+    if (error) {
+      failed++;
+    } else {
+      repaired++;
+      await registrarAuditoria('archivo_reparado', null, record.id, {
+        razon: 'Archivo sin respaldo en Storage (reparación automática)'
+      });
+    }
+  }
+
+  return { repaired, failed };
 }
 
 export function formatearTamano(bytes: number | null): string {
