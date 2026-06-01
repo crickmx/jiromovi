@@ -476,18 +476,16 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Log email delivery
-    // Note: destinatario_id / usuario_id only applies to MOVI users (in 'usuarios' table).
-    // Seguwallet customers have auth_user_id but no row in 'usuarios', so we omit these FKs.
+    // Log email delivery — wrapped so logging never crashes the main flow
     if (userEmail) {
-      await supabase.from('correo_historial_envios').insert({
+      supabase.from('correo_historial_envios').insert({
         tipo_notificacion_id: typeRow?.id || null,
         tipo_notificacion_codigo: templateCode,
         tipo_codigo: templateCode,
         destinatario_email: userEmail,
         destinatario_nombre: userName,
         ...(platform === 'movi' ? { destinatario_id: userId, usuario_id: userId } : {}),
-        estado: emailSent ? 'enviado' : (resendApiKey ? 'fallido' : 'fallido'),
+        estado: emailSent ? 'enviado' : 'fallido',
         error_mensaje: emailError,
         canal_envio: 'email',
         proveedor: 'resend',
@@ -495,6 +493,8 @@ Deno.serve(async (req: Request) => {
         channel_name: emailChannelName,
         channel_type: 'email_resend',
         fecha_envio: emailSent ? new Date().toISOString() : null,
+      }).then(({ error: logErr }) => {
+        if (logErr) console.error('Email log insert error:', logErr.message);
       });
     }
 
@@ -531,9 +531,9 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Log WhatsApp delivery
+    // Log WhatsApp delivery — wrapped so logging never crashes the main flow
     if (userPhone) {
-      await supabase.from('correo_historial_envios').insert({
+      supabase.from('correo_historial_envios').insert({
         tipo_notificacion_id: typeRow?.id || null,
         tipo_notificacion_codigo: templateCode,
         tipo_codigo: templateCode,
@@ -548,6 +548,8 @@ Deno.serve(async (req: Request) => {
         channel_name: waChannelName,
         channel_type: 'whatsapp_wazzup24',
         fecha_envio: whatsappSent ? new Date().toISOString() : null,
+      }).then(({ error: logErr }) => {
+        if (logErr) console.error('WhatsApp log insert error:', logErr.message);
       });
     }
 
