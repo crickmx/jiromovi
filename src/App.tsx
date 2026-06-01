@@ -32,16 +32,19 @@ import ChavaAgenteTerminosAdmin from './chava-agente/pages/admin/ChavaAgenteTerm
 
 // MOVI full platform routes (lazy-loaded)
 const MoviFullRoutes = lazy(() => import('./pages/MoviFullRoutes'));
+const PaginaPublicaAsesor = lazy(() => import('./pages/PaginaPublicaAsesor'));
 
 // ── Domain detection ────────────────────────────────────────────────────────
 const hostname = window.location.hostname;
 const CHAVA_DOMAINS = ['agentedeseguros.ai', 'www.agentedeseguros.ai'];
 const SEGUWALLET_DOMAINS = ['seguwallet.mx', 'www.seguwallet.mx', 'app.seguwallet.mx'];
 const MOVI_SPLASH_DOMAINS = ['movi.digital', 'www.movi.digital'];
+const PUBLIC_PROFILE_DOMAINS = ['agentedeseguros.website', 'www.agentedeseguros.website'];
 
 const isChavaDomain = CHAVA_DOMAINS.includes(hostname);
 const isSeguwalletDomain = SEGUWALLET_DOMAINS.includes(hostname);
 const isMoviSplashDomain = MOVI_SPLASH_DOMAINS.includes(hostname);
+const isPublicProfileDomain = PUBLIC_PROFILE_DOMAINS.includes(hostname);
 
 // ── MOVI private route ───────────────────────────────────────────────────────
 function MoviPrivateRoute({ children }: { children: ReactNode }) {
@@ -115,6 +118,33 @@ function SeguwalletApp() {
           </AgentBrandProvider>
         </SeguwalletProvider>
       </ImpersonationProvider>
+    </BrowserRouter>
+  );
+}
+
+// ── 3.5. agentedeseguros.website — public agent profile pages ────────────────
+function PublicProfileApp() {
+  return (
+    <BrowserRouter>
+      <MoviAuthProvider>
+        <Routes>
+          <Route path="/p/:slug" element={
+            <Suspense fallback={<MoviLoader />}>
+              <PaginaPublicaAsesor />
+            </Suspense>
+          } />
+          <Route path="/:slug" element={
+            <Suspense fallback={<MoviLoader />}>
+              <PaginaPublicaAsesor />
+            </Suspense>
+          } />
+          <Route path="*" element={
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+              <p className="text-slate-500 text-sm">Página no encontrada</p>
+            </div>
+          } />
+        </Routes>
+      </MoviAuthProvider>
     </BrowserRouter>
   );
 }
@@ -212,6 +242,13 @@ function MoviApp() {
             <ChavaAgenteProvider><ChavaAgenteTerminosAdmin /></ChavaAgenteProvider>
           } />
 
+          {/* Public agent web pages — no auth required */}
+          <Route path="/p/:slug" element={
+            <Suspense fallback={<MoviLoader />}>
+              <PaginaPublicaAsesor />
+            </Suspense>
+          } />
+
           {/* All other MOVI routes — requires auth, loaded lazily */}
           <Route path="*" element={
             <MoviPrivateRoute>
@@ -231,5 +268,6 @@ export default function App() {
   if (isChavaDomain) return <ChavaAgenteApp />;
   if (isSeguwalletDomain) return <SeguwalletApp />;
   if (isMoviSplashDomain) return <MoviSplashApp />;
+  if (isPublicProfileDomain) return <PublicProfileApp />;
   return <MoviApp />;
 }

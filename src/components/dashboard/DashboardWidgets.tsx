@@ -220,7 +220,7 @@ export function AgentesActivosWidget({ usuario }: { usuario: Usuario }) {
       } catch { /* silent */ }
       finally { setLoading(false); }
     })();
-  }, [usuario.id]);
+  }, [usuario.id, usuario.rol]);
 
   const kpi: KPIData | null = count !== null ? {
     value: count,
@@ -379,7 +379,7 @@ export function ComunicadosRecientesWidget({ usuario }: { usuario: Usuario }) {
       } catch { /* silent */ }
       finally { setLoading(false); }
     })();
-  }, [usuario.id]);
+  }, []);
 
   return (
     <WidgetShell title="Comunicados" icon={<Bell className="w-4 h-4" />} onMore={() => nav('/comunicados')}>
@@ -419,6 +419,7 @@ export function ActividadRecienteWidget({ usuario }: { usuario: Usuario }) {
       try {
         const { data } = await supabase.from('user_activity_logs')
           .select('accion, modulo, created_at')
+          .eq('usuario_id', usuario.id)
           .order('created_at', { ascending: false })
           .limit(6);
         setItems(data || []);

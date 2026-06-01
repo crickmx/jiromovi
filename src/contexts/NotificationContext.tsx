@@ -38,8 +38,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (usuario) {
       fetchNotifications();
-      subscribeToNotifications();
+      const unsub = subscribeToNotifications();
       checkPushPermission();
+      return unsub;
     }
   }, [usuario]);
 
