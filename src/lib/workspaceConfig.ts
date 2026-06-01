@@ -163,6 +163,7 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/sicas/salud', label: 'SICAS Salud', icon: Activity, visibleTo: ADMIN_ONLY },
     { path: '/firmas-email', label: 'Firmas Email', icon: FileText, visibleTo: ADMIN_ONLY },
     { path: '/admin/transaccionales', label: 'Transaccionales', icon: Send, visibleTo: ADMIN_ONLY },
+    { path: '/admin/automatizacion-ia', label: 'Robots de Correo', icon: Bot, visibleTo: ADMIN_ONLY },
     { path: '/admin/diagnostico', label: 'Diagnostico', icon: Activity, visibleTo: ADMIN_ONLY },
   ],
 };
