@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Info, X, MessageSquare, QrCode, Zap, Wifi, WifiOff, CircleAlert as AlertCircle, RefreshCw, Settings, Plus, Star, Send, Copy, Trash2, Tag, CreditCard as Edit3 } from 'lucide-react';
+import { Info, X, MessageSquare, QrCode, Zap, Wifi, WifiOff, CircleAlert as AlertCircle, RefreshCw, Settings, Plus, Star, Send, Copy, Trash2, Tag, CreditCard as Edit3, Phone, ExternalLink, User, FileText, ClipboardList } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -379,6 +379,190 @@ export default function CentroContactoUnificado() {
   );
 }
 
+// ── Contact Info Panel ─────────────────────────────────────────────────────
+
+function ContactInfoPanel({ conversation }: { conversation: UnifiedConversation }) {
+  const [tickets, setTickets] = useState<Array<{ id: string; folio: string; instrucciones: string; estatus_nombre: string; tipo_tramite: string }>>([]);
+  const [ticketsLoading, setTicketsLoading] = useState(false);
+  const [ticketsLoaded, setTicketsLoaded] = useState(false);
+
+  const phone = conversation.contactPhone;
+  const name = conversation.contactName;
+  const channel = conversation.channel;
+  const CHANNEL_LABELS: Record<string, string> = { wa_movi: 'WA MOVI', wa_personal: 'WA Personal', chat: 'Chat Interno' };
+  const CHANNEL_COLORS: Record<string, string> = { wa_movi: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400', wa_personal: 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400', chat: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' };
+
+  // Load related tickets on mount
+  useEffect(() => {
+    if (!phone || ticketsLoaded) return;
+    setTicketsLoading(true);
+    setTicketsLoaded(true);
+    supabase
+      .from('tickets')
+      .select('id, folio, instrucciones, tipo_tramite')
+      .or(`contacto_telefono.eq.${phone},contacto_nombre.ilike.%${name || ''}%`)
+      .order('created_at', { ascending: false })
+      .limit(5)
+      .then(({ data }) => {
+        setTickets((data || []).map((t: any) => ({
+          id: t.id,
+          folio: t.folio || '—',
+          instrucciones: t.instrucciones || '',
+          estatus_nombre: t.estatus_nombre || t.estatus || '',
+          tipo_tramite: t.tipo_tramite || '',
+        })));
+      })
+      .catch(() => {})
+      .finally(() => setTicketsLoading(false));
+  }, [phone, name, ticketsLoaded]);
+
+  const initials = (name || '?')
+    .split(' ')
+    .slice(0, 2)
+    .map((w: string) => w.charAt(0))
+    .join('')
+    .toUpperCase();
+
+  const whatsappUrl = phone
+    ? `https://wa.me/${phone.replace(/\D/g, '')}`
+    : null;
+
+  return (
+    <div className="w-64 h-full bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-700 overflow-y-auto flex flex-col">
+      {/* Header: avatar + name */}
+      <div className="p-4 border-b border-neutral-100 dark:border-neutral-800 text-center">
+        <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-base font-bold text-emerald-700 dark:text-emerald-400 mx-auto mb-2">
+          {initials}
+        </div>
+        {name && (
+          <p className="text-sm font-semibold text-neutral-800 dark:text-white leading-snug">{name}</p>
+        )}
+        {phone && (
+          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5 font-mono">{phone}</p>
+        )}
+        <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium mt-2', CHANNEL_COLORS[channel] || CHANNEL_COLORS.wa_movi)}>
+          {CHANNEL_LABELS[channel] || channel}
+        </span>
+      </div>
+
+      {/* Quick actions */}
+      <div className="p-3 border-b border-neutral-100 dark:border-neutral-800 flex gap-2">
+        {phone && (
+          <a
+            href={`tel:${phone.replace(/\D/g, '')}`}
+            className="flex-1 flex flex-col items-center gap-1 py-2 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors text-center"
+            title="Llamar"
+          >
+            <Phone className="w-4 h-4" />
+            <span className="text-[10px]">Llamar</span>
+          </a>
+        )}
+        {whatsappUrl && (
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 flex flex-col items-center gap-1 py-2 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-neutral-500 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors text-center"
+            title="Abrir en WhatsApp"
+          >
+            <ExternalLink className="w-4 h-4" />
+            <span className="text-[10px]">WhatsApp</span>
+          </a>
+        )}
+      </div>
+
+      {/* Contact data */}
+      <div className="p-3 space-y-4 flex-1">
+
+        {/* Contact info */}
+        <div>
+          <p className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+            <User className="w-3 h-3" /> Contacto
+          </p>
+          <div className="space-y-1.5">
+            {name && (
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] text-neutral-400 w-12 flex-shrink-0 pt-0.5">Nombre</span>
+                <span className="text-xs text-neutral-700 dark:text-neutral-200 leading-snug">{name}</span>
+              </div>
+            )}
+            {phone && (
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] text-neutral-400 w-12 flex-shrink-0 pt-0.5">Telefono</span>
+                <span className="text-xs text-neutral-700 dark:text-neutral-200 font-mono">{phone}</span>
+              </div>
+            )}
+            {conversation.agentUserId && (
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] text-neutral-400 w-12 flex-shrink-0 pt-0.5">Canal</span>
+                <span className="text-xs text-neutral-700 dark:text-neutral-200">{CHANNEL_LABELS[channel]}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Related tickets */}
+        <div>
+          <p className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+            <ClipboardList className="w-3 h-3" /> Tramites relacionados
+          </p>
+          {ticketsLoading ? (
+            <div className="space-y-1.5">
+              {[1, 2].map(i => (
+                <div key={i} className="h-10 rounded-lg bg-neutral-100 dark:bg-neutral-800 animate-pulse" />
+              ))}
+            </div>
+          ) : tickets.length === 0 ? (
+            <p className="text-[11px] text-neutral-400 dark:text-neutral-500 py-1">Sin tramites encontrados</p>
+          ) : (
+            <div className="space-y-1.5">
+              {tickets.map(t => (
+                <div key={t.id} className="p-2 rounded-lg bg-neutral-50 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700">
+                  <div className="flex items-center justify-between gap-1 mb-0.5">
+                    <span className="text-[11px] font-semibold text-neutral-700 dark:text-neutral-200">{t.folio}</span>
+                    {t.estatus_nombre && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-neutral-200 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 flex-shrink-0">{t.estatus_nombre}</span>
+                    )}
+                  </div>
+                  {t.instrucciones && (
+                    <p className="text-[10px] text-neutral-500 line-clamp-2 leading-snug">{t.instrucciones}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Conversation metadata */}
+        <div>
+          <p className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+            <FileText className="w-3 h-3" /> Conversacion
+          </p>
+          <div className="space-y-1.5">
+            <div className="flex items-start gap-2">
+              <span className="text-[10px] text-neutral-400 w-16 flex-shrink-0 pt-0.5">Estado</span>
+              <span className={cn(
+                'text-[10px] px-1.5 py-0.5 rounded-full font-medium',
+                conversation.status === 'open'
+                  ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500'
+              )}>
+                {conversation.status === 'open' ? 'Abierta' : 'Archivada'}
+              </span>
+            </div>
+            {conversation.unreadCount > 0 && (
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] text-neutral-400 w-16 flex-shrink-0 pt-0.5">No leidos</span>
+                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{conversation.unreadCount}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Conversations Sub-view ─────────────────────────────────────────────────
 
 function ConversationsView({
@@ -450,19 +634,7 @@ function ConversationsView({
               showContactPanel ? 'w-64' : 'w-0'
             )}>
               {showContactPanel && (
-                <div className="w-64 h-full bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-700 p-4 overflow-y-auto">
-                  <p className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">Informacion</p>
-                  {selected.contactName && (
-                    <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100 mb-1">{selected.contactName}</p>
-                  )}
-                  {selected.contactPhone && (
-                    <p className="text-xs text-neutral-500 mb-3">{selected.contactPhone}</p>
-                  )}
-                  <p className="text-[10px] text-neutral-400 uppercase tracking-wider mb-1">Canal</p>
-                  <p className="text-xs text-neutral-700 dark:text-neutral-200">
-                    {selected.channel === 'wa_movi' ? 'WA MOVI' : 'WA Personal'}
-                  </p>
-                </div>
+                <ContactInfoPanel conversation={selected} />
               )}
             </div>
 

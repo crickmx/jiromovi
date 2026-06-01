@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Phone, Mail, MessageCircle, Loader as Loader2, ChevronLeft, ChevronRight, ArrowUp, Car, ExternalLink, Search, X, ChevronDown, Award, Smartphone, Shield, Star } from 'lucide-react';
+import { Phone, Mail, MessageCircle, Loader as Loader2, ChevronLeft, ChevronRight, ArrowUp, Car, ExternalLink, Search, X, ChevronDown, Award, Smartphone } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { getPublicWebPageBySlug } from '../lib/webPagesUtils';
 import type { PublicWebPageData, SharedFormLink } from '../lib/webPagesTypes';
@@ -1121,24 +1121,24 @@ export default function PaginaPublicaAsesor() {
 
         {/* SOBRE MI */}
         <section id="sobre-mi" className="relative py-16 px-4 bg-white z-10">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-3xl mx-auto">
             <h2
-              className="text-3xl sm:text-4xl font-bold mb-8 text-center px-4"
+              className="text-3xl sm:text-4xl font-bold mb-10 text-center"
               style={{ color: primaryColor }}
             >
               Sobre mi
             </h2>
 
-            <div className="flex flex-col lg:flex-row gap-8 items-start">
-              {/* Left: photo + data card */}
-              <div className="flex flex-col items-center lg:items-start gap-4 lg:w-72 flex-shrink-0">
+            <div className="flex flex-col sm:flex-row gap-8 items-start">
+              {/* Left: photo + contact */}
+              <div className="flex flex-col items-center sm:items-start gap-5 sm:w-56 flex-shrink-0">
                 {/* Photo */}
-                {user.photo_url && (
+                {user.photo_url ? (
                   <div
-                    className="w-28 h-28 rounded-full overflow-hidden shadow-lg flex-shrink-0"
+                    className="w-36 h-36 rounded-full overflow-hidden shadow-xl"
                     style={{
-                      border: `3px solid ${primaryColor}`,
-                      boxShadow: `0 4px 20px ${createColorVariant(primaryColor, 0.2)}`
+                      border: `4px solid ${primaryColor}`,
+                      boxShadow: `0 8px 32px ${createColorVariant(primaryColor, 0.25)}`
                     }}
                   >
                     <img
@@ -1147,86 +1147,80 @@ export default function PaginaPublicaAsesor() {
                       className="w-full h-full object-cover object-center"
                     />
                   </div>
+                ) : (
+                  <div
+                    className="w-36 h-36 rounded-full flex items-center justify-center text-4xl font-bold shadow-xl"
+                    style={{
+                      backgroundColor: createColorVariant(primaryColor, 0.1),
+                      color: primaryColor,
+                      border: `4px solid ${primaryColor}`,
+                    }}
+                  >
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
                 )}
 
-                {/* Data pills */}
-                <div className="w-full bg-gray-50 rounded-2xl p-5 space-y-3">
-                  <div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Nombre</p>
-                    <p className="text-sm font-bold text-gray-900">{user.name}</p>
-                  </div>
-
-                  {(user as any).cedula && (
-                    <div>
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Cedula de Agente</p>
-                      <div className="flex items-center gap-1.5">
-                        <Award className="w-3.5 h-3.5 flex-shrink-0" style={{ color: primaryColor }} />
-                        <p className="text-sm font-semibold text-gray-800">{(user as any).cedula}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {user.office?.name && (
-                    <div>
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Oficina</p>
-                      <p className="text-sm text-gray-700">{user.office.name}</p>
-                    </div>
-                  )}
-
+                {/* Contact links */}
+                <div className="w-full space-y-2">
                   {user.phone && (
-                    <div>
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Contacto</p>
-                      <div className="flex flex-col gap-1">
-                        <a
-                          href={`tel:${user.phone.replace(/\D/g, '')}`}
-                          className="inline-flex items-center gap-1.5 text-sm hover:underline"
-                          style={{ color: primaryColor }}
-                        >
-                          <Phone className="w-3.5 h-3.5" /> {user.phone}
-                        </a>
-                        {user.email && (
-                          <a
-                            href={`mailto:${user.email}`}
-                            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:underline truncate"
-                          >
-                            <Mail className="w-3.5 h-3.5 flex-shrink-0" />
-                            <span className="truncate">{user.email}</span>
-                          </a>
-                        )}
-                      </div>
-                    </div>
+                    <a
+                      href={`https://wa.me/${user.phone.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all hover:opacity-90 active:scale-95"
+                      style={{ backgroundColor: createColorVariant(primaryColor, 0.08), color: primaryColor }}
+                    >
+                      <MessageCircle className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate">{user.phone}</span>
+                    </a>
                   )}
-
-                  {/* Ramos */}
-                  {processedLinks.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Especialidades</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {[...new Set(processedLinks.slice(0, 8).map(l => l.displayName))].map(name => (
-                          <span
-                            key={name}
-                            className="text-xs px-2 py-0.5 rounded-full font-medium"
-                            style={{
-                              backgroundColor: createColorVariant(primaryColor, 0.1),
-                              color: primaryColor
-                            }}
-                          >
-                            {name}
-                          </span>
-                        ))}
-                        {processedLinks.length > 8 && (
-                          <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500">
-                            +{processedLinks.length - 8} mas
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                  {user.email && (
+                    <a
+                      href={`mailto:${user.email}`}
+                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-gray-600 bg-gray-50 hover:bg-gray-100 transition-all"
+                    >
+                      <Mail className="w-4 h-4 flex-shrink-0 text-gray-400" />
+                      <span className="truncate text-xs">{user.email}</span>
+                    </a>
                   )}
                 </div>
+
+                {/* Specialties */}
+                {processedLinks.length > 0 && (
+                  <div className="w-full">
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Especialidades</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[...new Set(processedLinks.slice(0, 8).map(l => l.displayName))].map(specialtyName => (
+                        <span
+                          key={specialtyName}
+                          className="text-xs px-2.5 py-1 rounded-full font-medium"
+                          style={{
+                            backgroundColor: createColorVariant(primaryColor, 0.08),
+                            color: primaryColor
+                          }}
+                        >
+                          {specialtyName}
+                        </span>
+                      ))}
+                      {processedLinks.length > 8 && (
+                        <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-400">
+                          +{processedLinks.length - 8}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Right: bio text */}
-              <div className="flex-1 min-w-0">
+              {/* Right: bio */}
+              <div className="flex-1 min-w-0 pt-1">
+                <h3 className="text-xl font-bold text-gray-900 mb-1">{user.name}</h3>
+                {(user as any).cedula && (
+                  <p className="text-sm text-gray-500 mb-4 flex items-center gap-1.5">
+                    <Award className="w-3.5 h-3.5" style={{ color: primaryColor }} />
+                    Cedula {(user as any).cedula}
+                  </p>
+                )}
                 {textToDisplay.length > 0 ? (
                   <div className="space-y-4">
                     {textToDisplay.map((paragraph, index) => (
@@ -1236,35 +1230,8 @@ export default function PaginaPublicaAsesor() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center lg:text-left py-4">
-                    <p className="text-gray-400">No hay informacion disponible</p>
-                  </div>
+                  <p className="text-gray-400">Agente de seguros comprometido con brindarte la mejor asesoria y proteccion para ti y tu familia.</p>
                 )}
-
-                {/* Trust badges */}
-                <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {[
-                    { icon: Shield, label: 'Asesoria gratuita', desc: 'Sin costo ni compromiso' },
-                    { icon: Star, label: 'Atencion personalizada', desc: 'Te acompano en todo el proceso' },
-                    { icon: Award, label: 'Agente certificado', desc: 'Respaldado por Grupo JIRO' },
-                  ].map((badge) => (
-                    <div
-                      key={badge.label}
-                      className="flex items-start gap-3 bg-gray-50 rounded-xl p-3.5"
-                    >
-                      <div
-                        className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center"
-                        style={{ backgroundColor: createColorVariant(primaryColor, 0.1) }}
-                      >
-                        <badge.icon className="w-5 h-5" style={{ color: primaryColor }} />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-gray-800">{badge.label}</p>
-                        <p className="text-xs text-gray-500">{badge.desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
           </div>
