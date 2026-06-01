@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { cn } from '@/lib/utils';
-import { Smartphone, QrCode, Wifi, WifiOff, Search, Send, Paperclip, MoreVertical, ArrowLeft, MessageSquare, Clock, CheckCheck, Check, AlertCircle, Plus, FileText, User, Tag, Settings, Zap, RefreshCw, X, Smile, FileUp, Star, Copy, ClipboardList, Trash2, CreditCard as Edit3, Image as ImageIcon, File, ExternalLink, CheckSquare, Square, ChevronDown, Bot } from 'lucide-react';
+import { Smartphone, QrCode, Wifi, WifiOff, Search, Send, Paperclip, MoreVertical, ArrowLeft, MessageSquare, Clock, CheckCheck, Check, AlertCircle, Plus, FileText, User, Tag, Settings, Zap, RefreshCw, X, Smile, FileUp, Star, Copy, ClipboardList, Trash2, CreditCard as Edit3, Image as ImageIcon, File, ExternalLink, CheckSquare, Square, ChevronDown, Bot, Filter, ChevronRight, Mail, Phone, Building2, SlidersHorizontal, Users, MessageCircle, Inbox } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -731,6 +731,8 @@ export default function MiWhatsApp() {
     loadSessionAndConversations();
   };
 
+  const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'unassigned'>('all');
+  const [showContactPanel, setShowContactPanel] = useState(true);
   const [diagResult, setDiagResult] = useState<Record<string, unknown> | null>(null);
 
   const handleDiagnose = async () => {
@@ -763,9 +765,14 @@ export default function MiWhatsApp() {
   };
 
   const filteredConversations = conversations.filter(c => {
-    if (!searchQuery) return !c.is_archived;
-    const q = searchQuery.toLowerCase();
-    return (c.remote_name?.toLowerCase().includes(q) || c.remote_phone.includes(q) || c.last_message_text?.toLowerCase().includes(q)) && !c.is_archived;
+    if (c.is_archived) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!(c.remote_name?.toLowerCase().includes(q) || c.remote_phone.includes(q) || c.last_message_text?.toLowerCase().includes(q))) return false;
+    }
+    if (activeFilter === 'unread') return c.unread_count > 0;
+    if (activeFilter === 'unassigned') return !c.crm_contact_id;
+    return true;
   });
 
   const formatTime = (dateStr: string | null) => {
@@ -797,16 +804,797 @@ export default function MiWhatsApp() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-        <div className="w-8 h-8 border-[3px] border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
+      <div className="flex items-center justify-center h-full">
+        <div className="w-7 h-7 border-[3px] border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
       </div>
     );
   }
 
   const isConnected = session?.status === 'connected';
+  const totalUnread = conversations.reduce((s, c) => s + (c.unread_count || 0), 0);
 
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col">
+    <div className="flex flex-col h-full min-h-0 bg-neutral-50 dark:bg-neutral-950">
+
+      {/* ── Top bar ──────────────────────────────────────────────── */}
+      <div className="flex-shrink-0 flex items-center justify-between h-11 px-4 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 gap-3">
+        {/* Connection status */}
+        <div className="flex items-center gap-2">
+          <span className={cn('w-2 h-2 rounded-full flex-shrink-0', isConnected ? 'bg-emerald-500' : session?.status === 'connecting' || session?.status === 'qr_pending' ? 'bg-amber-500 animate-pulse' : 'bg-neutral-300 dark:bg-neutral-600')} />
+          <span className="text-[12px] text-neutral-600 dark:text-white/60 hidden sm:block">
+            {isConnected ? (session?.phone_number ? `+${session.phone_number}` : 'Conectado') : session?.status === 'qr_pending' ? 'Esperando QR' : session?.status === 'connecting' ? 'Conectando...' : 'Desconectado'}
+          </span>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex items-center gap-0.5">
+          {[
+            { key: 'inbox' as ActiveView, icon: Inbox, label: 'Bandeja' },
+            { key: 'connection' as ActiveView, icon: QrCode, label: 'Conexion' },
+            { key: 'templates' as ActiveView, icon: Zap, label: 'Plantillas' },
+          ].map(tab => (
+            <button key={tab.key} onClick={() => setActiveView(tab.key)}
+              className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+                activeView === tab.key
+                  ? 'bg-emerald-600 text-white'
+                  : 'text-neutral-500 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/5')}>
+              <tab.icon className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Right actions */}
+        <div className="flex items-center gap-1">
+          {activeView === 'inbox' && selectedConversation && (
+            <button onClick={() => setShowContactPanel(v => !v)}
+              className={cn('p-1.5 rounded-lg transition-colors text-xs flex items-center gap-1',
+                showContactPanel ? 'bg-neutral-100 dark:bg-white/5 text-neutral-600 dark:text-white/60' : 'text-neutral-400 hover:bg-neutral-100 dark:hover:bg-white/5')}>
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline text-[11px]">Info</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Main content ─────────────────────────────────────────── */}
+      <div className="flex-1 min-h-0 overflow-hidden">
+
+        {/* Connection view */}
+        {activeView === 'connection' && (
+          <div className="h-full overflow-y-auto">
+            <ConnectionPanel session={session} qrCode={qrCode} providerConfigured={providerConfigured} providerMessage={providerMessage} polling={polling} onConnect={handleConnect} onDisconnect={handleDisconnect} onRefresh={loadSessionAndConversations} onDiagnose={handleDiagnose} onSyncHistory={handleSyncHistory} syncingHistory={syncingHistory} syncResult={syncResult} />
+            {diagResult && (
+              <div className="max-w-lg mx-auto px-6 pb-6">
+                <div className="rounded-xl border border-blue-200 dark:border-blue-800/40 bg-blue-50 dark:bg-blue-900/10 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-bold text-blue-800 dark:text-blue-200">Resultado del Diagnostico</h4>
+                    <button onClick={() => setDiagResult(null)} className="text-blue-400 hover:text-blue-600"><X className="w-4 h-4" /></button>
+                  </div>
+                  <pre className="text-[10px] leading-relaxed text-blue-900 dark:text-blue-100 font-mono whitespace-pre-wrap break-all max-h-80 overflow-y-auto">{JSON.stringify(diagResult, null, 2)}</pre>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Templates view */}
+        {activeView === 'templates' && (
+          <TemplatesPanel templates={templates} userId={usuario?.id || ''} onRefresh={loadSessionAndConversations} onUseTemplate={(body) => { setMessageInput(body); setActiveView('inbox'); }} />
+        )}
+
+        {/* Inbox view */}
+        {activeView === 'inbox' && (
+          <div className="flex h-full min-h-0">
+
+            {/* ── Conversation list ─────────────────────────────── */}
+            <div className={cn(
+              'flex flex-col border-r border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900',
+              'w-full sm:w-[300px] flex-shrink-0',
+              showMobileChat ? 'hidden sm:flex' : 'flex'
+            )}>
+              {/* Search */}
+              <div className="px-3 pt-3 pb-2 flex-shrink-0">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="Buscar..."
+                    className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-white/5 text-xs placeholder:text-neutral-400 dark:text-white/80 focus:outline-none focus:ring-1 focus:ring-emerald-400/40 border-0 transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Filters */}
+              <div className="px-3 pb-2 flex items-center gap-1.5 flex-shrink-0">
+                {([
+                  { key: 'all', label: 'Todos' },
+                  { key: 'unread', label: 'No leidos', count: conversations.filter(c => !c.is_archived && c.unread_count > 0).length },
+                  { key: 'unassigned', label: 'Sin CRM', count: conversations.filter(c => !c.is_archived && !c.crm_contact_id).length },
+                ] as const).map(f => (
+                  <button
+                    key={f.key}
+                    onClick={() => setActiveFilter(f.key)}
+                    className={cn(
+                      'flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-all',
+                      activeFilter === f.key
+                        ? 'bg-emerald-600 text-white'
+                        : 'text-neutral-500 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/5'
+                    )}
+                  >
+                    {f.label}
+                    {'count' in f && f.count > 0 && (
+                      <span className={cn('text-[10px] font-bold', activeFilter === f.key ? 'text-white/80' : 'text-neutral-400')}>
+                        {f.count}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Conversation items */}
+              <div className="flex-1 overflow-y-auto">
+                {!isConnected ? (
+                  <div className="p-6 text-center">
+                    <WifiOff className="w-8 h-8 text-neutral-200 dark:text-white/10 mx-auto mb-2" />
+                    <p className="text-xs font-medium text-neutral-500 dark:text-white/50 mb-1">WhatsApp no conectado</p>
+                    <button onClick={() => setActiveView('connection')} className="text-[11px] text-emerald-600 font-medium hover:underline">Conectar</button>
+                  </div>
+                ) : filteredConversations.length === 0 ? (
+                  <div className="p-6 text-center">
+                    <MessageSquare className="w-8 h-8 text-neutral-200 dark:text-white/10 mx-auto mb-2" />
+                    <p className="text-xs text-neutral-400 dark:text-white/30">{searchQuery ? 'Sin resultados' : 'Sin conversaciones'}</p>
+                  </div>
+                ) : (
+                  filteredConversations.map(conv => {
+                    const name = resolveContactName(conv);
+                    const avatarUrl = contactNames[conv.remote_phone]?.profile_pic_url || conv.remote_avatar_url;
+                    const isSelected = selectedConversation?.id === conv.id;
+
+                    return (
+                      <button
+                        key={conv.id}
+                        onClick={() => handleSelectConversation(conv)}
+                        className={cn(
+                          'w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors border-b border-neutral-100/60 dark:border-white/[0.03]',
+                          isSelected
+                            ? 'bg-emerald-50 dark:bg-emerald-900/15 border-l-2 border-l-emerald-500'
+                            : 'hover:bg-neutral-50 dark:hover:bg-white/[0.03] border-l-2 border-l-transparent'
+                        )}
+                      >
+                        {/* Avatar */}
+                        <div className="relative flex-shrink-0">
+                          <div className="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center overflow-hidden">
+                            {avatarUrl
+                              ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                              : <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">{name.charAt(0).toUpperCase()}</span>
+                            }
+                          </div>
+                          {conv.is_group && (
+                            <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-blue-500 rounded-full flex items-center justify-center">
+                              <Users className="w-2 h-2 text-white" />
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className={cn('text-[12.5px] truncate', conv.unread_count > 0 ? 'font-semibold text-neutral-900 dark:text-white' : 'font-medium text-neutral-700 dark:text-white/80')}>
+                              {name}
+                            </span>
+                            <span className="text-[10px] text-neutral-400 dark:text-white/30 flex-shrink-0">
+                              {formatTime(conv.last_message_at)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-1 mt-0.5">
+                            <span className="text-[11px] text-neutral-400 dark:text-white/35 truncate leading-tight">
+                              {conv.last_message_text || 'Sin mensajes'}
+                            </span>
+                            {conv.unread_count > 0 && (
+                              <span className="flex-shrink-0 min-w-[18px] h-[18px] bg-emerald-500 text-white rounded-full flex items-center justify-center text-[9px] font-bold px-1">
+                                {conv.unread_count > 99 ? '99+' : conv.unread_count}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* ── Chat area ────────────────────────────────────────── */}
+            <div className={cn(
+              'flex-1 min-w-0 flex flex-col',
+              !showMobileChat ? 'hidden sm:flex' : 'flex'
+            )}>
+              {!selectedConversation ? (
+                <div className="flex-1 flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950 text-center gap-3">
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
+                    <MessageCircle className="w-7 h-7 text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-neutral-500 dark:text-white/40">Selecciona una conversacion</p>
+                    <p className="text-[11px] text-neutral-400 dark:text-white/25 mt-0.5">
+                      {totalUnread > 0 ? `${totalUnread} mensajes sin leer` : 'Tus conversaciones aparecen a la izquierda'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-1 min-h-0 min-w-0">
+                  {/* Conversation thread */}
+                  <div className="flex flex-col flex-1 min-w-0 min-h-0">
+
+                    {/* Chat header */}
+                    <div className="flex-shrink-0 flex items-center gap-2.5 px-3 py-2 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800">
+                      <button
+                        onClick={() => { setShowMobileChat(false); setSelectedConversation(null); setSelectionMode(false); setSelectedMessages(new Set()); }}
+                        className="sm:hidden p-1 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-lg"
+                      >
+                        <ArrowLeft className="w-4 h-4 text-neutral-500" />
+                      </button>
+
+                      {/* Avatar */}
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center overflow-hidden flex-shrink-0">
+                        {(contactNames[selectedConversation.remote_phone]?.profile_pic_url || selectedConversation.remote_avatar_url)
+                          ? <img src={contactNames[selectedConversation.remote_phone]?.profile_pic_url || selectedConversation.remote_avatar_url || ''} alt="" className="w-full h-full object-cover" />
+                          : <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">{resolveContactName(selectedConversation).charAt(0).toUpperCase()}</span>
+                        }
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-[13px] font-semibold text-neutral-900 dark:text-white leading-tight truncate">
+                          {resolveContactName(selectedConversation)}
+                        </h3>
+                        <p className="text-[10px] text-neutral-400 dark:text-white/30 truncate">
+                          {selectedConversation.remote_phone}
+                          {contactNames[selectedConversation.remote_phone]?.is_business && <span className="ml-1.5 text-[8px] px-1 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded font-medium">Empresa</span>}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {selectedConversation.crm_contact_id && <span className="text-[9px] px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded font-medium">CRM</span>}
+                        {selectionMode && selectedMessages.size > 0 && (
+                          <button onClick={() => setShowCreateTramite(true)} className="flex items-center gap-1 px-2 py-1 bg-emerald-600 text-white rounded-lg text-[10px] font-medium hover:bg-emerald-700 transition-colors">
+                            <ClipboardList className="w-3 h-3" />
+                            Tramite ({selectedMessages.size})
+                          </button>
+                        )}
+                        <button
+                          onClick={() => { setSelectionMode(!selectionMode); setSelectedMessages(new Set()); }}
+                          className={cn('p-1.5 rounded-lg transition-colors', selectionMode ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400')}
+                        >
+                          <CheckSquare className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setShowContactPanel(v => !v)}
+                          className={cn('p-1.5 rounded-lg transition-colors hidden sm:flex items-center', showContactPanel ? 'bg-neutral-100 dark:bg-white/5 text-neutral-600' : 'hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400')}
+                        >
+                          <SlidersHorizontal className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Disconnected warning */}
+                    {session?.status !== 'connected' && (
+                      <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800/40">
+                        <WifiOff className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                        <p className="text-[11px] text-amber-700 dark:text-amber-300 flex-1">WhatsApp desconectado</p>
+                        <button onClick={() => setActiveView('connection')} className="text-[11px] font-medium text-amber-700 dark:text-amber-200 hover:underline flex-shrink-0">Conectar</button>
+                      </div>
+                    )}
+
+                    {/* Messages */}
+                    <div
+                      className="flex-1 overflow-y-auto px-3 py-3"
+                      style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(0,0,0,0.03) 1px, transparent 0)', backgroundSize: '20px 20px' }}
+                    >
+                      {hasMoreMessages && (
+                        <div className="text-center mb-2">
+                          <button onClick={handleLoadMore} disabled={loadingMore}
+                            className="text-[11px] px-3 py-1 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-500 dark:text-white/50 rounded-full border border-neutral-200 dark:border-neutral-700 transition-colors shadow-sm disabled:opacity-50">
+                            {loadingMore ? 'Cargando...' : 'Ver mensajes anteriores'}
+                          </button>
+                        </div>
+                      )}
+
+                      {messages.length === 0 && (
+                        <div className="text-center py-8">
+                          <p className="text-[11px] text-neutral-400 dark:text-white/25">Sin mensajes</p>
+                        </div>
+                      )}
+
+                      <div className="space-y-0.5">
+                        {messages.map((msg, idx) => {
+                          const prevMsg = messages[idx - 1];
+                          const nextMsg = messages[idx + 1];
+                          const isSameSenderAsPrev = prevMsg && prevMsg.direction === msg.direction && !msg.is_internal_note && !prevMsg.is_internal_note;
+                          const isSameSenderAsNext = nextMsg && nextMsg.direction === msg.direction && !msg.is_internal_note && !nextMsg.is_internal_note;
+                          const isOut = msg.direction === 'outbound';
+
+                          // Time separator: show if > 5min gap
+                          const prevTime = prevMsg ? new Date(prevMsg.message_timestamp || prevMsg.created_at).getTime() : null;
+                          const thisTime = new Date(msg.message_timestamp || msg.created_at).getTime();
+                          const showTimeSep = !prevTime || (thisTime - prevTime > 5 * 60 * 1000);
+
+                          // Rounding: first/last in a sequence get different corners
+                          const bubbleRound = isOut
+                            ? cn('rounded-2xl', isSameSenderAsPrev && 'rounded-tr-md', isSameSenderAsNext && 'rounded-br-md')
+                            : cn('rounded-2xl', isSameSenderAsPrev && 'rounded-tl-md', isSameSenderAsNext && 'rounded-bl-md');
+
+                          return (
+                            <React.Fragment key={msg.id}>
+                              {showTimeSep && (
+                                <div className="flex items-center justify-center py-2">
+                                  <span className="text-[10px] text-neutral-400 dark:text-white/25 bg-white dark:bg-neutral-800/80 px-2 py-0.5 rounded-full border border-neutral-200/60 dark:border-white/10 shadow-sm">
+                                    {new Date(msg.message_timestamp || msg.created_at).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                              )}
+
+                              <div
+                                className={cn('flex items-end gap-1.5 group', isOut ? 'justify-end' : 'justify-start', !isSameSenderAsPrev && 'mt-2')}
+                                onContextMenu={(e) => { if (!selectionMode) { e.preventDefault(); setContextMenuMsg({ id: msg.id, x: e.clientX, y: e.clientY }); } }}
+                              >
+                                {selectionMode && (
+                                  <button onClick={() => handleToggleSelection(msg.id)} className={cn('flex-shrink-0 self-center', isOut && 'order-first mr-1')}>
+                                    {selectedMessages.has(msg.id)
+                                      ? <CheckSquare className="w-4 h-4 text-emerald-600" />
+                                      : <Square className="w-4 h-4 text-neutral-300" />
+                                    }
+                                  </button>
+                                )}
+
+                                {/* Inbound avatar: only on last in group */}
+                                {!isOut && (
+                                  <div className={cn('w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center', isSameSenderAsNext ? 'invisible' : 'bg-emerald-100 dark:bg-emerald-900/30')}>
+                                    {!isSameSenderAsNext && <span className="text-[8px] font-bold text-emerald-700 dark:text-emerald-300">{resolveContactName(selectedConversation).charAt(0).toUpperCase()}</span>}
+                                  </div>
+                                )}
+
+                                <div className={cn(
+                                  'max-w-[72%] relative',
+                                  bubbleRound,
+                                  'px-3 py-1.5 shadow-sm cursor-default',
+                                  msg.is_internal_note
+                                    ? 'bg-amber-50 dark:bg-amber-900/25 border border-amber-200/70 dark:border-amber-700/40'
+                                    : isOut
+                                      ? 'bg-emerald-600 text-white'
+                                      : 'bg-white dark:bg-neutral-800 border border-neutral-200/60 dark:border-neutral-700/60',
+                                  selectionMode && selectedMessages.has(msg.id) && 'ring-2 ring-emerald-400 ring-offset-1'
+                                )} onClick={() => { if (selectionMode) handleToggleSelection(msg.id); }}>
+
+                                  {msg.is_internal_note && (
+                                    <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wider block mb-1">Nota interna</span>
+                                  )}
+
+                                  {/* ── Media types ── */}
+                                  {msg.message_type === 'image' && (
+                                    <div className="mb-1">
+                                      {msg.media_url ? (
+                                        <img src={msg.media_url} alt="" className="rounded-xl max-w-full max-h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                          onClick={(e) => { e.stopPropagation(); setMediaPreview({ url: msg.media_url!, type: 'image' }); }} />
+                                      ) : (
+                                        <div className="w-40 h-28 rounded-xl bg-neutral-100 dark:bg-neutral-700 flex flex-col items-center justify-center gap-1">
+                                          <ImageIcon className="w-5 h-5 text-neutral-400 animate-pulse" />
+                                          <span className="text-[9px] text-neutral-400">{msg.media_download_status === 'failed' ? 'No disponible' : 'Descargando...'}</span>
+                                        </div>
+                                      )}
+                                      {msg.media_caption && <p className={cn('text-xs mt-1', isOut ? 'text-white' : 'text-neutral-700 dark:text-white/80')}>{msg.media_caption}</p>}
+                                    </div>
+                                  )}
+                                  {msg.message_type === 'sticker' && msg.media_url && (
+                                    <img src={msg.media_url} alt="Sticker" className="w-24 h-24 object-contain" />
+                                  )}
+                                  {msg.message_type === 'video' && (
+                                    <div className="mb-1">
+                                      {msg.media_url ? (
+                                        <video src={msg.media_url} controls className="rounded-xl max-w-full max-h-44" />
+                                      ) : (
+                                        <div className="w-40 h-28 rounded-xl bg-neutral-100 dark:bg-neutral-700 flex flex-col items-center justify-center gap-1">
+                                          <FileText className="w-5 h-5 text-neutral-400" />
+                                          <span className="text-[9px] text-neutral-400">{msg.media_download_status === 'failed' ? 'No disponible' : 'Descargando...'}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                  {(msg.message_type === 'audio' || msg.message_type === 'voice_note') && (
+                                    <div className="mb-1">
+                                      {msg.media_url
+                                        ? <audio src={msg.media_url} controls className="max-w-[200px] h-8" />
+                                        : <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-neutral-100 dark:bg-neutral-700/50"><Paperclip className="w-3.5 h-3.5 text-neutral-400" /><span className="text-[10px] text-neutral-500">{msg.message_type === 'voice_note' ? 'Nota de voz' : 'Audio'}</span></div>
+                                      }
+                                    </div>
+                                  )}
+                                  {msg.message_type === 'document' && (
+                                    <div className={cn('flex items-center gap-2 p-2 rounded-xl mb-1', isOut ? 'bg-emerald-700/40' : 'bg-neutral-50 dark:bg-neutral-700/50')}>
+                                      <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                                        <FileText className="w-3.5 h-3.5 text-blue-600" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className={cn('text-xs font-medium truncate', isOut ? 'text-white' : 'text-neutral-800 dark:text-white/80')}>{msg.media_filename || 'Documento'}</p>
+                                        <p className={cn('text-[9px]', isOut ? 'text-white/60' : 'text-neutral-400')}>{msg.media_file_size ? `${(msg.media_file_size / 1024).toFixed(0)} KB` : msg.media_mime_type || 'Archivo'}</p>
+                                      </div>
+                                      {msg.media_url && (
+                                        <a href={msg.media_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                                          className={cn('p-1 rounded-lg transition-colors', isOut ? 'hover:bg-white/10' : 'hover:bg-neutral-200 dark:hover:bg-neutral-600')}>
+                                          <ExternalLink className="w-3 h-3" />
+                                        </a>
+                                      )}
+                                    </div>
+                                  )}
+                                  {msg.message_type === 'location' && (
+                                    <div className={cn('flex items-center gap-2 p-2 rounded-xl mb-1', isOut ? 'bg-emerald-700/40' : 'bg-neutral-50 dark:bg-neutral-700/50')}>
+                                      <span className="text-base">📍</span>
+                                      <div className="flex-1 min-w-0">
+                                        <p className={cn('text-xs font-medium', isOut ? 'text-white' : 'text-neutral-800 dark:text-white/80')}>{(msg.metadata?.name as string) || 'Ubicacion'}</p>
+                                        {msg.metadata?.address && <p className={cn('text-[9px] truncate', isOut ? 'text-white/60' : 'text-neutral-400')}>{msg.metadata.address as string}</p>}
+                                      </div>
+                                      {msg.metadata?.latitude && (
+                                        <a href={`https://maps.google.com/?q=${msg.metadata.latitude},${msg.metadata.longitude}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                                          className={cn('text-[9px] font-medium px-1.5 py-0.5 rounded transition-colors', isOut ? 'bg-white/10 text-white' : 'bg-neutral-200 dark:bg-neutral-600 text-neutral-700')}>
+                                          Maps
+                                        </a>
+                                      )}
+                                    </div>
+                                  )}
+                                  {msg.message_type === 'contact' && (
+                                    <div className={cn('flex items-center gap-2 p-2 rounded-xl mb-1', isOut ? 'bg-emerald-700/40' : 'bg-neutral-50 dark:bg-neutral-700/50')}>
+                                      <div className="w-7 h-7 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center flex-shrink-0">
+                                        <User className="w-3.5 h-3.5 text-teal-600" />
+                                      </div>
+                                      <div>
+                                        <p className={cn('text-xs font-medium', isOut ? 'text-white' : 'text-neutral-800 dark:text-white/80')}>{(msg.metadata?.displayName as string) || msg.content || 'Contacto'}</p>
+                                        {msg.metadata?.phone && <p className={cn('text-[9px]', isOut ? 'text-white/60' : 'text-neutral-400')}>{msg.metadata.phone as string}</p>}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Text content */}
+                                  {msg.message_type === 'text' && msg.content && (
+                                    <p className={cn('text-[13px] leading-snug whitespace-pre-wrap break-words', isOut && !msg.is_internal_note ? 'text-white' : 'text-neutral-800 dark:text-white/85')}>
+                                      {parseWhatsAppText(msg.content)}
+                                    </p>
+                                  )}
+                                  {msg.message_type === 'unknown' && (
+                                    <p className={cn('text-[11px] italic', isOut ? 'text-white/60' : 'text-neutral-400')}>Mensaje no soportado</p>
+                                  )}
+
+                                  {/* Timestamp & status — only on last in group or different sender next */}
+                                  {(!isSameSenderAsNext || !!(msg.status === 'failed')) && (
+                                    <div className={cn('flex items-center gap-1 mt-0.5', isOut ? 'justify-end' : 'justify-start')}>
+                                      <span className={cn('text-[10px]', isOut && !msg.is_internal_note ? 'text-white/55' : 'text-neutral-400 dark:text-white/25')}>
+                                        {new Date(msg.message_timestamp || msg.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+                                      </span>
+                                      {isOut && !msg.is_internal_note && getStatusIcon(msg.status)}
+                                      {isOut && msg.status === 'failed' && (
+                                        <button onClick={(e) => { e.stopPropagation(); handleRetryMessage(msg); }}
+                                          className="text-[9px] font-medium text-red-300 hover:text-white bg-red-500/30 hover:bg-red-500/50 px-1.5 py-0.5 rounded transition-colors">
+                                          Reintentar
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </React.Fragment>
+                          );
+                        })}
+                      </div>
+                      <div ref={messagesEndRef} />
+
+                      {/* Context menu */}
+                      {contextMenuMsg && (
+                        <div className="context-menu-container fixed z-50 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl py-1 min-w-[150px]"
+                          style={{ left: contextMenuMsg.x, top: contextMenuMsg.y }}>
+                          <button onClick={() => { navigator.clipboard.writeText(messages.find(m => m.id === contextMenuMsg.id)?.content || ''); setContextMenuMsg(null); }}
+                            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-700 dark:text-white/70"><Copy className="w-3 h-3" /> Copiar</button>
+                          <button onClick={() => { setSelectionMode(true); setSelectedMessages(new Set([contextMenuMsg.id])); setContextMenuMsg(null); }}
+                            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-700 dark:text-white/70"><CheckSquare className="w-3 h-3" /> Seleccionar</button>
+                          <button onClick={() => { setSelectionMode(true); setSelectedMessages(new Set([contextMenuMsg.id])); setShowCreateTramite(true); setContextMenuMsg(null); }}
+                            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-700 dark:text-white/70"><ClipboardList className="w-3 h-3" /> Crear tramite</button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Pending attachment preview */}
+                    {pendingAttachment && (
+                      <div className="flex-shrink-0 bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-800 px-3 py-2">
+                        <div className="flex items-center gap-2.5 p-2.5 bg-neutral-50 dark:bg-neutral-800 rounded-xl">
+                          {pendingAttachment.preview
+                            ? <img src={pendingAttachment.preview} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                            : <div className="w-12 h-12 rounded-lg bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center flex-shrink-0"><File className="w-5 h-5 text-neutral-400" /></div>
+                          }
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-neutral-800 dark:text-white truncate">{pendingAttachment.file.name}</p>
+                            <p className="text-[10px] text-neutral-400">{formatFileSize(pendingAttachment.file.size)}</p>
+                          </div>
+                          <button onClick={() => setPendingAttachment(null)} className="p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded-lg"><X className="w-3.5 h-3.5 text-neutral-500" /></button>
+                          <button onClick={handleSendAttachment} disabled={pendingAttachment.uploading} className="p-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg">
+                            {pendingAttachment.uploading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Send error */}
+                    {sendError && (
+                      <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-800/40">
+                        <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                        <p className="text-[11px] text-red-600 dark:text-red-400 flex-1">{sendError}</p>
+                        <button onClick={() => setSendError(null)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"><X className="w-3 h-3 text-red-400" /></button>
+                      </div>
+                    )}
+
+                    {/* Message input */}
+                    <div className="flex-shrink-0 bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-800 px-2 py-2">
+                      <div className="flex items-end gap-1">
+                        {/* Emoji */}
+                        <div className="relative emoji-picker-container flex-shrink-0">
+                          <button onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowTemplatesDropdown(false); setShowFormularios(false); }}
+                            className={cn('p-2 rounded-xl transition-colors', showEmojiPicker ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400')}>
+                            <Smile className="w-4.5 h-4.5" />
+                          </button>
+                          {showEmojiPicker && <EmojiPicker onSelect={handleInsertEmoji} />}
+                        </div>
+
+                        {/* Attach */}
+                        <div className="relative flex-shrink-0">
+                          <button onClick={() => fileInputRef.current?.click()} className="p-2 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-xl transition-colors text-neutral-400">
+                            <Paperclip className="w-4.5 h-4.5" />
+                          </button>
+                          <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip" />
+                        </div>
+
+                        {/* Templates */}
+                        <div className="relative templates-dropdown-container flex-shrink-0">
+                          <button onClick={() => { setShowTemplatesDropdown(!showTemplatesDropdown); setShowEmojiPicker(false); setShowFormularios(false); }}
+                            className={cn('p-2 rounded-xl transition-colors', showTemplatesDropdown ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400')}
+                            title="Plantillas">
+                            <Zap className="w-4.5 h-4.5" />
+                          </button>
+                          {showTemplatesDropdown && (
+                            <div className="absolute bottom-full left-0 mb-2 w-72 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl max-h-60 overflow-y-auto z-50">
+                              <div className="px-3 py-2 border-b border-neutral-100 dark:border-neutral-700">
+                                <p className="text-[10px] font-bold text-neutral-500 dark:text-white/40 uppercase tracking-wider">Plantillas</p>
+                              </div>
+                              {templates.length === 0
+                                ? <div className="p-4 text-center"><p className="text-xs text-neutral-400">Sin plantillas</p><button onClick={() => { setActiveView('templates'); setShowTemplatesDropdown(false); }} className="text-xs text-emerald-600 mt-1">Crear</button></div>
+                                : templates.map(tpl => (
+                                  <button key={tpl.id} onClick={() => handleUseTemplate(tpl)}
+                                    className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors border-b border-neutral-50/80 dark:border-neutral-700/50 last:border-0">
+                                    <div className="flex items-center gap-1">
+                                      {tpl.is_favorite && <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-500 flex-shrink-0" />}
+                                      <span className="text-xs font-medium text-neutral-700 dark:text-white/70 truncate">{tpl.name}</span>
+                                    </div>
+                                    <p className="text-[10px] text-neutral-400 truncate mt-0.5">{tpl.body}</p>
+                                  </button>
+                                ))
+                              }
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Formularios */}
+                        <div className="relative formularios-container flex-shrink-0 hidden sm:block">
+                          <button onClick={() => { setShowFormularios(!showFormularios); setShowEmojiPicker(false); setShowTemplatesDropdown(false); }}
+                            className={cn('p-2 rounded-xl transition-colors', showFormularios ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400')} title="Formularios">
+                            <ExternalLink className="w-4.5 h-4.5" />
+                          </button>
+                          {showFormularios && (
+                            <div className="absolute bottom-full left-0 mb-2 w-72 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl max-h-64 overflow-y-auto z-50">
+                              <div className="px-3 py-2 border-b border-neutral-100 dark:border-neutral-700">
+                                <p className="text-xs font-bold text-neutral-800 dark:text-white">Enviar formulario</p>
+                              </div>
+                              {formTemplates.length === 0
+                                ? <div className="p-4 text-center"><p className="text-xs text-neutral-400">Sin formularios</p></div>
+                                : formTemplates.map(form => (
+                                  <button key={form.id} onClick={() => handleSendFormLink(form)} className="w-full text-left px-3 py-2.5 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors border-b border-neutral-50/80 dark:border-neutral-700/50 last:border-0">
+                                    <div className="flex items-center gap-2">
+                                      <FileText className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-medium text-neutral-700 dark:text-white/70 truncate">{form.form_title}</p>
+                                        <p className="text-[10px] text-neutral-400 truncate">{form.form_type.replace(/_/g, ' ')}</p>
+                                      </div>
+                                    </div>
+                                  </button>
+                                ))
+                              }
+                            </div>
+                          )}
+                        </div>
+
+                        {/* AI assistant */}
+                        <div className="flex-shrink-0 hidden sm:block">
+                          {autoMode ? (
+                            <button onClick={stopAutoMode} className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 animate-pulse" title="IA activa">
+                              <Bot className="w-4.5 h-4.5" />
+                            </button>
+                          ) : (
+                            <button onClick={openAssistants} disabled={autoLoading} className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400 transition-colors" title="IA">
+                              {autoLoading ? <RefreshCw className="w-4.5 h-4.5 animate-spin" /> : <Bot className="w-4.5 h-4.5" />}
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Create tramite */}
+                        <div className="flex-shrink-0 hidden sm:block">
+                          <button onClick={handleDirectCreateTramite} className="p-2 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-xl transition-colors text-neutral-400" title="Crear tramite">
+                            <Plus className="w-4.5 h-4.5" />
+                          </button>
+                        </div>
+
+                        {/* Text input */}
+                        <div className="flex-1">
+                          <textarea
+                            ref={textareaRef}
+                            value={messageInput}
+                            onChange={e => setMessageInput(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
+                            placeholder={autoMode ? 'IA activa — escribe para intervenir...' : 'Escribe un mensaje...'}
+                            rows={1}
+                            className={cn(
+                              'w-full px-3 py-2 rounded-xl bg-neutral-100 dark:bg-white/5 border text-[13px] placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-emerald-400/40 resize-none transition-all',
+                              autoMode ? 'border-emerald-300/60 dark:border-emerald-600/30' : 'border-transparent focus:border-emerald-300/40 dark:border-white/5'
+                            )}
+                          />
+                        </div>
+
+                        {/* Send */}
+                        <button onClick={handleSendMessage} disabled={!messageInput.trim() || sendingMessage}
+                          className="p-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-neutral-200 disabled:dark:bg-white/5 text-white disabled:text-neutral-400 rounded-xl transition-colors flex-shrink-0">
+                          {sendingMessage ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Contact info panel ───────────────────────── */}
+                  {showContactPanel && (
+                    <div className="hidden lg:flex w-[272px] flex-shrink-0 flex-col border-l border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-y-auto">
+                      {/* Header */}
+                      <div className="px-4 pt-4 pb-3 border-b border-neutral-100 dark:border-neutral-800/80 flex-shrink-0">
+                        <div className="flex flex-col items-center text-center gap-2">
+                          <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center overflow-hidden">
+                            {(contactNames[selectedConversation.remote_phone]?.profile_pic_url || selectedConversation.remote_avatar_url)
+                              ? <img src={contactNames[selectedConversation.remote_phone]?.profile_pic_url || selectedConversation.remote_avatar_url || ''} alt="" className="w-full h-full object-cover" />
+                              : <span className="text-xl font-bold text-emerald-700 dark:text-emerald-300">{resolveContactName(selectedConversation).charAt(0).toUpperCase()}</span>
+                            }
+                          </div>
+                          <div>
+                            <h4 className="text-[13px] font-bold text-neutral-900 dark:text-white leading-tight">{resolveContactName(selectedConversation)}</h4>
+                            <p className="text-[11px] text-neutral-400 dark:text-white/30 mt-0.5">{selectedConversation.remote_phone}</p>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            {selectedConversation.crm_contact_id && <span className="text-[9px] px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded font-semibold">CRM</span>}
+                            {selectedConversation.is_group && <span className="text-[9px] px-1.5 py-0.5 bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded font-semibold">Grupo</span>}
+                            {contactNames[selectedConversation.remote_phone]?.is_business && <span className="text-[9px] px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded font-semibold">Empresa</span>}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Contact details */}
+                      <div className="px-3 py-3 border-b border-neutral-100 dark:border-neutral-800/80 space-y-2 flex-shrink-0">
+                        <p className="text-[10px] font-bold text-neutral-400 dark:text-white/30 uppercase tracking-wider">Contacto</p>
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-3 h-3 text-neutral-400 flex-shrink-0" />
+                            <span className="text-[11px] text-neutral-600 dark:text-white/60 truncate">{selectedConversation.remote_phone}</span>
+                          </div>
+                          {selectedConversation.remote_name && selectedConversation.remote_name !== selectedConversation.remote_phone && (
+                            <div className="flex items-center gap-2">
+                              <User className="w-3 h-3 text-neutral-400 flex-shrink-0" />
+                              <span className="text-[11px] text-neutral-600 dark:text-white/60 truncate">{selectedConversation.remote_name}</span>
+                            </div>
+                          )}
+                          {selectedConversation.is_group && selectedConversation.group_name && (
+                            <div className="flex items-center gap-2">
+                              <Users className="w-3 h-3 text-neutral-400 flex-shrink-0" />
+                              <span className="text-[11px] text-neutral-600 dark:text-white/60 truncate">{selectedConversation.group_name}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* CRM */}
+                      <div className="px-3 py-3 border-b border-neutral-100 dark:border-neutral-800/80 flex-shrink-0">
+                        <p className="text-[10px] font-bold text-neutral-400 dark:text-white/30 uppercase tracking-wider mb-2">CRM</p>
+                        {selectedConversation.crm_contact_id ? (
+                          <a href={`/crm/contacto/${selectedConversation.crm_contact_id}`} className="flex items-center gap-1.5 text-[11px] text-blue-600 dark:text-blue-400 hover:underline">
+                            <ExternalLink className="w-3 h-3" /> Ver perfil CRM
+                          </a>
+                        ) : (
+                          <p className="text-[11px] text-neutral-400 dark:text-white/25">Sin contacto CRM vinculado</p>
+                        )}
+                      </div>
+
+                      {/* Tags */}
+                      {selectedConversation.tags && selectedConversation.tags.length > 0 && (
+                        <div className="px-3 py-3 border-b border-neutral-100 dark:border-neutral-800/80 flex-shrink-0">
+                          <p className="text-[10px] font-bold text-neutral-400 dark:text-white/30 uppercase tracking-wider mb-2">Etiquetas</p>
+                          <div className="flex flex-wrap gap-1">
+                            {selectedConversation.tags.map(tag => (
+                              <span key={tag} className="text-[9px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-white/50 rounded font-medium">{tag}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div className="px-3 py-3 flex-shrink-0">
+                        <p className="text-[10px] font-bold text-neutral-400 dark:text-white/30 uppercase tracking-wider mb-2">Acciones</p>
+                        <div className="space-y-1">
+                          {[
+                            { label: 'Crear tramite', icon: ClipboardList, action: handleDirectCreateTramite, color: 'text-emerald-600' },
+                            { label: 'Usar plantilla', icon: Zap, action: () => setShowTemplatesDropdown(true), color: 'text-amber-600' },
+                            { label: 'Enviar formulario', icon: FileText, action: () => setShowFormularios(true), color: 'text-blue-600' },
+                          ].map(({ label, icon: Icon, action, color }) => (
+                            <button key={label} onClick={action}
+                              className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-white/[0.04] transition-colors text-left">
+                              <Icon className={cn('w-3.5 h-3.5 flex-shrink-0', color)} />
+                              <span className="text-[11px] text-neutral-600 dark:text-white/60">{label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Create Tramite Modal */}
+      {showCreateTramite && (
+        <CreateTramiteModal
+          selectedCount={selectedMessages.size}
+          conversationName={selectedConversation?.remote_name || selectedConversation?.remote_phone || ''}
+          onClose={() => setShowCreateTramite(false)}
+          onSubmit={handleCreateTramiteFromMessages}
+        />
+      )}
+
+      {/* Assistants Modal */}
+      {showAssistants && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowAssistants(false)}>
+          <div className="w-full max-w-md mx-4 bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-700 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 dark:border-neutral-800">
+              <h3 className="text-sm font-bold text-neutral-800 dark:text-white">Asistentes IA</h3>
+              <button onClick={() => setShowAssistants(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-5">
+              <p className="text-xs text-neutral-500 mb-3">Selecciona un asistente para activar el modo automatico.</p>
+              {autoLoading
+                ? <div className="flex justify-center py-6"><RefreshCw className="w-5 h-5 animate-spin text-neutral-300" /></div>
+                : assistants.length === 0
+                  ? <p className="text-xs text-neutral-400 text-center py-6">Sin asistentes configurados</p>
+                  : <div className="space-y-2 max-h-72 overflow-y-auto">
+                      {assistants.map(a => (
+                        <button key={a.id} onClick={() => startAutoMode(a.id)} className="w-full text-left p-3 rounded-xl border border-neutral-100 dark:border-neutral-700 hover:border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all">
+                          <div className="flex items-center gap-2">
+                            <Bot className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{a.nombre}</p>
+                              {a.descripcion && <p className="text-[11px] text-neutral-500 mt-0.5">{a.descripcion}</p>}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+              }
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
       {/* Top bar */}
       <div className="bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700 px-4 sm:px-5 py-3 flex items-center justify-between gap-3 flex-shrink-0">
         <div className="flex items-center gap-3">

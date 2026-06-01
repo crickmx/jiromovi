@@ -1,12 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  Send, ArrowLeft, Loader2, MoreVertical, CheckSquare, Square,
-  Sparkles, Bot, FileText, FormInput, ListTodo, Plus, Smile,
-  X, ClipboardList, ExternalLink,
-  Image as ImageIcon, File, MapPin,
-  Check, CheckCheck, AlertCircle, Clock,
-  Paperclip, User, Star, Zap, RefreshCw, WifiOff,
-} from 'lucide-react';
+import { Send, ArrowLeft, Loader as Loader2, MoveVertical as MoreVertical, SquareCheck as CheckSquare, Square, Sparkles, Bot, FileText, FolderInput as FormInput, ListTodo, Plus, Smile, X, ClipboardList, ExternalLink, Image as ImageIcon, File, MapPin, Check, CheckCheck, CircleAlert as AlertCircle, Clock, Paperclip, User, Star, Zap, RefreshCw, WifiOff } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -995,10 +988,36 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
           </div>
         ) : messages.map((msg, i) => {
           const prev = messages[i - 1];
+          const next = messages[i + 1];
           const showDate = !prev || new Date(msg.sentAt).toDateString() !== new Date(prev.sentAt).toDateString();
           const isOut = msg.direction === 'outbound';
           const isSystem = msg.messageType === 'system';
           const isSelected = selectedIds.has(msg.id);
+
+          // Time gap separator: show when > 5 min gap between consecutive messages
+          const prevTime = prev ? new Date(prev.sentAt).getTime() : null;
+          const thisTime = new Date(msg.sentAt).getTime();
+          const showTimeSep = !showDate && prevTime && (thisTime - prevTime > 5 * 60 * 1000);
+
+          // Grouping: detect same sender in consecutive messages (ignore system)
+          const prevNonSys = messages.slice(0, i).reverse().find(m => m.messageType !== 'system');
+          const nextNonSys = messages.slice(i + 1).find(m => m.messageType !== 'system');
+          const sameAsPrev = !showDate && !showTimeSep && prevNonSys && prevNonSys.direction === msg.direction && !isSystem;
+          const sameAsNext = nextNonSys && nextNonSys.direction === msg.direction && !isSystem;
+
+          // Determine corner rounding based on group position
+          // Outbound: tails on right; inbound: tails on left
+          const bubbleCorners = isOut
+            ? cn(
+                'rounded-2xl',
+                sameAsPrev && 'rounded-tr-md',
+                sameAsNext && 'rounded-br-md'
+              )
+            : cn(
+                'rounded-2xl',
+                sameAsPrev && 'rounded-tl-md',
+                sameAsNext && 'rounded-bl-md'
+              );
 
           if (isSystem) {
             return (
@@ -1010,6 +1029,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
 
           return (
             <div key={msg.id}>
+              {/* Date separator */}
               {showDate && (
                 <div className="flex justify-center my-3">
                   <span className="px-3 py-1 bg-neutral-200/60 dark:bg-neutral-700/60 text-neutral-500 dark:text-neutral-400 text-[10px] rounded-full">
@@ -1017,26 +1037,49 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
                   </span>
                 </div>
               )}
+              {/* Time gap separator */}
+              {showTimeSep && !showDate && (
+                <div className="flex justify-center my-2">
+                  <span className="text-[10px] text-neutral-300 dark:text-neutral-600">
+                    {new Date(msg.sentAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              )}
               <div
-                className={cn('flex mb-1 group', isOut ? 'justify-end' : 'justify-start', selectionMode && 'cursor-pointer')}
+                className={cn(
+                  'flex group',
+                  isOut ? 'justify-end' : 'justify-start',
+                  selectionMode && 'cursor-pointer',
+                  sameAsNext ? 'mb-0.5' : 'mb-1.5'
+                )}
                 onClick={selectionMode ? () => toggleSelect(msg.id) : undefined}
               >
                 {selectionMode && (
-                  <div className="flex items-end pb-2 mr-2">
+                  <div className="flex items-end pb-1 mr-2">
                     {isSelected
                       ? <CheckSquare className="w-4 h-4 text-accent" />
                       : <Square className="w-4 h-4 text-neutral-300" />}
                   </div>
                 )}
-                <div className={cn('max-w-[78%]', isSelected && 'ring-2 ring-accent/40 rounded-2xl')}>
-                  {msg.senderName && !isOut && (
-                    <p className="text-[10px] text-neutral-400 ml-1 mb-0.5">{msg.senderName}</p>
+                {/* Inbound avatar placeholder — only show on last in group */}
+                {!isOut && (
+                  <div className={cn('w-6 mr-1.5 flex items-end flex-shrink-0', sameAsNext ? 'invisible' : 'visible')}>
+                    <div className="w-6 h-6 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center text-[9px] font-bold text-neutral-500 dark:text-neutral-400">
+                      {(msg.senderName || '?').charAt(0).toUpperCase()}
+                    </div>
+                  </div>
+                )}
+                <div className={cn('max-w-[72%]', isSelected && 'ring-2 ring-accent/40 rounded-2xl')}>
+                  {/* Sender name — only on first message in group for inbound */}
+                  {msg.senderName && !isOut && !sameAsPrev && (
+                    <p className="text-[10px] text-neutral-400 dark:text-neutral-500 ml-1 mb-0.5">{msg.senderName}</p>
                   )}
                   <div className={cn(
-                    'rounded-2xl px-3 py-2 shadow-sm text-sm',
+                    'px-3 py-2 shadow-sm text-sm',
+                    bubbleCorners,
                     isOut
-                      ? 'bg-accent text-white rounded-tr-sm'
-                      : 'bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 border border-neutral-100 dark:border-neutral-700 rounded-tl-sm'
+                      ? 'bg-accent text-white'
+                      : 'bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 border border-neutral-100 dark:border-neutral-700'
                   )}>
                     <RichMessageBubble
                       msg={msg}
