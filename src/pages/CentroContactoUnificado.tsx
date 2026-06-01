@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Info, X, MessageSquare, QrCode, Zap, Wifi, WifiOff, AlertCircle, RefreshCw, Settings, Plus, Star, Send, Copy, Trash2, Tag, CreditCard as Edit3 } from 'lucide-react';
+import { Info, X, MessageSquare, QrCode, Zap, Wifi, WifiOff, CircleAlert as AlertCircle, RefreshCw, Settings, Plus, Star, Send, Copy, Trash2, Tag, CreditCard as Edit3 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -308,7 +308,7 @@ export default function CentroContactoUnificado() {
         <div className="flex items-center gap-1">
           {([
             { key: 'conversations' as SubTab, icon: MessageSquare, label: 'Conversaciones' },
-            { key: 'connection' as SubTab, icon: QrCode, label: 'Conexion' },
+            { key: 'connection' as SubTab, icon: QrCode, label: 'Conexión' },
             { key: 'templates' as SubTab, icon: Zap, label: 'Plantillas' },
           ]).map(tab => (
             <button
@@ -494,7 +494,7 @@ function ConversationsView({
             </p>
             {!waPersonalConnected && (
               <p className="text-[10px] text-teal-500 dark:text-teal-400 mt-4 max-w-xs">
-                Conecta tu WA Personal en la pestana "Conexion" para ver tambien esas conversaciones aqui.
+                Conecta tu WA Personal en la pestaña "Conexión" para ver tambien esas conversaciones aqui.
               </p>
             )}
           </div>

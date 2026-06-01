@@ -53,6 +53,7 @@ export function ChatSidebar({ chats, selectedChat, onSelectChat, getChatName, cu
         const lastMessage = chat.ultimo_mensaje;
         const isDeleting = deletingChatId === chat.id;
         const isHovered = hoveredChatId === chat.id;
+        const unread = chat.mensajes_no_leidos || 0;
 
         return (
           <div
@@ -69,17 +70,24 @@ export function ChatSidebar({ chats, selectedChat, onSelectChat, getChatName, cu
               } ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <div className="flex items-center justify-between mb-1">
-                <h3 className="font-semibold text-neutral-900 truncate pr-8">
+                <h3 className={`font-semibold truncate pr-8 ${unread > 0 ? 'text-neutral-900 dark:text-white font-bold' : 'text-neutral-700 dark:text-neutral-200'}`}>
                   {getChatName(chat)}
                 </h3>
-                {chat.ultimo_mensaje_at && (
-                  <span className="text-xs text-neutral-500">
-                    {formatDistanceToNow(new Date(chat.ultimo_mensaje_at), {
-                      addSuffix: true,
-                      locale: es
-                    })}
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {unread > 0 && (
+                    <span className="px-1.5 py-0.5 bg-accent text-white text-[10px] font-bold rounded-full leading-none min-w-[18px] text-center">
+                      {unread > 99 ? '99+' : unread}
+                    </span>
+                  )}
+                  {chat.ultimo_mensaje_at && (
+                    <span className="text-xs text-neutral-500">
+                      {formatDistanceToNow(new Date(chat.ultimo_mensaje_at), {
+                        addSuffix: true,
+                        locale: es
+                      })}
+                    </span>
+                  )}
+                </div>
               </div>
               {lastMessage && (
                 <p className="text-sm text-neutral-600 truncate">

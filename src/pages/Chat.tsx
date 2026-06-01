@@ -119,41 +119,46 @@ export function Chat() {
 
       console.log('[Chat] Chats cargados:', chatsData?.length);
 
-      // Enriquecer con información de miembros y último mensaje
-      const enrichedChats = await Promise.all(
-        (chatsData || []).map(async (chat) => {
-          // Cargar miembros
-          const { data: miembrosData } = await supabase
-            .from('chat_miembros')
-            .select(`
-              usuario_id,
-              unido_at,
-              usuarios (
-                id,
-                nombre,
-                apellidos,
-                rol,
-                imagen_perfil_url
-              )
-            `)
-            .eq('chat_id', chat.id);
+      // Batch-load all members for all chats at once (avoids N+1)
+      const { data: allMiembros } = await supabase
+        .from('chat_miembros')
+        .select(`
+          chat_id,
+          usuario_id,
+          unido_at,
+          usuarios (
+            id,
+            nombre,
+            apellidos,
+            rol,
+            imagen_perfil_url
+          )
+        `)
+        .in('chat_id', chatIds)
+        .eq('eliminado', false);
 
-          // Cargar último mensaje
-          const { data: ultimoMensaje } = await supabase
-            .from('chat_mensajes')
-            .select('*')
-            .eq('chat_id', chat.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+      // Batch-load unread counts for current user
+      const { data: unreadRows } = await supabase
+        .from('chat_miembros')
+        .select('chat_id, mensajes_no_leidos')
+        .in('chat_id', chatIds)
+        .eq('usuario_id', usuario.id);
 
-          return {
-            ...chat,
-            miembros: miembrosData || [],
-            ultimo_mensaje: ultimoMensaje
-          };
-        })
-      );
+      const miembrosByChat: Record<string, any[]> = {};
+      const unreadByChat: Record<string, number> = {};
+      (allMiembros || []).forEach(m => {
+        if (!miembrosByChat[m.chat_id]) miembrosByChat[m.chat_id] = [];
+        miembrosByChat[m.chat_id].push(m);
+      });
+      (unreadRows || []).forEach(r => {
+        unreadByChat[r.chat_id] = r.mensajes_no_leidos || 0;
+      });
+
+      const enrichedChats = (chatsData || []).map(chat => ({
+        ...chat,
+        miembros: miembrosByChat[chat.id] || [],
+        mensajes_no_leidos: unreadByChat[chat.id] || 0,
+      }));
 
       console.log('[Chat] Chats enriquecidos:', enrichedChats.length);
       setChats(enrichedChats);
