@@ -7,6 +7,21 @@ NODE_VERSION = "22"
 NPM_VERSION = "10"
 NODE_OPTIONS = "--max-old-space-size=4096"
 
+[[headers]]
+for = "/assets/*"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/index.html"
+[headers.values]
+Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+for = "/*.html"
+[headers.values]
+Cache-Control = "no-cache, no-store, must-revalidate"
+
 [[redirects]]
 from = "/*"
 to = "/index.html"

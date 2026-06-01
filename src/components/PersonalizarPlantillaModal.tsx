@@ -489,7 +489,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
         .from('publicidad-disenos')
         .getPublicUrl(resultFileName);
 
-      const { error: disenoError } = await supabase.from('publicidad_disenos').insert({
+      const { error: disenoError, data: disenoData } = await supabase.from('publicidad_disenos').insert({
         usuario_id: usuario.id,
         plantilla_id: plantilla.id,
         logo_url: logoUrl,
@@ -504,9 +504,29 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
           urlMulticotizador: styleMulti
         },
         archivo_resultante_url: publicUrl
-      });
+      }).select('id').single();
 
       if (disenoError) throw disenoError;
+
+      // Fire-and-forget: generate AI copy for the new design
+      if (disenoData?.id) {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session) {
+            fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-design-copy`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${session.access_token}`,
+                  'Content-Type': 'application/json',
+                  'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+                },
+                body: JSON.stringify({ diseno_id: disenoData.id }),
+              }
+            ).catch(() => {});
+          }
+        });
+      }
 
       // Crear URL local del blob para descarga directa
       const blobUrl = URL.createObjectURL(blob);

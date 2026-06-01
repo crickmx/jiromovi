@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Image, Video, Plus, ListFilter as Filter, Trash2, Palette } from 'lucide-react';
+import { Image, Video, Plus, ListFilter as Filter, Trash2, Palette, Sparkles } from 'lucide-react';
 import { NuevaPlantillaModal } from '../components/NuevaPlantillaModal';
 import { PersonalizarPlantillaModal } from '../components/PersonalizarPlantillaModal';
 import { PlanMKTPremiumBlock } from '../components/PlanMKTPremiumBlock';
+import { DesignDetailModal } from '../components/publicidad/DesignDetailModal';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
 import { trackPublicityCreated } from '../lib/activityLogger';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,11 @@ interface Diseno {
   plantilla_id: string;
   archivo_resultante_url: string | null;
   created_at: string;
+  ai_copy: any | null;
+  ai_copy_generated_at: string | null;
+  ai_copy_version: number;
+  ai_copy_editado_manual: boolean;
+  ai_copy_original: any | null;
   publicidad_plantillas?: {
     titulo: string | null;
     tipo: string;
@@ -65,6 +71,7 @@ export function Publicidad() {
   const [showPersonalizarModal, setShowPersonalizarModal] = useState(false);
   const [selectedPlantilla, setSelectedPlantilla] = useState<Plantilla | null>(null);
   const [showPlanBlock, setShowPlanBlock] = useState(false);
+  const [selectedDiseno, setSelectedDiseno] = useState<Diseno | null>(null);
 
   const isAdmin = tienePermisoAdminEnModulo(usuario, MODULOS.PUBLICIDAD);
   const isAgente = usuario?.rol === 'Agente';
@@ -157,7 +164,13 @@ export function Publicidad() {
       .eq('usuario_id', usuario.id)
       .order('created_at', { ascending: false });
 
-    if (data) setDisenos(data);
+    if (data) {
+      setDisenos(data);
+      if (selectedDiseno) {
+        const updated = data.find(d => d.id === selectedDiseno.id);
+        if (updated) setSelectedDiseno(updated);
+      }
+    }
   };
 
   useEffect(() => {
@@ -421,14 +434,15 @@ export function Publicidad() {
               {disenos.map(diseno => (
                 <div
                   key={diseno.id}
-                  className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden hover:border-neutral-300 dark:hover:border-white/15 hover:shadow-sm transition-all duration-200"
+                  className="group bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden hover:border-accent/40 dark:hover:border-accent/30 hover:shadow-md transition-all duration-200 cursor-pointer"
+                  onClick={() => setSelectedDiseno(diseno)}
                 >
-                  <div className="relative aspect-[4/5] bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
+                  <div className="relative aspect-[4/5] bg-neutral-50 dark:bg-neutral-800 overflow-hidden">
                     {diseno.archivo_resultante_url ? (
                       <img
                         src={diseno.archivo_resultante_url}
                         alt="Diseno personalizado"
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
                         loading="lazy"
                         onError={(e) => {
                           const target = e.currentTarget;
@@ -441,19 +455,36 @@ export function Publicidad() {
                     <div className={`w-full h-full items-center justify-center absolute inset-0 ${diseno.archivo_resultante_url ? 'hidden' : 'flex'}`}>
                       <Image className="w-12 h-12 text-neutral-300 dark:text-white/20" />
                     </div>
+                    {/* Overlay on hover */}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 dark:group-hover:bg-white/5 transition-all duration-200 flex items-center justify-center">
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 px-3 py-1.5 bg-white/90 dark:bg-neutral-900/90 text-neutral-900 dark:text-white text-xs font-medium rounded-full shadow-sm">
+                        Ver detalle
+                      </span>
+                    </div>
+                    {/* AI Copy badge */}
+                    {diseno.ai_copy && (
+                      <div className="absolute top-2 right-2">
+                        <span className="flex items-center gap-1 px-2 py-0.5 bg-accent/90 text-white text-xs font-medium rounded-full shadow-sm">
+                          <Sparkles className="w-3 h-3" />
+                          Copy IA
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div className="p-3">
-                    <div className="flex flex-wrap gap-1.5 mb-1">
-                      {diseno.publicidad_plantillas?.categoria && (
-                        <span className="inline-block px-2 py-0.5 bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-white/60 text-xs rounded-md font-medium">
-                          {diseno.publicidad_plantillas.categoria}
-                        </span>
-                      )}
-                      {diseno.publicidad_plantillas?.ramo && (
-                        <span className="inline-block px-2 py-0.5 bg-accent/10 text-accent text-xs rounded-md font-medium">
-                          {diseno.publicidad_plantillas.ramo}
-                        </span>
-                      )}
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex flex-wrap gap-1.5">
+                        {diseno.publicidad_plantillas?.categoria && (
+                          <span className="inline-block px-2 py-0.5 bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-white/60 text-xs rounded-md font-medium">
+                            {diseno.publicidad_plantillas.categoria}
+                          </span>
+                        )}
+                        {diseno.publicidad_plantillas?.ramo && (
+                          <span className="inline-block px-2 py-0.5 bg-accent/10 text-accent text-xs rounded-md font-medium">
+                            {diseno.publicidad_plantillas.ramo}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <p className="text-xs text-neutral-500 dark:text-white/40 mb-3">
                       {new Date(diseno.created_at).toLocaleDateString('es-MX', {
@@ -466,12 +497,12 @@ export function Publicidad() {
                       <Button
                         size="sm"
                         className="flex-1"
-                        onClick={() => handleDescargarDiseno(diseno.archivo_resultante_url || '')}
+                        onClick={(e) => { e.stopPropagation(); handleDescargarDiseno(diseno.archivo_resultante_url || ''); }}
                       >
                         Descargar
                       </Button>
                       <button
-                        onClick={() => handleEliminarDiseno(diseno)}
+                        onClick={(e) => { e.stopPropagation(); handleEliminarDiseno(diseno); }}
                         className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all"
                         title="Eliminar diseno"
                       >
@@ -514,6 +545,15 @@ export function Publicidad() {
       {showPlanBlock && (
         <PlanMKTPremiumBlock
           onClose={() => setShowPlanBlock(false)}
+        />
+      )}
+
+      {selectedDiseno && (
+        <DesignDetailModal
+          isOpen={!!selectedDiseno}
+          onClose={() => setSelectedDiseno(null)}
+          diseno={selectedDiseno}
+          onUpdate={() => loadDisenos()}
         />
       )}
     </div>
