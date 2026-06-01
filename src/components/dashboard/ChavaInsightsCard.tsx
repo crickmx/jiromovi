@@ -217,8 +217,15 @@ export function ChavaInsightsCard({ usuario }: Props) {
 
         {/* CTAs — permanent + dynamic */}
         {(() => {
-          const permanentCtas: CTA[] = [
-            { label: 'Mi Página Web', path: '/mercadotecnia/mi-pagina-web', variant: 'primary' },
+          const webSlug = (usuario as any).web_slug as string | null | undefined;
+          const webHref = webSlug ? `https://agentedeseguros.website/${webSlug}` : null;
+          const permanentCtas: (CTA & { href?: string })[] = [
+            {
+              label: 'Mi Página Web',
+              path: '/mercadotecnia/mi-pagina-web',
+              href: webHref ?? undefined,
+              variant: 'primary',
+            },
             { label: 'Hablar con Chava IA', path: '/chava', variant: 'secondary' },
           ];
           const dynamicCtas = (analysis.ctas || []).filter(
@@ -227,11 +234,17 @@ export function ChavaInsightsCard({ usuario }: Props) {
           const allCtas = [...permanentCtas, ...dynamicCtas];
           return (
             <div className="flex flex-wrap gap-2">
-              {allCtas.map((cta, i) => (
+              {allCtas.map((cta, i) => {
+                const isExternal = !!(cta as any).href;
+                const href = isExternal ? (cta as any).href : cta.path;
+                return (
                 <a
                   key={i}
-                  href={cta.path}
-                  onClick={e => { e.preventDefault(); window.location.href = cta.path; }}
+                  href={href}
+                  {...(isExternal
+                    ? { target: '_blank', rel: 'noopener noreferrer' }
+                    : { onClick: (e: React.MouseEvent) => { e.preventDefault(); window.location.href = cta.path; } }
+                  )}
                   className={cn(
                     'inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all',
                     cta.variant === 'primary'
@@ -243,7 +256,8 @@ export function ChavaInsightsCard({ usuario }: Props) {
                   {cta.label}
                   <ArrowRight className="w-3 h-3 opacity-60" />
                 </a>
-              ))}
+                );
+              })}
             </div>
           );
         })()}

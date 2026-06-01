@@ -646,7 +646,7 @@ export function ProduccionMensualWidget({ usuario }: { usuario: Usuario }) {
 
 // ── Widget: Accesos Rápidos ───────────────────────────────────────────────────
 
-type QuickAction = { label: string; path: string; icon: React.ReactNode; color: string; bg: string };
+type QuickAction = { label: string; path: string; href?: string; icon: React.ReactNode; color: string; bg: string };
 
 const QUICK_ACTIONS: Record<string, QuickAction[]> = {
   Administrador: [
@@ -688,7 +688,15 @@ const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
 
 export function AccesosRapidosWidget({ usuario }: { usuario: Usuario }) {
   const nav = useNavigate();
-  const actions = QUICK_ACTIONS[usuario.rol] || DEFAULT_QUICK_ACTIONS;
+  const baseActions = QUICK_ACTIONS[usuario.rol] || DEFAULT_QUICK_ACTIONS;
+
+  // Inject external web page URL when slug exists
+  const actions = baseActions.map(a => {
+    if (a.path === '/mercadotecnia/mi-pagina-web' && (usuario as any).web_slug) {
+      return { ...a, href: `https://agentedeseguros.website/${(usuario as any).web_slug}` };
+    }
+    return a;
+  });
 
   return (
     <div className="rounded-2xl border border-neutral-100 dark:border-white/8 bg-white dark:bg-white/[0.02] p-5">
@@ -705,7 +713,13 @@ export function AccesosRapidosWidget({ usuario }: { usuario: Usuario }) {
         {actions.map((action, i) => (
           <button
             key={i}
-            onClick={() => nav(action.path)}
+            onClick={() => {
+              if (action.href) {
+                window.open(action.href, '_blank', 'noopener,noreferrer');
+              } else {
+                nav(action.path);
+              }
+            }}
             className="group flex flex-col items-center gap-2.5 p-3 rounded-xl border border-neutral-100 dark:border-white/6 hover:border-neutral-200 dark:hover:border-white/12 hover:bg-neutral-50 dark:hover:bg-white/4 hover:shadow-sm transition-all duration-200"
           >
             <div className={cn(
