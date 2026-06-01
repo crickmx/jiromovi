@@ -2,12 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { getRenderedSignature, stripExistingSignature } from '../lib/emailSignatureUtils';
-import {
-  Mail, Send, FileText, Trash2, AlertCircle, Inbox, Search, RefreshCw,
-  Paperclip, ChevronLeft, ChevronRight, Settings, Plus, Archive,
-  MailOpen, Eye, EyeOff, FolderOpen, X, ArrowLeft, Reply, ReplyAll,
-  Forward, Download, ChevronDown, ChevronUp, ClipboardList
-} from 'lucide-react';
+import { Mail, Send, FileText, Trash2, CircleAlert as AlertCircle, Inbox, Search, RefreshCw, Paperclip, ChevronLeft, ChevronRight, Settings, Plus, Archive, MailOpen, Eye, EyeOff, FolderOpen, X, ArrowLeft, Reply, ReplyAll, Forward, Download, ChevronDown, ChevronUp, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { IniciarTramiteEmailModal } from '@/components/email/IniciarTramiteEmailModal';
 
@@ -159,6 +154,7 @@ export function GestorEmails() {
   const [searching, setSearching] = useState(false);
 
   const [error, setError] = useState('');
+  const [connectionFailed, setConnectionFailed] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
 
   // Mobile: show reading pane full screen
@@ -193,10 +189,12 @@ export function GestorEmails() {
     try {
       const data = await callWebmail('list-folders');
       setFolders(data);
+      setConnectionFailed(false);
       setInitialLoading(false);
       loadMessages('INBOX', 1);
     } catch (err: any) {
       setError(err.message);
+      setConnectionFailed(true);
       setInitialLoading(false);
     }
   };
@@ -293,6 +291,40 @@ export function GestorEmails() {
             <Mail className="w-5 h-5 text-accent" />
           </div>
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Conectando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (connectionFailed) {
+    return (
+      <div className="h-full flex items-center justify-center bg-neutral-50 dark:bg-neutral-900 p-4">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-lg max-w-md w-full p-8 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-7 h-7 text-red-500" />
+          </div>
+          <h2 className="text-lg font-bold text-neutral-900 dark:text-white mb-2">No se pudo conectar</h2>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-1">
+            No se pudo establecer conexion con el servidor de correo.
+          </p>
+          <p className="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2 mb-6 break-words">
+            {error}
+          </p>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => { setConnectionFailed(false); setError(''); setInitialLoading(true); loadFolders(); }}
+              className="w-full py-2.5 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 rounded-xl font-medium hover:bg-neutral-50 dark:hover:bg-neutral-700 transition text-sm flex items-center justify-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Reintentar
+            </button>
+            <button
+              onClick={() => { setConnectionFailed(false); setError(''); setShowSetup(true); setHasConfig(false); }}
+              className="w-full py-2.5 bg-accent text-white rounded-xl font-semibold hover:bg-accent/90 transition text-sm"
+            >
+              Reconfigurar correo
+            </button>
+          </div>
         </div>
       </div>
     );

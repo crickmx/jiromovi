@@ -228,7 +228,9 @@ export default function PaginaPublicaAsesor() {
     if (!slug) return;
     try {
       const pageData = await getPublicWebPageBySlug(slug);
-      if (!pageData || !pageData.user || !pageData.config?.is_published) {
+      if (!pageData || !pageData.user) {
+        setNotFound(true);
+      } else if (pageData.config?.is_published === false) {
         setNotFound(true);
       } else {
         setData(pageData);
@@ -414,10 +416,10 @@ export default function PaginaPublicaAsesor() {
   }
 
   const { user, config, insurers, categories } = data;
-  const primaryColor = config.primary_color;
-  const secondaryColor = config.secondary_color;
+  const primaryColor = config?.primary_color || '#1e40af';
+  const secondaryColor = config?.secondary_color || '#059669';
 
-  const textToDisplay = typeof config.custom_text === 'string' && config.custom_text.trim()
+  const textToDisplay = typeof config?.custom_text === 'string' && config.custom_text.trim()
     ? config.custom_text.split('\n').filter(t => t.trim())
     : DEFAULT_TEXT.split('\n').filter(t => t.trim());
 
