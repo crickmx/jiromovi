@@ -36,7 +36,7 @@ export function MoviAuthProvider({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function loadProfile(userId: string) {
+  async function loadProfile(userId: string, isInitial = false) {
     console.log('[MoviAuth] loadProfile userId=', userId);
     const { data } = await supabase
       .from('usuarios')
@@ -50,8 +50,11 @@ export function MoviAuthProvider({ children }: { children: ReactNode }) {
 
     if (!data) {
       console.log('[MoviAuth] No usuario found for userId=', userId);
-      setUsuario(null);
-      setLoading(false);
+      // Only clear the user on an initial load — never during a silent refresh
+      if (isInitial) {
+        setUsuario(null);
+        setLoading(false);
+      }
       return;
     }
 
@@ -78,7 +81,7 @@ export function MoviAuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         console.log('[MoviAuth] initial session found, userId=', session.user.id);
-        loadProfile(session.user.id);
+        loadProfile(session.user.id, true);
       } else {
         console.log('[MoviAuth] no initial session');
         setLoading(false);
@@ -88,13 +91,19 @@ export function MoviAuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[MoviAuth] onAuthStateChange event=', event, 'hasSession=', !!session);
       if (event === 'SIGNED_IN' && session) {
-        setLoading(true);
+        // Only show the full loader on the very first sign-in (no user loaded yet).
+        // On tab-focus Supabase re-fires SIGNED_IN for an already-authenticated session;
+        // setting loading=true in that case unmounts the page and causes a blank screen.
+        setUsuario(prev => {
+          if (!prev) setLoading(true);
+          return prev;
+        });
         (async () => { await loadProfile(session.user.id); })();
       } else if (
         (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') &&
         session
       ) {
-        // Silent refresh — don't show loader to avoid blank screen on navigation
+        // Silent refresh — never touch loading state
         (async () => { await loadProfile(session.user.id); })();
       } else if (event === 'SIGNED_OUT') {
         console.log('[MoviAuth] signed out');
