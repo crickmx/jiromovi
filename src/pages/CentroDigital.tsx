@@ -1,5 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Folder, Plus, Search, File, Download, Trash2, RotateCcw, Eye, Upload, Building2, Users, MoveVertical as MoreVertical, Archive, FileText, FileSpreadsheet, FileImage, FileVideoCamera as FileVideo, File as FileAudio, Grid2x2 as Grid, List, BookOpen, Star, Clock, Tag, ListFilter as Filter, X, ChevronDown, ChevronRight, Megaphone, Shield, Car, Heart, Hop as Home, Briefcase, Globe, Zap, Brain } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import {
+  Folder, Plus, Search, File, Download, Trash2, RotateCcw, Eye,
+  Upload, Building2, Users, MoveVertical as MoreVertical, Archive,
+  FileText, FileSpreadsheet, FileImage, FileVideoCamera as FileVideo,
+  File as FileAudio, Grid2x2 as Grid, List, X, ChevronRight, Brain,
+  RefreshCw,
+} from 'lucide-react';
 import { PageHeader } from '../components/ui/page-header';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -10,78 +16,17 @@ import { SubirArchivoModal } from '../components/centroDigital/SubirArchivoModal
 import {
   trackDigitalCenterOpened, trackDigitalFolderOpened,
   trackDigitalFileViewed, trackDigitalFileDownloaded,
-  trackDigitalFileUploaded, trackDigitalFileDeleted
+  trackDigitalFileUploaded, trackDigitalFileDeleted,
 } from '../lib/activityLogger';
 import {
   obtenerCarpetas, obtenerArchivos, obtenerArchivosPapelera,
   descargarArchivo, eliminarArchivo, restaurarArchivo,
-  eliminarArchivoDefinitivamente, eliminarCarpeta, formatearTamano
+  eliminarArchivoDefinitivamente, eliminarCarpeta, formatearTamano,
 } from '../lib/centroDigitalUtils';
 import { supabase } from '../lib/supabase';
 import type { CentroDigitalCarpeta, CentroDigitalArchivo } from '../lib/centroDigitalTypes';
 
-// ── Types ──────────────────────────────────────────────────────────────────
-interface DigitalCenterDocument {
-  id: string;
-  titulo: string;
-  descripcion: string | null;
-  aseguradora: string | null;
-  ramo: string | null;
-  categoria: string | null;
-  tipo: string | null;
-  formato: string | null;
-  tags: string[];
-  url_original: string | null;
-  storage_path: string | null;
-  tamano_bytes: number | null;
-  is_featured: boolean;
-  is_recent: boolean;
-  activo: boolean;
-  created_at: string;
-}
-
-interface DigitalCenterAd {
-  id: string;
-  titulo: string;
-  subtitulo: string | null;
-  cta_texto: string;
-  cta_url: string | null;
-  imagen_url: string | null;
-  color_fondo: string;
-  color_texto: string;
-}
-
-// ── Insurer config ──────────────────────────────────────────────────────────
-const INSURER_LOGOS: Record<string, string> = {
-  'GNP': '/gnp-seguros.png',
-  'AXA': '/allianz-seguros-logo-png_seeklogo-179147.png',
-  'Allianz': '/allianz-seguros-logo-png_seeklogo-179147.png',
-  'CHUBB': '/logo_chubb-04.png',
-  'Chubb': '/logo_chubb-04.png',
-  'MAPFRE': '/mapfre-seguros-logo-png_seeklogo-225013.png',
-  'Afirme': '/afirme-logo-png_seeklogo-4173.png',
-  'ANA': '/ana-seguros-logo-png_seeklogo-187684.png',
-  'ANA Seguros': '/ana-seguros-logo-png_seeklogo-187684.png',
-  'Inbursa': '/inbursa-logo-png_seeklogo-403106.png',
-  'Qualitas': '/qualitas-compania-de-seguros-logo-png_seeklogo-329374-2.png',
-  'Atlas': '/seguros-atlas-logo-png_seeklogo-251455.png',
-  'Zurich': '/zurich-logo-png_seeklogo-156664.png',
-  'BUPA': '/logo-bupa.png',
-  'BX+': '/logo-bx.png',
-};
-
-const RAMO_ICONS: Record<string, typeof Shield> = {
-  'Autos': Car,
-  'GMM': Heart,
-  'Vida': Heart,
-  'Daños': Home,
-  'Empresarial': Briefcase,
-  'Fianzas': Shield,
-  'Accidentes': Zap,
-  'Viajes': Globe,
-};
-
-// ── Helpers ─────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 function FileIcon({ mime }: { mime: string | null }) {
   if (!mime) return <File className="w-8 h-8 text-gray-400" />;
   if (mime.startsWith('image/')) return <FileImage className="w-8 h-8 text-blue-500" />;
@@ -109,50 +54,87 @@ function SkeletonCard() {
   );
 }
 
-function AdBanner({ ad }: { ad: DigitalCenterAd }) {
+// ── Bulk-import modal (admin only) ───────────────────────────────────────────
+function BulkImportModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [status, setStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+  const [log, setLog] = useState<string[]>([]);
+
+  async function runImport() {
+    setStatus('running');
+    setLog(['Iniciando importación de carpetas por aseguradora...']);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Sin sesión');
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bulk-import-index-batch`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ action: 'provision_insurer_folders' }),
+        }
+      );
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Error del servidor');
+
+      setLog(prev => [...prev, ...(json.log || [`Carpetas creadas: ${json.carpetas_creadas || 0}`])]);
+      setStatus('done');
+      onSuccess();
+    } catch (err: any) {
+      setLog(prev => [...prev, `Error: ${err.message}`]);
+      setStatus('error');
+    }
+  }
+
   return (
-    <div
-      className="relative overflow-hidden rounded-2xl p-6 flex items-center gap-5 shadow-sm"
-      style={{ backgroundColor: ad.color_fondo, color: ad.color_texto }}
-    >
-      {/* Background decoration */}
-      <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full opacity-10"
-        style={{ backgroundColor: ad.color_texto }} />
-      <div className="absolute -right-4 -bottom-6 w-24 h-24 rounded-full opacity-10"
-        style={{ backgroundColor: ad.color_texto }} />
-
-      <div className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center bg-white/20">
-        <Megaphone className="w-6 h-6" style={{ color: ad.color_texto }} />
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <h2 className="text-lg font-bold text-gray-900">Crear estructura de carpetas</h2>
+          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 rounded">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="p-6 space-y-4">
+          <p className="text-sm text-gray-600">
+            Esta acción crea las carpetas por aseguradora y ramo en el Centro Digital.
+            No elimina ni modifica carpetas existentes.
+          </p>
+          <div className="bg-gray-50 rounded-xl border p-4 min-h-[120px] font-mono text-xs text-gray-700 space-y-1 overflow-y-auto max-h-48">
+            {log.length === 0
+              ? <p className="text-gray-400">Listo para iniciar...</p>
+              : log.map((line, i) => <p key={i}>{line}</p>)
+            }
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 px-6 py-4 border-t">
+          <Button variant="outline" onClick={onClose} disabled={status === 'running'}>Cancelar</Button>
+          {status === 'idle' || status === 'error' ? (
+            <Button onClick={runImport}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              {status === 'error' ? 'Reintentar' : 'Crear carpetas'}
+            </Button>
+          ) : status === 'running' ? (
+            <Button disabled>
+              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />Procesando...
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={onClose}>Listo</Button>
+          )}
+        </div>
       </div>
-
-      <div className="flex-1 min-w-0">
-        <p className="font-bold text-base leading-snug" style={{ color: ad.color_texto }}>{ad.titulo}</p>
-        {ad.subtitulo && (
-          <p className="text-sm mt-0.5 opacity-80 leading-snug" style={{ color: ad.color_texto }}>{ad.subtitulo}</p>
-        )}
-      </div>
-
-      {ad.cta_url && (
-        <a
-          href={ad.cta_url}
-          className="flex-shrink-0 px-4 py-2 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 bg-white/20 hover:bg-white/30"
-          style={{ color: ad.color_texto }}
-        >
-          {ad.cta_texto}
-        </a>
-      )}
     </div>
   );
 }
 
-// ── Main component ──────────────────────────────────────────────────────────
+// ── Main component ────────────────────────────────────────────────────────────
 export default function CentroDigital() {
   const { usuario } = useAuth();
 
-  // Tabs
-  const [activeTab, setActiveTab] = useState<'mis-archivos' | 'base-conocimiento'>('mis-archivos');
-
-  // My files state
   const [carpetas, setCarpetas] = useState<CentroDigitalCarpeta[]>([]);
   const [carpetaSeleccionada, setCarpetaSeleccionada] = useState<CentroDigitalCarpeta | null>(null);
   const [archivos, setArchivos] = useState<CentroDigitalArchivo[]>([]);
@@ -161,39 +143,20 @@ export default function CentroDigital() {
   const [carpetaEditar, setCarpetaEditar] = useState<CentroDigitalCarpeta | null>(null);
   const [showCarpetaModal, setShowCarpetaModal] = useState(false);
   const [showSubirModal, setShowSubirModal] = useState(false);
+  const [showBulkImport, setShowBulkImport] = useState(false);
   const [archivoPrevisualizar, setArchivoPrevisualizar] = useState<CentroDigitalArchivo | null>(null);
   const [vistaArchivos, setVistaArchivos] = useState<'grid' | 'list'>('grid');
   const [loadingCarpetas, setLoadingCarpetas] = useState(true);
-
-  // Knowledge base state
-  const [documentos, setDocumentos] = useState<DigitalCenterDocument[]>([]);
-  const [ads, setAds] = useState<DigitalCenterAd[]>([]);
-  const [loadingDocs, setLoadingDocs] = useState(true);
-
-  // Shared search
   const [busqueda, setBusqueda] = useState('');
-
-  // Knowledge base filters
-  const [filtroAseguradora, setFiltroAseguradora] = useState('');
-  const [filtroRamo, setFiltroRamo] = useState('');
-  const [filtroCategoria, setFiltroCategoria] = useState('');
-  const [filtroFormato, setFiltroFormato] = useState('');
-  const [filtroEtiqueta, setFiltroEtiqueta] = useState('');
-  const [soloDestacados, setSoloDestacados] = useState(false);
-  const [soloRecientes, setSoloRecientes] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
 
   const esAdmin = usuario?.rol === 'Administrador';
   const esGerente = usuario?.rol === 'Gerente';
   const puedeSubirArchivos = esAdmin || esGerente;
   const puedeCrearCarpetas = esAdmin || esGerente;
 
-  // ── Load data ─────────────────────────────────────────────────────────────
   useEffect(() => {
     trackDigitalCenterOpened();
     cargarCarpetas();
-    cargarDocumentos();
-    cargarAds();
   }, []);
 
   useEffect(() => {
@@ -230,32 +193,6 @@ export default function CentroDigital() {
     } catch (e) { console.error(e); }
   }
 
-  async function cargarDocumentos() {
-    try {
-      setLoadingDocs(true);
-      const { data } = await supabase
-        .from('digital_center_documents')
-        .select('*')
-        .eq('activo', true)
-        .order('is_featured', { ascending: false })
-        .order('created_at', { ascending: false });
-      setDocumentos(data || []);
-    } catch (e) { console.error(e); }
-    finally { setLoadingDocs(false); }
-  }
-
-  async function cargarAds() {
-    try {
-      const { data } = await supabase
-        .from('digital_center_ads')
-        .select('*')
-        .eq('activo', true)
-        .order('orden');
-      setAds(data || []);
-    } catch (e) { console.error(e); }
-  }
-
-  // ── Handlers ───────────────────────────────────────────────────────────────
   async function handleEliminarCarpeta(carpetaId: string) {
     if (!confirm('¿Eliminar esta carpeta?')) return;
     try {
@@ -301,15 +238,14 @@ export default function CentroDigital() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { alert('Sesión expirada'); return; }
-
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/centro-digital-index-document`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({ archivo_id: archivoId }),
         }
@@ -326,55 +262,6 @@ export default function CentroDigital() {
   const esImagen = (mime: string | null) => mime?.startsWith('image/') ?? false;
   const esPDF = (mime: string | null) => mime?.includes('pdf') ?? false;
 
-  // ── Derived data ───────────────────────────────────────────────────────────
-  const aseguradoras = useMemo(() =>
-    [...new Set(documentos.map(d => d.aseguradora).filter(Boolean))] as string[],
-    [documentos]
-  );
-  const ramos = useMemo(() =>
-    [...new Set(documentos.map(d => d.ramo).filter(Boolean))] as string[],
-    [documentos]
-  );
-  const categorias = useMemo(() =>
-    [...new Set(documentos.map(d => d.categoria).filter(Boolean))] as string[],
-    [documentos]
-  );
-  const formatos = useMemo(() =>
-    [...new Set(documentos.map(d => d.formato).filter(Boolean))] as string[],
-    [documentos]
-  );
-  const todasEtiquetas = useMemo(() =>
-    [...new Set(documentos.flatMap(d => d.tags || []))],
-    [documentos]
-  );
-
-  const documentosFiltrados = useMemo(() => {
-    return documentos.filter(d => {
-      if (busqueda && !d.titulo.toLowerCase().includes(busqueda.toLowerCase()) &&
-        !(d.descripcion || '').toLowerCase().includes(busqueda.toLowerCase()) &&
-        !(d.aseguradora || '').toLowerCase().includes(busqueda.toLowerCase())) return false;
-      if (filtroAseguradora && d.aseguradora !== filtroAseguradora) return false;
-      if (filtroRamo && d.ramo !== filtroRamo) return false;
-      if (filtroCategoria && d.categoria !== filtroCategoria) return false;
-      if (filtroFormato && d.formato !== filtroFormato) return false;
-      if (filtroEtiqueta && !(d.tags || []).includes(filtroEtiqueta)) return false;
-      if (soloDestacados && !d.is_featured) return false;
-      if (soloRecientes && !d.is_recent) return false;
-      return true;
-    });
-  }, [documentos, busqueda, filtroAseguradora, filtroRamo, filtroCategoria, filtroFormato, filtroEtiqueta, soloDestacados, soloRecientes]);
-
-  // Group by aseguradora
-  const docsPorAseguradora = useMemo(() => {
-    const map: Record<string, DigitalCenterDocument[]> = {};
-    for (const doc of documentosFiltrados) {
-      const key = doc.aseguradora || 'General';
-      if (!map[key]) map[key] = [];
-      map[key].push(doc);
-    }
-    return map;
-  }, [documentosFiltrados]);
-
   const carpetasFiltradas = carpetas.filter(c =>
     c.nombre.toLowerCase().includes(busqueda.toLowerCase())
   );
@@ -382,20 +269,7 @@ export default function CentroDigital() {
     a.nombre.toLowerCase().includes(busqueda.toLowerCase())
   );
 
-  const activeFiltersCount = [filtroAseguradora, filtroRamo, filtroCategoria, filtroFormato, filtroEtiqueta]
-    .filter(Boolean).length + (soloDestacados ? 1 : 0) + (soloRecientes ? 1 : 0);
-
-  function clearFilters() {
-    setFiltroAseguradora('');
-    setFiltroRamo('');
-    setFiltroCategoria('');
-    setFiltroFormato('');
-    setFiltroEtiqueta('');
-    setSoloDestacados(false);
-    setSoloRecientes(false);
-  }
-
-  // ── Papelera view ──────────────────────────────────────────────────────────
+  // ── Papelera view ────────────────────────────────────────────────────────
   if (showPapelera && esAdmin) {
     return (
       <>
@@ -457,12 +331,14 @@ export default function CentroDigital() {
     );
   }
 
-  // ── Folder contents view ──────────────────────────────────────────────────
+  // ── Folder contents view ─────────────────────────────────────────────────
   if (carpetaSeleccionada) {
     return (
       <>
-        <PageHeader title={carpetaSeleccionada.nombre}
-          description={carpetaSeleccionada.descripcion || 'Archivos de la carpeta'}>
+        <PageHeader
+          title={carpetaSeleccionada.nombre}
+          description={carpetaSeleccionada.descripcion || 'Archivos de la carpeta'}
+        >
           <div className="flex gap-2">
             <div className="flex border rounded-lg overflow-hidden">
               {(['grid', 'list'] as const).map(v => (
@@ -646,20 +522,25 @@ export default function CentroDigital() {
     );
   }
 
-  // ── Main view ──────────────────────────────────────────────────────────────
+  // ── Main folder list view ────────────────────────────────────────────────
   return (
     <>
       <PageHeader
         title="Centro Digital"
-        description="Repositorio centralizado de documentos, archivos y base de conocimiento"
+        description="Repositorio de documentos y archivos organizados por carpetas"
       >
         <div className="flex gap-2">
-          {esAdmin && activeTab === 'mis-archivos' && (
-            <Button variant="outline" onClick={() => setShowPapelera(true)}>
-              <Archive className="w-4 h-4 mr-2" />Papelera
-            </Button>
+          {esAdmin && (
+            <>
+              <Button variant="outline" onClick={() => setShowPapelera(true)}>
+                <Archive className="w-4 h-4 mr-2" />Papelera
+              </Button>
+              <Button variant="outline" onClick={() => setShowBulkImport(true)}>
+                <RefreshCw className="w-4 h-4 mr-2" />Importar estructura
+              </Button>
+            </>
           )}
-          {puedeCrearCarpetas && activeTab === 'mis-archivos' && (
+          {puedeCrearCarpetas && (
             <Button onClick={() => setShowCarpetaModal(true)}>
               <Plus className="w-4 h-4 mr-2" />Nueva carpeta
             </Button>
@@ -667,382 +548,91 @@ export default function CentroDigital() {
         </div>
       </PageHeader>
 
-      {/* Tab bar */}
-      <div className="px-6 border-b border-gray-100 bg-white">
-        <div className="flex gap-1">
-          <button
-            onClick={() => setActiveTab('mis-archivos')}
-            className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-2 ${
-              activeTab === 'mis-archivos'
-                ? 'border-accent text-accent'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <Folder className="w-4 h-4" />
-            Mis Archivos
-          </button>
-          <button
-            onClick={() => setActiveTab('base-conocimiento')}
-            className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-2 ${
-              activeTab === 'base-conocimiento'
-                ? 'border-accent text-accent'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <BookOpen className="w-4 h-4" />
-            Base de Conocimiento
-            {documentos.length > 0 && (
-              <span className="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full">
-                {documentos.length}
-              </span>
-            )}
-          </button>
+      <div className="p-6">
+        <div className="mb-5 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input placeholder="Buscar carpetas..." value={busqueda}
+            onChange={e => setBusqueda(e.target.value)} className="pl-9" />
         </div>
+
+        {loadingCarpetas ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
+          </div>
+        ) : carpetasFiltradas.length === 0 ? (
+          <EmptyState icon={Folder} title="Sin carpetas"
+            description="Aún no hay carpetas en el Centro Digital"
+            action={puedeCrearCarpetas ? (
+              <Button onClick={() => setShowCarpetaModal(true)}>
+                <Plus className="w-4 h-4 mr-2" />Crear primera carpeta
+              </Button>
+            ) : undefined} />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {carpetasFiltradas.map(carpeta => (
+              <div key={carpeta.id}
+                className="bg-white border border-gray-100 rounded-xl p-4 hover:shadow-md hover:border-gray-200 transition-all cursor-pointer group"
+                onClick={() => setCarpetaSeleccionada(carpeta)}>
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Folder className="w-5 h-5 text-accent" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 truncate">{carpeta.nombre}</h3>
+                      {carpeta.descripcion && (
+                        <p className="text-xs text-gray-500 line-clamp-2 mt-0.5">{carpeta.descripcion}</p>
+                      )}
+                    </div>
+                  </div>
+                  {(esAdmin || esGerente) && (
+                    <button
+                      onClick={e => { e.stopPropagation(); setCarpetaEditar(carpeta); setShowCarpetaModal(true); }}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-gray-600 rounded transition-opacity">
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">
+                    <Building2 className="w-3 h-3" />
+                    {carpeta.todas_oficinas ? 'Todas las oficinas' : `${carpeta.oficinas_permitidas?.length || 0} oficinas`}
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-xs rounded-full">
+                    <Users className="w-3 h-3" />
+                    {carpeta.todos_roles ? 'Todos los roles' : `${carpeta.roles_permitidos?.length || 0} roles`}
+                  </span>
+                  {carpeta.enable_chava_ai && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-teal-50 text-teal-700 text-xs rounded-full">
+                      <Brain className="w-3 h-3" />
+                      Chava AI
+                    </span>
+                  )}
+                </div>
+                <div className="mt-3 pt-3 border-t border-gray-50 flex items-center justify-between">
+                  <span className="text-xs text-gray-400">{new Date(carpeta.created_at).toLocaleDateString()}</span>
+                  <span className="text-xs text-accent font-medium group-hover:underline flex items-center gap-1">
+                    Ver archivos <ChevronRight className="w-3 h-3" />
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* ── Tab: Mis Archivos ── */}
-      {activeTab === 'mis-archivos' && (
-        <div className="p-6">
-          <div className="mb-5 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input placeholder="Buscar carpetas..." value={busqueda}
-              onChange={e => setBusqueda(e.target.value)} className="pl-9" />
-          </div>
-
-          {loadingCarpetas ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
-            </div>
-          ) : carpetasFiltradas.length === 0 ? (
-            <EmptyState icon={Folder} title="Sin carpetas"
-              description="Aún no hay carpetas en el Centro Digital"
-              action={puedeCrearCarpetas ? (
-                <Button onClick={() => setShowCarpetaModal(true)}>
-                  <Plus className="w-4 h-4 mr-2" />Crear primera carpeta
-                </Button>
-              ) : undefined} />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {carpetasFiltradas.map(carpeta => (
-                <div key={carpeta.id}
-                  className="bg-white border border-gray-100 rounded-xl p-4 hover:shadow-md hover:border-gray-200 transition-all cursor-pointer group"
-                  onClick={() => setCarpetaSeleccionada(carpeta)}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <Folder className="w-5 h-5 text-accent" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900 truncate">{carpeta.nombre}</h3>
-                        {carpeta.descripcion && (
-                          <p className="text-xs text-gray-500 line-clamp-2 mt-0.5">{carpeta.descripcion}</p>
-                        )}
-                      </div>
-                    </div>
-                    {(esAdmin || esGerente) && (
-                      <button
-                        onClick={e => { e.stopPropagation(); setCarpetaEditar(carpeta); setShowCarpetaModal(true); }}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-gray-600 rounded transition-opacity">
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">
-                      <Building2 className="w-3 h-3" />
-                      {carpeta.todas_oficinas ? 'Todas las oficinas' : `${carpeta.oficinas_permitidas?.length || 0} oficinas`}
-                    </span>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-xs rounded-full">
-                      <Users className="w-3 h-3" />
-                      {carpeta.todos_roles ? 'Todos los roles' : `${carpeta.roles_permitidos?.length || 0} roles`}
-                    </span>
-                    {carpeta.enable_chava_ai && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-teal-50 text-teal-700 text-xs rounded-full">
-                        <Brain className="w-3 h-3" />
-                        Chava AI
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-gray-50 flex items-center justify-between">
-                    <span className="text-xs text-gray-400">{new Date(carpeta.created_at).toLocaleDateString()}</span>
-                    <span className="text-xs text-accent font-medium group-hover:underline flex items-center gap-1">
-                      Ver archivos <ChevronRight className="w-3 h-3" />
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Tab: Base de Conocimiento ── */}
-      {activeTab === 'base-conocimiento' && (
-        <div className="p-6 space-y-5">
-          {/* Ads */}
-          {ads.length > 0 && (
-            <div className="space-y-3">
-              {ads.map(ad => <AdBanner key={ad.id} ad={ad} />)}
-            </div>
-          )}
-
-          {/* Search + filters toolbar */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input placeholder="Buscar documentos, aseguradoras, temas..."
-                value={busqueda} onChange={e => setBusqueda(e.target.value)} className="pl-9" />
-            </div>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                activeFiltersCount > 0
-                  ? 'bg-accent text-white border-accent'
-                  : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
-              }`}>
-              <Filter className="w-4 h-4" />
-              Filtros
-              {activeFiltersCount > 0 && (
-                <span className="bg-white text-accent rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
-                  {activeFiltersCount}
-                </span>
-              )}
-              <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
-            </button>
-          </div>
-
-          {/* Filter panel */}
-          {showFilters && (
-            <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-3">
-                <div>
-                  <label className="text-xs font-medium text-gray-500 mb-1 block">Aseguradora</label>
-                  <select value={filtroAseguradora} onChange={e => setFiltroAseguradora(e.target.value)}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-accent/20">
-                    <option value="">Todas</option>
-                    {aseguradoras.map(a => <option key={a} value={a}>{a}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 mb-1 block">Ramo</label>
-                  <select value={filtroRamo} onChange={e => setFiltroRamo(e.target.value)}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-accent/20">
-                    <option value="">Todos</option>
-                    {ramos.map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 mb-1 block">Categoría</label>
-                  <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-accent/20">
-                    <option value="">Todas</option>
-                    {categorias.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 mb-1 block">Formato</label>
-                  <select value={filtroFormato} onChange={e => setFiltroFormato(e.target.value)}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-accent/20">
-                    <option value="">Todos</option>
-                    {formatos.map(f => <option key={f} value={f}>{f.toUpperCase()}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 mb-1 block">Etiqueta</label>
-                  <select value={filtroEtiqueta} onChange={e => setFiltroEtiqueta(e.target.value)}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-accent/20">
-                    <option value="">Todas</option>
-                    {todasEtiquetas.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 pt-3 border-t border-gray-50">
-                <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
-                  <input type="checkbox" checked={soloDestacados} onChange={e => setSoloDestacados(e.target.checked)}
-                    className="rounded border-gray-300 text-accent focus:ring-accent/20" />
-                  <Star className="w-3.5 h-3.5 text-amber-500" />
-                  Solo destacados
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
-                  <input type="checkbox" checked={soloRecientes} onChange={e => setSoloRecientes(e.target.checked)}
-                    className="rounded border-gray-300 text-accent focus:ring-accent/20" />
-                  <Clock className="w-3.5 h-3.5 text-blue-500" />
-                  Solo recientes
-                </label>
-                {activeFiltersCount > 0 && (
-                  <button onClick={clearFilters}
-                    className="ml-auto text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1">
-                    <X className="w-3.5 h-3.5" />Limpiar filtros
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Active filter chips */}
-          {activeFiltersCount > 0 && !showFilters && (
-            <div className="flex flex-wrap gap-2">
-              {filtroAseguradora && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-accent/10 text-accent text-xs rounded-full font-medium">
-                  {filtroAseguradora}
-                  <button onClick={() => setFiltroAseguradora('')}><X className="w-3 h-3" /></button>
-                </span>
-              )}
-              {filtroRamo && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
-                  {filtroRamo}
-                  <button onClick={() => setFiltroRamo('')}><X className="w-3 h-3" /></button>
-                </span>
-              )}
-              {filtroCategoria && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full font-medium">
-                  {filtroCategoria}
-                  <button onClick={() => setFiltroCategoria('')}><X className="w-3 h-3" /></button>
-                </span>
-              )}
-              {soloDestacados && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-700 text-xs rounded-full font-medium">
-                  <Star className="w-3 h-3" />Destacados
-                  <button onClick={() => setSoloDestacados(false)}><X className="w-3 h-3" /></button>
-                </span>
-              )}
-              {soloRecientes && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
-                  <Clock className="w-3 h-3" />Recientes
-                  <button onClick={() => setSoloRecientes(false)}><X className="w-3 h-3" /></button>
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Documents */}
-          {loadingDocs ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[...Array(9)].map((_, i) => <SkeletonCard key={i} />)}
-            </div>
-          ) : documentosFiltrados.length === 0 ? (
-            <EmptyState icon={BookOpen} title="Sin documentos"
-              description={busqueda || activeFiltersCount > 0
-                ? 'No se encontraron documentos con los filtros aplicados'
-                : 'La base de conocimiento aún no tiene documentos'} />
-          ) : filtroAseguradora ? (
-            // Flat list when filtering by insurer
-            <DocumentGrid documentos={documentosFiltrados} />
-          ) : (
-            // Grouped by insurer
-            <div className="space-y-8">
-              {Object.entries(docsPorAseguradora).map(([aseg, docs]) => {
-                const logo = INSURER_LOGOS[aseg];
-                const RamoIcon = RAMO_ICONS[docs[0]?.ramo || ''] || Shield;
-                return (
-                  <div key={aseg}>
-                    <div className="flex items-center gap-3 mb-3">
-                      {logo ? (
-                        <img src={logo} alt={aseg} className="h-8 w-auto object-contain" />
-                      ) : (
-                        <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                          <RamoIcon className="w-4 h-4 text-gray-500" />
-                        </div>
-                      )}
-                      <h2 className="text-base font-bold text-gray-900">{aseg}</h2>
-                      <span className="text-xs text-gray-400 font-medium px-2 py-0.5 bg-gray-100 rounded-full">
-                        {docs.length} {docs.length === 1 ? 'documento' : 'documentos'}
-                      </span>
-                    </div>
-                    <DocumentGrid documentos={docs} />
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Modals */}
       {showCarpetaModal && (
         <CarpetaModal
           carpeta={carpetaEditar}
           onClose={() => { setShowCarpetaModal(false); setCarpetaEditar(null); }}
           onSuccess={async () => { setShowCarpetaModal(false); setCarpetaEditar(null); await cargarCarpetas(); }} />
       )}
+
+      {showBulkImport && (
+        <BulkImportModal
+          onClose={() => setShowBulkImport(false)}
+          onSuccess={async () => { setShowBulkImport(false); await cargarCarpetas(); }} />
+      )}
     </>
-  );
-}
-
-// ── DocumentGrid subcomponent ────────────────────────────────────────────────
-function DocumentGrid({ documentos }: { documentos: DigitalCenterDocument[] }) {
-  const formatoColor: Record<string, string> = {
-    pdf: 'bg-red-50 text-red-600',
-    xlsx: 'bg-emerald-50 text-emerald-700',
-    docx: 'bg-blue-50 text-blue-700',
-    pptx: 'bg-orange-50 text-orange-700',
-    csv: 'bg-teal-50 text-teal-700',
-    jpg: 'bg-violet-50 text-violet-700',
-    png: 'bg-violet-50 text-violet-700',
-  };
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-      {documentos.map(doc => (
-        <div key={doc.id}
-          className="bg-white rounded-xl border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all group p-4">
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center">
-              <FileText className="w-5 h-5 text-gray-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2 flex-1">
-                  {doc.titulo}
-                  {doc.is_featured && <Star className="inline-block w-3 h-3 text-amber-500 ml-1 flex-shrink-0" />}
-                </h3>
-              </div>
-              {doc.descripcion && (
-                <p className="text-xs text-gray-500 mt-1 line-clamp-2">{doc.descripcion}</p>
-              )}
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {doc.ramo && (
-                  <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 text-xs rounded font-medium">{doc.ramo}</span>
-                )}
-                {doc.categoria && (
-                  <span className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded font-medium">{doc.categoria}</span>
-                )}
-                {doc.formato && (
-                  <span className={`px-1.5 py-0.5 text-xs rounded font-medium uppercase ${formatoColor[doc.formato.toLowerCase()] || 'bg-gray-100 text-gray-600'}`}>
-                    {doc.formato}
-                  </span>
-                )}
-                {doc.is_recent && (
-                  <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-600 text-xs rounded font-medium flex items-center gap-0.5">
-                    <Clock className="w-2.5 h-2.5" />Reciente
-                  </span>
-                )}
-              </div>
-              {(doc.tags || []).length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-1.5">
-                  {doc.tags.slice(0, 3).map(tag => (
-                    <span key={tag} className="inline-flex items-center gap-0.5 text-xs text-gray-400">
-                      <Tag className="w-2.5 h-2.5" />{tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {(doc.url_original || doc.storage_path) && (
-            <div className="mt-3 pt-3 border-t border-gray-50 flex justify-end">
-              <a
-                href={doc.url_original || `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/digital-center-docs/${doc.storage_path}`}
-                target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs text-accent font-medium hover:underline">
-                <Download className="w-3.5 h-3.5" />
-                {doc.storage_path ? 'Descargar' : 'Ver documento'}
-              </a>
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
   );
 }

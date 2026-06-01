@@ -62,12 +62,41 @@ Deno.serve(async (req: Request) => {
 
     if (!usuario || usuario.rol !== "Administrador") {
       return new Response(
-        JSON.stringify({ error: "Solo administradores pueden indexar" }),
+        JSON.stringify({ error: "Solo administradores pueden realizar esta acción" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const { job_id, batch_size }: IndexBatchRequest = await req.json();
+    const body = await req.json();
+
+    // ── Provision insurer folders action (no job_id needed) ──────────────────
+    if (body.action === "provision_insurer_folders") {
+      const { data: result, error: fnErr } = await supabase
+        .rpc("provision_insurer_folders");
+
+      if (fnErr) {
+        return new Response(
+          JSON.stringify({ error: fnErr.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const log: string[] = [];
+      log.push(`Carpetas nuevas creadas: ${result?.carpetas_creadas ?? 0}`);
+      log.push(`Carpetas ya existentes (omitidas): ${result?.carpetas_existentes ?? 0}`);
+      log.push("Estructura de carpetas lista.");
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          carpetas_creadas: result?.carpetas_creadas ?? 0,
+          log,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { job_id, batch_size }: IndexBatchRequest = body;
 
     if (!job_id) {
       return new Response(
