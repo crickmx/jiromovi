@@ -87,14 +87,14 @@ export function MoviAuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[MoviAuth] onAuthStateChange event=', event, 'hasSession=', !!session);
-      if (
-        (event === 'SIGNED_IN' ||
-          event === 'TOKEN_REFRESHED' ||
-          event === 'USER_UPDATED' ||
-          event === 'INITIAL_SESSION') &&
+      if (event === 'SIGNED_IN' && session) {
+        setLoading(true);
+        (async () => { await loadProfile(session.user.id); })();
+      } else if (
+        (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') &&
         session
       ) {
-        setLoading(true);
+        // Silent refresh — don't show loader to avoid blank screen on navigation
         (async () => { await loadProfile(session.user.id); })();
       } else if (event === 'SIGNED_OUT') {
         console.log('[MoviAuth] signed out');

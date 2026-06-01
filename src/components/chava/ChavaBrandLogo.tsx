@@ -30,6 +30,7 @@ export function ChavaBrandLogo({
           src="/logo_color.svg"
           alt="Chava AI"
           className={cn(logoH, 'w-auto object-contain')}
+          style={{ mixBlendMode: 'screen' }}
           onError={e => {
             const img = e.currentTarget as HTMLImageElement;
             img.style.display = 'none';
