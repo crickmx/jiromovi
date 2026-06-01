@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Brain, TrendingUp, Target, Lightbulb, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle2, Circle as XCircle, RefreshCw, Loader as Loader2, MessageSquare, Users, ThumbsUp, ThumbsDown, ChartBar as BarChart3, BookOpen, Sparkles } from 'lucide-react';
+import { Brain, TrendingUp, Target, Lightbulb, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle2, Circle as XCircle, RefreshCw, Loader as Loader2, MessageSquare, Users, ThumbsUp, ThumbsDown, ChartBar as BarChart3, BookOpen, Sparkles, UserPlus, X } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { cn } from '@/lib/utils';
 import { supabase } from '../lib/supabase';
@@ -349,6 +349,7 @@ function LeadsTab({ days, refreshKey }: { days: number; refreshKey: number }) {
   const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [convertingLead, setConvertingLead] = useState<any | null>(null);
 
   useEffect(() => { load(); }, [days, refreshKey]);
 
@@ -376,19 +377,23 @@ function LeadsTab({ days, refreshKey }: { days: number; refreshKey: number }) {
   if (loading) return <LoadingState />;
 
   const byQuality = (q: string) => leads.filter(l => l.calidad === q).length;
+  const convertedCount = leads.filter(l => l.estado === 'convertido').length;
 
   return (
     <div className="space-y-5">
       {/* Quality summary */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'Alta calidad', key: 'alta', color: 'text-emerald-600', bg: 'rgba(16,185,129,0.06)', border: 'rgba(16,185,129,0.2)' },
           { label: 'Media calidad', key: 'media', color: 'text-amber-600', bg: 'rgba(245,158,11,0.06)', border: 'rgba(245,158,11,0.2)' },
           { label: 'Baja calidad', key: 'baja', color: 'text-neutral-500', bg: 'rgba(0,0,0,0.03)', border: 'rgba(0,0,0,0.1)' },
+          { label: 'Convertidos a CRM', key: 'convertido', color: 'text-blue-600', bg: 'rgba(13,110,253,0.06)', border: 'rgba(13,110,253,0.2)' },
         ].map(item => (
           <div key={item.key} className="p-4 rounded-xl text-center"
             style={{ background: item.bg, border: `1px solid ${item.border}` }}>
-            <p className={cn("text-3xl font-bold", item.color)}>{byQuality(item.key)}</p>
+            <p className={cn("text-3xl font-bold", item.color)}>
+              {item.key === 'convertido' ? convertedCount : byQuality(item.key)}
+            </p>
             <p className="text-xs text-neutral-500 mt-1">{item.label}</p>
           </div>
         ))}
@@ -396,7 +401,7 @@ function LeadsTab({ days, refreshKey }: { days: number; refreshKey: number }) {
 
       {/* Lead list */}
       {leads.length === 0
-        ? <EmptyState icon={Users} message="Sin leads detectados en este período" />
+        ? <EmptyState icon={Users} message="Sin leads detectados en este periodo" />
         : (
           <div className="space-y-3">
             {leads.map(lead => (
@@ -409,17 +414,9 @@ function LeadsTab({ days, refreshKey }: { days: number; refreshKey: number }) {
                       {lead.producto && (
                         <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 capitalize font-medium">{lead.producto}</span>
                       )}
-                    </div>
-                    {lead.datos_capturados && Object.keys(lead.datos_capturados).length > 0 && (
-                      <p className="text-sm text-neutral-700 dark:text-white/70 line-clamp-2">
-                        {Object.entries(lead.datos_capturados).map(([k, v]) => `${k}: ${v}`).join(' | ')}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-3 mt-2">
-                      {lead.chava_agente_users?.nombre_completo && (
-                        <span className="text-[11px] text-neutral-400">{lead.chava_agente_users.nombre_completo}</span>
+                      {lead.crm_contacto_id && (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 font-medium">En CRM</span>
                       )}
-                      <span className="text-[11px] text-neutral-400">{new Date(lead.created_at).toLocaleString()}</span>
                     </div>
                     {lead.datos_capturados && Object.keys(lead.datos_capturados).length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1">
@@ -430,8 +427,21 @@ function LeadsTab({ days, refreshKey }: { days: number; refreshKey: number }) {
                         ))}
                       </div>
                     )}
+                    <div className="flex items-center gap-3 mt-2">
+                      {lead.chava_agente_users?.nombre_completo && (
+                        <span className="text-[11px] text-neutral-400">{lead.chava_agente_users.nombre_completo}</span>
+                      )}
+                      <span className="text-[11px] text-neutral-400">{new Date(lead.created_at).toLocaleString()}</span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
+                    {(lead.estado === 'nuevo' || lead.estado === 'contactado') && !lead.crm_contacto_id && (
+                      <Button size="sm" variant="ghost" className="gap-1 text-blue-600 hover:text-blue-700 text-xs"
+                        disabled={updating === lead.id}
+                        onClick={() => setConvertingLead(lead)}>
+                        <UserPlus className="h-3 w-3" /> CRM
+                      </Button>
+                    )}
                     {lead.estado === 'nuevo' && (
                       <>
                         <Button size="sm" variant="ghost" className="gap-1 text-emerald-600 hover:text-emerald-700 text-xs"
@@ -453,6 +463,144 @@ function LeadsTab({ days, refreshKey }: { days: number; refreshKey: number }) {
           </div>
         )
       }
+
+      {/* CRM Conversion Modal */}
+      {convertingLead && (
+        <ConvertToCRMModal
+          lead={convertingLead}
+          onClose={() => setConvertingLead(null)}
+          onConverted={() => { setConvertingLead(null); load(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── CONVERT TO CRM MODAL ────────────────────────────────────────────────────
+function ConvertToCRMModal({ lead, onClose, onConverted }: { lead: any; onClose: () => void; onConverted: () => void }) {
+  const [nombre, setNombre] = useState(
+    lead.datos_capturados?.nombre || lead.datos_capturados?.nombre_completo || ''
+  );
+  const [celular, setCelular] = useState(
+    lead.datos_capturados?.telefono || lead.datos_capturados?.celular || ''
+  );
+  const [email, setEmail] = useState(lead.datos_capturados?.email || '');
+  const [notas, setNotas] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleConvert = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      const { data, error: rpcErr } = await supabase.rpc('convert_lead_to_crm', {
+        p_lead_id: lead.id,
+        p_nombre: nombre || null,
+        p_celular: celular || null,
+        p_email: email || null,
+        p_notas: notas || null,
+      });
+      if (rpcErr) throw rpcErr;
+      onConverted();
+    } catch (err: any) {
+      setError(err.message || 'Error al convertir');
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="w-full max-w-md bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200/60 dark:border-white/10 overflow-hidden">
+        <div className="p-5 border-b border-neutral-100 dark:border-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg,#0D6EFD22,#00E5FF33)', border: '1px solid rgba(13,110,253,0.2)' }}>
+              <UserPlus className="h-4 w-4 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-neutral-900 dark:text-white">Convertir Lead a CRM</h3>
+              <p className="text-xs text-neutral-400">Se creara un contacto y tarea de seguimiento</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Pre-filled info from lead */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <QualityBadge quality={lead.calidad} />
+            {lead.producto && (
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 capitalize font-medium">{lead.producto}</span>
+            )}
+            <span className="text-[11px] text-neutral-400">{lead.intent_codigo}</span>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-medium text-neutral-600 dark:text-white/50 mb-1 block">Nombre</label>
+              <input
+                type="text"
+                value={nombre}
+                onChange={e => setNombre(e.target.value)}
+                placeholder="Nombre del prospecto"
+                className="w-full text-sm px-3 py-2.5 rounded-lg border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/[0.03] text-neutral-800 dark:text-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-neutral-600 dark:text-white/50 mb-1 block">Celular</label>
+                <input
+                  type="tel"
+                  value={celular}
+                  onChange={e => setCelular(e.target.value)}
+                  placeholder="55 1234 5678"
+                  className="w-full text-sm px-3 py-2.5 rounded-lg border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/[0.03] text-neutral-800 dark:text-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-neutral-600 dark:text-white/50 mb-1 block">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="correo@ejemplo.com"
+                  className="w-full text-sm px-3 py-2.5 rounded-lg border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/[0.03] text-neutral-800 dark:text-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-neutral-600 dark:text-white/50 mb-1 block">Notas (opcional)</label>
+              <textarea
+                value={notas}
+                onChange={e => setNotas(e.target.value)}
+                rows={2}
+                placeholder="Contexto adicional para el seguimiento..."
+                className="w-full text-sm px-3 py-2.5 rounded-lg border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/[0.03] text-neutral-800 dark:text-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="text-xs text-red-500 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-500/10">
+              {error}
+            </div>
+          )}
+        </div>
+
+        <div className="p-5 border-t border-neutral-100 dark:border-white/5 flex items-center justify-end gap-3">
+          <Button variant="ghost" size="sm" onClick={onClose} disabled={saving}>
+            Cancelar
+          </Button>
+          <Button size="sm" onClick={handleConvert} disabled={saving}
+            className="gap-1.5 text-white"
+            style={{ background: 'linear-gradient(135deg,#0D6EFD,#00c8e0)' }}>
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
+            Convertir a CRM
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

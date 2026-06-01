@@ -338,55 +338,60 @@ Deno.serve(async (req: Request) => {
 
     const mensajes = (historial || []).reverse();
 
-    // Try to fetch RAG knowledge base context
+    // Try to fetch RAG knowledge base context from Centro Digital (external-accessible only)
     let ragContext = "";
     const fuentes: Fuente[] = [];
 
     try {
-      const { data: fragmentos } = await supabase
-        .from("chava_fragmentos")
-        .select("contenido, metadata")
-        .limit(6);
-
-      if (fragmentos && fragmentos.length > 0) {
-        ragContext = fragmentos
-          .map((f: { contenido: string }) => f.contenido)
-          .join("\n\n");
-        fuentes.push({
-          tipo: "conocimiento",
-          descripcion: "Base de conocimiento especializado en seguros — Grupo JIRO",
-          documento: "Conocimiento institucional de seguros",
-          confianza: "alta",
+      const openaiKeyForRag = Deno.env.get("OPENAI_API_KEY");
+      if (openaiKeyForRag) {
+        const embRes = await fetch("https://api.openai.com/v1/embeddings", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${openaiKeyForRag}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ model: "text-embedding-3-small", input: pregunta }),
         });
+        if (embRes.ok) {
+          const embData = await embRes.json();
+          const queryEmb = embData.data[0].embedding;
+          const { data: cdChunks } = await supabase.rpc("buscar_centro_digital_chunks", {
+            query_embedding: JSON.stringify(queryEmb),
+            similitud_minima: 0.68,
+            max_resultados: 6,
+            solo_externo: true,
+          });
+          if (cdChunks && cdChunks.length > 0) {
+            ragContext = cdChunks.map((c: { contenido: string }) => c.contenido).join("\n\n");
+            const docNames = [...new Set(cdChunks.map((c: { archivo_nombre?: string }) => c.archivo_nombre).filter(Boolean))];
+            fuentes.push({
+              tipo: "conocimiento",
+              descripcion: docNames.length > 0
+                ? `Base de conocimiento: ${docNames.slice(0, 3).join(", ")}`
+                : "Base de conocimiento especializado en seguros — Grupo JIRO",
+              documento: docNames.join(", ") || "Centro Digital",
+              confianza: "alta",
+            });
+          }
+        }
       }
-    } catch {
-      // RAG optional
-    }
 
-    // Also check digital center docs
-    try {
-      const q = pregunta.toLowerCase();
-      const keywords = extractKeywords(q);
-      if (keywords.length > 0) {
-        const { data: docs } = await supabase
-          .from("digital_center_documents")
-          .select("titulo, aseguradora, ramo, categoria")
-          .eq("activo", true)
-          .eq("visibilidad", "global")
-          .or(keywords.map(k => `titulo.ilike.%${k}%`).join(","))
-          .limit(3);
-
-        if (docs && docs.length > 0) {
+      // Fallback: legacy chava_fragmentos if no Centro Digital results
+      if (!ragContext) {
+        const { data: fragmentos } = await supabase
+          .from("chava_fragmentos")
+          .select("contenido, metadata")
+          .limit(6);
+        if (fragmentos && fragmentos.length > 0) {
+          ragContext = fragmentos.map((f: { contenido: string }) => f.contenido).join("\n\n");
           fuentes.push({
             tipo: "conocimiento",
-            descripcion: `${docs.length} documento${docs.length > 1 ? "s" : ""} del Centro Digital: ${docs.map((d: { titulo: string }) => d.titulo).join(", ")}`,
-            documento: "Centro Digital Grupo JIRO",
+            descripcion: "Base de conocimiento especializado en seguros — Grupo JIRO",
+            documento: "Conocimiento institucional de seguros",
             confianza: "alta",
           });
         }
       }
     } catch {
-      // Optional
+      // RAG optional
     }
 
     const openaiKey = Deno.env.get("OPENAI_API_KEY");
@@ -703,12 +708,6 @@ function getMondayOfWeek(date: Date): string {
   return d.toISOString().split("T")[0];
 }
 
-function extractKeywords(text: string): string[] {
-  const stopwords = new Set(["qué", "cómo", "cuál", "cuándo", "dónde", "por", "para", "con", "sin", "una", "uno", "los", "las", "del", "que", "es", "en", "de", "la", "el"]);
-  return text.split(/\s+/)
-    .filter(w => w.length > 3 && !stopwords.has(w))
-    .slice(0, 4);
-}
 
 function buildFallback(pregunta: string, nombre: string): string {
   const q = pregunta.toLowerCase();

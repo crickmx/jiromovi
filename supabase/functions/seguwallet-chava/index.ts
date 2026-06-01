@@ -177,17 +177,47 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Get RAG knowledge base context
+    // Get RAG knowledge base context from Centro Digital (external-accessible folders only)
     let ragContext = "";
     let ragDocs: { titulo?: string; fuente?: string }[] = [];
     try {
-      const { data: fragmentos } = await supabase
-        .from("chava_fragmentos")
-        .select("contenido,metadata")
-        .limit(5);
-      if (fragmentos && fragmentos.length > 0) {
-        ragContext = fragmentos.map((f: { contenido: string }) => f.contenido).join("\n\n");
-        ragDocs = fragmentos.map((f: { metadata?: { titulo?: string; fuente?: string } }) => f.metadata || {});
+      const openaiKey = Deno.env.get("OPENAI_API_KEY");
+      if (openaiKey) {
+        // Use vector search with embeddings
+        const embRes = await fetch("https://api.openai.com/v1/embeddings", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ model: "text-embedding-3-small", input: pregunta }),
+        });
+        if (embRes.ok) {
+          const embData = await embRes.json();
+          const queryEmb = embData.data[0].embedding;
+          const { data: cdChunks } = await supabase.rpc("buscar_centro_digital_chunks", {
+            query_embedding: JSON.stringify(queryEmb),
+            similitud_minima: 0.70,
+            max_resultados: 5,
+            solo_externo: true,
+          });
+          if (cdChunks && cdChunks.length > 0) {
+            ragContext = cdChunks.map((c: { contenido: string }) => c.contenido).join("\n\n");
+            ragDocs = cdChunks.map((c: { archivo_nombre?: string; carpeta_nombre?: string }) => ({
+              titulo: c.archivo_nombre, fuente: c.carpeta_nombre
+            }));
+          }
+        }
+      }
+      // Fallback: simple text query if no embeddings
+      if (!ragContext) {
+        const { data: fragmentos } = await supabase
+          .from("centro_digital_chunks")
+          .select("contenido,metadata")
+          .limit(5);
+        if (fragmentos && fragmentos.length > 0) {
+          ragContext = fragmentos.map((f: { contenido: string }) => f.contenido).join("\n\n");
+          ragDocs = fragmentos.map((f: { metadata?: { archivo_nombre?: string; carpeta_nombre?: string } }) => ({
+            titulo: f.metadata?.archivo_nombre, fuente: f.metadata?.carpeta_nombre
+          }));
+        }
       }
     } catch {
       // RAG is optional
@@ -353,6 +383,25 @@ REGLAS IMPORTANTES:
       fuentes.every(f => f.confianza === "alta") ? "alta"
       : fuentes.some(f => f.confianza === "alta") ? "media"
       : "baja";
+
+    // Continuous learning: detect knowledge gaps when RAG found nothing relevant
+    if (fuentes.filter(f => f.tipo === "conocimiento").length === 0 && pregunta.length > 15) {
+      try {
+        await supabase.from("chava_knowledge_review_queue").insert({
+          tipo: "faq",
+          titulo: `Sin RAG (Seguwallet): ${pregunta.substring(0, 80)}`,
+          descripcion: `Consulta de cliente Seguwallet sin resultados de base de conocimiento.\nCliente: ${customer.full_name}\nAgente: ${agenteNombre}\nPregunta: ${pregunta.substring(0, 300)}`,
+          contenido_sugerido: null,
+          plataforma_destino: "seguwallet",
+          frecuencia_consultas: 1,
+          origen_conversacion_ids: conversacion_id ? [conversacion_id] : [],
+          estado: "pendiente",
+          prioridad: "baja",
+        });
+      } catch {
+        // Non-blocking
+      }
+    }
 
     return new Response(JSON.stringify({
       respuesta,

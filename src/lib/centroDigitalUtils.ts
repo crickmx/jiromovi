@@ -65,7 +65,11 @@ export async function crearCarpeta(
       todas_oficinas: formData.todas_oficinas,
       todos_roles: formData.todos_roles,
       creado_por: user.id,
-      oficina_id: usuario?.oficina_id || null
+      oficina_id: usuario?.oficina_id || null,
+      enable_chava_ai: formData.enable_chava_ai ?? false,
+      external_chava_access: formData.external_chava_access ?? false,
+      auto_index: formData.auto_index ?? true,
+      knowledge_priority: formData.knowledge_priority ?? 1
     })
     .select()
     .single();
@@ -115,7 +119,11 @@ export async function actualizarCarpeta(
       nombre: formData.nombre,
       descripcion: formData.descripcion,
       todas_oficinas: formData.todas_oficinas,
-      todos_roles: formData.todos_roles
+      todos_roles: formData.todos_roles,
+      enable_chava_ai: formData.enable_chava_ai ?? false,
+      external_chava_access: formData.external_chava_access ?? false,
+      auto_index: formData.auto_index ?? true,
+      knowledge_priority: formData.knowledge_priority ?? 1
     })
     .eq('id', carpetaId);
 

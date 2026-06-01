@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Folder, AlertCircle } from 'lucide-react';
+import { X, Folder, CircleAlert as AlertCircle, Brain, Globe, Zap, Star } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -26,7 +26,11 @@ export function CarpetaModal({ carpeta, onClose, onSuccess }: CarpetaModalProps)
     todas_oficinas: true,
     todos_roles: true,
     oficinas_seleccionadas: [],
-    roles_seleccionados: []
+    roles_seleccionados: [],
+    enable_chava_ai: false,
+    external_chava_access: false,
+    auto_index: true,
+    knowledge_priority: 1
   });
 
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
@@ -44,7 +48,11 @@ export function CarpetaModal({ carpeta, onClose, onSuccess }: CarpetaModalProps)
         todos_roles: carpeta.todos_roles,
         oficinas_seleccionadas:
           carpeta.oficinas_permitidas?.map((o) => o.oficina_id) || [],
-        roles_seleccionados: carpeta.roles_permitidos?.map((r) => r.rol) || []
+        roles_seleccionados: carpeta.roles_permitidos?.map((r) => r.rol) || [],
+        enable_chava_ai: carpeta.enable_chava_ai ?? false,
+        external_chava_access: carpeta.external_chava_access ?? false,
+        auto_index: carpeta.auto_index ?? true,
+        knowledge_priority: carpeta.knowledge_priority ?? 1
       });
     }
   }, [carpeta]);
@@ -236,6 +244,105 @@ export function CarpetaModal({ carpeta, onClose, onSuccess }: CarpetaModalProps)
                     </label>
                   ))}
                 </div>
+              )}
+            </div>
+          </div>
+
+          <div className="border-t pt-6">
+            <h3 className="font-medium text-gray-900 mb-1 flex items-center gap-2">
+              <Brain className="w-4 h-4 text-teal-600" />
+              Inteligencia Artificial
+            </h3>
+            <p className="text-xs text-gray-500 mb-4">
+              Configura cómo Chava AI interactúa con los documentos de esta carpeta.
+            </p>
+
+            <div className="space-y-4">
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <Checkbox
+                  checked={formData.enable_chava_ai}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, enable_chava_ai: !!checked })
+                  }
+                />
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 flex items-center gap-1.5">
+                    <Brain className="w-3.5 h-3.5 text-teal-500" />
+                    Disponible en Chava AI
+                  </span>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Los documentos de esta carpeta estarán disponibles como fuente de conocimiento para responder consultas.
+                  </p>
+                </div>
+              </label>
+
+              {formData.enable_chava_ai && (
+                <>
+                  <label className="flex items-start gap-3 cursor-pointer group ml-6">
+                    <Checkbox
+                      checked={formData.external_chava_access}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, external_chava_access: !!checked })
+                      }
+                    />
+                    <div className="flex-1">
+                      <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5 text-blue-500" />
+                        Disponible para usuarios externos
+                      </span>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Usuarios de Seguwallet y visitantes de la web publica podran consultar este conocimiento.
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-3 cursor-pointer group ml-6">
+                    <Checkbox
+                      checked={formData.auto_index}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, auto_index: !!checked })
+                      }
+                    />
+                    <div className="flex-1">
+                      <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 flex items-center gap-1.5">
+                        <Zap className="w-3.5 h-3.5 text-amber-500" />
+                        Indexacion automatica
+                      </span>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Los documentos nuevos se procesaran e indexaran automaticamente para Chava AI.
+                      </p>
+                    </div>
+                  </label>
+
+                  <div className="ml-6">
+                    <Label className="text-sm font-medium text-gray-700 flex items-center gap-1.5 mb-2">
+                      <Star className="w-3.5 h-3.5 text-yellow-500" />
+                      Prioridad de conocimiento
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      {[1, 2, 3, 4, 5].map((level) => (
+                        <button
+                          key={level}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, knowledge_priority: level })}
+                          className={`w-8 h-8 rounded-md flex items-center justify-center text-sm font-medium transition-all ${
+                            formData.knowledge_priority >= level
+                              ? 'bg-teal-100 text-teal-700 border-2 border-teal-300'
+                              : 'bg-gray-100 text-gray-400 border border-gray-200 hover:bg-gray-200'
+                          }`}
+                        >
+                          {level}
+                        </button>
+                      ))}
+                      <span className="text-xs text-gray-500 ml-2">
+                        {formData.knowledge_priority <= 2 ? 'Baja' : formData.knowledge_priority <= 3 ? 'Media' : 'Alta'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Prioridad mas alta = mayor relevancia en resultados de busqueda de Chava AI.
+                    </p>
+                  </div>
+                </>
               )}
             </div>
           </div>

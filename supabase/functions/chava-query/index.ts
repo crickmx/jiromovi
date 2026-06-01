@@ -162,26 +162,58 @@ INSTRUCCIONES CLAVE:
           const embeddingData = await embeddingResponse.json();
           const queryEmbedding = embeddingData.data[0].embedding;
 
-          // Search similar fragments
-          const { data: fragments } = await supabase.rpc("buscar_conocimiento_chava", {
+          // PRIMARY: Search Centro Digital chunks (unified knowledge store)
+          const { data: cdFragments } = await supabase.rpc("buscar_centro_digital_chunks", {
             query_embedding: JSON.stringify(queryEmbedding),
             similitud_minima: similitudMinima,
             max_resultados: maxFragmentos,
-            usuario_rol: usuario.rol,
+            solo_externo: false,
           });
 
-          if (fragments && fragments.length > 0) {
+          if (cdFragments && cdFragments.length > 0) {
             knowledgeContext = "\n\n=== INFORMACION DE LA BASE DE CONOCIMIENTO ===\n";
-            for (const frag of fragments) {
-              knowledgeContext += `\n[Fuente: ${frag.documento_titulo}${frag.carpeta_nombre ? ` / ${frag.carpeta_nombre}` : ""}]\n${frag.contenido}\n`;
+            for (const frag of cdFragments) {
+              knowledgeContext += `\n[Fuente: ${frag.archivo_nombre}${frag.carpeta_nombre ? ` / ${frag.carpeta_nombre}` : ""}]\n${frag.contenido}\n`;
               fuentesUtilizadas.push({
-                documento_id: frag.documento_id,
-                documento_titulo: frag.documento_titulo,
+                documento_id: frag.archivo_id,
+                documento_titulo: frag.archivo_nombre,
                 carpeta: frag.carpeta_nombre,
                 similitud: frag.similitud,
+                source: "centro_digital",
               });
             }
             knowledgeContext += "\n=== FIN DE INFORMACION ===\n";
+          }
+
+          // FALLBACK: If Centro Digital returned few results, supplement with legacy chava knowledge
+          if (fuentesUtilizadas.length < 3) {
+            const { data: legacyFragments } = await supabase.rpc("buscar_conocimiento_chava", {
+              query_embedding: JSON.stringify(queryEmbedding),
+              similitud_minima: similitudMinima,
+              max_resultados: maxFragmentos - fuentesUtilizadas.length,
+              usuario_rol: usuario.rol,
+            });
+
+            if (legacyFragments && legacyFragments.length > 0) {
+              if (!knowledgeContext) {
+                knowledgeContext = "\n\n=== INFORMACION DE LA BASE DE CONOCIMIENTO ===\n";
+              } else {
+                knowledgeContext = knowledgeContext.replace("\n=== FIN DE INFORMACION ===\n", "");
+              }
+              for (const frag of legacyFragments) {
+                // Avoid duplicates by title
+                if (fuentesUtilizadas.some(f => f.documento_titulo === frag.documento_titulo)) continue;
+                knowledgeContext += `\n[Fuente: ${frag.documento_titulo}${frag.carpeta_nombre ? ` / ${frag.carpeta_nombre}` : ""}]\n${frag.contenido}\n`;
+                fuentesUtilizadas.push({
+                  documento_id: frag.documento_id,
+                  documento_titulo: frag.documento_titulo,
+                  carpeta: frag.carpeta_nombre,
+                  similitud: frag.similitud,
+                  source: "chava_legacy",
+                });
+              }
+              knowledgeContext += "\n=== FIN DE INFORMACION ===\n";
+            }
           }
         }
       } catch (ragErr: any) {
@@ -330,6 +362,25 @@ ${knowledgeContext}`;
       modelo: modeloIA,
       tiempo_respuesta_ms: tiempoRespuesta,
     });
+
+    // Continuous learning: detect knowledge gaps when RAG found nothing
+    if (fuentesUtilizadas.length === 0 && mensaje.length > 15) {
+      try {
+        await supabase.from("chava_knowledge_review_queue").insert({
+          tipo: "brecha_conocimiento",
+          titulo: `Sin RAG: ${mensaje.substring(0, 80)}`,
+          descripcion: `Consulta interna sin resultados RAG.\nUsuario: ${usuario.nombre_completo} (${usuario.rol})\nModulo: ${modulo || "chava"}\nPregunta: ${mensaje.substring(0, 300)}`,
+          contenido_sugerido: null,
+          plataforma_destino: "movi",
+          frecuencia_consultas: 1,
+          origen_conversacion_ids: convId ? [convId] : [],
+          estado: "pendiente",
+          prioridad: "baja",
+        });
+      } catch {
+        // Non-blocking
+      }
+    }
 
     return new Response(
       JSON.stringify({

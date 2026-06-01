@@ -7,7 +7,7 @@ import { getSuggestionsForRoute } from '../lib/suggestionsService';
 import { formatRelativeTime } from '../lib/assistantUtils';
 import { parseStructuredResponse } from '../lib/responseParser';
 import { sendChavaMessage } from '../lib/assistantService';
-import type { AssistantSuggestion, AssistantMessage } from '../lib/assistantTypes';
+import type { AssistantSuggestion, AssistantMessage, RAGSource } from '../lib/assistantTypes';
 import { Button } from '../components/ui/button';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { ResponseMessage } from '../components/assistant/ResponseMessage';
@@ -34,28 +34,46 @@ function ConfidenceBadge({ confidence }: { confidence: number }) {
   );
 }
 
-function SourcesPanel({ sources, confidence }: { sources: WebSource[]; confidence?: number }) {
+function SourcesPanel({ sources, confidence, ragSources }: { sources: WebSource[]; confidence?: number; ragSources?: RAGSource[] }) {
   const [open, setOpen] = useState(false);
-  if (!sources.length && confidence === undefined) return null;
+  const hasRag = ragSources && ragSources.length > 0;
+  const hasWeb = sources.length > 0;
+  const totalSources = (ragSources?.length || 0) + sources.length;
+  if (!hasRag && !hasWeb && confidence === undefined) return null;
   return (
     <div className="mt-2 pt-2 border-t border-white/8">
       <div className="flex items-center justify-between gap-2">
         {confidence !== undefined && <ConfidenceBadge confidence={confidence} />}
-        {sources.length > 0 && (
+        {totalSources > 0 && (
           <button
             onClick={() => setOpen(!open)}
             className="ml-auto flex items-center gap-1 text-[10px] text-white/30 hover:text-cyan-400 transition-colors font-medium"
           >
-            {open ? 'Ocultar fuentes' : `Ver fuentes (${sources.length})`}
+            {open ? 'Ocultar fuentes' : `Ver fuentes (${totalSources})`}
             {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           </button>
         )}
       </div>
-      {open && sources.length > 0 && (
+      {open && (hasRag || hasWeb) && (
         <div className="mt-2 space-y-1.5">
-          {sources.map((src, i) => (
+          {hasRag && ragSources!.map((src, i) => (
+            <div
+              key={`rag-${i}`}
+              className="flex items-start gap-2 p-2 rounded-lg bg-white/[0.04] border border-white/8"
+            >
+              <FileText className="w-3 h-3 text-cyan-400/60 mt-0.5 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium text-white/60 truncate">{src.documento_titulo}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {src.carpeta && <span className="text-[10px] text-white/25">{src.carpeta}</span>}
+                  <span className="text-[10px] text-cyan-400/50">{Math.round(src.similitud * 100)}% relevancia</span>
+                </div>
+              </div>
+            </div>
+          ))}
+          {hasWeb && sources.map((src, i) => (
             <a
-              key={i}
+              key={`web-${i}`}
               href={src.url}
               target="_blank"
               rel="noopener noreferrer"
@@ -194,7 +212,7 @@ export default function Chava() {
           return [
             ...withoutTemp,
             { id: `msg-user-${Date.now()}`, conversacion_id: conversationId || '', rol: 'user', contenido: messageText, respuesta_estructurada_json: null, tiene_acciones: false, created_at: new Date().toISOString() },
-            { id: response.mensaje_id || `msg-assistant-${Date.now()}`, conversacion_id: conversationId || '', rol: 'assistant', contenido: response.respuesta || '', respuesta_estructurada_json: response.respuesta_estructurada || null, tiene_acciones: false, created_at: new Date().toISOString() },
+            { id: response.mensaje_id || `msg-assistant-${Date.now()}`, conversacion_id: conversationId || '', rol: 'assistant', contenido: response.respuesta || '', respuesta_estructurada_json: response.respuesta_estructurada || null, tiene_acciones: false, modo_usado: response.modo_usado, rag_fuentes: response.fuentes, created_at: new Date().toISOString() },
           ];
         });
         trackAssistantResponse();
@@ -452,12 +470,12 @@ export default function Chava() {
                         ) : structuredResponse ? (
                           <>
                             <ResponseMessage response={structuredResponse} />
-                            <SourcesPanel sources={message.web_sources ?? []} confidence={message.router_confidence} />
+                            <SourcesPanel sources={message.web_sources ?? []} confidence={message.router_confidence} ragSources={message.rag_fuentes} />
                           </>
                         ) : (
                           <>
                             <p className="whitespace-pre-wrap">{message.contenido}</p>
-                            <SourcesPanel sources={message.web_sources ?? []} confidence={message.router_confidence} />
+                            <SourcesPanel sources={message.web_sources ?? []} confidence={message.router_confidence} ragSources={message.rag_fuentes} />
                           </>
                         )}
 

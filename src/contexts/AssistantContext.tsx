@@ -243,6 +243,8 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
                 created_at: new Date().toISOString(),
                 modo_usado: response.modo_usado,
                 router_confidence: response.router_confidence,
+                web_sources: response.web_sources,
+                rag_fuentes: response.fuentes,
               }
             ];
           });

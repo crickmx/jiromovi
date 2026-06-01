@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Folder, Plus, Search, File, Download, Trash2, RotateCcw, Eye, Upload, Building2, Users, MoveVertical as MoreVertical, Archive, FileText, FileSpreadsheet, FileImage, FileVideoCamera as FileVideo, File as FileAudio, Grid2x2 as Grid, List, BookOpen, Star, Clock, Tag, ListFilter as Filter, X, ChevronDown, ChevronRight, Megaphone, Shield, Car, Heart, Hop as Home, Briefcase, Globe, Zap } from 'lucide-react';
+import { Folder, Plus, Search, File, Download, Trash2, RotateCcw, Eye, Upload, Building2, Users, MoveVertical as MoreVertical, Archive, FileText, FileSpreadsheet, FileImage, FileVideoCamera as FileVideo, File as FileAudio, Grid2x2 as Grid, List, BookOpen, Star, Clock, Tag, ListFilter as Filter, X, ChevronDown, ChevronRight, Megaphone, Shield, Car, Heart, Hop as Home, Briefcase, Globe, Zap, Brain } from 'lucide-react';
 import { PageHeader } from '../components/ui/page-header';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -297,6 +297,32 @@ export default function CentroDigital() {
     } catch { alert('Error al eliminar el archivo'); }
   }
 
+  async function handleIndexarArchivo(archivoId: string) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { alert('Sesión expirada'); return; }
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/centro-digital-index-document`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ archivo_id: archivoId }),
+        }
+      );
+      const result = await res.json();
+      if (res.ok && result.success) {
+        alert(`Indexado exitosamente: ${result.total_chunks} fragmentos generados.`);
+      } else {
+        alert(result.error || 'Error al indexar el archivo');
+      }
+    } catch { alert('Error de conexión al indexar'); }
+  }
+
   const esImagen = (mime: string | null) => mime?.startsWith('image/') ?? false;
   const esPDF = (mime: string | null) => mime?.includes('pdf') ?? false;
 
@@ -500,6 +526,12 @@ export default function CentroDigital() {
                         className="p-1.5 bg-white rounded-full shadow hover:bg-gray-100">
                         <Download className="w-3.5 h-3.5 text-gray-700" />
                       </button>
+                      {puedeSubirArchivos && carpetaSeleccionada?.enable_chava_ai && (
+                        <button onClick={() => handleIndexarArchivo(archivo.id)}
+                          className="p-1.5 bg-white rounded-full shadow hover:bg-teal-50" title="Indexar para Chava AI">
+                          <Brain className="w-3.5 h-3.5 text-teal-600" />
+                        </button>
+                      )}
                       {puedeSubirArchivos && (
                         <button onClick={() => handleEliminarArchivo(archivo.id)}
                           className="p-1.5 bg-white rounded-full shadow hover:bg-gray-100">
@@ -543,6 +575,12 @@ export default function CentroDigital() {
                             className="text-accent hover:text-blue-700 p-1 rounded hover:bg-blue-50">
                             <Download className="w-4 h-4" />
                           </button>
+                          {puedeSubirArchivos && carpetaSeleccionada?.enable_chava_ai && (
+                            <button onClick={() => handleIndexarArchivo(archivo.id)}
+                              className="text-teal-600 hover:text-teal-700 p-1 rounded hover:bg-teal-50" title="Indexar para Chava AI">
+                              <Brain className="w-4 h-4" />
+                            </button>
+                          )}
                           {puedeSubirArchivos && (
                             <button onClick={() => handleEliminarArchivo(archivo.id)}
                               className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50">
@@ -718,6 +756,12 @@ export default function CentroDigital() {
                       <Users className="w-3 h-3" />
                       {carpeta.todos_roles ? 'Todos los roles' : `${carpeta.roles_permitidos?.length || 0} roles`}
                     </span>
+                    {carpeta.enable_chava_ai && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-teal-50 text-teal-700 text-xs rounded-full">
+                        <Brain className="w-3 h-3" />
+                        Chava AI
+                      </span>
+                    )}
                   </div>
                   <div className="mt-3 pt-3 border-t border-gray-50 flex items-center justify-between">
                     <span className="text-xs text-gray-400">{new Date(carpeta.created_at).toLocaleDateString()}</span>

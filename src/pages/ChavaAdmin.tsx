@@ -1,10 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import {
-  Brain, FileText, Folder, BarChart3, Settings, Zap,
-  Upload, Plus, Trash2, RefreshCw, Search, Eye, Clock,
-  CheckCircle2, AlertCircle, Loader2, Database, MessageSquare,
-  TrendingUp, Users, BookOpen, ChevronRight, X, Edit2
-} from 'lucide-react';
+import { Brain, FileText, Folder, ChartBar as BarChart3, Settings, Zap, Upload, Plus, Trash2, RefreshCw, Search, Eye, Clock, CircleCheck as CheckCircle2, CircleAlert as AlertCircle, Loader as Loader2, Database, MessageSquare, TrendingUp, Users, BookOpen, ChevronRight, X, CreditCard as Edit2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { cn } from '@/lib/utils';
 import {
@@ -398,75 +393,222 @@ function KnowledgeTab() {
 // === LEARNING TAB ===
 function LearningTab() {
   const [modulos, setModulos] = useState<ChavaModulo[]>([]);
+  const [gaps, setGaps] = useState<any[]>([]);
+  const [improvements, setImprovements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeSection, setActiveSection] = useState<'gaps' | 'modulos' | 'improvements'>('gaps');
 
   useEffect(() => {
-    loadModulos();
+    loadData();
   }, []);
 
-  const loadModulos = async () => {
+  const loadData = async () => {
     setLoading(true);
-    const data = await getModulosDescubiertos();
-    setModulos(data);
+    const { supabase } = await import('../lib/supabase');
+    const [modulosData, gapsRes, improvementsRes] = await Promise.all([
+      getModulosDescubiertos(),
+      supabase.from('chava_knowledge_review_queue')
+        .select('*')
+        .order('frecuencia_consultas', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(50),
+      supabase.from('chava_improvement_suggestions')
+        .select('*')
+        .order('frecuencia_detecciones', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(30),
+    ]);
+    setModulos(modulosData);
+    setGaps(gapsRes.data || []);
+    setImprovements(improvementsRes.data || []);
     setLoading(false);
   };
 
-  const categorias = [...new Set(modulos.map(m => m.categoria))];
+  const handleDismissGap = async (id: string) => {
+    const { supabase } = await import('../lib/supabase');
+    await supabase.from('chava_knowledge_review_queue')
+      .update({ estado: 'descartado', revisado_at: new Date().toISOString() })
+      .eq('id', id);
+    setGaps(prev => prev.filter(g => g.id !== id));
+  };
+
+  const handleApproveGap = async (id: string) => {
+    const { supabase } = await import('../lib/supabase');
+    await supabase.from('chava_knowledge_review_queue')
+      .update({ estado: 'aprobado', revisado_at: new Date().toISOString() })
+      .eq('id', id);
+    setGaps(prev => prev.map(g => g.id === id ? { ...g, estado: 'aprobado' } : g));
+  };
+
+  const handleDismissImprovement = async (id: string) => {
+    const { supabase } = await import('../lib/supabase');
+    await supabase.from('chava_improvement_suggestions')
+      .update({ estado: 'descartado' })
+      .eq('id', id);
+    setImprovements(prev => prev.filter(i => i.id !== id));
+  };
 
   if (loading) {
     return <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-cyan-500" /></div>;
   }
 
+  const pendingGaps = gaps.filter(g => g.estado === 'pendiente');
+  const pendingImprovements = improvements.filter(i => i.estado === 'pendiente');
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-neutral-500 dark:text-white/40">{modulos.length} modulos descubiertos</p>
-        <Button variant="outline" size="sm" onClick={loadModulos} className="gap-1.5">
-          <RefreshCw className="h-3.5 w-3.5" /> Reescanear
+      {/* Section toggle */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setActiveSection('gaps')}
+          className={cn("px-3 py-1.5 text-xs font-medium rounded-lg transition-all", activeSection === 'gaps' ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-400" : "text-neutral-500 hover:text-neutral-700")}
+        >
+          Brechas de Conocimiento {pendingGaps.length > 0 && <span className="ml-1 px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 text-[10px]">{pendingGaps.length}</span>}
+        </button>
+        <button
+          onClick={() => setActiveSection('improvements')}
+          className={cn("px-3 py-1.5 text-xs font-medium rounded-lg transition-all", activeSection === 'improvements' ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-400" : "text-neutral-500 hover:text-neutral-700")}
+        >
+          Mejoras Detectadas {pendingImprovements.length > 0 && <span className="ml-1 px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-600 text-[10px]">{pendingImprovements.length}</span>}
+        </button>
+        <button
+          onClick={() => setActiveSection('modulos')}
+          className={cn("px-3 py-1.5 text-xs font-medium rounded-lg transition-all", activeSection === 'modulos' ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-400" : "text-neutral-500 hover:text-neutral-700")}
+        >
+          Modulos ({modulos.length})
+        </button>
+        <Button variant="ghost" size="sm" onClick={loadData} className="ml-auto">
+          <RefreshCw className="h-3.5 w-3.5" />
         </Button>
       </div>
 
-      {modulos.length === 0 ? (
-        <div className="text-center py-12 text-neutral-400">
-          <Brain className="h-10 w-10 mx-auto mb-3 opacity-40" />
-          <p className="text-sm">No se han descubierto modulos aun. Ejecuta "Entrenar Chava" para iniciar el descubrimiento.</p>
-        </div>
-      ) : (
-        categorias.map((cat) => (
-          <div key={cat}>
-            <h3 className="text-sm font-semibold text-neutral-700 dark:text-white/70 mb-3 capitalize">{cat}</h3>
-            <div className="space-y-2">
-              {modulos.filter(m => m.categoria === cat).map((mod) => (
-                <div key={mod.id} className="p-4 bg-white dark:bg-white/[0.03] rounded-xl border border-neutral-200/60 dark:border-white/8">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-neutral-800 dark:text-white/80">{mod.nombre}</p>
-                      {mod.ruta && <p className="text-xs text-neutral-400 mt-0.5 font-mono">{mod.ruta}</p>}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {mod.roles_permitidos.length > 0 && (
-                        <div className="flex gap-1">
-                          {mod.roles_permitidos.slice(0, 3).map(r => (
-                            <span key={r} className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-white/5 text-neutral-500">{r}</span>
-                          ))}
-                        </div>
-                      )}
-                      {mod.ultima_indexacion && (
-                        <span className="text-[11px] text-neutral-400">
-                          <Clock className="h-3 w-3 inline mr-1" />
-                          {new Date(mod.ultima_indexacion).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {mod.descripcion && (
-                    <p className="text-xs text-neutral-500 dark:text-white/40 mt-2">{mod.descripcion}</p>
-                  )}
-                </div>
-              ))}
+      {/* Knowledge Gaps */}
+      {activeSection === 'gaps' && (
+        <div className="space-y-2">
+          {pendingGaps.length === 0 ? (
+            <div className="text-center py-12 text-neutral-400">
+              <CheckCircle2 className="h-10 w-10 mx-auto mb-3 opacity-40" />
+              <p className="text-sm">Sin brechas de conocimiento pendientes</p>
             </div>
-          </div>
-        ))
+          ) : (
+            pendingGaps.map((gap) => (
+              <div key={gap.id} className="p-4 bg-white dark:bg-white/[0.03] rounded-xl border border-neutral-200/60 dark:border-white/8">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium",
+                        gap.prioridad === 'alta' ? 'bg-red-100 text-red-700' :
+                        gap.prioridad === 'media' ? 'bg-amber-100 text-amber-700' :
+                        'bg-neutral-100 text-neutral-600'
+                      )}>{gap.prioridad}</span>
+                      <span className="text-[10px] text-neutral-400 capitalize">{gap.plataforma_destino}</span>
+                      {gap.frecuencia_consultas > 1 && (
+                        <span className="text-[10px] text-cyan-600 font-medium">{gap.frecuencia_consultas}x consultado</span>
+                      )}
+                    </div>
+                    <p className="text-sm font-medium text-neutral-800 dark:text-white/80 line-clamp-1">{gap.titulo}</p>
+                    <p className="text-xs text-neutral-500 dark:text-white/40 mt-1 line-clamp-2">{gap.descripcion}</p>
+                    {gap.contenido_sugerido && (
+                      <p className="text-xs text-teal-600 dark:text-teal-400 mt-1.5 italic line-clamp-2">Sugerencia: {gap.contenido_sugerido}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <Button variant="ghost" size="sm" onClick={() => handleApproveGap(gap.id)} className="text-emerald-600 hover:text-emerald-700 h-7 w-7 p-0">
+                      <CheckCircle2 className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDismissGap(gap.id)} className="text-neutral-400 hover:text-red-500 h-7 w-7 p-0">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Improvement Suggestions */}
+      {activeSection === 'improvements' && (
+        <div className="space-y-2">
+          {pendingImprovements.length === 0 ? (
+            <div className="text-center py-12 text-neutral-400">
+              <CheckCircle2 className="h-10 w-10 mx-auto mb-3 opacity-40" />
+              <p className="text-sm">Sin mejoras detectadas pendientes</p>
+            </div>
+          ) : (
+            pendingImprovements.map((item) => (
+              <div key={item.id} className="p-4 bg-white dark:bg-white/[0.03] rounded-xl border border-neutral-200/60 dark:border-white/8">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium capitalize">{item.plataforma}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-neutral-100 text-neutral-600 capitalize">{item.tipo}</span>
+                      {item.frecuencia_detecciones > 1 && (
+                        <span className="text-[10px] text-amber-600 font-medium">{item.frecuencia_detecciones}x detectado</span>
+                      )}
+                    </div>
+                    <p className="text-sm font-medium text-neutral-800 dark:text-white/80">{item.titulo}</p>
+                    <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">{item.descripcion}</p>
+                    {item.ejemplos_consultas?.length > 0 && (
+                      <p className="text-[11px] text-neutral-400 mt-1 italic">Ejemplo: "{item.ejemplos_consultas[0]}"</p>
+                    )}
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => handleDismissImprovement(item.id)} className="text-neutral-400 hover:text-red-500 h-7 w-7 p-0 flex-shrink-0">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Modules */}
+      {activeSection === 'modulos' && (
+        <div className="space-y-4">
+          {modulos.length === 0 ? (
+            <div className="text-center py-12 text-neutral-400">
+              <Brain className="h-10 w-10 mx-auto mb-3 opacity-40" />
+              <p className="text-sm">No se han descubierto modulos aun.</p>
+            </div>
+          ) : (
+            [...new Set(modulos.map(m => m.categoria))].map((cat) => (
+              <div key={cat}>
+                <h3 className="text-sm font-semibold text-neutral-700 dark:text-white/70 mb-3 capitalize">{cat}</h3>
+                <div className="space-y-2">
+                  {modulos.filter(m => m.categoria === cat).map((mod) => (
+                    <div key={mod.id} className="p-4 bg-white dark:bg-white/[0.03] rounded-xl border border-neutral-200/60 dark:border-white/8">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-neutral-800 dark:text-white/80">{mod.nombre}</p>
+                          {mod.ruta && <p className="text-xs text-neutral-400 mt-0.5 font-mono">{mod.ruta}</p>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {mod.roles_permitidos.length > 0 && (
+                            <div className="flex gap-1">
+                              {mod.roles_permitidos.slice(0, 3).map(r => (
+                                <span key={r} className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-white/5 text-neutral-500">{r}</span>
+                              ))}
+                            </div>
+                          )}
+                          {mod.ultima_indexacion && (
+                            <span className="text-[11px] text-neutral-400">
+                              <Clock className="h-3 w-3 inline mr-1" />
+                              {new Date(mod.ultima_indexacion).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {mod.descripcion && (
+                        <p className="text-xs text-neutral-500 dark:text-white/40 mt-2">{mod.descripcion}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       )}
     </div>
   );
@@ -552,9 +694,13 @@ function AuditTab() {
 // === CONFIG TAB ===
 function ConfigTab() {
   const [configs, setConfigs] = useState<ChavaConfigItem[]>([]);
+  const [tiers, setTiers] = useState<any[]>([]);
+  const [knowledgeStats, setKnowledgeStats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [editingTier, setEditingTier] = useState<string | null>(null);
+  const [tierForm, setTierForm] = useState<Record<string, any>>({});
 
   useEffect(() => {
     loadConfig();
@@ -562,8 +708,18 @@ function ConfigTab() {
 
   const loadConfig = async () => {
     setLoading(true);
-    const data = await getChavaConfig();
-    setConfigs(data);
+    const [configData, tiersRes, statsRes] = await Promise.all([
+      getChavaConfig(),
+      import('../lib/supabase').then(({ supabase }) =>
+        supabase.from('chava_access_tiers').select('*').order('id')
+      ),
+      import('../lib/supabase').then(({ supabase }) =>
+        supabase.from('chava_knowledge_access_summary').select('*')
+      ),
+    ]);
+    setConfigs(configData);
+    setTiers(tiersRes.data || []);
+    setKnowledgeStats(statsRes.data || []);
     setLoading(false);
   };
 
@@ -583,56 +739,223 @@ function ConfigTab() {
     }
   };
 
+  const handleSaveTier = async (tierId: string) => {
+    try {
+      const { supabase } = await import('../lib/supabase');
+      const { error } = await supabase
+        .from('chava_access_tiers')
+        .update({
+          max_tokens_respuesta: Number(tierForm.max_tokens_respuesta),
+          max_historial_mensajes: Number(tierForm.max_historial_mensajes),
+          max_consultas_sesion: tierForm.max_consultas_sesion ? Number(tierForm.max_consultas_sesion) : null,
+          modelo_ia: tierForm.modelo_ia,
+          temperatura: Number(tierForm.temperatura),
+          rag_similitud_minima: Number(tierForm.rag_similitud_minima),
+          max_fragmentos_rag: Number(tierForm.max_fragmentos_rag),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', tierId);
+      if (error) throw error;
+      setEditingTier(null);
+      loadConfig();
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-cyan-500" /></div>;
   }
 
-  return (
-    <div className="space-y-3">
-      {configs.map((cfg) => {
-        const displayValue = typeof cfg.valor === 'string' ? cfg.valor : JSON.stringify(cfg.valor);
-        const isEditing = editingKey === cfg.clave;
+  const tierColors: Record<string, string> = {
+    internal: 'border-cyan-200 bg-cyan-50/30 dark:bg-cyan-500/5',
+    external: 'border-teal-200 bg-teal-50/30 dark:bg-teal-500/5',
+    public: 'border-amber-200 bg-amber-50/30 dark:bg-amber-500/5',
+  };
 
-        return (
-          <div key={cfg.id} className="p-4 bg-white dark:bg-white/[0.03] rounded-xl border border-neutral-200/60 dark:border-white/8">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-neutral-800 dark:text-white/80 font-mono">{cfg.clave}</p>
-                <p className="text-xs text-neutral-400 mt-0.5">{cfg.descripcion}</p>
+  const tierIcons: Record<string, string> = {
+    internal: 'text-cyan-600',
+    external: 'text-teal-600',
+    public: 'text-amber-600',
+  };
+
+  return (
+    <div className="space-y-8">
+      {/* Access Tiers Section */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Users className="h-4 w-4 text-cyan-600" />
+          <h3 className="text-sm font-bold text-neutral-800 dark:text-white/80">Niveles de Acceso Chava AI</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {tiers.map((tier) => {
+            const stats = knowledgeStats.find((s: any) => s.tier_id === tier.id);
+            const isEditing = editingTier === tier.id;
+
+            return (
+              <div key={tier.id} className={cn("p-4 rounded-xl border", tierColors[tier.id] || 'border-neutral-200')}>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className={cn("text-sm font-bold", tierIcons[tier.id] || 'text-neutral-700')}>{tier.nombre}</h4>
+                  <button
+                    onClick={() => {
+                      if (isEditing) { setEditingTier(null); }
+                      else { setEditingTier(tier.id); setTierForm(tier); }
+                    }}
+                    className="text-neutral-400 hover:text-neutral-600 transition-colors"
+                  >
+                    {isEditing ? <X className="h-3.5 w-3.5" /> : <Edit2 className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-neutral-500 dark:text-white/40 mb-3 line-clamp-2">{tier.descripcion}</p>
+
+                {/* Knowledge stats */}
+                {stats && (
+                  <div className="flex gap-3 mb-3 text-[11px]">
+                    <span className="text-neutral-500"><Folder className="h-3 w-3 inline mr-0.5" />{stats.carpetas_accesibles} carpetas</span>
+                    <span className="text-neutral-500"><FileText className="h-3 w-3 inline mr-0.5" />{stats.archivos_accesibles} archivos</span>
+                    <span className="text-neutral-500"><Database className="h-3 w-3 inline mr-0.5" />{stats.chunks_indexados} chunks</span>
+                  </div>
+                )}
+
                 {isEditing ? (
-                  <div className="mt-2 flex items-center gap-2">
-                    <input
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      className="flex-1 px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/[0.03] focus:outline-none focus:ring-2 focus:ring-cyan-500/20 font-mono"
-                      onKeyDown={(e) => e.key === 'Enter' && handleSave(cfg.clave)}
-                      autoFocus
-                    />
-                    <Button size="sm" onClick={() => handleSave(cfg.clave)}>Guardar</Button>
-                    <Button variant="ghost" size="sm" onClick={() => setEditingKey(null)}>
-                      <X className="h-4 w-4" />
+                  <div className="space-y-2 mt-3 pt-3 border-t border-neutral-200/60 dark:border-white/10">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-neutral-500 font-medium">Modelo IA</label>
+                        <input
+                          value={tierForm.modelo_ia || ''}
+                          onChange={(e) => setTierForm({ ...tierForm, modelo_ia: e.target.value })}
+                          className="w-full px-2 py-1.5 text-xs rounded border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/[0.03]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-neutral-500 font-medium">Temperatura</label>
+                        <input
+                          type="number" step="0.05" min="0" max="2"
+                          value={tierForm.temperatura || 0}
+                          onChange={(e) => setTierForm({ ...tierForm, temperatura: e.target.value })}
+                          className="w-full px-2 py-1.5 text-xs rounded border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/[0.03]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-neutral-500 font-medium">Max Tokens Resp</label>
+                        <input
+                          type="number" step="100"
+                          value={tierForm.max_tokens_respuesta || 0}
+                          onChange={(e) => setTierForm({ ...tierForm, max_tokens_respuesta: e.target.value })}
+                          className="w-full px-2 py-1.5 text-xs rounded border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/[0.03]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-neutral-500 font-medium">Historial Msgs</label>
+                        <input
+                          type="number"
+                          value={tierForm.max_historial_mensajes || 0}
+                          onChange={(e) => setTierForm({ ...tierForm, max_historial_mensajes: e.target.value })}
+                          className="w-full px-2 py-1.5 text-xs rounded border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/[0.03]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-neutral-500 font-medium">Similitud Min</label>
+                        <input
+                          type="number" step="0.01" min="0" max="1"
+                          value={tierForm.rag_similitud_minima || 0}
+                          onChange={(e) => setTierForm({ ...tierForm, rag_similitud_minima: e.target.value })}
+                          className="w-full px-2 py-1.5 text-xs rounded border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/[0.03]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-neutral-500 font-medium">Max Chunks RAG</label>
+                        <input
+                          type="number"
+                          value={tierForm.max_fragmentos_rag || 0}
+                          onChange={(e) => setTierForm({ ...tierForm, max_fragmentos_rag: e.target.value })}
+                          className="w-full px-2 py-1.5 text-xs rounded border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/[0.03]"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-neutral-500 font-medium">Consultas x Sesion (vacio = ilimitado)</label>
+                      <input
+                        type="number"
+                        value={tierForm.max_consultas_sesion || ''}
+                        onChange={(e) => setTierForm({ ...tierForm, max_consultas_sesion: e.target.value })}
+                        placeholder="Ilimitado"
+                        className="w-full px-2 py-1.5 text-xs rounded border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/[0.03]"
+                      />
+                    </div>
+                    <Button size="sm" className="w-full mt-2" onClick={() => handleSaveTier(tier.id)}>
+                      Guardar Cambios
                     </Button>
                   </div>
                 ) : (
-                  <p className="text-sm text-neutral-600 dark:text-white/60 mt-1 font-mono bg-neutral-50 dark:bg-white/[0.02] px-2 py-1 rounded truncate">
-                    {displayValue}
-                  </p>
+                  <div className="space-y-1 mt-2 text-[11px] text-neutral-500 dark:text-white/40">
+                    <div className="flex justify-between"><span>Modelo:</span><span className="font-mono">{tier.modelo_ia}</span></div>
+                    <div className="flex justify-between"><span>Tokens resp:</span><span>{tier.max_tokens_respuesta}</span></div>
+                    <div className="flex justify-between"><span>Temperatura:</span><span>{tier.temperatura}</span></div>
+                    <div className="flex justify-between"><span>Similitud:</span><span>{tier.rag_similitud_minima}</span></div>
+                    <div className="flex justify-between"><span>Sesion:</span><span>{tier.max_consultas_sesion || 'Ilimitado'}</span></div>
+                  </div>
                 )}
               </div>
-              {!isEditing && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => { setEditingKey(cfg.clave); setEditValue(displayValue); }}
-                  className="flex-shrink-0"
-                >
-                  <Edit2 className="h-3.5 w-3.5" />
-                </Button>
-              )}
-            </div>
-          </div>
-        );
-      })}
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Legacy config items */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Settings className="h-4 w-4 text-neutral-500" />
+          <h3 className="text-sm font-bold text-neutral-800 dark:text-white/80">Configuracion General</h3>
+        </div>
+        <div className="space-y-3">
+          {configs.map((cfg) => {
+            const displayValue = typeof cfg.valor === 'string' ? cfg.valor : JSON.stringify(cfg.valor);
+            const isEditing = editingKey === cfg.clave;
+
+            return (
+              <div key={cfg.id} className="p-4 bg-white dark:bg-white/[0.03] rounded-xl border border-neutral-200/60 dark:border-white/8">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-neutral-800 dark:text-white/80 font-mono">{cfg.clave}</p>
+                    <p className="text-xs text-neutral-400 mt-0.5">{cfg.descripcion}</p>
+                    {isEditing ? (
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="flex-1 px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/[0.03] focus:outline-none focus:ring-2 focus:ring-cyan-500/20 font-mono"
+                          onKeyDown={(e) => e.key === 'Enter' && handleSave(cfg.clave)}
+                          autoFocus
+                        />
+                        <Button size="sm" onClick={() => handleSave(cfg.clave)}>Guardar</Button>
+                        <Button variant="ghost" size="sm" onClick={() => setEditingKey(null)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-neutral-600 dark:text-white/60 mt-1 font-mono bg-neutral-50 dark:bg-white/[0.02] px-2 py-1 rounded truncate">
+                        {displayValue}
+                      </p>
+                    )}
+                  </div>
+                  {!isEditing && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { setEditingKey(cfg.clave); setEditValue(displayValue); }}
+                      className="flex-shrink-0"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

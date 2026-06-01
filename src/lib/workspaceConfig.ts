@@ -50,6 +50,7 @@ const NO_EMPLEADO_AGENTE: UserRole[] = ['Administrador', 'Gerente', 'Ejecutivo']
 export const TOP_LEVEL_ITEMS: TopLevelNavItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visibleTo: ALL_ROLES },
   { path: '/chava', label: 'Chava', icon: Sparkles, visibleTo: ALL_ROLES },
+  { path: '/centro-digital', label: 'Centro Digital', icon: FolderOpen, visibleTo: ALL_ROLES },
   { path: '/store', label: 'MOVI Store', icon: ShoppingBag, visibleTo: ALL_ROLES },
   { path: '/comunicados', label: 'Comunicados', icon: FileText, visibleTo: ALL_ROLES, matchPrefix: true },
 ];
@@ -125,7 +126,6 @@ const WORKSPACE_MERCADOTECNIA: WorkspaceDefinition = {
     { path: '/mercadotecnia/mi-marca', label: 'Mi Marca', icon: BadgeCheck, visibleTo: ALL_ROLES },
     { path: '/mercadotecnia/publicidad', label: 'Publicidad', icon: Megaphone, visibleTo: ALL_ROLES },
     { path: '/mercadotecnia/mi-pagina-web', label: 'Mi Pagina Web', icon: Globe, visibleTo: ALL_ROLES },
-    { path: '/centro-digital', label: 'Centro Digital', icon: FolderOpen, visibleTo: ALL_ROLES },
   ],
 };
 
@@ -182,6 +182,7 @@ export const WORKSPACES: WorkspaceDefinition[] = [
 export const NAV_ORDER: NavEntry[] = [
   { type: 'link', item: { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visibleTo: ALL_ROLES } },
   { type: 'link', item: { path: '/chava', label: 'Chava', icon: Sparkles, visibleTo: ALL_ROLES } },
+  { type: 'link', item: { path: '/centro-digital', label: 'Centro Digital', icon: FolderOpen, visibleTo: ALL_ROLES } },
   { type: 'workspace', workspace: WORKSPACE_COMERCIAL },
   { type: 'workspace', workspace: WORKSPACE_CENTRO_CONTACTO },
   { type: 'workspace', workspace: WORKSPACE_COTIZAR },

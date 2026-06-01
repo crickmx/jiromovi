@@ -7,6 +7,10 @@ export interface CentroDigitalCarpeta {
   creado_por: string | null;
   oficina_id: string | null;
   activa: boolean;
+  enable_chava_ai: boolean;
+  external_chava_access: boolean;
+  auto_index: boolean;
+  knowledge_priority: number;
   created_at: string;
   updated_at: string;
 
@@ -78,6 +82,10 @@ export interface CarpetaFormData {
   todos_roles: boolean;
   oficinas_seleccionadas: string[];
   roles_seleccionados: string[];
+  enable_chava_ai: boolean;
+  external_chava_access: boolean;
+  auto_index: boolean;
+  knowledge_priority: number;
 }
 
 export interface ArchivoUpload {
