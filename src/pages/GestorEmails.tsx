@@ -1323,3 +1323,5 @@ function fileToBase64(file: File): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
+
+export default GestorEmails;
