@@ -1,12 +1,20 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Phone, Mail, MessageCircle, Loader as Loader2, ChevronLeft, ChevronRight, ArrowUp, Car, ExternalLink, Search, X, ChevronDown, Award, Smartphone } from 'lucide-react';
+import {
+  Phone, Mail, MessageCircle, Loader as Loader2,
+  ChevronLeft, ChevronRight, ArrowUp, Car, ExternalLink,
+  Search, X, ChevronDown, Award, Smartphone, Globe,
+} from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { getPublicWebPageBySlug } from '../lib/webPagesUtils';
 import type { PublicWebPageData, SharedFormLink } from '../lib/webPagesTypes';
 import { DEFAULT_TEXT } from '../lib/webPagesTypes';
 import { createColorVariant } from '../lib/animationUtils';
+
+/* ─────────────────────────────────────────────
+   TIPOS / METADATOS (sin cambios en lógica)
+───────────────────────────────────────────── */
 
 interface InsuranceMeta {
   icon: string;
@@ -153,12 +161,37 @@ const NAV_ITEMS = [
 function scrollToSection(id: string) {
   const el = document.getElementById(id);
   if (el) {
-    const offset = 72;
+    const offset = 68;
     const top = el.getBoundingClientRect().top + window.scrollY - offset;
     window.scrollTo({ top, behavior: 'smooth' });
   }
 }
 
+/* ─────────────────────────────────────────────
+   INPUT COMPONENT — más alto y con foco limpio
+───────────────────────────────────────────── */
+function FormInput({
+  label,
+  required,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-semibold text-gray-800 mb-1.5">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   COMPONENTE PRINCIPAL
+───────────────────────────────────────────── */
 export default function PaginaPublicaAsesor() {
   const { slug } = useParams<{ slug: string }>();
   const [data, setData] = useState<PublicWebPageData | null>(null);
@@ -170,12 +203,7 @@ export default function PaginaPublicaAsesor() {
   const carouselRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState('inicio');
   const [navScrolled, setNavScrolled] = useState(false);
-  const [formData, setFormData] = useState({
-    nombre: '',
-    celular: '',
-    email: '',
-    seguro_interes: ''
-  });
+  const [formData, setFormData] = useState({ nombre: '', celular: '', email: '', seguro_interes: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [searchQuery, setSearchQuery] = useState('');
@@ -184,11 +212,7 @@ export default function PaginaPublicaAsesor() {
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
 
   useEffect(() => {
-    if (!slug) {
-      setNotFound(true);
-      setLoading(false);
-      return;
-    }
+    if (!slug) { setNotFound(true); setLoading(false); return; }
     loadPageData();
   }, [slug]);
 
@@ -197,14 +221,10 @@ export default function PaginaPublicaAsesor() {
       const y = window.scrollY;
       setShowScrollTop(y > 400);
       setNavScrolled(y > 60);
-
-      // Active section tracking
       const sections = NAV_ITEMS.map(n => document.getElementById(n.id));
       let current = 'inicio';
       for (const sec of sections) {
-        if (sec && sec.getBoundingClientRect().top <= 100) {
-          current = sec.id;
-        }
+        if (sec && sec.getBoundingClientRect().top <= 100) current = sec.id;
       }
       setActiveSection(current);
     };
@@ -220,27 +240,19 @@ export default function PaginaPublicaAsesor() {
     return () => clearInterval(interval);
   }, [data?.insurers, isAutoScrolling]);
 
-  useEffect(() => {
-    setVisibleCount(ITEMS_PER_PAGE);
-  }, [activeCategory, searchQuery]);
+  useEffect(() => { setVisibleCount(ITEMS_PER_PAGE); }, [activeCategory, searchQuery]);
 
   async function loadPageData() {
     if (!slug) return;
     try {
       const pageData = await getPublicWebPageBySlug(slug);
-      if (!pageData || !pageData.user) {
-        setNotFound(true);
-      } else if (pageData.config?.is_published === false) {
-        setNotFound(true);
-      } else {
-        setData(pageData);
-      }
+      if (!pageData || !pageData.user) { setNotFound(true); }
+      else if (pageData.config?.is_published === false) { setNotFound(true); }
+      else { setData(pageData); }
     } catch (error) {
       console.error('Error loading public page:', error);
       setNotFound(true);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
   async function handleSubmitLead(e: React.FormEvent) {
@@ -256,10 +268,7 @@ export default function PaginaPublicaAsesor() {
       const response = await fetch(`${supabaseUrl}/functions/v1/submit-web-lead`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          slug, nombre: formData.nombre, celular: formData.celular,
-          email: formData.email, seguro_interes: formData.seguro_interes, recaptchaToken,
-        }),
+        body: JSON.stringify({ slug, nombre: formData.nombre, celular: formData.celular, email: formData.email, seguro_interes: formData.seguro_interes, recaptchaToken }),
       });
       const responseData = await response.json();
       if (!response.ok || !responseData.success) throw new Error(responseData.error || 'Error');
@@ -268,9 +277,7 @@ export default function PaginaPublicaAsesor() {
     } catch (error) {
       console.error('Error submitting lead:', error);
       setSubmitStatus('error');
-    } finally {
-      setIsSubmitting(false);
-    }
+    } finally { setIsSubmitting(false); }
   }
 
   const processedLinks: ProcessedFormLink[] = useMemo(() => {
@@ -279,27 +286,11 @@ export default function PaginaPublicaAsesor() {
       const waFallback = wpNumber ? `https://wa.me/52${wpNumber}` : '#';
       return data.form_templates.map(tmpl => {
         const typeKey = tmpl.form_type?.toLowerCase().replace(/[^a-z_]/g, '') || '';
-        const meta = FORM_TYPE_META[typeKey] || {
-          icon: tmpl.icon || 'FileText',
-          description: 'Solicita una cotizacion personalizada con atencion profesional y sin compromiso.',
-          priority: 99,
-          category: 'otros',
-          keywords: []
-        };
+        const meta = FORM_TYPE_META[typeKey] || { icon: tmpl.icon || 'FileText', description: 'Solicita una cotizacion personalizada con atencion profesional y sin compromiso.', priority: 99, category: 'otros', keywords: [] };
         const publicUrl = tmpl.public_url
           || (tmpl.link_slug ? `https://agentedeseguros.website/cotizar/${tmpl.link_slug}` : null)
           || `${waFallback}${wpNumber ? `?text=${encodeURIComponent(`Hola, me interesa una cotizacion de ${tmpl.title}`)}` : ''}`;
-        return {
-          slug: tmpl.link_slug || tmpl.slug || tmpl.form_type,
-          form_title: tmpl.title,
-          form_type: tmpl.form_type,
-          form_slug: tmpl.slug || tmpl.form_type,
-          quote_form_template_id: tmpl.id,
-          meta: { ...meta, icon: tmpl.icon || meta.icon },
-          displayName: cleanFormTitle(tmpl.title),
-          isFeatured: tmpl.is_featured,
-          publicUrl,
-        };
+        return { slug: tmpl.link_slug || tmpl.slug || tmpl.form_type, form_title: tmpl.title, form_type: tmpl.form_type, form_slug: tmpl.slug || tmpl.form_type, quote_form_template_id: tmpl.id, meta: { ...meta, icon: tmpl.icon || meta.icon }, displayName: cleanFormTitle(tmpl.title), isFeatured: tmpl.is_featured, publicUrl };
       }).sort((a, b) => {
         if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
         return a.meta.priority - b.meta.priority;
@@ -311,22 +302,13 @@ export default function PaginaPublicaAsesor() {
       const meta = getFormLinkMeta(link);
       const displayName = cleanFormTitle(link.form_title);
       let isFeatured: boolean;
-      if (hasManualFeatured) {
-        isFeatured = !!link.featured_on_website;
-      } else {
+      if (hasManualFeatured) { isFeatured = !!link.featured_on_website; }
+      else {
         const typeKey = link.form_type?.toLowerCase().replace(/[^a-z_]/g, '') || '';
         const titleNorm = link.form_title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        isFeatured = DEFAULT_FEATURED_TYPES.some(ft =>
-          typeKey === ft || titleNorm.includes(ft.replace(/_/g, ' '))
-        );
+        isFeatured = DEFAULT_FEATURED_TYPES.some(ft => typeKey === ft || titleNorm.includes(ft.replace(/_/g, ' ')));
       }
-      return {
-        ...link,
-        meta,
-        displayName,
-        isFeatured,
-        publicUrl: `https://agentedeseguros.website/cotizar/${link.slug}`,
-      };
+      return { ...link, meta, displayName, isFeatured, publicUrl: `https://agentedeseguros.website/cotizar/${link.slug}` };
     });
     return links.sort((a, b) => {
       if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
@@ -379,35 +361,35 @@ export default function PaginaPublicaAsesor() {
       if (!restByCategory[catLabel]) restByCategory[catLabel] = [];
       restByCategory[catLabel].push(link);
     }
-    for (const [label, items] of Object.entries(restByCategory)) {
-      groups.push({ label, items });
-    }
+    for (const [label, items] of Object.entries(restByCategory)) { groups.push({ label, items }); }
     return groups;
   }, [processedLinks]);
 
+  /* ── Loading ── */
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600">Cargando pagina...</p>
+          <Loader2 className="w-10 h-10 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-gray-500 text-sm">Cargando pagina...</p>
         </div>
       </div>
     );
   }
 
+  /* ── 404 ── */
   if (notFound || !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center max-w-md mx-auto px-4">
-          <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-12 h-12 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="text-center max-w-md">
+          <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-5 border border-red-100">
+            <svg className="w-9 h-9 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Pagina no encontrada</h1>
-          <p className="text-gray-600 mb-6">Esta pagina no existe o no esta publicada.</p>
-          <a href="https://www.movi.digital" className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+          <p className="text-gray-500 mb-6">Esta pagina no existe o no esta publicada.</p>
+          <a href="https://www.movi.digital" className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors">
             Ir a MOVI Digital
           </a>
         </div>
@@ -433,77 +415,73 @@ export default function PaginaPublicaAsesor() {
   const seoText = `${user.name} de ${user.office?.name || 'JIRO'} te ayuda a cotizar y contratar seguros de ${categoriesText} con atencion personalizada por WhatsApp.`;
 
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
-
-  const handlePrevSlide = () => {
-    setIsAutoScrolling(false);
-    setCurrentSlide(prev => (prev - 1 + Math.ceil(insurers!.length / 4)) % Math.ceil(insurers!.length / 4));
-  };
-  const handleNextSlide = () => {
-    setIsAutoScrolling(false);
-    setCurrentSlide(prev => (prev + 1) % Math.ceil(insurers!.length / 4));
-  };
+  const totalSlides = Math.ceil((insurers?.length || 0) / 4);
+  const handlePrevSlide = () => { setIsAutoScrolling(false); setCurrentSlide(prev => (prev - 1 + totalSlides) % totalSlides); };
+  const handleNextSlide = () => { setIsAutoScrolling(false); setCurrentSlide(prev => (prev + 1) % totalSlides); };
 
   const hasFormLinks = processedLinks.length > 0;
   const visibleFeatured = showAllFeatured ? featuredLinks : featuredLinks.slice(0, 3);
   const paginatedLinks = filteredLinks.slice(0, visibleCount);
   const hasMoreLinks = filteredLinks.length > visibleCount;
 
+  /* ── Estilos reutilizables ── */
+  const inputCls = 'w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:outline-none focus:border-current transition-colors';
+  const btnPrimary = 'inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-white text-sm transition-all duration-200 hover:brightness-90 active:scale-95 shadow-sm';
+  const btnOutline = 'inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm border-2 transition-all duration-200 hover:brightness-95 active:scale-95';
+
   return (
     <>
       <Helmet>
-        <title>{user.name} - Oficina del Agente</title>
+        <title>{user.name} - Asesor de Seguros</title>
         <meta name="description" content={seoText} />
-        <meta property="og:title" content={`${user.name} - Oficina del Agente`} />
+        <meta property="og:title" content={`${user.name} - Asesor de Seguros`} />
         <meta property="og:description" content={seoText} />
         {user.photo_url && <meta property="og:image" content={user.photo_url} />}
         <meta name="robots" content="index, follow" />
       </Helmet>
+
       <div className="bg-white min-h-screen overflow-x-hidden pb-16 md:pb-0">
-        {/* Ambient background */}
-        <div
-          className="fixed inset-0 pointer-events-none z-0 opacity-30"
-          style={{
-            backgroundImage: `radial-gradient(circle at 20% 30%, ${createColorVariant(primaryColor, 0.1)} 0%, transparent 50%),
-                             radial-gradient(circle at 80% 70%, ${createColorVariant(secondaryColor, 0.1)} 0%, transparent 50%)`
-          }}
-        />
 
-        {/* STICKY NAV */}
-        <nav
-          className={`sticky top-0 z-40 transition-all duration-300 ${
-            navScrolled
-              ? 'bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100'
-              : 'bg-white/80 backdrop-blur-sm'
-          }`}
-        >
-          <div className="max-w-6xl mx-auto px-4">
-            <div className="flex items-center h-14 gap-1 overflow-x-auto scrollbar-hide">
-              {/* Logo or name */}
-              <button
-                onClick={() => scrollToSection('inicio')}
-                className="flex-shrink-0 mr-3 flex items-center gap-2"
-              >
-                {(user.logo_url || user.office?.logo_url) ? (
-                  <img
-                    src={user.logo_url || user.office?.logo_url || ''}
-                    alt="Logo"
-                    className="h-7 w-auto object-contain"
-                  />
-                ) : (
-                  <span className="text-sm font-bold truncate max-w-[120px]" style={{ color: primaryColor }}>
-                    {user.name}
-                  </span>
-                )}
-              </button>
+        {/* ═══════════════════════════════════════
+            NAVEGACIÓN — centrada y sticky
+        ═══════════════════════════════════════ */}
+        <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          navScrolled
+            ? 'bg-white/96 backdrop-blur-md shadow-md border-b border-gray-100'
+            : 'bg-white/90 backdrop-blur-sm'
+        }`}>
+          <div className="max-w-7xl mx-auto px-4 h-16 flex items-center">
+            {/* Logo / Nombre — izquierda */}
+            <button
+              onClick={() => scrollToSection('inicio')}
+              className="flex-shrink-0 flex items-center gap-2 mr-4"
+            >
+              {(user.logo_url || user.office?.logo_url) ? (
+                <img
+                  src={user.logo_url || user.office?.logo_url || ''}
+                  alt="Logo"
+                  className="h-8 w-auto object-contain"
+                />
+              ) : (
+                <span
+                  className="text-sm font-bold truncate max-w-[140px] leading-tight"
+                  style={{ color: primaryColor }}
+                >
+                  {user.name}
+                </span>
+              )}
+            </button>
 
-              <div className="flex items-center gap-0.5 flex-1 overflow-x-auto scrollbar-hide">
+            {/* Menu centrado — grow + flex justify-center */}
+            <div className="flex-1 flex items-center justify-center">
+              <div className="hidden md:flex items-center gap-1">
                 {NAV_ITEMS.map(item => (
                   <button
                     key={item.id}
                     onClick={() => scrollToSection(item.id)}
-                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 whitespace-nowrap ${
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap ${
                       activeSection === item.id
-                        ? 'text-white shadow-sm'
+                        ? 'text-white'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                     }`}
                     style={activeSection === item.id ? { backgroundColor: primaryColor } : {}}
@@ -512,31 +490,52 @@ export default function PaginaPublicaAsesor() {
                   </button>
                 ))}
               </div>
+            </div>
 
-              {/* WhatsApp pill */}
-              <a
-                href={whatsappLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-shrink-0 ml-2 hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold text-white transition-all hover:scale-105 shadow-sm"
-                style={{ backgroundColor: primaryColor }}
-              >
-                <MessageCircle className="w-3.5 h-3.5" />
-                WhatsApp
-              </a>
+            {/* CTA WhatsApp — derecha */}
+            <a
+              href={whatsappLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-shrink-0 hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:brightness-90 active:scale-95 shadow-sm"
+              style={{ backgroundColor: primaryColor }}
+            >
+              <MessageCircle className="w-4 h-4" />
+              WhatsApp
+            </a>
+
+            {/* Mobile: hamburger placeholder — scroll horizontal */}
+            <div className="md:hidden flex-1 flex items-center justify-center overflow-x-auto scrollbar-hide">
+              <div className="flex items-center gap-0.5 px-1">
+                {NAV_ITEMS.map(item => (
+                  <button
+                    key={item.id}
+                    onClick={() => scrollToSection(item.id)}
+                    className={`flex-shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                      activeSection === item.id ? 'text-white' : 'text-gray-600'
+                    }`}
+                    style={activeSection === item.id ? { backgroundColor: primaryColor } : {}}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </nav>
 
-        {/* HERO */}
-        <section id="inicio" className="relative bg-gradient-to-b from-gray-50 to-white py-12 md:py-20 px-4">
-          <div className="max-w-7xl mx-auto">
-            <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
-              {/* LEFT: Profile + CTAs */}
+        {/* ═══════════════════════════════════════
+            HERO — identificación + formulario
+        ═══════════════════════════════════════ */}
+        <section id="inicio" className="pt-16 bg-white">
+          <div className="max-w-7xl mx-auto px-4 py-14 md:py-20">
+            <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-start">
+
+              {/* IZQUIERDA: perfil + CTAs */}
               <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
-                {/* Logo above photo */}
+                {/* Logo sobre la foto */}
                 {(user.logo_url || user.office?.logo_url) && (
-                  <div className="mb-5">
+                  <div className="mb-6">
                     <img
                       src={user.logo_url || user.office?.logo_url || ''}
                       alt="Logo"
@@ -545,28 +544,24 @@ export default function PaginaPublicaAsesor() {
                   </div>
                 )}
 
-                {/* Circular profile photo */}
-                <div className="mb-5">
+                {/* Foto circular */}
+                <div className="mb-6">
                   {user.photo_url ? (
                     <div
-                      className="relative w-32 h-32 md:w-40 md:h-40 rounded-full shadow-xl overflow-hidden flex-shrink-0"
+                      className="w-36 h-36 md:w-44 md:h-44 rounded-full overflow-hidden flex-shrink-0"
                       style={{
                         border: `4px solid ${primaryColor}`,
-                        boxShadow: `0 0 0 4px ${createColorVariant(primaryColor, 0.15)}, 0 8px 32px ${createColorVariant(primaryColor, 0.2)}`
+                        boxShadow: `0 0 0 6px ${createColorVariant(primaryColor, 0.12)}, 0 12px 40px ${createColorVariant(primaryColor, 0.22)}`,
                       }}
                     >
-                      <img
-                        src={user.photo_url}
-                        alt={user.name}
-                        className="w-full h-full object-cover object-center"
-                      />
+                      <img src={user.photo_url} alt={user.name} className="w-full h-full object-cover object-center" />
                     </div>
                   ) : (
                     <div
-                      className="w-32 h-32 md:w-40 md:h-40 rounded-full flex items-center justify-center text-white text-4xl font-bold shadow-xl flex-shrink-0"
+                      className="w-36 h-36 md:w-44 md:h-44 rounded-full flex items-center justify-center text-white text-5xl font-bold flex-shrink-0"
                       style={{
                         background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`,
-                        border: `4px solid ${createColorVariant(primaryColor, 0.3)}`,
+                        boxShadow: `0 12px 40px ${createColorVariant(primaryColor, 0.3)}`,
                       }}
                     >
                       {user.name?.charAt(0)?.toUpperCase() || 'A'}
@@ -574,46 +569,40 @@ export default function PaginaPublicaAsesor() {
                   )}
                 </div>
 
-                {/* Name + title */}
-                <h1 className="text-3xl md:text-4xl font-bold mb-1" style={{ color: primaryColor }}>
+                {/* Nombre y título */}
+                <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-1 leading-tight">
                   {user.name}
                 </h1>
-                <p className="text-base md:text-lg font-medium text-gray-500 mb-1">
+                <p className="text-base md:text-lg font-medium mb-4" style={{ color: primaryColor }}>
                   Asesor Personal de Seguros
                 </p>
-                {user.office?.name && (
-                  <p className="text-sm text-gray-400 mb-5">{user.office.name}</p>
-                )}
 
-                {/* Value prop */}
-                <div className="mb-7 max-w-lg">
-                  <h2 className="text-xl md:text-2xl font-bold mb-2" style={{ color: primaryColor }}>
-                    Protege lo que mas importa
-                  </h2>
-                  <p className="text-gray-600 leading-relaxed text-sm md:text-base">
-                    Te ayudo a encontrar el seguro perfecto para ti y tu familia. Cotizaciones personalizadas, asesoria profesional y atencion inmediata.
+                {/* Propuesta de valor */}
+                <div className="mb-8 max-w-lg">
+                  <p className="text-gray-700 leading-relaxed text-base md:text-lg">
+                    Te ayudo a encontrar el seguro perfecto para ti y tu familia. Cotizaciones sin costo, asesoria experta y atencion inmediata.
                   </p>
                 </div>
 
                 {/* CTAs */}
-                <div className="flex flex-col items-center lg:items-start gap-3 w-full sm:w-auto">
+                <div className="flex flex-col gap-3 w-full sm:w-auto">
                   <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
                     <a
                       href={whatsappLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-white transition-all duration-300 hover:scale-105 shadow-md hover:shadow-lg text-sm"
+                      className={btnPrimary}
                       style={{ backgroundColor: primaryColor }}
                     >
-                      <MessageCircle className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-                      WhatsApp
+                      <MessageCircle className="w-4 h-4" />
+                      Escribir por WhatsApp
                     </a>
                     <a
                       href={`tel:${user.phone?.replace(/\D/g, '')}`}
-                      className="group inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold bg-white border-2 transition-all duration-300 hover:scale-105 shadow-md hover:shadow-lg text-sm"
+                      className={btnOutline}
                       style={{ borderColor: primaryColor, color: primaryColor }}
                     >
-                      <Phone className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+                      <Phone className="w-4 h-4" />
                       Llamar
                     </a>
                   </div>
@@ -621,139 +610,146 @@ export default function PaginaPublicaAsesor() {
                     href={multicotizadorUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-white transition-all duration-300 hover:scale-105 shadow-md hover:shadow-lg text-sm"
+                    className={btnPrimary}
                     style={{ backgroundColor: secondaryColor }}
                   >
-                    <Car className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    <Car className="w-4 h-4" />
                     Multicotizador de Autos
                   </a>
                 </div>
               </div>
 
-              {/* RIGHT: Lead Form */}
+              {/* DERECHA: formulario de cotización */}
               <div className="lg:sticky lg:top-24">
                 <div
-                  className="bg-white rounded-2xl shadow-2xl p-5 md:p-7 border"
-                  style={{ borderColor: createColorVariant(primaryColor, 0.2) }}
+                  className="bg-white rounded-2xl border shadow-xl overflow-hidden"
+                  style={{ borderColor: `${primaryColor}20` }}
                 >
-                  <h3 className="text-xl font-bold mb-1" style={{ color: primaryColor }}>
-                    Solicita tu Cotizacion
-                  </h3>
-                  <p className="text-gray-500 mb-5 text-sm">
-                    Completa el formulario y te contactare de inmediato
-                  </p>
+                  {/* Cabecera del formulario con color primario */}
+                  <div className="px-7 pt-6 pb-5" style={{ borderBottom: `3px solid ${primaryColor}` }}>
+                    <h3 className="text-xl font-bold text-gray-900 mb-0.5">Solicita tu Cotizacion</h3>
+                    <p className="text-sm text-gray-500">
+                      Completa el formulario y te contacto de inmediato — sin costo ni compromiso.
+                    </p>
+                  </div>
 
-                  {submitStatus === 'success' ? (
-                    <div className="text-center py-8">
-                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                      <h4 className="text-xl font-bold text-gray-900 mb-2">Solicitud Recibida</h4>
-                      <p className="text-gray-600 text-sm">Gracias. Te contactare a la brevedad para ofrecerte la mejor opcion.</p>
-                    </div>
-                  ) : (
-                    <form className="space-y-3.5" onSubmit={handleSubmitLead}>
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">Nombre Completo *</label>
-                        <input
-                          type="text"
-                          value={formData.nombre}
-                          onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
-                          className="w-full px-3.5 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none transition-colors text-sm"
-                          style={{ borderColor: formData.nombre ? createColorVariant(primaryColor, 0.5) : undefined }}
-                          placeholder="Tu nombre"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">Celular *</label>
-                        <input
-                          type="tel"
-                          value={formData.celular}
-                          onChange={(e) => setFormData(prev => ({ ...prev, celular: e.target.value }))}
-                          className="w-full px-3.5 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none transition-colors text-sm"
-                          style={{ borderColor: formData.celular ? createColorVariant(primaryColor, 0.5) : undefined }}
-                          placeholder="55 1234 5678"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">Email *</label>
-                        <input
-                          type="email"
-                          value={formData.email}
-                          onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                          className="w-full px-3.5 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none transition-colors text-sm"
-                          style={{ borderColor: formData.email ? createColorVariant(primaryColor, 0.5) : undefined }}
-                          placeholder="tu@email.com"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">Seguro de Interes *</label>
-                        <select
-                          value={formData.seguro_interes}
-                          onChange={(e) => setFormData(prev => ({ ...prev, seguro_interes: e.target.value }))}
-                          className="w-full px-3.5 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none transition-colors bg-white text-sm"
-                          style={{ borderColor: formData.seguro_interes ? createColorVariant(primaryColor, 0.5) : undefined }}
-                          required
+                  <div className="px-7 py-6">
+                    {submitStatus === 'success' ? (
+                      <div className="text-center py-8">
+                        <div
+                          className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+                          style={{ backgroundColor: `${secondaryColor}15` }}
                         >
-                          <option value="">Selecciona un seguro</option>
-                          {selectGroups ? (
-                            selectGroups.map(group => (
-                              <optgroup key={group.label} label={group.label}>
-                                {group.items.map(link => (
-                                  <option key={link.slug} value={link.displayName}>{link.displayName}</option>
-                                ))}
-                              </optgroup>
-                            ))
-                          ) : categories?.map(category => (
-                            <option key={category.id} value={category.name}>{category.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                      {submitStatus === 'error' && (
-                        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">
-                          Error al enviar. Intenta nuevamente.
+                          <svg className="w-8 h-8" fill="none" stroke={secondaryColor} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                          </svg>
                         </div>
-                      )}
-                      <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="w-full py-3.5 rounded-xl font-bold text-white transition-all duration-300 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                        style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)` }}
-                      >
-                        {isSubmitting ? 'Enviando...' : 'Solicitar Cotizacion'}
-                      </button>
-                      <p className="text-xs text-gray-400 text-center">
-                        Al enviar, aceptas que te contactemos para ofrecerte informacion sobre seguros.
-                      </p>
-                    </form>
-                  )}
+                        <h4 className="text-lg font-bold text-gray-900 mb-2">Solicitud recibida</h4>
+                        <p className="text-gray-600 text-sm leading-relaxed">
+                          Gracias {formData.nombre || ''}. Te contactare a la brevedad para ofrecerte la mejor opcion.
+                        </p>
+                      </div>
+                    ) : (
+                      <form className="space-y-4" onSubmit={handleSubmitLead}>
+                        <FormInput label="Nombre completo" required>
+                          <input
+                            type="text"
+                            value={formData.nombre}
+                            onChange={e => setFormData(p => ({ ...p, nombre: e.target.value }))}
+                            className={inputCls}
+                            style={{ '--tw-border-opacity': '1', borderColor: formData.nombre ? primaryColor : undefined } as React.CSSProperties}
+                            placeholder="Tu nombre completo"
+                            required
+                          />
+                        </FormInput>
+                        <FormInput label="Celular" required>
+                          <input
+                            type="tel"
+                            value={formData.celular}
+                            onChange={e => setFormData(p => ({ ...p, celular: e.target.value }))}
+                            className={inputCls}
+                            style={{ borderColor: formData.celular ? primaryColor : undefined } as React.CSSProperties}
+                            placeholder="55 1234 5678"
+                            required
+                          />
+                        </FormInput>
+                        <FormInput label="Correo electronico" required>
+                          <input
+                            type="email"
+                            value={formData.email}
+                            onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
+                            className={inputCls}
+                            style={{ borderColor: formData.email ? primaryColor : undefined } as React.CSSProperties}
+                            placeholder="tu@email.com"
+                            required
+                          />
+                        </FormInput>
+                        <FormInput label="Seguro de interes" required>
+                          <select
+                            value={formData.seguro_interes}
+                            onChange={e => setFormData(p => ({ ...p, seguro_interes: e.target.value }))}
+                            className={`${inputCls} bg-white`}
+                            style={{ borderColor: formData.seguro_interes ? primaryColor : undefined } as React.CSSProperties}
+                            required
+                          >
+                            <option value="">Selecciona un seguro</option>
+                            {selectGroups ? (
+                              selectGroups.map(group => (
+                                <optgroup key={group.label} label={group.label}>
+                                  {group.items.map(link => (
+                                    <option key={link.slug} value={link.displayName}>{link.displayName}</option>
+                                  ))}
+                                </optgroup>
+                              ))
+                            ) : categories?.map(category => (
+                              <option key={category.id} value={category.name}>{category.name}</option>
+                            ))}
+                          </select>
+                        </FormInput>
+
+                        {submitStatus === 'error' && (
+                          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 font-medium">
+                            Error al enviar. Por favor, intenta nuevamente.
+                          </div>
+                        )}
+
+                        <button
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="w-full py-3.5 rounded-xl font-bold text-white text-sm transition-all hover:brightness-90 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed shadow-md mt-1"
+                          style={{ backgroundColor: primaryColor }}
+                        >
+                          {isSubmitting ? 'Enviando...' : 'Solicitar Cotizacion Gratuita'}
+                        </button>
+                        <p className="text-xs text-gray-400 text-center leading-relaxed">
+                          Al enviar, aceptas que te contactemos para ofrecerte informacion sobre seguros.
+                        </p>
+                      </form>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ASEGURADORAS */}
+        {/* ═══════════════════════════════════════
+            ASEGURADORAS
+        ═══════════════════════════════════════ */}
         {insurers && insurers.length > 0 && (
-          <section id="aseguradoras" className="relative py-16 px-4 bg-gradient-to-b from-gray-50 to-white z-10">
+          <section id="aseguradoras" className="py-16 px-4 bg-gray-50">
             <div className="max-w-6xl mx-auto">
-              <h2
-                className="text-3xl sm:text-4xl font-bold text-center mb-2 px-4"
-                style={{ color: primaryColor }}
-              >
-                Aseguradoras de Confianza
-              </h2>
-              <p className="text-center text-gray-500 mb-10 max-w-2xl mx-auto text-base px-4">
-                Trabajo con las mejores aseguradoras del mercado para ofrecerte opciones competitivas
-              </p>
+              <div className="text-center mb-10">
+                <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-2">
+                  Aseguradoras de confianza
+                </h2>
+                <p className="text-gray-600 max-w-xl mx-auto">
+                  Trabajo con las mejores aseguradoras del mercado para darte la mejor cobertura al mejor precio.
+                </p>
+              </div>
 
               <div
-                className="relative px-4"
+                className="relative"
                 onMouseEnter={() => setIsAutoScrolling(false)}
                 onMouseLeave={() => setIsAutoScrolling(true)}
               >
@@ -761,14 +757,14 @@ export default function PaginaPublicaAsesor() {
                   <>
                     <button
                       onClick={handlePrevSlide}
-                      className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110"
+                      className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-5 z-10 bg-white rounded-full p-2.5 shadow-lg hover:shadow-xl transition-all hover:scale-110 border border-gray-100"
                       style={{ color: primaryColor }}
                     >
                       <ChevronLeft className="w-5 h-5" />
                     </button>
                     <button
                       onClick={handleNextSlide}
-                      className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110"
+                      className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-5 z-10 bg-white rounded-full p-2.5 shadow-lg hover:shadow-xl transition-all hover:scale-110 border border-gray-100"
                       style={{ color: primaryColor }}
                     >
                       <ChevronRight className="w-5 h-5" />
@@ -783,22 +779,20 @@ export default function PaginaPublicaAsesor() {
                   >
                     {Array.from({ length: Math.ceil(insurers.length / 4) }).map((_, slideIndex) => (
                       <div key={slideIndex} className="w-full flex-shrink-0">
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6 px-2">
-                          {insurers.slice(slideIndex * 4, slideIndex * 4 + 4).map((insurer) => (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                          {insurers.slice(slideIndex * 4, slideIndex * 4 + 4).map(insurer => (
                             <div
                               key={insurer.id}
-                              className="group bg-white p-5 sm:p-7 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-400 flex flex-col items-center justify-center gap-2 border border-gray-100 hover:border-gray-200 transform hover:-translate-y-1 min-h-[90px] sm:min-h-[110px]"
+                              className="group bg-white px-6 py-5 rounded-2xl border border-gray-100 hover:border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-center min-h-[90px]"
                             >
                               {insurer.logo_url ? (
                                 <img
                                   src={insurer.logo_url}
                                   alt={insurer.name}
-                                  className="max-w-full max-h-10 sm:max-h-12 object-contain filter grayscale group-hover:grayscale-0 transition-all duration-300"
+                                  className="max-w-full max-h-10 object-contain filter grayscale group-hover:grayscale-0 transition-all duration-300"
                                 />
                               ) : (
-                                <span className="text-sm font-semibold text-gray-500 text-center leading-tight">
-                                  {insurer.name}
-                                </span>
+                                <span className="text-sm font-semibold text-gray-600 text-center leading-tight">{insurer.name}</span>
                               )}
                             </div>
                           ))}
@@ -809,15 +803,15 @@ export default function PaginaPublicaAsesor() {
                 </div>
 
                 {insurers.length > 4 && (
-                  <div className="flex justify-center gap-2 mt-6">
-                    {Array.from({ length: Math.ceil(insurers.length / 4) }).map((_, idx) => (
+                  <div className="flex justify-center gap-1.5 mt-5">
+                    {Array.from({ length: totalSlides }).map((_, idx) => (
                       <button
                         key={idx}
                         onClick={() => { setCurrentSlide(idx); setIsAutoScrolling(false); }}
-                        className="h-2 rounded-full transition-all duration-300"
+                        className="h-1.5 rounded-full transition-all duration-300"
                         style={{
                           backgroundColor: currentSlide === idx ? primaryColor : '#D1D5DB',
-                          width: currentSlide === idx ? '1.75rem' : '0.5rem'
+                          width: currentSlide === idx ? '1.5rem' : '0.375rem',
                         }}
                       />
                     ))}
@@ -828,22 +822,23 @@ export default function PaginaPublicaAsesor() {
           </section>
         )}
 
-        {/* COTIZAR: Featured Insurance */}
+        {/* ═══════════════════════════════════════
+            COTIZAR — seguros destacados
+        ═══════════════════════════════════════ */}
         {hasFormLinks && featuredLinks.length > 0 && (
-          <section id="cotizar" className="relative py-16 px-4 bg-gradient-to-b from-white to-gray-50 z-10">
+          <section id="cotizar" className="py-16 px-4 bg-white">
             <div className="max-w-6xl mx-auto">
-              <h2
-                className="text-3xl sm:text-4xl font-bold text-center mb-2 px-4"
-                style={{ color: primaryColor }}
-              >
-                Seguros mas solicitados
-              </h2>
-              <p className="text-center text-gray-500 mb-10 max-w-2xl mx-auto text-base px-4">
-                Proteccion completa para lo que mas valoras
-              </p>
+              <div className="text-center mb-10">
+                <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-2">
+                  Seguros mas solicitados
+                </h2>
+                <p className="text-gray-600 max-w-xl mx-auto">
+                  Haz clic para iniciar tu cotizacion en segundos.
+                </p>
+              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 px-4">
-                {visibleFeatured.map((link, idx) => {
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {visibleFeatured.map(link => {
                   const IconComponent = (LucideIcons as any)[link.meta.icon];
                   return (
                     <a
@@ -851,35 +846,26 @@ export default function PaginaPublicaAsesor() {
                       href={link.publicUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group relative bg-white p-6 sm:p-7 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 no-underline block"
-                      style={{ animationDelay: `${idx * 80}ms` }}
+                      className="group bg-white rounded-2xl border border-gray-100 hover:border-gray-200 shadow-sm hover:shadow-lg p-6 transition-all duration-300 hover:-translate-y-1 block no-underline"
                     >
-                      <div
-                        className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"
-                        style={{ background: `linear-gradient(135deg, ${createColorVariant(primaryColor, 0.08)} 0%, ${createColorVariant(secondaryColor, 0.08)} 100%)` }}
-                      />
-                      <div className="relative z-10">
-                        {IconComponent && (
-                          <div
-                            className="mb-4 w-13 h-13 rounded-2xl flex items-center justify-center w-14 h-14 transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-md"
-                            style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)` }}
-                          >
-                            <IconComponent className="w-7 h-7 text-white" />
-                          </div>
-                        )}
-                        <h3 className="text-lg sm:text-xl font-bold mb-2 transition-all" style={{ color: primaryColor }}>
-                          {link.displayName}
-                        </h3>
-                        <p className="text-sm text-gray-500 mb-5 leading-relaxed line-clamp-3">
-                          {link.meta.description}
-                        </p>
-                        <span
-                          className="inline-flex items-center gap-2 text-sm font-bold group-hover:gap-3 transition-all duration-300"
-                          style={{ color: secondaryColor }}
+                      {IconComponent && (
+                        <div
+                          className="mb-4 w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110"
+                          style={{ backgroundColor: primaryColor }}
                         >
-                          Cotizar ahora <ExternalLink className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                        </span>
-                      </div>
+                          <IconComponent className="w-6 h-6 text-white" />
+                        </div>
+                      )}
+                      <h3 className="text-base font-bold text-gray-900 mb-2">{link.displayName}</h3>
+                      <p className="text-sm text-gray-500 mb-4 leading-relaxed line-clamp-2">
+                        {link.meta.description}
+                      </p>
+                      <span
+                        className="inline-flex items-center gap-1.5 text-sm font-bold"
+                        style={{ color: primaryColor }}
+                      >
+                        Cotizar ahora <ExternalLink className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      </span>
                     </a>
                   );
                 })}
@@ -889,10 +875,10 @@ export default function PaginaPublicaAsesor() {
                 <div className="text-center mt-6 sm:hidden">
                   <button
                     onClick={() => setShowAllFeatured(true)}
-                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm border-2 transition-all hover:scale-105"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm border-2 transition-all"
                     style={{ borderColor: primaryColor, color: primaryColor }}
                   >
-                    Ver mas seguros destacados <ChevronDown className="w-4 h-4" />
+                    Ver mas <ChevronDown className="w-4 h-4" />
                   </button>
                 </div>
               )}
@@ -900,53 +886,51 @@ export default function PaginaPublicaAsesor() {
           </section>
         )}
 
-        {/* EXPLORE ALL */}
+        {/* ═══════════════════════════════════════
+            EXPLORAR TODOS LOS SEGUROS
+        ═══════════════════════════════════════ */}
         {hasFormLinks && processedLinks.length > featuredLinks.length && (
-          <section className="relative py-16 px-4 bg-gray-50 z-10">
+          <section className="py-14 px-4 bg-gray-50">
             <div className="max-w-6xl mx-auto">
-              <h2
-                className="text-2xl sm:text-3xl font-bold text-center mb-2 px-4"
-                style={{ color: primaryColor }}
-              >
-                Explora todos los seguros
-              </h2>
-              <p className="text-center text-gray-500 mb-8 max-w-xl mx-auto text-sm sm:text-base px-4">
-                Encuentra el seguro ideal para ti, tu familia o tu empresa
-              </p>
+              <div className="text-center mb-8">
+                <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-2">
+                  Todos los seguros
+                </h2>
+                <p className="text-gray-600 max-w-lg mx-auto text-sm">
+                  Encuentra el seguro ideal para ti, tu familia o tu empresa.
+                </p>
+              </div>
 
-              {/* Search */}
-              <div className="max-w-md mx-auto mb-6 px-4">
+              {/* Buscador */}
+              <div className="max-w-md mx-auto mb-6">
                 <div className="relative">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                   <input
                     type="text"
                     value={searchQuery}
-                    onChange={(e) => { setSearchQuery(e.target.value); setActiveCategory('all'); }}
+                    onChange={e => { setSearchQuery(e.target.value); setActiveCategory('all'); }}
                     placeholder="Buscar seguro..."
-                    className="w-full pl-10 pr-10 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-colors text-sm bg-white shadow-sm"
-                    style={{ borderColor: searchQuery ? primaryColor : undefined }}
+                    className="w-full pl-10 pr-10 py-3 border-2 border-gray-200 rounded-xl text-sm text-gray-900 bg-white focus:outline-none transition-colors shadow-sm"
+                    style={{ borderColor: searchQuery ? primaryColor : undefined } as React.CSSProperties}
                   />
                   {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                    >
+                    <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                       <X className="w-4 h-4" />
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* Category chips */}
+              {/* Filtros por categoría */}
               {!searchQuery && availableCategories.length > 1 && (
-                <div className="mb-8 px-4">
+                <div className="mb-8">
                   <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide justify-start sm:justify-center">
                     <button
                       onClick={() => setActiveCategory('all')}
-                      className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 whitespace-nowrap shadow-sm"
+                      className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap"
                       style={activeCategory === 'all'
                         ? { backgroundColor: primaryColor, color: 'white' }
-                        : { backgroundColor: 'white', color: '#6B7280', border: '1px solid #E5E7EB' }
+                        : { backgroundColor: 'white', color: '#374151', border: '1px solid #D1D5DB' }
                       }
                     >
                       Todos ({processedLinks.length})
@@ -957,10 +941,10 @@ export default function PaginaPublicaAsesor() {
                         <button
                           key={cat.key}
                           onClick={() => setActiveCategory(cat.key)}
-                          className="flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 whitespace-nowrap shadow-sm"
+                          className="flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap"
                           style={activeCategory === cat.key
                             ? { backgroundColor: primaryColor, color: 'white' }
-                            : { backgroundColor: 'white', color: '#6B7280', border: '1px solid #E5E7EB' }
+                            : { backgroundColor: 'white', color: '#374151', border: '1px solid #D1D5DB' }
                           }
                         >
                           {CatIcon && <CatIcon className="w-3.5 h-3.5" />}
@@ -974,7 +958,7 @@ export default function PaginaPublicaAsesor() {
 
               {paginatedLinks.length > 0 ? (
                 <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 px-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {paginatedLinks.map(link => {
                       const IconComponent = (LucideIcons as any)[link.meta.icon];
                       return (
@@ -983,25 +967,21 @@ export default function PaginaPublicaAsesor() {
                           href={link.publicUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="group flex items-center gap-3 bg-white p-4 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all duration-300 no-underline"
+                          className="group flex items-center gap-3 bg-white px-4 py-3.5 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all no-underline"
                         >
                           <div
-                            className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110"
-                            style={{ backgroundColor: createColorVariant(primaryColor, 0.08) }}
+                            className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center"
+                            style={{ backgroundColor: `${primaryColor}12` }}
                           >
-                            {IconComponent && <IconComponent className="w-5 h-5" style={{ color: primaryColor }} />}
+                            {IconComponent && <IconComponent className="w-4.5 h-4.5" style={{ color: primaryColor }} />}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-gray-700">
-                              {link.displayName}
-                            </p>
-                            <p className="text-xs text-gray-500 capitalize">
-                              {INSURANCE_CATEGORIES[link.meta.category as CategoryKey] || 'Otros'}
-                            </p>
+                            <p className="text-sm font-semibold text-gray-900 truncate">{link.displayName}</p>
+                            <p className="text-xs text-gray-500 capitalize">{INSURANCE_CATEGORIES[link.meta.category as CategoryKey] || 'Otros'}</p>
                           </div>
                           <span
-                            className="flex-shrink-0 text-xs font-bold px-3 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200"
-                            style={{ color: secondaryColor, backgroundColor: createColorVariant(secondaryColor, 0.08) }}
+                            className="flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            style={{ color: primaryColor, backgroundColor: `${primaryColor}10` }}
                           >
                             Cotizar
                           </span>
@@ -1014,33 +994,27 @@ export default function PaginaPublicaAsesor() {
                     <div className="text-center mt-8">
                       <button
                         onClick={() => setVisibleCount(prev => prev + ITEMS_PER_PAGE)}
-                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm border-2 transition-all hover:scale-105 hover:shadow-md"
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm border-2 transition-all hover:brightness-95"
                         style={{ borderColor: primaryColor, color: primaryColor }}
                       >
                         <ChevronDown className="w-4 h-4" />
-                        Ver mas seguros ({filteredLinks.length - visibleCount} restantes)
+                        Ver mas ({filteredLinks.length - visibleCount} restantes)
                       </button>
                     </div>
                   )}
-
-                  {!hasMoreLinks && filteredLinks.length > ITEMS_PER_PAGE && (
-                    <p className="text-center mt-6 text-sm text-gray-400">
-                      Mostrando {filteredLinks.length} seguros disponibles
-                    </p>
-                  )}
                 </>
               ) : (
-                <div className="text-center py-10 px-4">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Search className="w-7 h-7 text-gray-400" />
+                <div className="text-center py-10">
+                  <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Search className="w-6 h-6 text-gray-400" />
                   </div>
-                  <p className="text-gray-700 font-medium mb-2">No encontre ese seguro</p>
-                  <p className="text-gray-500 text-sm mb-5">Escribeme y te ayudo a cotizarlo sin compromiso</p>
+                  <p className="text-gray-800 font-semibold mb-1">No encontre ese seguro</p>
+                  <p className="text-gray-500 text-sm mb-5">Escribeme y te ayudo sin compromiso</p>
                   <a
                     href={whatsappLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-white text-sm transition-all hover:scale-105 shadow-md"
+                    className={btnPrimary}
                     style={{ backgroundColor: primaryColor }}
                   >
                     <MessageCircle className="w-4 h-4" /> Contactar por WhatsApp
@@ -1051,48 +1025,29 @@ export default function PaginaPublicaAsesor() {
           </section>
         )}
 
-        {/* FALLBACK: Old categories if no form links */}
+        {/* Fallback: categorías antiguas */}
         {!hasFormLinks && categories && categories.length > 0 && (
-          <section id="cotizar" className="relative py-16 px-4 bg-gradient-to-b from-gray-50 to-white z-10">
+          <section id="cotizar" className="py-16 px-4 bg-white">
             <div className="max-w-6xl mx-auto">
-              <h2 className="text-3xl sm:text-4xl font-bold text-center mb-3 px-4" style={{ color: primaryColor }}>
-                Seguros a tu medida
-              </h2>
-              <p className="text-center text-gray-500 mb-12 max-w-2xl mx-auto text-base px-4">
-                Proteccion completa para lo que mas valoras
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 px-4">
-                {categories.map((category, idx) => {
+              <div className="text-center mb-10">
+                <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-2">Seguros a tu medida</h2>
+                <p className="text-gray-600 max-w-xl mx-auto">Proteccion completa para lo que mas valoras.</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {categories.map(category => {
                   const IconComponent = category.lucide_icon && (LucideIcons as any)[category.lucide_icon];
                   return (
-                    <div
-                      key={category.id}
-                      className="group relative bg-white p-6 sm:p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2"
-                      style={{ animationDelay: `${idx * 100}ms` }}
-                    >
-                      <div className="relative z-10">
-                        {IconComponent && (
-                          <div
-                            className="mb-5 w-14 h-14 rounded-2xl flex items-center justify-center transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg"
-                            style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)` }}
-                          >
-                            <IconComponent className="w-7 h-7 text-white" />
-                          </div>
-                        )}
-                        <h3 className="text-xl sm:text-2xl font-bold mb-3 transition-all" style={{ color: primaryColor }}>
-                          {category.card_title}
-                        </h3>
-                        <p className="text-sm text-gray-500 mb-5 leading-relaxed">{category.card_description}</p>
-                        <a
-                          href={whatsappLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 text-sm font-bold hover:gap-3 transition-all duration-300"
-                          style={{ color: secondaryColor }}
-                        >
-                          Cotizar {category.name} <MessageCircle className="w-4 h-4" />
-                        </a>
-                      </div>
+                    <div key={category.id} className="group bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
+                      {IconComponent && (
+                        <div className="mb-4 w-11 h-11 rounded-xl flex items-center justify-center" style={{ backgroundColor: primaryColor }}>
+                          <IconComponent className="w-5.5 h-5.5 text-white" />
+                        </div>
+                      )}
+                      <h3 className="text-base font-bold text-gray-900 mb-2">{category.card_title}</h3>
+                      <p className="text-sm text-gray-500 mb-4 leading-relaxed">{category.card_description}</p>
+                      <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-bold" style={{ color: primaryColor }}>
+                        Cotizar {category.name} <MessageCircle className="w-3.5 h-3.5" />
+                      </a>
                     </div>
                   );
                 })}
@@ -1101,111 +1056,113 @@ export default function PaginaPublicaAsesor() {
           </section>
         )}
 
-        {/* EMPTY STATE */}
+        {/* Estado vacío */}
         {!hasFormLinks && (!categories || categories.length === 0) && (
-          <section id="cotizar" className="relative py-16 px-4 bg-gray-50 z-10">
+          <section id="cotizar" className="py-16 px-4 bg-gray-50">
             <div className="max-w-md mx-auto text-center">
-              <p className="text-gray-600 mb-4">
-                Por el momento no hay formularios de cotizacion disponibles. Contactame directamente para ayudarte.
-              </p>
-              <a
-                href={whatsappLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white transition-all hover:scale-105"
-                style={{ backgroundColor: primaryColor }}
-              >
-                <MessageCircle className="w-4 h-4" /> Contactame directamente
+              <p className="text-gray-600 mb-5">Contactame directamente para ayudarte a encontrar la cobertura que necesitas.</p>
+              <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className={btnPrimary} style={{ backgroundColor: primaryColor }}>
+                <MessageCircle className="w-4 h-4" /> Contactame
               </a>
             </div>
           </section>
         )}
 
-        {/* SOBRE MI */}
-        <section id="sobre-mi" className="relative py-16 px-4 bg-white z-10">
+        {/* ═══════════════════════════════════════
+            SOBRE MÍ — simplificada y auténtica
+        ═══════════════════════════════════════ */}
+        <section id="sobre-mi" className="py-16 px-4 bg-white">
           <div className="max-w-3xl mx-auto">
-            <h2
-              className="text-3xl sm:text-4xl font-bold mb-10 text-center"
-              style={{ color: primaryColor }}
-            >
+            <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-10 text-center">
               Sobre mi
             </h2>
 
             <div className="flex flex-col sm:flex-row gap-8 items-start">
-              {/* Left: photo + contact */}
-              <div className="flex flex-col items-center sm:items-start gap-5 sm:w-56 flex-shrink-0">
-                {/* Photo */}
+              {/* Columna izquierda: foto + contacto */}
+              <div className="flex flex-col items-center sm:items-start gap-4 sm:w-52 flex-shrink-0">
                 {user.photo_url ? (
                   <div
-                    className="w-36 h-36 rounded-full overflow-hidden shadow-xl"
+                    className="w-32 h-32 rounded-full overflow-hidden"
                     style={{
-                      border: `4px solid ${primaryColor}`,
-                      boxShadow: `0 8px 32px ${createColorVariant(primaryColor, 0.25)}`
+                      border: `3px solid ${primaryColor}`,
+                      boxShadow: `0 6px 24px ${createColorVariant(primaryColor, 0.2)}`,
                     }}
                   >
-                    <img
-                      src={user.photo_url}
-                      alt={user.name}
-                      className="w-full h-full object-cover object-center"
-                    />
+                    <img src={user.photo_url} alt={user.name} className="w-full h-full object-cover" />
                   </div>
                 ) : (
                   <div
-                    className="w-36 h-36 rounded-full flex items-center justify-center text-4xl font-bold shadow-xl"
+                    className="w-32 h-32 rounded-full flex items-center justify-center text-3xl font-bold text-white"
                     style={{
-                      backgroundColor: createColorVariant(primaryColor, 0.1),
-                      color: primaryColor,
-                      border: `4px solid ${primaryColor}`,
+                      background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`,
+                      boxShadow: `0 6px 24px ${createColorVariant(primaryColor, 0.25)}`,
                     }}
                   >
                     {user.name.charAt(0).toUpperCase()}
                   </div>
                 )}
 
-                {/* Contact links */}
+                {/* Datos de contacto */}
                 <div className="w-full space-y-2">
                   {user.phone && (
                     <a
-                      href={`https://wa.me/${user.phone.replace(/\D/g, '')}`}
+                      href={whatsappLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all hover:opacity-90 active:scale-95"
-                      style={{ backgroundColor: createColorVariant(primaryColor, 0.08), color: primaryColor }}
+                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all hover:opacity-80"
+                      style={{ backgroundColor: `${primaryColor}10`, color: primaryColor }}
                     >
                       <MessageCircle className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate">{user.phone}</span>
+                    </a>
+                  )}
+                  {user.phone && (
+                    <a
+                      href={`tel:${user.phone.replace(/\D/g, '')}`}
+                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 transition-all"
+                    >
+                      <Phone className="w-4 h-4 flex-shrink-0 text-gray-500" />
                       <span className="truncate">{user.phone}</span>
                     </a>
                   )}
                   {user.email && (
                     <a
                       href={`mailto:${user.email}`}
-                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-gray-600 bg-gray-50 hover:bg-gray-100 transition-all"
+                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 transition-all"
                     >
-                      <Mail className="w-4 h-4 flex-shrink-0 text-gray-400" />
+                      <Mail className="w-4 h-4 flex-shrink-0 text-gray-500" />
                       <span className="truncate text-xs">{user.email}</span>
+                    </a>
+                  )}
+                  {(user as any).website_url && (
+                    <a
+                      href={(user as any).website_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 transition-all"
+                    >
+                      <Globe className="w-4 h-4 flex-shrink-0 text-gray-500" />
+                      <span className="truncate text-xs">Sitio web</span>
                     </a>
                   )}
                 </div>
 
-                {/* Specialties */}
+                {/* Especialidades */}
                 {processedLinks.length > 0 && (
                   <div className="w-full">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Especialidades</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Especialidades</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {[...new Set(processedLinks.slice(0, 8).map(l => l.displayName))].map(specialtyName => (
+                      {[...new Set(processedLinks.slice(0, 8).map(l => l.displayName))].map(sp => (
                         <span
-                          key={specialtyName}
+                          key={sp}
                           className="text-xs px-2.5 py-1 rounded-full font-medium"
-                          style={{
-                            backgroundColor: createColorVariant(primaryColor, 0.08),
-                            color: primaryColor
-                          }}
+                          style={{ backgroundColor: `${primaryColor}10`, color: primaryColor }}
                         >
-                          {specialtyName}
+                          {sp}
                         </span>
                       ))}
                       {processedLinks.length > 8 && (
-                        <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-400">
+                        <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-500">
                           +{processedLinks.length - 8}
                         </span>
                       )}
@@ -1214,82 +1171,65 @@ export default function PaginaPublicaAsesor() {
                 )}
               </div>
 
-              {/* Right: bio */}
+              {/* Columna derecha: bio */}
               <div className="flex-1 min-w-0 pt-1">
                 <h3 className="text-xl font-bold text-gray-900 mb-1">{user.name}</h3>
                 {(user as any).cedula && (
                   <p className="text-sm text-gray-500 mb-4 flex items-center gap-1.5">
-                    <Award className="w-3.5 h-3.5" style={{ color: primaryColor }} />
+                    <Award className="w-3.5 h-3.5 flex-shrink-0" style={{ color: primaryColor }} />
                     Cedula {(user as any).cedula}
                   </p>
                 )}
-                {textToDisplay.length > 0 ? (
-                  <div className="space-y-4">
-                    {textToDisplay.map((paragraph, index) => (
-                      <p key={index} className="text-base text-gray-700 leading-relaxed">
+                <div className="space-y-4">
+                  {textToDisplay.length > 0 ? (
+                    textToDisplay.map((paragraph, index) => (
+                      <p key={index} className="text-gray-700 leading-relaxed text-base">
                         {paragraph}
                       </p>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-400">Agente de seguros comprometido con brindarte la mejor asesoria y proteccion para ti y tu familia.</p>
-                )}
+                    ))
+                  ) : (
+                    <p className="text-gray-600 leading-relaxed">
+                      Asesor de seguros comprometido con brindarte la mejor asesoria y proteccion para ti y tu familia.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* SEGUWALLET — Accede a Seguwallet */}
-        <section id="app" className="relative py-16 px-4 z-10" style={{ backgroundColor: createColorVariant(secondaryColor, 0.05) }}>
+        {/* ═══════════════════════════════════════
+            APP — Seguwallet
+        ═══════════════════════════════════════ */}
+        <section id="app" className="py-16 px-4 bg-gray-50">
           <div className="max-w-5xl mx-auto">
-            <div
-              className="bg-white rounded-3xl shadow-xl overflow-hidden border"
-              style={{ borderColor: createColorVariant(primaryColor, 0.1) }}
-            >
-              <div className="grid lg:grid-cols-5 gap-0">
-                {/* Left column: content */}
-                <div className="lg:col-span-3 p-7 sm:p-10 flex flex-col justify-center">
-                  {/* Logo */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-md overflow-hidden">
+              <div className="grid lg:grid-cols-5">
+                <div className="lg:col-span-3 p-8 sm:p-10 flex flex-col justify-center">
                   <div className="mb-6">
-                    <img
-                      src="/movirecurso_5.png"
-                      alt="Seguwallet"
-                      className="h-10 sm:h-12 w-auto object-contain"
-                    />
+                    <img src="/movirecurso_5.png" alt="Seguwallet" className="h-10 w-auto object-contain" />
                   </div>
-
-                  <h2
-                    className="text-2xl sm:text-3xl font-bold mb-3"
-                    style={{ color: primaryColor }}
-                  >
-                    Accede a Seguwallet
-                  </h2>
-                  <p className="text-gray-600 leading-relaxed mb-2 text-sm sm:text-base">
+                  <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Accede a Seguwallet</h2>
+                  <p className="text-gray-600 leading-relaxed mb-1 text-base">
                     Todas tus polizas en un solo lugar. Consulta coberturas, vencimientos y contacta a tu asesor desde cualquier dispositivo.
                   </p>
                   <p className="text-sm text-gray-500 mb-7">
                     Ya eres cliente? Ingresa con tu email para ver tu cartera de seguros.
                   </p>
-
-                  {/* PRIMARY CTA */}
                   <div className="flex flex-col sm:flex-row gap-3">
                     <a
                       href="https://seguwallet.mx"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-bold text-white text-base transition-all duration-300 hover:scale-105 shadow-md hover:shadow-xl"
-                      style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)` }}
+                      className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-bold text-white transition-all hover:brightness-90 shadow-sm"
+                      style={{ backgroundColor: primaryColor }}
                     >
                       <Smartphone className="w-5 h-5" />
                       Ingresar a Seguwallet
                     </a>
                   </div>
-
-                  {/* SECONDARY: App Store / Play Store — de-emphasized */}
                   <div className="mt-6 pt-5 border-t border-gray-100">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                      Tambien disponible en
-                    </p>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Tambien disponible en</p>
                     <div className="flex flex-wrap gap-2">
                       <a
                         href="https://apps.apple.com/mx/app/seguwallet-by-movi-digital/id6744545607"
@@ -1317,16 +1257,15 @@ export default function PaginaPublicaAsesor() {
                   </div>
                 </div>
 
-                {/* Right column: app mockup */}
                 <div
-                  className="lg:col-span-2 flex items-center justify-center p-6 lg:p-0"
-                  style={{ background: `linear-gradient(160deg, ${createColorVariant(primaryColor, 0.06)} 0%, ${createColorVariant(secondaryColor, 0.08)} 100%)` }}
+                  className="lg:col-span-2 flex items-center justify-center p-8 lg:p-6"
+                  style={{ background: `linear-gradient(150deg, ${createColorVariant(primaryColor, 0.05)} 0%, ${createColorVariant(secondaryColor, 0.07)} 100%)` }}
                 >
                   <img
                     src="https://movi.digital/wp-content/uploads/2025/02/seguwallet-movidigital.png"
                     alt="Seguwallet app"
                     loading="lazy"
-                    className="w-full max-w-[220px] lg:max-w-[260px] object-contain transform hover:scale-105 transition-transform duration-500"
+                    className="w-full max-w-[200px] lg:max-w-[240px] object-contain hover:scale-105 transition-transform duration-500"
                   />
                 </div>
               </div>
@@ -1334,131 +1273,117 @@ export default function PaginaPublicaAsesor() {
           </div>
         </section>
 
-        {/* CTA FINAL */}
-        <section className="relative py-12 sm:py-16 px-4 bg-white z-10">
-          <div className="max-w-4xl mx-auto text-center">
-            <h3
-              className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 px-4"
-              style={{ color: primaryColor }}
-            >
+        {/* ═══════════════════════════════════════
+            CTA FINAL
+        ═══════════════════════════════════════ */}
+        <section className="py-14 px-4 bg-white">
+          <div className="max-w-3xl mx-auto text-center">
+            <h3 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-3">
               {hasFormLinks ? 'No encontraste el seguro que necesitas?' : 'Listo para proteger lo que mas valoras?'}
             </h3>
-            <p className="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8 px-4 max-w-2xl mx-auto">
+            <p className="text-gray-600 mb-8 max-w-xl mx-auto leading-relaxed">
               {hasFormLinks
                 ? 'Escribeme y con gusto te ayudo a encontrar la cobertura ideal para ti, tu familia o tu empresa.'
                 : seoText
               }
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <a
                 href={whatsappLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-semibold text-white transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl text-sm sm:text-base"
+                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-bold text-white transition-all hover:brightness-90 shadow-sm text-base"
                 style={{ backgroundColor: primaryColor }}
               >
-                <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 group-hover:rotate-12 transition-transform" />
+                <MessageCircle className="w-5 h-5" />
                 Contactar por WhatsApp
               </a>
               <a
                 href={`tel:${user.phone?.replace(/\D/g, '')}`}
-                className="group inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-semibold bg-white border-2 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl text-sm sm:text-base"
+                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-bold border-2 transition-all hover:brightness-95 text-base"
                 style={{ borderColor: primaryColor, color: primaryColor }}
               >
-                <Phone className="w-4 h-4 sm:w-5 sm:h-5 group-hover:rotate-12 transition-transform" />
-                Llamar Ahora
+                <Phone className="w-5 h-5" />
+                Llamar ahora
               </a>
             </div>
           </div>
         </section>
 
-        {/* FOOTER */}
+        {/* ═══════════════════════════════════════
+            FOOTER
+        ═══════════════════════════════════════ */}
         <footer className="bg-gray-900 py-8 px-4 text-white">
           <div className="max-w-6xl mx-auto text-center">
             <div className="flex items-center justify-center gap-3 mb-3">
-              <a
-                href="https://grupojiro.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="transition-transform duration-300 hover:scale-105"
-              >
-                <img
-                  src="https://jiro.mx/wp-content/uploads/2021/10/Grupo-Jiro-Logo-Blanco-01.png"
-                  alt="Grupo JIRO"
-                  className="h-8 w-auto object-contain"
-                />
+              <a href="https://grupojiro.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                <img src="https://jiro.mx/wp-content/uploads/2021/10/Grupo-Jiro-Logo-Blanco-01.png" alt="Grupo JIRO" className="h-8 w-auto object-contain" />
               </a>
             </div>
-            <p className="text-sm text-gray-400 mb-2">
-              &copy; {new Date().getFullYear()} Grupo JIRO. Todos los derechos reservados.
-            </p>
+            <p className="text-sm text-gray-400 mb-2">&copy; {new Date().getFullYear()} Grupo JIRO. Todos los derechos reservados.</p>
             <div className="flex items-center justify-center gap-4 mb-2">
-              <a
-                href="https://jiro.mx/privacidad"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-gray-500 hover:text-white transition-colors underline"
-              >
+              <a href="https://jiro.mx/privacidad" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-500 hover:text-white transition-colors underline">
                 Aviso de privacidad
               </a>
             </div>
             <p className="text-xs text-gray-500">
               Powered by{' '}
-              <a href="https://www.movi.digital" className="hover:text-white transition-colors underline">
-                MOVI Digital
-              </a>
+              <a href="https://www.movi.digital" className="hover:text-white transition-colors underline">MOVI Digital</a>
             </p>
           </div>
         </footer>
 
-        {/* FLOATING WHATSAPP (desktop) */}
+        {/* ═══════════════════════════════════════
+            FLOTANTE DESKTOP: WhatsApp + scroll-top
+        ═══════════════════════════════════════ */}
         <a
           href={whatsappLink}
           target="_blank"
           rel="noopener noreferrer"
-          className="hidden md:flex fixed bottom-8 right-8 items-center justify-center w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 z-50 group"
+          className="hidden md:flex fixed bottom-8 right-8 items-center justify-center w-14 h-14 rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-all z-50 group"
           style={{ backgroundColor: primaryColor }}
         >
           <MessageCircle className="w-6 h-6 text-white group-hover:rotate-12 transition-transform" />
-          <span className="absolute -top-12 right-0 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+          <span className="absolute -top-10 right-0 bg-gray-900 text-white px-3 py-1.5 rounded-lg text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
             WhatsApp
           </span>
         </a>
 
-        {/* SCROLL TO TOP */}
         <button
           onClick={scrollToTop}
-          className={`hidden md:flex fixed bottom-8 right-28 items-center justify-center w-12 h-12 bg-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 z-50 border-2 ${showScrollTop ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0 pointer-events-none'}`}
-          style={{ borderColor: createColorVariant(primaryColor, 0.3) }}
+          className={`hidden md:flex fixed bottom-8 right-28 items-center justify-center w-12 h-12 bg-white rounded-full shadow-lg border-2 hover:shadow-xl hover:scale-110 transition-all z-50 ${showScrollTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8 pointer-events-none'}`}
+          style={{ borderColor: `${primaryColor}40` }}
         >
           <ArrowUp className="w-5 h-5" style={{ color: primaryColor }} />
         </button>
 
-        {/* MOBILE BOTTOM BAR */}
-        <div className="fixed bottom-0 left-0 right-0 md:hidden backdrop-blur-lg bg-white/95 border-t border-gray-200 shadow-lg z-50">
-          <div className="flex divide-x divide-gray-200">
+        {/* ═══════════════════════════════════════
+            BARRA MÓVIL INFERIOR
+        ═══════════════════════════════════════ */}
+        <div className="fixed bottom-0 left-0 right-0 md:hidden bg-white/97 backdrop-blur-md border-t border-gray-200 shadow-xl z-50">
+          <div className="flex divide-x divide-gray-100">
             <a
               href={whatsappLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 flex items-center justify-center gap-2 py-4 font-semibold text-white active:scale-95 transition-transform"
+              className="flex-1 flex items-center justify-center gap-2 py-3.5 font-bold text-sm text-white active:brightness-90 transition-all"
               style={{ backgroundColor: primaryColor }}
             >
-              <MessageCircle className="w-5 h-5" /> WhatsApp
+              <MessageCircle className="w-4.5 h-4.5" /> WhatsApp
             </a>
             <a
               href={`tel:${user.phone?.replace(/\D/g, '')}`}
-              className="flex-1 flex items-center justify-center gap-2 py-4 font-semibold active:scale-95 transition-transform"
+              className="flex-1 flex items-center justify-center gap-2 py-3.5 font-bold text-sm bg-white active:bg-gray-50 transition-all"
               style={{ color: primaryColor }}
             >
-              <Phone className="w-5 h-5" /> Llamar
+              <Phone className="w-4.5 h-4.5" /> Llamar
             </a>
             <a
               href={`mailto:${user.email}`}
-              className="flex-1 flex items-center justify-center gap-2 py-4 font-semibold active:scale-95 transition-transform"
+              className="flex-1 flex items-center justify-center gap-2 py-3.5 font-bold text-sm bg-white active:bg-gray-50 transition-all"
               style={{ color: secondaryColor }}
             >
-              <Mail className="w-5 h-5" /> Email
+              <Mail className="w-4.5 h-4.5" /> Email
             </a>
           </div>
         </div>

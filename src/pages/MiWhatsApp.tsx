@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { cn } from '@/lib/utils';
-import { Smartphone, QrCode, Wifi, WifiOff, Search, Send, Paperclip, MoreVertical, ArrowLeft, MessageSquare, Clock, CheckCheck, Check, AlertCircle, Plus, FileText, User, Tag, Settings, Zap, RefreshCw, X, Smile, FileUp, Star, Copy, ClipboardList, Trash2, CreditCard as Edit3, Image as ImageIcon, File, ExternalLink, CheckSquare, Square, ChevronDown, Bot, Filter, ChevronRight, Mail, Phone, Building2, SlidersHorizontal, Users, MessageCircle, Inbox } from 'lucide-react';
+import { Smartphone, QrCode, Wifi, WifiOff, Search, Send, Paperclip, MoveVertical as MoreVertical, ArrowLeft, MessageSquare, Clock, CheckCheck, Check, CircleAlert as AlertCircle, Plus, FileText, User, Tag, Settings, Zap, RefreshCw, X, Smile, FileUp, Star, Copy, ClipboardList, Trash2, CreditCard as Edit3, Image as ImageIcon, File, ExternalLink, SquareCheck as CheckSquare, Square, ChevronDown, Bot, ListFilter as Filter, ChevronRight, Mail, Phone, Building2, SlidersHorizontal, Users, MessageCircle, Inbox } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────
 
