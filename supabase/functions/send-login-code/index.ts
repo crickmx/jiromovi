@@ -161,35 +161,34 @@ Deno.serve(async (req: Request) => {
           .maybeSingle();
 
         if (moviUser && moviUser.estado === 'activo') {
-          // Auto-provision chava_agente_users record for this MOVI user
-          const authEmail = identifier;
-          const { data: authUser } = await supabase.auth.admin.getUserByEmail(authEmail);
-          const authId = authUser?.user?.id || null;
+          // usuarios.id == auth.users.id by design — no need for admin lookup
+          const authId: string = moviUser.id;
+          const fullName = [moviUser.nombre, moviUser.apellidos].filter(Boolean).join(' ') || moviUser.nombre || identifier;
 
-          if (authId) {
-            const fullName = [moviUser.nombre, moviUser.apellidos].filter(Boolean).join(' ');
-            const { data: existing } = await supabase
-              .from('chava_agente_users')
-              .select('id, auth_user_id')
-              .eq('auth_user_id', authId)
-              .maybeSingle();
+          const { data: existing, error: existingErr } = await supabase
+            .from('chava_agente_users')
+            .select('id, auth_user_id')
+            .eq('auth_user_id', authId)
+            .maybeSingle();
 
-            if (!existing) {
-              await supabase.from('chava_agente_users').insert({
-                auth_user_id: authId,
-                nombre_completo: fullName,
-                email: identifier,
-                whatsapp: moviUser.celular_laboral || null,
-                tipo_usuario: 'agente_movi',
-                estatus: 'activo',
-              });
-            }
+          if (existingErr) console.error('chava_agente_users lookup error:', existingErr.message);
 
-            userId = authId;
-            userEmail = identifier;
-            userPhone = moviUser.celular_laboral || null;
-            userName = moviUser.nombre;
+          if (!existing) {
+            const { error: insertErr } = await supabase.from('chava_agente_users').insert({
+              auth_user_id: authId,
+              nombre_completo: fullName,
+              email: identifier,
+              whatsapp: moviUser.celular_laboral || null,
+              tipo_usuario: 'agente_movi',
+              estatus: 'activo',
+            });
+            if (insertErr) console.error('chava_agente_users insert error:', insertErr.message);
           }
+
+          userId = authId;
+          userEmail = identifier;
+          userPhone = moviUser.celular_laboral || null;
+          userName = moviUser.nombre;
         }
 
         if (!userId) {
