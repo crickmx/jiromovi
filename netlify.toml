@@ -7,11 +7,13 @@ NODE_VERSION = "22"
 NPM_VERSION = "10"
 NODE_OPTIONS = "--max-old-space-size=4096"
 
+# Hashed assets — immutable, cache for 1 year
 [[headers]]
 for = "/assets/*"
 [headers.values]
 Cache-Control = "public, max-age=31536000, immutable"
 
+# HTML files — never cached, always fresh
 [[headers]]
 for = "/index.html"
 [headers.values]
@@ -19,6 +21,19 @@ Cache-Control = "no-cache, no-store, must-revalidate"
 
 [[headers]]
 for = "/*.html"
+[headers.values]
+Cache-Control = "no-cache, no-store, must-revalidate"
+
+# Service worker — must always be fresh so browsers pick up updates immediately
+[[headers]]
+for = "/sw.js"
+[headers.values]
+Cache-Control = "no-cache, no-store, must-revalidate"
+Service-Worker-Allowed = "/"
+
+# PWA manifest — always fresh
+[[headers]]
+for = "/manifest.webmanifest"
 [headers.values]
 Cache-Control = "no-cache, no-store, must-revalidate"
 
