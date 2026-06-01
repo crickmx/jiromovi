@@ -66,6 +66,7 @@ export default {
           600: '#2563EB',
           700: '#1D4ED8',
         },
+        primary: {
           50: '#EEF2FF',
           100: '#E0E7FF',
           200: '#C7D2FE',
