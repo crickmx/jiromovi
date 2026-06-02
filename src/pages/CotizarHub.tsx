@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Activity, Car, FormInput, Compass, ChevronRight, Calculator } from 'lucide-react';
+import { Activity, Car, FolderInput as FormInput, Compass, ChevronRight, Calculator } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const MODULES = [
@@ -60,9 +60,10 @@ const MODULES = [
 export default function CotizarHub() {
   const navigate = useNavigate();
   const { usuario } = useAuth();
-  const isAdmin = usuario?.rol === 'Administrador';
+  const rol = usuario?.rol;
+  const canSeeBxPlus = rol === 'Administrador' || rol === 'Gerente' || rol === 'Empleado';
 
-  const visibleModules = MODULES.filter(m => !m.adminOnly || isAdmin);
+  const visibleModules = MODULES.filter(m => !m.adminOnly || canSeeBxPlus);
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-7">
