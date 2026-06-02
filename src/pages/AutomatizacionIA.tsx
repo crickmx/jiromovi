@@ -66,7 +66,6 @@ interface BitacoraItem {
   sicas_estado: string | null;
   created_at: string;
   ia_robots?: { nombre: string } | null;
-  ia_bandeja?: { asunto: string; remitente: string } | null;
 }
 
 export default function AutomatizacionIA() {
@@ -137,35 +136,40 @@ function DashboardIA() {
 
   async function loadDashboard() {
     setLoading(true);
-    const today = new Date().toISOString().slice(0, 10);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
 
-    const [robotsRes, bandejaHoyRes, pendientesRes, erroresRes, bitacoraRes] = await Promise.all([
-      supabase.from('ia_robots').select('estado'),
-      supabase.from('ia_bandeja').select('id', { count: 'exact', head: true })
-        .gte('created_at', today),
-      supabase.from('ia_bandeja').select('id', { count: 'exact', head: true })
-        .eq('estado_procesamiento', 'pendiente'),
-      supabase.from('ia_bandeja').select('id', { count: 'exact', head: true })
-        .eq('estado_procesamiento', 'error'),
-      supabase.from('ia_bitacora').select('*, ia_robots(nombre), ia_bandeja(asunto, remitente)')
-        .order('created_at', { ascending: false }).limit(10),
-    ]);
+      const [robotsRes, bandejaHoyRes, pendientesRes, erroresRes, bitacoraRes] = await Promise.all([
+        supabase.from('ia_robots').select('estado'),
+        supabase.from('ia_bandeja').select('id', { count: 'exact', head: true })
+          .gte('created_at', today),
+        supabase.from('ia_bandeja').select('id', { count: 'exact', head: true })
+          .eq('estado_procesamiento', 'pendiente'),
+        supabase.from('ia_bandeja').select('id', { count: 'exact', head: true })
+          .eq('estado_procesamiento', 'error'),
+        supabase.from('ia_bitacora').select('*, ia_robots(nombre)')
+          .order('created_at', { ascending: false }).limit(10),
+      ]);
 
-    const robots = robotsRes.data || [];
-    const comunicados = (bitacoraRes.data || []).reduce((sum: number, b: any) => sum + (b.comunicados_creados || 0), 0);
-    const tareas = (bitacoraRes.data || []).reduce((sum: number, b: any) => sum + (b.tareas_creadas || 0), 0);
+      const robots = robotsRes.data || [];
+      const comunicados = (bitacoraRes.data || []).reduce((sum: number, b: any) => sum + (b.comunicados_creados || 0), 0);
+      const tareas = (bitacoraRes.data || []).reduce((sum: number, b: any) => sum + (b.tareas_creadas || 0), 0);
 
-    setStats({
-      robotsActivos: robots.filter(r => r.estado === 'activo').length,
-      robotsPausados: robots.filter(r => r.estado === 'pausado').length,
-      correosHoy: bandejaHoyRes.count || 0,
-      pendientes: pendientesRes.count || 0,
-      errores: erroresRes.count || 0,
-      comunicadosGenerados: comunicados,
-      tareasGeneradas: tareas,
-    });
-    setRecentActivity(bitacoraRes.data || []);
-    setLoading(false);
+      setStats({
+        robotsActivos: robots.filter(r => r.estado === 'activo').length,
+        robotsPausados: robots.filter(r => r.estado === 'pausado').length,
+        correosHoy: bandejaHoyRes.count || 0,
+        pendientes: pendientesRes.count || 0,
+        errores: erroresRes.count || 0,
+        comunicadosGenerados: comunicados,
+        tareasGeneradas: tareas,
+      });
+      setRecentActivity(bitacoraRes.data || []);
+    } catch (err) {
+      console.error('loadDashboard error:', err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (loading) {
@@ -205,7 +209,7 @@ function DashboardIA() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{item.accion}</p>
                   <p className="text-xs text-slate-500 truncate">
-                    {item.ia_robots?.nombre || 'Sin robot'} — {item.ia_bandeja?.asunto || ''}
+                    {item.ia_robots?.nombre || 'Sin robot'}
                   </p>
                 </div>
                 <span className="text-xs text-slate-400 whitespace-nowrap">
@@ -577,12 +581,17 @@ function BitacoraPanel() {
 
   async function loadBitacora() {
     setLoading(true);
-    const { data } = await supabase.from('ia_bitacora')
-      .select('*, ia_robots(nombre), ia_bandeja(asunto, remitente)')
-      .order('created_at', { ascending: false })
-      .limit(100);
-    setItems(data || []);
-    setLoading(false);
+    try {
+      const { data } = await supabase.from('ia_bitacora')
+        .select('*, ia_robots(nombre)')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      setItems(data || []);
+    } catch (err) {
+      console.error('loadBitacora error:', err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
