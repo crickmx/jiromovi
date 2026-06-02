@@ -151,7 +151,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
 
           {/* Notification Bell */}
           <div className="flex items-center justify-center w-11">
-            <NotificationBell compact />
+            <NotificationBell compact fixedPanel />
           </div>
 
           {/* Theme Toggle */}

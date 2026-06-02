@@ -50,36 +50,25 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
     if (!buttonRef.current) return;
     const rect = buttonRef.current.getBoundingClientRect();
     const MARGIN = 8;
-    const PANEL_MIN_HEIGHT = 500;
+    const PANEL_HEIGHT = 560;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const panelWidth = Math.min(384, viewportWidth - 2 * MARGIN);
 
+    // Horizontal: prefer right of button, fall back to left
     let left = rect.right + MARGIN;
-
-    // If panel would overflow right edge, show to the left of the button
     if (left + panelWidth > viewportWidth - MARGIN) {
       left = rect.left - panelWidth - MARGIN;
     }
-    // If it still overflows left, align to viewport left with margin
-    if (left < MARGIN) {
-      left = MARGIN;
-    }
+    if (left < MARGIN) left = MARGIN;
 
-    // Determine if we open downward or upward
-    const spaceBelow = viewportHeight - rect.top - MARGIN;
-    const spaceAbove = rect.bottom - MARGIN;
-    let top: number;
-    let maxHeight: number;
-
-    if (spaceBelow >= PANEL_MIN_HEIGHT) {
-      top = rect.top;
-      maxHeight = spaceBelow;
-    } else {
-      maxHeight = Math.min(spaceAbove, viewportHeight - 2 * MARGIN);
-      top = rect.bottom - maxHeight;
-      if (top < MARGIN) top = MARGIN;
+    // Vertical: try to align top with button, shift up if it would overflow bottom
+    let top = rect.top;
+    const maxHeight = Math.min(PANEL_HEIGHT, viewportHeight - 2 * MARGIN);
+    if (top + maxHeight > viewportHeight - MARGIN) {
+      top = viewportHeight - MARGIN - maxHeight;
     }
+    if (top < MARGIN) top = MARGIN;
 
     setPanelStyle({ position: 'fixed', top, left, width: panelWidth, maxHeight, zIndex: 9999 });
   }, []);
@@ -169,7 +158,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
           ref={panelRef}
           style={fixedPanel ? panelStyle : undefined}
           className={cn(
-            "bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-white/10 flex flex-col",
+            "bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-white/10 flex flex-col overflow-hidden",
             fixedPanel
               ? ''
               : cn(
