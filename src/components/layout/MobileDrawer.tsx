@@ -184,7 +184,7 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
                 <div className="w-6 h-6 rounded-lg bg-accent/10 flex items-center justify-center">
                   <workspace.icon className="w-3.5 h-3.5 text-accent" />
                 </div>
-                <p className="text-[11px] font-bold text-neutral-400 dark:text-white/40 uppercase tracking-widest">
+                <p className="text-[11px] font-bold text-neutral-500 dark:text-white/60 uppercase tracking-widest">
                   {workspace.label}
                 </p>
               </div>
@@ -222,7 +222,7 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
 
           {/* All workspaces / top-level links */}
           <div className="px-3 pt-2 pb-4">
-            <p className="text-[11px] font-bold text-neutral-400 dark:text-white/40 uppercase tracking-widest px-2 mb-2">
+            <p className="text-[11px] font-bold text-neutral-500 dark:text-white/60 uppercase tracking-widest px-2 mb-2">
               Módulos
             </p>
             <div className="space-y-0.5">
@@ -280,9 +280,9 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
         <div className="border-t border-neutral-100 dark:border-white/[0.06] px-3 py-3 space-y-1">
           {/* Notification bell + theme toggle row */}
           <div className="flex items-center gap-2 px-3 py-2">
-            <span className="flex-1 text-[12px] font-medium text-neutral-500 dark:text-white/40">Apariencia y alertas</span>
+            <span className="flex-1 text-[12px] font-medium text-neutral-600 dark:text-white/70">Apariencia y alertas</span>
             <NotificationBell dropdownSide="bottom" fixedPanel />
-            <ThemeToggle dropdownSide="bottom" />
+            <ThemeToggle dropdownSide="bottom" fixedPanel />
           </div>
           <button
             onClick={() => { onClose(); onSignOut(); }}

@@ -48,24 +48,39 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
   const calculateFixedPosition = useCallback(() => {
     if (!buttonRef.current) return;
     const rect = buttonRef.current.getBoundingClientRect();
-    const PANEL_WIDTH = 384; // w-96
     const MARGIN = 8;
+    const PANEL_MIN_HEIGHT = 500;
     const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const panelWidth = Math.min(384, viewportWidth - 2 * MARGIN);
 
     let left = rect.right + MARGIN;
-    let top = rect.top;
 
-    // If panel would overflow right edge, show it to the left
-    if (left + PANEL_WIDTH > viewportWidth - MARGIN) {
-      left = rect.left - PANEL_WIDTH - MARGIN;
+    // If panel would overflow right edge, show to the left of the button
+    if (left + panelWidth > viewportWidth - MARGIN) {
+      left = rect.left - panelWidth - MARGIN;
     }
-
-    // If it overflows left, align to viewport left with margin
+    // If it still overflows left, align to viewport left with margin
     if (left < MARGIN) {
       left = MARGIN;
     }
 
-    setPanelStyle({ position: 'fixed', top, left, zIndex: 9999 });
+    // Determine if we open downward or upward
+    const spaceBelow = viewportHeight - rect.top - MARGIN;
+    const spaceAbove = rect.bottom - MARGIN;
+    let top: number;
+    let maxHeight: number;
+
+    if (spaceBelow >= PANEL_MIN_HEIGHT) {
+      top = rect.top;
+      maxHeight = spaceBelow;
+    } else {
+      maxHeight = Math.min(spaceAbove, viewportHeight - 2 * MARGIN);
+      top = rect.bottom - maxHeight;
+      if (top < MARGIN) top = MARGIN;
+    }
+
+    setPanelStyle({ position: 'fixed', top, left, width: panelWidth, maxHeight, zIndex: 9999 });
   }, []);
 
   useEffect(() => {
@@ -149,10 +164,10 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
         <div
           ref={panelRef}
           style={fixedPanel ? panelStyle : undefined}
-          className={`w-96 max-h-[600px] bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-white/10 flex flex-col ${
+          className={`bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-white/10 flex flex-col ${
             fixedPanel
               ? ''
-              : `absolute z-50 ${dropdownSide === 'right' ? 'left-full ml-2 top-0' : 'right-0 top-full mt-2'}`
+              : `w-96 max-h-[600px] absolute z-50 ${dropdownSide === 'right' ? 'left-full ml-2 top-0' : 'right-0 top-full mt-2'}`
           }`}
         >
           {/* Header */}
