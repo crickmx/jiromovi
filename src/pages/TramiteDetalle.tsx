@@ -389,7 +389,7 @@ export function TramiteDetalle() {
 
     setSaving(true);
     try {
-      const estatusEnProceso = estatusList.find(e => e.nombre === 'En proceso');
+      const estatusEnProceso = estatusList.find(e => e.nombre.toLowerCase() === 'en proceso');
       if (!estatusEnProceso) {
         alert('No se encontró el estatus "En proceso". Verifica la configuración.');
         setSaving(false);
