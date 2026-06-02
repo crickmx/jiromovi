@@ -615,78 +615,297 @@ function LearningTab() {
 }
 
 // === AUDIT TAB ===
+interface ToolHealth {
+  herramienta: string;
+  estado: string;
+  ultimo_ok_at: string | null;
+  ultimo_error_at: string | null;
+  ultimo_error: string | null;
+  tiempo_respuesta_ms: number | null;
+  registros_encontrados: number | null;
+  updated_at: string;
+}
+
+interface AuditEntry {
+  id: string;
+  ref_id: string;
+  pregunta: string | null;
+  respuesta: string | null;
+  modulo: string | null;
+  ruta: string | null;
+  tiempo_respuesta_ms: number;
+  tokens_entrada: number;
+  tokens_salida: number;
+  modelo: string | null;
+  tuvo_error: boolean;
+  error_mensaje: string | null;
+  error_tipo: string | null;
+  herramientas_llamadas: any[];
+  fuentes_utilizadas: any[];
+  rol_usuario: string | null;
+  created_at: string;
+  usuario?: { nombre_completo: string | null } | null;
+}
+
+const TOOL_LABELS: Record<string, string> = {
+  buscar_cliente: 'Buscar Cliente',
+  buscar_poliza: 'Buscar Poliza',
+  buscar_contacto: 'Buscar Contacto',
+  buscar_usuario: 'Buscar Usuario',
+  buscar_oficina: 'Buscar Oficina',
+  consultar_sicas: 'SICAS Live',
+  consultar_produccion: 'Produccion',
+  consultar_tramites: 'Tramites',
+  consultar_comisiones: 'Comisiones',
+};
+
+function ToolStatusBadge({ estado }: { estado: string }) {
+  if (estado === 'ok') return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-50 text-green-700 border border-green-100 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20">
+      <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />OK
+    </span>
+  );
+  if (estado === 'error') return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-600 border border-red-100 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20">
+      <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />Error
+    </span>
+  );
+  if (estado === 'degraded') return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20">
+      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />Degradado
+    </span>
+  );
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-neutral-50 text-neutral-500 border border-neutral-200 dark:bg-white/5 dark:text-white/40 dark:border-white/10">
+      <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 inline-block" />Sin datos
+    </span>
+  );
+}
+
 function AuditTab() {
-  const [logs, setLogs] = useState<ChavaConsultaLog[]>([]);
+  const [logs, setLogs] = useState<AuditEntry[]>([]);
+  const [toolHealth, setToolHealth] = useState<ToolHealth[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [filterErrors, setFilterErrors] = useState(false);
 
-  useEffect(() => {
-    loadLogs();
-  }, []);
+  useEffect(() => { loadAll(); }, []);
 
-  const loadLogs = async () => {
+  const loadAll = async () => {
     setLoading(true);
-    const data = await getConsultasLog(50);
-    setLogs(data);
+    const { supabase: sb } = await import('../lib/supabase');
+    const [logsRes, healthRes] = await Promise.all([
+      sb.from('chava_audit_log')
+        .select('id, ref_id, pregunta, respuesta, modulo, ruta, tiempo_respuesta_ms, tokens_entrada, tokens_salida, modelo, tuvo_error, error_mensaje, error_tipo, herramientas_llamadas, fuentes_utilizadas, rol_usuario, created_at, usuario:usuarios!chava_audit_log_usuario_id_fkey(nombre_completo)')
+        .order('created_at', { ascending: false })
+        .limit(100),
+      sb.from('chava_tool_health').select('*').order('herramienta'),
+    ]);
+    setLogs((logsRes.data as any[]) || []);
+    setToolHealth((healthRes.data as ToolHealth[]) || []);
     setLoading(false);
   };
+
+  const displayed = filterErrors ? logs.filter(l => l.tuvo_error) : logs;
+  const errorCount = logs.filter(l => l.tuvo_error).length;
+  const avgMs = logs.length > 0 ? Math.round(logs.reduce((s, l) => s + (l.tiempo_respuesta_ms || 0), 0) / logs.length) : 0;
 
   if (loading) {
     return <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-cyan-500" /></div>;
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-neutral-500 dark:text-white/40">{logs.length} consultas recientes</p>
-        <Button variant="outline" size="sm" onClick={loadLogs} className="gap-1.5">
-          <RefreshCw className="h-3.5 w-3.5" /> Actualizar
-        </Button>
-      </div>
-
-      {logs.length === 0 ? (
-        <div className="text-center py-12 text-neutral-400">
-          <MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-40" />
-          <p className="text-sm">Sin consultas registradas</p>
+    <div className="space-y-6">
+      {/* Tool Health Grid */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-neutral-700 dark:text-white/70">Estado de Herramientas</h3>
+          <Button variant="ghost" size="sm" onClick={loadAll} className="h-7 gap-1 text-xs">
+            <RefreshCw className="h-3 w-3" /> Actualizar
+          </Button>
         </div>
-      ) : (
-        <div className="space-y-2 max-h-[600px] overflow-y-auto">
-          {logs.map((log) => (
-            <div key={log.id} className="p-4 bg-white dark:bg-white/[0.03] rounded-xl border border-neutral-200/60 dark:border-white/8">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-neutral-800 dark:text-white/80 line-clamp-1">{log.pregunta}</p>
-                  <p className="text-xs text-neutral-500 dark:text-white/40 mt-1 line-clamp-2">{log.respuesta}</p>
-                  <div className="flex items-center gap-3 mt-2 flex-wrap">
-                    <span className="text-[11px] text-neutral-400">
-                      {log.usuario?.nombre_completo || 'Usuario'}
-                    </span>
-                    <span className="text-[11px] text-neutral-400">
-                      {log.modelo}
-                    </span>
-                    <span className="text-[11px] text-neutral-400">
-                      {log.tokens_entrada + log.tokens_salida} tokens
-                    </span>
-                    <span className="text-[11px] text-neutral-400">
-                      {log.tiempo_respuesta_ms}ms
-                    </span>
-                    {log.fuentes_utilizadas && log.fuentes_utilizadas.length > 0 && (
-                      <span className="text-[11px] text-cyan-600 font-medium">
-                        RAG: {log.fuentes_utilizadas.length} fuentes
-                      </span>
-                    )}
-                    {log.error && (
-                      <span className="text-[11px] text-red-500 font-medium">Error</span>
-                    )}
-                  </div>
-                </div>
-                <span className="text-[11px] text-neutral-400 flex-shrink-0">
-                  {new Date(log.created_at).toLocaleString()}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          {toolHealth.map(tool => (
+            <div key={tool.herramienta} className="p-3 bg-white dark:bg-white/[0.03] rounded-xl border border-neutral-200/60 dark:border-white/8">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[13px] font-semibold text-neutral-800 dark:text-white/80">
+                  {TOOL_LABELS[tool.herramienta] || tool.herramienta}
                 </span>
+                <ToolStatusBadge estado={tool.estado} />
               </div>
+              <div className="flex items-center gap-3 text-[11px] text-neutral-400 flex-wrap">
+                {tool.tiempo_respuesta_ms != null && (
+                  <span className="flex items-center gap-0.5">
+                    <Clock className="w-3 h-3" />{tool.tiempo_respuesta_ms}ms
+                  </span>
+                )}
+                {tool.registros_encontrados != null && (
+                  <span className="flex items-center gap-0.5">
+                    <Database className="w-3 h-3" />{tool.registros_encontrados} registros
+                  </span>
+                )}
+                {tool.ultimo_error && (
+                  <span className="text-red-400 truncate max-w-[180px]" title={tool.ultimo_error}>
+                    {tool.ultimo_error.substring(0, 40)}{tool.ultimo_error.length > 40 ? '…' : ''}
+                  </span>
+                )}
+              </div>
+              {tool.ultimo_ok_at && (
+                <p className="text-[10px] text-neutral-300 dark:text-white/20 mt-1">
+                  OK: {new Date(tool.ultimo_ok_at).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}
+                </p>
+              )}
             </div>
           ))}
         </div>
-      )}
+      </div>
+
+      {/* Stats Bar */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: 'Consultas', value: logs.length, color: 'text-cyan-600' },
+          { label: 'Errores', value: errorCount, color: 'text-red-500' },
+          { label: 'Tiempo prom.', value: `${avgMs}ms`, color: 'text-emerald-600' },
+        ].map(s => (
+          <div key={s.label} className="p-3 bg-white dark:bg-white/[0.03] rounded-xl border border-neutral-200/60 dark:border-white/8 text-center">
+            <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+            <p className="text-[11px] text-neutral-400 mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Log table */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-neutral-700 dark:text-white/70">Registro de Consultas</h3>
+            <span className="text-xs text-neutral-400">{displayed.length} entradas</span>
+          </div>
+          <button
+            onClick={() => setFilterErrors(v => !v)}
+            className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors',
+              filterErrors
+                ? 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20'
+                : 'bg-neutral-100 text-neutral-500 dark:bg-white/5 dark:text-white/40 hover:bg-neutral-200 dark:hover:bg-white/10'
+            )}
+          >
+            <AlertCircle className="w-3 h-3" />
+            {filterErrors ? 'Ver todos' : `Solo errores (${errorCount})`}
+          </button>
+        </div>
+
+        {displayed.length === 0 ? (
+          <div className="text-center py-12 text-neutral-400">
+            <MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-30" />
+            <p className="text-sm">Sin entradas en el log</p>
+          </div>
+        ) : (
+          <div className="space-y-1.5 max-h-[600px] overflow-y-auto pr-1">
+            {displayed.map((log) => (
+              <div
+                key={log.id}
+                className={cn(
+                  'rounded-xl border transition-colors',
+                  log.tuvo_error
+                    ? 'bg-red-50/50 border-red-100 dark:bg-red-500/5 dark:border-red-500/15'
+                    : 'bg-white dark:bg-white/[0.02] border-neutral-200/60 dark:border-white/8'
+                )}
+              >
+                <button
+                  className="w-full text-left p-3.5"
+                  onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={cn(
+                      'flex-shrink-0 w-2 h-2 rounded-full mt-1.5',
+                      log.tuvo_error ? 'bg-red-500' : 'bg-emerald-500'
+                    )} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[11px] font-mono font-semibold text-cyan-600 dark:text-cyan-400">
+                          {log.ref_id || '—'}
+                        </span>
+                        {log.tuvo_error && log.error_tipo && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400 font-medium">
+                            {log.error_tipo}
+                          </span>
+                        )}
+                        <span className="text-[11px] text-neutral-400">{log.rol_usuario}</span>
+                        <span className="text-[11px] text-neutral-400">{log.modelo}</span>
+                        <span className="text-[11px] text-neutral-400">{log.tiempo_respuesta_ms}ms</span>
+                        <span className="text-[11px] text-neutral-400">{(log.tokens_entrada || 0) + (log.tokens_salida || 0)} tk</span>
+                      </div>
+                      <p className={cn(
+                        'text-[13px] mt-1 line-clamp-1',
+                        log.tuvo_error ? 'text-red-700 dark:text-red-300' : 'text-neutral-700 dark:text-white/70'
+                      )}>
+                        {log.tuvo_error ? (log.error_mensaje || 'Error desconocido') : (log.pregunta || '—')}
+                      </p>
+                    </div>
+                    <span className="text-[10px] text-neutral-300 dark:text-white/20 flex-shrink-0 mt-0.5">
+                      {new Date(log.created_at).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}
+                    </span>
+                  </div>
+                </button>
+
+                {expandedId === log.id && (
+                  <div className="px-4 pb-4 pt-1 border-t border-neutral-100 dark:border-white/5 space-y-3">
+                    {log.pregunta && (
+                      <div>
+                        <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Pregunta</p>
+                        <p className="text-sm text-neutral-700 dark:text-white/70 bg-neutral-50 dark:bg-white/[0.03] rounded-lg p-2.5">{log.pregunta}</p>
+                      </div>
+                    )}
+                    {log.respuesta && !log.tuvo_error && (
+                      <div>
+                        <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Respuesta</p>
+                        <p className="text-xs text-neutral-600 dark:text-white/50 line-clamp-4 bg-neutral-50 dark:bg-white/[0.03] rounded-lg p-2.5">{log.respuesta}</p>
+                      </div>
+                    )}
+                    {log.tuvo_error && log.error_mensaje && (
+                      <div>
+                        <p className="text-[11px] font-semibold text-red-400 uppercase tracking-wide mb-1">Error</p>
+                        <pre className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/5 rounded-lg p-2.5 overflow-x-auto whitespace-pre-wrap">{log.error_mensaje}</pre>
+                      </div>
+                    )}
+                    {log.herramientas_llamadas && log.herramientas_llamadas.length > 0 && (
+                      <div>
+                        <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Herramientas ({log.herramientas_llamadas.length})</p>
+                        <div className="space-y-1">
+                          {log.herramientas_llamadas.map((t: any, i: number) => (
+                            <div key={i} className="flex items-center gap-2 text-[11px] bg-neutral-50 dark:bg-white/[0.03] rounded px-2 py-1.5">
+                              {t.error
+                                ? <AlertCircle className="w-3 h-3 text-red-500 flex-shrink-0" />
+                                : <CheckCircle2 className="w-3 h-3 text-emerald-500 flex-shrink-0" />}
+                              <span className="font-mono font-medium text-neutral-600 dark:text-white/60">{t.tool}</span>
+                              <span className="text-neutral-400">{t.duration_ms}ms</span>
+                              {t.output_summary && <span className="text-neutral-400 truncate">{t.output_summary}</span>}
+                              {t.error && <span className="text-red-500 truncate">{t.error}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {log.fuentes_utilizadas && log.fuentes_utilizadas.length > 0 && (
+                      <div>
+                        <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Fuentes RAG ({log.fuentes_utilizadas.length})</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {log.fuentes_utilizadas.map((f: any, i: number) => (
+                            <span key={i} className="text-[11px] px-2 py-0.5 rounded bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-400 border border-cyan-100 dark:border-cyan-500/20">
+                              {f.documento_titulo || f.source}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

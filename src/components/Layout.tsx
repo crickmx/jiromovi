@@ -1,8 +1,9 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { PrimarySidebar } from './layout/PrimarySidebar';
 import { SecondarySidebar } from './layout/SecondarySidebar';
 import { MobileNav } from './layout/MobileNav';
+import { MobileDrawer } from './layout/MobileDrawer';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { resolveWorkspace } from '../lib/workspaceConfig';
 import type { UserRole } from '../lib/workspaceConfig';
@@ -29,6 +30,11 @@ export function Layout({ children }: LayoutProps) {
   const { workspace, activeItem } = resolveWorkspace(location.pathname, userRole);
 
   const isFullHeight = FULL_HEIGHT_PREFIXES.some(prefix => location.pathname.startsWith(prefix));
+
+  // Auto-close drawer on route change
+  useEffect(() => {
+    setMobileDrawerOpen(false);
+  }, [location.pathname]);
 
   async function handleSignOut() {
     await signOut();
@@ -60,38 +66,16 @@ export function Layout({ children }: LayoutProps) {
         </div>
       )}
 
-      {/* Mobile drawer overlay */}
-      {mobileDrawerOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 md:hidden backdrop-blur-sm"
-          onClick={() => setMobileDrawerOpen(false)}
-        />
-      )}
-
-      {/* Mobile drawer */}
-      <div className={`fixed inset-y-0 left-0 z-50 md:hidden flex transition-transform duration-300 ease-in-out ${
-        mobileDrawerOpen ? 'translate-x-0' : '-translate-x-full'
-      }`}>
-        <PrimarySidebar
-          activeWorkspaceId={workspace?.id ?? null}
-          userRole={userRole}
-          usuario={usuario}
-          onSignOut={handleSignOut}
-          mobileMode
-          onMobileClose={() => setMobileDrawerOpen(false)}
-        />
-        {workspace && (
-          <SecondarySidebar
-            workspace={workspace}
-            activeItem={activeItem}
-            userRole={userRole}
-            collapsed={false}
-            onToggleCollapse={() => setMobileDrawerOpen(false)}
-            mobileMode
-            onMobileItemClick={() => setMobileDrawerOpen(false)}
-          />
-        )}
-      </div>
+      {/* Mobile right-side drawer */}
+      <MobileDrawer
+        open={mobileDrawerOpen}
+        onClose={() => setMobileDrawerOpen(false)}
+        workspace={workspace}
+        activeItem={activeItem}
+        userRole={userRole}
+        usuario={usuario}
+        onSignOut={handleSignOut}
+      />
 
       {/* Main content */}
       {isFullHeight ? (

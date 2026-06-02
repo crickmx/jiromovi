@@ -222,9 +222,15 @@ export default function Chava() {
     } catch (error: any) {
       console.error('Error sending chava message:', error);
       setHasError(true);
+      // Extract ref_id if the edge function returned one
+      const refId = error.ref_id || null;
+      const isNetworkError = error.message?.includes('Load failed') || error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError');
+      const friendlyMessage = isNetworkError
+        ? `No pude conectarme al servidor en este momento. Verifica tu conexion a internet e intenta de nuevo.${refId ? `\n\nRef: ${refId}` : ''}`
+        : `Ocurrio un problema al preparar la respuesta. Por favor intenta de nuevo en unos segundos.${refId ? `\n\nRef: ${refId}` : ''}`;
       setLocalMessages(prev => {
         const withoutTemp = prev.filter(m => m.id !== tempUserId);
-        return [...withoutTemp, { id: `temp-error-${Date.now()}`, conversacion_id: conversationId || '', rol: 'assistant', contenido: error.message || 'Error al procesar tu mensaje.', respuesta_estructurada_json: null, tiene_acciones: false, created_at: new Date().toISOString() }];
+        return [...withoutTemp, { id: `temp-error-${Date.now()}`, conversacion_id: conversationId || '', rol: 'assistant', contenido: friendlyMessage, respuesta_estructurada_json: null, tiene_acciones: false, created_at: new Date().toISOString() }];
       });
     } finally {
       setIsSendingMessage(false);

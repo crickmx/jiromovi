@@ -314,11 +314,16 @@ export async function sendChavaMessage(
 
     if (!res.ok) {
       const errorMessage = json?.error || json?.message || text || `HTTP ${res.status}`;
-      throw new Error(errorMessage);
+      const err = new Error(errorMessage) as any;
+      err.ref_id = json?.ref_id || null;
+      err.error_tipo = json?.error_tipo || null;
+      throw err;
     }
 
     if (json && json.error) {
-      throw new Error(json.error);
+      const err = new Error(json.error) as any;
+      err.ref_id = json?.ref_id || null;
+      throw err;
     }
 
     if (!json) {

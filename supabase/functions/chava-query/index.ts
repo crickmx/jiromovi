@@ -8,6 +8,110 @@ const corsHeaders = {
     "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+// ── Reference ID generator ─────────────────────────────────────────────────
+function generateRefId(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let id = "CHAVA-";
+  for (let i = 0; i < 8; i++) id += chars[Math.floor(Math.random() * chars.length)];
+  return id;
+}
+
+// ── Audit logger ───────────────────────────────────────────────────────────
+interface ToolCall {
+  tool: string;
+  input?: any;
+  output_summary?: string;
+  duration_ms: number;
+  error?: string;
+}
+
+class AuditLogger {
+  private refId: string;
+  private toolCalls: ToolCall[] = [];
+  private startTime: number;
+
+  constructor(refId: string) {
+    this.refId = refId;
+    this.startTime = Date.now();
+  }
+
+  addToolCall(call: ToolCall) {
+    this.toolCalls.push(call);
+  }
+
+  getRefId() { return this.refId; }
+  getToolCalls() { return this.toolCalls; }
+  getElapsed() { return Date.now() - this.startTime; }
+
+  async save(supabase: any, params: {
+    usuario_id: string;
+    conversacion_id: string | null;
+    modulo: string;
+    ruta: string;
+    pregunta: string;
+    respuesta?: string;
+    fuentes_utilizadas?: any[];
+    tokens_entrada?: number;
+    tokens_salida?: number;
+    modelo?: string;
+    tuvo_error?: boolean;
+    error_mensaje?: string;
+    error_stack?: string;
+    error_tipo?: string;
+    rol_usuario: string;
+    oficina_id: string | null;
+  }) {
+    try {
+      await supabase.from("chava_audit_log").insert({
+        ref_id: this.refId,
+        usuario_id: params.usuario_id,
+        conversacion_id: params.conversacion_id,
+        modulo: params.modulo,
+        ruta: params.ruta,
+        pregunta: params.pregunta,
+        respuesta: params.respuesta || null,
+        herramientas_llamadas: this.toolCalls,
+        fuentes_utilizadas: params.fuentes_utilizadas || [],
+        tiempo_respuesta_ms: this.getElapsed(),
+        tokens_entrada: params.tokens_entrada || 0,
+        tokens_salida: params.tokens_salida || 0,
+        modelo: params.modelo || null,
+        tuvo_error: params.tuvo_error || false,
+        error_mensaje: params.error_mensaje || null,
+        error_stack: params.error_stack || null,
+        error_tipo: params.error_tipo || null,
+        rol_usuario: params.rol_usuario,
+        oficina_id: params.oficina_id,
+      });
+    } catch (e: any) {
+      console.error("[Audit] Failed to save log:", e.message);
+    }
+  }
+
+  async updateToolHealth(supabase: any, tool: string, ok: boolean, durationMs: number, records?: number, errorMsg?: string) {
+    try {
+      if (ok) {
+        await supabase.from("chava_tool_health").upsert({
+          herramienta: tool,
+          estado: "ok",
+          ultimo_ok_at: new Date().toISOString(),
+          tiempo_respuesta_ms: durationMs,
+          registros_encontrados: records ?? null,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "herramienta" });
+      } else {
+        await supabase.from("chava_tool_health").upsert({
+          herramienta: tool,
+          estado: "error",
+          ultimo_error_at: new Date().toISOString(),
+          ultimo_error: errorMsg || null,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "herramienta" });
+      }
+    } catch { /* non-blocking */ }
+  }
+}
+
 interface QueryRequest {
   mensaje: string;
   conversacion_id?: string;
@@ -175,7 +279,8 @@ async function fetchFileContent(
 async function querySicasContext(
   supabase: ReturnType<typeof createClient>,
   mensaje: string,
-  usuario: { id: string; rol: string; oficina_id: string | null }
+  usuario: { id: string; rol: string; oficina_id: string | null },
+  audit: AuditLogger
 ): Promise<string> {
   const lower = mensaje.toLowerCase();
   let sicasContext = "";
@@ -315,8 +420,11 @@ async function querySicasContext(
       }
     }
   } catch (e: any) {
-    console.error("SICAS query error:", e.message);
-    sicasContext += `\n[Error consultando SICAS: ${e.message}]`;
+    const errMsg = e?.message || String(e);
+    console.error("SICAS query error:", errMsg);
+    await audit.updateToolHealth(null as any, "consultar_sicas", false, 0, undefined, errMsg);
+    audit.addToolCall({ tool: "consultar_sicas", duration_ms: 0, error: errMsg });
+    // Don't propagate — just note it, Chava can still respond
   }
 
   return sicasContext;
@@ -327,7 +435,8 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
-  const startTime = Date.now();
+  const refId = generateRefId();
+  const audit = new AuditLogger(refId);
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -502,11 +611,17 @@ INSTRUCCIONES FINALES:
     // === Query SICAS if relevant ===
     let sicasContext = "";
     if (needsSicasQuery(mensaje)) {
+      const sicasStart = Date.now();
       sicasContext = await querySicasContext(supabase, mensaje, {
         id: usuario.id,
         rol: usuario.rol,
         oficina_id: usuario.oficina_id,
-      });
+      }, audit);
+      const sicasDuration = Date.now() - sicasStart;
+      if (sicasContext && !sicasContext.includes("[Error")) {
+        audit.addToolCall({ tool: "consultar_sicas", duration_ms: sicasDuration, output_summary: `${sicasContext.length} chars` });
+        await audit.updateToolHealth(supabase, "consultar_sicas", true, sicasDuration);
+      }
     }
 
     // === RAG: Search knowledge base ===
@@ -580,7 +695,9 @@ INSTRUCCIONES FINALES:
           }
         }
       } catch (ragErr: any) {
-        console.error("RAG search error:", ragErr.message);
+        const errMsg = ragErr?.message || String(ragErr);
+        console.error("RAG search error:", errMsg);
+        audit.addToolCall({ tool: "rag_search", duration_ms: 0, error: errMsg });
       }
     }
 
@@ -657,6 +774,7 @@ ${knowledgeContext}`;
     // Use gpt-4o when files are attached for vision capability
     const modelToUse = (file_paths && file_paths.length > 0) ? "gpt-4o" : modeloIA;
 
+    const openaiStart = Date.now();
     const completionResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -673,13 +791,15 @@ ${knowledgeContext}`;
 
     if (!completionResponse.ok) {
       const errText = await completionResponse.text();
-      throw new Error(`OpenAI error: ${errText}`);
+      audit.addToolCall({ tool: "openai_completion", duration_ms: Date.now() - openaiStart, error: errText });
+      throw Object.assign(new Error(`OpenAI error: ${errText}`), { tipo: "openai" });
     }
 
     const completionData = await completionResponse.json();
     const assistantResponse = completionData.choices[0]?.message?.content || "Lo siento, no pude generar una respuesta.";
     const tokensEntrada = completionData.usage?.prompt_tokens || 0;
     const tokensSalida = completionData.usage?.completion_tokens || 0;
+    audit.addToolCall({ tool: "openai_completion", duration_ms: Date.now() - openaiStart, output_summary: `${tokensEntrada}in/${tokensSalida}out` });
 
     // Save assistant response
     const { data: savedMsg } = await supabase
@@ -698,18 +818,20 @@ ${knowledgeContext}`;
       .update({ updated_at: new Date().toISOString() })
       .eq("id", convId);
 
-    const tiempoRespuesta = Date.now() - startTime;
-    await supabase.from("chava_consultas_log").insert({
-      usuario_id: user.id,
-      conversacion_id: convId,
-      pregunta: mensaje,
-      respuesta: assistantResponse,
-      fuentes_utilizadas: fuentesUtilizadas,
-      tokens_entrada: tokensEntrada,
-      tokens_salida: tokensSalida,
-      modelo: modelToUse,
-      tiempo_respuesta_ms: tiempoRespuesta,
-    });
+    // Legacy log (keep for backwards compat)
+    try {
+      await supabase.from("chava_consultas_log").insert({
+        usuario_id: user.id,
+        conversacion_id: convId,
+        pregunta: mensaje,
+        respuesta: assistantResponse,
+        fuentes_utilizadas: fuentesUtilizadas,
+        tokens_entrada: tokensEntrada,
+        tokens_salida: tokensSalida,
+        modelo: modelToUse,
+        tiempo_respuesta_ms: audit.getElapsed(),
+      });
+    } catch { /* non-blocking */ }
 
     // Knowledge gap detection
     if (fuentesUtilizadas.length === 0 && mensaje.length > 15) {
@@ -737,9 +859,27 @@ ${knowledgeContext}`;
       }
     }
 
+    // Save full audit log
+    await audit.save(supabase, {
+      usuario_id: user.id,
+      conversacion_id: convId,
+      modulo: modulo || "chava",
+      ruta: ruta || "/chava",
+      pregunta: mensaje,
+      respuesta: assistantResponse,
+      fuentes_utilizadas: fuentesUtilizadas,
+      tokens_entrada: tokensEntrada,
+      tokens_salida: tokensSalida,
+      modelo: modelToUse,
+      tuvo_error: false,
+      rol_usuario: usuario.rol,
+      oficina_id: usuario.oficina_id,
+    });
+
     return new Response(
       JSON.stringify({
         success: true,
+        ref_id: refId,
         conversacion_id: convId,
         mensaje_id: savedMsg?.id || null,
         respuesta: assistantResponse,
@@ -747,14 +887,48 @@ ${knowledgeContext}`;
         tokens_usados: tokensEntrada + tokensSalida,
         fuentes: fuentesUtilizadas,
         modo_usado: fuentesUtilizadas.length > 0 ? "rag" : "general",
-        tiempo_respuesta_ms: tiempoRespuesta,
+        tiempo_respuesta_ms: audit.getElapsed(),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {
-    console.error("Chava query error:", err);
+    const errMsg = err?.message || String(err);
+    const errStack = err?.stack || null;
+    const errTipo: string = err?.tipo || (
+      errMsg.includes("OpenAI") ? "openai" :
+      errMsg.includes("fetch") || errMsg.includes("network") ? "network" :
+      errMsg.includes("timeout") ? "timeout" :
+      "internal"
+    );
+
+    console.error(`[${refId}] Chava query error (${errTipo}):`, errMsg);
+
+    // Try to save audit log for the error
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const errorSupabase = createClient(supabaseUrl, serviceRoleKey);
+      await audit.save(errorSupabase, {
+        usuario_id: "unknown",
+        conversacion_id: null,
+        modulo: "chava",
+        ruta: "/chava",
+        pregunta: "",
+        tuvo_error: true,
+        error_mensaje: errMsg,
+        error_stack: errStack,
+        error_tipo: errTipo,
+        rol_usuario: "unknown",
+        oficina_id: null,
+      });
+    } catch { /* best effort */ }
+
     return new Response(
-      JSON.stringify({ error: err.message || "Internal error" }),
+      JSON.stringify({
+        error: errMsg,
+        ref_id: refId,
+        error_tipo: errTipo,
+      }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
