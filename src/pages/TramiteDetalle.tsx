@@ -389,9 +389,21 @@ export function TramiteDetalle() {
 
     setSaving(true);
     try {
-      const estatusEnProceso = estatusList.find(e => e.nombre.toLowerCase() === 'en proceso');
-      if (!estatusEnProceso) {
-        alert('No se encontró el estatus "En proceso". Verifica la configuración.');
+      // Prefer "En Proceso" by name; fall back to the first status in the
+      // already type-filtered list so cotizacion_emision and other types work.
+      const nonClosingStatuses = estatusList.filter(e => {
+        const n = e.nombre.toLowerCase();
+        return !n.includes('cerrad') && !n.includes('emitid') && !n.includes('perdid')
+          && !n.includes('ganad') && !n.includes('no emitido') && !n.includes('concluid')
+          && !n.includes('finaliz') && !n.includes('resuelto') && !n.includes('rechazad')
+          && !n.includes('cancelad');
+      });
+      const reopenEstatus =
+        nonClosingStatuses.find(e => e.nombre.toLowerCase() === 'en proceso') ||
+        nonClosingStatuses[0];
+
+      if (!reopenEstatus) {
+        alert('No hay un estatus activo disponible para reabrir este tramite. Verifica la configuración.');
         setSaving(false);
         return;
       }
@@ -399,7 +411,7 @@ export function TramiteDetalle() {
       const { error } = await supabase
         .from('tickets')
         .update({
-          estatus_id: estatusEnProceso.id,
+          estatus_id: reopenEstatus.id,
           cerrado_en: null,
           cerrado_por: null,
           modificado_por: usuario.id

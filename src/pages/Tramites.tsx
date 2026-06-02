@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -92,6 +92,8 @@ export function Tramites() {
   // We keep all 3 always, just show them filtered to what makes sense
   const availablePrioridades = PRIORIDADES;
 
+  const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
   useEffect(() => {
     loadUserArea();
   }, [usuario?.id]);
@@ -99,6 +101,25 @@ export function Tramites() {
   useEffect(() => {
     if (userAreaLoaded) loadData();
   }, [activeTab, userAreaLoaded]);
+
+  // Live updates — subscribe once userAreaLoaded so loadTramites has the right scope
+  useEffect(() => {
+    if (!userAreaLoaded) return;
+
+    realtimeChannelRef.current = supabase
+      .channel('tramites_list_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tickets' },
+        () => { loadTramites(); }
+      )
+      .subscribe();
+
+    return () => {
+      realtimeChannelRef.current?.unsubscribe();
+      realtimeChannelRef.current = null;
+    };
+  }, [userAreaLoaded, activeTab]);
 
   // Reset estatus/prioridad when tipo changes
   useEffect(() => {
