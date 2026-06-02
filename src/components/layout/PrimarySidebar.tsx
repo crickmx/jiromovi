@@ -5,6 +5,8 @@ import { NAV_ORDER, isWorkspaceVisible, isTopLevelItemVisible } from '@/lib/work
 import type { WorkspaceId, UserRole } from '@/lib/workspaceConfig';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { NotificationBell } from '../NotificationBell';
+import { ThemeToggle } from '../ThemeToggle';
 
 interface Props {
   activeWorkspaceId: WorkspaceId | null;
@@ -143,9 +145,19 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
           })}
         </div>
 
-        {/* Profile */}
+        {/* Profile + Controls */}
         <div className="flex flex-col items-center gap-2.5 pb-4 pt-3 w-full">
           <div className="sidebar-rail-sep w-8 h-px mb-1" />
+
+          {/* Notification Bell */}
+          <div className="flex items-center justify-center w-11">
+            <NotificationBell compact />
+          </div>
+
+          {/* Theme Toggle */}
+          <div className="flex items-center justify-center w-11">
+            <ThemeToggle compact />
+          </div>
 
           {mobileMode ? (
             <button

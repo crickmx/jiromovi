@@ -6,6 +6,8 @@ import { NAV_ORDER, isWorkspaceVisible, isTopLevelItemVisible, isItemVisible } f
 import type { WorkspaceDefinition, WorkspaceNavItem, UserRole } from '@/lib/workspaceConfig';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import type { Usuario } from '@/contexts/MoviAuthContext';
+import { NotificationBell } from '../NotificationBell';
+import { ThemeToggle } from '../ThemeToggle';
 
 interface Props {
   open: boolean;
@@ -264,8 +266,14 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
           </div>
         </div>
 
-        {/* ── Footer: Sign out ── */}
-        <div className="border-t border-neutral-100 dark:border-white/[0.06] px-3 py-3">
+        {/* ── Footer: Controls + Sign out ── */}
+        <div className="border-t border-neutral-100 dark:border-white/[0.06] px-3 py-3 space-y-1">
+          {/* Notification bell + theme toggle row */}
+          <div className="flex items-center gap-2 px-3 py-2">
+            <span className="flex-1 text-[12px] font-medium text-neutral-500 dark:text-white/40">Apariencia y alertas</span>
+            <NotificationBell dropdownSide="bottom" />
+            <ThemeToggle dropdownSide="bottom" />
+          </div>
           <button
             onClick={() => { onClose(); onSignOut(); }}
             className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-[13.5px] font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors active:scale-[0.98] text-left"

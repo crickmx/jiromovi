@@ -2,7 +2,14 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { useThemeMode } from "@/hooks/useThemeMode";
 import { Sun, Moon, Laptop } from "lucide-react";
 
-export function ThemeToggle() {
+interface ThemeToggleProps {
+  /** Render as a compact sidebar-rail style button (44×44 px, rounded-2xl) */
+  compact?: boolean;
+  /** Which side to open the dropdown. Defaults to 'right' (left-full) for sidebar, 'bottom' for inline. */
+  dropdownSide?: 'right' | 'bottom';
+}
+
+export function ThemeToggle({ compact, dropdownSide = 'right' }: ThemeToggleProps) {
   const { mode, updateMode, isDarkEffective } = useThemeMode();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -25,27 +32,31 @@ export function ThemeToggle() {
     }
   }, [open]);
 
+  const buttonClass = compact
+    ? "sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90"
+    : "inline-flex items-center justify-center h-10 w-10 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 transition-all duration-200 ease-ios";
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="inline-flex items-center justify-center h-10 w-10 rounded-xl
-                   border border-gray-200 bg-white hover:bg-gray-50
-                   dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10
-                   transition-all duration-200 ease-ios"
+        className={buttonClass}
         aria-label="Cambiar tema"
         title="Tema"
       >
-        <Icon className="h-5 w-5 text-gray-700 dark:text-white/85" />
+        <Icon className={compact ? "w-[18px] h-[18px]" : "h-5 w-5 text-gray-700 dark:text-white/85"} />
       </button>
 
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div
-            className="absolute right-0 mt-2 w-56 rounded-2xl border border-gray-200 bg-white shadow-ios-lg overflow-hidden z-50
-                       dark:border-white/10 dark:bg-slate-900 animate-scale-in"
+            className={`absolute w-48 rounded-2xl border border-gray-200 bg-white shadow-ios-lg overflow-hidden z-50 dark:border-white/10 dark:bg-slate-900 animate-scale-in ${
+              dropdownSide === 'right'
+                ? 'left-full ml-2 top-0'
+                : 'right-0 mt-2 top-full'
+            }`}
             role="menu"
           >
             <button
@@ -85,7 +96,7 @@ export function ThemeToggle() {
               role="menuitem"
             >
               <Laptop className="h-4 w-4 flex-shrink-0" />
-              <span>Automático</span>
+              <span>Automatico</span>
               {mode === "system" && (
                 <span className="ml-auto text-accent dark:text-primary-400">✓</span>
               )}
