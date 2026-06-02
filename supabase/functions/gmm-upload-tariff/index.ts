@@ -182,11 +182,13 @@ Deno.serve(async (req: Request) => {
 
     for (const [tableKey, definition] of Object.entries(EXCEL_RANGES)) {
       try {
-        const data = parseRange(workbook, definition.sheet, definition.range, definition.type);
+        const rawData = parseRange(workbook, definition.sheet, definition.range, definition.type);
+        const data = rawData ?? (definition.type === 'value' ? null : []);
+        const data_json = data === null ? { value: null } : data;
         tables.push({
           tariff_package_id: pkg.id,
           table_key: tableKey,
-          data_json: data,
+          data_json,
           row_count: Array.isArray(data) ? data.length : null,
         });
       } catch (error) {
