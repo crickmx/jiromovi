@@ -357,8 +357,17 @@ async function processItem(supabase: any, item: any, job: any, folderPrefix: str
     // Create Centro Digital archivo record with the correct carpeta_id
     // If subcarpetas are enabled, resolve or create the subcarpeta for this item's ramo
     let carpetaId = job.carpeta_destino_id;
-    if (crearSubcarpetas && carpetaId && item.ramo) {
-      carpetaId = await getOrCreateSubcarpeta(supabase, carpetaId, item.ramo, job.iniciado_por, subcarpetaCache);
+    if (crearSubcarpetas && item.ramo) {
+      if (carpetaId) {
+        // Create subcarpeta under the root folder
+        carpetaId = await getOrCreateSubcarpeta(supabase, carpetaId, item.ramo, job.iniciado_por, subcarpetaCache);
+      } else {
+        // No root folder — create top-level carpeta by ramo
+        carpetaId = await getOrCreateTopLevelCarpeta(supabase, item.ramo, item.aseguradora, job.iniciado_por, subcarpetaCache);
+      }
+    } else if (!carpetaId && item.aseguradora) {
+      // No root folder and no ramo — create/find top-level carpeta by aseguradora
+      carpetaId = await getOrCreateTopLevelCarpeta(supabase, item.aseguradora, null, job.iniciado_por, subcarpetaCache);
     }
     let archivoId: string | null = null;
 
@@ -439,6 +448,54 @@ async function processItem(supabase: any, item: any, job: any, folderPrefix: str
     await markItemError(supabase, item.id, `Error inesperado: ${err.message}`);
     return { id: item.id, success: false, error: err.message };
   }
+}
+
+async function getOrCreateTopLevelCarpeta(
+  supabase: any,
+  nombre: string,
+  aseguradora: string | null,
+  creadoPor: string,
+  cache: Map<string, string>
+): Promise<string | null> {
+  const cacheKey = `root::${nombre}`;
+  if (cache.has(cacheKey)) return cache.get(cacheKey)!;
+
+  const { data: existing } = await supabase
+    .from("centro_digital_carpetas")
+    .select("id")
+    .is("parent_id", null)
+    .eq("nombre", nombre)
+    .eq("activa", true)
+    .maybeSingle();
+
+  if (existing?.id) {
+    cache.set(cacheKey, existing.id);
+    return existing.id;
+  }
+
+  const { data: created, error } = await supabase
+    .from("centro_digital_carpetas")
+    .insert({
+      nombre,
+      parent_id: null,
+      todas_oficinas: true,
+      todos_roles: true,
+      enable_chava_ai: true,
+      auto_index: true,
+      activa: true,
+      creado_por: creadoPor,
+      descripcion: aseguradora ? `Documentos de ${aseguradora}` : null,
+    })
+    .select("id")
+    .single();
+
+  if (error || !created) {
+    console.error(`Error creating top-level carpeta ${nombre}:`, error?.message);
+    return null;
+  }
+
+  cache.set(cacheKey, created.id);
+  return created.id;
 }
 
 async function getOrCreateSubcarpeta(

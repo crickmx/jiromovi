@@ -84,7 +84,6 @@ export function MigracionDocumentalModal({ onClose, onSuccess }: Props) {
 
   async function handleParse() {
     if (!htmlFile) return;
-    if (!carpetaId) { setError('Selecciona una carpeta de destino'); return; }
     setParsing(true);
     setError(null);
 
@@ -265,7 +264,7 @@ export function MigracionDocumentalModal({ onClose, onSuccess }: Props) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Carpeta de destino (raíz)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Carpeta de destino (opcional)</label>
                 {loadingCarpetas ? (
                   <div className="h-10 bg-gray-100 rounded-xl animate-pulse" />
                 ) : (
@@ -274,13 +273,17 @@ export function MigracionDocumentalModal({ onClose, onSuccess }: Props) {
                     onChange={e => setCarpetaId(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white"
                   >
-                    <option value="">Selecciona una carpeta...</option>
+                    <option value="">Sin carpeta raíz — crear carpetas principales automáticamente</option>
                     {carpetas.map(c => (
                       <option key={c.id} value={c.id}>{c.nombre}</option>
                     ))}
                   </select>
                 )}
-                <p className="text-xs text-gray-500 mt-1.5">Se crearán subcarpetas automáticamente por ramo dentro de esta carpeta.</p>
+                <p className="text-xs text-gray-500 mt-1.5">
+                  {carpetaId
+                    ? 'Se crearán subcarpetas por ramo dentro de esta carpeta.'
+                    : 'Se crearán carpetas principales por ramo o aseguradora automáticamente.'}
+                </p>
               </div>
 
               {/* Drop zone */}
@@ -367,8 +370,9 @@ export function MigracionDocumentalModal({ onClose, onSuccess }: Props) {
                   <div>
                     <p className="text-sm font-medium text-blue-800">Organización automática por ramo</p>
                     <p className="text-xs text-blue-600 mt-0.5">
-                      Los documentos se agruparán en subcarpetas según el ramo detectado (GMM, Vida, Autos, etc.)
-                      dentro de la carpeta de destino seleccionada.
+                      {carpetaId
+                        ? 'Los documentos se agruparán en subcarpetas según el ramo detectado dentro de la carpeta de destino seleccionada.'
+                        : 'Se crearán carpetas principales en el Centro Digital para cada ramo o aseguradora detectados.'}
                     </p>
                   </div>
                 </div>
@@ -488,7 +492,7 @@ export function MigracionDocumentalModal({ onClose, onSuccess }: Props) {
               <Button variant="outline" onClick={onClose}>Cancelar</Button>
               <Button
                 onClick={handleParse}
-                disabled={!htmlFile || !carpetaId || parsing}
+                disabled={!htmlFile || parsing}
               >
                 {parsing
                   ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Analizando...</>

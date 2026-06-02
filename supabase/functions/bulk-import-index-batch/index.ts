@@ -343,7 +343,7 @@ async function indexItem(supabase: any, openaiKey: string, item: any, job: any) 
       archivo_id: archivo_centro_digital_id || null,
       carpeta_id: carpetaId,
       contenido: chunk.text,
-      embedding: JSON.stringify(embeddings[idx].embedding),
+      embedding: embeddings[idx].embedding,
       chunk_index: i + idx,
       metadata: {
         section: chunk.section || null,

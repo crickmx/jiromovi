@@ -262,7 +262,7 @@ Deno.serve(async (req: Request) => {
         archivo_id,
         carpeta_id: archivo.carpeta_id,
         contenido: chunk.text,
-        embedding: JSON.stringify(embeddings[idx].embedding),
+        embedding: embeddings[idx].embedding,
         chunk_index: i + idx,
         metadata: {
           section: chunk.section || null,
