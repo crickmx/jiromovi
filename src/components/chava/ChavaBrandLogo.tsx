@@ -48,13 +48,13 @@ export function ChavaBrandLogo({
           </span>
           <span
             className={cn('font-black leading-none px-1.5 py-0.5 rounded-md', { sm: 'text-[8px]', md: 'text-[9px]', lg: 'text-[11px]' }[size])}
-            style={{ background: 'linear-gradient(135deg,#00E5FF,#38BDF8)', color: '#060f25' }}
+            style={{ background: 'linear-gradient(135deg,#00FFCC,#00C8F0)', color: '#061828' }}
           >
             AI
           </span>
         </div>
         {showDomain && (
-          <span className={cn('font-medium', fallbackDomain)} style={{ color: '#00E5FF' }}>
+          <span className={cn('font-medium', fallbackDomain)} style={{ color: '#00D4AA' }}>
             agentedeseguros.ai
           </span>
         )}

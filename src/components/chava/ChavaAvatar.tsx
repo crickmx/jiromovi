@@ -21,8 +21,8 @@ export function ChavaAvatar({ size = 'md', animate = false, className, online = 
     <div className={cn('relative flex-shrink-0', className)}>
       {animate && (
         <>
-          <div className={cn('absolute inset-0', s.radius, 'animate-ping')} style={{ background: 'rgba(0,229,255,0.1)', animationDuration: '2.8s' }} />
-          <div className={cn('absolute inset-0', s.radius, 'animate-ping')} style={{ background: 'rgba(0,229,255,0.06)', animationDuration: '3.8s', animationDelay: '0.6s' }} />
+          <div className={cn('absolute inset-0', s.radius, 'animate-ping')} style={{ background: 'rgba(0,212,170,0.12)', animationDuration: '2.8s' }} />
+          <div className={cn('absolute inset-0', s.radius, 'animate-ping')} style={{ background: 'rgba(0,200,240,0.07)', animationDuration: '3.8s', animationDelay: '0.6s' }} />
         </>
       )}
 
@@ -39,8 +39,8 @@ export function ChavaAvatar({ size = 'md', animate = false, className, online = 
             if (parent && !parent.querySelector('.chava-fallback')) {
               const fb = document.createElement('div');
               fb.className = 'chava-fallback w-full h-full flex items-center justify-center';
-              fb.style.cssText = 'background:linear-gradient(135deg,#1845A0,#060f25)';
-              fb.innerHTML = '<span style="color:#00E5FF;font-weight:900;font-size:60%;letter-spacing:0.05em">AI</span>';
+              fb.style.cssText = 'background:linear-gradient(135deg,#0A2540,#061828)';
+              fb.innerHTML = '<span style="color:#00D4AA;font-weight:900;font-size:60%;letter-spacing:0.05em">AI</span>';
               parent.appendChild(fb);
             }
           }}

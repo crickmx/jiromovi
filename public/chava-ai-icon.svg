@@ -1,83 +1,70 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#1845A0"/>
-      <stop offset="100%" stop-color="#060f25"/>
+    <linearGradient id="bgA" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0A2540"/>
+      <stop offset="100%" stop-color="#061828"/>
     </linearGradient>
-    <radialGradient id="bgGlow" cx="50%" cy="35%" r="55%">
-      <stop offset="0%" stop-color="#1D55B8"/>
-      <stop offset="100%" stop-color="#060c1e"/>
+    <linearGradient id="ringA" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00D4AA"/>
+      <stop offset="100%" stop-color="#00A8CC"/>
+    </linearGradient>
+    <linearGradient id="sparkA" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00FFCC"/>
+      <stop offset="100%" stop-color="#00C8F0"/>
+    </linearGradient>
+    <linearGradient id="coreA" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00E5C0"/>
+      <stop offset="100%" stop-color="#0097B2"/>
+    </linearGradient>
+    <radialGradient id="glowA" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00D4AA" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#00D4AA" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="elBody" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#70C0FF"/>
-      <stop offset="100%" stop-color="#2178D8"/>
-    </linearGradient>
-    <linearGradient id="earColor" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#95D5FF"/>
-      <stop offset="100%" stop-color="#4A9FEF"/>
-    </linearGradient>
-    <linearGradient id="innerEarColor" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#FFBBCC"/>
-      <stop offset="100%" stop-color="#FF88AA"/>
-    </linearGradient>
-    <filter id="drop" x="-15%" y="-15%" width="130%" height="130%">
-      <feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#00000080"/>
+    <filter id="blurA" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.2"/>
+    </filter>
+    <filter id="dropA">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#00000060"/>
     </filter>
   </defs>
 
-  <!-- Background rounded square -->
-  <rect width="48" height="48" rx="13" fill="url(#bgGlow)"/>
-  <rect width="48" height="48" rx="13" fill="none" stroke="rgba(0,229,255,0.15)" stroke-width="1"/>
+  <!-- Background -->
+  <rect width="48" height="48" rx="13" fill="url(#bgA)"/>
+  <rect width="48" height="48" rx="13" fill="none" stroke="rgba(0,212,170,0.18)" stroke-width="1"/>
 
-  <!-- Subtle radial highlight top-center -->
-  <ellipse cx="24" cy="8" rx="16" ry="10" fill="rgba(0,229,255,0.06)"/>
+  <!-- Glow center -->
+  <circle cx="24" cy="24" r="18" fill="url(#glowA)"/>
 
-  <!-- Left ear -->
-  <ellipse cx="11" cy="26" rx="7.5" ry="9.5" fill="url(#earColor)"/>
-  <ellipse cx="11.5" cy="26" rx="4.5" ry="6" fill="url(#innerEarColor)" opacity="0.75"/>
+  <!-- Orbit ring -->
+  <circle cx="24" cy="24" r="13" stroke="url(#ringA)" stroke-width="1.2" stroke-dasharray="3.5 2.5" fill="none" opacity="0.5"/>
 
-  <!-- Head -->
-  <ellipse cx="24" cy="25" rx="12" ry="13" fill="url(#elBody)" filter="url(#drop)"/>
+  <!-- Neural nodes on ring -->
+  <circle cx="24" cy="11" r="1.8" fill="url(#sparkA)" opacity="0.9"/>
+  <circle cx="35.3" cy="17.5" r="1.4" fill="url(#sparkA)" opacity="0.7"/>
+  <circle cx="35.3" cy="30.5" r="1.4" fill="url(#sparkA)" opacity="0.7"/>
+  <circle cx="24" cy="37" r="1.4" fill="url(#sparkA)" opacity="0.5"/>
+  <circle cx="12.7" cy="30.5" r="1.4" fill="url(#sparkA)" opacity="0.7"/>
+  <circle cx="12.7" cy="17.5" r="1.8" fill="url(#sparkA)" opacity="0.9"/>
 
-  <!-- Forehead shine -->
-  <ellipse cx="24" cy="19" rx="7" ry="5" fill="rgba(255,255,255,0.16)"/>
+  <!-- Connection lines from nodes to center -->
+  <line x1="24" y1="11" x2="24" y2="17" stroke="url(#sparkA)" stroke-width="0.7" opacity="0.4"/>
+  <line x1="35.3" y1="17.5" x2="30" y2="20" stroke="url(#sparkA)" stroke-width="0.7" opacity="0.4"/>
+  <line x1="35.3" y1="30.5" x2="30" y2="28" stroke="url(#sparkA)" stroke-width="0.7" opacity="0.4"/>
+  <line x1="12.7" y1="17.5" x2="18" y2="20" stroke="url(#sparkA)" stroke-width="0.7" opacity="0.4"/>
+  <line x1="12.7" y1="30.5" x2="18" y2="28" stroke="url(#sparkA)" stroke-width="0.7" opacity="0.4"/>
 
-  <!-- Trunk -->
-  <path d="M 19 34 Q 15 39 16 43 Q 17 46 20 45 Q 22 44 21 41 Q 20 38 22 36 Z" fill="url(#elBody)"/>
-  <path d="M 20 35 Q 17 39 18 43" stroke="rgba(255,255,255,0.22)" stroke-width="0.9" fill="none" stroke-linecap="round"/>
+  <!-- Central "C" lettermark -->
+  <path d="M 29 17.5 Q 24 14 19.5 17 Q 15 20 15 24 Q 15 28 19.5 31 Q 24 34 29 30.5"
+    stroke="url(#coreA)" stroke-width="3.5" fill="none" stroke-linecap="round"
+    filter="url(#dropA)"/>
 
-  <!-- Eyes - whites -->
-  <ellipse cx="19.5" cy="23.5" rx="3" ry="3.2" fill="white"/>
-  <ellipse cx="28.5" cy="23.5" rx="3" ry="3.2" fill="white"/>
-  <!-- Pupils -->
-  <ellipse cx="20.1" cy="23.9" rx="1.8" ry="2" fill="#0F1F3A"/>
-  <ellipse cx="29.1" cy="23.9" rx="1.8" ry="2" fill="#0F1F3A"/>
-  <!-- Shine -->
-  <circle cx="20.7" cy="22.9" r="0.65" fill="white"/>
-  <circle cx="29.7" cy="22.9" r="0.65" fill="white"/>
-  <!-- Eyebrows -->
-  <path d="M 17 21 Q 19.5 19.5 22 21" stroke="#0F1F3A" stroke-width="0.8" fill="none" stroke-linecap="round"/>
-  <path d="M 26 21 Q 28.5 19.5 31 21" stroke="#0F1F3A" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+  <!-- Core dot -->
+  <circle cx="24" cy="24" r="3.2" fill="url(#sparkA)" filter="url(#dropA)"/>
+  <circle cx="24" cy="24" r="1.5" fill="white" opacity="0.9"/>
 
-  <!-- Smile -->
-  <path d="M 20 29 Q 24 32.5 28 29" stroke="#0F1F3A" stroke-width="1.1" fill="none" stroke-linecap="round"/>
-
-  <!-- Headset band -->
-  <path d="M 13.5 21.5 Q 24 10 34.5 21.5" stroke="#111827" stroke-width="2.2" fill="none" stroke-linecap="round"/>
-  <!-- Left cup -->
-  <rect x="10.5" y="19" width="6" height="8" rx="3" fill="#111827"/>
-  <rect x="11.5" y="20" width="4" height="6" rx="2" fill="#1A3A5C"/>
-  <!-- Right cup -->
-  <rect x="31.5" y="19" width="6" height="8" rx="3" fill="#111827"/>
-  <rect x="32.5" y="20" width="4" height="6" rx="2" fill="#1A3A5C"/>
-  <!-- Mic arm -->
-  <path d="M 11.5 26 Q 9 30 10 34" stroke="#111827" stroke-width="1.4" fill="none" stroke-linecap="round"/>
-  <!-- Mic capsule -->
-  <rect x="8.5" y="33" width="4.5" height="3" rx="1.5" fill="#00E5FF" opacity="0.95"/>
-
-  <!-- AI badge (top-right) -->
-  <rect x="33" y="5" width="12" height="9" rx="3.5" fill="#00E5FF" opacity="0.9"/>
-  <text x="39" y="12" font-family="'SF Pro Display', 'Inter', Arial, sans-serif"
-    font-size="6" font-weight="900" letter-spacing="0.3"
-    text-anchor="middle" fill="#060f25">AI</text>
+  <!-- Top-right AI badge -->
+  <rect x="32" y="4" width="13" height="8.5" rx="3" fill="url(#sparkA)" opacity="0.92"/>
+  <text x="38.5" y="10.8" font-family="'SF Pro Display','Inter',Arial,sans-serif"
+    font-size="5.5" font-weight="900" letter-spacing="0.4"
+    text-anchor="middle" fill="#061828">AI</text>
 </svg>
