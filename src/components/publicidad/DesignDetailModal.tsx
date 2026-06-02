@@ -37,21 +37,34 @@ interface DesignDetailModalProps {
   onUpdate: () => void;
 }
 
+function buildFullText(copy: AICopy): string {
+  const parts: string[] = [];
+  if (copy.apertura) parts.push(copy.apertura);
+  if (copy.desarrollo) parts.push(copy.desarrollo);
+  if (copy.cta) parts.push(copy.cta);
+  if (copy.firma) parts.push(copy.firma);
+  if (copy.url_web) parts.push(copy.url_web);
+  if (copy.hashtags?.length) {
+    parts.push(copy.hashtags.map(h => `#${h.replace(/^#/, '')}`).join(' '));
+  }
+  return parts.join('\n\n');
+}
+
 export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignDetailModalProps) {
   const [generating, setGenerating] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [editedCopy, setEditedCopy] = useState<AICopy | null>(null);
+  const [editedText, setEditedText] = useState('');
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
 
-  const currentCopy = editing ? editedCopy : diseno.ai_copy;
+  const currentCopy = diseno.ai_copy;
+  const fullText = currentCopy ? buildFullText(currentCopy) : '';
 
   const handleGenerateCopy = async () => {
     setGenerating(true);
     try {
-      // Refresh session to ensure we have a valid, non-expired token
       let accessToken: string | undefined;
       const { data: refreshed } = await supabase.auth.refreshSession();
       accessToken = refreshed.session?.access_token;
@@ -88,23 +101,31 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
   };
 
   const handleStartEdit = () => {
-    setEditedCopy(diseno.ai_copy ? { ...diseno.ai_copy } : null);
+    setEditedText(fullText);
     setEditing(true);
   };
 
   const handleCancelEdit = () => {
-    setEditedCopy(null);
+    setEditedText('');
     setEditing(false);
   };
 
   const handleSaveEdit = async () => {
-    if (!editedCopy) return;
     setSaving(true);
     try {
+      // Store the edited text back as apertura (single block)
+      const updatedCopy: AICopy = {
+        apertura: editedText,
+        desarrollo: '',
+        cta: '',
+        firma: '',
+        url_web: currentCopy?.url_web || '',
+        hashtags: currentCopy?.hashtags || [],
+      };
       const { error } = await supabase
         .from('publicidad_disenos')
         .update({
-          ai_copy: editedCopy,
+          ai_copy: updatedCopy,
           ai_copy_editado_manual: true,
         })
         .eq('id', diseno.id);
@@ -121,7 +142,7 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
 
   const handleRestoreOriginal = async () => {
     if (!diseno.ai_copy_original) return;
-    if (!confirm('Esto restaurara el copy original generado por IA. Los cambios manuales se perderan.')) return;
+    if (!confirm('Esto restaurara el copy original generado por Chava AI. Los cambios manuales se perderan.')) return;
 
     try {
       const { error } = await supabase
@@ -141,20 +162,7 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
   };
 
   const handleCopyToClipboard = () => {
-    if (!currentCopy) return;
-    const fullText = [
-      currentCopy.apertura,
-      '',
-      currentCopy.desarrollo,
-      '',
-      currentCopy.cta,
-      '',
-      currentCopy.firma,
-      currentCopy.url_web ? `\n${currentCopy.url_web}` : '',
-      '',
-      currentCopy.hashtags?.map(h => `#${h.replace(/^#/, '')}`).join(' ') || '',
-    ].filter(Boolean).join('\n');
-
+    if (!fullText) return;
     navigator.clipboard.writeText(fullText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -200,7 +208,7 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 md:gap-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
             {/* Image Preview */}
             <div className="p-5 flex items-center justify-center bg-neutral-50 dark:bg-neutral-800/30 border-b md:border-b-0 md:border-r border-neutral-200 dark:border-white/8">
               <div className="relative w-full max-w-sm aspect-[4/5] rounded-lg overflow-hidden bg-white dark:bg-neutral-800 shadow-sm">
@@ -223,7 +231,7 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-accent" />
-                  Copy para Redes Sociales
+                  Texto generado por Chava AI
                 </h3>
                 {diseno.ai_copy_editado_manual && (
                   <span className="text-xs px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-md">
@@ -236,93 +244,44 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
                 <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
                   <Sparkles className="w-10 h-10 text-neutral-300 dark:text-white/20 mb-3" />
                   <p className="text-sm text-neutral-500 dark:text-white/50 mb-4">
-                    Genera copy con IA para esta publicacion
+                    Genera texto con Chava AI para esta publicacion
                   </p>
-                  <Button
-                    onClick={handleGenerateCopy}
-                    disabled={generating}
-                  >
+                  <Button onClick={handleGenerateCopy} disabled={generating}>
                     {generating ? (
                       <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generando...</>
                     ) : (
-                      <><Sparkles className="w-4 h-4 mr-2" /> Generar Copy IA</>
+                      <><Sparkles className="w-4 h-4 mr-2" /> Generar con Chava AI</>
                     )}
                   </Button>
                 </div>
               ) : (
-                <div className="flex-1 space-y-3">
-                  {/* Apertura */}
-                  <CopyField
-                    label="Apertura"
-                    value={currentCopy.apertura}
-                    editing={editing}
-                    onChange={(v) => setEditedCopy(prev => prev ? { ...prev, apertura: v } : null)}
-                  />
-
-                  {/* Desarrollo */}
-                  <CopyField
-                    label="Desarrollo"
-                    value={currentCopy.desarrollo}
-                    editing={editing}
-                    onChange={(v) => setEditedCopy(prev => prev ? { ...prev, desarrollo: v } : null)}
-                    multiline
-                  />
-
-                  {/* CTA */}
-                  <CopyField
-                    label="Llamada a la accion"
-                    value={currentCopy.cta}
-                    editing={editing}
-                    onChange={(v) => setEditedCopy(prev => prev ? { ...prev, cta: v } : null)}
-                  />
-
-                  {/* Firma */}
-                  <CopyField
-                    label="Firma"
-                    value={currentCopy.firma}
-                    editing={editing}
-                    onChange={(v) => setEditedCopy(prev => prev ? { ...prev, firma: v } : null)}
-                  />
-
-                  {/* URL */}
-                  {currentCopy.url_web && (
-                    <CopyField
-                      label="URL Web"
-                      value={currentCopy.url_web}
-                      editing={editing}
-                      onChange={(v) => setEditedCopy(prev => prev ? { ...prev, url_web: v } : null)}
+                <div className="flex-1 flex flex-col gap-3">
+                  {editing ? (
+                    <textarea
+                      value={editedText}
+                      onChange={e => setEditedText(e.target.value)}
+                      className="flex-1 w-full px-3 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-xl text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/30 resize-none leading-relaxed"
+                      style={{ minHeight: 200 }}
+                      placeholder="Edita el texto aqui..."
                     />
+                  ) : (
+                    <div className="flex-1 relative group">
+                      <pre className="w-full text-sm text-neutral-800 dark:text-white/80 leading-relaxed whitespace-pre-wrap font-sans bg-neutral-50 dark:bg-white/3 border border-neutral-200 dark:border-white/8 rounded-xl px-3 py-2.5"
+                        style={{ minHeight: 200 }}>
+                        {fullText}
+                      </pre>
+                      <button
+                        onClick={handleCopyToClipboard}
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-white/10 rounded-lg shadow-sm hover:bg-neutral-50 dark:hover:bg-white/10"
+                        title="Copiar texto"
+                      >
+                        {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-neutral-500 dark:text-white/50" />}
+                      </button>
+                    </div>
                   )}
 
-                  {/* Hashtags */}
-                  <div>
-                    <span className="text-xs font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider">
-                      Hashtags
-                    </span>
-                    {editing ? (
-                      <input
-                        type="text"
-                        value={currentCopy.hashtags?.map(h => `#${h.replace(/^#/, '')}`).join(' ') || ''}
-                        onChange={(e) => {
-                          const tags = e.target.value.split(/\s+/).map(t => t.replace(/^#/, '')).filter(Boolean);
-                          setEditedCopy(prev => prev ? { ...prev, hashtags: tags } : null);
-                        }}
-                        className="mt-1 w-full px-3 py-1.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg text-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-                      />
-                    ) : (
-                      <div className="mt-1 flex flex-wrap gap-1.5">
-                        {currentCopy.hashtags?.map((tag, idx) => (
-                          <span key={idx} className="text-xs px-2 py-0.5 bg-accent/10 text-accent rounded-md">
-                            #{tag.replace(/^#/, '')}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Version info */}
-                  {diseno.ai_copy_version > 0 && (
-                    <p className="text-xs text-neutral-400 dark:text-white/25 pt-2">
+                  {diseno.ai_copy_version > 0 && !editing && (
+                    <p className="text-xs text-neutral-400 dark:text-white/25">
                       v{diseno.ai_copy_version} — generado {diseno.ai_copy_generated_at
                         ? new Date(diseno.ai_copy_generated_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
                         : ''}
@@ -339,12 +298,12 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleDownload}>
               <Download className="w-3.5 h-3.5 mr-1.5" />
-              Descargar Imagen
+              Descargar
             </Button>
-            {currentCopy && (
+            {currentCopy && !editing && (
               <Button variant="outline" size="sm" onClick={handleCopyToClipboard}>
                 {copied ? <Check className="w-3.5 h-3.5 mr-1.5" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
-                {copied ? 'Copiado' : 'Copiar Copy'}
+                {copied ? 'Copiado' : 'Copiar texto'}
               </Button>
             )}
           </div>
@@ -355,7 +314,7 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
                 {diseno.ai_copy_editado_manual && diseno.ai_copy_original && (
                   <Button variant="outline" size="sm" onClick={handleRestoreOriginal}>
                     <Undo2 className="w-3.5 h-3.5 mr-1.5" />
-                    Restaurar Original
+                    Restaurar
                   </Button>
                 )}
                 <Button variant="outline" size="sm" onClick={handleStartEdit}>
@@ -366,7 +325,7 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
                   {generating ? (
                     <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Regenerando...</>
                   ) : (
-                    <><RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Regenerar Copy</>
+                    <><RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Regenerar</>
                   )}
                 </Button>
               </>
@@ -377,50 +336,13 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
                   Cancelar
                 </Button>
                 <Button size="sm" onClick={handleSaveEdit} disabled={saving}>
-                  {saving ? 'Guardando...' : 'Guardar Cambios'}
+                  {saving ? 'Guardando...' : 'Guardar'}
                 </Button>
               </>
             )}
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function CopyField({ label, value, editing, onChange, multiline }: {
-  label: string;
-  value: string;
-  editing: boolean;
-  onChange: (v: string) => void;
-  multiline?: boolean;
-}) {
-  return (
-    <div>
-      <span className="text-xs font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider">
-        {label}
-      </span>
-      {editing ? (
-        multiline ? (
-          <textarea
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            rows={3}
-            className="mt-1 w-full px-3 py-1.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/30 resize-none"
-          />
-        ) : (
-          <input
-            type="text"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="mt-1 w-full px-3 py-1.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/30"
-          />
-        )
-      ) : (
-        <p className="mt-1 text-sm text-neutral-800 dark:text-white/80 leading-relaxed">
-          {value}
-        </p>
-      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Upload, Download, Image as ImageIcon, RotateCcw, Loader as Loader2, TriangleAlert as AlertTriangle, ZoomIn, ZoomOut, Maximize2, Sparkles } from 'lucide-react';
+import { X, Upload, Download, RotateCcw, Loader as Loader2, TriangleAlert as AlertTriangle, ZoomIn, ZoomOut, Maximize2, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { getEffectiveUserLogo } from '../lib/logoUtils';
@@ -37,7 +37,6 @@ interface TextStyle {
 }
 
 const FUENTES = ['Inter', 'Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Courier New', 'Verdana', 'Impact'];
-
 const CORPORATE_COLORS = { primary: '#1e40af', secondary: '#059669' };
 
 function getDefaultStyle(color: string): TextStyle {
@@ -51,14 +50,12 @@ function normalizeUrlForDisplay(url: string): string {
   return n;
 }
 
-// Load an image with CORS and a configurable proxy fallback
 function loadCorsImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new window.Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = () => {
-      // Retry without crossOrigin in case CORS isn't needed (same-origin)
       const img2 = new window.Image();
       img2.onload = () => resolve(img2);
       img2.onerror = () => reject(new Error(`No se pudo cargar imagen: ${src}`));
@@ -70,54 +67,46 @@ function loadCorsImage(src: string): Promise<HTMLImageElement> {
 
 export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSuccess }: PersonalizarPlantillaModalProps) {
   const { usuario } = useAuth();
-
   const officeAccentColor = (usuario as any)?.oficinas?.accent_color || (usuario as any)?.oficina?.accent_color || CORPORATE_COLORS.primary;
   const officeSecondaryColor = (usuario as any)?.oficinas?.secondary_color || CORPORATE_COLORS.secondary;
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [imageStatus, setImageStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [imageStatus, setImageStatus] = useState<'pending' | 'loading' | 'ready' | 'error'>('pending');
   const [zoom, setZoom] = useState(1);
+  const [stylesOpen, setStylesOpen] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
-
   const [nombreCompleto, setNombreCompleto] = useState('');
   const [contactoWeb, setContactoWeb] = useState('');
   const [contactoTelefono, setContactoTelefono] = useState('');
-
   const [primaryColor, setPrimaryColor] = useState(CORPORATE_COLORS.primary);
   const [secondaryColor, setSecondaryColor] = useState(CORPORATE_COLORS.secondary);
-
   const [styleNombre, setStyleNombre] = useState<TextStyle>(getDefaultStyle(CORPORATE_COLORS.primary));
   const [styleWeb, setStyleWeb] = useState<TextStyle>({ ...getDefaultStyle(CORPORATE_COLORS.secondary), size: 20 });
   const [styleTel, setStyleTel] = useState<TextStyle>({ ...getDefaultStyle(CORPORATE_COLORS.secondary), size: 20 });
 
-  // Load user data when modal opens
   useEffect(() => {
     if (!isOpen || !plantilla) {
       resetForm();
       return;
     }
 
-    setImageStatus('loading');
     setError('');
 
     if (usuario) {
       setNombreCompleto(getDisplayName(usuario));
-
       const web = getMiPaginaWeb(usuario.web_slug);
       setContactoWeb(web ? normalizeUrlForDisplay(web) : 'agentedeseguros.website');
       setContactoTelefono(usuario.celular_laboral || '');
 
-      // Load logo hierarchy: personal > office > jiro
       getEffectiveUserLogo(usuario.id).then(logoUrl => {
         setLogoPreview(logoUrl || '/logojiro.png');
       }).catch(() => setLogoPreview('/logojiro.png'));
 
-      // Determine colors: user web page > office accent > corporate
       supabase
         .from('user_web_pages')
         .select('primary_color, secondary_color')
@@ -129,9 +118,12 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
           setPrimaryColor(p);
           setSecondaryColor(s);
           applyStyles(plantilla, p, s);
+          // Trigger canvas render after data is loaded
+          setImageStatus('loading');
         });
     } else {
       applyStyles(plantilla, CORPORATE_COLORS.primary, CORPORATE_COLORS.secondary);
+      setImageStatus('loading');
     }
   }, [isOpen, plantilla]);
 
@@ -162,13 +154,13 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
     setContactoWeb('');
     setContactoTelefono('');
     setError('');
-    setImageStatus('idle');
+    setImageStatus('pending');
     setZoom(1);
+    setStylesOpen(false);
   };
 
-  // Re-render canvas whenever any input changes
   const renderCanvas = useCallback(async () => {
-    if (!canvasRef.current || !plantilla || imageStatus === 'idle') return;
+    if (!canvasRef.current || !plantilla) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -187,7 +179,6 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
 
       setImageStatus('ready');
 
-      // Draw logo
       if (logoPreview && plantilla.zona_logo) {
         try {
           const logoImg = await loadCorsImage(logoPreview);
@@ -204,7 +195,6 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
         } catch { /* logo load failure is non-critical */ }
       }
 
-      // Draw text
       if (plantilla.zona_texto) {
         const tx = plantilla.zona_texto.x * canvas.width;
         const ty = plantilla.zona_texto.y * canvas.height;
@@ -234,15 +224,15 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
       console.error('[PersonalizarPlantillaModal] renderCanvas error:', err);
       setImageStatus('error');
     }
-  }, [plantilla, logoPreview, nombreCompleto, contactoWeb, contactoTelefono, styleNombre, styleWeb, styleTel, imageStatus]);
+  }, [plantilla, logoPreview, nombreCompleto, contactoWeb, contactoTelefono, styleNombre, styleWeb, styleTel]);
 
-  // Trigger render on any change
+  // Trigger render whenever status becomes 'loading' or inputs change while ready
   useEffect(() => {
-    if (isOpen && plantilla && imageStatus !== 'error') {
-      if (imageStatus === 'idle') setImageStatus('loading');
+    if (!isOpen || !plantilla) return;
+    if (imageStatus === 'loading' || imageStatus === 'ready') {
       renderCanvas();
     }
-  }, [isOpen, plantilla, logoPreview, nombreCompleto, contactoWeb, contactoTelefono, styleNombre, styleWeb, styleTel, primaryColor, secondaryColor]);
+  }, [isOpen, plantilla, imageStatus, logoPreview, nombreCompleto, contactoWeb, contactoTelefono, styleNombre, styleWeb, styleTel]);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -332,7 +322,6 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
       if (blobErr) throw blobErr;
       const { data: { publicUrl: resultUrl } } = supabase.storage.from('publicidad-disenos').getPublicUrl(resultName);
 
-      // Generate thumbnail at 400px wide
       let thumbnailUrl: string | null = null;
       try {
         const thumbCanvas = document.createElement('canvas');
@@ -357,16 +346,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
         }
       } catch { /* thumbnail is non-critical */ }
 
-      const customConfig = {
-        nombreCompleto,
-        contactoWeb,
-        contactoTelefono,
-        styleNombre,
-        styleWeb,
-        styleTel,
-        primaryColor,
-        secondaryColor,
-      };
+      const customConfig = { nombreCompleto, contactoWeb, contactoTelefono, styleNombre, styleWeb, styleTel, primaryColor, secondaryColor };
 
       const { error: dbErr, data: disenoData } = await supabase
         .from('publicidad_disenos')
@@ -387,7 +367,6 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
 
       if (dbErr) throw dbErr;
 
-      // Download the file for the user
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = blobUrl;
@@ -397,7 +376,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
       document.body.removeChild(link);
       setTimeout(() => URL.revokeObjectURL(blobUrl), 200);
 
-      // Fire-and-forget: AI copy generation
+      // Fire-and-forget AI copy generation
       if (disenoData?.id) {
         supabase.auth.getSession().then(({ data: { session } }) => {
           if (session) {
@@ -433,231 +412,197 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
     link.click();
   };
 
-  const updateStyle = (
-    field: 'nombre' | 'web' | 'tel',
-    key: keyof TextStyle,
-    value: any
-  ) => {
+  const updateStyle = (field: 'nombre' | 'web' | 'tel', key: keyof TextStyle, value: any) => {
     const map = { nombre: setStyleNombre, web: setStyleWeb, tel: setStyleTel };
     const cur = { nombre: styleNombre, web: styleWeb, tel: styleTel };
     map[field]({ ...cur[field], [key]: value });
   };
 
-  const StyleRow = ({ field, style, label }: { field: 'nombre' | 'web' | 'tel'; style: TextStyle; label: string }) => (
-    <div className="space-y-1.5">
-      <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">{label}</p>
-      <div className="grid grid-cols-3 gap-1.5">
-        <div>
-          <label className="block text-[10px] text-neutral-500 mb-0.5">Fuente</label>
-          <select value={style.font} onChange={e => updateStyle(field, 'font', e.target.value)}
-            className="w-full px-1.5 py-1 border border-neutral-300 dark:border-white/15 rounded text-[11px] bg-white dark:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-accent">
-            {FUENTES.map(f => <option key={f} value={f}>{f}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-[10px] text-neutral-500 mb-0.5">Tamaño</label>
-          <input type="number" min="10" max="120" value={style.size}
-            onChange={e => updateStyle(field, 'size', parseInt(e.target.value) || 16)}
-            className="w-full px-1.5 py-1 border border-neutral-300 dark:border-white/15 rounded text-[11px] bg-white dark:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-accent" />
-        </div>
-        <div>
-          <label className="block text-[10px] text-neutral-500 mb-0.5">Color</label>
-          <div className="flex gap-0.5">
-            <input type="color" value={style.color} onChange={e => updateStyle(field, 'color', e.target.value)}
-              className="h-7 w-7 rounded border border-neutral-300 cursor-pointer" />
-            <input type="text" value={style.color} onChange={e => updateStyle(field, 'color', e.target.value)}
-              className="flex-1 px-1 py-1 border border-neutral-300 dark:border-white/15 rounded text-[10px] bg-white dark:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-accent" />
-          </div>
-        </div>
-      </div>
-      <div className="flex gap-1">
-        {(['left', 'center', 'right'] as const).map(a => (
-          <button key={a} onClick={() => updateStyle(field, 'align', a)}
-            className={`flex-1 px-1 py-0.5 border rounded text-[10px] font-medium transition ${style.align === a ? 'bg-accent text-white border-accent' : 'bg-white dark:bg-neutral-800 text-neutral-600 dark:text-white/60 border-neutral-300 dark:border-white/15'}`}>
-            {a === 'left' ? 'Izq' : a === 'center' ? 'Cen' : 'Der'}
-          </button>
-        ))}
-        <button onClick={() => updateStyle(field, 'bold', !style.bold)}
-          className={`flex-1 px-1 py-0.5 border rounded text-[10px] font-bold transition ${style.bold ? 'bg-accent text-white border-accent' : 'bg-white dark:bg-neutral-800 text-neutral-600 dark:text-white/60 border-neutral-300 dark:border-white/15'}`}>B</button>
-        <button onClick={() => updateStyle(field, 'italic', !style.italic)}
-          className={`flex-1 px-1 py-0.5 border rounded text-[10px] italic transition ${style.italic ? 'bg-accent text-white border-accent' : 'bg-white dark:bg-neutral-800 text-neutral-600 dark:text-white/60 border-neutral-300 dark:border-white/15'}`}>I</button>
-      </div>
-    </div>
-  );
-
   if (!isOpen || !plantilla) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-neutral-900/70 backdrop-blur-sm overflow-y-auto">
-      <div className="min-h-screen p-3 sm:p-6 flex items-start justify-center">
-        <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-6xl my-4">
+    <div className="fixed inset-0 z-50 bg-neutral-900/70 backdrop-blur-sm flex items-start justify-center overflow-y-auto p-3 sm:p-5">
+      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-5xl my-4">
 
-          {/* Header */}
-          <div className="sticky top-0 z-20 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-white/10 px-5 py-3.5 rounded-t-2xl flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-neutral-900 dark:text-white">Personalizar Diseño</h2>
-              <p className="text-xs text-neutral-500 dark:text-white/40">{plantilla.titulo || plantilla.tipo} · Vista previa en tiempo real</p>
+        {/* Header */}
+        <div className="sticky top-0 z-20 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-white/10 px-4 py-3 rounded-t-2xl flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-bold text-neutral-900 dark:text-white">Personalizar Diseño</h2>
+            <p className="text-[11px] text-neutral-500 dark:text-white/40">{plantilla.titulo || plantilla.tipo}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-lg transition">
+            <X className="w-4 h-4 text-neutral-500 dark:text-white/40" />
+          </button>
+        </div>
+
+        {error && (
+          <div className="mx-4 mt-3 flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400 px-3 py-2 rounded-lg text-xs">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            {error}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-0">
+
+          {/* LEFT — Canvas Preview */}
+          <div className="lg:col-span-3 p-4 lg:sticky lg:top-16 lg:self-start">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-neutral-700 dark:text-white/70">Vista Previa</span>
+              <div className="flex items-center gap-1">
+                <button onClick={() => setZoom(z => Math.max(0.4, z - 0.15))} className="p-1 hover:bg-neutral-100 dark:hover:bg-white/5 rounded transition">
+                  <ZoomOut className="w-3.5 h-3.5 text-neutral-400" />
+                </button>
+                <span className="text-[10px] text-neutral-400 w-9 text-center">{Math.round(zoom * 100)}%</span>
+                <button onClick={() => setZoom(z => Math.min(2, z + 0.15))} className="p-1 hover:bg-neutral-100 dark:hover:bg-white/5 rounded transition">
+                  <ZoomIn className="w-3.5 h-3.5 text-neutral-400" />
+                </button>
+                <button onClick={() => setZoom(1)} className="p-1 hover:bg-neutral-100 dark:hover:bg-white/5 rounded transition">
+                  <Maximize2 className="w-3.5 h-3.5 text-neutral-400" />
+                </button>
+              </div>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-lg transition">
-              <X className="w-5 h-5 text-neutral-500 dark:text-white/40" />
-            </button>
+
+            <div className="border-2 border-neutral-200 dark:border-white/10 rounded-xl overflow-auto bg-neutral-100 dark:bg-neutral-800 shadow-inner flex items-center justify-center"
+              style={{ minHeight: 260, maxHeight: 'calc(100vh - 280px)' }}>
+              {imageStatus === 'pending' && (
+                <div className="flex flex-col items-center gap-2 py-14">
+                  <Loader2 className="w-6 h-6 text-neutral-300 animate-spin" />
+                  <span className="text-xs text-neutral-400">Preparando...</span>
+                </div>
+              )}
+              {imageStatus === 'loading' && (
+                <div className="flex flex-col items-center gap-2 py-14">
+                  <Loader2 className="w-6 h-6 text-neutral-400 animate-spin" />
+                  <span className="text-xs text-neutral-500 dark:text-white/40">Cargando imagen...</span>
+                </div>
+              )}
+              {imageStatus === 'error' && (
+                <div className="flex flex-col items-center gap-2 py-14">
+                  <AlertTriangle className="w-7 h-7 text-neutral-400" />
+                  <span className="text-xs text-neutral-500 dark:text-white/40">No se pudo cargar la imagen</span>
+                  <button onClick={() => setImageStatus('loading')}
+                    className="text-xs text-accent hover:underline mt-1">Reintentar</button>
+                </div>
+              )}
+              <canvas
+                ref={canvasRef}
+                style={{ transform: `scale(${zoom})`, transformOrigin: 'top center', display: imageStatus === 'ready' ? 'block' : 'none' }}
+                className="max-w-full h-auto"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <button onClick={handleDownloadPreview} disabled={imageStatus !== 'ready'}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg text-xs font-medium text-neutral-700 dark:text-white/70 hover:bg-neutral-50 dark:hover:bg-white/5 transition disabled:opacity-40">
+                <Download className="w-3.5 h-3.5" />
+                Descargar prueba
+              </button>
+              <button onClick={handleGuardar} disabled={saving || imageStatus !== 'ready'}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg text-xs font-semibold hover:bg-accent/90 transition disabled:opacity-50 shadow-sm">
+                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                {saving ? 'Guardando...' : 'Guardar Diseño'}
+              </button>
+            </div>
           </div>
 
-          {error && (
-            <div className="mx-5 mt-3 flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400 px-3 py-2 rounded-lg text-sm">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              {error}
-            </div>
-          )}
+          {/* RIGHT — Controls */}
+          <div className="lg:col-span-2 border-t lg:border-t-0 lg:border-l border-neutral-200 dark:border-white/10 p-4 space-y-3">
 
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 p-4">
-
-            {/* LEFT — Canvas Preview */}
-            <div className="lg:col-span-3 lg:sticky lg:top-20 lg:self-start space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-neutral-700 dark:text-white/70">Vista Previa</span>
-                <div className="flex items-center gap-1.5">
-                  <button onClick={() => setZoom(z => Math.max(0.5, z - 0.1))} className="p-1 hover:bg-neutral-100 dark:hover:bg-white/5 rounded transition" title="Reducir zoom">
-                    <ZoomOut className="w-3.5 h-3.5 text-neutral-500 dark:text-white/40" />
-                  </button>
-                  <span className="text-[10px] text-neutral-400 w-10 text-center">{Math.round(zoom * 100)}%</span>
-                  <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} className="p-1 hover:bg-neutral-100 dark:hover:bg-white/5 rounded transition" title="Aumentar zoom">
-                    <ZoomIn className="w-3.5 h-3.5 text-neutral-500 dark:text-white/40" />
-                  </button>
-                  <button onClick={() => setZoom(1)} className="p-1 hover:bg-neutral-100 dark:hover:bg-white/5 rounded transition" title="Ajustar a pantalla">
-                    <Maximize2 className="w-3.5 h-3.5 text-neutral-500 dark:text-white/40" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="border-2 border-neutral-200 dark:border-white/10 rounded-xl overflow-auto bg-neutral-100 dark:bg-neutral-800 shadow-inner flex items-center justify-center"
-                style={{ minHeight: 280, maxHeight: 'calc(100vh - 320px)' }}>
-                {imageStatus === 'loading' && (
-                  <div className="flex flex-col items-center gap-2 py-16">
-                    <Loader2 className="w-8 h-8 text-neutral-400 animate-spin" />
-                    <span className="text-xs text-neutral-500 dark:text-white/40">Cargando imagen...</span>
-                  </div>
-                )}
-                {imageStatus === 'error' && (
-                  <div className="flex flex-col items-center gap-2 py-16">
-                    <AlertTriangle className="w-8 h-8 text-neutral-400" />
-                    <span className="text-xs text-neutral-500 dark:text-white/40">No se pudo cargar la imagen base</span>
-                    <button onClick={() => { setImageStatus('loading'); renderCanvas(); }}
-                      className="text-xs text-accent hover:underline mt-1">Reintentar</button>
-                  </div>
-                )}
-                <canvas
-                  ref={canvasRef}
-                  style={{ transform: `scale(${zoom})`, transformOrigin: 'top center', display: imageStatus === 'ready' ? 'block' : 'none' }}
-                  className="max-w-full h-auto"
-                />
-              </div>
-
-              {/* Canvas action buttons */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={handleDownloadPreview}
-                  disabled={imageStatus !== 'ready'}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg text-sm font-medium text-neutral-700 dark:text-white/70 hover:bg-neutral-50 dark:hover:bg-white/5 transition disabled:opacity-40"
-                >
-                  <Download className="w-4 h-4" />
-                  Descargar prueba
-                </button>
-                <button
-                  onClick={handleGuardar}
-                  disabled={saving || imageStatus !== 'ready'}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg text-sm font-semibold hover:bg-accent/90 transition disabled:opacity-50 shadow-sm"
-                >
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                  {saving ? 'Guardando...' : 'Guardar en Mis Diseños'}
-                </button>
-              </div>
-            </div>
-
-            {/* RIGHT — Controls */}
-            <div className="lg:col-span-2 space-y-4 overflow-y-auto">
-
-              {/* Nombre */}
-              <Section title="Texto Principal">
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] font-semibold text-neutral-600 dark:text-white/50">Nombre completo</label>
+            {/* Contact Info */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">Texto</p>
+              <div className="grid grid-cols-1 gap-2">
+                <div>
+                  <label className="block text-[10px] text-neutral-500 mb-0.5">Nombre completo</label>
                   <input type="text" value={nombreCompleto} onChange={e => setNombreCompleto(e.target.value)}
                     placeholder="Juan Pérez García"
-                    className="w-full px-3 py-2 border border-neutral-300 dark:border-white/15 rounded-lg text-xs bg-white dark:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-accent" />
-                  <StyleRow field="nombre" style={styleNombre} label="Estilo nombre" />
+                    className="w-full px-2.5 py-1.5 border border-neutral-300 dark:border-white/15 rounded-lg text-xs bg-white dark:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-accent" />
                 </div>
-              </Section>
-
-              {/* Contacto */}
-              <Section title="Información de Contacto">
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-[10px] font-semibold text-neutral-600 dark:text-white/50 mb-0.5">Mi Página Web</label>
-                    <input type="text" value={contactoWeb} onChange={e => setContactoWeb(normalizeUrlForDisplay(e.target.value))}
-                      placeholder="agentedeseguros.website/slug"
-                      className="w-full px-3 py-2 border border-neutral-300 dark:border-white/15 rounded-lg text-xs bg-white dark:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-accent" />
-                    <StyleRow field="web" style={styleWeb} label="Estilo web" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-neutral-600 dark:text-white/50 mb-0.5">Teléfono Laboral</label>
-                    <input type="tel" value={contactoTelefono} onChange={e => setContactoTelefono(e.target.value)}
-                      placeholder="55 1234 5678"
-                      className="w-full px-3 py-2 border border-neutral-300 dark:border-white/15 rounded-lg text-xs bg-white dark:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-accent" />
-                    <StyleRow field="tel" style={styleTel} label="Estilo teléfono" />
-                  </div>
+                <div>
+                  <label className="block text-[10px] text-neutral-500 mb-0.5">Página web</label>
+                  <input type="text" value={contactoWeb} onChange={e => setContactoWeb(normalizeUrlForDisplay(e.target.value))}
+                    placeholder="agentedeseguros.website/slug"
+                    className="w-full px-2.5 py-1.5 border border-neutral-300 dark:border-white/15 rounded-lg text-xs bg-white dark:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-accent" />
                 </div>
-              </Section>
-
-              {/* Logo */}
-              <Section title="Logo">
-                <div className="border-2 border-dashed border-neutral-300 dark:border-white/15 rounded-xl p-4 text-center hover:border-accent transition">
-                  <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" id="pp-logo-upload" />
-                  <label htmlFor="pp-logo-upload" className="cursor-pointer block">
-                    {logoPreview ? (
-                      <div className="space-y-2">
-                        <img src={logoPreview} alt="Logo" className="max-h-20 mx-auto rounded-lg object-contain" />
-                        <span className="text-xs text-accent font-medium">Cambiar logo</span>
-                      </div>
-                    ) : (
-                      <div className="space-y-1.5 py-2">
-                        <Upload className="w-8 h-8 text-neutral-400 mx-auto" />
-                        <p className="text-xs font-medium text-neutral-700 dark:text-white/60">Subir logo</p>
-                        <p className="text-[10px] text-neutral-500">PNG, JPG o WebP</p>
-                      </div>
-                    )}
-                  </label>
+                <div>
+                  <label className="block text-[10px] text-neutral-500 mb-0.5">Teléfono</label>
+                  <input type="tel" value={contactoTelefono} onChange={e => setContactoTelefono(e.target.value)}
+                    placeholder="55 1234 5678"
+                    className="w-full px-2.5 py-1.5 border border-neutral-300 dark:border-white/15 rounded-lg text-xs bg-white dark:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-accent" />
                 </div>
-              </Section>
-
-              {/* Colors */}
-              <Section title="Colores por Defecto">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] font-semibold text-neutral-600 dark:text-white/50 mb-1">Primario</label>
-                    <div className="flex gap-1.5">
-                      <input type="color" value={primaryColor}
-                        onChange={e => { setPrimaryColor(e.target.value); setStyleNombre(s => ({ ...s, color: e.target.value })); }}
-                        className="h-8 w-8 rounded border border-neutral-300 cursor-pointer" />
-                      <input type="text" value={primaryColor}
-                        onChange={e => { setPrimaryColor(e.target.value); setStyleNombre(s => ({ ...s, color: e.target.value })); }}
-                        className="flex-1 px-2 py-1.5 border border-neutral-300 dark:border-white/15 rounded text-[11px] bg-white dark:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-accent" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-neutral-600 dark:text-white/50 mb-1">Secundario</label>
-                    <div className="flex gap-1.5">
-                      <input type="color" value={secondaryColor}
-                        onChange={e => { setSecondaryColor(e.target.value); setStyleWeb(s => ({ ...s, color: e.target.value })); setStyleTel(s => ({ ...s, color: e.target.value })); }}
-                        className="h-8 w-8 rounded border border-neutral-300 cursor-pointer" />
-                      <input type="text" value={secondaryColor}
-                        onChange={e => { setSecondaryColor(e.target.value); setStyleWeb(s => ({ ...s, color: e.target.value })); setStyleTel(s => ({ ...s, color: e.target.value })); }}
-                        className="flex-1 px-2 py-1.5 border border-neutral-300 dark:border-white/15 rounded text-[11px] bg-white dark:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-accent" />
-                    </div>
-                  </div>
-                </div>
-              </Section>
-
+              </div>
             </div>
+
+            {/* Colors inline */}
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">Colores</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] text-neutral-500 mb-0.5">Primario</label>
+                  <div className="flex gap-1">
+                    <input type="color" value={primaryColor}
+                      onChange={e => { setPrimaryColor(e.target.value); setStyleNombre(s => ({ ...s, color: e.target.value })); }}
+                      className="h-7 w-7 rounded border border-neutral-300 cursor-pointer" />
+                    <input type="text" value={primaryColor}
+                      onChange={e => { setPrimaryColor(e.target.value); setStyleNombre(s => ({ ...s, color: e.target.value })); }}
+                      className="flex-1 px-1.5 py-1 border border-neutral-300 dark:border-white/15 rounded text-[10px] bg-white dark:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-accent" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] text-neutral-500 mb-0.5">Secundario</label>
+                  <div className="flex gap-1">
+                    <input type="color" value={secondaryColor}
+                      onChange={e => { setSecondaryColor(e.target.value); setStyleWeb(s => ({ ...s, color: e.target.value })); setStyleTel(s => ({ ...s, color: e.target.value })); }}
+                      className="h-7 w-7 rounded border border-neutral-300 cursor-pointer" />
+                    <input type="text" value={secondaryColor}
+                      onChange={e => { setSecondaryColor(e.target.value); setStyleWeb(s => ({ ...s, color: e.target.value })); setStyleTel(s => ({ ...s, color: e.target.value })); }}
+                      className="flex-1 px-1.5 py-1 border border-neutral-300 dark:border-white/15 rounded text-[10px] bg-white dark:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-accent" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Logo */}
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">Logo</p>
+              <div className="border-2 border-dashed border-neutral-300 dark:border-white/15 rounded-xl p-3 text-center hover:border-accent transition">
+                <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" id="pp-logo-upload" />
+                <label htmlFor="pp-logo-upload" className="cursor-pointer block">
+                  {logoPreview ? (
+                    <div className="flex items-center gap-2">
+                      <img src={logoPreview} alt="Logo" className="max-h-12 rounded object-contain" />
+                      <span className="text-xs text-accent font-medium">Cambiar logo</span>
+                    </div>
+                  ) : (
+                    <div className="py-1">
+                      <Upload className="w-5 h-5 text-neutral-400 mx-auto mb-1" />
+                      <p className="text-xs text-neutral-600 dark:text-white/60">Subir logo</p>
+                    </div>
+                  )}
+                </label>
+              </div>
+            </div>
+
+            {/* Advanced Styles — collapsible */}
+            <div className="border border-neutral-200 dark:border-white/10 rounded-xl overflow-hidden">
+              <button onClick={() => setStylesOpen(o => !o)}
+                className="w-full flex items-center justify-between px-3 py-2 bg-neutral-50 dark:bg-white/3 hover:bg-neutral-100 dark:hover:bg-white/5 transition">
+                <span className="text-[11px] font-semibold text-neutral-600 dark:text-white/60">Estilos avanzados</span>
+                {stylesOpen ? <ChevronUp className="w-3.5 h-3.5 text-neutral-400" /> : <ChevronDown className="w-3.5 h-3.5 text-neutral-400" />}
+              </button>
+              {stylesOpen && (
+                <div className="p-3 space-y-3">
+                  <StyleRow field="nombre" style={styleNombre} label="Nombre" updateStyle={updateStyle} />
+                  <div className="border-t border-neutral-200 dark:border-white/10 pt-3">
+                    <StyleRow field="web" style={styleWeb} label="Página web" updateStyle={updateStyle} />
+                  </div>
+                  <div className="border-t border-neutral-200 dark:border-white/10 pt-3">
+                    <StyleRow field="tel" style={styleTel} label="Teléfono" updateStyle={updateStyle} />
+                  </div>
+                </div>
+              )}
+            </div>
+
           </div>
         </div>
       </div>
@@ -665,13 +610,51 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function StyleRow({ field, style, label, updateStyle }: {
+  field: 'nombre' | 'web' | 'tel';
+  style: TextStyle;
+  label: string;
+  updateStyle: (f: 'nombre' | 'web' | 'tel', k: keyof TextStyle, v: any) => void;
+}) {
   return (
-    <div className="border border-neutral-200 dark:border-white/10 rounded-xl overflow-hidden">
-      <div className="px-3 py-2 bg-neutral-50 dark:bg-white/3 border-b border-neutral-200 dark:border-white/10">
-        <span className="text-xs font-semibold text-neutral-700 dark:text-white/70">{title}</span>
+    <div className="space-y-1.5">
+      <p className="text-[10px] font-semibold text-neutral-500">{label}</p>
+      <div className="grid grid-cols-3 gap-1.5">
+        <div>
+          <label className="block text-[10px] text-neutral-400 mb-0.5">Fuente</label>
+          <select value={style.font} onChange={e => updateStyle(field, 'font', e.target.value)}
+            className="w-full px-1.5 py-1 border border-neutral-300 dark:border-white/15 rounded text-[10px] bg-white dark:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-accent">
+            {FUENTES.map(f => <option key={f} value={f}>{f}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-[10px] text-neutral-400 mb-0.5">Tam.</label>
+          <input type="number" min="10" max="120" value={style.size}
+            onChange={e => updateStyle(field, 'size', parseInt(e.target.value) || 16)}
+            className="w-full px-1.5 py-1 border border-neutral-300 dark:border-white/15 rounded text-[10px] bg-white dark:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-accent" />
+        </div>
+        <div>
+          <label className="block text-[10px] text-neutral-400 mb-0.5">Color</label>
+          <div className="flex gap-0.5">
+            <input type="color" value={style.color} onChange={e => updateStyle(field, 'color', e.target.value)}
+              className="h-7 w-7 rounded border border-neutral-300 cursor-pointer" />
+            <input type="text" value={style.color} onChange={e => updateStyle(field, 'color', e.target.value)}
+              className="flex-1 px-1 py-1 border border-neutral-300 dark:border-white/15 rounded text-[9px] bg-white dark:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-accent" />
+          </div>
+        </div>
       </div>
-      <div className="p-3">{children}</div>
+      <div className="flex gap-1">
+        {(['left', 'center', 'right'] as const).map(a => (
+          <button key={a} onClick={() => updateStyle(field, 'align', a)}
+            className={`flex-1 px-1 py-0.5 border rounded text-[10px] font-medium transition ${style.align === a ? 'bg-accent text-white border-accent' : 'bg-white dark:bg-neutral-800 text-neutral-500 dark:text-white/50 border-neutral-300 dark:border-white/15'}`}>
+            {a === 'left' ? 'Izq' : a === 'center' ? 'Cen' : 'Der'}
+          </button>
+        ))}
+        <button onClick={() => updateStyle(field, 'bold', !style.bold)}
+          className={`flex-1 px-1 py-0.5 border rounded text-[10px] font-bold transition ${style.bold ? 'bg-accent text-white border-accent' : 'bg-white dark:bg-neutral-800 text-neutral-500 dark:text-white/50 border-neutral-300 dark:border-white/15'}`}>B</button>
+        <button onClick={() => updateStyle(field, 'italic', !style.italic)}
+          className={`flex-1 px-1 py-0.5 border rounded text-[10px] italic transition ${style.italic ? 'bg-accent text-white border-accent' : 'bg-white dark:bg-neutral-800 text-neutral-500 dark:text-white/50 border-neutral-300 dark:border-white/15'}`}>I</button>
+      </div>
     </div>
   );
 }
