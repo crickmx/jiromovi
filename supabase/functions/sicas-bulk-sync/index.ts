@@ -22,11 +22,14 @@ function jsonResponse(status: number, body: unknown): Response {
 const DISCOVERY_ITEMS_PER_PAGE = 10;
 const SYNC_ITEMS_PER_PAGE = 10;
 const ITEMS_PER_PAGE = SYNC_ITEMS_PER_PAGE; // alias para compatibilidad interna
-const MAX_SECONDS = 45;
+const MAX_SECONDS = 90; // increased from 45 — gives SICAS more time to respond
 const PAGES_PER_BATCH = 999;
 const MAX_RETRIES_PER_PAGE = 3;
 const RETRY_DELAY_MS = 5000;
-const INTER_PAGE_DELAY_MS = 1500;
+// Adaptive backoff: base delay grows exponentially after consecutive timeouts
+const BACKOFF_BASE_MS = 3000;    // increased from 1500
+const BACKOFF_MAX_MS = 30000;    // cap at 30s between pages
+const BACKOFF_MULTIPLIER = 1.8;
 
 // Valid terminal reasons for a sync job
 type FinalReason =
@@ -74,6 +77,7 @@ interface SyncState {
   recentPages?: PageLogEntry[];
   pagesProcessed?: number;
   docsBeforeSync?: number;
+  consecutiveTimeouts?: number; // adaptive backoff counter — resets on success
 }
 
 function sleep(ms: number): Promise<void> {
@@ -747,7 +751,15 @@ Deno.serve(async (req: Request) => {
           const page = syncState.currentPage;
 
           if (pagesThisBatch > 0) {
-            await sleep(INTER_PAGE_DELAY_MS);
+            const consecutiveTimeouts = syncState.consecutiveTimeouts || 0;
+            const adaptiveDelay = Math.min(
+              BACKOFF_MAX_MS,
+              BACKOFF_BASE_MS * Math.pow(BACKOFF_MULTIPLIER, consecutiveTimeouts)
+            );
+            if (consecutiveTimeouts > 0) {
+              console.log(`[BULK-SYNC] Adaptive backoff: ${adaptiveDelay}ms (consecutiveTimeouts=${consecutiveTimeouts})`);
+            }
+            await sleep(adaptiveDelay);
           }
 
           try {
@@ -803,6 +815,9 @@ Deno.serve(async (req: Request) => {
 
             syncState.totalFetched += pageResult.records.length;
 
+            // Reset adaptive backoff counter on successful fetch
+            syncState.consecutiveTimeouts = 0;
+
             // Track probe-mode pagination state
             syncState.lastPageWasFull = pageResult.hasMore;
 
@@ -850,22 +865,29 @@ Deno.serve(async (req: Request) => {
             }
           } catch (e: unknown) {
             const errMsg = (e as Error).message || "";
+            const pageErrorMs = Date.now() - batchStart;
             console.error(`[BULK-SYNC] Page ${page} error: ${errMsg}`);
             syncState.totalErrors++;
             syncState.failedPages.push(page);
 
-            // Record error in circuit breaker
+            // Increment adaptive backoff counter on timeout
             const isTimeout = errMsg.includes("timeout") || errMsg.includes("Timeout");
+            if (isTimeout) {
+              syncState.consecutiveTimeouts = (syncState.consecutiveTimeouts || 0) + 1;
+              console.warn(`[BULK-SYNC] Timeout #${syncState.consecutiveTimeouts} on page ${page}. Next inter-page delay will be longer.`);
+            }
+
+            // Record error in circuit breaker
             await supabase.rpc("record_sicas_error", { p_is_timeout: isTimeout });
 
-            // Log the failed call
+            // Log the failed call with actual elapsed time
             await supabase.from("sicas_api_call_logs").insert({
               process_type: "sync",
               module: "documents",
               method: "ProcesarWS",
               key_code: effectiveKeyCode,
               response_success: false,
-              response_time_ms: 0,
+              response_time_ms: pageErrorMs,
               retry_count: 0,
               was_cached: false,
               was_rate_limited: false,
