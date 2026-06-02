@@ -110,6 +110,7 @@ const NotificacionesTransaccionales = lazy(() => import('./NotificacionesTransac
 const DiagnosticoWebhook = lazy(() => import('./DiagnosticoWebhook'));
 const GamificacionAdmin = lazy(() => import('./GamificacionAdmin'));
 const AutomatizacionIA = lazy(() => import('./AutomatizacionIA'));
+const MascaraAdmin = lazy(() => import('./MascaraAdmin'));
 
 // Shared
 const Perfil = lazy(() => import('./Perfil'));
@@ -253,6 +254,7 @@ export default function MoviFullRoutes() {
           <Route path="/firmas-email" element={<ProtectedRoute requireAdmin><FirmasEmail /></ProtectedRoute>} />
           <Route path="/admin/transaccionales" element={<ProtectedRoute requireAdmin><NotificacionesTransaccionales /></ProtectedRoute>} />
           <Route path="/admin/diagnostico" element={<ProtectedRoute requireAdmin><DiagnosticoWebhook /></ProtectedRoute>} />
+          <Route path="/admin/mascara" element={<ProtectedRoute requireAdmin><MascaraAdmin /></ProtectedRoute>} />
           <Route path="/admin/gamificacion" element={<ProtectedRoute requireAdmin><GamificacionAdmin /></ProtectedRoute>} />
           <Route path="/admin/automatizacion-ia" element={<ProtectedRoute requireAdmin><AutomatizacionIA /></ProtectedRoute>} />
 

@@ -225,42 +225,44 @@ function MoviSplash() {
 function MoviApp() {
   return (
     <BrowserRouter>
-      <MoviAuthProvider>
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/login" element={<MoviLogin />} />
+      <ImpersonationProvider>
+        <MoviAuthProvider>
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/login" element={<MoviLogin />} />
 
-          {/* Chava Agente — public platform routes */}
-          <Route path="/chava-agente" element={
-            <ChavaAgenteProvider><ChavaAgenteLanding /></ChavaAgenteProvider>
-          } />
-          <Route path="/admin/chava-agente/usuarios" element={
-            <ChavaAgenteProvider><ChavaAgenteUsuariosAdmin /></ChavaAgenteProvider>
-          } />
-          <Route path="/admin/chava-agente/conversaciones" element={
-            <ChavaAgenteProvider><ChavaAgenteConversacionesAdmin /></ChavaAgenteProvider>
-          } />
-          <Route path="/admin/chava-agente/terminos" element={
-            <ChavaAgenteProvider><ChavaAgenteTerminosAdmin /></ChavaAgenteProvider>
-          } />
+            {/* Chava Agente — public platform routes */}
+            <Route path="/chava-agente" element={
+              <ChavaAgenteProvider><ChavaAgenteLanding /></ChavaAgenteProvider>
+            } />
+            <Route path="/admin/chava-agente/usuarios" element={
+              <ChavaAgenteProvider><ChavaAgenteUsuariosAdmin /></ChavaAgenteProvider>
+            } />
+            <Route path="/admin/chava-agente/conversaciones" element={
+              <ChavaAgenteProvider><ChavaAgenteConversacionesAdmin /></ChavaAgenteProvider>
+            } />
+            <Route path="/admin/chava-agente/terminos" element={
+              <ChavaAgenteProvider><ChavaAgenteTerminosAdmin /></ChavaAgenteProvider>
+            } />
 
-          {/* Public agent web pages — no auth required */}
-          <Route path="/p/:slug" element={
-            <Suspense fallback={<MoviLoader />}>
-              <PaginaPublicaAsesor />
-            </Suspense>
-          } />
-
-          {/* All other MOVI routes — requires auth, loaded lazily */}
-          <Route path="*" element={
-            <MoviPrivateRoute>
+            {/* Public agent web pages — no auth required */}
+            <Route path="/p/:slug" element={
               <Suspense fallback={<MoviLoader />}>
-                <MoviFullRoutes />
+                <PaginaPublicaAsesor />
               </Suspense>
-            </MoviPrivateRoute>
-          } />
-        </Routes>
-      </MoviAuthProvider>
+            } />
+
+            {/* All other MOVI routes — requires auth, loaded lazily */}
+            <Route path="*" element={
+              <MoviPrivateRoute>
+                <Suspense fallback={<MoviLoader />}>
+                  <MoviFullRoutes />
+                </Suspense>
+              </MoviPrivateRoute>
+            } />
+          </Routes>
+        </MoviAuthProvider>
+      </ImpersonationProvider>
     </BrowserRouter>
   );
 }

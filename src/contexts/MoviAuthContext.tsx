@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { supabase } from '../lib/supabase';
 import { cargarPermisosAdicionales } from '../lib/permisosUtils';
 import { applyTheme } from '../lib/themeUtils';
+import { useImpersonation } from './ImpersonationContext';
 import type { Database } from '../lib/database.types';
 
 type UsuarioRow = Database['public']['Tables']['usuarios']['Row'];
@@ -32,9 +33,11 @@ interface MoviAuthCtx {
 
 const MoviAuthContext = createContext<MoviAuthCtx>({} as MoviAuthCtx);
 
-export function MoviAuthProvider({ children }: { children: ReactNode }) {
-  const [usuario, setUsuario] = useState<Usuario | null>(null);
+// Inner provider — must live inside ImpersonationProvider
+function MoviAuthProviderInner({ children }: { children: ReactNode }) {
+  const [realUser, setRealUser] = useState<Usuario | null>(null);
   const [loading, setLoading] = useState(true);
+  const { isImpersonating, impersonatedUser } = useImpersonation();
 
   async function loadProfile(userId: string, isInitial = false) {
     console.log('[MoviAuth] loadProfile userId=', userId);
@@ -50,9 +53,8 @@ export function MoviAuthProvider({ children }: { children: ReactNode }) {
 
     if (!data) {
       console.log('[MoviAuth] No usuario found for userId=', userId);
-      // Only clear the user on an initial load — never during a silent refresh
       if (isInitial) {
-        setUsuario(null);
+        setRealUser(null);
         setLoading(false);
       }
       return;
@@ -64,10 +66,10 @@ export function MoviAuthProvider({ children }: { children: ReactNode }) {
       u = { ...u, permisosAdicionales: permisos };
     }
 
-    if (u.oficina?.accent_color) applyTheme(u.oficina.accent_color);
+    if (u.oficina?.accent_color && !isImpersonating) applyTheme(u.oficina.accent_color);
 
     console.log('[MoviAuth] Usuario loaded:', u.nombre, u.apellidos, 'rol=', u.rol);
-    setUsuario(u);
+    setRealUser(u);
     setLoading(false);
   }
 
@@ -91,10 +93,7 @@ export function MoviAuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[MoviAuth] onAuthStateChange event=', event, 'hasSession=', !!session);
       if (event === 'SIGNED_IN' && session) {
-        // Only show the full loader on the very first sign-in (no user loaded yet).
-        // On tab-focus Supabase re-fires SIGNED_IN for an already-authenticated session;
-        // setting loading=true in that case unmounts the page and causes a blank screen.
-        setUsuario(prev => {
+        setRealUser(prev => {
           if (!prev) setLoading(true);
           return prev;
         });
@@ -103,11 +102,10 @@ export function MoviAuthProvider({ children }: { children: ReactNode }) {
         (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') &&
         session
       ) {
-        // Silent refresh — never touch loading state
         (async () => { await loadProfile(session.user.id); })();
       } else if (event === 'SIGNED_OUT') {
         console.log('[MoviAuth] signed out');
-        setUsuario(null);
+        setRealUser(null);
         setLoading(false);
       }
     });
@@ -122,14 +120,20 @@ export function MoviAuthProvider({ children }: { children: ReactNode }) {
 
   async function signOut() {
     console.log('[MoviAuth] signing out');
-    setUsuario(null);
+    setRealUser(null);
     await supabase.auth.signOut();
   }
+
+  // During impersonation, expose the masked user as `usuario`
+  // but always keep `realUsuario` pointing to the authenticated admin
+  const usuario = (isImpersonating && impersonatedUser)
+    ? impersonatedUser as unknown as Usuario
+    : realUser;
 
   return (
     <MoviAuthContext.Provider value={{
       usuario,
-      realUsuario: usuario,
+      realUsuario: realUser,
       loading,
       signIn,
       signOut,
@@ -140,4 +144,13 @@ export function MoviAuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+export function MoviAuthProvider({ children }: { children: ReactNode }) {
+  return (
+    <MoviAuthProviderInner>
+      {children}
+    </MoviAuthProviderInner>
+  );
+}
+
 export const useMoviAuth = () => useContext(MoviAuthContext);
+

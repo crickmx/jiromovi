@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartBar as BarChart3, Video, BookMarked, BadgeCheck, Compass, Calculator, Smartphone, Mail, MessageSquare, Bell, Sparkles, Brain, Database } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartBar as BarChart3, Video, BookMarked, BadgeCheck, Compass, Calculator, Smartphone, Mail, MessageSquare, Bell, Sparkles, Brain, Database, Eye } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
@@ -165,6 +165,7 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/admin/transaccionales', label: 'Transaccionales', icon: Send, visibleTo: ADMIN_ONLY },
     { path: '/admin/automatizacion-ia', label: 'Robots de Correo', icon: Bot, visibleTo: ADMIN_ONLY },
     { path: '/admin/diagnostico', label: 'Diagnostico', icon: Activity, visibleTo: ADMIN_ONLY },
+    { path: '/admin/mascara', label: 'Mascara de Usuario', icon: Eye, visibleTo: ADMIN_ONLY },
   ],
 };
 

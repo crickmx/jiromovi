@@ -18,7 +18,7 @@ export function useReadOnlyGuard() {
   };
 
   return {
-    isReadOnly: isImpersonating && isReadOnly,
+    isReadOnly,
     guardAction,
   };
 }

@@ -4,7 +4,9 @@ import { PrimarySidebar } from './layout/PrimarySidebar';
 import { SecondarySidebar } from './layout/SecondarySidebar';
 import { MobileNav } from './layout/MobileNav';
 import { MobileDrawer } from './layout/MobileDrawer';
+import { ImpersonationBanner } from './ImpersonationBanner';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
+import { useImpersonation } from '../contexts/ImpersonationContext';
 import { resolveWorkspace } from '../lib/workspaceConfig';
 import type { UserRole } from '../lib/workspaceConfig';
 
@@ -23,6 +25,7 @@ export function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { usuario, signOut } = useMoviAuth();
+  const { isImpersonating } = useImpersonation();
   const [secondaryCollapsed, setSecondaryCollapsed] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
@@ -43,8 +46,11 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-neutral-50 dark:bg-[#0e0e10]">
+      {/* Impersonation banner — fixed top, only during active session */}
+      <ImpersonationBanner />
+
       {/* Primary rail sidebar — hidden on mobile */}
-      <div className="hidden md:flex">
+      <div className={`hidden md:flex ${isImpersonating ? 'pt-9' : ''}`}>
         <PrimarySidebar
           activeWorkspaceId={workspace?.id ?? null}
           userRole={userRole}
@@ -55,7 +61,7 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Secondary sidebar — only when inside a workspace, hidden on mobile */}
       {workspace && (
-        <div className="hidden md:flex">
+        <div className={`hidden md:flex ${isImpersonating ? 'pt-9' : ''}`}>
           <SecondarySidebar
             workspace={workspace}
             activeItem={activeItem}
@@ -77,13 +83,13 @@ export function Layout({ children }: LayoutProps) {
         onSignOut={handleSignOut}
       />
 
-      {/* Main content */}
+      {/* Main content — shift down when banner is visible */}
       {isFullHeight ? (
-        <main className="flex-1 overflow-hidden min-w-0 flex flex-col mobile-page-content md:!pb-0">
+        <main className={`flex-1 overflow-hidden min-w-0 flex flex-col mobile-page-content md:!pb-0 ${isImpersonating ? 'pt-9' : ''}`}>
           {children}
         </main>
       ) : (
-        <main className="flex-1 overflow-y-auto min-w-0 mobile-page-content md:!pb-0">
+        <main className={`flex-1 overflow-y-auto min-w-0 mobile-page-content md:!pb-0 ${isImpersonating ? 'pt-9' : ''}`}>
           <div className="px-4 md:px-6 py-4 md:py-6 max-w-screen-2xl mx-auto">
             {children}
           </div>

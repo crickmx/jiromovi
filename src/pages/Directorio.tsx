@@ -29,6 +29,7 @@ export function Directorio() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [sendingAccessId, setSendingAccessId] = useState<string | null>(null);
   const [accessSentId, setAccessSentId] = useState<string | null>(null);
+  const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
   const { startImpersonation } = useImpersonation();
 
   const isAdmin = currentUser?.rol === 'Administrador';
@@ -440,15 +441,26 @@ export function Directorio() {
                       )}
                       {isAdmin && usuario.id !== currentUser?.id && usuario.rol !== 'Administrador' && (
                         <button
+                          disabled={!!impersonatingId}
                           onClick={async () => {
+                            setImpersonatingId(usuario.id);
                             const ok = await startImpersonation({ platform: 'movi', userId: usuario.id });
-                            if (ok) window.location.href = '/dashboard';
+                            if (ok) {
+                              window.location.href = '/dashboard';
+                            } else {
+                              setImpersonatingId(null);
+                            }
                           }}
-                          className="flex items-center gap-1.5 px-2 lg:px-3 py-2 rounded-lg text-sm font-medium text-amber-700 hover:text-amber-900 hover:bg-amber-50 transition"
+                          className="flex items-center gap-1.5 px-2 lg:px-3 py-2 rounded-lg text-sm font-medium text-amber-700 hover:text-amber-900 hover:bg-amber-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Ver como este usuario"
                         >
-                          <Eye className="w-4 h-4" />
-                          <span className="hidden xl:inline">Ver como</span>
+                          {impersonatingId === usuario.id
+                            ? <span className="w-4 h-4 border-2 border-amber-400 border-t-amber-700 rounded-full animate-spin" />
+                            : <Eye className="w-4 h-4" />
+                          }
+                          <span className="hidden xl:inline">
+                            {impersonatingId === usuario.id ? 'Cargando...' : 'Ver como'}
+                          </span>
                         </button>
                       )}
                       <button
