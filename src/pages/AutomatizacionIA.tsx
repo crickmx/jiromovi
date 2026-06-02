@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useMoviAuth } from '../contexts/MoviAuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { PageHeader } from '@/components/ui/page-header';
 import { Section } from '@/components/ui/section';
@@ -71,7 +71,7 @@ interface BitacoraItem {
 
 export default function AutomatizacionIA() {
   useEffect(() => { document.title = 'Automatización IA · MOVI Digital'; }, []);
-  const { usuario } = useMoviAuth();
+  const { usuario } = useAuth();
   const [tab, setTab] = useState<Tab>('dashboard');
 
   if (!usuario) return null;

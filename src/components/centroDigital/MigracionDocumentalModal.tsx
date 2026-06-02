@@ -24,6 +24,7 @@ interface JobStats {
 interface ProgressState {
   processed: number;
   successful: number;
+  duplicates: number;
   errors: number;
   remaining: number;
 }
@@ -46,8 +47,8 @@ export function MigracionDocumentalModal({ onClose, onSuccess }: Props) {
   const [loadingCarpetas, setLoadingCarpetas] = useState(true);
   const [parsing, setParsing] = useState(false);
   const [jobStats, setJobStats] = useState<JobStats | null>(null);
-  const [progress, setProgress] = useState<ProgressState>({ processed: 0, successful: 0, errors: 0, remaining: 0 });
-  const [indexProgress, setIndexProgress] = useState<ProgressState>({ processed: 0, successful: 0, errors: 0, remaining: 0 });
+  const [progress, setProgress] = useState<ProgressState>({ processed: 0, successful: 0, duplicates: 0, errors: 0, remaining: 0 });
+  const [indexProgress, setIndexProgress] = useState<ProgressState>({ processed: 0, successful: 0, duplicates: 0, errors: 0, remaining: 0 });
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -122,7 +123,7 @@ export function MigracionDocumentalModal({ onClose, onSuccess }: Props) {
   async function startDownload() {
     if (!jobStats?.job_id) return;
     setStep('download');
-    setProgress({ processed: 0, successful: 0, errors: 0, remaining: jobStats.descargables });
+    setProgress({ processed: 0, successful: 0, duplicates: 0, errors: 0, remaining: jobStats.descargables });
     await runDownloadBatch(jobStats.job_id);
   }
 
@@ -149,6 +150,7 @@ export function MigracionDocumentalModal({ onClose, onSuccess }: Props) {
       setProgress(prev => ({
         processed: prev.processed + (json.processed || 0),
         successful: prev.successful + (json.successful || 0),
+        duplicates: prev.duplicates + (json.duplicates || 0),
         errors: prev.errors + (json.errors || 0),
         remaining: json.remaining ?? 0,
       }));
@@ -156,7 +158,7 @@ export function MigracionDocumentalModal({ onClose, onSuccess }: Props) {
       if ((json.remaining ?? 0) > 0) {
         pollingRef.current = setTimeout(() => runDownloadBatch(jobId), 800);
       } else {
-        setIndexProgress({ processed: 0, successful: 0, errors: 0, remaining: progress.successful + (json.successful || 0) });
+        setIndexProgress({ processed: 0, successful: 0, duplicates: 0, errors: 0, remaining: progress.successful + (json.successful || 0) });
         setStep('index');
         await runIndexBatch(jobId);
       }
@@ -423,13 +425,13 @@ export function MigracionDocumentalModal({ onClose, onSuccess }: Props) {
                   <p className="text-xl font-bold text-green-700">{progress.successful}</p>
                   <p className="text-xs text-green-600 mt-0.5">Guardados</p>
                 </div>
+                <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-center">
+                  <p className="text-xl font-bold text-amber-600">{progress.duplicates}</p>
+                  <p className="text-xs text-amber-500 mt-0.5">Duplicados</p>
+                </div>
                 <div className="rounded-xl border border-red-100 bg-red-50 p-3 text-center">
                   <p className="text-xl font-bold text-red-600">{progress.errors}</p>
                   <p className="text-xs text-red-500 mt-0.5">Errores</p>
-                </div>
-                <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-center">
-                  <p className="text-xl font-bold text-gray-700">{progress.remaining}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Restantes</p>
                 </div>
               </div>
             </div>
@@ -477,7 +479,8 @@ export function MigracionDocumentalModal({ onClose, onSuccess }: Props) {
                   <div className="grid grid-cols-2 gap-2 text-xs text-green-700">
                     <span>Archivos guardados: <strong>{progress.successful}</strong></span>
                     <span>Documentos indexados: <strong>{indexProgress.successful}</strong></span>
-                    {progress.errors > 0 && <span>Errores: <strong className="text-red-600">{progress.errors}</strong></span>}
+                    {progress.duplicates > 0 && <span>Duplicados omitidos: <strong className="text-amber-600">{progress.duplicates}</strong></span>}
+                    {progress.errors > 0 && <span>Errores (externos): <strong className="text-red-600">{progress.errors}</strong></span>}
                   </div>
                 </div>
               )}

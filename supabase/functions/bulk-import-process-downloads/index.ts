@@ -175,7 +175,8 @@ Deno.serve(async (req: Request) => {
 
     // Update job counters
     const successCount = results.filter(r => r.success).length;
-    const errorCount = results.filter(r => !r.success).length;
+    const duplicateCount = results.filter(r => !r.success && r.duplicate).length;
+    const errorCount = results.filter(r => !r.success && !r.duplicate).length;
 
     const { data: jobStats } = await supabase
       .from("bulk_import_jobs")
@@ -202,11 +203,13 @@ Deno.serve(async (req: Request) => {
         success: true,
         processed: results.length,
         successful: successCount,
+        duplicates: duplicateCount,
         errors: errorCount,
         remaining: remaining || 0,
         results: results.map(r => ({
           id: r.id,
           success: r.success,
+          duplicate: r.duplicate || false,
           error: r.error || null,
           filename: r.filename || null,
         })),
@@ -306,7 +309,7 @@ async function processItem(supabase: any, item: any, job: any, folderPrefix: str
           updated_at: new Date().toISOString(),
         })
         .eq("id", item.id);
-      return { id: item.id, success: false, error: "Duplicate content (hash match)" };
+      return { id: item.id, success: false, duplicate: true, error: "Duplicate content (hash match)" };
     }
 
     // Determine filename
