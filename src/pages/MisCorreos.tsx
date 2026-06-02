@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Mail, X, RefreshCw, Send, CircleAlert as AlertCircle, CircleCheck as CheckCircle, User, Clock, Inbox, Send as SendIcon, FileText, TriangleAlert as AlertTriangle, Trash2, Folder, Paperclip, Search, ListFilter as Filter, Settings, WifiOff, Eye, EyeOff, ChevronDown, Reply, Forward, Star, MoveHorizontal as MoreHorizontal, Plus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { PageHeader } from '@/components/ui/page-header';
+import { getRenderedSignature } from '../lib/emailSignatureUtils';
 import { LoadingState } from '@/components/ui/loading-state';
 import { Button } from '@/components/ui/button';
 
@@ -109,7 +109,7 @@ function EmailBodyFrame({ html, text }: { html: string; text: string }) {
 // ─── Connection Setup Screen ───────────────────────────────────────────────────
 function ConnectEmailScreen({ onConnected }: { onConnected: () => void }) {
   const { usuario } = useAuth();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(usuario?.email_laboral || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -553,7 +553,7 @@ export function MisCorreos() {
         .eq('id', usuario.id)
         .maybeSingle();
 
-      if (!data?.email_cuenta || !data?.email_password) {
+      if (!data?.email_cuenta?.trim() || !data?.email_password) {
         setConnectionStatus('not_configured');
       } else {
         setConnectionStatus('connected');
@@ -593,15 +593,8 @@ export function MisCorreos() {
 
   const loadFirma = async () => {
     if (!usuario) return;
-    const { data } = await supabase
-      .from('asignaciones_firma')
-      .select('firmas_email(contenido_html)')
-      .eq('usuario_id', usuario.id)
-      .eq('activo', true)
-      .maybeSingle();
-    if (data?.firmas_email) {
-      setFirmaUsuario((data.firmas_email as any).contenido_html);
-    }
+    const rendered = await getRenderedSignature(usuario.id);
+    if (rendered) setFirmaUsuario(rendered);
   };
 
   const loadEmails = async () => {

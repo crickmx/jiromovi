@@ -44,7 +44,8 @@ Deno.serve(async (req: Request) => {
       .eq("auth_user_id", user.id)
       .maybeSingle();
 
-    if (!usuario || usuario.rol !== "admin") {
+    const ADMIN_ROLES = ["Administrador", "admin", "Admin"];
+    if (!usuario || !ADMIN_ROLES.includes(usuario.rol)) {
       return new Response(JSON.stringify({ error: "Solo administradores pueden validar conexiones." }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
