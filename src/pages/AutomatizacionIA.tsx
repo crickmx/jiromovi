@@ -382,6 +382,7 @@ function StatCard({ icon: Icon, label, value, color }: { icon: any; label: strin
 function RobotsPanel() {
   const [robots, setRobots] = useState<Robot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingRobot, setEditingRobot] = useState<Robot | null>(null);
   const [expandedRobot, setExpandedRobot] = useState<string | null>(null);
@@ -390,9 +391,14 @@ function RobotsPanel() {
 
   async function loadRobots() {
     setLoading(true);
-    const { data } = await supabase.from('ia_robots')
+    setLoadError(null);
+    const { data, error } = await supabase.from('ia_robots')
       .select('*')
       .order('prioridad', { ascending: false });
+    if (error) {
+      console.error('loadRobots error:', error);
+      setLoadError(error.message);
+    }
     setRobots(data || []);
     setLoading(false);
   }
@@ -423,6 +429,17 @@ function RobotsPanel() {
 
   if (loading) {
     return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>;
+  }
+
+  if (loadError) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-800 p-6 text-center">
+        <AlertTriangle className="w-8 h-8 text-red-500 mx-auto mb-2" />
+        <p className="text-sm font-medium text-red-700 dark:text-red-400">Error al cargar robots</p>
+        <p className="text-xs text-red-500 mt-1">{loadError}</p>
+        <button onClick={loadRobots} className="mt-3 text-xs text-red-600 underline">Reintentar</button>
+      </div>
+    );
   }
 
   return (
