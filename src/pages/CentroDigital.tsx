@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Folder, Plus, Search, File, Download, Trash2, RotateCcw, Eye, Upload, Building2, Users, MoveVertical as MoreVertical, Archive, FileText, FileSpreadsheet, FileImage, FileVideoCamera as FileVideo, File as FileAudio, Grid2x2 as Grid, List, X, ChevronRight, Brain, RefreshCw, ShieldCheck, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle, Wrench, Clock, Activity } from 'lucide-react';
+import { Folder, Plus, Search, File, Download, Trash2, RotateCcw, Eye, Upload, Building2, Users, MoveVertical as MoreVertical, Archive, FileText, FileSpreadsheet, FileImage, FileVideoCamera as FileVideo, File as FileAudio, Grid2x2 as Grid, List, X, ChevronRight, ChevronDown, Brain, RefreshCw, ShieldCheck, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle, Wrench, Clock, Activity, History, FolderInput } from 'lucide-react';
 import { PageHeader } from '../components/ui/page-header';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -7,6 +7,8 @@ import { EmptyState } from '../components/ui/empty-state';
 import { useAuth } from '../contexts/AuthContext';
 import { CarpetaModal } from '../components/centroDigital/CarpetaModal';
 import { SubirArchivoModal } from '../components/centroDigital/SubirArchivoModal';
+import { MigracionDocumentalModal } from '../components/centroDigital/MigracionDocumentalModal';
+import { PanelImportaciones } from '../components/centroDigital/PanelImportaciones';
 import {
   trackDigitalCenterOpened, trackDigitalFolderOpened,
   trackDigitalFileViewed, trackDigitalFileDownloaded,
@@ -514,6 +516,9 @@ export default function CentroDigital() {
   const [showCarpetaModal, setShowCarpetaModal] = useState(false);
   const [showSubirModal, setShowSubirModal] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
+  const [showMigracion, setShowMigracion] = useState(false);
+  const [showImportaciones, setShowImportaciones] = useState(false);
+  const [showImportMenu, setShowImportMenu] = useState(false);
   const [archivoPrevisualizar, setArchivoPrevisualizar] = useState<CentroDigitalArchivo | null>(null);
   const [vistaArchivos, setVistaArchivos] = useState<'grid' | 'list'>('grid');
   const [loadingCarpetas, setLoadingCarpetas] = useState(true);
@@ -884,9 +889,52 @@ export default function CentroDigital() {
               <Button variant="outline" onClick={() => setShowPapelera(true)}>
                 <Archive className="w-4 h-4 mr-2" />Papelera
               </Button>
-              <Button variant="outline" onClick={() => setShowBulkImport(true)}>
-                <RefreshCw className="w-4 h-4 mr-2" />Importar estructura
-              </Button>
+              {/* Import dropdown */}
+              <div className="relative">
+                <Button variant="outline" onClick={() => setShowImportMenu(v => !v)}>
+                  <FolderInput className="w-4 h-4 mr-2" />Importar
+                  <ChevronDown className="w-3.5 h-3.5 ml-1.5" />
+                </Button>
+                {showImportMenu && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setShowImportMenu(false)} />
+                    <div className="absolute right-0 top-full mt-1.5 w-56 bg-white border border-gray-100 rounded-xl shadow-lg z-20 overflow-hidden">
+                      <button
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        onClick={() => { setShowImportMenu(false); setShowBulkImport(true); }}
+                      >
+                        <RefreshCw className="w-4 h-4 text-slate-500" />
+                        <div className="text-left">
+                          <p className="font-medium">Crear estructura</p>
+                          <p className="text-xs text-gray-400">Carpetas por aseguradora</p>
+                        </div>
+                      </button>
+                      <div className="border-t border-gray-50" />
+                      <button
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        onClick={() => { setShowImportMenu(false); setShowMigracion(true); }}
+                      >
+                        <FolderInput className="w-4 h-4 text-blue-500" />
+                        <div className="text-left">
+                          <p className="font-medium">Migración HTML</p>
+                          <p className="text-xs text-gray-400">Importar documentos externos</p>
+                        </div>
+                      </button>
+                      <div className="border-t border-gray-50" />
+                      <button
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        onClick={() => { setShowImportMenu(false); setShowImportaciones(true); }}
+                      >
+                        <History className="w-4 h-4 text-gray-400" />
+                        <div className="text-left">
+                          <p className="font-medium">Historial</p>
+                          <p className="text-xs text-gray-400">Ver importaciones anteriores</p>
+                        </div>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </>
           )}
           {puedeCrearCarpetas && (
@@ -1010,6 +1058,31 @@ export default function CentroDigital() {
         <BulkImportModal
           onClose={() => setShowBulkImport(false)}
           onSuccess={async () => { setShowBulkImport(false); await cargarCarpetas(); }} />
+      )}
+
+      {showMigracion && (
+        <MigracionDocumentalModal
+          onClose={() => setShowMigracion(false)}
+          onSuccess={async () => { await cargarCarpetas(); }} />
+      )}
+
+      {showImportaciones && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b flex-shrink-0">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Historial de Importaciones</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Migraciones documentales anteriores</p>
+              </div>
+              <button onClick={() => setShowImportaciones(false)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              <PanelImportaciones />
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

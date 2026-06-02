@@ -112,7 +112,7 @@ Deno.serve(async (req: Request) => {
 
     const htmlContent = await htmlFile.text();
 
-    // Create the import job
+    // Create the import job with subcarpeta configuration
     const { data: job, error: jobError } = await supabase
       .from("bulk_import_jobs")
       .insert({
@@ -122,6 +122,7 @@ Deno.serve(async (req: Request) => {
         carpeta_destino_id: carpetaDestinoId || null,
         iniciado_por: user.id,
         started_at: new Date().toISOString(),
+        configuracion: { crear_subcarpetas: true, agrupar_por: "ramo" },
       })
       .select("id")
       .single();

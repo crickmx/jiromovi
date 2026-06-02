@@ -11,6 +11,7 @@ export interface CentroDigitalCarpeta {
   external_chava_access: boolean;
   auto_index: boolean;
   knowledge_priority: number;
+  parent_id: string | null;
   created_at: string;
   updated_at: string;
 

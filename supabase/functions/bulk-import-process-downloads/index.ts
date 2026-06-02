@@ -73,7 +73,7 @@ Deno.serve(async (req: Request) => {
     // Verify job exists and is in valid state
     const { data: job } = await supabase
       .from("bulk_import_jobs")
-      .select("id, estado, carpeta_destino_id, iniciado_por")
+      .select("id, estado, carpeta_destino_id, iniciado_por, configuracion")
       .eq("id", job_id)
       .maybeSingle();
 
@@ -156,9 +156,12 @@ Deno.serve(async (req: Request) => {
 
     // Process each item
     const results: any[] = [];
+    // Cache of ramo -> subcarpeta_id to avoid redundant lookups/creates
+    const subcarpetaCache: Map<string, string> = new Map();
+    const crearSubcarpetas = job.configuracion?.crear_subcarpetas === true;
 
     for (const item of pendingItems) {
-      const result = await processItem(supabase, item, job, folderPrefix);
+      const result = await processItem(supabase, item, job, folderPrefix, crearSubcarpetas, subcarpetaCache);
       results.push(result);
     }
 
@@ -219,7 +222,7 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-async function processItem(supabase: any, item: any, job: any, folderPrefix: string): Promise<any> {
+async function processItem(supabase: any, item: any, job: any, folderPrefix: string, crearSubcarpetas: boolean, subcarpetaCache: Map<string, string>): Promise<any> {
   try {
     // Download the file
     const controller = new AbortController();
@@ -352,7 +355,11 @@ async function processItem(supabase: any, item: any, job: any, folderPrefix: str
     }
 
     // Create Centro Digital archivo record with the correct carpeta_id
-    const carpetaId = job.carpeta_destino_id;
+    // If subcarpetas are enabled, resolve or create the subcarpeta for this item's ramo
+    let carpetaId = job.carpeta_destino_id;
+    if (crearSubcarpetas && carpetaId && item.ramo) {
+      carpetaId = await getOrCreateSubcarpeta(supabase, carpetaId, item.ramo, job.iniciado_por, subcarpetaCache);
+    }
     let archivoId: string | null = null;
 
     if (carpetaId) {
@@ -432,6 +439,55 @@ async function processItem(supabase: any, item: any, job: any, folderPrefix: str
     await markItemError(supabase, item.id, `Error inesperado: ${err.message}`);
     return { id: item.id, success: false, error: err.message };
   }
+}
+
+async function getOrCreateSubcarpeta(
+  supabase: any,
+  parentId: string,
+  ramo: string,
+  creadoPor: string,
+  cache: Map<string, string>
+): Promise<string> {
+  const cacheKey = `${parentId}::${ramo}`;
+  if (cache.has(cacheKey)) return cache.get(cacheKey)!;
+
+  // Try to find existing subcarpeta with this name under the parent
+  const { data: existing } = await supabase
+    .from("centro_digital_carpetas")
+    .select("id")
+    .eq("parent_id", parentId)
+    .eq("nombre", ramo)
+    .maybeSingle();
+
+  if (existing?.id) {
+    cache.set(cacheKey, existing.id);
+    return existing.id;
+  }
+
+  // Create the subcarpeta
+  const { data: created, error } = await supabase
+    .from("centro_digital_carpetas")
+    .insert({
+      nombre: ramo,
+      parent_id: parentId,
+      todas_oficinas: true,
+      todos_roles: true,
+      enable_chava_ai: true,
+      auto_index: true,
+      activa: true,
+      creado_por: creadoPor,
+    })
+    .select("id")
+    .single();
+
+  if (error || !created) {
+    // Fall back to parent if create fails
+    console.error(`Error creating subcarpeta for ramo ${ramo}:`, error?.message);
+    return parentId;
+  }
+
+  cache.set(cacheKey, created.id);
+  return created.id;
 }
 
 async function markItemError(supabase: any, itemId: string, mensaje: string) {

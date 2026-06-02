@@ -283,8 +283,18 @@ async function indexItem(supabase: any, openaiKey: string, item: any, job: any) 
   // Split into chunks
   const chunks = splitIntoChunks(textContent, 1800);
 
-  // Determine carpeta_id for chunks
-  const carpetaId = job.carpeta_destino_id;
+  // Determine carpeta_id for chunks: use the archivo's actual carpeta (supports subcarpetas)
+  let carpetaId: string | null = null;
+  if (archivo_centro_digital_id) {
+    const { data: archivoRow } = await supabase
+      .from("centro_digital_archivos")
+      .select("carpeta_id")
+      .eq("id", archivo_centro_digital_id)
+      .maybeSingle();
+    carpetaId = archivoRow?.carpeta_id ?? job.carpeta_destino_id ?? null;
+  } else {
+    carpetaId = job.carpeta_destino_id ?? null;
+  }
 
   if (!carpetaId) {
     await supabase
