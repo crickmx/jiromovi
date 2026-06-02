@@ -78,14 +78,15 @@ Deno.serve(async (req: Request) => {
 
       if (!dryRun) {
         // Update bandeja with classification
+        const nuevoEstado = classification.robotCode ? "completado" : "no_clasificado";
         await supabase
           .from("ia_bandeja")
           .update({
-            estado_procesamiento: classification.robotCode ? "clasificado" : "descartado",
+            estado_procesamiento: nuevoEstado,
             robot_id: classification.robotId || null,
             razon_clasificacion: classification.reason,
             coincidencia_pct: Math.round(classification.confidence * 100),
-            procesado_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           })
           .eq("id", email.id);
 
@@ -93,16 +94,16 @@ Deno.serve(async (req: Request) => {
         await supabase
           .from("ia_bitacora")
           .insert({
-            bandeja_id: email.id,
+            correo_id: email.id,
             robot_id: classification.robotId || null,
             accion: "clasificacion",
-            detalle: JSON.stringify({
+            detalle: {
               robot_code: classification.robotCode,
               confidence: classification.confidence,
               reason: classification.reason,
               dry_run: dryRun,
-            }),
-            resultado: classification.robotCode ? "exito" : "descartado",
+            },
+            estado: classification.robotCode ? "exito" : "pendiente",
           });
       }
 

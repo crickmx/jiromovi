@@ -32,7 +32,7 @@ Deno.serve(async (req: Request) => {
     let query = supabase
       .from("ia_cuentas_correo")
       .select("*")
-      .eq("estado", "activa");
+      .eq("estado", "activo");
 
     if (body.cuenta_id) {
       query = query.eq("id", body.cuenta_id);
