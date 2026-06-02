@@ -130,43 +130,53 @@ function DashboardIA() {
     tareasGeneradas: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [recentActivity, setRecentActivity] = useState<BitacoraItem[]>([]);
 
   useEffect(() => { loadDashboard(); }, []);
 
   async function loadDashboard() {
     setLoading(true);
+    setLoadError(null);
     try {
       const today = new Date().toISOString().slice(0, 10);
 
-      const [robotsRes, bandejaHoyRes, pendientesRes, erroresRes, bitacoraRes] = await Promise.all([
-        supabase.from('ia_robots').select('estado'),
-        supabase.from('ia_bandeja').select('id', { count: 'exact', head: true })
-          .gte('created_at', today),
-        supabase.from('ia_bandeja').select('id', { count: 'exact', head: true })
-          .eq('estado_procesamiento', 'pendiente'),
-        supabase.from('ia_bandeja').select('id', { count: 'exact', head: true })
-          .eq('estado_procesamiento', 'error'),
-        supabase.from('ia_bitacora').select('*, ia_robots(nombre)')
-          .order('created_at', { ascending: false }).limit(10),
-      ]);
+      const robotsRes = await supabase.from('ia_robots').select('id, estado');
+      const bandejaHoyRes = await supabase.from('ia_bandeja').select('id', { count: 'exact', head: true }).gte('created_at', today);
+      const pendientesRes = await supabase.from('ia_bandeja').select('id', { count: 'exact', head: true }).eq('estado_procesamiento', 'pendiente');
+      const erroresRes = await supabase.from('ia_bandeja').select('id', { count: 'exact', head: true }).eq('estado_procesamiento', 'error');
+      const bitacoraRes = await supabase.from('ia_bitacora').select('id, accion, estado, error_mensaje, correos_enviados, whatsapps_enviados, tareas_creadas, comunicados_creados, sicas_consultado, sicas_estado, robot_id, created_at').order('created_at', { ascending: false }).limit(10);
 
       const robots = robotsRes.data || [];
-      const comunicados = (bitacoraRes.data || []).reduce((sum: number, b: any) => sum + (b.comunicados_creados || 0), 0);
-      const tareas = (bitacoraRes.data || []).reduce((sum: number, b: any) => sum + (b.tareas_creadas || 0), 0);
+      const bitacora = bitacoraRes.data || [];
+      const comunicados = bitacora.reduce((sum: number, b: any) => sum + (b.comunicados_creados || 0), 0);
+      const tareas = bitacora.reduce((sum: number, b: any) => sum + (b.tareas_creadas || 0), 0);
+
+      // Fetch robot names separately to avoid join issues
+      const robotIds = [...new Set(bitacora.map((b: any) => b.robot_id).filter(Boolean))];
+      const robotNamesMap: Record<string, string> = {};
+      if (robotIds.length > 0) {
+        const rRes = await supabase.from('ia_robots').select('id, nombre').in('id', robotIds);
+        (rRes.data || []).forEach((r: any) => { robotNamesMap[r.id] = r.nombre; });
+      }
+      const activity = bitacora.map((b: any) => ({
+        ...b,
+        ia_robots: b.robot_id ? { nombre: robotNamesMap[b.robot_id] || '' } : null,
+      }));
 
       setStats({
-        robotsActivos: robots.filter(r => r.estado === 'activo').length,
-        robotsPausados: robots.filter(r => r.estado === 'pausado').length,
+        robotsActivos: robots.filter((r: any) => r.estado === 'activo').length,
+        robotsPausados: robots.filter((r: any) => r.estado === 'pausado').length,
         correosHoy: bandejaHoyRes.count || 0,
         pendientes: pendientesRes.count || 0,
         errores: erroresRes.count || 0,
         comunicadosGenerados: comunicados,
         tareasGeneradas: tareas,
       });
-      setRecentActivity(bitacoraRes.data || []);
+      setRecentActivity(activity);
     } catch (err) {
       console.error('loadDashboard error:', err);
+      setLoadError(err instanceof Error ? err.message : 'Error al cargar los datos');
     } finally {
       setLoading(false);
     }
@@ -176,6 +186,17 @@ function DashboardIA() {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-800 p-6 text-center">
+        <AlertTriangle className="w-8 h-8 text-red-500 mx-auto mb-2" />
+        <p className="text-sm font-medium text-red-700 dark:text-red-400">Error al cargar el dashboard</p>
+        <p className="text-xs text-red-500 mt-1">{loadError}</p>
+        <button onClick={loadDashboard} className="mt-3 text-xs text-red-600 underline">Reintentar</button>
       </div>
     );
   }
@@ -484,16 +505,35 @@ function BandejaPanel() {
 
   async function loadBandeja() {
     setLoading(true);
-    let query = supabase.from('ia_bandeja')
-      .select('*, ia_robots(nombre), ia_cuentas_correo(email)')
-      .order('created_at', { ascending: false })
-      .limit(50);
+    try {
+      let query = supabase.from('ia_bandeja')
+        .select('id, asunto, remitente, fecha_correo, estado_procesamiento, coincidencia_pct, razon_clasificacion, robot_id, carpeta_destino, created_at')
+        .order('created_at', { ascending: false })
+        .limit(50);
 
-    if (filtroEstado) query = query.eq('estado_procesamiento', filtroEstado);
+      if (filtroEstado) query = query.eq('estado_procesamiento', filtroEstado);
 
-    const { data } = await query;
-    setItems(data || []);
-    setLoading(false);
+      const { data: bandeja } = await query;
+      const rows = bandeja || [];
+
+      // Fetch related robot names separately
+      const robotIds = [...new Set(rows.map((r: any) => r.robot_id).filter(Boolean))];
+      const robotNamesMap: Record<string, string> = {};
+      if (robotIds.length > 0) {
+        const rRes = await supabase.from('ia_robots').select('id, nombre').in('id', robotIds);
+        (rRes.data || []).forEach((r: any) => { robotNamesMap[r.id] = r.nombre; });
+      }
+
+      setItems(rows.map((r: any) => ({
+        ...r,
+        ia_robots: r.robot_id ? { nombre: robotNamesMap[r.robot_id] || '' } : null,
+        ia_cuentas_correo: null,
+      })));
+    } catch (err) {
+      console.error('loadBandeja error:', err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const estadoColors: Record<string, string> = {
@@ -582,11 +622,23 @@ function BitacoraPanel() {
   async function loadBitacora() {
     setLoading(true);
     try {
-      const { data } = await supabase.from('ia_bitacora')
-        .select('*, ia_robots(nombre)')
+      const { data: bitacora } = await supabase.from('ia_bitacora')
+        .select('id, accion, estado, error_mensaje, correos_enviados, whatsapps_enviados, tareas_creadas, comunicados_creados, sicas_consultado, sicas_estado, robot_id, created_at')
         .order('created_at', { ascending: false })
         .limit(100);
-      setItems(data || []);
+      const rows = bitacora || [];
+
+      const robotIds = [...new Set(rows.map((r: any) => r.robot_id).filter(Boolean))];
+      const robotNamesMap: Record<string, string> = {};
+      if (robotIds.length > 0) {
+        const rRes = await supabase.from('ia_robots').select('id, nombre').in('id', robotIds);
+        (rRes.data || []).forEach((r: any) => { robotNamesMap[r.id] = r.nombre; });
+      }
+
+      setItems(rows.map((r: any) => ({
+        ...r,
+        ia_robots: r.robot_id ? { nombre: robotNamesMap[r.robot_id] || '' } : null,
+      })));
     } catch (err) {
       console.error('loadBitacora error:', err);
     } finally {
@@ -733,7 +785,7 @@ function CuentasPanel() {
                     {cuenta.ultimo_error && (
                       <span className="text-red-500">{cuenta.ultimo_error}</span>
                     )}
-                    <span>Carpetas: {cuenta.carpetas_incluidas.join(', ')}</span>
+                    <span>Carpetas: {(cuenta.carpetas_incluidas || []).join(', ')}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
