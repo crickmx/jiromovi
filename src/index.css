@@ -81,6 +81,7 @@ body {
 }
 
 .dark body {
+  background: #0F1117;
   color: rgba(255,255,255,0.87);
 }
 

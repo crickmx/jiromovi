@@ -186,10 +186,17 @@ export default function MiWhatsApp() {
   const [sendError, setSendError] = useState<string | null>(null);
   const [sendingMessage, setSendingMessage] = useState(false);
 
+  // Conversation pagination
+  const [hasMoreConversations, setHasMoreConversations] = useState(false);
+  const [convOffset, setConvOffset] = useState(0);
+  const [loadingMoreConvs, setLoadingMoreConvs] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const convListRef = useRef<HTMLDivElement>(null);
+  const convSentinelRef = useRef<HTMLDivElement>(null);
 
   const callEdgeFunction = async (action: string, extra?: Record<string, unknown>) => {
     const { data: { session: authSession } } = await supabase.auth.getSession();
@@ -251,8 +258,12 @@ export default function MiWhatsApp() {
         schema: 'public',
         table: 'whatsapp_conversations',
       }, () => {
-        callEdgeFunction('get-conversations').then(result => {
-          if (result?.conversations) setConversations(result.conversations);
+        callEdgeFunction('get-conversations', { offset: 0 }).then(result => {
+          if (result?.conversations) {
+            setConversations(result.conversations);
+            setHasMoreConversations(result.hasMore || false);
+            setConvOffset(result.conversations.length || 0);
+          }
         });
       })
       .subscribe();
@@ -272,6 +283,18 @@ export default function MiWhatsApp() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  // Infinite scroll for conversation list
+  useEffect(() => {
+    const sentinel = convSentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) loadMoreConversations(); },
+      { threshold: 0.1 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadMoreConversations]);
 
   const resolveContactName = useCallback((conv: Conversation): string => {
     const phone = conv.remote_phone;
@@ -316,10 +339,12 @@ export default function MiWhatsApp() {
     }
 
     const [convsResult, contactsResult] = await Promise.all([
-      callEdgeFunction('get-conversations'),
+      callEdgeFunction('get-conversations', { offset: 0 }),
       callEdgeFunction('get-contacts'),
     ]);
     setConversations(convsResult?.conversations || []);
+    setHasMoreConversations(convsResult?.hasMore || false);
+    setConvOffset(convsResult?.conversations?.length || 0);
     if (contactsResult?.contacts) setContactNames(contactsResult.contacts);
     setTemplates(tplData || []);
     setFormTemplates(formData || []);
@@ -347,6 +372,20 @@ export default function MiWhatsApp() {
     if (before) await loadMessages(selectedConversation.id, before);
     setLoadingMore(false);
   };
+
+  const loadMoreConversations = useCallback(async () => {
+    if (loadingMoreConvs || !hasMoreConversations) return;
+    setLoadingMoreConvs(true);
+    const result = await callEdgeFunction('get-conversations', { offset: convOffset });
+    if (result?.conversations?.length) {
+      setConversations(prev => [...prev, ...result.conversations]);
+      setConvOffset(prev => prev + result.conversations.length);
+      setHasMoreConversations(result.hasMore || false);
+    } else {
+      setHasMoreConversations(false);
+    }
+    setLoadingMoreConvs(false);
+  }, [loadingMoreConvs, hasMoreConversations, convOffset]);
 
   const handleSelectConversation = (conv: Conversation) => {
     setSelectedConversation(conv);
@@ -1003,6 +1042,15 @@ export default function MiWhatsApp() {
                       </button>
                     );
                   })
+                )}
+                {/* Infinite scroll sentinel */}
+                {hasMoreConversations && (
+                  <div ref={convSentinelRef} className="py-2 flex items-center justify-center">
+                    {loadingMoreConvs
+                      ? <div className="w-4 h-4 border-2 border-emerald-300 border-t-emerald-600 rounded-full animate-spin" />
+                      : <div className="h-1" />
+                    }
+                  </div>
                 )}
               </div>
             </div>

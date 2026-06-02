@@ -21,3 +21,6 @@ export function applyTheme(mode: ThemeMode) {
   const shouldBeDark = mode === "dark" || (mode === "system" && getSystemPrefersDark());
   root.classList.toggle("dark", shouldBeDark);
 }
+
+// Apply theme synchronously on module load to prevent flash of wrong theme
+applyTheme(getStoredThemeMode());

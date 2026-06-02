@@ -438,20 +438,32 @@ Deno.serve(async (req: Request) => {
       }
 
       case "get-conversations": {
-        // First get from DB
+        const PAGE_SIZE = 50;
+        const convOffset = typeof body.offset === "number" ? body.offset : 0;
+
+        // First get from DB with pagination
         const { data: convs } = await supabase
           .from("whatsapp_conversations")
           .select("*")
           .eq("user_id", user.id)
-          .order("last_message_at", { ascending: false });
+          .order("last_message_at", { ascending: false })
+          .range(convOffset, convOffset + PAGE_SIZE - 1);
+
+        // Count total for hasMore
+        const { count: totalCount } = await supabase
+          .from("whatsapp_conversations")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id);
+
+        const hasMore = (totalCount || 0) > convOffset + PAGE_SIZE;
 
         // If DB has conversations, return them
         if (convs && convs.length > 0) {
-          return json({ conversations: convs });
+          return json({ conversations: convs, hasMore, total: totalCount });
         }
 
-        // If DB is empty but server is connected, try to fetch live conversations
-        if (serverConfigured) {
+        // If DB is empty and first page, try to fetch live conversations from server
+        if (serverConfigured && convOffset === 0) {
           try {
             const liveResp = await fetch(
               `${WHATSAPP_SERVER_URL}/session/${user.id}/conversations`,
@@ -499,14 +511,20 @@ Deno.serve(async (req: Request) => {
                     }
                   }
 
-                  // Re-fetch from DB to get proper IDs
+                  // Re-fetch from DB with pagination
                   const { data: freshConvs } = await supabase
                     .from("whatsapp_conversations")
                     .select("*")
                     .eq("user_id", user.id)
-                    .order("last_message_at", { ascending: false });
+                    .order("last_message_at", { ascending: false })
+                    .range(0, PAGE_SIZE - 1);
 
-                  return json({ conversations: freshConvs || [] });
+                  const { count: freshCount } = await supabase
+                    .from("whatsapp_conversations")
+                    .select("*", { count: "exact", head: true })
+                    .eq("user_id", user.id);
+
+                  return json({ conversations: freshConvs || [], hasMore: (freshCount || 0) > PAGE_SIZE, total: freshCount });
                 }
               }
             }
@@ -515,7 +533,7 @@ Deno.serve(async (req: Request) => {
           }
         }
 
-        return json({ conversations: [] });
+        return json({ conversations: [], hasMore: false, total: 0 });
       }
 
       case "get-messages": {
