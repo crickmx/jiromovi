@@ -904,8 +904,8 @@ function SetupScreen({ onSuccess }: { onSuccess: () => void }) {
   };
 
   return (
-    <div className="h-full flex items-center justify-center bg-neutral-50 dark:bg-neutral-900 p-4">
-      <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-lg max-w-md w-full p-8">
+    <div className="h-full flex items-start justify-center bg-neutral-50 dark:bg-neutral-900 p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-lg max-w-md w-full p-8 my-auto">
         <div className="text-center mb-8">
           <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-4">
             <Mail className="w-7 h-7 text-accent" />

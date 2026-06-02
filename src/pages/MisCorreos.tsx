@@ -187,7 +187,7 @@ function ConnectEmailScreen({ onConnected }: { onConnected: () => void }) {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[60vh] p-8">
+    <div className="flex items-start justify-center min-h-[60vh] p-8 overflow-y-auto">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -712,7 +712,9 @@ export function MisCorreos() {
   if (connectionStatus === 'checking') {
     return (
       <div className="bg-white dark:bg-neutral-800/50 rounded-2xl shadow-sm border border-neutral-200/60 dark:border-white/8 overflow-hidden">
-        <PageHeader title="Mi Email" description="Sistema de correo completo" icon={Mail} />
+        <div className="px-6 pt-6 pb-0">
+          <PageHeader title="Mi Email" description="Sistema de correo completo" icon={Mail} />
+        </div>
         <LoadingState text="Verificando conexion..." />
       </div>
     );
@@ -721,13 +723,18 @@ export function MisCorreos() {
   if (connectionStatus === 'not_configured' || showSettings) {
     return (
       <div className="bg-white dark:bg-neutral-800/50 rounded-2xl shadow-sm border border-neutral-200/60 dark:border-white/8 overflow-hidden">
-        <PageHeader title="Mi Email" description="Sistema de correo completo" icon={Mail}>
-          {showSettings && (
-            <button onClick={() => setShowSettings(false)} className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-neutral-600 dark:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-lg transition">
-              <X className="w-4 h-4" /> Cancelar
-            </button>
-          )}
-        </PageHeader>
+        <div className="px-6 pt-6 pb-0">
+          <PageHeader
+            title="Mi Email"
+            description="Sistema de correo completo"
+            icon={Mail}
+            actions={showSettings ? (
+              <button onClick={() => setShowSettings(false)} className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-neutral-600 dark:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-lg transition">
+                <X className="w-4 h-4" /> Cancelar
+              </button>
+            ) : undefined}
+          />
+        </div>
         <ConnectEmailScreen onConnected={() => { setShowSettings(false); checkConnection(); }} />
       </div>
     );
@@ -736,7 +743,9 @@ export function MisCorreos() {
   if (connectionStatus === 'error') {
     return (
       <div className="bg-white dark:bg-neutral-800/50 rounded-2xl shadow-sm border border-neutral-200/60 dark:border-white/8 overflow-hidden">
-        <PageHeader title="Mi Email" description="Sistema de correo completo" icon={Mail} />
+        <div className="px-6 pt-6 pb-0">
+          <PageHeader title="Mi Email" description="Sistema de correo completo" icon={Mail} />
+        </div>
         <div className="flex flex-col items-center justify-center py-20 text-center px-8">
           <WifiOff className="w-12 h-12 text-red-400 mb-4" />
           <p className="text-lg font-semibold text-neutral-900 dark:text-white mb-2">Error de conexion</p>
@@ -750,23 +759,32 @@ export function MisCorreos() {
   return (
     <>
       <div className="bg-white dark:bg-neutral-800/50 rounded-2xl shadow-sm border border-neutral-200/60 dark:border-white/8 overflow-hidden">
-        <PageHeader title="Mi Email" description="Sistema de correo completo" icon={Mail}>
-          <button
-            onClick={() => setShowSettings(true)}
-            className="p-2 text-neutral-400 hover:text-neutral-600 dark:hover:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-lg transition"
-            title="Configuracion de correo"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-          <Button onClick={handleSync} disabled={syncing} variant="outline">
-            <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-            {syncing ? 'Sincronizando...' : 'Sincronizar'}
-          </Button>
-          <Button onClick={() => { setComposeInitial(undefined); setShowCompose(true); }}>
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo correo
-          </Button>
-        </PageHeader>
+        <div className="px-6 pt-6 pb-0">
+          <PageHeader
+            title="Mi Email"
+            description="Sistema de correo completo"
+            icon={Mail}
+            actions={
+              <>
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="p-2 text-neutral-400 hover:text-neutral-600 dark:hover:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-lg transition"
+                  title="Configuracion de correo"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+                <Button onClick={handleSync} disabled={syncing} variant="outline">
+                  <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+                  {syncing ? 'Sincronizando...' : 'Sincronizar'}
+                </Button>
+                <Button onClick={() => { setComposeInitial(undefined); setShowCompose(true); }}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Redactar
+                </Button>
+              </>
+            }
+          />
+        </div>
 
         {syncMessage && (
           <div className={`mx-6 mt-0 mb-4 px-4 py-3 rounded-lg flex items-center gap-2 text-sm ${
