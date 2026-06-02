@@ -421,11 +421,11 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
   if (!isOpen || !plantilla) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-neutral-900/70 backdrop-blur-sm flex items-start justify-center overflow-y-auto p-3 sm:p-5">
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-5xl my-4">
+    <div className="fixed inset-0 z-50 bg-neutral-900/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
+      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col" style={{ maxHeight: '92vh' }}>
 
         {/* Header */}
-        <div className="sticky top-0 z-20 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-white/10 px-4 py-3 rounded-t-2xl flex items-center justify-between">
+        <div className="shrink-0 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-white/10 px-4 py-3 rounded-t-2xl flex items-center justify-between">
           <div>
             <h2 className="text-sm font-bold text-neutral-900 dark:text-white">Personalizar Diseño</h2>
             <p className="text-[11px] text-neutral-500 dark:text-white/40">{plantilla.titulo || plantilla.tipo}</p>
@@ -436,17 +436,17 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
         </div>
 
         {error && (
-          <div className="mx-4 mt-3 flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400 px-3 py-2 rounded-lg text-xs">
+          <div className="shrink-0 mx-4 mt-3 flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400 px-3 py-2 rounded-lg text-xs">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
             {error}
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-0">
+        <div className="flex flex-col lg:flex-row flex-1 min-h-0">
 
           {/* LEFT — Canvas Preview */}
-          <div className="lg:col-span-3 p-4 lg:sticky lg:top-16 lg:self-start">
-            <div className="flex items-center justify-between mb-2">
+          <div className="lg:w-3/5 flex flex-col p-4 border-b lg:border-b-0 lg:border-r border-neutral-200 dark:border-white/10 min-h-0">
+            <div className="flex items-center justify-between mb-2 shrink-0">
               <span className="text-xs font-semibold text-neutral-700 dark:text-white/70">Vista Previa</span>
               <div className="flex items-center gap-1">
                 <button onClick={() => setZoom(z => Math.max(0.4, z - 0.15))} className="p-1 hover:bg-neutral-100 dark:hover:bg-white/5 rounded transition">
@@ -462,8 +462,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
               </div>
             </div>
 
-            <div className="border-2 border-neutral-200 dark:border-white/10 rounded-xl overflow-auto bg-neutral-100 dark:bg-neutral-800 shadow-inner flex items-center justify-center"
-              style={{ minHeight: 260, maxHeight: 'calc(100vh - 280px)' }}>
+            <div className="flex-1 border-2 border-neutral-200 dark:border-white/10 rounded-xl overflow-auto bg-neutral-100 dark:bg-neutral-800 shadow-inner flex items-center justify-center min-h-0">
               {imageStatus === 'pending' && (
                 <div className="flex flex-col items-center gap-2 py-14">
                   <Loader2 className="w-6 h-6 text-neutral-300 animate-spin" />
@@ -491,7 +490,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2 mt-2">
+            <div className="grid grid-cols-2 gap-2 mt-2 shrink-0">
               <button onClick={handleDownloadPreview} disabled={imageStatus !== 'ready'}
                 className="flex items-center justify-center gap-1.5 px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg text-xs font-medium text-neutral-700 dark:text-white/70 hover:bg-neutral-50 dark:hover:bg-white/5 transition disabled:opacity-40">
                 <Download className="w-3.5 h-3.5" />
@@ -505,8 +504,8 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
             </div>
           </div>
 
-          {/* RIGHT — Controls */}
-          <div className="lg:col-span-2 border-t lg:border-t-0 lg:border-l border-neutral-200 dark:border-white/10 p-4 space-y-3">
+          {/* RIGHT — Controls (scrollable) */}
+          <div className="lg:w-2/5 overflow-y-auto p-4 space-y-3">
 
             {/* Contact Info */}
             <div className="space-y-2">
