@@ -76,7 +76,7 @@ function EmailBodyFrame({ html, text }: { html: string; text: string }) {
     doc.open();
     doc.write(`<!DOCTYPE html><html><head>
       <meta charset="UTF-8">
-      <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data: https:; font-src https:">
+      <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data: https: http: cid:; font-src https: http:;">
       <style>
         body { margin: 0; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 14px; color: #1a1a1a; line-height: 1.6; }
         img { max-width: 100%; height: auto; }
