@@ -79,11 +79,11 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Main content */}
       {isFullHeight ? (
-        <main className="flex-1 overflow-hidden min-w-0 flex flex-col pb-14 md:pb-0">
+        <main className="flex-1 overflow-hidden min-w-0 flex flex-col mobile-page-content md:!pb-0">
           {children}
         </main>
       ) : (
-        <main className="flex-1 overflow-y-auto min-w-0 pb-14 md:pb-0">
+        <main className="flex-1 overflow-y-auto min-w-0 mobile-page-content md:!pb-0">
           <div className="px-4 md:px-6 py-4 md:py-6 max-w-screen-2xl mx-auto">
             {children}
           </div>
@@ -91,14 +91,7 @@ export function Layout({ children }: LayoutProps) {
       )}
 
       {/* Mobile bottom navigation */}
-      <MobileNav
-        workspace={workspace}
-        activeItem={activeItem}
-        userRole={userRole}
-        usuario={usuario}
-        onOpenDrawer={() => setMobileDrawerOpen(true)}
-        onSignOut={handleSignOut}
-      />
+      <MobileNav onOpenDrawer={() => setMobileDrawerOpen(true)} />
     </div>
   );
 }

@@ -238,6 +238,43 @@ img, video { max-width: 100%; display: block; }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   Chava AI pulse animation (mobile nav central button)
+   ───────────────────────────────────────────────────────────────────────────── */
+@keyframes chava-pulse {
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50%       { opacity: 0.45; transform: scale(1.35); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Mobile responsive utilities
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Ensure tables can scroll horizontally on small screens */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile-safe bottom padding for pages with fixed bottom nav */
+.mobile-page-content {
+  padding-bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  .mobile-page-content {
+    padding-bottom: 0;
+  }
+}
+
+/* Prevent dialog/modal from overflowing on mobile */
+@media (max-width: 767px) {
+  [role="dialog"] {
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
    Table baseline
    ───────────────────────────────────────────────────────────────────────────── */
 .movi-table {
