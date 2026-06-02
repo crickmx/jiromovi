@@ -89,6 +89,7 @@ class AuditLogger {
   }
 
   async updateToolHealth(supabase: any, tool: string, ok: boolean, durationMs: number, records?: number, errorMsg?: string) {
+    if (!supabase) return;
     try {
       if (ok) {
         await supabase.from("chava_tool_health").upsert({
@@ -175,7 +176,6 @@ async function fetchFileContent(
       for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
       const base64 = btoa(binary);
 
-      // Use GPT-4o to extract text from PDF via vision
       const extractResp = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -259,13 +259,12 @@ async function fetchFileContent(
       return `[IMAGEN: ${fileName} - analisis fallido]`;
     }
 
-    // XLSX/Excel — read as text best effort
+    // XLSX/Excel
     if (
       mimeType.includes("spreadsheet") ||
       mimeType.includes("excel") ||
       fileName.match(/\.(xlsx|xls|ods)$/i)
     ) {
-      // We can't parse xlsx in Deno easily without a library, so just note the file
       return `[EXCEL: ${fileName} - Archivo de hoja de calculo adjunto. El usuario ha compartido datos en Excel. Solicita al usuario que pegue los datos relevantes como texto si necesitas analizarlos en detalle, o describe que datos necesita comparar.]`;
     }
 
@@ -276,6 +275,9 @@ async function fetchFileContent(
 }
 
 // ─── Query SICAS data based on intent ─────────────────────────────────────────
+// NOTE: sicas_documents real column names:
+//   poliza, cliente, compania, ramo, vigencia_desde, vigencia_hasta,
+//   prima_neta, vend_nombre, is_vigente, status_codigo, aseguradora_nombre
 async function querySicasContext(
   supabase: ReturnType<typeof createClient>,
   mensaje: string,
@@ -293,6 +295,30 @@ async function querySicasContext(
 
     const isAdmin = ["Administrador", "Gerente"].includes(usuario.rol);
 
+    // Get vendor names for this user from sicas_mapeo_vendedor_usuario
+    const getVendorNames = async (userId: string): Promise<string[]> => {
+      const { data: mapeo } = await supabase
+        .from("sicas_mapeo_vendedor_usuario")
+        .select("id_sicas_vendedor")
+        .eq("movi_user_id", userId);
+      return (mapeo || []).map((m: any) => m.id_sicas_vendedor).filter(Boolean);
+    };
+
+    const getOfficeVendorNames = async (oficina_id: string): Promise<string[]> => {
+      // Get all users in the office, then their vendor IDs
+      const { data: usuarios } = await supabase
+        .from("usuarios")
+        .select("id")
+        .eq("oficina_id", oficina_id);
+      if (!usuarios || usuarios.length === 0) return [];
+      const userIds = usuarios.map((u: any) => u.id);
+      const { data: mapeo } = await supabase
+        .from("sicas_mapeo_vendedor_usuario")
+        .select("id_sicas_vendedor")
+        .in("movi_user_id", userIds);
+      return (mapeo || []).map((m: any) => m.id_sicas_vendedor).filter(Boolean);
+    };
+
     // Renovaciones / polizas por vencer
     if (lower.includes("vencer") || lower.includes("renovar") || lower.includes("renovacion")) {
       const today = new Date();
@@ -301,31 +327,24 @@ async function querySicasContext(
 
       let query = supabase
         .from("sicas_documents")
-        .select("numero_poliza, nombre_cliente, aseguradora, ramo, suma_asegurada, fecha_vigencia_fin, prima_neta, estatus")
-        .gte("fecha_vigencia_fin", todayStr)
-        .lte("fecha_vigencia_fin", in60)
-        .eq("estatus", "VIGENTE")
-        .order("fecha_vigencia_fin", { ascending: true })
+        .select("poliza, cliente, compania, ramo, prima_neta, vigencia_hasta, is_vigente, aseguradora_nombre")
+        .gte("vigencia_hasta", todayStr)
+        .lte("vigencia_hasta", in60)
+        .eq("is_vigente", true)
+        .order("vigencia_hasta", { ascending: true })
         .limit(15);
 
       if (!isAdmin) {
-        // Filter by user's vendor mapping
-        const { data: mapeo } = await supabase
-          .from("sicas_mapeo_usuario_vendedor")
-          .select("nombre_vendedor_sicas")
-          .eq("usuario_id", usuario.id);
-        const nombres = (mapeo || []).map((m: any) => m.nombre_vendedor_sicas).filter(Boolean);
-        if (nombres.length > 0) {
-          query = query.in("nombre_vendedor", nombres);
+        const vendorIds = await getVendorNames(usuario.id);
+        if (vendorIds.length > 0) {
+          query = query.in("vend_nombre", vendorIds);
+        } else {
+          query = query.eq("usuario_id", usuario.id);
         }
       } else if (usuario.rol === "Gerente" && usuario.oficina_id) {
-        const { data: mapeo } = await supabase
-          .from("sicas_mapeo_usuario_vendedor")
-          .select("nombre_vendedor_sicas")
-          .eq("oficina_id", usuario.oficina_id);
-        const nombres = (mapeo || []).map((m: any) => m.nombre_vendedor_sicas).filter(Boolean);
-        if (nombres.length > 0) {
-          query = query.in("nombre_vendedor", nombres);
+        const vendorIds = await getOfficeVendorNames(usuario.oficina_id);
+        if (vendorIds.length > 0) {
+          query = query.in("vend_nombre", vendorIds);
         }
       }
 
@@ -333,48 +352,53 @@ async function querySicasContext(
       if (polizas && polizas.length > 0) {
         sicasContext += `\n=== POLIZAS PROXIMAS A VENCER (60 dias) ===\n`;
         for (const p of polizas) {
-          sicasContext += `- ${p.nombre_cliente} | ${p.aseguradora} | Poliza: ${p.numero_poliza} | Vence: ${p.fecha_vigencia_fin} | Prima: $${Number(p.prima_neta || 0).toLocaleString("es-MX")} | Ramo: ${p.ramo}\n`;
+          const aseg = p.aseguradora_nombre || p.compania || "-";
+          sicasContext += `- ${p.cliente} | ${aseg} | Poliza: ${p.poliza} | Vence: ${p.vigencia_hasta?.split("T")[0] || "-"} | Prima: $${Number(p.prima_neta || 0).toLocaleString("es-MX")} | Ramo: ${p.ramo}\n`;
         }
         sicasContext += `Total: ${polizas.length} polizas proximas a vencer.\n`;
       }
     }
 
-    // Buscar por cliente específico
+    // Buscar por cliente especifico
     if (clienteMatch && clienteMatch[1]) {
       const nombreBusqueda = clienteMatch[1].trim();
       const { data: polizasCliente } = await supabase
         .from("sicas_documents")
-        .select("numero_poliza, nombre_cliente, aseguradora, ramo, suma_asegurada, fecha_vigencia_inicio, fecha_vigencia_fin, prima_neta, estatus, nombre_vendedor")
-        .ilike("nombre_cliente", `%${nombreBusqueda}%`)
-        .order("fecha_vigencia_fin", { ascending: false })
+        .select("poliza, cliente, compania, aseguradora_nombre, ramo, vigencia_desde, vigencia_hasta, prima_neta, is_vigente, status_codigo, vend_nombre")
+        .ilike("cliente", `%${nombreBusqueda}%`)
+        .order("vigencia_hasta", { ascending: false })
         .limit(10);
 
       if (polizasCliente && polizasCliente.length > 0) {
         sicasContext += `\n=== POLIZAS DE ${nombreBusqueda.toUpperCase()} ===\n`;
         for (const p of polizasCliente) {
-          sicasContext += `- ${p.nombre_cliente} | ${p.aseguradora} | Poliza: ${p.numero_poliza} | Ramo: ${p.ramo} | Vigencia: ${p.fecha_vigencia_inicio} - ${p.fecha_vigencia_fin} | Prima: $${Number(p.prima_neta || 0).toLocaleString("es-MX")} | Estatus: ${p.estatus}\n`;
+          const aseg = p.aseguradora_nombre || p.compania || "-";
+          const estatus = p.is_vigente ? "VIGENTE" : (p.status_codigo || "INACTIVA");
+          sicasContext += `- ${p.cliente} | ${aseg} | Poliza: ${p.poliza} | Ramo: ${p.ramo} | Vigencia: ${p.vigencia_desde?.split("T")[0] || "-"} - ${p.vigencia_hasta?.split("T")[0] || "-"} | Prima: $${Number(p.prima_neta || 0).toLocaleString("es-MX")} | Estatus: ${estatus}\n`;
         }
+      } else {
+        sicasContext += `\n=== BUSQUEDA DE CLIENTE: ${nombreBusqueda.toUpperCase()} ===\nNo se encontraron polizas para este cliente en SICAS.\n`;
       }
     }
 
-    // Producción / prima total
+    // Produccion / prima total
     if (lower.includes("produccion") || lower.includes("producción") || lower.includes("prima") || lower.includes("cuanto produjo")) {
       const today = new Date();
-      const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split("T")[0];
+      const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
 
       let query = supabase
         .from("sicas_documents")
-        .select("prima_neta, aseguradora, ramo, nombre_vendedor")
-        .gte("fecha_vigencia_inicio", firstOfMonth)
-        .eq("estatus", "VIGENTE");
+        .select("prima_neta, compania, aseguradora_nombre, ramo, vend_nombre")
+        .gte("vigencia_desde", firstOfMonth)
+        .eq("is_vigente", true);
 
       if (!isAdmin) {
-        const { data: mapeo } = await supabase
-          .from("sicas_mapeo_usuario_vendedor")
-          .select("nombre_vendedor_sicas")
-          .eq("usuario_id", usuario.id);
-        const nombres = (mapeo || []).map((m: any) => m.nombre_vendedor_sicas).filter(Boolean);
-        if (nombres.length > 0) query = query.in("nombre_vendedor", nombres);
+        const vendorIds = await getVendorNames(usuario.id);
+        if (vendorIds.length > 0) {
+          query = query.in("vend_nombre", vendorIds);
+        } else {
+          query = query.eq("usuario_id", usuario.id);
+        }
       }
 
       const { data: produccion } = await query;
@@ -382,7 +406,8 @@ async function querySicasContext(
         const total = produccion.reduce((sum: number, p: any) => sum + Number(p.prima_neta || 0), 0);
         const byAseg: Record<string, number> = {};
         for (const p of produccion) {
-          byAseg[p.aseguradora] = (byAseg[p.aseguradora] || 0) + Number(p.prima_neta || 0);
+          const key = p.aseguradora_nombre || p.compania || "Otra";
+          byAseg[key] = (byAseg[key] || 0) + Number(p.prima_neta || 0);
         }
         sicasContext += `\n=== PRODUCCION DEL MES ACTUAL ===\n`;
         sicasContext += `Prima total: $${total.toLocaleString("es-MX")} | Polizas: ${produccion.length}\n`;
@@ -397,32 +422,33 @@ async function querySicasContext(
     if (lower.includes("cobranza") || lower.includes("recibo") || lower.includes("pendiente")) {
       let query = supabase
         .from("sicas_documents")
-        .select("numero_poliza, nombre_cliente, aseguradora, prima_neta, fecha_vigencia_fin, nombre_vendedor")
-        .eq("estatus", "PENDIENTE_PAGO")
+        .select("poliza, cliente, compania, aseguradora_nombre, prima_neta, vigencia_hasta, vend_nombre")
+        .eq("is_vigente", false)
+        .not("status_codigo", "is", null)
         .limit(15);
 
       if (!isAdmin) {
-        const { data: mapeo } = await supabase
-          .from("sicas_mapeo_usuario_vendedor")
-          .select("nombre_vendedor_sicas")
-          .eq("usuario_id", usuario.id);
-        const nombres = (mapeo || []).map((m: any) => m.nombre_vendedor_sicas).filter(Boolean);
-        if (nombres.length > 0) query = query.in("nombre_vendedor", nombres);
+        const vendorIds = await getVendorNames(usuario.id);
+        if (vendorIds.length > 0) {
+          query = query.in("vend_nombre", vendorIds);
+        } else {
+          query = query.eq("usuario_id", usuario.id);
+        }
       }
 
       const { data: cobranza } = await query;
       if (cobranza && cobranza.length > 0) {
-        sicasContext += `\n=== COBRANZA PENDIENTE ===\n`;
+        sicasContext += `\n=== DOCUMENTOS PENDIENTES ===\n`;
         for (const c of cobranza) {
-          sicasContext += `- ${c.nombre_cliente} | ${c.aseguradora} | Poliza: ${c.numero_poliza} | Prima: $${Number(c.prima_neta || 0).toLocaleString("es-MX")}\n`;
+          const aseg = c.aseguradora_nombre || c.compania || "-";
+          sicasContext += `- ${c.cliente} | ${aseg} | Poliza: ${c.poliza} | Prima: $${Number(c.prima_neta || 0).toLocaleString("es-MX")}\n`;
         }
-        sicasContext += `Total recibos pendientes: ${cobranza.length}\n`;
+        sicasContext += `Total: ${cobranza.length} documentos.\n`;
       }
     }
   } catch (e: any) {
     const errMsg = e?.message || String(e);
     console.error("SICAS query error:", errMsg);
-    await audit.updateToolHealth(null as any, "consultar_sicas", false, 0, undefined, errMsg);
     audit.addToolCall({ tool: "consultar_sicas", duration_ms: 0, error: errMsg });
     // Don't propagate — just note it, Chava can still respond
   }
@@ -514,7 +540,7 @@ Deno.serve(async (req: Request) => {
     const config: Record<string, any> = {};
     for (const c of configs || []) config[c.clave] = c.valor;
 
-    const modeloIA = config.modelo_ia || "gpt-4o";
+    const modeloIA = config.modelo_ia || "gpt-4o-mini";
     const temperatura = parseFloat(config.temperatura) || 0.5;
     const maxTokens = parseInt(config.max_tokens) || 3500;
     const ragEnabled = config.rag_habilitado !== false;
@@ -618,7 +644,7 @@ INSTRUCCIONES FINALES:
         oficina_id: usuario.oficina_id,
       }, audit);
       const sicasDuration = Date.now() - sicasStart;
-      if (sicasContext && !sicasContext.includes("[Error")) {
+      if (sicasContext) {
         audit.addToolCall({ tool: "consultar_sicas", duration_ms: sicasDuration, output_summary: `${sicasContext.length} chars` });
         await audit.updateToolHealth(supabase, "consultar_sicas", true, sicasDuration);
       }
@@ -644,16 +670,19 @@ INSTRUCCIONES FINALES:
 
         if (embeddingResponse.ok) {
           const embeddingData = await embeddingResponse.json();
+          // Pass as raw array — Supabase/pgvector casts it correctly
           const queryEmbedding = embeddingData.data[0].embedding;
 
-          const { data: cdFragments } = await supabase.rpc("buscar_centro_digital_chunks", {
-            query_embedding: JSON.stringify(queryEmbedding),
+          const { data: cdFragments, error: cdError } = await supabase.rpc("buscar_centro_digital_chunks", {
+            query_embedding: queryEmbedding,
             similitud_minima: similitudMinima,
             max_resultados: maxFragmentos,
             solo_externo: false,
           });
 
-          if (cdFragments && cdFragments.length > 0) {
+          if (cdError) {
+            console.error("buscar_centro_digital_chunks error:", cdError.message);
+          } else if (cdFragments && cdFragments.length > 0) {
             knowledgeContext = "\n\n=== BASE DE CONOCIMIENTO (Centro Digital) ===\n";
             for (const frag of cdFragments) {
               knowledgeContext += `\n[${frag.archivo_nombre}${frag.carpeta_nombre ? ` / ${frag.carpeta_nombre}` : ""}]\n${frag.contenido}\n`;
@@ -669,14 +698,16 @@ INSTRUCCIONES FINALES:
           }
 
           if (fuentesUtilizadas.length < 3) {
-            const { data: legacyFragments } = await supabase.rpc("buscar_conocimiento_chava", {
-              query_embedding: JSON.stringify(queryEmbedding),
+            const { data: legacyFragments, error: legacyError } = await supabase.rpc("buscar_conocimiento_chava", {
+              query_embedding: queryEmbedding,
               similitud_minima: similitudMinima,
               max_resultados: maxFragmentos - fuentesUtilizadas.length,
               usuario_rol: usuario.rol,
             });
 
-            if (legacyFragments && legacyFragments.length > 0) {
+            if (legacyError) {
+              console.error("buscar_conocimiento_chava error:", legacyError.message);
+            } else if (legacyFragments && legacyFragments.length > 0) {
               if (!knowledgeContext) knowledgeContext = "\n\n=== BASE DE CONOCIMIENTO ===\n";
               else knowledgeContext = knowledgeContext.replace("\n=== FIN BASE DE CONOCIMIENTO ===\n", "");
               for (const frag of legacyFragments) {
@@ -693,6 +724,9 @@ INSTRUCCIONES FINALES:
               knowledgeContext += "\n=== FIN BASE DE CONOCIMIENTO ===\n";
             }
           }
+        } else {
+          const errText = await embeddingResponse.text();
+          console.error("Embedding API error:", embeddingResponse.status, errText);
         }
       } catch (ragErr: any) {
         const errMsg = ragErr?.message || String(ragErr);
@@ -818,7 +852,7 @@ ${knowledgeContext}`;
       .update({ updated_at: new Date().toISOString() })
       .eq("id", convId);
 
-    // Legacy log (keep for backwards compat)
+    // Legacy log (non-blocking)
     try {
       await supabase.from("chava_consultas_log").insert({
         usuario_id: user.id,
@@ -833,7 +867,7 @@ ${knowledgeContext}`;
       });
     } catch { /* non-blocking */ }
 
-    // Knowledge gap detection
+    // Knowledge gap detection (non-blocking)
     if (fuentesUtilizadas.length === 0 && mensaje.length > 15) {
       try {
         await supabase.from("chava_knowledge_review_queue").insert({
@@ -849,7 +883,7 @@ ${knowledgeContext}`;
       } catch { /* non-blocking */ }
     }
 
-    // Track SICAS usage as source
+    // Track sources
     if (sicasContext) {
       fuentesUtilizadas.push({ source: "sicas", documento_titulo: "SICAS (Datos en tiempo real)", similitud: 1.0 });
     }
@@ -859,7 +893,7 @@ ${knowledgeContext}`;
       }
     }
 
-    // Save full audit log
+    // Save full audit log (non-blocking)
     await audit.save(supabase, {
       usuario_id: user.id,
       conversacion_id: convId,
