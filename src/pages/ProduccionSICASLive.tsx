@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 import { trackDocumentView, trackDashboardView, trackDashboardTabOpened, trackDashboardFilterApplied, trackDashboardDrilldown } from '../lib/activityLogger';
-import { TrendingUp, Database, Loader2, AlertTriangle, Users, BarChart3, RefreshCcw, Shield, FileText, Building2, Layers, CalendarClock, GitCompare, Cloud, Search, X, Filter, MapPin, CircleUser as UserCircle, Lightbulb, Bell, Radio } from 'lucide-react';
+import { TrendingUp, Database, Loader as Loader2, TriangleAlert as AlertTriangle, Users, ChartBar as BarChart3, RefreshCcw, Shield, FileText, Building2, Layers, CalendarClock, GitCompare, Cloud, Search, X, ListFilter as Filter, MapPin, CircleUser as UserCircle, Lightbulb, Bell, Radio } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   type DashboardTab, type DashboardScope, type DashboardKPIs,
@@ -82,6 +82,7 @@ export default function ProduccionSICASLive() {
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [entityModal, setEntityModal] = useState<EntityModalState | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [filterOptionsLoading, setFilterOptionsLoading] = useState(true);
   const [filterOptions, setFilterOptions] = useState<{
     aseguradoras: string[];
     ramos: string[];
@@ -164,9 +165,11 @@ export default function ProduccionSICASLive() {
   // Load filter options and oficinas once
   useEffect(() => {
     if (!usuario?.id || !scope) return;
+    setFilterOptionsLoading(true);
     fetchFilterOptions(usuario.id, scope.scope, scope.oficina_id || undefined)
       .then(setFilterOptions)
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setFilterOptionsLoading(false));
     if (isAdmin) {
       fetchOficinas().then(setOficinas).catch(() => {});
     }
@@ -223,7 +226,7 @@ export default function ProduccionSICASLive() {
                   ))}
                 </select>
               )}
-              {(isAdmin || isOfficeRole) && filterOptions?.vendedores && filterOptions.vendedores.length > 0 && (
+              {(isAdmin || isOfficeRole) && !filterOptionsLoading && filterOptions?.vendedores && filterOptions.vendedores.length > 0 && (
                 <select
                   value={filters.vendedor}
                   onChange={e => setFilters(f => ({ ...f, vendedor: e.target.value }))}

@@ -40,6 +40,9 @@ export interface QuoteFormTemplate {
   is_active: boolean;
   requires_risk_location: boolean;
   schema_json: { steps: string[] };
+  slug: string | null;
+  allowed_roles: string[] | null;
+  is_global: boolean;
 }
 
 export interface QuoteForm {

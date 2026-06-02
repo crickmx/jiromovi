@@ -61,7 +61,7 @@ export default function CotizarHub() {
   const navigate = useNavigate();
   const { usuario } = useAuth();
   const rol = usuario?.rol;
-  const canSeeBxPlus = rol === 'Administrador' || rol === 'Gerente' || rol === 'Empleado';
+  const canSeeBxPlus = ['Administrador', 'Gerente', 'Empleado', 'Agente', 'Ejecutivo'].includes(rol || '');
 
   const visibleModules = MODULES.filter(m => !m.adminOnly || canSeeBxPlus);
 

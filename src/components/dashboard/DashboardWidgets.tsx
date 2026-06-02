@@ -1051,11 +1051,3 @@ export function AccesosRapidosWidget({ usuario }: { usuario: Usuario }) {
     </div>
   );
 }
-
-// ══════════════════════════════════════════════════════════════════════════════
-// WIDGET: Polizas Por Vencer (legacy compat)
-// ══════════════════════════════════════════════════════════════════════════════
-
-export function PolizasPorVencerWidget({ usuario }: { usuario: Usuario }) {
-  return <RenovacionesBreakdownWidget usuario={usuario} />;
-}

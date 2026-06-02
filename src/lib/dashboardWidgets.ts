@@ -45,7 +45,6 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   // ── LISTS ──
   { id: 'tramites_recientes', label: 'Trámites Recientes', description: 'Últimos trámites creados o actualizados', allowedRoles: ALL_ROLES, defaultWidth: 'half', allowedWidths: ['half', 'full'], icon: 'ClipboardList', category: 'list' },
   { id: 'renovaciones_breakdown', label: 'Renovaciones', description: 'Desglose de pólizas por vencer (30/60/90 días)', allowedRoles: ALL_ROLES, defaultWidth: 'half', allowedWidths: ['half', 'full'], icon: 'Calendar', category: 'list' },
-  { id: 'polizas_por_vencer', label: 'Pólizas por Vencer', description: 'Pólizas próximas a renovar en 30 días', allowedRoles: ALL_ROLES, defaultWidth: 'half', allowedWidths: ['half', 'full'], icon: 'FileText', category: 'list' },
   { id: 'top_aseguradoras', label: 'Top Aseguradoras', description: 'Ranking de aseguradoras por producción', allowedRoles: ALL_ROLES, defaultWidth: 'half', allowedWidths: ['half', 'full'], icon: 'BarChart3', category: 'list' },
   { id: 'comunicados_recientes', label: 'Comunicados', description: 'Últimos comunicados publicados', allowedRoles: ALL_ROLES, defaultWidth: 'half', allowedWidths: ['half', 'full'], icon: 'Bell', category: 'list' },
   { id: 'actividad_reciente', label: 'Actividad Reciente', description: 'Últimas acciones del equipo', allowedRoles: ADMIN_GERENTE, defaultWidth: 'half', allowedWidths: ['half', 'full'], icon: 'Activity', category: 'list' },
