@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { X, LogOut, Settings, User, ChevronRight } from 'lucide-react';
+import { X, LogOut, User, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { NAV_ORDER, isWorkspaceVisible, isTopLevelItemVisible, isItemVisible } from '@/lib/workspaceConfig';
 import type { WorkspaceDefinition, WorkspaceNavItem, UserRole } from '@/lib/workspaceConfig';
@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import type { Usuario } from '@/contexts/MoviAuthContext';
 import { NotificationBell } from '../NotificationBell';
 import { ThemeToggle } from '../ThemeToggle';
+import { getForegroundColor, hexToRgb } from '@/lib/themeUtils';
 
 interface Props {
   open: boolean;
@@ -53,6 +54,14 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
   const fullName = [usuario?.nombre, usuario?.apellidos].filter(Boolean).join(' ');
   const oficinaNombre = usuario?.oficina?.nombre || '';
   const rolLabel = usuario?.rol || '';
+
+  const accentStyle = useMemo(() => {
+    const hex = (usuario?.oficina as any)?.accent_color as string | undefined;
+    if (!hex) return null;
+    const fgRgb = getForegroundColor(hex);
+    const bgRgb = hexToRgb(hex);
+    return { hex, fgRgb, bgRgb };
+  }, [(usuario?.oficina as any)?.accent_color]);
 
   const isActive = (item: WorkspaceNavItem) => {
     if (location.pathname === item.path) return true;
@@ -111,57 +120,58 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
         )}
       >
         {/* ── Profile header ── */}
-        <div className="relative bg-gradient-to-br from-neutral-900 to-neutral-800 dark:from-[#0a0a0d] dark:to-[#141417] pt-10 pb-5 px-5">
-          {/* Close button */}
-          <button
-            onClick={onClose}
-            className="absolute top-3.5 right-3.5 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-          >
-            <X className="w-4 h-4 text-white/80" />
-          </button>
-
-          {/* Avatar + name */}
-          <div className="flex items-center gap-3.5">
+        <div
+          className="relative pt-10 pb-5 px-5"
+          style={accentStyle ? { background: accentStyle.hex } : undefined}
+        >
+          {!accentStyle && (
+            <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 to-neutral-800 dark:from-[#0a0a0d] dark:to-[#141417]" />
+          )}
+          <div className="relative z-10">
+            {/* Close button */}
             <button
-              onClick={() => handleNav('/perfil')}
-              className="flex-shrink-0 ring-2 ring-white/20 hover:ring-white/40 rounded-2xl transition-all"
+              onClick={onClose}
+              className="absolute top-3.5 right-3.5 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
             >
-              <Avatar className="h-14 w-14 rounded-2xl">
-                <AvatarImage src={usuario?.imagen_perfil_url || undefined} alt={fullName} className="rounded-2xl" />
-                <AvatarFallback className="rounded-2xl bg-accent text-white text-lg font-bold">
-                  {getInitials()}
-                </AvatarFallback>
-              </Avatar>
+              <X className="w-4 h-4 text-white/80" />
             </button>
-            <div className="min-w-0">
-              <p className="text-white font-semibold text-[15px] leading-tight truncate">{fullName || 'Usuario'}</p>
-              {oficinaNombre && (
-                <p className="text-white/60 text-[12px] mt-0.5 truncate">{oficinaNombre}</p>
-              )}
-              {rolLabel && (
-                <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full bg-white/10 text-white/70 text-[10px] font-medium">
-                  {rolLabel}
-                </span>
-              )}
+
+            {/* Avatar + name */}
+            <div className="flex items-center gap-3.5">
+              <button
+                onClick={() => handleNav('/perfil')}
+                className="flex-shrink-0 ring-2 ring-white/20 hover:ring-white/40 rounded-2xl transition-all"
+              >
+                <Avatar className="h-14 w-14 rounded-2xl">
+                  <AvatarImage src={usuario?.imagen_perfil_url || undefined} alt={fullName} className="rounded-2xl" />
+                  <AvatarFallback className="rounded-2xl bg-white/20 text-white text-lg font-bold">
+                    {getInitials()}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+              <div className="min-w-0">
+                <p className="text-white font-semibold text-[15px] leading-tight truncate">{fullName || 'Usuario'}</p>
+                {oficinaNombre && (
+                  <p className="text-white/70 text-[12px] mt-0.5 truncate">{oficinaNombre}</p>
+                )}
+                {rolLabel && (
+                  <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full bg-white/10 text-white/80 text-[10px] font-medium">
+                    {rolLabel}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Quick profile actions */}
-          <div className="flex gap-2 mt-4">
-            <button
-              onClick={() => handleNav('/perfil')}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 text-[12px] font-medium transition-colors"
-            >
-              <User className="w-3.5 h-3.5" />
-              Mi Perfil
-            </button>
-            <button
-              onClick={() => handleNav('/configuracion')}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 text-[12px] font-medium transition-colors"
-            >
-              <Settings className="w-3.5 h-3.5" />
-              Ajustes
-            </button>
+            {/* Quick profile action — only Mi Perfil */}
+            <div className="mt-4">
+              <button
+                onClick={() => handleNav('/perfil')}
+                className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white/90 text-[12px] font-medium transition-colors"
+              >
+                <User className="w-3.5 h-3.5" />
+                Mi Perfil
+              </button>
+            </div>
           </div>
         </div>
 
@@ -271,7 +281,7 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
           {/* Notification bell + theme toggle row */}
           <div className="flex items-center gap-2 px-3 py-2">
             <span className="flex-1 text-[12px] font-medium text-neutral-500 dark:text-white/40">Apariencia y alertas</span>
-            <NotificationBell dropdownSide="bottom" />
+            <NotificationBell dropdownSide="bottom" fixedPanel />
             <ThemeToggle dropdownSide="bottom" />
           </div>
           <button

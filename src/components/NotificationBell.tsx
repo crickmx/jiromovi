@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Bell, Check, CheckCheck, X, Trash2, ListFilter as Filter, Mail, MessageSquare, Calendar, GraduationCap, MapPin, Palette, Users, Megaphone, ShoppingBag } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
 import { useNavigate } from 'react-router-dom';
@@ -22,9 +22,11 @@ interface NotificationBellProps {
   compact?: boolean;
   /** Which side to open the dropdown. Defaults to 'right' (left-full) for sidebar, 'bottom' for inline. */
   dropdownSide?: 'right' | 'bottom';
+  /** When true, the panel renders fixed to the viewport (use inside overlays/drawers). */
+  fixedPanel?: boolean;
 }
 
-export function NotificationBell({ compact, dropdownSide = 'right' }: NotificationBellProps) {
+export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }: NotificationBellProps) {
   const {
     notifications,
     unreadCount,
@@ -37,24 +39,59 @@ export function NotificationBell({ compact, dropdownSide = 'right' }: Notificati
 
   const [isOpen, setIsOpen] = useState(false);
   const [filterModule, setFilterModule] = useState<string>('all');
+  const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({});
+  const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
+
+  const calculateFixedPosition = useCallback(() => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const PANEL_WIDTH = 384; // w-96
+    const MARGIN = 8;
+    const viewportWidth = window.innerWidth;
+
+    let left = rect.right + MARGIN;
+    let top = rect.top;
+
+    // If panel would overflow right edge, show it to the left
+    if (left + PANEL_WIDTH > viewportWidth - MARGIN) {
+      left = rect.left - PANEL_WIDTH - MARGIN;
+    }
+
+    // If it overflows left, align to viewport left with margin
+    if (left < MARGIN) {
+      left = MARGIN;
+    }
+
+    setPanelStyle({ position: 'fixed', top, left, zIndex: 9999 });
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+      const target = event.target as Node;
+      if (fixedPanel) {
+        if (panelRef.current && !panelRef.current.contains(target) &&
+            buttonRef.current && !buttonRef.current.contains(target)) {
+          setIsOpen(false);
+        }
+      } else {
+        if (containerRef.current && !containerRef.current.contains(target)) {
+          setIsOpen(false);
+        }
       }
     };
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      if (fixedPanel) calculateFixedPosition();
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isOpen]);
+  }, [isOpen, fixedPanel, calculateFixedPosition]);
 
   const filteredNotifications = filterModule === 'all'
     ? (notifications || [])
@@ -91,9 +128,10 @@ export function NotificationBell({ compact, dropdownSide = 'right' }: Notificati
     : 'relative p-2 text-neutral-600 dark:text-neutral-400 hover:text-accent hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-colors';
 
   return (
-    <div className="relative" ref={panelRef}>
+    <div className="relative" ref={containerRef}>
       {/* Bell Icon Button */}
       <button
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         className={buttonClass}
         title="Notificaciones"
@@ -108,11 +146,15 @@ export function NotificationBell({ compact, dropdownSide = 'right' }: Notificati
 
       {/* Notification Panel */}
       {isOpen && (
-        <div className={`absolute w-96 max-h-[600px] bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-white/10 z-50 flex flex-col ${
-          dropdownSide === 'right'
-            ? 'left-full ml-2 top-0'
-            : 'right-0 top-full mt-2'
-        }`}>
+        <div
+          ref={panelRef}
+          style={fixedPanel ? panelStyle : undefined}
+          className={`w-96 max-h-[600px] bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-white/10 flex flex-col ${
+            fixedPanel
+              ? ''
+              : `absolute z-50 ${dropdownSide === 'right' ? 'left-full ml-2 top-0' : 'right-0 top-full mt-2'}`
+          }`}
+        >
           {/* Header */}
           <div className="p-4 border-b border-neutral-200 dark:border-white/10">
             <div className="flex items-center justify-between mb-3">
