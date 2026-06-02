@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Calculator, Save, FileText, Plus, Trash2, Calendar, DollarSign, Users, ChevronDown, ChevronRight, Download, Search, CreditCard as Edit, ArrowLeftRight } from 'lucide-react';
+import { Calculator, Save, FileText, Plus, Trash2, Calendar, DollarSign, Users, ChevronDown, ChevronRight, Download, Search, CreditCard as Edit, ArrowLeftRight, Upload } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { InfoTooltip } from '../components/ui/info-tooltip';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { MultiOptionQuote } from '../components/gmm/MultiOptionQuote';
 import {
   calculateQuoteV2 as calculateQuote,
@@ -19,6 +20,7 @@ import { getCoverageHelpText, COVERAGE_LABELS } from '../lib/gmmCoverageHelp';
 import { formatMoneySafe } from '../lib/gmmParsingUtils';
 import { getDisplayName } from '../lib/utils';
 import { getEffectiveUserLogo } from '../lib/logoUtils';
+import GMMTarifasAdmin from './GMMTarifasAdmin';
 import type {
   QuoteInput,
   QuoteInputInsured,
@@ -81,6 +83,8 @@ function formatDate(dateString: string): string {
 
 export default function GMMCotizador() {
   const location = useLocation();
+  const { usuario } = useAuth();
+  const isAdmin = usuario?.rol === 'Administrador';
   const [activeTab, setActiveTab] = useState('cotizador');
   const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
   const [editedFromQuotationId, setEditedFromQuotationId] = useState<string | null>(null);
@@ -638,6 +642,12 @@ export default function GMMCotizador() {
               <FileText className="w-4 h-4 mr-2" />
               Mis Cotizaciones
             </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="tarifas">
+                <Upload className="w-4 h-4 mr-2" />
+                Tarifas Admin
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="cotizador">
@@ -1166,6 +1176,11 @@ export default function GMMCotizador() {
               </>
             )}
           </TabsContent>
+          {isAdmin && (
+            <TabsContent value="tarifas">
+              <GMMTarifasAdmin />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </>

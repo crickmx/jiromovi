@@ -48,6 +48,9 @@ const FormulariosCotizacion = lazy(() => import('./FormulariosCotizacion'));
 const PublicQuoteForm = lazy(() => import('./PublicQuoteForm'));
 const QuoteFormWizard = lazy(() => import('./QuoteFormWizard'));
 const MulticotizadorDigital = lazy(() => import('./MulticotizadorDigital'));
+const AlaMedida = lazy(() => import('./comercial/AlaMedida'));
+const DisenadorAuto = lazy(() => import('./comercial/disenadores/DisenadorAuto'));
+const DisenadorGMM = lazy(() => import('./comercial/disenadores/DisenadorGMM'));
 
 // Operaciones
 const ProduccionSICASLive = lazy(() => import('./ProduccionSICASLive'));
@@ -188,7 +191,9 @@ export default function MoviFullRoutes() {
           <Route path="/cotizar/gmm-bx" element={<ProtectedRoute><GMMCotizador /></ProtectedRoute>} />
           <Route path="/cotizar/formularios" element={<ProtectedRoute><FormulariosCotizacion /></ProtectedRoute>} />
           <Route path="/cotizar/formularios/:slug/wizard" element={<ProtectedRoute><QuoteFormWizard /></ProtectedRoute>} />
-          <Route path="/cotizar/a-la-medida" element={<ProtectedRoute><MulticotizadorDigital /></ProtectedRoute>} />
+          <Route path="/cotizar/a-la-medida" element={<ProtectedRoute><AlaMedida /></ProtectedRoute>} />
+          <Route path="/cotizar/a-la-medida/auto" element={<ProtectedRoute><DisenadorAuto /></ProtectedRoute>} />
+          <Route path="/cotizar/a-la-medida/gmm" element={<ProtectedRoute><DisenadorGMM /></ProtectedRoute>} />
           <Route path="/cotizar/multicotizador" element={<ProtectedRoute><MulticotizadorDigital /></ProtectedRoute>} />
 
           {/* Operaciones */}
