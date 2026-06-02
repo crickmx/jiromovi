@@ -9,6 +9,8 @@ import { AgentBrandProvider } from './seguwallet/lib/AgentBrandContext';
 import { SeguwalletProtectedRoute } from './seguwallet/components/SeguwalletProtectedRoute';
 import { SeguwalletLayout } from './seguwallet/components/SeguwalletLayout';
 import { type ReactNode } from 'react';
+import { useAppUpdate } from './lib/useAppUpdate';
+import { AppUpdateBanner } from './components/AppUpdateBanner';
 
 // Seguwallet pages
 import { SeguwalletLogin } from './seguwallet/pages/SeguwalletLogin';
@@ -265,10 +267,16 @@ function MoviApp() {
 
 // ── Root entry point ─────────────────────────────────────────────────────────
 export default function App() {
-  if (isChavaDomain) return <ChavaAgenteApp />;
-  if (isSeguwalletDomain) return <SeguwalletApp />;
-  if (isMoviSplashDomain) return <MoviSplashApp />;
-  if (isPublicProfileDomain) return <PublicProfileApp />;
-  // app.movi.digital, localhost, LAN IPs, Bolt/StackBlitz preview — full app
-  return <MoviApp />;
+  const { updateAvailable } = useAppUpdate();
+
+  return (
+    <>
+      {updateAvailable && <AppUpdateBanner />}
+      {isChavaDomain && <ChavaAgenteApp />}
+      {isSeguwalletDomain && <SeguwalletApp />}
+      {isMoviSplashDomain && <MoviSplashApp />}
+      {isPublicProfileDomain && <PublicProfileApp />}
+      {!isChavaDomain && !isSeguwalletDomain && !isMoviSplashDomain && !isPublicProfileDomain && <MoviApp />}
+    </>
+  );
 }

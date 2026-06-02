@@ -13,6 +13,7 @@ const PRESERVED_KEYS = new Set([
   'sb-qhwvuuyjhcennqccgvse-auth-token',
   'supabase.auth.token',
   // User preferences
+  'movi-theme-mode',   // dark/light/system toggle
   'movi_theme',
   'theme',
   'dark_mode',
@@ -27,6 +28,8 @@ const PRESERVED_KEYS = new Set([
   'sw_token',
   // Impersonation
   'movi_impersonation',
+  // App version key itself — never delete this
+  'movi_app_version',
 ]);
 
 // Prefix patterns for app-cache keys (safe to delete on version change)
@@ -46,7 +49,8 @@ function isCacheKey(key: string): boolean {
 }
 
 function clearAppCache() {
-  // localStorage — clear cache keys, keep preserved
+  // localStorage — only remove keys that match known cache prefixes
+  // AND are not in the preserved set (double-safety)
   const lsKeys = Object.keys(localStorage);
   for (const key of lsKeys) {
     if (!PRESERVED_KEYS.has(key) && isCacheKey(key)) {
@@ -54,8 +58,8 @@ function clearAppCache() {
     }
   }
 
-  // sessionStorage — safe to clear entirely (no auth stored there)
-  sessionStorage.clear();
+  // sessionStorage — safe to clear entirely (no auth stored there by Supabase)
+  try { sessionStorage.clear(); } catch { /* ignore */ }
 }
 
 export function checkAndHandleVersionChange(): boolean {

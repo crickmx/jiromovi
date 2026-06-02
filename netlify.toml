@@ -24,6 +24,12 @@ for = "/*.html"
 [headers.values]
 Cache-Control = "no-cache, no-store, must-revalidate"
 
+# version.json — used for remote version polling, must always be fresh
+[[headers]]
+for = "/version.json"
+[headers.values]
+Cache-Control = "no-cache, no-store, must-revalidate"
+
 # Service worker — must always be fresh so browsers pick up updates immediately
 [[headers]]
 for = "/sw.js"
