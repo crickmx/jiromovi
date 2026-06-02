@@ -108,7 +108,7 @@ export default function AutomatizacionIA() {
       <PageHeader
         title="Automatización IA por E-Mail"
         description="Monitoreo inteligente de correos, clasificación automática y robots especializados"
-        icon={<Bot className="w-6 h-6" />}
+        icon={Bot}
       />
 
       <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 overflow-x-auto">
