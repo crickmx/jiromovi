@@ -3,6 +3,7 @@ import { Bell, Check, CheckCheck, X, Trash2, ListFilter as Filter, Mail, Message
 import { useNotifications } from '../contexts/NotificationContext';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { es } from 'date-fns/locale';
 
 const moduleIcons: Record<string, any> = {
@@ -153,7 +154,10 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
       >
         <Bell className={compact ? 'w-[18px] h-[18px]' : 'w-6 h-6'} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+          <span className={cn(
+            "absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none",
+            compact && "ring-2 ring-[rgb(var(--movi-accent-dark-rgb))]"
+          )}>
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -164,11 +168,17 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
         <div
           ref={panelRef}
           style={fixedPanel ? panelStyle : undefined}
-          className={`bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-white/10 flex flex-col ${
+          className={cn(
+            "bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-white/10 flex flex-col",
             fixedPanel
               ? ''
-              : `w-96 max-h-[600px] absolute z-50 ${dropdownSide === 'right' ? 'left-full ml-2 top-0' : 'right-0 top-full mt-2'}`
-          }`}
+              : cn(
+                  "absolute z-50",
+                  dropdownSide === 'right'
+                    ? "left-full ml-2 top-0 w-80 sm:w-96 max-h-[min(600px,calc(100vh-80px))]"
+                    : "right-0 top-full mt-2 w-80 sm:w-96 max-h-[min(600px,calc(100vh-80px))]"
+                )
+          )}
         >
           {/* Header */}
           <div className="p-4 border-b border-neutral-200 dark:border-white/10">

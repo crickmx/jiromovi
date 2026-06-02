@@ -8,7 +8,8 @@ interface MessageBubbleProps {
   showSender?: boolean;
 }
 
-function MediaContent({ message }: { message: CCMessage }) {
+function MediaContent({ message, isOutbound = false }: { message: CCMessage; isOutbound?: boolean }) {
+  const mediaBg = isOutbound ? 'bg-black/15' : 'bg-neutral-100 dark:bg-neutral-700';
   const { message_type, media_url, media_filename, media_mime_type, body, location_lat, location_lng, location_label } = message;
 
   if (message_type === 'image') {
@@ -24,7 +25,7 @@ function MediaContent({ message }: { message: CCMessage }) {
             />
           </a>
         ) : (
-          <div className="flex items-center gap-2 px-3 py-2 bg-black/10 rounded-lg">
+          <div className={cn("flex items-center gap-2 px-3 py-2 rounded-lg", mediaBg)}>
             <ImageIcon className="w-4 h-4 opacity-60" />
             <span className="text-xs opacity-70">[Imagen no disponible]</span>
           </div>
@@ -65,7 +66,7 @@ function MediaContent({ message }: { message: CCMessage }) {
             <source src={media_url} type={media_mime_type || 'video/mp4'} />
           </video>
         ) : (
-          <div className="flex items-center gap-2 px-3 py-2 bg-black/10 rounded-lg">
+          <div className={cn("flex items-center gap-2 px-3 py-2 rounded-lg", mediaBg)}>
             <Play className="w-4 h-4 opacity-60" />
             <span className="text-xs opacity-70">[Video no disponible]</span>
           </div>
@@ -77,7 +78,7 @@ function MediaContent({ message }: { message: CCMessage }) {
 
   if (message_type === 'document') {
     return (
-      <div className="flex items-center gap-2 px-3 py-2 bg-black/10 rounded-lg max-w-[240px]">
+      <div className={cn("flex items-center gap-2 px-3 py-2 rounded-lg max-w-[240px]", mediaBg)}>
         <FileText className="w-5 h-5 opacity-70 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium truncate">{media_filename || 'Documento'}</p>
@@ -101,7 +102,7 @@ function MediaContent({ message }: { message: CCMessage }) {
         href={mapsUrl || '#'}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-2 px-3 py-2 bg-black/10 rounded-lg hover:bg-black/15 transition-colors"
+        className={cn("flex items-center gap-2 px-3 py-2 rounded-lg hover:opacity-80 transition-colors", mediaBg)}
       >
         <MapPin className="w-4 h-4 opacity-70 flex-shrink-0" />
         <span className="text-xs">{location_label || (lat && lng ? `${lat.toFixed(4)}, ${lng.toFixed(4)}` : 'Ver ubicacion')}</span>
@@ -141,11 +142,12 @@ export function MessageBubble({ message, senderName, showSender = false }: Messa
           className={cn(
             'rounded-2xl px-3 py-2 text-sm shadow-sm',
             isOutbound
-              ? 'bg-accent text-white rounded-tr-sm'
+              ? 'bg-accent rounded-tr-sm'
               : 'bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 border border-neutral-100 dark:border-neutral-700 rounded-tl-sm'
           )}
+          style={isOutbound ? { color: 'rgb(var(--movi-accent-foreground-rgb))' } : undefined}
         >
-          <MediaContent message={message} />
+          <MediaContent message={message} isOutbound={isOutbound} />
         </div>
         <p className={cn('text-[10px] text-neutral-400 dark:text-neutral-500 px-1', isOutbound ? 'text-right' : 'text-left')}>
           {new Date(message.sent_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false })}
