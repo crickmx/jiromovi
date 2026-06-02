@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Image, Video, Plus, ListFilter as Filter, Trash2, Palette, Sparkles, TriangleAlert as AlertTriangle, RefreshCw } from 'lucide-react';
+import { Image, Video, Plus, ListFilter as Filter, Trash2, Palette, Sparkles, TriangleAlert as AlertTriangle, RefreshCw, Eye } from 'lucide-react';
 import { NuevaPlantillaModal } from '../components/NuevaPlantillaModal';
 import { PersonalizarPlantillaModal } from '../components/PersonalizarPlantillaModal';
 import { PlanMKTPremiumBlock } from '../components/PlanMKTPremiumBlock';
@@ -302,11 +302,8 @@ export default function Publicidad() {
     }
   };
 
-  const handleDescargarDiseno = (url: string) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `diseno-${Date.now()}.png`;
-    link.click();
+  const handleVerDetalle = (diseno: Diseno) => {
+    setSelectedDiseno(diseno);
   };
 
   return (
@@ -509,7 +506,7 @@ export default function Publicidad() {
                         <div className="absolute top-2 right-2">
                           <span className="flex items-center gap-1 px-2 py-0.5 bg-accent/90 text-white text-xs font-medium rounded-full shadow-sm">
                             <Sparkles className="w-3 h-3" />
-                            Copy IA
+                            Chava AI
                           </span>
                         </div>
                       )}
@@ -538,27 +535,26 @@ export default function Publicidad() {
                           )}
                         </div>
                       </div>
-                      <p className="text-xs text-neutral-500 dark:text-white/40 mb-3">
+                      <p className="text-xs text-neutral-500 dark:text-white/40 mt-1 mb-2">
                         {new Date(diseno.created_at).toLocaleDateString('es-MX', {
                           day: 'numeric',
                           month: 'long',
                           year: 'numeric'
                         })}
                       </p>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 mt-3">
                         {(!hasImage || diseno.needs_regeneration) ? (
                           <Button
                             size="sm"
+                            variant="outline"
                             className="flex-1"
                             onClick={(e) => {
                               e.stopPropagation();
-                              // Re-open the personalizar modal for this design's template
                               const plantilla = plantillas.find(p => p.id === diseno.plantilla_id);
                               if (plantilla) {
                                 setSelectedPlantilla(plantilla);
                                 setShowPersonalizarModal(true);
                               } else {
-                                // Load the plantilla on demand
                                 supabase.from('publicidad_plantillas').select('*').eq('id', diseno.plantilla_id).single()
                                   .then(({ data }) => {
                                     if (data) { setSelectedPlantilla(data); setShowPersonalizarModal(true); }
@@ -567,20 +563,21 @@ export default function Publicidad() {
                             }}
                           >
                             <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-                            Regenerar diseno
+                            Regenerar
                           </Button>
                         ) : (
                           <Button
                             size="sm"
                             className="flex-1"
-                            onClick={(e) => { e.stopPropagation(); handleDescargarDiseno(diseno.archivo_resultante_url || diseno.thumbnail_url || ''); }}
+                            onClick={(e) => { e.stopPropagation(); handleVerDetalle(diseno); }}
                           >
-                            Descargar
+                            <Eye className="w-3.5 h-3.5 mr-1.5" />
+                            Ver y descargar
                           </Button>
                         )}
                         <button
                           onClick={(e) => { e.stopPropagation(); handleEliminarDiseno(diseno); }}
-                          className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all"
+                          className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all border border-neutral-200 dark:border-white/10"
                           title="Eliminar diseno"
                         >
                           <Trash2 className="w-3.5 h-3.5" />

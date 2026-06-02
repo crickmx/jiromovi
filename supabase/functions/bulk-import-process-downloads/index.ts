@@ -594,8 +594,11 @@ function extractFilenameFromDisposition(header: string | null): string | null {
 
 function sanitizeFilename(name: string): string {
   return name
-    .replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ\s\-_\.]/g, "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")  // strip accent diacritics
+    .replace(/[^a-zA-Z0-9\s\-_\.]/g, "")
     .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
     .substring(0, 80)
     .toLowerCase();
 }
