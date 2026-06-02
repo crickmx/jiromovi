@@ -42,24 +42,6 @@ export function DashboardHero({ usuario }: Props) {
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2">
       {/* Left: greeting */}
       <div className="flex items-center gap-4">
-        {/* Avatar */}
-        <div className="relative flex-shrink-0">
-          <div className="w-12 h-12 rounded-2xl bg-[rgb(var(--movi-accent-rgb))] flex items-center justify-center text-[rgb(var(--movi-accent-foreground-rgb))] font-bold text-lg shadow-lg shadow-[rgb(var(--movi-accent-rgb))]/20 overflow-hidden">
-            {usuario.avatar_url ? (
-              <img
-                src={usuario.avatar_url}
-                alt={nombre}
-                className="w-full h-full object-cover"
-                onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-              />
-            ) : (
-              initials
-            )}
-          </div>
-          {/* Online dot */}
-          <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white dark:border-neutral-950" />
-        </div>
-
         {/* Text */}
         <div>
           <p className="text-xs text-neutral-400 dark:text-white/40 font-medium">{greeting}</p>

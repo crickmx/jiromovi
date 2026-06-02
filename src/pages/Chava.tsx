@@ -295,7 +295,7 @@ export default function Chava() {
           <ChavaAvatar size="md" animate />
           <div>
             <div className="flex items-center gap-2">
-              <img src="/logo_color.svg" alt="Chava AI" className="h-5 w-auto object-contain" onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+              <span className="text-sm font-bold text-white">Chava AI</span>
               <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(0,229,255,0.1)', color: '#00E5FF', border: '1px solid rgba(0,229,255,0.2)' }}>
                 agentedeseguros.ai
               </span>
