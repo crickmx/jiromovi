@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Play, BookOpen, Video, Users, MapPin, Award, Clock, Wifi, ChevronRight, Menu, X, Star, GraduationCap, Building2, ArrowRight, CircleCheck as CheckCircle, Monitor, Calendar, Globe, Zap, Mail, Phone, MessageSquare, Send, Loader as Loader2, CircleAlert as AlertCircle, ChevronDown, ExternalLink } from 'lucide-react';
+import { Play, BookOpen, Video, Users, MapPin, Award, Clock, Wifi, ChevronRight, Menu, X, GraduationCap, Building2, ArrowRight, CircleCheck as CheckCircle, Monitor, Calendar, Globe, Zap, Mail, Phone, MessageSquare, Send, Loader as Loader2, CircleAlert as AlertCircle, ChevronDown, ExternalLink } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { SELoginModal } from './SELoginModal';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
@@ -1103,44 +1103,6 @@ export default function SegurosEducationLanding() {
               Consultar disponibilidad en mi área
               <ArrowRight className="w-4 h-4" />
             </button>
-          </div>
-        </section>
-
-        {/* ─── TESTIMONIALES ────────────────────────────────────────────── */}
-        <section className="py-24 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center space-y-4 mb-16">
-              <SectionTag>Testimonios</SectionTag>
-              <h2 className="text-3xl font-extrabold text-neutral-900">
-                Lo que dicen nuestros <GradientText>agentes</GradientText>
-              </h2>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              {[
-                { name: 'Agente de Seguros', role: 'Sucursal Norte', quote: 'El Curso Cédula A me dio la base que necesitaba para pasar el examen. El material es claro y bien estructurado.' },
-                { name: 'Agente de Seguros', role: 'Sucursal Centro', quote: 'Las sesiones del Aula Virtual me permiten actualizarme sin descuidar mi agenda de trabajo. Muy práctica la plataforma.' },
-                { name: 'Agente de Seguros', role: 'Sucursal Sur', quote: 'Los cursos On Demand son perfectos para repasar temas cuando tengo una duda con un cliente. Siempre disponibles.' },
-              ].map((t, i) => (
-                <div key={i} className="p-7 rounded-3xl bg-neutral-50 border border-neutral-100 space-y-4 hover:shadow-md transition-shadow">
-                  <div className="flex gap-1">
-                    {[...Array(5)].map((_, j) => (
-                      <Star key={j} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    ))}
-                  </div>
-                  <p className="text-neutral-700 text-sm leading-relaxed italic">"{t.quote}"</p>
-                  <div className="flex items-center gap-3 pt-2 border-t border-neutral-100">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
-                      <Users className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-neutral-900">{t.name}</p>
-                      <p className="text-xs text-neutral-500">{t.role}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         </section>
 
