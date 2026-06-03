@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Image, Video, Plus, ListFilter as Filter, Trash2, Palette, Sparkles, TriangleAlert as AlertTriangle, RefreshCw, Eye } from 'lucide-react';
+import { Image, Video, Plus, ListFilter as Filter, Trash2, Sparkles, TriangleAlert as AlertTriangle, RefreshCw, Eye } from 'lucide-react';
 import { NuevaPlantillaModal } from '../components/NuevaPlantillaModal';
 import { PersonalizarPlantillaModal } from '../components/PersonalizarPlantillaModal';
 import { PlanMKTPremiumBlock } from '../components/PlanMKTPremiumBlock';
@@ -322,50 +322,23 @@ export default function Publicidad({ initialTab = 'biblioteca' }: PublicidadProp
   return (
     <div className="space-y-4">
       <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4 sm:p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex-1">
             <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
-              Publicidad
+              {activeTab === 'biblioteca' ? 'Biblioteca de Plantillas' : 'Mis Diseños'}
             </h2>
             <p className="text-sm text-neutral-500 dark:text-white/50 mt-0.5">
-              Crea diseños personalizados con tu logo y texto
+              {activeTab === 'biblioteca'
+                ? 'Elige una plantilla y personalízala con tu logo y texto'
+                : 'Diseños personalizados que has creado'}
             </p>
           </div>
-          {isAdmin && (
+          {isAdmin && activeTab === 'biblioteca' && (
             <Button size="sm" onClick={() => setShowNuevaPlantillaModal(true)}>
               <Plus className="w-4 h-4 mr-1.5" />
               Nueva Plantilla
             </Button>
           )}
-        </div>
-
-        <div className="flex overflow-x-auto space-x-1 border-b border-neutral-200 dark:border-white/8 -mb-px scrollbar-hide">
-          <button
-            onClick={() => setActiveTab('biblioteca')}
-            className={`flex-shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-all ${
-              activeTab === 'biblioteca'
-                ? 'text-accent border-accent'
-                : 'border-transparent text-neutral-500 dark:text-white/50 hover:text-neutral-700 dark:hover:text-white/70'
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              <Palette className="w-4 h-4" />
-              <span>Biblioteca</span>
-            </div>
-          </button>
-          <button
-            onClick={() => setActiveTab('mis-disenos')}
-            className={`flex-shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-all ${
-              activeTab === 'mis-disenos'
-                ? 'text-accent border-accent'
-                : 'border-transparent text-neutral-500 dark:text-white/50 hover:text-neutral-700 dark:hover:text-white/70'
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              <Image className="w-4 h-4" />
-              <span>Mis Diseños</span>
-            </div>
-          </button>
         </div>
       </div>
 
