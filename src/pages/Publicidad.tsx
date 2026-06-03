@@ -125,9 +125,13 @@ function PlantillaImage({
   );
 }
 
-export default function Publicidad() {
+interface PublicidadProps {
+  initialTab?: 'biblioteca' | 'mis-disenos';
+}
+
+export default function Publicidad({ initialTab = 'biblioteca' }: PublicidadProps) {
   const { usuario } = useAuth();
-  const [activeTab, setActiveTab] = useState<'biblioteca' | 'mis-disenos'>('biblioteca');
+  const [activeTab, setActiveTab] = useState<'biblioteca' | 'mis-disenos'>(initialTab);
   const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
   const [disenos, setDisenos] = useState<Diseno[]>([]);
   const [loading, setLoading] = useState(true);

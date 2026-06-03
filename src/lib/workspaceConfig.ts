@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartBar as BarChart3, Video, BookMarked, BadgeCheck, Compass, Calculator, Smartphone, Mail, MessageSquare, Bell, Sparkles, Brain, Database, Eye } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Send, DollarSign, Activity, Building, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartBar as BarChart3, Video, BookMarked, BadgeCheck, Compass, Calculator, Smartphone, Mail, MessageSquare, Bell, Sparkles, Brain, Database, Eye, Image as ImageIcon } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
@@ -124,9 +124,10 @@ const WORKSPACE_MERCADOTECNIA: WorkspaceDefinition = {
   icon: Palette,
   visibleTo: ALL_ROLES,
   items: [
-    { path: '/mercadotecnia/mi-marca', label: 'Mi Marca', icon: BadgeCheck, visibleTo: ALL_ROLES },
     { path: '/mercadotecnia/publicidad', label: 'Publicidad', icon: Megaphone, visibleTo: ALL_ROLES },
-    { path: '/mercadotecnia/mi-pagina-web', label: 'Mi Pagina Web', icon: Globe, visibleTo: ALL_ROLES },
+    { path: '/mercadotecnia/mis-disenos', label: 'Mis Diseños', icon: ImageIcon, visibleTo: ALL_ROLES },
+    { path: '/mercadotecnia/mi-pagina-web', label: 'Mi Página Web', icon: Globe, visibleTo: ALL_ROLES },
+    { path: '/mercadotecnia/mi-marca', label: 'Mi Marca', icon: BadgeCheck, visibleTo: ALL_ROLES },
   ],
 };
 

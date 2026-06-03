@@ -9,10 +9,10 @@ type SubSection = 'mi-marca' | 'mi-pagina-web' | 'publicidad';
 
 const TABS: { key: SubSection; label: string; icon: typeof Sparkles; description: string }[] = [
   {
-    key: 'mi-marca',
-    label: 'Mi Marca',
-    icon: Sparkles,
-    description: 'Foto de perfil y logotipo que se aplican en todo el sistema',
+    key: 'publicidad',
+    label: 'Publicidad',
+    icon: Palette,
+    description: 'Plantillas y diseños personalizados para tus campañas',
   },
   {
     key: 'mi-pagina-web',
@@ -21,10 +21,10 @@ const TABS: { key: SubSection; label: string; icon: typeof Sparkles; description
     description: 'Tu sitio público con tu información profesional',
   },
   {
-    key: 'publicidad',
-    label: 'Publicidad',
-    icon: Palette,
-    description: 'Plantillas y diseños personalizados para tus campañas',
+    key: 'mi-marca',
+    label: 'Mi Marca',
+    icon: Sparkles,
+    description: 'Foto de perfil y logotipo que se aplican en todo el sistema',
   },
 ];
 
