@@ -19,7 +19,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           // Spacing + typography
           "px-3.5 py-2 text-sm text-neutral-900 dark:text-white",
           // Placeholder
-          "placeholder:text-neutral-400 dark:placeholder:text-white/30",
+          "placeholder:text-neutral-400 dark:placeholder:text-white/45",
           // File input reset
           "file:border-0 file:bg-transparent file:text-sm file:font-medium",
           // Focus
