@@ -5,12 +5,14 @@ import {
   Phone, Mail, MessageCircle, Loader as Loader2,
   ChevronLeft, ChevronRight, ArrowUp, Car, ExternalLink,
   Search, X, ChevronDown, Award, Smartphone, Globe, Menu,
+  UserPlus, Download,
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { getPublicWebPageBySlug } from '../lib/webPagesUtils';
 import type { PublicWebPageData, SharedFormLink } from '../lib/webPagesTypes';
 import { DEFAULT_TEXT } from '../lib/webPagesTypes';
 import { createColorVariant } from '../lib/animationUtils';
+import { type AgentVCardData, downloadVCard } from '../lib/vcardUtils';
 
 /* ─────────────────────────────────────────────
    TIPOS / METADATOS (sin cambios en lógica)
@@ -211,6 +213,8 @@ export default function PaginaPublicaAsesor() {
   const [showAllFeatured, setShowAllFeatured] = useState(false);
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [vcardLoading, setVcardLoading] = useState(false);
 
   useEffect(() => {
     if (!slug) { setNotFound(true); setLoading(false); return; }
@@ -410,6 +414,29 @@ export default function PaginaPublicaAsesor() {
   const whatsappNumber = user.phone?.replace(/\D/g, '');
   const whatsappLink = whatsappNumber ? `https://wa.me/52${whatsappNumber}` : '#';
   const multicotizadorUrl = `https://multicotizador.digital/cotiza/${slug}`;
+
+  const agentVCardData: AgentVCardData = {
+    name: user.name,
+    brand: user.office?.name || null,
+    email: user.email || null,
+    phone: user.phone || null,
+    photoUrl: user.photo_url || null,
+    slug: slug || '',
+  };
+
+  const handleSaveContact = async () => {
+    if (window.innerWidth < 768) {
+      setVcardLoading(true);
+      try { await downloadVCard(agentVCardData); } finally { setVcardLoading(false); }
+    } else {
+      setShowContactModal(true);
+    }
+  };
+
+  const handleDownloadVCard = async () => {
+    setVcardLoading(true);
+    try { await downloadVCard(agentVCardData); } finally { setVcardLoading(false); }
+  };
 
   const categoriesText = processedLinks.length > 0
     ? processedLinks.slice(0, 6).map(l => l.displayName.toLowerCase()).join(', ')
@@ -643,16 +670,27 @@ export default function PaginaPublicaAsesor() {
                       Llamar
                     </a>
                   </div>
-                  <a
-                    href={multicotizadorUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={btnPrimary}
-                    style={{ backgroundColor: secondaryColor }}
-                  >
-                    <Car className="w-4 h-4" />
-                    Multicotizador de Autos
-                  </a>
+                  <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
+                    <a
+                      href={multicotizadorUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={btnPrimary}
+                      style={{ backgroundColor: secondaryColor }}
+                    >
+                      <Car className="w-4 h-4" />
+                      Multicotizador de Autos
+                    </a>
+                    <button
+                      onClick={handleSaveContact}
+                      disabled={vcardLoading}
+                      className={btnOutline}
+                      style={{ borderColor: `${primaryColor}60`, color: primaryColor }}
+                    >
+                      {vcardLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                      Guardar Contacto
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1182,6 +1220,15 @@ export default function PaginaPublicaAsesor() {
                       <span className="truncate text-xs">Sitio web</span>
                     </a>
                   )}
+                  <button
+                    onClick={handleSaveContact}
+                    disabled={vcardLoading}
+                    className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-80 w-full"
+                    style={{ backgroundColor: `${primaryColor}12`, color: primaryColor }}
+                  >
+                    {vcardLoading ? <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin" /> : <UserPlus className="w-4 h-4 flex-shrink-0" />}
+                    <span>Guardar Contacto</span>
+                  </button>
                 </div>
               </div>
 
@@ -1385,22 +1432,124 @@ export default function PaginaPublicaAsesor() {
             >
               <MessageCircle className="w-4.5 h-4.5" /> WhatsApp
             </a>
-            <a
-              href={`tel:${user.phone?.replace(/\D/g, '')}`}
-              className="flex-1 flex items-center justify-center gap-2 py-3.5 font-bold text-sm bg-white active:bg-gray-50 transition-all"
-              style={{ color: primaryColor }}
-            >
-              <Phone className="w-4.5 h-4.5" /> Llamar
-            </a>
-            <a
-              href={`mailto:${user.email}`}
+            <button
+              onClick={() => scrollToSection('cotizar')}
               className="flex-1 flex items-center justify-center gap-2 py-3.5 font-bold text-sm bg-white active:bg-gray-50 transition-all"
               style={{ color: secondaryColor }}
             >
-              <Mail className="w-4.5 h-4.5" /> Email
-            </a>
+              <Car className="w-4.5 h-4.5" /> Cotizar
+            </button>
+            <button
+              onClick={handleSaveContact}
+              disabled={vcardLoading}
+              className="flex-1 flex items-center justify-center gap-2 py-3.5 font-bold text-sm bg-white active:bg-gray-50 transition-all"
+              style={{ color: primaryColor }}
+            >
+              {vcardLoading ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : <UserPlus className="w-4.5 h-4.5" />}
+              Guardar
+            </button>
           </div>
         </div>
+        {/* ═══════════════════════════════════════
+            MODAL: VISTA PREVIA CONTACTO (DESKTOP)
+        ═══════════════════════════════════════ */}
+        {showContactModal && (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            onClick={() => setShowContactModal(false)}
+          >
+            <div
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div
+                className="px-6 pt-6 pb-5 flex items-start justify-between"
+                style={{ borderBottom: `3px solid ${primaryColor}` }}
+              >
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Guardar Contacto</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">Descarga la tarjeta digital del asesor</p>
+                </div>
+                <button
+                  onClick={() => setShowContactModal(false)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all ml-3 flex-shrink-0"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Agent card */}
+              <div className="px-6 py-5 space-y-4">
+                {/* Photo + name */}
+                <div className="flex items-center gap-4">
+                  {user.photo_url ? (
+                    <div
+                      className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0"
+                      style={{ border: `2px solid ${primaryColor}` }}
+                    >
+                      <img src={user.photo_url} alt={user.name} crossOrigin="anonymous" className="w-full h-full object-cover" onError={e => { e.currentTarget.style.display = 'none'; }} />
+                    </div>
+                  ) : (
+                    <div
+                      className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold text-white flex-shrink-0"
+                      style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)` }}
+                    >
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="font-bold text-gray-900 text-base leading-tight">{user.name}</p>
+                    <p className="text-xs font-medium mt-0.5" style={{ color: primaryColor }}>Agente de Seguros</p>
+                    {user.office?.name && (
+                      <p className="text-xs text-gray-500 mt-0.5 truncate">{user.office.name}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Contact details */}
+                <div className="space-y-2 text-sm">
+                  {user.phone && (
+                    <div className="flex items-center gap-2.5 text-gray-700">
+                      <Phone className="w-4 h-4 flex-shrink-0" style={{ color: primaryColor }} />
+                      <span>{user.phone}</span>
+                    </div>
+                  )}
+                  {user.email && (
+                    <div className="flex items-center gap-2.5 text-gray-700">
+                      <Mail className="w-4 h-4 flex-shrink-0" style={{ color: primaryColor }} />
+                      <span className="truncate text-xs">{user.email}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2.5 text-gray-500">
+                    <Globe className="w-4 h-4 flex-shrink-0" style={{ color: primaryColor }} />
+                    <span className="text-xs truncate">agentedeseguros.website/{slug}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Download CTA */}
+              <div className="px-6 pb-6">
+                <button
+                  onClick={handleDownloadVCard}
+                  disabled={vcardLoading}
+                  className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl font-bold text-white text-sm transition-all hover:brightness-90 active:scale-95 shadow-sm disabled:opacity-60"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  {vcardLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  {vcardLoading ? 'Generando...' : 'Descargar .vcf'}
+                </button>
+                <p className="text-center text-xs text-gray-400 mt-2">
+                  Compatible con iPhone, Android, Outlook y Gmail
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

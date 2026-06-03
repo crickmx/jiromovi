@@ -5,6 +5,8 @@ interface ChavaBrandLogoProps {
   size?: 'sm' | 'md' | 'lg';
   className?: string;
   showTagline?: boolean;
+  showDomain?: boolean;
+  theme?: string;
 }
 
 export function ChavaBrandLogo({ size = 'md', className, showTagline = false }: ChavaBrandLogoProps) {
