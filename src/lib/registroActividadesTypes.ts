@@ -12,19 +12,20 @@ export interface TipoTramiteConfig {
 }
 
 export const TIPO_TRAMITE_OPTIONS: TipoTramiteConfig[] = [
-  { value: 'cotizacion_emision',              label: 'Cotización / Emisión',     area: 'Comercial',    tipoAplicable: 'general' },
-  { value: 'correccion_poliza_registrada',    label: 'Corrección de póliza',     area: 'Operaciones',  tipoAplicable: 'general' },
-  { value: 'correccion_comisiones',           label: 'Corrección de comisiones', area: 'Operaciones',  tipoAplicable: 'general' },
-  { value: 'registro_poliza',                 label: 'Registro de póliza',       area: 'Operaciones',  tipoAplicable: 'general' },
-  { value: 'solicitud_comisiones_pendientes', label: 'Solicitud de comisiones',  area: 'Operaciones',  tipoAplicable: 'solicitud_comisiones' },
-  { value: 'cambio_bancario',                 label: 'Cambio bancario',          area: 'Operaciones',  tipoAplicable: 'general' },
-  { value: 'renovaciones',                    label: 'Renovaciones',             area: 'Comercial',    tipoAplicable: 'general' },
-  { value: 'cobranza',                        label: 'Cobranza',                 area: 'Comercial',    tipoAplicable: 'general' },
-  { value: 'otros_comercial',                 label: 'Otros',                    area: 'Comercial',    tipoAplicable: 'general' },
-  { value: 'formulario_cotizacion',           label: 'Formulario de cotización', area: 'Comercial',    tipoAplicable: 'general' },
+  { value: 'cotizacion_emision',              label: 'Cotización / Emisión',              area: 'Comercial',    tipoAplicable: 'general' },
+  { value: 'correccion_poliza_endoso',        label: 'Corrección de Póliza / Endoso',     area: 'Comercial',    tipoAplicable: 'general' },
+  { value: 'correccion_poliza_registrada',    label: 'Corrección de Registro de Póliza',  area: 'Operaciones',  tipoAplicable: 'general' },
+  { value: 'correccion_comisiones',           label: 'Corrección de comisiones',          area: 'Operaciones',  tipoAplicable: 'general' },
+  { value: 'registro_poliza',                 label: 'Registro de póliza',                area: 'Operaciones',  tipoAplicable: 'general' },
+  { value: 'solicitud_comisiones_pendientes', label: 'Solicitud de comisiones',           area: 'Operaciones',  tipoAplicable: 'solicitud_comisiones' },
+  { value: 'cambio_bancario',                 label: 'Cambio bancario',                   area: 'Operaciones',  tipoAplicable: 'general' },
+  { value: 'renovaciones',                    label: 'Renovaciones',                      area: 'Comercial',    tipoAplicable: 'general' },
+  { value: 'cobranza',                        label: 'Cobranza',                          area: 'Comercial',    tipoAplicable: 'general' },
+  { value: 'otros_comercial',                 label: 'Otros',                             area: 'Comercial',    tipoAplicable: 'general' },
+  { value: 'formulario_cotizacion',           label: 'Formulario de cotización',          area: 'Comercial',    tipoAplicable: 'general' },
 ];
 
-export const COMMERCIAL_TICKET_TYPES = ['renovaciones', 'cobranza', 'otros_comercial'] as const;
+export const COMMERCIAL_TICKET_TYPES = ['renovaciones', 'cobranza', 'otros_comercial', 'correccion_poliza_endoso'] as const;
 
 export function isCommercialTicketType(tipo: string): boolean {
   return COMMERCIAL_TICKET_TYPES.includes(tipo as typeof COMMERCIAL_TICKET_TYPES[number]);

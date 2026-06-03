@@ -600,6 +600,10 @@ export function NuevoTramiteModal({
         ticketData.poliza = polizaNumero.trim() || null;
       }
 
+      if (tipoTramite === 'correccion_poliza_endoso') {
+        ticketData.poliza = comPoliza.trim() || null;
+      }
+
       if (tipoTramite === 'correccion_comisiones') {
         const lote = lotesDisponibles.find(l => l.id === loteSeleccionado);
         const documento = documentosLote.find(d => d.id === documentoSeleccionado);
@@ -804,7 +808,9 @@ export function NuevoTramiteModal({
       case 'cotizacion_emision':
         return 'Cotización / Emisión - Proceso completo de cotización y emisión de pólizas';
       case 'correccion_poliza_registrada':
-        return 'Corrección de póliza registrada';
+        return 'Corrección de Registro de Póliza - Corrección en datos registrados en Operaciones';
+      case 'correccion_poliza_endoso':
+        return 'Corrección de Póliza / Endoso - Corrección o endoso de póliza (Comercial)';
       case 'correccion_comisiones':
         return 'Corrección de comisiones';
       case 'registro_poliza':
@@ -1111,6 +1117,22 @@ export function NuevoTramiteModal({
                   value={comAsunto}
                   onChange={(e) => setComAsunto(e.target.value)}
                   placeholder="Describe brevemente el asunto del trámite"
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                />
+              </div>
+            )}
+
+            {tipoTramite === 'correccion_poliza_endoso' && (
+              <div>
+                <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                  <FileText className="w-4 h-4 inline mr-2" />
+                  Número de Póliza
+                </label>
+                <input
+                  type="text"
+                  value={comPoliza}
+                  onChange={(e) => setComPoliza(e.target.value)}
+                  placeholder="Ingresa el número de póliza"
                   className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
                 />
               </div>
