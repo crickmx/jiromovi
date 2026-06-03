@@ -4,10 +4,8 @@ import {
   useRef,
   useState,
   useCallback,
-  useEffect,
   type ReactNode,
 } from 'react';
-import { useLocation } from 'react-router-dom';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -23,16 +21,15 @@ interface LoadingContextValue {
 
 const LoadingContext = createContext<LoadingContextValue | null>(null);
 
-// ─── Inner provider (must be inside BrowserRouter) ───────────────────────────
+// ─── Provider ─────────────────────────────────────────────────────────────────
 
-function LoadingInner({ children }: { children: ReactNode }) {
+export function LoadingProvider({ children }: { children: ReactNode }) {
+  }
   const [isLoading, setIsLoading] = useState(false);
   const [label, setLabel] = useState<string | null>(null);
   // Tracks how many concurrent operations are in-flight
   const depthRef = useRef(0);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const location = useLocation();
-  const prevPathRef = useRef(location.pathname);
 
   const show = useCallback((lbl?: string) => {
     if (hideTimerRef.current) {
@@ -55,7 +52,8 @@ function LoadingInner({ children }: { children: ReactNode }) {
     }, 250);
   }, []);
 
-  // Wraps a promise: shows loader after 500ms debounce, hides when promise settles
+  // Wraps a promise: shows loader after 500ms debounce, hides when promise settles.
+  // Fast operations (<500ms) never show the overlay at all.
   const wrap = useCallback(
     <T,>(promise: Promise<T>, lbl?: string): Promise<T> => {
       let shown = false;
@@ -72,16 +70,6 @@ function LoadingInner({ children }: { children: ReactNode }) {
     [show, hide]
   );
 
-  // Auto-detect route changes
-  useEffect(() => {
-    if (location.pathname !== prevPathRef.current) {
-      prevPathRef.current = location.pathname;
-      show('Cargando...');
-      const t = setTimeout(() => hide(), 600);
-      return () => clearTimeout(t);
-    }
-  }, [location.pathname, show, hide]);
-
   return (
     <LoadingContext.Provider value={{ isLoading, label, show, hide, wrap }}>
       {children}
@@ -89,17 +77,11 @@ function LoadingInner({ children }: { children: ReactNode }) {
   );
 }
 
-// ─── Public provider ──────────────────────────────────────────────────────────
-// NOTE: Must be placed INSIDE BrowserRouter so the inner component
-//       can use useLocation for route-change detection.
-
-export function LoadingProvider({ children }: { children: ReactNode }) {
-  return <LoadingInner>{children}</LoadingInner>;
-}
-
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 
 export function useLoading(): LoadingContextValue {
+    }
+  )
   const ctx = useContext(LoadingContext);
   if (!ctx) throw new Error('useLoading must be used inside LoadingProvider');
   return ctx;

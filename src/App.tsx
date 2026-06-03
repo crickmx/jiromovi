@@ -247,12 +247,11 @@ function MoviSplash() {
 // ── 4. MOVI full platform (app.movi.digital + localhost) ─────────────────────
 function MoviApp() {
   return (
-    <BrowserRouter>
-      <ImpersonationProvider>
-        <MoviAuthProvider>
-          {/* LoadingProvider must be inside BrowserRouter to detect route changes */}
-          <LoadingProvider>
-            <LoadingOverlay />
+    <LoadingProvider>
+      <LoadingOverlay />
+      <BrowserRouter>
+        <ImpersonationProvider>
+          <MoviAuthProvider>
             <Routes>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/login" element={<MoviLogin />} />
@@ -287,10 +286,10 @@ function MoviApp() {
                 </MoviPrivateRoute>
               } />
             </Routes>
-          </LoadingProvider>
-        </MoviAuthProvider>
-      </ImpersonationProvider>
-    </BrowserRouter>
+          </MoviAuthProvider>
+        </ImpersonationProvider>
+      </BrowserRouter>
+    </LoadingProvider>
   );
 }
 
