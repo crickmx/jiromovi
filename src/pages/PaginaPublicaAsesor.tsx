@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import {
   Phone, Mail, MessageCircle, Loader as Loader2,
   ChevronLeft, ChevronRight, ArrowUp, Car, ExternalLink,
@@ -460,14 +459,17 @@ export default function PaginaPublicaAsesor() {
 
   return (
     <>
-      <Helmet>
-        <title>{user.name}{user.office?.name ? ` - ${user.office.name}` : ' - Asesor de Seguros'}</title>
-        <meta name="description" content={seoText} />
-        <meta property="og:title" content={`${user.name}${user.office?.name ? ` - ${user.office.name}` : ' - Asesor de Seguros'}`} />
-        <meta property="og:description" content={seoText} />
-        {user.photo_url && <meta property="og:image" content={user.photo_url} />}
-        <meta name="robots" content="index, follow" />
-      </Helmet>
+      {/* SEO meta via side-effect */}
+      {(() => {
+        const title = `${user.name}${user.office?.name ? ` - ${user.office.name}` : ' - Asesor de Seguros'}`;
+        if (typeof document !== 'undefined') {
+          document.title = title;
+          let desc = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+          if (!desc) { desc = document.createElement('meta'); desc.name = 'description'; document.head.appendChild(desc); }
+          desc.content = seoText;
+        }
+        return null;
+      })()}
 
       <div className="bg-white min-h-screen overflow-x-hidden pb-16 md:pb-0">
 

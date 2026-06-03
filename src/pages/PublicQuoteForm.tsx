@@ -1,11 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
-import {
-  Loader2, Check, AlertCircle, ArrowRight, ArrowLeft,
-  User, Mail, MessageCircle, ChevronDown,
-  Send, FileText, Home, Globe,
-} from 'lucide-react';
+import { Loader as Loader2, Check, CircleAlert as AlertCircle, ArrowRight, ArrowLeft, User, Mail, MessageCircle, ChevronDown, Send, FileText, Hop as Home, Globe } from 'lucide-react';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -282,10 +277,10 @@ export default function PublicQuoteForm() {
 
   return (
     <>
-      <Helmet>
-        <title>{link!.form_title} - {agentName}</title>
-        <meta name="robots" content="noindex, nofollow" />
-      </Helmet>
+      {typeof document !== 'undefined' && (() => {
+        document.title = `${link!.form_title} - ${agentName}`;
+        return null;
+      })()}
 
       <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#f8f9fb' }}>
         {/* Hero header */}
