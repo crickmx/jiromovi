@@ -100,6 +100,42 @@ export async function getUsersByOffice(oficinaId?: string): Promise<UsuarioOfici
   }));
 }
 
+/**
+ * Finds the best responsable for a ticket created by an agent.
+ * Priority: Gerente first, then Empleado, from the same office.
+ * Returns null if no suitable user is found.
+ */
+export async function getResponsableByOffice(oficinaId: string): Promise<UsuarioOficina | null> {
+  const { data, error } = await supabase
+    .from('usuarios')
+    .select(`
+      id,
+      nombre_completo,
+      rol,
+      oficina_id,
+      oficinas:oficina_id (nombre)
+    `)
+    .eq('estado', 'activo')
+    .eq('oficina_id', oficinaId)
+    .in('rol', ['Gerente', 'Empleado'])
+    .order('rol') // 'Gerente' < 'Empleado' alphabetically — handle priority below
+    .order('nombre_completo');
+
+  if (error || !data || data.length === 0) return null;
+
+  // Prefer Gerente over Empleado
+  const gerente = data.find((u: any) => u.rol === 'Gerente');
+  const chosen = gerente || data[0];
+
+  return {
+    id: chosen.id,
+    nombre_completo: chosen.nombre_completo,
+    rol: chosen.rol,
+    oficina_id: chosen.oficina_id,
+    oficina_nombre: (chosen as any).oficinas?.nombre || null,
+  };
+}
+
 export async function getUsersWhoCanAttend(): Promise<UsuarioOficina[]> {
   const { data, error } = await supabase
     .from('usuarios')
