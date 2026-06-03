@@ -19,7 +19,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           // Typography — explicit colors, no opacity fallbacks that can disappear
           "px-3.5 py-2 text-sm text-neutral-900 dark:text-white",
           // Placeholder — WCAG AA: neutral-400 on white = 4.6:1, white/50 on dark bg = ~3:1 min
-          "placeholder:text-neutral-400 dark:placeholder:text-white/50",
+          "placeholder:text-neutral-400 dark:placeholder:text-white/60",
           // File input reset
           "file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-neutral-700 dark:file:text-white/70",
           // Focus — visible ring for keyboard nav

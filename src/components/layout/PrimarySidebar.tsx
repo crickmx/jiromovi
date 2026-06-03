@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { NotificationBell } from '../NotificationBell';
 import { ThemeToggle } from '../ThemeToggle';
+import { ChavaOrbIcon } from '../chava/ChavaOrbIcon';
 
 interface Props {
   activeWorkspaceId: WorkspaceId | null;
@@ -148,6 +149,31 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
         {/* Profile + Controls */}
         <div className="flex flex-col items-center gap-2.5 pb-4 pt-3 w-full">
           <div className="sidebar-rail-sep w-8 h-px mb-1" />
+
+          {/* Chava AI */}
+          {mobileMode ? (
+            <button
+              onClick={() => handleNav('/chava')}
+              className="sidebar-rail-chava-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90"
+              title="Chava IA"
+            >
+              <ChavaOrbIcon size="sm" />
+            </button>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => handleNav('/chava')}
+                  className="sidebar-rail-chava-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90"
+                >
+                  <ChavaOrbIcon size="sm" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={10} className={TOOLTIP_CLS}>
+                Chava IA
+              </TooltipContent>
+            </Tooltip>
+          )}
 
           {/* Notification Bell */}
           <div className="flex items-center justify-center w-11">

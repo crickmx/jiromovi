@@ -24,7 +24,7 @@ const SelectTrigger = React.forwardRef<
       "text-neutral-900 dark:text-white",
       "ring-offset-background",
       // Empty/placeholder state
-      "data-[placeholder]:text-neutral-400 dark:data-[placeholder]:text-white/50",
+      "data-[placeholder]:text-neutral-400 dark:data-[placeholder]:text-white/60",
       // Focus
       "focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent/70",
       // Disabled

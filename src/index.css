@@ -153,3 +153,83 @@ body {
 [role="menuitem"]:focus-visible {
   outline: none;
 }
+
+/* ────────────────────────────────────────────────────────────
+   SIDEBAR RAIL — primary icon sidebar
+   Uses dynamic office accent via CSS vars from themeUtils.applyTheme()
+───────────────────────────────────────────────────────────── */
+.sidebar-rail {
+  background: rgb(var(--movi-accent-dark-rgb));
+  border-right: 1px solid rgba(255,255,255,0.08);
+}
+
+:root.dark .sidebar-rail {
+  background: rgb(var(--movi-accent-dark-rgb));
+  border-right: 1px solid rgba(255,255,255,0.07);
+}
+
+/* Nav icon buttons */
+.sidebar-rail-btn {
+  color: rgba(255,255,255,0.55);
+  transition: background 0.15s, color 0.15s, transform 0.1s;
+}
+.sidebar-rail-btn:hover {
+  background: rgba(255,255,255,0.10);
+  color: rgba(255,255,255,0.90);
+}
+.sidebar-rail-btn.active {
+  background: rgba(255,255,255,0.14);
+  color: #ffffff;
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,0.20) inset;
+}
+
+/* Chava AI dedicated button */
+.sidebar-rail-chava-btn {
+  color: rgba(255,255,255,0.75);
+  transition: background 0.15s, color 0.15s, transform 0.1s, box-shadow 0.15s;
+  position: relative;
+}
+.sidebar-rail-chava-btn:hover {
+  background: rgba(255,255,255,0.10);
+  color: #ffffff;
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,0.18) inset;
+}
+
+/* Logo button */
+.sidebar-rail-logo-btn {
+  background: rgba(255,255,255,0.12);
+  transition: background 0.15s, transform 0.1s;
+}
+.sidebar-rail-logo-btn:hover {
+  background: rgba(255,255,255,0.18);
+}
+
+/* Separator line */
+.sidebar-rail-sep {
+  background: rgba(255,255,255,0.12);
+}
+
+/* Avatar ring */
+.sidebar-rail-avatar-ring {
+  padding: 2px;
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,0.20);
+}
+.sidebar-rail-avatar-ring:hover {
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.40);
+}
+
+/* Avatar fallback text */
+.sidebar-rail-avatar-fallback {
+  background: rgba(255,255,255,0.15);
+  color: #ffffff;
+}
+
+/* Sign out button */
+.sidebar-rail-signout {
+  color: rgba(255,255,255,0.45);
+  transition: background 0.15s, color 0.15s;
+}
+.sidebar-rail-signout:hover {
+  background: rgba(255,80,80,0.18);
+  color: rgba(255,150,150,0.95);
+}
