@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { X, RefreshCw, Copy, Check, Pencil, Undo2, Download, Sparkles, Loader as Loader2 } from 'lucide-react';
+import { useState } from 'react';import { X, RefreshCw, Copy, Check, Pencil, Undo2, Download, Sparkles, Loader as Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Button } from '@/components/ui/button';
 
@@ -48,6 +47,48 @@ function buildFullText(copy: AICopy): string {
     parts.push(copy.hashtags.map(h => `#${h.replace(/^#/, '')}`).join(' '));
   }
   return parts.join('\n\n');
+}
+
+function ModalImage({ src }: { src: string | null }) {
+  const [imgStatus, setImgStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+  const [retrySrc, setRetrySrc] = useState<string | null>(null);
+  const effectiveSrc = retrySrc ?? src;
+
+  if (!src) {
+    return (
+      <div className="w-full h-full flex items-center justify-center text-neutral-300 dark:text-white/20">
+        <Sparkles className="w-16 h-16" />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {imgStatus === 'loading' && (
+        <div className="absolute inset-0 bg-neutral-200 dark:bg-neutral-700 animate-pulse" />
+      )}
+      {imgStatus === 'error' && (
+        <div className="absolute inset-0 flex items-center justify-center text-neutral-300 dark:text-white/20">
+          <Sparkles className="w-16 h-16" />
+        </div>
+      )}
+      <img
+        src={effectiveSrc ?? src}
+        alt="Diseno"
+        crossOrigin="anonymous"
+        className={`w-full h-full object-contain transition-opacity duration-300 ${imgStatus === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
+        onLoad={() => setImgStatus('loaded')}
+        onError={() => {
+          if (!retrySrc && src) {
+            const sep = src.includes('?') ? '&' : '?';
+            setRetrySrc(`${src}${sep}_r=${Date.now()}`);
+          } else {
+            setImgStatus('error');
+          }
+        }}
+      />
+    </>
+  );
 }
 
 export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignDetailModalProps) {
@@ -212,17 +253,7 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
             {/* Image Preview */}
             <div className="p-5 flex items-center justify-center bg-neutral-50 dark:bg-neutral-800/30 border-b md:border-b-0 md:border-r border-neutral-200 dark:border-white/8">
               <div className="relative w-full max-w-sm aspect-[4/5] rounded-lg overflow-hidden bg-white dark:bg-neutral-800 shadow-sm">
-                {diseno.archivo_resultante_url ? (
-                  <img
-                    src={diseno.archivo_resultante_url}
-                    alt="Diseno"
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-neutral-300 dark:text-white/20">
-                    <Sparkles className="w-16 h-16" />
-                  </div>
-                )}
+                <ModalImage src={diseno.archivo_resultante_url} />
               </div>
             </div>
 

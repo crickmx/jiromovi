@@ -382,7 +382,7 @@ export function SegurosEducation() {
                         {/* Thumbnail */}
                         <div className="aspect-video bg-neutral-100 dark:bg-white/5 relative overflow-hidden">
                           {lesson.miniatura_url ? (
-                            <img src={lesson.miniatura_url} alt={lesson.titulo} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                            <img src={lesson.miniatura_url} alt={lesson.titulo} crossOrigin="anonymous" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <Video className="w-8 h-8 text-neutral-300" />

@@ -342,7 +342,9 @@ export function Directorio() {
                         <img
                           src={usuario.imagen_perfil_url}
                           alt=""
+                          crossOrigin="anonymous"
                           className="w-10 h-10 rounded-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">

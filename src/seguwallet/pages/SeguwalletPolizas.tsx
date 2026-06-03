@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { FileText, Search, Calendar, Building2, Shield, X, Download, ChevronRight, ExternalLink, FileCheck, BookOpen, Award, AlertTriangle, Clock, CheckCircle, XCircle, Car, Heart, Home, RefreshCw, User, DollarSign, Info, ChevronDown, ChevronUp, Folder, Plus, Upload, Trash2, CreditCard as Edit3, Check, CreditCard } from 'lucide-react';
+import { FileText, Search, Calendar, Building2, Shield, X, Download, ChevronRight, ExternalLink, FileCheck, BookOpen, Award, TriangleAlert as AlertTriangle, Clock, CircleCheck as CheckCircle, Circle as XCircle, Car, Heart, Hop as Home, RefreshCw, User, DollarSign, Info, ChevronDown, ChevronUp, Folder, Plus, Upload, Trash2, CreditCard as Edit3, Check, CreditCard } from 'lucide-react';
 import { useSeguwallet } from '../lib/SeguwalletContext';
 import { useAgentBrand } from '../lib/AgentBrandContext';
 import { logDownload } from '../lib/seguwalletAuth';
@@ -1018,7 +1018,7 @@ function ExternalPolicyWizard({ onClose, onSaved, primary, customerId, agentUser
           <div className="flex items-center gap-3">
             {logoPreview && (
               <div className="w-9 h-9 rounded-xl bg-white border border-neutral-100 shadow-sm flex items-center justify-center overflow-hidden flex-shrink-0">
-                <img src={logoPreview} alt="" className="w-full h-full object-contain p-1" />
+                <img src={logoPreview} alt="" crossOrigin="anonymous" className="w-full h-full object-contain p-1" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
               </div>
             )}
             <div>

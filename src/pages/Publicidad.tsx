@@ -76,10 +76,13 @@ function PlantillaImage({
   objectFit?: 'cover' | 'contain';
 }) {
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+  const [retrySrc, setRetrySrc] = useState<string | null>(null);
   const resolved = resolveImageUrl(src);
+  const effectiveSrc = retrySrc ?? resolved;
 
   useEffect(() => {
     setStatus(resolved ? 'loading' : 'error');
+    setRetrySrc(null);
   }, [resolved]);
 
   if (!resolved) {
@@ -111,14 +114,20 @@ function PlantillaImage({
         </div>
       )}
       <img
-        src={resolved}
+        src={effectiveSrc}
         alt={alt}
-        loading="lazy"
+        crossOrigin="anonymous"
         className={`w-full h-full transition-opacity duration-300 ${objectFit === 'contain' ? 'object-contain' : 'object-cover'} ${status === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
         onLoad={() => setStatus('loaded')}
         onError={() => {
-          console.warn('[Publicidad] Image failed to load:', src);
-          setStatus('error');
+          // Retry once with a cache-busting param before showing error
+          if (!retrySrc && resolved) {
+            const sep = resolved.includes('?') ? '&' : '?';
+            setRetrySrc(`${resolved}${sep}_r=${Date.now()}`);
+          } else {
+            console.warn('[Publicidad] Image failed to load:', src);
+            setStatus('error');
+          }
         }}
       />
     </>

@@ -591,7 +591,7 @@ export default function PaginaPublicaAsesor() {
                         boxShadow: `0 0 0 6px ${createColorVariant(primaryColor, 0.12)}, 0 12px 40px ${createColorVariant(primaryColor, 0.22)}`,
                       }}
                     >
-                      <img src={user.photo_url} alt={user.name} className="w-full h-full object-cover object-center" />
+                      <img src={user.photo_url} alt={user.name} crossOrigin="anonymous" className="w-full h-full object-cover object-center" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                     </div>
                   ) : (
                     <div
@@ -1125,7 +1125,7 @@ export default function PaginaPublicaAsesor() {
                       boxShadow: `0 6px 24px ${createColorVariant(primaryColor, 0.2)}`,
                     }}
                   >
-                    <img src={user.photo_url} alt={user.name} className="w-full h-full object-cover" />
+                    <img src={user.photo_url} alt={user.name} crossOrigin="anonymous" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                   </div>
                 ) : (
                   <div

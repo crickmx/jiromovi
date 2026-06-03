@@ -241,7 +241,9 @@ export default function MiMarca() {
                 <img
                   src={usuario.imagen_perfil_url}
                   alt="Foto de perfil"
+                  crossOrigin="anonymous"
                   className="w-full h-full object-cover"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
               ) : (
                 <ImageIcon className="w-12 h-12 text-neutral-400" />

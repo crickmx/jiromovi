@@ -975,7 +975,9 @@ export function SegurosEducationOnDemand() {
                     <img
                       src={lesson.miniatura_url}
                       alt={lesson.titulo}
+                      crossOrigin="anonymous"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-neutral-100 to-neutral-200 dark:from-white/5 dark:to-white/10">

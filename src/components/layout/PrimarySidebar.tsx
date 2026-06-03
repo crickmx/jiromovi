@@ -165,7 +165,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
               className="sidebar-rail-avatar-ring rounded-2xl transition-all duration-200 hover:scale-105 active:scale-95"
             >
               <Avatar className="h-9 w-9 rounded-xl">
-                <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} className="rounded-xl" />
+                <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} crossOrigin="anonymous" className="rounded-xl" />
                 <AvatarFallback className="sidebar-rail-avatar-fallback text-xs font-bold rounded-xl">
                   {getInitials()}
                 </AvatarFallback>
@@ -179,7 +179,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                   className="sidebar-rail-avatar-ring rounded-2xl transition-all duration-200 hover:scale-105 active:scale-95"
                 >
                   <Avatar className="h-9 w-9 rounded-xl">
-                    <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} className="rounded-xl" />
+                    <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} crossOrigin="anonymous" className="rounded-xl" />
                     <AvatarFallback className="sidebar-rail-avatar-fallback text-xs font-bold rounded-xl">
                       {getInitials()}
                     </AvatarFallback>

@@ -569,7 +569,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
                 <label htmlFor="pp-logo-upload" className="cursor-pointer block">
                   {logoPreview ? (
                     <div className="flex items-center gap-2">
-                      <img src={logoPreview} alt="Logo" className="max-h-12 rounded object-contain" />
+                      <img src={logoPreview} alt="Logo" crossOrigin="anonymous" className="max-h-12 rounded object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                       <span className="text-xs text-accent font-medium">Cambiar logo</span>
                     </div>
                   ) : (

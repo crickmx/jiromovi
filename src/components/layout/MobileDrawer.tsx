@@ -143,7 +143,7 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
                 className="flex-shrink-0 ring-2 ring-white/20 hover:ring-white/40 rounded-2xl transition-all"
               >
                 <Avatar className="h-14 w-14 rounded-2xl">
-                  <AvatarImage src={usuario?.imagen_perfil_url || undefined} alt={fullName} className="rounded-2xl" />
+                  <AvatarImage src={usuario?.imagen_perfil_url || undefined} alt={fullName} crossOrigin="anonymous" className="rounded-2xl" />
                   <AvatarFallback className="rounded-2xl bg-white/20 text-white text-lg font-bold">
                     {getInitials()}
                   </AvatarFallback>

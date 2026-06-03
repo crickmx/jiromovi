@@ -2,13 +2,6 @@ import { supabase } from './supabase';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
-/**
- * Returns the public URL for a Supabase Storage asset.
- * Handles all cases:
- *  - already an absolute URL  → returned as-is
- *  - storage path              → resolved via getPublicUrl
- *  - null/empty                → returns fallback
- */
 export function getStorageUrl(
   path: string | null | undefined,
   bucket: string,
@@ -16,9 +9,7 @@ export function getStorageUrl(
 ): string {
   if (!path) return fallback;
 
-  // Already absolute (http/https or data URI)
   if (/^(https?:\/\/|data:)/.test(path)) {
-    // Ensure cache-busting doesn't apply to data URIs
     return path;
   }
 
@@ -26,10 +17,6 @@ export function getStorageUrl(
   return data.publicUrl || fallback;
 }
 
-/**
- * Returns a cache-busted public URL for a Supabase Storage asset.
- * Useful when the file may have been updated in-place.
- */
 export function getStorageUrlFresh(
   path: string | null | undefined,
   bucket: string,
@@ -41,10 +28,6 @@ export function getStorageUrlFresh(
   return `${url}${sep}t=${Date.now()}`;
 }
 
-/**
- * Creates a short-lived signed URL for a private Supabase Storage file.
- * Returns null if the path is empty or an error occurs.
- */
 export async function getSignedUrl(
   path: string | null | undefined,
   bucket: string,
@@ -52,7 +35,6 @@ export async function getSignedUrl(
 ): Promise<string | null> {
   if (!path) return null;
 
-  // If it's already an absolute URL, return it directly
   if (/^https?:\/\//.test(path)) return path;
 
   const { data, error } = await supabase.storage
@@ -67,14 +49,6 @@ export async function getSignedUrl(
   return data.signedUrl || null;
 }
 
-/**
- * Resolves an image URL that could be:
- *  - an absolute URL (Supabase storage, CDN, etc.)
- *  - a relative path stored in DB
- *  - null/empty (returns fallback)
- *
- * This is the universal helper to use in <img src> attributes.
- */
 export function resolveImageUrl(
   url: string | null | undefined,
   bucket?: string,
@@ -82,21 +56,36 @@ export function resolveImageUrl(
 ): string {
   if (!url) return fallback;
   if (/^(https?:\/\/|data:|blob:)/.test(url)) return url;
-  if (url.startsWith('/')) return url; // public folder
+  if (url.startsWith('/')) return url;
   if (bucket) return getStorageUrl(url, bucket, fallback);
-  // Last resort: construct manually
   return `${SUPABASE_URL}/storage/v1/object/public/${url}`;
 }
 
 /**
+ * Returns a cache-busted version of a URL for retry on image load failure.
+ */
+export function bustUrl(url: string): string {
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}_r=${Date.now()}`;
+}
+
+/**
  * Handles image load errors by hiding the broken image and showing a sibling fallback element.
- * Pass the event from onError.
+ * Attempts a one-time cache-busted retry before showing the fallback.
  */
 export function handleImgError(
   e: React.SyntheticEvent<HTMLImageElement>,
   logPath?: string
 ) {
   const target = e.currentTarget;
+  const alreadyRetried = target.dataset.retried === '1';
+
+  if (!alreadyRetried && target.src) {
+    target.dataset.retried = '1';
+    target.src = bustUrl(target.src);
+    return;
+  }
+
   if (logPath) {
     console.warn('[storageUtils] Image failed to load:', logPath);
   }
