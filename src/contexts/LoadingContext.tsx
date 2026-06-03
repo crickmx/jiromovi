@@ -9,14 +9,13 @@ interface LoadingContextValue {
 
 const LoadingContext = createContext<LoadingContextValue | null>(null);
 
-export function useLoading() {
-  }
+export const useLoading = (): LoadingContextValue => {
   const ctx = useContext(LoadingContext);
   if (!ctx) throw new Error('useLoading must be used within LoadingProvider');
   return ctx;
-}
+};
 
-export function LoadingProvider({ children }: { children: ReactNode }) {
+export const LoadingProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(false);
   const depthRef = useRef(0);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -40,7 +39,7 @@ export function LoadingProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const wrap = useCallback(function wrapPromise<T>(promise: Promise<T>): Promise<T> {
+  const wrap = useCallback(<T,>(promise: Promise<T>): Promise<T> => {
     let shown = false;
     const showTimer = setTimeout(() => { show(); shown = true; }, 500);
     return promise.then(
@@ -54,4 +53,4 @@ export function LoadingProvider({ children }: { children: ReactNode }) {
       {children}
     </LoadingContext.Provider>
   );
-}
+};
