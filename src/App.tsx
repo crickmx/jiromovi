@@ -160,15 +160,17 @@ function PublicProfileApp() {
 function SegurosEducationApp() {
   return (
     <BrowserRouter>
-      <MoviAuthProvider>
-        <Routes>
-          <Route path="*" element={
-            <Suspense fallback={<MoviLoader />}>
-              <SegurosEducationLanding />
-            </Suspense>
-          } />
-        </Routes>
-      </MoviAuthProvider>
+      <ImpersonationProvider>
+        <MoviAuthProvider>
+          <Routes>
+            <Route path="*" element={
+              <Suspense fallback={<MoviLoader />}>
+                <SegurosEducationLanding />
+              </Suspense>
+            } />
+          </Routes>
+        </MoviAuthProvider>
+      </ImpersonationProvider>
     </BrowserRouter>
   );
 }function MoviSplashApp() {
@@ -268,13 +270,6 @@ function MoviApp() {
             <Route path="/p/:slug" element={
               <Suspense fallback={<MoviLoader />}>
                 <PaginaPublicaAsesor />
-              </Suspense>
-            } />
-
-            {/* Seguros Education landing — public, no auth required */}
-            <Route path="/seguros-education" element={
-              <Suspense fallback={<MoviLoader />}>
-                <SegurosEducationLanding />
               </Suspense>
             } />
 
