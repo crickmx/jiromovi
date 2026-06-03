@@ -85,6 +85,24 @@ body {
   color: rgba(255,255,255,0.87);
 }
 
+/* ── Select elements ─────────────────────────────────────────────────────── */
+select {
+  color: #111827;
+  background-color: #ffffff;
+}
+select option {
+  color: #111827;
+  background-color: #ffffff;
+}
+.dark select {
+  color: rgba(255,255,255,0.87);
+  background-color: #1e2330;
+}
+.dark select option {
+  color: rgba(255,255,255,0.87);
+  background-color: #1e2330;
+}
+
 /* ── Focus-visible system ──────────────────────────────────────────────────── */
 :focus-visible {
   outline: 2px solid rgb(var(--movi-accent-rgb) / 0.5);
