@@ -1,311 +1,137 @@
-import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { MoviAuthProvider } from './contexts/MoviAuthContext';
-import { useMoviAuth } from './contexts/MoviAuthContext';
+import { useState } from 'react';
+import './index.css';
 import { LoadingProvider } from './contexts/LoadingContext';
 import { LoadingOverlay } from './components/loading/LoadingOverlay';
-import { ChavaAgenteProvider } from './chava-agente/lib/ChavaAgenteContext';
-import { ImpersonationProvider } from './contexts/ImpersonationContext';
-import { SeguwalletProvider } from './seguwallet/lib/SeguwalletContext';
-import { AgentBrandProvider } from './seguwallet/lib/AgentBrandContext';
-import { SeguwalletProtectedRoute } from './seguwallet/components/SeguwalletProtectedRoute';
-import { SeguwalletLayout } from './seguwallet/components/SeguwalletLayout';
-import { type ReactNode } from 'react';
-import { useAppUpdate } from './lib/useAppUpdate';
-import { AppUpdateBanner } from './components/AppUpdateBanner';
+import { AppLayout } from './components/layout/AppLayout';
+import { SmartAnalysisCard } from './components/dashboard/SmartAnalysisCard';
+import { ChavaAvatar } from './components/chava/ChavaAvatar';
+import { ChavaBrandLogo } from './components/chava/ChavaBrandLogo';
+import { ChavaOrbIcon } from './components/chava/ChavaOrbIcon';
+import { useLoading } from './contexts/LoadingContext';
 
-// Seguwallet pages
-import { SeguwalletLogin } from './seguwallet/pages/SeguwalletLogin';
-import { SeguwalletDashboard } from './seguwallet/pages/SeguwalletDashboard';
-import { SeguwalletPolizas } from './seguwallet/pages/SeguwalletPolizas';
-import { SeguwalletPerfil } from './seguwallet/pages/SeguwalletPerfil';
-import { SeguwalletChava } from './seguwallet/pages/SeguwalletChava';
-import { SeguwalletCotizar } from './seguwallet/pages/SeguwalletCotizar';
-import { SeguwalletAseguradoras } from './seguwallet/pages/SeguwalletAseguradoras';
-import { SeguwalletDescargas } from './seguwallet/pages/SeguwalletDescargas';
-import { SeguwalletCompleteProfile } from './seguwallet/pages/SeguwalletCompleteProfile';
-
-// MOVI login
-import MoviLogin from './pages/MoviLogin';
-
-// Chava Agente pages
-import ChavaAgenteLanding from './chava-agente/pages/ChavaAgenteLanding';
-import ChavaAgenteUsuariosAdmin from './chava-agente/pages/admin/ChavaAgenteUsuariosAdmin';
-import ChavaAgenteConversacionesAdmin from './chava-agente/pages/admin/ChavaAgenteConversacionesAdmin';
-import ChavaAgenteTerminosAdmin from './chava-agente/pages/admin/ChavaAgenteTerminosAdmin';
-
-// MOVI full platform routes (lazy-loaded)
-const MoviFullRoutes = lazy(() => import('./pages/MoviFullRoutes'));
-const PaginaPublicaAsesor = lazy(() => import('./pages/PaginaPublicaAsesor'));
-const SegurosEducationLanding = lazy(() => import('./seguros-education/SegurosEducationLanding'));
-
-// ── Domain detection ────────────────────────────────────────────────────────
-const hostname = window.location.hostname;
-const CHAVA_DOMAINS = ['agentedeseguros.ai', 'www.agentedeseguros.ai'];
-const SEGUWALLET_DOMAINS = ['seguwallet.mx', 'www.seguwallet.mx', 'app.seguwallet.mx'];
-const MOVI_SPLASH_DOMAINS = ['movi.digital', 'www.movi.digital'];
-const PUBLIC_PROFILE_DOMAINS = ['agentedeseguros.website', 'www.agentedeseguros.website'];
-const SEGUROS_EDUCATION_DOMAINS = ['seguros.education', 'www.seguros.education'];
-
-const isChavaDomain = CHAVA_DOMAINS.includes(hostname);
-const isSeguwalletDomain = SEGUWALLET_DOMAINS.includes(hostname);
-const isMoviSplashDomain = MOVI_SPLASH_DOMAINS.includes(hostname);
-const isPublicProfileDomain = PUBLIC_PROFILE_DOMAINS.includes(hostname);
-const isSegurosEducationDomain = SEGUROS_EDUCATION_DOMAINS.includes(hostname);
-
-// ── MOVI private route ───────────────────────────────────────────────────────
-function MoviPrivateRoute({ children }: { children: ReactNode }) {
-  const { usuario, loading } = useMoviAuth();
-  console.log('[MoviPrivateRoute] loading=', loading, 'usuario=', !!usuario);
-  if (loading) return <MoviLoader />;
-  return usuario ? <>{children}</> : <Navigate to="/login" replace />;
-}
-
-function MoviLoader() {
+function DashboardPage({ onChavaOpen }: { onChavaOpen: () => void }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-slate-600 animate-spin" />
-        <p className="text-sm text-slate-500">Cargando...</p>
+    <div className="p-6 space-y-6 max-w-4xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-white text-2xl font-bold">Dashboard</h1>
+          <p className="text-surface-400 text-sm mt-0.5">Buenos días, Juan. Tienes 3 renovaciones pendientes.</p>
+        </div>
+        <div className="flex items-center gap-2 bg-surface-900 rounded-xl px-3 py-2 border border-surface-800">
+          <ChavaOrbIcon size="sm" animate />
+          <div className="text-left">
+            <p className="text-white text-xs font-semibold">Chava AI</p>
+            <p className="text-surface-500 text-xs">En línea</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Smart Analysis Card — uses ChavaAvatar with new animated orb */}
+      <SmartAnalysisCard onStartAnalysis={onChavaOpen} />
+
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Clientes activos', value: '342', change: '+12' },
+          { label: 'Pólizas vigentes', value: '891', change: '+5' },
+          { label: 'Renovaciones mes', value: '43', change: '-2' },
+          { label: 'Comisión mensual', value: '$48,200', change: '+8%' },
+        ].map((stat) => (
+          <div key={stat.label} className="bg-surface-900 border border-surface-800 rounded-xl p-4">
+            <p className="text-surface-500 text-xs mb-1">{stat.label}</p>
+            <p className="text-white text-xl font-bold">{stat.value}</p>
+            <p className="text-emerald-400 text-xs mt-0.5">{stat.change} este mes</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Chat preview — shows ChavaAvatar in chat */}
+      <div className="bg-surface-900 border border-surface-800 rounded-2xl p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <ChavaAvatar size="md" animate online />
+          <div>
+            <p className="text-white font-semibold text-sm">Chava AI</p>
+            <p className="text-emerald-400 text-xs">En línea ahora</p>
+          </div>
+        </div>
+        <div className="bg-surface-800/60 rounded-xl p-4 border border-surface-700/50">
+          <p className="text-surface-300 text-sm leading-relaxed">
+            Hola Juan! Detecté que 23 pólizas vencen en los próximos 30 días. ¿Quieres que prepare un reporte de renovaciones prioritarias?
+          </p>
+        </div>
+        <button
+          onClick={onChavaOpen}
+          className="mt-3 w-full text-center text-sm text-brand-400 hover:text-brand-300 transition-colors py-2 border border-surface-800 rounded-lg hover:bg-surface-800"
+        >
+          Responder a Chava...
+        </button>
+      </div>
+
+      {/* Brand logo showcase */}
+      <div className="bg-surface-900 border border-surface-800 rounded-2xl p-5">
+        <p className="text-surface-500 text-xs mb-4 uppercase tracking-wider font-medium">Logo / Marca</p>
+        <div className="flex flex-wrap gap-6 items-center">
+          <ChavaBrandLogo size="sm" showTagline />
+          <ChavaBrandLogo size="md" showTagline />
+          <ChavaBrandLogo size="lg" showTagline />
+        </div>
       </div>
     </div>
   );
 }
 
-// ── 1. Chava Agente (agentedeseguros.ai) ─────────────────────────────────────
-function ChavaAgenteApp() {
+function LoadingDemo() {
+  const { show, hide } = useLoading();
   return (
-    <BrowserRouter>
-      <ChavaAgenteProvider>
-        <Routes>
-          <Route path="*" element={<ChavaAgenteLanding />} />
-        </Routes>
-      </ChavaAgenteProvider>
-    </BrowserRouter>
+    <div className="flex gap-3">
+      <button
+        onClick={() => { show(); setTimeout(hide, 3000); }}
+        className="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-sm font-medium transition-colors"
+      >
+        Simular carga (3s)
+      </button>
+    </div>
   );
 }
 
-// ── 2. Seguwallet (seguwallet.mx) — passwordless OTP ─────────────────────────
-function SeguwalletApp() {
-  return (
-    <BrowserRouter>
-      <ImpersonationProvider>
-        <SeguwalletProvider>
-          <AgentBrandProvider>
-            <Routes>
-              <Route path="/" element={<Navigate to="/seguwallet/dashboard" replace />} />
-              <Route path="/login" element={<Navigate to="/seguwallet/login" replace />} />
-              <Route path="/seguwallet/login" element={<SeguwalletLogin />} />
-              <Route path="/seguwallet/dashboard" element={
-                <SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletDashboard /></SeguwalletLayout></SeguwalletProtectedRoute>
-              } />
-              <Route path="/seguwallet/polizas" element={
-                <SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletPolizas /></SeguwalletLayout></SeguwalletProtectedRoute>
-              } />
-              <Route path="/seguwallet/perfil" element={
-                <SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletPerfil /></SeguwalletLayout></SeguwalletProtectedRoute>
-              } />
-              <Route path="/seguwallet/chava" element={
-                <SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletChava /></SeguwalletLayout></SeguwalletProtectedRoute>
-              } />
-              <Route path="/seguwallet/cotizar" element={
-                <SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletCotizar /></SeguwalletLayout></SeguwalletProtectedRoute>
-              } />
-              <Route path="/seguwallet/aseguradoras" element={
-                <SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletAseguradoras /></SeguwalletLayout></SeguwalletProtectedRoute>
-              } />
-              <Route path="/seguwallet/descargas" element={
-                <SeguwalletProtectedRoute><SeguwalletLayout><SeguwalletDescargas /></SeguwalletLayout></SeguwalletProtectedRoute>
-              } />
-              <Route path="/seguwallet/completa-perfil" element={
-                <SeguwalletProtectedRoute><SeguwalletCompleteProfile /></SeguwalletProtectedRoute>
-              } />
-              <Route path="*" element={<Navigate to="/seguwallet/dashboard" replace />} />
-            </Routes>
-          </AgentBrandProvider>
-        </SeguwalletProvider>
-      </ImpersonationProvider>
-    </BrowserRouter>
-  );
-}
+function App() {
+  const [chavaOpen, setChavaOpen] = useState(false);
 
-// ── 3.5. agentedeseguros.website — public agent profile pages ────────────────
-function PublicProfileApp() {
-  return (
-    <BrowserRouter>
-      <MoviAuthProvider>
-        <Routes>
-          <Route path="/p/:slug" element={
-            <Suspense fallback={<MoviLoader />}>
-              <PaginaPublicaAsesor />
-            </Suspense>
-          } />
-          <Route path="/:slug" element={
-            <Suspense fallback={<MoviLoader />}>
-              <PaginaPublicaAsesor />
-            </Suspense>
-          } />
-          <Route path="*" element={
-            <div className="min-h-screen flex items-center justify-center bg-slate-50">
-              <p className="text-slate-500 text-sm">Página no encontrada</p>
-            </div>
-          } />
-        </Routes>
-      </MoviAuthProvider>
-    </BrowserRouter>
-  );
-}
-
-// ── 3. movi.digital marketing splash ─────────────────────────────────────────
-
-// ── 3.6. seguros.education — continuing education landing page ────────────────
-function SegurosEducationApp() {
-  return (
-    <BrowserRouter>
-      <ImpersonationProvider>
-        <MoviAuthProvider>
-          <Routes>
-            <Route path="*" element={
-              <Suspense fallback={<MoviLoader />}>
-                <SegurosEducationLanding />
-              </Suspense>
-            } />
-          </Routes>
-        </MoviAuthProvider>
-      </ImpersonationProvider>
-    </BrowserRouter>
-  );
-}function MoviSplashApp() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="*" element={<MoviSplash />} />
-      </Routes>
-    </BrowserRouter>
-  );
-}
-
-function MoviSplash() {
-  return (
-    <>
-      <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
-        <div className="absolute inset-0" style={{
-          background: 'linear-gradient(135deg, #040c1f 0%, #061428 40%, #081a38 60%, #04101f 100%)',
-        }} />
-        <div className="absolute -top-56 -right-56 w-[700px] h-[700px] rounded-full" style={{
-          background: 'radial-gradient(circle, #0D6EFD 0%, transparent 65%)',
-          opacity: 0.12, animation: 'movi-pulse 10s ease-in-out infinite',
-        }} />
-        <div className="absolute bottom-0 -left-40 w-[500px] h-[500px] rounded-full" style={{
-          background: 'radial-gradient(circle, #0047bb 0%, transparent 65%)',
-          opacity: 0.1, animation: 'movi-pulse 14s ease-in-out infinite 3s',
-        }} />
-        <div className="absolute inset-0" style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-                            linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)`,
-          backgroundSize: '80px 80px',
-        }} />
-
-        <div className="relative z-10 text-center px-6 max-w-lg">
-          <img src="/logojiro.png" alt="MOVI Digital" className="h-14 w-auto mx-auto mb-8" />
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight mb-4">
-            La plataforma digital<br />
-            <span style={{ background: 'linear-gradient(90deg, #0D6EFD, #00c8e0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              para agentes de seguros
-            </span>
-          </h1>
-          <p className="text-base mb-10 leading-relaxed" style={{ color: 'rgba(255,255,255,0.45)' }}>
-            CRM, produccion, comisiones y mas — todo en un solo lugar.
-          </p>
-          <a
-            href="https://app.movi.digital"
-            className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-bold text-white transition-all duration-200 active:scale-[0.98]"
-            style={{ background: 'linear-gradient(135deg, #0D6EFD, #0047bb)', boxShadow: '0 4px 24px rgba(13,110,253,0.4)' }}
-          >
-            Acceder a MOVI Digital
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-          </a>
-          <div className="mt-16 flex items-center justify-center gap-6 text-[11px]" style={{ color: 'rgba(255,255,255,0.22)' }}>
-            <a href="https://seguwallet.mx" target="_blank" rel="noopener noreferrer" className="hover:text-white/50 transition-colors">seguwallet.mx</a>
-            <span className="w-px h-3" style={{ background: 'rgba(255,255,255,0.15)' }} />
-            <a href="https://agentedeseguros.ai" target="_blank" rel="noopener noreferrer" className="hover:text-white/50 transition-colors">agentedeseguros.ai</a>
-            <span className="w-px h-3" style={{ background: 'rgba(255,255,255,0.15)' }} />
-            <span>© {new Date().getFullYear()} Grupo JIRO</span>
-          </div>
-        </div>
-      </div>
-      <style>{`
-        @keyframes movi-pulse {
-          0%, 100% { opacity: 0.12; transform: scale(1); }
-          50%       { opacity: 0.2; transform: scale(1.08); }
-        }
-      `}</style>
-    </>
-  );
-}
-
-// ── 4. MOVI full platform (app.movi.digital + localhost) ─────────────────────
-function MoviApp() {
   return (
     <LoadingProvider>
       <LoadingOverlay />
-      <BrowserRouter>
-        <ImpersonationProvider>
-          <MoviAuthProvider>
-            <Routes>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/login" element={<MoviLogin />} />
+      <AppLayout currentPath="/dashboard" onChavaClick={() => setChavaOpen(true)}>
+        <DashboardPage onChavaOpen={() => setChavaOpen(true)} />
+        <div className="px-6 pb-4">
+          <LoadingDemo />
+        </div>
+      </AppLayout>
 
-              {/* Chava Agente — public platform routes */}
-              <Route path="/chava-agente" element={
-                <ChavaAgenteProvider><ChavaAgenteLanding /></ChavaAgenteProvider>
-              } />
-              <Route path="/admin/chava-agente/usuarios" element={
-                <ChavaAgenteProvider><ChavaAgenteUsuariosAdmin /></ChavaAgenteProvider>
-              } />
-              <Route path="/admin/chava-agente/conversaciones" element={
-                <ChavaAgenteProvider><ChavaAgenteConversacionesAdmin /></ChavaAgenteProvider>
-              } />
-              <Route path="/admin/chava-agente/terminos" element={
-                <ChavaAgenteProvider><ChavaAgenteTerminosAdmin /></ChavaAgenteProvider>
-              } />
-
-              {/* Public agent web pages — no auth required */}
-              <Route path="/p/:slug" element={
-                <Suspense fallback={<MoviLoader />}>
-                  <PaginaPublicaAsesor />
-                </Suspense>
-              } />
-
-              {/* All other MOVI routes — requires auth, loaded lazily */}
-              <Route path="*" element={
-                <MoviPrivateRoute>
-                  <Suspense fallback={<MoviLoader />}>
-                    <MoviFullRoutes />
-                  </Suspense>
-                </MoviPrivateRoute>
-              } />
-            </Routes>
-          </MoviAuthProvider>
-        </ImpersonationProvider>
-      </BrowserRouter>
+      {/* Simple Chava AI modal placeholder */}
+      {chavaOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setChavaOpen(false)}
+        >
+          <div
+            className="bg-surface-900 border border-surface-700 rounded-2xl p-8 max-w-sm w-full mx-4 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ChavaOrbIcon size="xl" animate className="mx-auto mb-4" />
+            <h2 className="text-white font-bold text-xl mb-2">Chava AI</h2>
+            <p className="text-surface-400 text-sm mb-6">Tu asistente inteligente para seguros</p>
+            <button
+              onClick={() => setChavaOpen(false)}
+              className="px-6 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
     </LoadingProvider>
   );
 }
 
-// ── Root entry point ─────────────────────────────────────────────────────────
-export default function App() {
-  const { updateAvailable } = useAppUpdate();
-
-  return (
-    <>
-      {updateAvailable && <AppUpdateBanner />}
-      {isChavaDomain && <ChavaAgenteApp />}
-      {isSeguwalletDomain && <SeguwalletApp />}
-      {isMoviSplashDomain && <MoviSplashApp />}
-      {isPublicProfileDomain && <PublicProfileApp />}
-      {isSegurosEducationDomain && <SegurosEducationApp />}
-      {!isChavaDomain && !isSeguwalletDomain && !isMoviSplashDomain && !isPublicProfileDomain && !isSegurosEducationDomain && <MoviApp />}
-    </>
-  );
-}
+export default App;

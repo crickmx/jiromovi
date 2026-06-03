@@ -1,122 +1,82 @@
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Hop as Home, ClipboardList, Megaphone, Menu, Sparkles } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '../../lib/utils';
+import { ChavaOrbIcon } from '../chava/ChavaOrbIcon';
+import { LayoutDashboard, Users, FileText, Settings } from 'lucide-react';
 
-interface Props {
-  onOpenDrawer: () => void;
+interface MobileNavProps {
+  className?: string;
+  onChavaClick?: () => void;
+  currentPath?: string;
 }
 
-export function MobileNav({ onOpenDrawer }: Props) {
-  const navigate = useNavigate();
-  const location = useLocation();
+const LEFT_NAV = [
+  { icon: LayoutDashboard, label: 'Inicio', href: '/dashboard' },
+  { icon: Users, label: 'Clientes', href: '/clients' },
+];
 
-  const isActive = (path: string) =>
-    location.pathname === path || location.pathname.startsWith(path + '/');
+const RIGHT_NAV = [
+  { icon: FileText, label: 'Pólizas', href: '/policies' },
+  { icon: Settings, label: 'Config', href: '/settings' },
+];
 
-  const sideItems = [
-    { path: '/dashboard', label: 'Inicio', icon: Home },
-    { path: '/tramites', label: 'Trámite', icon: ClipboardList },
-  ];
-
-  const rightItems = [
-    { path: '/mercadotecnia/publicidad', label: 'Marketing', icon: Megaphone },
-  ];
-
-  const chavaActive = isActive('/chava');
-
+export function MobileNav({ className, onChavaClick, currentPath = '/dashboard' }: MobileNavProps) {
   return (
-    <div
-      className="fixed bottom-0 left-0 right-0 z-30 md:hidden"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+    <nav
+      className={cn(
+        'md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface-950/95 backdrop-blur-md border-t border-surface-800',
+        'flex items-center justify-around px-4 pb-safe',
+        className
+      )}
+      style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
     >
-      <div className="bg-white dark:bg-[#111113] border-t border-neutral-200 dark:border-white/[0.08] shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-        <div className="flex items-stretch h-14">
-          {/* Left items */}
-          {sideItems.map(item => {
-            const Icon = item.icon;
-            const active = isActive(item.path);
-            return (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className={cn(
-                  'flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-all active:scale-95',
-                  active
-                    ? 'text-accent'
-                    : 'text-neutral-500 dark:text-neutral-400'
-                )}
-              >
-                <Icon className="w-5 h-5" />
-                <span className="leading-none">{item.label}</span>
-              </button>
-            );
-          })}
-
-          {/* Central Chava AI button */}
-          <div className="flex items-center justify-center w-16 relative -mt-4">
-            {/* Glow ring */}
-            <div className={cn(
-              'absolute inset-0 rounded-full transition-opacity duration-500',
-              chavaActive
-                ? 'opacity-100'
-                : 'opacity-0 group-hover:opacity-60'
-            )} />
-            <button
-              onClick={() => navigate('/chava')}
-              className="relative flex flex-col items-center justify-center w-14 h-14 rounded-full shadow-lg transition-all active:scale-90"
-              style={{
-                background: chavaActive
-                  ? 'linear-gradient(135deg, #0066ff 0%, #0044cc 100%)'
-                  : 'linear-gradient(135deg, #1a7aff 0%, #0055ee 100%)',
-                boxShadow: chavaActive
-                  ? '0 0 0 3px rgba(26,122,255,0.3), 0 8px 24px rgba(0,85,238,0.5)'
-                  : '0 0 0 2px rgba(26,122,255,0.15), 0 6px 20px rgba(0,85,238,0.35)',
-              }}
-            >
-              {/* Pulse ring */}
-              {!chavaActive && (
-                <span className="absolute inset-0 rounded-full animate-[chava-pulse_2.5s_ease-in-out_infinite]"
-                  style={{
-                    background: 'radial-gradient(circle, rgba(26,122,255,0.25) 0%, transparent 70%)',
-                  }}
-                />
-              )}
-              <Sparkles className="w-6 h-6 text-white" />
-              <span className="text-[9px] font-bold text-white/90 leading-none mt-0.5">Chava</span>
-            </button>
-          </div>
-
-          {/* Right items */}
-          {rightItems.map(item => {
-            const Icon = item.icon;
-            const active = isActive(item.path);
-            return (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className={cn(
-                  'flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-all active:scale-95',
-                  active
-                    ? 'text-accent'
-                    : 'text-neutral-500 dark:text-neutral-400'
-                )}
-              >
-                <Icon className="w-5 h-5" />
-                <span className="leading-none">{item.label}</span>
-              </button>
-            );
-          })}
-
-          {/* Menu/drawer button */}
-          <button
-            onClick={onOpenDrawer}
-            className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 transition-all active:scale-95"
+      {/* Left items */}
+      {LEFT_NAV.map((item) => {
+        const Icon = item.icon;
+        const active = currentPath === item.href;
+        return (
+          <a
+            key={item.href}
+            href={item.href}
+            className={cn(
+              'flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl transition-colors',
+              active ? 'text-brand-400' : 'text-surface-500 hover:text-surface-300'
+            )}
           >
-            <Menu className="w-5 h-5" />
-            <span className="leading-none">Menú</span>
-          </button>
+            <Icon className="w-5 h-5" />
+            <span className="text-xs">{item.label}</span>
+          </a>
+        );
+      })}
+
+      {/* Center: Chava AI featured button */}
+      <button
+        onClick={onChavaClick}
+        className="relative -mt-6 flex flex-col items-center gap-1 group"
+        aria-label="Abrir Chava AI"
+      >
+        <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-900 to-brand-900 border border-sky-700/50 flex items-center justify-center shadow-lg shadow-sky-900/40 group-hover:shadow-sky-700/40 transition-shadow">
+          <ChavaOrbIcon size="sm" animate />
         </div>
-      </div>
-    </div>
+        <span className="text-xs text-sky-300 font-medium">Chava AI</span>
+      </button>
+
+      {/* Right items */}
+      {RIGHT_NAV.map((item) => {
+        const Icon = item.icon;
+        const active = currentPath === item.href;
+        return (
+          <a
+            key={item.href}
+            href={item.href}
+            className={cn(
+              'flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl transition-colors',
+              active ? 'text-brand-400' : 'text-surface-500 hover:text-surface-300'
+            )}
+          >
+            <Icon className="w-5 h-5" />
+            <span className="text-xs">{item.label}</span>
+          </a>
+        );
+      })}
+    </nav>
   );
 }
