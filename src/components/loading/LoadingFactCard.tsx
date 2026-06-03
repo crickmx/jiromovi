@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 
 interface Fact {
@@ -8,7 +8,6 @@ interface Fact {
   categoria: string;
 }
 
-// Fallback facts in case DB is unavailable during loading
 const FALLBACK_FACTS: Fact[] = [
   {
     categoria: 'seguros',
@@ -18,36 +17,36 @@ const FALLBACK_FACTS: Fact[] = [
   },
   {
     categoria: 'mexico',
-    titulo: 'Mercado asegurador mexicano',
-    hecho: 'México es uno de los mercados aseguradores más grandes de América Latina, representando cerca del 2.3% del PIB con un enorme potencial de crecimiento.',
-    fuente: 'AMIS',
+    titulo: 'Agentes en México',
+    hecho: 'México cuenta con más de 120,000 agentes de seguros certificados registrados ante la CNSF, de los cuales el 40% son agentes exclusivos de una sola aseguradora.',
+    fuente: 'CNSF',
   },
   {
     categoria: 'tecnologia',
-    titulo: 'Insurtech en el mundo',
-    hecho: 'Las insurtech recibieron más de $15 mil millones en inversiones globales entre 2020 y 2023, transformando desde la suscripción de pólizas hasta la liquidación de siniestros.',
-    fuente: 'CB Insights',
+    titulo: 'Plataformas digitales para agentes',
+    hecho: 'Las plataformas digitales especializadas para agentes de seguros aumentan su productividad hasta 3 veces al centralizar cotización, emisión, cobranza y servicio al cliente.',
+    fuente: 'Celent',
   },
   {
     categoria: 'agentes',
     titulo: 'Retención de clientes',
-    hecho: 'Retener a un cliente existente cuesta 5 veces menos que adquirir uno nuevo; los agentes con mayor rentabilidad enfocan el 60% de su tiempo en servicios postventa y renovaciones.',
+    hecho: 'Retener a un cliente existente cuesta 5 veces menos que adquirir uno nuevo; los agentes más rentables enfocan el 60% de su tiempo en servicios postventa y renovaciones.',
     fuente: 'Bain & Company',
   },
   {
-    categoria: 'agentes',
-    titulo: 'Presencia digital del agente',
-    hecho: 'Los agentes con sitio web y presencia en redes sociales generan el doble de prospectos; el 70% de los menores de 45 años busca a su agente de seguros por internet.',
-    fuente: 'Google / LIMRA',
+    categoria: 'seguros',
+    titulo: 'Seguros paramétricos',
+    hecho: 'Los seguros paramétricos pagan automáticamente al activarse un parámetro predefinido —como un terremoto de magnitud 6.5— eliminando el proceso de ajuste tradicional.',
+    fuente: 'World Bank',
   },
 ];
 
 const CATEGORY_COLORS: Record<string, string> = {
-  seguros: 'text-sky-400',
-  mexico: 'text-emerald-400',
-  tecnologia: 'text-cyan-400',
-  agentes: 'text-blue-400',
-  curiosidades: 'text-amber-400',
+  seguros: '#38bdf8',
+  mexico: '#34d399',
+  tecnologia: '#22d3ee',
+  agentes: '#60a5fa',
+  curiosidades: '#fbbf24',
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -61,20 +60,19 @@ const CATEGORY_LABELS: Record<string, string> = {
 let cachedFacts: Fact[] | null = null;
 
 export function LoadingFactCard() {
-  const [facts, setFacts] = useState<Fact[]>(FALLBACK_FACTS);
-  const [currentIndex, setCurrentIndex] = useState(() =>
-    Math.floor(Math.random() * FALLBACK_FACTS.length)
+  // Pick one random fact on mount and keep it for the whole loading session
+  const [fact, setFact] = useState<Fact>(
+    () => FALLBACK_FACTS[Math.floor(Math.random() * FALLBACK_FACTS.length)]
   );
-  const [visible, setVisible] = useState(true);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Load facts once from DB (or use cache)
   useEffect(() => {
-    if (cachedFacts) {
-      setFacts(cachedFacts);
-      setCurrentIndex(Math.floor(Math.random() * cachedFacts.length));
+    const pickFrom = (list: Fact[]) => list[Math.floor(Math.random() * list.length)];
+
+    if (cachedFacts && cachedFacts.length > 0) {
+      setFact(pickFrom(cachedFacts));
       return;
     }
+
     supabase
       .from('loading_facts')
       .select('titulo, hecho, fuente, categoria')
@@ -83,73 +81,58 @@ export function LoadingFactCard() {
       .then(({ data }) => {
         if (data && data.length > 0) {
           cachedFacts = data as Fact[];
-          setFacts(cachedFacts);
-          setCurrentIndex(Math.floor(Math.random() * cachedFacts.length));
+          setFact(pickFrom(cachedFacts));
         }
       });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Rotate fact every 5 seconds with a fade transition
-  useEffect(() => {
-    intervalRef.current = setInterval(() => {
-      setVisible(false);
-      setTimeout(() => {
-        setCurrentIndex((i) => (i + 1) % facts.length);
-        setVisible(true);
-      }, 400);
-    }, 5000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [facts.length]);
-
-  const fact = facts[currentIndex];
-  const colorClass = CATEGORY_COLORS[fact.categoria] ?? 'text-sky-400';
+  const color = CATEGORY_COLORS[fact.categoria] ?? '#38bdf8';
   const catLabel = CATEGORY_LABELS[fact.categoria] ?? fact.categoria;
 
   return (
-    <div
-      className="loading-fact-card"
-      style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.35s ease' }}
-    >
-      <span className={`loading-fact-category ${colorClass}`}>{catLabel}</span>
-      <p className="loading-fact-title">{fact.titulo}</p>
-      <p className="loading-fact-body">{fact.hecho}</p>
-      {fact.fuente && (
-        <span className="loading-fact-source">Fuente: {fact.fuente}</span>
-      )}
+    <div className="lf-card">
+      <span className="lf-category" style={{ color }}>{catLabel}</span>
+      <p className="lf-title">{fact.titulo}</p>
+      <p className="lf-body">{fact.hecho}</p>
+      {fact.fuente && <span className="lf-source">Fuente: {fact.fuente}</span>}
 
       <style>{`
-        .loading-fact-card {
-          max-width: 380px;
+        .lf-card {
+          max-width: 360px;
           text-align: center;
           padding: 0 16px;
+          animation: lf-in 0.5s ease both;
         }
-        .loading-fact-category {
+        .lf-category {
           display: inline-block;
           font-size: 10px;
           font-weight: 700;
-          letter-spacing: 0.12em;
+          letter-spacing: 0.14em;
           text-transform: uppercase;
-          margin-bottom: 6px;
+          margin-bottom: 7px;
         }
-        .loading-fact-title {
+        .lf-title {
           font-size: 13px;
           font-weight: 600;
-          color: rgba(255,255,255,0.92);
+          color: rgba(255,255,255,0.9);
           margin: 0 0 8px;
-          line-height: 1.4;
+          line-height: 1.45;
         }
-        .loading-fact-body {
+        .lf-body {
           font-size: 12px;
-          color: rgba(255,255,255,0.55);
-          line-height: 1.6;
+          color: rgba(255,255,255,0.5);
+          line-height: 1.65;
           margin: 0 0 8px;
         }
-        .loading-fact-source {
+        .lf-source {
           font-size: 10px;
-          color: rgba(255,255,255,0.28);
+          color: rgba(255,255,255,0.26);
           font-style: italic;
+        }
+        @keyframes lf-in {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>
