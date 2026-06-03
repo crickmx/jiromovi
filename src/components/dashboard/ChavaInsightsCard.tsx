@@ -99,17 +99,23 @@ export function ChavaInsightsCard({ usuario }: Props) {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const context = buildDashboardContext(usuario);
 
-      const res = await fetch(`${supabaseUrl}/functions/v1/chava-query`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          modulo: 'dashboard',
-          ruta: '/dashboard',
-          parametros: { dashboard_context: true, usuario_context: context },
-          mensaje: `Genera mi análisis del día como CHAVA OS. Responde SOLO con un JSON válido con esta estructura exacta:
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      let res: Response;
+      try {
+        res = await fetch(`${supabaseUrl}/functions/v1/chava-query`, {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            modulo: 'dashboard',
+            ruta: '/dashboard',
+            parametros: { dashboard_context: true, usuario_context: context },
+            mensaje: `Genera mi análisis del día como CHAVA OS. Responde SOLO con un JSON válido con esta estructura exacta:
 {
   "saludo": "saludo personalizado corto",
   "resumen": "resumen de situación actual en 1-2 oraciones",
@@ -118,8 +124,11 @@ export function ChavaInsightsCard({ usuario }: Props) {
   "oportunidades": ["oportunidad comercial 1 si existe"],
   "ctas": [{"label": "acción clave", "path": "/ruta", "variant": "primary"}]
 }`,
-        }),
-      });
+          }),
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       if (!res.ok) throw new Error('API error');
 
