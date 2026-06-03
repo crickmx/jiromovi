@@ -3,5 +3,18 @@
     "allow": [
       "Bash(git *)"
     ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(jq -r '.tool_input.file_path // empty'); echo \"$FILE\" | grep -q 'LoadingContext.tsx' && python3 -c \"import re,sys; c=open('$FILE').read(); fixed=re.sub(r'(export function useLoading\\(\\) \\{)\\s*\\}', r'\\1', c); open('$FILE','w').write(fixed)\" 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
   }
 }
