@@ -6,18 +6,71 @@
   box-sizing: border-box;
 }
 
-/* Light mode defaults */
+/* ────────────────────────────────────────────────────────────
+   DESIGN TOKEN DEFAULTS — light mode
+   These are overridden per-office via themeUtils.applyTheme()
+───────────────────────────────────────────────────────────── */
 :root {
-  --bg-base: #f8fafc;
+  /* App backgrounds */
+  --bg-base:   #f8fafc;
   --text-base: #0f172a;
+
+  /* Dynamic accent (MOVI blue default) — updated by applyTheme() */
+  --movi-accent-rgb:            22 66 129;   /* #164281 */
+  --movi-accent-foreground-rgb: 255 255 255; /* white on dark background */
+  --movi-accent-hover-rgb:      42 86 149;
+  --movi-accent-dark-rgb:        8 46 109;
+
+  /* Semantic color tokens */
+  --color-text-primary:   #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted:     #64748b;
+  --color-text-placeholder: #94a3b8;
+
+  --color-border:         #e2e8f0;
+  --color-border-subtle:  rgba(0, 0, 0, 0.08);
+
+  --color-surface:        #ffffff;
+  --color-surface-raised: #f8fafc;
+  --color-surface-overlay: rgba(255, 255, 255, 0.95);
+
+  --color-input-bg:       #ffffff;
+  --color-input-border:   #d1d5db;
+  --color-input-text:     #111827;
+  --color-input-placeholder: #9ca3af;
+
+  /* Focus ring */
+  --focus-ring: 0 0 0 3px rgba(var(--movi-accent-rgb) / 0.25);
 }
 
-/* Dark mode overrides */
+/* ────────────────────────────────────────────────────────────
+   DARK MODE OVERRIDES
+───────────────────────────────────────────────────────────── */
 :root.dark {
-  --bg-base: #090f1a;
+  --bg-base:   #090f1a;
   --text-base: #f8fafc;
+
+  --color-text-primary:   #f1f5f9;
+  --color-text-secondary: rgba(255, 255, 255, 0.65);
+  --color-text-muted:     rgba(255, 255, 255, 0.45);
+  --color-text-placeholder: rgba(255, 255, 255, 0.35);
+
+  --color-border:         rgba(255, 255, 255, 0.10);
+  --color-border-subtle:  rgba(255, 255, 255, 0.06);
+
+  --color-surface:        #111827;
+  --color-surface-raised: rgba(255, 255, 255, 0.04);
+  --color-surface-overlay: rgba(17, 24, 39, 0.97);
+
+  --color-input-bg:       rgba(255, 255, 255, 0.05);
+  --color-input-border:   rgba(255, 255, 255, 0.12);
+  --color-input-text:     #f1f5f9;
+  --color-input-placeholder: rgba(255, 255, 255, 0.38);
 }
 
+/* ────────────────────────────────────────────────────────────
+   BASE STYLES
+───────────────────────────────────────────────────────────── */
 body {
   margin: 0;
   background: var(--bg-base);
@@ -32,4 +85,65 @@ body {
   width: 100%;
   height: 100vh;
   overflow: hidden;
+}
+
+/* ────────────────────────────────────────────────────────────
+   SHIMMER ANIMATION (used by Skeleton component)
+───────────────────────────────────────────────────────────── */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+:root.dark .shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.06) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+}
+
+/* ────────────────────────────────────────────────────────────
+   NATIVE SELECT — dark mode color scheme fix
+   Without this, native <select> and <option> stay white-on-white in dark mode
+───────────────────────────────────────────────────────────── */
+:root.dark select,
+:root.dark select option {
+  color-scheme: dark;
+  color: #f1f5f9;
+  background-color: #1e293b;
+}
+
+/* ────────────────────────────────────────────────────────────
+   SCROLLBAR STYLING
+───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar              { width: 6px; height: 6px; }
+::-webkit-scrollbar-track        { background: transparent; }
+::-webkit-scrollbar-thumb        { background: rgba(0,0,0,0.15); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover  { background: rgba(0,0,0,0.25); }
+
+:root.dark ::-webkit-scrollbar-thumb       { background: rgba(255,255,255,0.12); }
+:root.dark ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+
+/* ────────────────────────────────────────────────────────────
+   FOCUS-VISIBLE GLOBAL RING — accessible keyboard navigation
+───────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid rgb(var(--movi-accent-rgb) / 0.6);
+  outline-offset: 2px;
+}
+
+/* Reset for elements that manage focus themselves */
+[data-radix-collection-item]:focus-visible,
+[role="option"]:focus-visible,
+[role="menuitem"]:focus-visible {
+  outline: none;
 }

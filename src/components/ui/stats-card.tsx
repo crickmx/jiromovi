@@ -21,11 +21,11 @@ interface StatsCardProps {
 }
 
 const iconColorMap: Record<string, string> = {
-  primary: 'text-accent bg-accent/8 dark:bg-accent/15',
+  primary: 'text-accent bg-accent/10 dark:bg-accent/20',
   success: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15',
   warning: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15',
   danger:  'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/15',
-  neutral: 'text-neutral-600 dark:text-white/60 bg-neutral-100 dark:bg-white/8',
+  neutral: 'text-neutral-600 dark:text-white/70 bg-neutral-100 dark:bg-white/10',
   info:    'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/15',
 };
 
@@ -34,7 +34,7 @@ const trendColorMap: Record<string, string> = {
   success: 'text-emerald-600 dark:text-emerald-400',
   warning: 'text-amber-600 dark:text-amber-400',
   danger:  'text-red-600 dark:text-red-400',
-  neutral: 'text-neutral-500 dark:text-white/50',
+  neutral: 'text-neutral-600 dark:text-white/60',
   info:    'text-blue-600 dark:text-blue-400',
 };
 
@@ -60,14 +60,15 @@ export function StatsCard({
     <div
       onClick={onClick}
       className={cn(
-        'bg-white dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8',
-        'shadow-[0_1px_3px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.02)]',
-        'transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
+        'bg-white dark:bg-neutral-800/60 rounded-2xl',
+        'border border-neutral-200/70 dark:border-white/10',
+        'shadow-card',
+        'transition-all duration-200 ease-smooth',
         compact ? 'p-4' : 'p-4 sm:p-5',
         onClick && [
           'cursor-pointer',
-          'hover:shadow-[0_8px_24px_-4px_rgba(0,0,0,0.08),0_4px_8px_-4px_rgba(0,0,0,0.03)]',
-          'hover:border-neutral-200 dark:hover:border-white/15',
+          'hover:shadow-card-hover',
+          'hover:border-neutral-300 dark:hover:border-white/18',
           'hover:-translate-y-0.5',
           'active:translate-y-0 active:scale-[0.99]',
         ],
@@ -76,10 +77,12 @@ export function StatsCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-white/50 mb-2 truncate">
+          {/* Title: WCAG AA — neutral-600 on white = 5.7:1, white/60 on dark bg ≈ 4.5:1 */}
+          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-white/60 mb-2 truncate">
             {title}
           </p>
 
+          {/* Value: always high contrast */}
           <p className={cn(
             "font-bold tracking-tight text-neutral-900 dark:text-white leading-none mb-2",
             compact ? "text-2xl" : "text-2xl sm:text-3xl"
@@ -97,7 +100,8 @@ export function StatsCard({
                 </span>
               )}
               {description && (
-                <span className="text-xs text-neutral-400 dark:text-white/35">
+                // WCAG AA: neutral-500 on white = 4.5:1, white/55 on dark ≈ 4:1
+                <span className="text-xs text-neutral-500 dark:text-white/55">
                   {description}
                 </span>
               )}
