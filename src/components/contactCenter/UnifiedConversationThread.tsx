@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, ArrowLeft, Loader as Loader2, MoveVertical as MoreVertical, SquareCheck as CheckSquare, Square, Sparkles, Bot, FileText, FolderInput as FormInput, ListTodo, Plus, Smile, X, ClipboardList, ExternalLink, Image as ImageIcon, File, MapPin, Check, CheckCheck, CircleAlert as AlertCircle, Clock, Paperclip, User, Star, Zap, RefreshCw, WifiOff } from 'lucide-react';
+import { Send, ArrowLeft, Loader as Loader2, MoveVertical as MoreVertical, SquareCheck as CheckSquare, Square, Sparkles, Bot, FileText, FolderInput as FormInput, ListTodo, Plus, Smile, X, ClipboardList, ExternalLink, Image as ImageIcon, File, MapPin, Check, CheckCheck, CircleAlert as AlertCircle, Clock, Paperclip, User, Star, Zap, RefreshCw, WifiOff, ChevronDown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -304,7 +304,10 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
   const [sending, setSending] = useState(false);
   const [text, setText] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const isAtBottomRef = useRef(true);
 
   // Selection mode
   const [selectionMode, setSelectionMode] = useState(false);
@@ -481,7 +484,32 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
   }, [conversation.id, conversation.channel, conversation.sourceId, currentUserId, participantNames, conversation.agentUserId]);
 
   useEffect(() => { loadMessages(); setText(''); setSelectionMode(false); setSelectedIds(new Set()); }, [loadMessages]);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  // Scroll to bottom — instant on first load, smooth on new messages if already near bottom
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+  }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    // Use requestAnimationFrame so the DOM has fully painted before measuring
+    requestAnimationFrame(() => {
+      scrollToBottom(isAtBottomRef.current ? 'instant' : 'smooth');
+      setShowScrollBtn(false);
+    });
+  }, [messages, loading, scrollToBottom]);
+
+  // Track whether the user has scrolled away from the bottom
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const atBottom = distanceFromBottom < 80;
+    isAtBottomRef.current = atBottom;
+    setShowScrollBtn(!atBottom);
+  }, []);
 
   // Realtime
   useEffect(() => {
@@ -956,7 +984,12 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
       )}
 
       {/* ── Messages ─────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-0" onClick={() => { setShowEmoji(false); }}>
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto px-4 py-3 space-y-0"
+        onClick={() => { setShowEmoji(false); }}
+      >
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 text-neutral-300 animate-spin" /></div>
         ) : messages.length === 0 ? (
@@ -1095,6 +1128,17 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
         })}
         <div ref={endRef} />
       </div>
+
+      {/* ── Scroll to bottom button ───────────────────────────────── */}
+      {showScrollBtn && (
+        <button
+          onClick={() => { scrollToBottom('smooth'); }}
+          className="absolute bottom-[72px] right-4 z-10 w-9 h-9 rounded-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-md flex items-center justify-center text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all"
+          title="Ir al ultimo mensaje"
+        >
+          <ChevronDown className="w-4 h-4" />
+        </button>
+      )}
 
       {/* ── Composer ─────────────────────────────────────────────── */}
       <div className="flex-shrink-0 bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-700 px-3 py-2.5 relative">
