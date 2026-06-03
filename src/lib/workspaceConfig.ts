@@ -197,7 +197,6 @@ export const WORKSPACES: WorkspaceDefinition[] = [
 
 export const NAV_ORDER: NavEntry[] = [
   { type: 'link', item: { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visibleTo: ALL_ROLES } },
-  { type: 'link', item: { path: '/chava', label: 'Chava', icon: Sparkles, visibleTo: ALL_ROLES } },
   { type: 'link', item: { path: '/centro-digital', label: 'Centro Digital', icon: FolderOpen, visibleTo: ALL_ROLES } },
   { type: 'workspace', workspace: WORKSPACE_COMERCIAL },
   { type: 'workspace', workspace: WORKSPACE_CENTRO_CONTACTO },
