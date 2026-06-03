@@ -353,7 +353,7 @@ export function AgentesActivosWidget({ usuario }: { usuario: Usuario }) {
     (async () => {
       try {
         let query = supabase.from('usuarios').select('id', { count: 'exact', head: true })
-          .eq('activo', true).in('rol', ['Agente', 'Ejecutivo']);
+          .eq('estado', 'activo').in('rol', ['Agente', 'Ejecutivo']);
         if (usuario.oficina_id && usuario.rol === 'Gerente') {
           query = query.eq('oficina_id', usuario.oficina_id);
         }
@@ -385,7 +385,7 @@ export function UsuariosActivosWidget() {
   useEffect(() => {
     (async () => {
       try {
-        const { count: c } = await supabase.from('usuarios').select('id', { count: 'exact', head: true }).eq('activo', true);
+        const { count: c } = await supabase.from('usuarios').select('id', { count: 'exact', head: true }).eq('estado', 'activo');
         setCount(c || 0);
       } catch { /* silent */ }
       finally { setLoading(false); }
@@ -493,9 +493,15 @@ export function TramitesRecientesWidget({ usuario }: { usuario: Usuario }) {
   }, [usuario.id]);
 
   const statusColor: Record<string, string> = {
-    'Pendiente': 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10',
-    'En proceso': 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10',
-    'En revision': 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-500/10',
+    'Iniciado': 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10',
+    'En Proceso': 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10',
+    'Espera Agente': 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-500/10',
+    'Espera Aseguradora': 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-500/10',
+    'Cotizado': 'text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-500/10',
+    'Emitido': 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10',
+    'Emitido (Ganado)': 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10',
+    'No Emitido': 'text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-500/10',
+    'No Emitido (Perdido)': 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10',
   };
 
   const items = data?.recientes || [];
@@ -527,7 +533,7 @@ export function TramitesRecientesWidget({ usuario }: { usuario: Usuario }) {
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="text-xs font-mono text-neutral-400 dark:text-white/30 flex-shrink-0">{t.folio || '#'}</span>
-                  <span className="text-sm text-neutral-700 dark:text-white/70 truncate">{t.titulo || t.tipo || 'Tramite'}</span>
+                  <span className="text-sm text-neutral-700 dark:text-white/70 truncate">{t.tipo || 'Tramite'}</span>
                 </div>
                 <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0', statusColor[t.estatus] || statusColor['Pendiente'])}>
                   {t.estatus}
