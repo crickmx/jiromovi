@@ -29,7 +29,7 @@ export function SELoginModal({ onClose, onSuccess, redirectTo }: Props) {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/send-login-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: email.trim(), platform: 'movi' }),
       });
       const data = await res.json();
       if (!res.ok || data.error) {
@@ -53,14 +53,23 @@ export function SELoginModal({ onClose, onSuccess, redirectTo }: Props) {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/verify-login-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-        body: JSON.stringify({ email: email.trim(), code: code.trim() }),
+        body: JSON.stringify({ email: email.trim(), code: code.trim(), platform: 'movi' }),
       });
       const data = await res.json();
       if (!res.ok || data.error) {
         setError(data.error || 'Código incorrecto. Intenta de nuevo.');
         return;
       }
-      if (data.access_token) {
+      if (data.token_hash) {
+        const { error: sessionError } = await supabase.auth.verifyOtp({
+          token_hash: data.token_hash,
+          type: 'magiclink',
+        });
+        if (sessionError) {
+          setError('Error al iniciar sesión. Intenta de nuevo.');
+          return;
+        }
+      } else if (data.access_token) {
         await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
       }
       setStep('success');
@@ -68,6 +77,7 @@ export function SELoginModal({ onClose, onSuccess, redirectTo }: Props) {
         onSuccess?.();
         onClose();
         if (redirectTo) window.location.href = redirectTo;
+        else window.location.reload();
       }, 1200);
     } catch {
       setError('Error de conexión. Intenta de nuevo.');
@@ -142,7 +152,7 @@ export function SELoginModal({ onClose, onSuccess, redirectTo }: Props) {
           {step === 'code' && (
             <div className="space-y-4">
               <p className="text-sm text-neutral-600 bg-blue-50 border border-blue-100 rounded-xl p-3 leading-relaxed">
-                Enviamos un código de verificación a <strong>{maskedEmail}</strong>
+                Enviamos tu código de acceso a <strong>{maskedEmail}</strong> por correo y/o WhatsApp.
               </p>
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1.5">
@@ -151,9 +161,9 @@ export function SELoginModal({ onClose, onSuccess, redirectTo }: Props) {
                 <input
                   type="text"
                   value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
                   onKeyDown={(e) => e.key === 'Enter' && handleVerifyCode()}
-                  placeholder="000000"
+                  placeholder="XXXXXX"
                   maxLength={6}
                   autoFocus
                   className="w-full px-4 py-3 border border-neutral-300 rounded-xl text-sm text-center font-mono text-xl tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
