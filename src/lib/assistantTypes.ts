@@ -345,6 +345,72 @@ export interface TextResponse {
   actions?: ActionButton[];
 }
 
+// ── CHAVA OS Specialist types ──────────────────────────────────────────────
+
+export type SpecialistCode =
+  | 'seguros'
+  | 'sicas'
+  | 'crm'
+  | 'produccion'
+  | 'marketing'
+  | 'capacitacion'
+  | 'tramites'
+  | 'atencion_clientes'
+  | 'automatizacion'
+  | 'documentos'
+  | 'investigacion';
+
+export interface SpecialistRouteResult {
+  primario: SpecialistCode;
+  activados: SpecialistCode[];
+  confianza: number;
+}
+
+export type ProactiveCacheType = 'alerta' | 'recomendacion' | 'oportunidad' | 'accion_pendiente' | 'resumen_dia' | 'dashboard_analysis';
+
+export interface ProactiveCacheItem {
+  id: string;
+  usuario_id: string;
+  tipo: ProactiveCacheType;
+  titulo: string;
+  cuerpo: string;
+  datos_json: Record<string, any>;
+  prioridad: number;
+  leido: boolean;
+  expires_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChavaMemoryEntry {
+  id: string;
+  scope: 'organizacion' | 'oficina' | 'equipo' | 'usuario' | 'cliente' | 'documento' | 'conversacion' | 'proceso';
+  scope_id: string;
+  usuario_id: string;
+  clave: string;
+  valor: any;
+  fuente: string | null;
+  confianza: number;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChavaActionLog {
+  id: string;
+  usuario_id: string;
+  conversacion_id: string | null;
+  tipo_accion: string;
+  descripcion: string | null;
+  datos_json: Record<string, any>;
+  ejecutado: boolean;
+  ejecutado_at: string | null;
+  resultado_json: Record<string, any> | null;
+  created_at: string;
+}
+
+// ── Message / Send types ───────────────────────────────────────────────────
+
 export interface SendMessageRequest {
   conversacion_id: string;
   mensaje: string;
@@ -364,6 +430,10 @@ export interface SendMessageResponse {
   router_confidence?: number;
   web_sources?: WebSource[];
   fuentes?: RAGSource[];
+  // CHAVA OS specialist routing
+  especialista?: SpecialistCode;
+  especialistas_activados?: SpecialistCode[];
+  confianza_enrutamiento?: number;
 }
 
 export interface GetSuggestionsRequest {
