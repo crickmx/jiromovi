@@ -158,7 +158,11 @@ export function SeguwalletLogin() {
         setError('Error al crear la sesión. Intenta de nuevo.');
         return;
       }
-      navigate('/seguwallet/dashboard', { replace: true });
+      // On app.seguwallet.mx routes are /dashboard; on app.movi.digital they are /seguwallet/dashboard
+      const dashboardPath = window.location.hostname.endsWith('.seguwallet.mx')
+        ? '/dashboard'
+        : '/seguwallet/dashboard';
+      navigate(dashboardPath, { replace: true });
     } catch {
       setError('Error de conexión. Intenta de nuevo.');
     } finally {

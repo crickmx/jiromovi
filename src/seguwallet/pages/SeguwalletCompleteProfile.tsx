@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, MapPin, Calendar, ChevronDown, FileText, CheckCircle2, Loader2 } from 'lucide-react';
+import { User, MapPin, Calendar, ChevronDown, FileText, CircleCheck as CheckCircle2, Loader as Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useSeguwallet } from '../lib/SeguwalletContext';
 import { useAgentBrand, SEGUWALLET_LOGO } from '../lib/AgentBrandContext';
 import { cn } from '../../lib/utils';
+import { swPrefix } from '../lib/seguwalletAuth';
 
 const MEXICAN_STATES = [
   'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche',
@@ -55,7 +56,7 @@ export function SeguwalletCompleteProfile() {
   useEffect(() => {
     if (!loading && customer) {
       if (!needsProfileCompletion && !needsTermsAcceptance) {
-        navigate('/seguwallet/dashboard', { replace: true });
+        navigate(`${swPrefix()}/dashboard`, { replace: true });
         return;
       }
       // If profile already complete but terms need acceptance, skip to terms step

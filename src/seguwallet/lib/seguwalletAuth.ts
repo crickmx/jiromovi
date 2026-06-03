@@ -194,7 +194,12 @@ export async function logDownload(customerId: string, doc: {
 export function isSeguwallet(): boolean {
   if (typeof window === 'undefined') return false;
   const hostname = window.location.hostname;
-  return hostname === 'app.seguwallet.mx' || hostname === 'seguwallet.mx';
+  return hostname === 'app.seguwallet.mx' || hostname === 'seguwallet.mx' || hostname.endsWith('.seguwallet.mx');
+}
+
+/** Returns '' on app.seguwallet.mx, '/seguwallet' everywhere else */
+export function swPrefix(): string {
+  return isSeguwallet() ? '' : '/seguwallet';
 }
 
 export function isSeguwalletRoute(): boolean {
