@@ -35,6 +35,7 @@ import ChavaAgenteTerminosAdmin from './chava-agente/pages/admin/ChavaAgenteTerm
 // MOVI full platform routes (lazy-loaded)
 const MoviFullRoutes = lazy(() => import('./pages/MoviFullRoutes'));
 const PaginaPublicaAsesor = lazy(() => import('./pages/PaginaPublicaAsesor'));
+const SegurosEducationLanding = lazy(() => import('./seguros-education/SegurosEducationLanding'));
 
 // ── Domain detection ────────────────────────────────────────────────────────
 const hostname = window.location.hostname;
@@ -42,11 +43,13 @@ const CHAVA_DOMAINS = ['agentedeseguros.ai', 'www.agentedeseguros.ai'];
 const SEGUWALLET_DOMAINS = ['seguwallet.mx', 'www.seguwallet.mx', 'app.seguwallet.mx'];
 const MOVI_SPLASH_DOMAINS = ['movi.digital', 'www.movi.digital'];
 const PUBLIC_PROFILE_DOMAINS = ['agentedeseguros.website', 'www.agentedeseguros.website'];
+const SEGUROS_EDUCATION_DOMAINS = ['seguros.education', 'www.seguros.education'];
 
 const isChavaDomain = CHAVA_DOMAINS.includes(hostname);
 const isSeguwalletDomain = SEGUWALLET_DOMAINS.includes(hostname);
 const isMoviSplashDomain = MOVI_SPLASH_DOMAINS.includes(hostname);
 const isPublicProfileDomain = PUBLIC_PROFILE_DOMAINS.includes(hostname);
+const isSegurosEducationDomain = SEGUROS_EDUCATION_DOMAINS.includes(hostname);
 
 // ── MOVI private route ───────────────────────────────────────────────────────
 function MoviPrivateRoute({ children }: { children: ReactNode }) {
@@ -152,7 +155,23 @@ function PublicProfileApp() {
 }
 
 // ── 3. movi.digital marketing splash ─────────────────────────────────────────
-function MoviSplashApp() {
+
+// ── 3.6. seguros.education — continuing education landing page ────────────────
+function SegurosEducationApp() {
+  return (
+    <BrowserRouter>
+      <MoviAuthProvider>
+        <Routes>
+          <Route path="*" element={
+            <Suspense fallback={<MoviLoader />}>
+              <SegurosEducationLanding />
+            </Suspense>
+          } />
+        </Routes>
+      </MoviAuthProvider>
+    </BrowserRouter>
+  );
+}function MoviSplashApp() {
   return (
     <BrowserRouter>
       <Routes>
@@ -252,6 +271,13 @@ function MoviApp() {
               </Suspense>
             } />
 
+            {/* Seguros Education landing — public, no auth required */}
+            <Route path="/seguros-education" element={
+              <Suspense fallback={<MoviLoader />}>
+                <SegurosEducationLanding />
+              </Suspense>
+            } />
+
             {/* All other MOVI routes — requires auth, loaded lazily */}
             <Route path="*" element={
               <MoviPrivateRoute>
@@ -278,7 +304,8 @@ export default function App() {
       {isSeguwalletDomain && <SeguwalletApp />}
       {isMoviSplashDomain && <MoviSplashApp />}
       {isPublicProfileDomain && <PublicProfileApp />}
-      {!isChavaDomain && !isSeguwalletDomain && !isMoviSplashDomain && !isPublicProfileDomain && <MoviApp />}
+      {isSegurosEducationDomain && <SegurosEducationApp />}
+      {!isChavaDomain && !isSeguwalletDomain && !isMoviSplashDomain && !isPublicProfileDomain && !isSegurosEducationDomain && <MoviApp />}
     </>
   );
 }
