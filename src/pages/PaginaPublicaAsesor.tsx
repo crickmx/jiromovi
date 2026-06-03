@@ -217,7 +217,10 @@ export default function PaginaPublicaAsesor() {
 
   useEffect(() => {
     if (!slug) { setNotFound(true); setLoading(false); return; }
+    const root = document.getElementById('root');
+    root?.classList.add('public-page');
     loadPageData();
+    return () => { root?.classList.remove('public-page'); };
   }, [slug]);
 
   useEffect(() => {
@@ -471,7 +474,7 @@ export default function PaginaPublicaAsesor() {
         return null;
       })()}
 
-      <div className="bg-white min-h-screen pb-16 md:pb-0" style={{ overflowX: 'clip' }}>
+      <div className="bg-white min-h-screen overflow-x-hidden pb-16 md:pb-0">
 
         {/* ═══════════════════════════════════════
             NAVEGACIÓN — centrada y sticky

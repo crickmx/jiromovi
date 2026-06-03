@@ -87,6 +87,12 @@ body {
   overflow: hidden;
 }
 
+/* Public pages (advisor page, public quote form) need normal document scroll */
+#root.public-page {
+  height: auto;
+  overflow: visible;
+}
+
 /* ────────────────────────────────────────────────────────────
    SHIMMER ANIMATION (used by Skeleton component)
 ───────────────────────────────────────────────────────────── */
