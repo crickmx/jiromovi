@@ -212,8 +212,8 @@ export default function MoviFullRoutes() {
           <Route path="/accesos-nacional" element={<ProtectedRoute><AccesosNacional /></ProtectedRoute>} />
 
           {/* Mercadotecnia */}
-          <Route path="/mercadotecnia/publicidad" element={<ProtectedRoute><Publicidad /></ProtectedRoute>} />
-          <Route path="/mercadotecnia/mis-disenos" element={<ProtectedRoute><Publicidad initialTab="mis-disenos" /></ProtectedRoute>} />
+          <Route path="/mercadotecnia/publicidad" element={<ProtectedRoute><Publicidad key="publicidad" /></ProtectedRoute>} />
+          <Route path="/mercadotecnia/mis-disenos" element={<ProtectedRoute><Publicidad key="mis-disenos" initialTab="mis-disenos" /></ProtectedRoute>} />
           <Route path="/mercadotecnia/mi-pagina-web" element={<ProtectedRoute><MiPaginaWeb /></ProtectedRoute>} />
           <Route path="/mercadotecnia/mi-marca" element={<ProtectedRoute><MiMarca /></ProtectedRoute>} />
           <Route path="/centro-digital" element={<ProtectedRoute><CentroDigital /></ProtectedRoute>} />
