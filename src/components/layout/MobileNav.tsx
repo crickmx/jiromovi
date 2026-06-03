@@ -43,7 +43,7 @@ export function MobileNav({ onOpenDrawer }: Props) {
                   'flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-all active:scale-95',
                   active
                     ? 'text-accent'
-                    : 'text-neutral-400 dark:text-neutral-500'
+                    : 'text-neutral-500 dark:text-neutral-400'
                 )}
               >
                 <Icon className="w-5 h-5" />
@@ -98,7 +98,7 @@ export function MobileNav({ onOpenDrawer }: Props) {
                   'flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-all active:scale-95',
                   active
                     ? 'text-accent'
-                    : 'text-neutral-400 dark:text-neutral-500'
+                    : 'text-neutral-500 dark:text-neutral-400'
                 )}
               >
                 <Icon className="w-5 h-5" />
@@ -110,7 +110,7 @@ export function MobileNav({ onOpenDrawer }: Props) {
           {/* Menu/drawer button */}
           <button
             onClick={onOpenDrawer}
-            className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-all active:scale-95"
+            className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 transition-all active:scale-95"
           >
             <Menu className="w-5 h-5" />
             <span className="leading-none">Menú</span>

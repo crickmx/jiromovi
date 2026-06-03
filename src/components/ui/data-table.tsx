@@ -28,7 +28,7 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center py-16 text-sm text-neutral-400 dark:text-white/30">
+      <div className="flex items-center justify-center py-16 text-sm text-neutral-500 dark:text-white/50">
         {emptyMessage}
       </div>
     );
