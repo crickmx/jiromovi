@@ -471,7 +471,7 @@ export default function PaginaPublicaAsesor() {
         return null;
       })()}
 
-      <div className="bg-white min-h-screen overflow-x-hidden pb-16 md:pb-0">
+      <div className="bg-white min-h-screen pb-16 md:pb-0" style={{ overflowX: 'clip' }}>
 
         {/* ═══════════════════════════════════════
             NAVEGACIÓN — centrada y sticky
