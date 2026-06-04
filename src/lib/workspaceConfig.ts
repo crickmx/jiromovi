@@ -1,10 +1,11 @@
-import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Send, DollarSign, Activity, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartBar as BarChart3, Video, BookMarked, BadgeCheck, Compass, Calculator, Smartphone, Mail, MessageSquare, Bell, Sparkles, Brain, Database, Eye, Image as ImageIcon } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Send, DollarSign, Activity, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartBar as BarChart3, Video, BookMarked, BadgeCheck, Compass, Calculator, Smartphone, Mail, MessageSquare, Bell, Sparkles, Brain, Database, Eye, Image as ImageIcon, PieChart, Upload, Building2, Layers } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
   | 'comercial'
   | 'centro-contacto'
   | 'cotizar'
+  | 'central-produccion'
   | 'mercadotecnia'
   | 'operaciones'
   | 'seguros-education'
@@ -98,6 +99,20 @@ const WORKSPACE_COTIZAR: WorkspaceDefinition = {
   ],
 };
 
+const WORKSPACE_CENTRAL_PRODUCCION: WorkspaceDefinition = {
+  id: 'central-produccion',
+  label: 'Central de Produccion',
+  icon: PieChart,
+  visibleTo: ALL_ROLES,
+  items: [
+    { path: '/mi-produccion-sicas-live', label: 'Dashboard', icon: BarChart3, visibleTo: ALL_ROLES },
+    { path: '/mi-produccion', label: 'Mi Produccion', icon: TrendingUp, visibleTo: ALL_ROLES },
+    { path: '/produccion/total', label: 'Produccion Total', icon: Layers, visibleTo: NOT_AGENT },
+    { path: '/produccion/convenio', label: 'Convenio', icon: Building2, visibleTo: NOT_AGENT },
+    { path: '/produccion/cargar', label: 'Cargar Datos', icon: Upload, visibleTo: ADMIN_ONLY },
+  ],
+};
+
 const WORKSPACE_OPERACIONES: WorkspaceDefinition = {
   id: 'operaciones',
   label: 'Operaciones',
@@ -173,6 +188,7 @@ export const WORKSPACES: WorkspaceDefinition[] = [
   WORKSPACE_COMERCIAL,
   WORKSPACE_CENTRO_CONTACTO,
   WORKSPACE_COTIZAR,
+  WORKSPACE_CENTRAL_PRODUCCION,
   WORKSPACE_OPERACIONES,
   WORKSPACE_MERCADOTECNIA,
   WORKSPACE_SEGUROS_EDUCATION,
@@ -185,6 +201,7 @@ export const NAV_ORDER: NavEntry[] = [
   { type: 'workspace', workspace: WORKSPACE_COMERCIAL },
   { type: 'workspace', workspace: WORKSPACE_CENTRO_CONTACTO },
   { type: 'workspace', workspace: WORKSPACE_COTIZAR },
+  { type: 'workspace', workspace: WORKSPACE_CENTRAL_PRODUCCION },
   { type: 'workspace', workspace: WORKSPACE_OPERACIONES },
   { type: 'workspace', workspace: WORKSPACE_MERCADOTECNIA },
   { type: 'workspace', workspace: WORKSPACE_SEGUROS_EDUCATION },
