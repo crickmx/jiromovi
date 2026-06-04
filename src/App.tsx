@@ -34,7 +34,6 @@ const PaginaPublicaAsesor = lazy(() => import('./pages/PaginaPublicaAsesor'));
 const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
 const isAgenteSite   = HOST === 'agentedeseguros.website' || HOST.endsWith('.agentedeseguros.website');
 const isChavaSite    = HOST === 'agentedeseguros.ai'      || HOST.endsWith('.agentedeseguros.ai');
-const isSeguwallet   = HOST === 'app.seguwallet.mx'       || HOST.endsWith('.seguwallet.mx');
 // Everything else (app.movi.digital, localhost, Bolt preview, etc.) is MOVI
 
 // ── Redirect to grupojiro.com for bare agentedeseguros.website root ────────
@@ -93,71 +92,6 @@ function ChavaAIApp() {
           </Routes>
         </Suspense>
       </ChavaAgenteProvider>
-    </BrowserRouter>
-  );
-}
-
-// ── Seguwallet standalone app (app.seguwallet.mx) ─────────────────────────
-// Routes without the /seguwallet/ prefix: /login, /dashboard, /polizas, etc.
-function SeguwalletApp() {
-  return (
-    <BrowserRouter>
-      <ImpersonationProvider>
-        <SeguwalletStack>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/login" element={<SeguwalletLogin />} />
-              <Route path="/completa-perfil" element={
-                <SeguwalletProtectedRoute loginPath="/login" profilePath="/completa-perfil">
-                  <SeguwalletCompleteProfile />
-                </SeguwalletProtectedRoute>
-              } />
-              <Route path="/dashboard" element={
-                <SeguwalletProtectedRoute loginPath="/login" profilePath="/completa-perfil">
-                  <SeguwalletDashboard />
-                </SeguwalletProtectedRoute>
-              } />
-              <Route path="/polizas" element={
-                <SeguwalletProtectedRoute loginPath="/login" profilePath="/completa-perfil">
-                  <SeguwalletPolizas />
-                </SeguwalletProtectedRoute>
-              } />
-              <Route path="/polizas/:id" element={
-                <SeguwalletProtectedRoute loginPath="/login" profilePath="/completa-perfil">
-                  <SeguwalletPolizas />
-                </SeguwalletProtectedRoute>
-              } />
-              <Route path="/chava" element={
-                <SeguwalletProtectedRoute loginPath="/login" profilePath="/completa-perfil">
-                  <SeguwalletChava />
-                </SeguwalletProtectedRoute>
-              } />
-              <Route path="/perfil" element={
-                <SeguwalletProtectedRoute loginPath="/login" profilePath="/completa-perfil">
-                  <SeguwalletPerfil />
-                </SeguwalletProtectedRoute>
-              } />
-              <Route path="/cotizar" element={
-                <SeguwalletProtectedRoute loginPath="/login" profilePath="/completa-perfil">
-                  <SeguwalletCotizar />
-                </SeguwalletProtectedRoute>
-              } />
-              <Route path="/descargas" element={
-                <SeguwalletProtectedRoute loginPath="/login" profilePath="/completa-perfil">
-                  <SeguwalletDescargas />
-                </SeguwalletProtectedRoute>
-              } />
-              <Route path="/aseguradoras" element={
-                <SeguwalletProtectedRoute loginPath="/login" profilePath="/completa-perfil">
-                  <SeguwalletAseguradoras />
-                </SeguwalletProtectedRoute>
-              } />
-              <Route path="/" element={<Navigate to="/login" replace />} />
-              <Route path="*" element={<Navigate to="/login" replace />} />
-            </Routes>
-          </Suspense>
-        </SeguwalletStack>
-      </ImpersonationProvider>
     </BrowserRouter>
   );
 }
@@ -246,7 +180,6 @@ function PageLoader() {
 function App() {
   if (isAgenteSite) return <AgenteWebsiteApp />;
   if (isChavaSite)  return <ChavaAIApp />;
-  if (isSeguwallet) return <SeguwalletApp />;
   return <MoviApp />;
 }
 

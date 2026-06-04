@@ -97,10 +97,7 @@ export function Layout({ children }: LayoutProps) {
       )}
 
       {/* Mobile bottom navigation */}
-      <MobileNav
-        onChavaClick={() => navigate('/chava')}
-        onOpenDrawer={() => setMobileDrawerOpen(true)}
-      />
+      <MobileNav onOpenDrawer={() => setMobileDrawerOpen(true)} />
     </div>
   );
 }

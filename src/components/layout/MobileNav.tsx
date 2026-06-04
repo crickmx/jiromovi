@@ -1,111 +1,82 @@
-import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ClipboardList, Palette, Menu } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { ChavaOrbIcon } from '../chava/ChavaOrbIcon';
+import { LayoutDashboard, Users, FileText, Settings } from 'lucide-react';
 
 interface MobileNavProps {
+  className?: string;
   onChavaClick?: () => void;
-  onOpenDrawer?: () => void;
+  currentPath?: string;
 }
 
-const NAV_ITEMS = [
+const LEFT_NAV = [
   { icon: LayoutDashboard, label: 'Inicio', href: '/dashboard' },
-  { icon: ClipboardList, label: 'Trámites', href: '/tramites' },
-] as const;
+  { icon: Users, label: 'Clientes', href: '/clients' },
+];
 
-const NAV_ITEMS_RIGHT = [
-  { icon: Palette, label: 'Marketing', href: '/mercadotecnia/publicidad' },
-] as const;
+const RIGHT_NAV = [
+  { icon: FileText, label: 'Pólizas', href: '/policies' },
+  { icon: Settings, label: 'Config', href: '/settings' },
+];
 
-export function MobileNav({ onChavaClick, onOpenDrawer }: MobileNavProps) {
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const isActive = (href: string) =>
-    location.pathname === href || location.pathname.startsWith(href + '/');
-
+export function MobileNav({ className, onChavaClick, currentPath = '/dashboard' }: MobileNavProps) {
   return (
     <nav
       className={cn(
-        'md:hidden fixed bottom-0 left-0 right-0 z-50',
-        'bg-white/95 dark:bg-[#111113]/95 backdrop-blur-xl',
-        'border-t border-neutral-200/60 dark:border-white/[0.06]',
-        'flex items-end justify-around px-2',
-        'shadow-[0_-4px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_24px_rgba(0,0,0,0.3)]'
+        'md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface-950/95 backdrop-blur-md border-t border-surface-800',
+        'flex items-center justify-around px-4 pb-safe',
+        className
       )}
-      style={{ paddingBottom: 'max(0.625rem, env(safe-area-inset-bottom))' }}
+      style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
     >
-      {/* Inicio */}
-      {NAV_ITEMS.map((item) => {
+      {/* Left items */}
+      {LEFT_NAV.map((item) => {
         const Icon = item.icon;
-        const active = isActive(item.href);
+        const active = currentPath === item.href;
         return (
-          <button
+          <a
             key={item.href}
-            onClick={() => navigate(item.href)}
+            href={item.href}
             className={cn(
-              'flex flex-col items-center gap-1 pt-2.5 pb-0.5 px-4 min-w-[56px] rounded-xl transition-all active:scale-95',
-              active
-                ? 'text-accent'
-                : 'text-neutral-500 dark:text-white/40 hover:text-neutral-800 dark:hover:text-white/70'
+              'flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl transition-colors',
+              active ? 'text-brand-400' : 'text-surface-500 hover:text-surface-300'
             )}
           >
-            <Icon className={cn('w-[22px] h-[22px] transition-transform', active && 'scale-105')} strokeWidth={active ? 2.2 : 1.8} />
-            <span className={cn('text-[10px] font-medium tracking-tight', active && 'font-semibold')}>{item.label}</span>
-            {active && <span className="absolute bottom-[calc(env(safe-area-inset-bottom,10px)+2px)] w-4 h-0.5 rounded-full bg-accent" />}
-          </button>
+            <Icon className="w-5 h-5" />
+            <span className="text-xs">{item.label}</span>
+          </a>
         );
       })}
 
-      {/* Center: Chava AI featured */}
+      {/* Center: Chava AI featured button */}
       <button
         onClick={onChavaClick}
-        className="relative flex flex-col items-center gap-1 pt-0 pb-0.5 px-3 group"
+        className="relative -mt-6 flex flex-col items-center gap-1 group"
         aria-label="Abrir Chava AI"
       >
-        <div className={cn(
-          'relative -mt-5 w-[54px] h-[54px] rounded-2xl flex items-center justify-center',
-          'bg-gradient-to-br from-[#0a1628] to-[#061020]',
-          'border border-sky-500/30',
-          'shadow-lg shadow-sky-900/40',
-          'group-active:scale-95 transition-all duration-150',
-        )}>
+        <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-900 to-brand-900 border border-sky-700/50 flex items-center justify-center shadow-lg shadow-sky-900/40 group-hover:shadow-sky-700/40 transition-shadow">
           <ChavaOrbIcon size="sm" animate />
         </div>
-        <span className="text-[10px] font-semibold text-sky-400 tracking-tight mt-0.5">Chava AI</span>
+        <span className="text-xs text-sky-300 font-medium">Chava AI</span>
       </button>
 
-      {/* Mercadotecnia */}
-      {NAV_ITEMS_RIGHT.map((item) => {
+      {/* Right items */}
+      {RIGHT_NAV.map((item) => {
         const Icon = item.icon;
-        const active = location.pathname.startsWith('/mercadotecnia');
+        const active = currentPath === item.href;
         return (
-          <button
+          <a
             key={item.href}
-            onClick={() => navigate(item.href)}
+            href={item.href}
             className={cn(
-              'relative flex flex-col items-center gap-1 pt-2.5 pb-0.5 px-4 min-w-[56px] rounded-xl transition-all active:scale-95',
-              active
-                ? 'text-accent'
-                : 'text-neutral-500 dark:text-white/40 hover:text-neutral-800 dark:hover:text-white/70'
+              'flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl transition-colors',
+              active ? 'text-brand-400' : 'text-surface-500 hover:text-surface-300'
             )}
           >
-            <Icon className={cn('w-[22px] h-[22px] transition-transform', active && 'scale-105')} strokeWidth={active ? 2.2 : 1.8} />
-            <span className={cn('text-[10px] font-medium tracking-tight', active && 'font-semibold')}>{item.label}</span>
-            {active && <span className="absolute bottom-[calc(env(safe-area-inset-bottom,10px)+2px)] w-4 h-0.5 rounded-full bg-accent" />}
-          </button>
+            <Icon className="w-5 h-5" />
+            <span className="text-xs">{item.label}</span>
+          </a>
         );
       })}
-
-      {/* Menu — opens right drawer */}
-      <button
-        onClick={onOpenDrawer}
-        className="flex flex-col items-center gap-1 pt-2.5 pb-0.5 px-4 min-w-[56px] rounded-xl text-neutral-500 dark:text-white/40 hover:text-neutral-800 dark:hover:text-white/70 transition-all active:scale-95"
-        aria-label="Abrir menú"
-      >
-        <Menu className="w-[22px] h-[22px]" strokeWidth={1.8} />
-        <span className="text-[10px] font-medium tracking-tight">Menú</span>
-      </button>
     </nav>
   );
 }

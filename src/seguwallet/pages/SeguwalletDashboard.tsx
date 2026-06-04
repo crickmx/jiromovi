@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Calculator, Clock, TriangleAlert as AlertTriangle, Phone, Mail, Globe, MessageCircle, ChevronRight } from 'lucide-react';
+import { FileText, Calculator, Clock, AlertTriangle, Phone, Mail, Globe, MessageCircle, ChevronRight } from 'lucide-react';
 import { useSeguwallet } from '../lib/SeguwalletContext';
 import { useAgentBrand } from '../lib/AgentBrandContext';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { getContrastColor } from '../lib/contrastUtils';
-import { swPrefix } from '../lib/seguwalletAuth';
 
 function AgentCard({ primary, secondary }: { primary: string; secondary: string }) {
   const { brand } = useAgentBrand();
@@ -199,7 +198,7 @@ export function SeguwalletDashboard() {
           <p className="text-sm mt-1.5" style={{ color: contrastOnGradient, opacity: 0.70 }}>Gestiona tus polizas y solicita cotizaciones en segundos.</p>
 
           <button
-            onClick={() => navigate(`${swPrefix()}/polizas`)}
+            onClick={() => navigate('/seguwallet/polizas')}
             className="mt-5 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl backdrop-blur-sm text-sm font-semibold transition-all"
             style={{
               backgroundColor: `${contrastOnGradient}22`,
@@ -271,7 +270,7 @@ export function SeguwalletDashboard() {
         </button>
 
         <button
-          onClick={() => navigate(`${swPrefix()}/cotizar`)}
+          onClick={() => navigate('/seguwallet/cotizar')}
           className="rounded-2xl p-5 text-white shadow-lg hover:shadow-xl hover:brightness-105 transition-all text-left bg-white"
           style={{ border: `2px solid ${primary}25`, color: primary }}
         >
