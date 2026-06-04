@@ -783,7 +783,7 @@ export function Contactos() {
       actions.push({
         label: 'Ver producción SICAS',
         icon: BarChart3,
-        onClick: () => navigate('/produccion/mi-produccion'),
+        onClick: () => navigate('/mi-produccion'),
       });
       actions.push({
         label: 'Ver pólizas SICAS',

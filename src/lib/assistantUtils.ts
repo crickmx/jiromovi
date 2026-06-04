@@ -1,7 +1,7 @@
 import type { ModuleName, ActionType, IntentCode } from './assistantTypes';
 
 export function detectModuleFromRoute(pathname: string): ModuleName {
-  if (pathname.startsWith('/produccion/mis-comisiones') || pathname.startsWith('/mis-comisiones') || pathname.startsWith('/comisiones')) {
+  if (pathname.startsWith('/mis-comisiones') || pathname.startsWith('/comisiones')) {
     return 'comisiones';
   }
   if (pathname.startsWith('/mi-produccion') || pathname.startsWith('/produccion')) {
