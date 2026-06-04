@@ -1,82 +1,66 @@
+import { useNavigate, useLocation } from 'react-router-dom';
+import { LayoutDashboard, ClipboardList, MessageCircle, Menu } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { ChavaOrbIcon } from '../chava/ChavaOrbIcon';
-import { LayoutDashboard, Users, FileText, Settings } from 'lucide-react';
 
 interface MobileNavProps {
+  onOpenDrawer?: () => void;
   className?: string;
-  onChavaClick?: () => void;
-  currentPath?: string;
 }
 
-const LEFT_NAV = [
+const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Inicio', href: '/dashboard' },
-  { icon: Users, label: 'Clientes', href: '/clients' },
+  { icon: ClipboardList, label: 'Tramites', href: '/tramites' },
+  { icon: MessageCircle, label: 'Contactos', href: '/contactos' },
 ];
 
-const RIGHT_NAV = [
-  { icon: FileText, label: 'Pólizas', href: '/policies' },
-  { icon: Settings, label: 'Config', href: '/settings' },
-];
+export function MobileNav({ onOpenDrawer, className }: MobileNavProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
 
-export function MobileNav({ className, onChavaClick, currentPath = '/dashboard' }: MobileNavProps) {
   return (
     <nav
       className={cn(
-        'md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface-950/95 backdrop-blur-md border-t border-surface-800',
-        'flex items-center justify-around px-4 pb-safe',
+        'md:hidden fixed bottom-0 left-0 right-0 z-40',
+        'bg-white/95 dark:bg-[#111113]/95 backdrop-blur-md',
+        'border-t border-neutral-200/80 dark:border-white/[0.06]',
+        'flex items-center',
         className
       )}
-      style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
-      {/* Left items */}
-      {LEFT_NAV.map((item) => {
+      {/* Quick nav items */}
+      {NAV_ITEMS.map((item) => {
         const Icon = item.icon;
-        const active = currentPath === item.href;
+        const active = location.pathname === item.href || location.pathname.startsWith(item.href + '/');
         return (
-          <a
+          <button
             key={item.href}
-            href={item.href}
+            onClick={() => navigate(item.href)}
             className={cn(
-              'flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl transition-colors',
-              active ? 'text-brand-400' : 'text-surface-500 hover:text-surface-300'
+              'flex-1 flex flex-col items-center gap-1 py-2.5 px-2 transition-colors',
+              active
+                ? 'text-[rgb(var(--movi-accent-rgb))]'
+                : 'text-neutral-400 dark:text-white/35 active:text-neutral-600 dark:active:text-white/60'
             )}
           >
             <Icon className="w-5 h-5" />
-            <span className="text-xs">{item.label}</span>
-          </a>
+            <span className="text-[10px] font-medium">{item.label}</span>
+          </button>
         );
       })}
 
-      {/* Center: Chava AI featured button */}
+      {/* Divider */}
+      <div className="w-px h-8 bg-neutral-200 dark:bg-white/[0.06] mx-1 flex-shrink-0" />
+
+      {/* Menu button — opens MobileDrawer */}
       <button
-        onClick={onChavaClick}
-        className="relative -mt-6 flex flex-col items-center gap-1 group"
-        aria-label="Abrir Chava AI"
+        onClick={onOpenDrawer}
+        className="flex-1 flex flex-col items-center gap-1 py-2.5 px-2 text-neutral-400 dark:text-white/35 active:text-neutral-600 dark:active:text-white/60 transition-colors"
+        aria-label="Abrir menu"
       >
-        <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-900 to-brand-900 border border-sky-700/50 flex items-center justify-center shadow-lg shadow-sky-900/40 group-hover:shadow-sky-700/40 transition-shadow">
-          <ChavaOrbIcon size="sm" animate />
-        </div>
-        <span className="text-xs text-sky-300 font-medium">Chava AI</span>
+        <Menu className="w-5 h-5" />
+        <span className="text-[10px] font-medium">Menu</span>
       </button>
-
-      {/* Right items */}
-      {RIGHT_NAV.map((item) => {
-        const Icon = item.icon;
-        const active = currentPath === item.href;
-        return (
-          <a
-            key={item.href}
-            href={item.href}
-            className={cn(
-              'flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl transition-colors',
-              active ? 'text-brand-400' : 'text-surface-500 hover:text-surface-300'
-            )}
-          >
-            <Icon className="w-5 h-5" />
-            <span className="text-xs">{item.label}</span>
-          </a>
-        );
-      })}
     </nav>
   );
 }
