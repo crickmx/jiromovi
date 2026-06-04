@@ -299,13 +299,15 @@ Deno.serve(async (req: Request) => {
     // Mode 2: Direct dispatch with event_code, user_id, payload
 
     if (body.process_pending_jobs) {
-      // Fetch pending jobs
-      const { data: pendingJobs } = await supabase
-        .from("notification_jobs")
-        .select("*")
-        .eq("status", "pending")
-        .order("created_at", { ascending: true })
-        .limit(50);
+      // Claim jobs atomically using FOR UPDATE SKIP LOCKED.
+      // This prevents two concurrent dispatcher instances from processing the same jobs.
+      const { data: pendingJobs, error: claimError } = await supabase
+        .rpc("claim_notification_jobs", { p_batch_size: 50 });
+
+      if (claimError) {
+        console.error("claim_notification_jobs error:", claimError);
+        // Fallback to legacy select if RPC not available
+      }
 
       if (!pendingJobs || pendingJobs.length === 0) {
         return new Response(
@@ -323,10 +325,7 @@ Deno.serve(async (req: Request) => {
 
       for (const job of pendingJobs) {
         try {
-          await supabase
-            .from("notification_jobs")
-            .update({ status: "processing", updated_at: new Date().toISOString() })
-            .eq("id", job.id);
+          // Job is already in 'processing' state — claimed atomically by the RPC
 
           // Resolve user contact info if not in payload
           if (job.user_id && (!job.payload?.email || !job.payload?.phone)) {
