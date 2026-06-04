@@ -32,8 +32,9 @@ const PaginaPublicaAsesor = lazy(() => import('./pages/PaginaPublicaAsesor'));
 
 // ── Domain detection ──────────────────────────────────────────────────────
 const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
-const isAgenteSite   = HOST === 'agentedeseguros.website' || HOST.endsWith('.agentedeseguros.website');
-const isChavaSite    = HOST === 'agentedeseguros.ai'      || HOST.endsWith('.agentedeseguros.ai');
+const isAgenteSite    = HOST === 'agentedeseguros.website' || HOST.endsWith('.agentedeseguros.website');
+const isChavaSite     = HOST === 'agentedeseguros.ai'      || HOST.endsWith('.agentedeseguros.ai');
+const isSeguwallet    = HOST === 'app.seguwallet.mx'       || HOST.endsWith('.seguwallet.mx');
 // Everything else (app.movi.digital, localhost, Bolt preview, etc.) is MOVI
 
 // ── Redirect to grupojiro.com for bare agentedeseguros.website root ────────
@@ -96,7 +97,7 @@ function ChavaAIApp() {
   );
 }
 
-function MoviApp() {
+function MoviApp({ seguwallet = false }: { seguwallet?: boolean }) {
   return (
     <BrowserRouter>
       <ImpersonationProvider>
@@ -105,8 +106,16 @@ function MoviApp() {
             <LoadingOverlay />
             <Suspense fallback={<PageLoader />}>
               <Routes>
+                {/* On the Seguwallet domain, root and /login go to Seguwallet login */}
+                {seguwallet && (
+                  <>
+                    <Route path="/" element={<Navigate to="/seguwallet/login" replace />} />
+                    <Route path="/login" element={<Navigate to="/seguwallet/login" replace />} />
+                  </>
+                )}
+
                 {/* MOVI login (passwordless) */}
-                <Route path="/login" element={<MoviLogin />} />
+                {!seguwallet && <Route path="/login" element={<MoviLogin />} />}
 
                 {/* Seguwallet customer sub-app under /seguwallet/* */}
                 <Route path="/seguwallet/login" element={
@@ -180,6 +189,7 @@ function PageLoader() {
 function App() {
   if (isAgenteSite) return <AgenteWebsiteApp />;
   if (isChavaSite)  return <ChavaAIApp />;
+  if (isSeguwallet) return <MoviApp seguwallet />;
   return <MoviApp />;
 }
 
