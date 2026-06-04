@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, Upload, Users, CircleAlert as AlertCircle, CircleCheck as CheckCircle, Circle as XCircle } from 'lucide-react';
+import { Download, Upload, Users, CircleAlert as AlertCircle, CircleCheck as CheckCircle, Circle as XCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Alert } from '@/components/ui/alert';
 
 interface ProcessResult {
   success: number;
+  created: number;
+  updated: number;
   failed: number;
   errors: Array<{ row: number; email: string; error: string }>;
 }
@@ -74,7 +76,7 @@ ana.martinez@ejemplo.com,Temporal321,Ana Patricia,Martínez Fernández,Agente,Gu
       if (!session) throw new Error('No hay sesión activa');
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bulk-create-users`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bulk-upsert-users`,
         {
           method: 'POST',
           headers: {
@@ -146,7 +148,7 @@ ana.martinez@ejemplo.com,Temporal321,Ana Patricia,Martínez Fernández,Agente,Gu
                 <div>
                   <h4 className="font-medium">Llena la Información</h4>
                   <p className="text-sm text-muted-foreground">
-                    Completa los datos de los usuarios en el archivo CSV. Los campos obligatorios son: email, password, nombre, apellidos, rol y oficina_nombre
+                    Completa los datos de los usuarios en el archivo CSV. Los campos obligatorios son: email_laboral, nombre, apellidos y rol. Si el usuario ya existe (por email), sus datos serán actualizados y la cuenta quedará activa.
                   </p>
                 </div>
               </div>
@@ -167,7 +169,7 @@ ana.martinez@ejemplo.com,Temporal321,Ana Patricia,Martínez Fernández,Agente,Gu
             <Alert className="bg-blue-50 border-blue-200">
               <AlertCircle className="w-4 h-4 text-blue-600" />
               <div className="text-sm text-blue-800">
-                <strong>Importante:</strong> La oficina debe existir previamente. Los emails deben ser únicos.
+                <strong>Importante:</strong> Los usuarios existentes se actualizan (identificados por email laboral) y quedan activos. Los nuevos se crean. La oficina debe existir previamente.
               </div>
             </Alert>
 
@@ -245,12 +247,20 @@ ana.martinez@ejemplo.com,Temporal321,Ana Patricia,Martínez Fernández,Agente,Gu
               <CardTitle>Resultados de la Carga</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
                   <CheckCircle className="w-8 h-8 text-green-600" />
                   <div>
-                    <p className="text-2xl font-bold text-green-900">{result.success}</p>
+                    <p className="text-2xl font-bold text-green-900">{result.created ?? 0}</p>
                     <p className="text-sm text-green-700">Usuarios creados</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <RefreshCw className="w-8 h-8 text-blue-600" />
+                  <div>
+                    <p className="text-2xl font-bold text-blue-900">{result.updated ?? 0}</p>
+                    <p className="text-sm text-blue-700">Usuarios actualizados</p>
                   </div>
                 </div>
 
