@@ -116,6 +116,7 @@ function PlantillaImage({
       <img
         src={effectiveSrc}
         alt={alt}
+        crossOrigin="anonymous"
         className={`w-full h-full transition-opacity duration-300 ${objectFit === 'contain' ? 'object-contain' : 'object-cover'} ${status === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
         onLoad={() => setStatus('loaded')}
         onError={() => {

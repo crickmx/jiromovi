@@ -39,7 +39,7 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const { isImpersonating, impersonatedUser } = useImpersonation();
 
-  async function loadProfile(userId: string) {
+  async function loadProfile(userId: string, isInitial = false) {
     console.log('[MoviAuth] loadProfile userId=', userId);
     const { data } = await supabase
       .from('usuarios')
@@ -53,8 +53,10 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
 
     if (!data) {
       console.log('[MoviAuth] No usuario found for userId=', userId);
-      setRealUser(null);
-      setLoading(false);
+      if (isInitial) {
+        setRealUser(null);
+        setLoading(false);
+      }
       return;
     }
 
@@ -81,7 +83,7 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         console.log('[MoviAuth] initial session found, userId=', session.user.id);
-        loadProfile(session.user.id);
+        loadProfile(session.user.id, true);
       } else {
         console.log('[MoviAuth] no initial session');
         setLoading(false);
@@ -91,6 +93,10 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[MoviAuth] onAuthStateChange event=', event, 'hasSession=', !!session);
       if (event === 'SIGNED_IN' && session) {
+        setRealUser(prev => {
+          if (!prev) setLoading(true);
+          return prev;
+        });
         (async () => { await loadProfile(session.user.id); })();
       } else if (
         (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') &&
