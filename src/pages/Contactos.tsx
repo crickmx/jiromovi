@@ -1052,7 +1052,7 @@ export function Contactos() {
               <select
                 value={filtroFuente}
                 onChange={e => setFiltroFuente(e.target.value as any)}
-                className="px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-transparent text-sm text-neutral-700 dark:text-white/70 focus:outline-none focus:border-accent"
+                className="px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-neutral-800 text-sm text-neutral-700 dark:text-white focus:outline-none focus:border-accent"
               >
                 <option value="todos">Todas las fuentes</option>
                 <option value="crm">CRM</option>
@@ -1063,7 +1063,7 @@ export function Contactos() {
               <select
                 value={filtroEstatus}
                 onChange={e => setFiltroEstatus(e.target.value)}
-                className="px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-transparent text-sm text-neutral-700 dark:text-white/70 focus:outline-none focus:border-accent"
+                className="px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-neutral-800 text-sm text-neutral-700 dark:text-white focus:outline-none focus:border-accent"
               >
                 <option value="todos">Todos los estatus</option>
                 <option value="activo">Activo</option>
@@ -1074,7 +1074,7 @@ export function Contactos() {
               <select
                 value={filtroSeguwallet}
                 onChange={e => setFiltroSeguwallet(e.target.value as any)}
-                className="px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-transparent text-sm text-neutral-700 dark:text-white/70 focus:outline-none focus:border-accent"
+                className="px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-neutral-800 text-sm text-neutral-700 dark:text-white focus:outline-none focus:border-accent"
               >
                 <option value="todos">Seguwallet: todos</option>
                 <option value="activo">Con Seguwallet</option>
@@ -1083,7 +1083,7 @@ export function Contactos() {
               <select
                 value={filtroSICAS}
                 onChange={e => setFiltroSICAS(e.target.value as any)}
-                className="px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-transparent text-sm text-neutral-700 dark:text-white/70 focus:outline-none focus:border-accent"
+                className="px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-neutral-800 text-sm text-neutral-700 dark:text-white focus:outline-none focus:border-accent"
               >
                 <option value="todos">SICAS: todos</option>
                 <option value="vinculado">Vinculados SICAS</option>
