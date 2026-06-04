@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, Menu } from 'lucide-react';
+import { LayoutDashboard, FileText, Megaphone, Menu } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { ChavaOrbIcon } from '../chava/ChavaOrbIcon';
 
@@ -9,11 +9,11 @@ interface MobileNavProps {
 
 const LEFT_NAV = [
   { icon: LayoutDashboard, label: 'Inicio', href: '/dashboard', matchPrefix: false },
-  { icon: Users, label: 'CRM', href: '/crm-contactos', matchPrefix: true },
+  { icon: FileText, label: 'Trámites', href: '/tramites', matchPrefix: true },
 ];
 
 const RIGHT_NAV = [
-  { icon: FileText, label: 'Trámites', href: '/tramites', matchPrefix: true },
+  { icon: Megaphone, label: 'Marketing', href: '/mercadotecnia', matchPrefix: true },
 ];
 
 export function MobileNav({ onOpenDrawer }: MobileNavProps) {
@@ -25,12 +25,14 @@ export function MobileNav({ onOpenDrawer }: MobileNavProps) {
     return location.pathname === href;
   };
 
+  const chavaActive = location.pathname.startsWith('/chava');
+
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#111113] border-t border-neutral-200 dark:border-white/[0.06] flex items-center justify-around px-2 shadow-[0_-1px_12px_rgba(0,0,0,0.06)] dark:shadow-[0_-1px_12px_rgba(0,0,0,0.3)]"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#111113] border-t border-neutral-200 dark:border-white/[0.06] flex items-center justify-around px-1 shadow-[0_-1px_12px_rgba(0,0,0,0.06)] dark:shadow-[0_-1px_12px_rgba(0,0,0,0.3)]"
       style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
     >
-      {/* Left items */}
+      {/* Left: Inicio, Trámites */}
       {LEFT_NAV.map((item) => {
         const Icon = item.icon;
         const active = isActive(item.href, item.matchPrefix);
@@ -51,26 +53,48 @@ export function MobileNav({ onOpenDrawer }: MobileNavProps) {
         );
       })}
 
-      {/* Center: Chava AI */}
+      {/* Center: Chava AI — elevated, prominent */}
       <button
         onClick={() => navigate('/chava')}
-        className="relative -mt-5 flex flex-col items-center gap-1 group active:scale-95 transition-transform"
+        className="relative -mt-6 flex flex-col items-center gap-1 group active:scale-95 transition-transform"
         aria-label="Chava AI"
       >
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-900/90 to-blue-900/90 border border-sky-700/40 flex items-center justify-center shadow-lg shadow-sky-900/30 dark:shadow-sky-900/50 group-hover:shadow-sky-700/30 transition-shadow">
+        {/* Glow ring behind the button */}
+        <span
+          className={cn(
+            'absolute inset-0 -top-1 rounded-full transition-opacity duration-300',
+            chavaActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'
+          )}
+          style={{
+            background: 'radial-gradient(circle, rgba(14,165,233,0.35) 0%, transparent 70%)',
+            filter: 'blur(6px)',
+          }}
+        />
+        <div
+          className={cn(
+            'relative w-14 h-14 rounded-[18px] flex items-center justify-center transition-all duration-300',
+            'bg-gradient-to-br from-[#06213a] via-[#0a2d54] to-[#061830]',
+            'shadow-lg',
+            chavaActive
+              ? 'shadow-sky-500/40 border border-sky-500/50'
+              : 'shadow-sky-900/40 border border-sky-800/40 group-hover:shadow-sky-600/30 group-hover:border-sky-600/40'
+          )}
+        >
           <ChavaOrbIcon size="sm" animate />
         </div>
-        <span className={cn(
-          'text-[10px] font-semibold leading-none',
-          location.pathname.startsWith('/chava')
-            ? 'text-sky-400'
-            : 'text-neutral-400 dark:text-white/50 group-hover:text-sky-400'
-        )}>
-          Chava
+        <span
+          className={cn(
+            'text-[10px] font-bold leading-none tracking-wide',
+            chavaActive
+              ? 'text-sky-400'
+              : 'text-neutral-400 dark:text-white/50 group-hover:text-sky-400'
+          )}
+        >
+          Chava AI
         </span>
       </button>
 
-      {/* Right items */}
+      {/* Right: Mercadotecnia */}
       {RIGHT_NAV.map((item) => {
         const Icon = item.icon;
         const active = isActive(item.href, item.matchPrefix);
