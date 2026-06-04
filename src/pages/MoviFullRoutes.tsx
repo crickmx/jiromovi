@@ -56,8 +56,6 @@ const DisenadorGMM = lazy(() => import('./comercial/disenadores/DisenadorGMM'));
 const ProduccionSICASLive = lazy(() => import('./ProduccionSICASLive'));
 const ProduccionTotal = lazy(() => import('./ProduccionTotal'));
 const ProduccionConvenio = lazy(() => import('./ProduccionConvenio'));
-const MiProduccion = lazy(() => import('./MiProduccion'));
-const ProduccionCargar = lazy(() => import('./ProduccionCargar'));
 const MisComisiones = lazy(() => import('./MisComisiones'));
 const Comisiones = lazy(() => import('./Comisiones'));
 const ComisionesUpload = lazy(() => import('./ComisionesUpload'));
@@ -199,12 +197,10 @@ export default function MoviFullRoutes() {
           <Route path="/cotizar/a-la-medida/gmm" element={<ProtectedRoute><DisenadorGMM /></ProtectedRoute>} />
           <Route path="/cotizar/multicotizador" element={<ProtectedRoute><MulticotizadorDigital /></ProtectedRoute>} />
 
-          {/* Operaciones / Central de Produccion */}
+          {/* Operaciones */}
           <Route path="/mi-produccion-sicas-live" element={<ProtectedRoute><ProduccionSICASLive /></ProtectedRoute>} />
-          <Route path="/mi-produccion" element={<ProtectedRoute><MiProduccion /></ProtectedRoute>} />
           <Route path="/produccion/total" element={<ProtectedRoute><ProduccionTotal /></ProtectedRoute>} />
           <Route path="/produccion/convenio" element={<ProtectedRoute><ProduccionConvenio /></ProtectedRoute>} />
-          <Route path="/produccion/cargar" element={<ProtectedRoute requireAdmin><ProduccionCargar /></ProtectedRoute>} />
           <Route path="/mis-comisiones" element={<ProtectedRoute><MisComisiones /></ProtectedRoute>} />
           <Route path="/comisiones" element={<ProtectedRoute requireAdmin><Comisiones /></ProtectedRoute>} />
           <Route path="/comisiones/upload" element={<ProtectedRoute requireAdmin><ComisionesUpload /></ProtectedRoute>} />
