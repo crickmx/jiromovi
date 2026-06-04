@@ -13,7 +13,7 @@ const LEFT_NAV = [
 ];
 
 const RIGHT_NAV = [
-  { icon: Megaphone, label: 'Marketing', href: '/mercadotecnia', matchPrefix: true },
+  { icon: Megaphone, label: 'Marketing', href: '/mercadotecnia/publicidad', matchPrefix: false },
 ];
 
 export function MobileNav({ onOpenDrawer }: MobileNavProps) {
