@@ -62,15 +62,33 @@ function SafeFileViewer({ archivo, onClose, onDownload }: {
 }) {
   const [viewError, setViewError] = useState(false);
   const [viewLoading, setViewLoading] = useState(true);
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const isImage = archivo.tipo_mime?.startsWith('image/') ?? false;
   const isPDF = archivo.tipo_mime?.includes('pdf') ?? false;
 
-  const storageUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/centro-digital-files/${archivo.ruta_storage}`;
+  // Bucket is private — always use a signed URL
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.storage
+        .from('centro-digital-files')
+        .createSignedUrl(archivo.ruta_storage, 3600);
+      if (cancelled) return;
+      if (error || !data?.signedUrl) {
+        setViewError(true);
+        setViewLoading(false);
+      } else {
+        setSignedUrl(data.signedUrl);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [archivo.ruta_storage]);
+
+  const storageUrl = signedUrl ?? '';
 
   function handleIframeLoad() {
     setViewLoading(false);
-    // Check if iframe loaded an error response
     try {
       const doc = iframeRef.current?.contentDocument;
       if (doc) {
@@ -80,7 +98,7 @@ function SafeFileViewer({ archivo, onClose, onDownload }: {
         }
       }
     } catch {
-      // Cross-origin — assume it's fine if status was ok
+      // Cross-origin — assume fine
     }
   }
 
@@ -129,29 +147,33 @@ function SafeFileViewer({ archivo, onClose, onDownload }: {
             </div>
           ) : isImage ? (
             <div className="flex items-center justify-center h-full">
-              <img
-                src={storageUrl}
-                alt={archivo.nombre}
-                className="max-w-full max-h-full object-contain"
-                onLoad={() => setViewLoading(false)}
-                onError={() => { setViewLoading(false); setViewError(true); }}
-              />
+              {storageUrl ? (
+                <img
+                  src={storageUrl}
+                  alt={archivo.nombre}
+                  className="max-w-full max-h-full object-contain"
+                  onLoad={() => setViewLoading(false)}
+                  onError={() => { setViewLoading(false); setViewError(true); }}
+                />
+              ) : null}
             </div>
           ) : isPDF ? (
             <div className="relative w-full h-full min-h-[600px]">
-              {viewLoading && (
+              {(viewLoading || !storageUrl) && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
                   <RefreshCw className="w-6 h-6 animate-spin text-gray-400" />
                 </div>
               )}
-              <iframe
-                ref={iframeRef}
-                src={storageUrl}
-                className="w-full h-full min-h-[600px] rounded-lg"
-                title={archivo.nombre}
-                onLoad={handleIframeLoad}
-                onError={handleIframeError}
-              />
+              {storageUrl && (
+                <iframe
+                  ref={iframeRef}
+                  src={storageUrl}
+                  className="w-full h-full min-h-[600px] rounded-lg"
+                  title={archivo.nombre}
+                  onLoad={handleIframeLoad}
+                  onError={handleIframeError}
+                />
+              )}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-4 py-16">
