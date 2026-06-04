@@ -414,8 +414,8 @@ function getFallbackAnalysis(usuario: Usuario): ChavaAnalysis {
   };
 
   const defaultCtas: CTA[] = [
-    { label: 'Mi producción', path: '/mi-produccion-sicas-live', variant: 'primary' },
-    { label: 'Mis comisiones', path: '/mis-comisiones', variant: 'secondary' },
+    { label: 'Mi producción', path: '/produccion/mi-produccion', variant: 'primary' },
+    { label: 'Mis comisiones', path: '/produccion/mis-comisiones', variant: 'secondary' },
   ];
 
   return {
