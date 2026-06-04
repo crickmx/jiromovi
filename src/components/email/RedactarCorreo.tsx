@@ -106,9 +106,9 @@ export function RedactarCorreo({ isOpen, onClose, onSuccess, configuracion }: Re
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
-      <div className="bg-white rounded-3xl shadow-strong max-w-4xl w-full mx-4 my-8">
-        <div className="sticky top-0 bg-white border-b border-neutral-200 px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-neutral-900/60 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-strong max-w-4xl w-full sm:mx-4 sm:my-8 flex flex-col max-h-[95dvh] sm:max-h-[85vh]">
+        <div className="bg-white border-b border-neutral-200 px-4 sm:px-6 py-4 flex items-center justify-between rounded-t-3xl z-10 flex-shrink-0">
           <h2 className="text-2xl font-display font-bold text-neutral-900">
             Redactar correo
           </h2>
@@ -120,7 +120,7 @@ export function RedactarCorreo({ isOpen, onClose, onSuccess, configuracion }: Re
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
           {error && (
             <div className="bg-accent-50 border border-accent-200 text-accent-700 px-4 py-3 rounded-xl">
               {error}
@@ -240,7 +240,7 @@ export function RedactarCorreo({ isOpen, onClose, onSuccess, configuracion }: Re
           )}
         </div>
 
-        <div className="sticky bottom-0 bg-neutral-50 border-t border-neutral-200 px-6 py-4 flex justify-between rounded-b-3xl">
+        <div className="bg-neutral-50 border-t border-neutral-200 px-4 sm:px-6 py-4 flex justify-between rounded-b-3xl flex-shrink-0">
           <button
             onClick={() => setProgramado(!programado)}
             className="flex items-center space-x-2 px-4 py-2 text-neutral-700 hover:bg-neutral-200 rounded-lg transition-all"

@@ -238,7 +238,9 @@ export function Tramites() {
     if (tipoArea === 'Comercial') {
       // Gerentes see their own office's commercial tramites
       if (isGerente) return tramiteOficinaId === usuario?.oficina_id;
-      // Empleados/Agentes see commercial tramites of their office
+      // Agentes only see tramites where they are directly involved
+      if (isAgente) return isDirectlyInvolved;
+      // Empleados/Ejecutivos see all commercial tramites of their office
       return tramiteOficinaId === usuario?.oficina_id || isDirectlyInvolved;
     }
 
