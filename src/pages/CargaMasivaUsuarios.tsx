@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, Upload, Users, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { Download, Upload, Users, CircleAlert as AlertCircle, CircleCheck as CheckCircle, Circle as XCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Alert } from '@/components/ui/alert';
 
@@ -85,8 +85,14 @@ ana.martinez@ejemplo.com,Temporal321,Ana Patricia,Martínez Fernández,Agente,Gu
       );
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Error al procesar el archivo');
+        let errorMsg = `Error ${response.status}`;
+        try {
+          const errBody = await response.json();
+          errorMsg = errBody.error || errorMsg;
+        } catch {
+          errorMsg = await response.text().catch(() => errorMsg);
+        }
+        throw new Error(errorMsg);
       }
 
       const data = await response.json();
