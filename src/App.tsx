@@ -99,8 +99,8 @@ function ChavaAIApp() {
 function MoviApp() {
   return (
     <BrowserRouter>
-      <MoviAuthProvider>
-        <ImpersonationProvider>
+      <ImpersonationProvider>
+        <MoviAuthProvider>
           <LoadingProvider>
             <LoadingOverlay />
             <Suspense fallback={<PageLoader />}>
@@ -163,8 +163,8 @@ function MoviApp() {
               </Routes>
             </Suspense>
           </LoadingProvider>
-        </ImpersonationProvider>
-      </MoviAuthProvider>
+        </MoviAuthProvider>
+      </ImpersonationProvider>
     </BrowserRouter>
   );
 }
