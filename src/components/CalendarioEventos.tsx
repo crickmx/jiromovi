@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Users, CheckCircle, Cake } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Users, CircleCheck as CheckCircle, Cake } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -244,7 +244,7 @@ export default function CalendarioEventos() {
           tipo: 'cumpleanos' as const,
           titulo: `🎂 ${contacto.nombre_completo}`,
           descripcion: `Cumpleaños #${edadActual}`,
-          deep_link: `/mi-crm/contactos/${contacto.id}`,
+          deep_link: `/contactos/${contacto.id}`,
         });
       }
     }

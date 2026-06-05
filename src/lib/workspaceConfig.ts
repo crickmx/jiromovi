@@ -63,8 +63,8 @@ const WORKSPACE_COMERCIAL: WorkspaceDefinition = {
   visibleTo: ALL_ROLES,
   items: [
     { path: '/tramites', label: 'Tramites', icon: ClipboardList, visibleTo: ALL_ROLES, matchPrefix: true, excludePrefixes: ['/tramites/formularios'] },
+    { path: '/contactos', label: 'Contactos', icon: BookUser, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/mi-crm', label: 'CRM', icon: Users, visibleTo: ALL_ROLES, matchPrefix: true },
-    { path: '/contactos', label: 'Contactos', icon: BookUser, visibleTo: ALL_ROLES, matchPrefix: false },
     { path: '/entrega-polizas', label: 'Entrega Polizas', icon: Send, visibleTo: NOT_AGENT },
     { path: '/lector-qualitas', label: 'Lector Qualitas', icon: BookOpen, visibleTo: NOT_AGENT },
     { path: '/mi-progreso', label: 'Mi Progreso', icon: Trophy, visibleTo: NO_EMPLEADO_AGENTE },

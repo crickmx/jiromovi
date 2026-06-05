@@ -15,9 +15,8 @@ const ComunicadoEditor = lazy(() => import('./ComunicadoEditor'));
 const ComunicadoCategorias = lazy(() => import('./ComunicadoCategorias'));
 
 // Comercial
-const Contactos = lazy(() => import('./Contactos'));
+const Contactos = lazy(() => import('./ContactosCRM'));
 const MiCRM = lazy(() => import('./MiCRM'));
-const CRMContactos = lazy(() => import('./CRMContactos'));
 const CRMContactoPerfil = lazy(() => import('./CRMContactoPerfil'));
 const CRMTareas = lazy(() => import('./CRMTareas'));
 const CRMReportes = lazy(() => import('./CRMReportes'));
@@ -155,8 +154,9 @@ export default function MoviFullRoutes() {
 
           {/* Comercial */}
           <Route path="/contactos" element={<ProtectedRoute><Contactos /></ProtectedRoute>} />
+          <Route path="/contactos/:id" element={<ProtectedRoute><CRMContactoPerfil /></ProtectedRoute>} />
           <Route path="/mi-crm" element={<ProtectedRoute><MiCRM /></ProtectedRoute>} />
-          <Route path="/mi-crm/contactos" element={<ProtectedRoute><CRMContactos /></ProtectedRoute>} />
+          <Route path="/mi-crm/contactos" element={<Navigate to="/contactos" replace />} />
           <Route path="/mi-crm/contactos/:id" element={<ProtectedRoute><CRMContactoPerfil /></ProtectedRoute>} />
           <Route path="/mi-crm/tareas" element={<ProtectedRoute><CRMTareas /></ProtectedRoute>} />
           <Route path="/mi-crm/reportes" element={<ProtectedRoute><CRMReportes /></ProtectedRoute>} />

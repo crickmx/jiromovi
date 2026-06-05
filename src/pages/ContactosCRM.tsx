@@ -1,11 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Search, Plus, Users, Phone, Mail, Wallet, X,
-  LayoutGrid, List, Eye, UserPlus, ChevronDown,
-  BadgeCheck, Clock, Ban, Wifi, WifiOff, CheckCircle,
-  Pencil, Database, Trash2, AlertTriangle, Loader2, User,
-} from 'lucide-react';
+import { Search, Plus, Users, Phone, Mail, Wallet, X, LayoutGrid, List, Eye, UserPlus, ChevronDown, BadgeCheck, Clock, Ban, Wifi, WifiOff, CircleCheck as CheckCircle, Pencil, Database, Trash2, TriangleAlert as AlertTriangle, Loader as Loader2, User } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
@@ -118,7 +113,7 @@ export default function ContactosCRM() {
       setEditContacto(data);
       setEditContactoSwId(c.seguwallet_customer_id);
     } catch {
-      navigate(`/mi-crm/contactos/${c.id}`);
+      navigate(`/contactos/${c.id}`);
     }
   };
 
@@ -270,7 +265,7 @@ export default function ContactosCRM() {
           isAdmin={isAdmin}
           getEstatusStyle={getEstatusStyle}
           timeSince={timeSince}
-          onView={(c) => navigate(`/mi-crm/contactos/${c.id}`)}
+          onView={(c) => navigate(`/contactos/${c.id}`)}
           onEdit={openEdit}
           onActivarSW={setShowActivarSW}
           onAsignarSicas={setShowAsignarSicas}
@@ -289,7 +284,7 @@ export default function ContactosCRM() {
           isAdmin={isAdmin}
           getEstatusStyle={getEstatusStyle}
           timeSince={timeSince}
-          onView={(c) => navigate(`/mi-crm/contactos/${c.id}`)}
+          onView={(c) => navigate(`/contactos/${c.id}`)}
           onEdit={openEdit}
           onActivarSW={setShowActivarSW}
           onAsignarSicas={setShowAsignarSicas}

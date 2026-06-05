@@ -1,29 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import {
-  Users,
-  FileText,
-  CheckCircle,
-  DollarSign,
-  Clock,
-  Settings,
-  AlertTriangle,
-  UserPlus,
-  PhoneCall,
-  CalendarCheck,
-  Kanban,
-  BarChart3,
-  RefreshCw,
-  ChevronRight,
-  Calendar,
-  Phone,
-  Mail,
-  CheckCircle2,
-  CalendarClock,
-  UserX,
-  Zap,
-  LayoutGrid,
-} from 'lucide-react';
+import { Users, FileText, CircleCheck as CheckCircle, DollarSign, Clock, Settings, TriangleAlert as AlertTriangle, UserPlus, PhoneCall, CalendarCheck, Kanban, ChartBar as BarChart3, RefreshCw, ChevronRight, Calendar, Phone, Mail, CircleCheck as CheckCircle2, CalendarClock, UserX, Zap, LayoutGrid } from 'lucide-react';
 import {
   obtenerKPIsDashboard,
   obtenerTareasVencidas,
@@ -291,7 +268,7 @@ export default function MiCRM() {
                         variant="overdue"
                         onComplete={handleCompletarTarea}
                         onReschedule={handleReprogramarTarea}
-                        onNavigate={() => navigate(`/mi-crm/contactos/${tarea.contacto_id}`)}
+                        onNavigate={() => navigate(`/contactos/${tarea.contacto_id}`)}
                       />
                     ))}
                   </div>
@@ -316,7 +293,7 @@ export default function MiCRM() {
                         variant="today"
                         onComplete={handleCompletarTarea}
                         onReschedule={handleReprogramarTarea}
-                        onNavigate={() => navigate(`/mi-crm/contactos/${tarea.contacto_id}`)}
+                        onNavigate={() => navigate(`/contactos/${tarea.contacto_id}`)}
                       />
                     ))}
                   </div>
@@ -338,7 +315,7 @@ export default function MiCRM() {
                       <LeadRow
                         key={lead.id}
                         lead={lead}
-                        onNavigate={() => navigate(`/mi-crm/contactos/${lead.id}`)}
+                        onNavigate={() => navigate(`/contactos/${lead.id}`)}
                       />
                     ))}
                   </div>
@@ -361,7 +338,7 @@ export default function MiCRM() {
                         key={lead.id}
                         lead={lead}
                         isNew
-                        onNavigate={() => navigate(`/mi-crm/contactos/${lead.id}`)}
+                        onNavigate={() => navigate(`/contactos/${lead.id}`)}
                       />
                     ))}
                   </div>

@@ -197,7 +197,7 @@ export default function CumpleanosContactos() {
             return (
               <div
                 key={contacto.id}
-                onClick={() => navigate(`/mi-crm/contactos/${contacto.id}`)}
+                onClick={() => navigate(`/contactos/${contacto.id}`)}
                 className="p-4 hover:bg-gray-50 cursor-pointer transition group"
               >
                 <div className="flex items-start justify-between">
