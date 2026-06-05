@@ -14,13 +14,17 @@ import { FloatingSiniestroButton } from './FloatingSiniestroButton';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
+const _HOST = typeof window !== 'undefined' ? window.location.hostname : '';
+const _isSWDomain = _HOST === 'seguwallet.mx' || _HOST.endsWith('.seguwallet.mx');
+const SW_PREFIX = _isSWDomain ? '' : '/seguwallet';
+
 // Nav without Perfil — access moved to user dropdown
 const NAV_ITEMS = [
-  { path: '/seguwallet/dashboard', label: 'Inicio', icon: LayoutDashboard },
-  { path: '/seguwallet/polizas', label: 'Pólizas', icon: FileText },
-  { path: '/seguwallet/cotizar', label: 'Cotizar', icon: Calculator },
-  { path: '/seguwallet/aseguradoras', label: 'Aseguradoras', icon: Building2 },
-  { path: '/seguwallet/chava', label: 'Chava IA', icon: Sparkles },
+  { path: `${SW_PREFIX}/dashboard`, label: 'Inicio', icon: LayoutDashboard },
+  { path: `${SW_PREFIX}/polizas`, label: 'Pólizas', icon: FileText },
+  { path: `${SW_PREFIX}/cotizar`, label: 'Cotizar', icon: Calculator },
+  { path: `${SW_PREFIX}/aseguradoras`, label: 'Aseguradoras', icon: Building2 },
+  { path: `${SW_PREFIX}/chava`, label: 'Chava IA', icon: Sparkles },
 ];
 
 function getContrastColor(hex: string): string {
@@ -70,7 +74,7 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
       return;
     }
     await seguwalletSignOut();
-    navigate('/seguwallet/login');
+    navigate(`${SW_PREFIX}/login`);
   };
 
   const photoUrl = getPhotoUrl(customer?.profile_photo_path, customer?.profile_photo_url);
@@ -141,7 +145,7 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center h-14 gap-4">
 
           {/* Logo */}
-          <button onClick={() => navTo('/seguwallet/dashboard')} className="flex items-center flex-shrink-0">
+          <button onClick={() => navTo(`${SW_PREFIX}/dashboard`)} className="flex items-center flex-shrink-0">
             {!brandLoading && (
               <img
                 src={brand.displayLogo}
@@ -227,10 +231,10 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
                   {/* Menu items */}
                   <div className="py-2 px-2">
                     {[
-                      { icon: User, label: 'Mi Perfil', path: '/seguwallet/perfil', desc: 'Editar datos personales' },
-                      { icon: FolderOpen, label: 'Expediente 492', path: '/seguwallet/perfil?tab=expediente', desc: 'Documentos y archivos' },
-                      { icon: Globe, label: 'Mi Agente', path: '/seguwallet/perfil?tab=agente', desc: 'Contactar a tu asesor' },
-                      { icon: Shield, label: 'Seguridad', path: '/seguwallet/perfil?tab=seguridad', desc: 'Acceso y contraseña' },
+                      { icon: User, label: 'Mi Perfil', path: `${SW_PREFIX}/perfil`, desc: 'Editar datos personales' },
+                      { icon: FolderOpen, label: 'Expediente 492', path: `${SW_PREFIX}/perfil?tab=expediente`, desc: 'Documentos y archivos' },
+                      { icon: Globe, label: 'Mi Agente', path: `${SW_PREFIX}/perfil?tab=agente`, desc: 'Contactar a tu asesor' },
+                      { icon: Shield, label: 'Seguridad', path: `${SW_PREFIX}/perfil?tab=seguridad`, desc: 'Acceso y contraseña' },
                     ].map(item => {
                       const Icon = item.icon;
                       return (
@@ -323,10 +327,10 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
 
               {/* Profile section */}
               {[
-                { icon: User, label: 'Mi Perfil', path: '/seguwallet/perfil' },
-                { icon: FolderOpen, label: 'Expediente 492', path: '/seguwallet/perfil?tab=expediente' },
-                { icon: Globe, label: 'Mi Agente', path: '/seguwallet/perfil?tab=agente' },
-                { icon: Shield, label: 'Seguridad', path: '/seguwallet/perfil?tab=seguridad' },
+                { icon: User, label: 'Mi Perfil', path: `${SW_PREFIX}/perfil` },
+                { icon: FolderOpen, label: 'Expediente 492', path: `${SW_PREFIX}/perfil?tab=expediente` },
+                { icon: Globe, label: 'Mi Agente', path: `${SW_PREFIX}/perfil?tab=agente` },
+                { icon: Shield, label: 'Seguridad', path: `${SW_PREFIX}/perfil?tab=seguridad` },
               ].map(item => {
                 const Icon = item.icon;
                 return (
@@ -382,10 +386,10 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
           })}
           {/* Mobile profile tab */}
           <button
-            onClick={() => navTo('/seguwallet/perfil')}
+            onClick={() => navTo(`${SW_PREFIX}/perfil`)}
             className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 px-1 relative transition-all"
           >
-            {location.pathname.startsWith('/seguwallet/perfil') && (
+            {location.pathname.startsWith(`${SW_PREFIX}/perfil`) && (
               <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-b-full" style={{ backgroundColor: primary }} />
             )}
             <div className="w-5 h-5 rounded-md overflow-hidden">
@@ -393,7 +397,7 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
             </div>
             <span
               className="text-[10px] font-semibold leading-none"
-              style={{ color: location.pathname.startsWith('/seguwallet/perfil') ? primary : '#9ca3af' }}
+              style={{ color: location.pathname.startsWith(`${SW_PREFIX}/perfil`) ? primary : '#9ca3af' }}
             >
               Perfil
             </span>

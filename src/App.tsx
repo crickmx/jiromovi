@@ -32,8 +32,9 @@ const PaginaPublicaAsesor = lazy(() => import('./pages/PaginaPublicaAsesor'));
 
 // ── Domain detection ──────────────────────────────────────────────────────
 const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
-const isAgenteSite   = HOST === 'agentedeseguros.website' || HOST.endsWith('.agentedeseguros.website');
-const isChavaSite    = HOST === 'agentedeseguros.ai'      || HOST.endsWith('.agentedeseguros.ai');
+const isAgenteSite    = HOST === 'agentedeseguros.website' || HOST.endsWith('.agentedeseguros.website');
+const isChavaSite     = HOST === 'agentedeseguros.ai'      || HOST.endsWith('.agentedeseguros.ai');
+const isSeguwalletSite = HOST === 'seguwallet.mx' || HOST.endsWith('.seguwallet.mx');
 // Everything else (app.movi.digital, localhost, Bolt preview, etc.) is MOVI
 
 // ── Redirect to grupojiro.com for bare agentedeseguros.website root ────────
@@ -92,6 +93,49 @@ function ChavaAIApp() {
           </Routes>
         </Suspense>
       </ChavaAgenteProvider>
+    </BrowserRouter>
+  );
+}
+
+function SeguwalletApp() {
+  return (
+    <BrowserRouter>
+      <SeguwalletStack>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/login" element={<SeguwalletLogin />} />
+            <Route path="/completa-perfil" element={
+              <SeguwalletProtectedRoute><SeguwalletCompleteProfile /></SeguwalletProtectedRoute>
+            } />
+            <Route path="/dashboard" element={
+              <SeguwalletProtectedRoute><SeguwalletDashboard /></SeguwalletProtectedRoute>
+            } />
+            <Route path="/polizas" element={
+              <SeguwalletProtectedRoute><SeguwalletPolizas /></SeguwalletProtectedRoute>
+            } />
+            <Route path="/polizas/:id" element={
+              <SeguwalletProtectedRoute><SeguwalletPolizas /></SeguwalletProtectedRoute>
+            } />
+            <Route path="/chava" element={
+              <SeguwalletProtectedRoute><SeguwalletChava /></SeguwalletProtectedRoute>
+            } />
+            <Route path="/perfil" element={
+              <SeguwalletProtectedRoute><SeguwalletPerfil /></SeguwalletProtectedRoute>
+            } />
+            <Route path="/cotizar" element={
+              <SeguwalletProtectedRoute><SeguwalletCotizar /></SeguwalletProtectedRoute>
+            } />
+            <Route path="/descargas" element={
+              <SeguwalletProtectedRoute><SeguwalletDescargas /></SeguwalletProtectedRoute>
+            } />
+            <Route path="/aseguradoras" element={
+              <SeguwalletProtectedRoute><SeguwalletAseguradoras /></SeguwalletProtectedRoute>
+            } />
+            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </Suspense>
+      </SeguwalletStack>
     </BrowserRouter>
   );
 }
@@ -180,6 +224,7 @@ function PageLoader() {
 function App() {
   if (isAgenteSite) return <AgenteWebsiteApp />;
   if (isChavaSite)  return <ChavaAIApp />;
+  if (isSeguwalletSite) return <SeguwalletApp />;
   return <MoviApp />;
 }
 

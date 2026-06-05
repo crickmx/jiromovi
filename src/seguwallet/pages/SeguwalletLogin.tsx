@@ -7,6 +7,10 @@ const SEGUWALLET_LOGO = '/seguwallet-logo.png';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
+const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
+const isSeguwalletDomain = HOST === 'seguwallet.mx' || HOST.endsWith('.seguwallet.mx');
+const DASHBOARD_PATH = isSeguwalletDomain ? '/dashboard' : '/seguwallet/dashboard';
+
 // ─── Animated background ──────────────────────────────────────────────────────
 function BackgroundLayer() {
   return (
@@ -158,7 +162,7 @@ export function SeguwalletLogin() {
         setError('Error al crear la sesión. Intenta de nuevo.');
         return;
       }
-      navigate('/seguwallet/dashboard', { replace: true });
+      navigate(DASHBOARD_PATH, { replace: true });
     } catch {
       setError('Error de conexión. Intenta de nuevo.');
     } finally {

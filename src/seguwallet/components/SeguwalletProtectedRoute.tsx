@@ -3,6 +3,11 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useSeguwallet } from '../lib/SeguwalletContext';
 import { useImpersonation } from '../../contexts/ImpersonationContext';
 
+const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
+const isSeguwalletDomain = HOST === 'seguwallet.mx' || HOST.endsWith('.seguwallet.mx');
+const LOGIN_PATH = isSeguwalletDomain ? '/login' : '/seguwallet/login';
+const COMPLETE_PROFILE_PATH = isSeguwalletDomain ? '/completa-perfil' : '/seguwallet/completa-perfil';
+
 export function SeguwalletProtectedRoute({ children }: { children: ReactNode }) {
   const { loading, isAuthenticated, needsProfileCompletion, needsTermsAcceptance } = useSeguwallet();
   const { isImpersonating, session } = useImpersonation();
@@ -25,13 +30,13 @@ export function SeguwalletProtectedRoute({ children }: { children: ReactNode }) 
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/seguwallet/login" replace />;
+    return <Navigate to={LOGIN_PATH} replace />;
   }
 
-  const isCompleteProfileRoute = location.pathname === '/seguwallet/completa-perfil';
+  const isCompleteProfileRoute = location.pathname === COMPLETE_PROFILE_PATH;
 
   if ((needsProfileCompletion || needsTermsAcceptance) && !isCompleteProfileRoute) {
-    return <Navigate to="/seguwallet/completa-perfil" replace />;
+    return <Navigate to={COMPLETE_PROFILE_PATH} replace />;
   }
 
   return <>{children}</>;
