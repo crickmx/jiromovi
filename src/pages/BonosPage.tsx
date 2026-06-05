@@ -56,29 +56,57 @@ export default function BonosPage() {
   const [error, setError] = useState(false);
   const [activePath, setActivePath] = useState('/');
   const [perms, setPerms] = useState<BonosPerms>(DEFAULT_PERMS);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 2;
 
-  useEffect(() => {
-    setError(false);
-
+  const buildSsoUrl = useCallback(async (): Promise<string | null> => {
     if (import.meta.env.DEV) {
       const email = usuario?.email_laboral;
-      if (!email) { setError(true); return; }
+      if (!email) return null;
       const devUrl = new URL('/accounts/dev-login/', BONOS_URL);
       devUrl.searchParams.set('email', email);
       devUrl.searchParams.set('next', '/');
-      setSrc(devUrl.toString());
-      return;
+      return devUrl.toString();
     }
+    // Force refresh token on retry to ensure we send a valid JWT
+    if (retryCount > 0) {
+      await supabase.auth.refreshSession();
+    }
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session?.access_token) return null;
+    const url = new URL('/accounts/supabase/', BONOS_URL);
+    url.searchParams.set('token', session.access_token);
+    url.searchParams.set('next', '/');
+    return url.toString();
+  }, [usuario?.email_laboral, retryCount]);
 
+  useEffect(() => {
+    setError(false);
     setSrc(null);
-    supabase.auth.getSession().then(({ data: { session }, error: sessionError }) => {
-      if (sessionError || !session?.access_token) { setError(true); return; }
-      const url = new URL('/accounts/supabase/', BONOS_URL);
-      url.searchParams.set('token', session.access_token);
-      url.searchParams.set('next', '/');
-      setSrc(url.toString());
+    buildSsoUrl().then(url => {
+      if (!url) { setError(true); return; }
+      setSrc(url);
     });
-  }, [isImpersonating, usuario?.email_laboral]);
+  }, [isImpersonating, buildSsoUrl, retryCount]);
+
+  const handleIframeLoad = useCallback(() => {
+    try {
+      const iframe = iframeRef.current;
+      if (!iframe) return;
+      // Cross-origin will throw - that's expected when SSO succeeds (different origin)
+      const iframePath = iframe.contentWindow?.location?.pathname;
+      if (iframePath && iframePath.includes('/accounts/login')) {
+        if (retryCount < maxRetries) {
+          setRetryCount(c => c + 1);
+        } else {
+          setError(true);
+        }
+      }
+    } catch {
+      // Cross-origin error means iframe loaded CP successfully (different origin scenario)
+      // No action needed
+    }
+  }, [retryCount]);
 
   const handleMessage = useCallback((event: MessageEvent) => {
     if (!event.data?.type) return;
@@ -95,7 +123,11 @@ export default function BonosPage() {
       const path = event.data.payload?.path || event.data.path || '/';
       setActivePath(path);
       if (path.includes('/accounts/login')) {
-        setError(true);
+        if (retryCount < maxRetries) {
+          setRetryCount(c => c + 1);
+        } else {
+          setError(true);
+        }
       }
     }
 
@@ -107,7 +139,7 @@ export default function BonosPage() {
         can_users: !!(event.data.can_users ?? event.data.payload?.can_users),
       });
     }
-  }, []);
+  }, [retryCount]);
 
   useEffect(() => {
     window.addEventListener('message', handleMessage);
@@ -137,15 +169,25 @@ export default function BonosPage() {
           No se pudo iniciar sesion en Central de Produccion.
           <br />
           <span className="text-base text-neutral-500 dark:text-neutral-400">
-            Vuelve a iniciar sesion en MOVI e intenta de nuevo.
+            El servidor de CP no acepto la sesion actual. Verifica que tu cuenta tenga acceso configurado en cp.movi.digital.
           </span>
         </p>
-        <button
-          onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
-        >
-          Reintentar
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => { setError(false); setRetryCount(0); }}
+            className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
+          >
+            Reintentar
+          </button>
+          <a
+            href={BONOS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 border border-slate-300 dark:border-neutral-600 text-slate-700 dark:text-neutral-300 rounded-lg hover:bg-slate-50 dark:hover:bg-neutral-800 transition-colors"
+          >
+            Abrir en nueva ventana
+          </a>
+        </div>
       </div>
     );
   }
@@ -193,6 +235,7 @@ export default function BonosPage() {
         <iframe
           ref={iframeRef}
           src={src}
+          onLoad={handleIframeLoad}
           className="w-full h-full border-0 block"
           allow="clipboard-write"
           style={{ margin: 0, padding: 0 }}
