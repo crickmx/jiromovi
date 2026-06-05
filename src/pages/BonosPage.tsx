@@ -55,6 +55,9 @@ export default function BonosPage() {
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
   const [activePath, setActivePath] = useState('/');
   const [perms, setPerms] = useState<BonosPerms>(DEFAULT_PERMS);
+  const [ssoFailed, setSsoFailed] = useState(false);
+  const retryCountRef = useRef(0);
+  const MAX_RETRIES = 3;
 
   const embeddedParams = useMemo(() => {
     const params = new URLSearchParams();
@@ -64,48 +67,81 @@ export default function BonosPage() {
       params.set('accentColor', usuario.oficina.accent_color.replace('#', ''));
     }
     if (usuario?.oficina_id) {
-      params.set('officeId', usuario.oficina_id);
+      params.set('officeId', encodeURIComponent(usuario.oficina_id));
     }
     if (usuario?.id) {
-      params.set('userId', usuario.id);
+      params.set('userId', encodeURIComponent(usuario.id));
     }
     return params.toString();
   }, [isDarkEffective, usuario?.oficina?.accent_color, usuario?.oficina_id, usuario?.id]);
 
   useEffect(() => {
+    let cancelled = false;
+    let retryTimeout: ReturnType<typeof setTimeout>;
+
     async function buildUrl() {
       try {
         if (import.meta.env.DEV) {
           const email = usuario?.email_laboral || 'dev@movi.digital';
-          setIframeSrc(`${BONOS_URL}/accounts/dev-login/?email=${encodeURIComponent(email)}&next=/&${embeddedParams}`);
-        } else {
-          const { data } = await supabase.auth.getSession();
-          const token = data.session?.access_token;
-          if (!token) {
-            setError('No se pudo obtener la sesion. Intenta cerrar e iniciar sesion de nuevo.');
+          setIframeSrc(`${BONOS_URL}/accounts/dev-login/?email=${encodeURIComponent(email)}&next=${encodeURIComponent('/')}&${embeddedParams}`);
+          return;
+        }
+
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+
+        if (!token) {
+          if (retryCountRef.current < MAX_RETRIES) {
+            retryCountRef.current += 1;
+            retryTimeout = setTimeout(() => {
+              if (!cancelled) buildUrl();
+            }, 1500);
             return;
           }
-          setIframeSrc(`${BONOS_URL}/accounts/supabase/?token=${token}&${embeddedParams}`);
+          if (!cancelled) {
+            setError('No se pudo obtener la sesion. Intenta cerrar e iniciar sesion de nuevo.');
+          }
+          return;
+        }
+
+        if (!cancelled) {
+          retryCountRef.current = 0;
+          setIframeSrc(`${BONOS_URL}/accounts/supabase/?token=${encodeURIComponent(token)}&${embeddedParams}`);
         }
       } catch (e) {
-        setError('Error al conectar con Central de Produccion.');
+        if (!cancelled) {
+          setError('Error al conectar con Central de Produccion.');
+        }
       }
     }
+
     buildUrl();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(retryTimeout);
+    };
   }, [usuario?.email_laboral, embeddedParams]);
 
   const handleMessage = useCallback((event: MessageEvent) => {
     if (!event.origin.includes(new URL(BONOS_URL).host)) return;
     const { type, payload } = event.data || {};
     if (type === 'bonos:navigate') {
-      setActivePath(payload?.path || '/');
+      const path = payload?.path || '/';
+      setActivePath(path);
+      if (path.includes('/accounts/login') || path.includes('/accounts/sso')) {
+        setSsoFailed(true);
+      }
     } else if (type === 'bonos:userinfo') {
+      setSsoFailed(false);
       setPerms({
         role: payload?.role || '',
         can_admin: !!payload?.can_admin,
         can_campanias: !!payload?.can_campanias,
         can_users: !!payload?.can_users,
       });
+    } else if (type === 'bonos:sso_error') {
+      setSsoFailed(true);
     }
   }, []);
 
@@ -131,13 +167,22 @@ export default function BonosPage() {
 
   const visibleSections = SECTIONS.filter(s => s.show(perms));
 
-  if (error) {
+  if (error || ssoFailed) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 p-8">
         <AlertCircle className="w-12 h-12 text-red-400" />
-        <p className="text-lg text-neutral-700 dark:text-neutral-300 text-center">{error}</p>
+        <p className="text-lg text-neutral-700 dark:text-neutral-300 text-center">
+          {error || 'No se pudo iniciar sesion automaticamente en Central de Produccion. Verifica que tu cuenta tenga acceso.'}
+        </p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => {
+            setSsoFailed(false);
+            setError(null);
+            setIframeSrc(null);
+            setLoading(true);
+            retryCountRef.current = 0;
+            window.location.reload();
+          }}
           className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
         >
           Reintentar
