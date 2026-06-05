@@ -85,7 +85,7 @@ export default function BonosPage() {
             setError('No se pudo obtener la sesion. Intenta cerrar e iniciar sesion de nuevo.');
             return;
           }
-          setIframeSrc(`${BONOS_URL}/accounts/sso/?token=${token}&${embeddedParams}`);
+          setIframeSrc(`${BONOS_URL}/accounts/supabase/?token=${token}&${embeddedParams}`);
         }
       } catch (e) {
         setError('Error al conectar con Central de Produccion.');
