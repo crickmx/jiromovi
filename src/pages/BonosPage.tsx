@@ -122,31 +122,36 @@ export default function BonosPage() {
   }
 
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden">
-      {/* Sub-navigation bar */}
-      <div className="flex items-center gap-1 px-3 h-11 min-h-[44px] bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 overflow-x-auto shrink-0 scrollbar-hide">
-        {visibleSections.map(section => {
-          const Icon = section.icon;
-          const isActive = activePath === section.path;
-          return (
-            <button
-              key={section.path}
-              onClick={() => navigateTo(section.path)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
-                isActive
-                  ? 'bg-slate-800 text-white'
-                  : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {section.label}
-            </button>
-          );
-        })}
-      </div>
+    <div className="flex h-full w-full overflow-hidden">
+      {/* Vertical sidebar navigation */}
+      <aside className="hidden md:flex flex-col w-52 min-w-[208px] bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 overflow-y-auto shrink-0">
+        <div className="px-4 py-3 border-b border-neutral-100 dark:border-neutral-800">
+          <h2 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Central Produccion</h2>
+        </div>
+        <nav className="flex flex-col gap-0.5 p-2">
+          {visibleSections.map(section => {
+            const Icon = section.icon;
+            const isActive = activePath === section.path;
+            return (
+              <button
+                key={section.path}
+                onClick={() => navigateTo(section.path)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
+                  isActive
+                    ? 'bg-slate-800 text-white'
+                    : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                }`}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="truncate">{section.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </aside>
 
       {/* Iframe container */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative min-w-0">
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-neutral-900 z-10">
             <Loader2 className="w-8 h-8 text-slate-400 animate-spin" />

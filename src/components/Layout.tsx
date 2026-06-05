@@ -61,7 +61,7 @@ export function Layout({ children }: LayoutProps) {
       </div>
 
       {/* Secondary sidebar — only when inside a workspace, hidden on mobile */}
-      {workspace && (
+      {workspace && workspace.id !== 'produccion' && (
         <div className={`hidden md:flex ${isImpersonating ? 'pt-9' : ''}`}>
           <SecondarySidebar
             workspace={workspace}
