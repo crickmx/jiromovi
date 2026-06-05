@@ -3,7 +3,7 @@ import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { useImpersonation } from '../contexts/ImpersonationContext';
 import { useThemeMode } from '../hooks/useThemeMode';
 import { supabase } from '../lib/supabase';
-import { Hop as Home, ChartBar as BarChart2, DollarSign, Target, BookOpen, CloudUpload as UploadCloud, Trophy, CircleAlert as AlertCircle, FileText, Calculator, ListFilter as Filter, Tag, Users, UserCheck, Settings, Clock, RefreshCw, MapPin, Paintbrush, LayoutDashboard } from 'lucide-react';
+import { Hop as Home, ChartBar as BarChart2, DollarSign, Target, BookOpen, CloudUpload as UploadCloud, Trophy, CircleAlert as AlertCircle, FileText, Calculator, ListFilter as Filter, Tag, Users, UserCheck, Settings, Clock, RefreshCw, MapPin } from 'lucide-react';
 import { LoadingOrb } from '../components/loading/LoadingOrb';
 import { LoadingFactCard } from '../components/loading/LoadingFactCard';
 
@@ -44,11 +44,8 @@ const SECTIONS: SectionDef[] = [
   { label: 'Campanias', path: '/campanias/', icon: Trophy, show: p => p.can_campanias },
   { label: 'Config. Filtros', path: '/filters/config/', icon: Filter, show: no_dirreg },
   { label: 'Etiq. de Bandas', path: '/filters/band-labels/', icon: Tag, show: no_dirreg },
-  { label: 'Usuarios Bonos', path: '/accounts/users/', icon: Users, show: p => p.can_users },
+  { label: 'Usuarios', path: '/accounts/users/', icon: Users, show: p => p.can_users },
   { label: 'Usuarios MOVI', path: '/accounts/movi/', icon: UserCheck, show: p => p.can_users },
-  { label: 'Diseno', path: '/design/', icon: Paintbrush, show: no_dirreg },
-  { label: 'Config. Inicio', path: '/config/home/', icon: Home, show: no_dirreg },
-  { label: 'Config. Dashboard', path: '/config/dashboard/', icon: LayoutDashboard, show: no_dirreg },
   { label: 'Panel Admin', path: '/admin/', icon: Settings, show: p => p.can_users },
 ];
 
