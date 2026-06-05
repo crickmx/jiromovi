@@ -3,7 +3,9 @@ import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { useImpersonation } from '../contexts/ImpersonationContext';
 import { useThemeMode } from '../hooks/useThemeMode';
 import { supabase } from '../lib/supabase';
-import { Hop as Home, ChartBar as BarChart2, DollarSign, Target, BookOpen, CloudUpload as UploadCloud, Trophy, Loader as Loader2, CircleAlert as AlertCircle, FileText, Calculator, ListFilter as Filter, Tag, Users, UserCheck, Settings, Clock, RefreshCw, MapPin } from 'lucide-react';
+import { Hop as Home, ChartBar as BarChart2, DollarSign, Target, BookOpen, CloudUpload as UploadCloud, Trophy, CircleAlert as AlertCircle, FileText, Calculator, ListFilter as Filter, Tag, Users, UserCheck, Settings, Clock, RefreshCw, MapPin } from 'lucide-react';
+import { LoadingOrb } from '../components/loading/LoadingOrb';
+import { LoadingFactCard } from '../components/loading/LoadingFactCard';
 
 const BONOS_URL = import.meta.env.VITE_BONOS_URL || 'http://localhost:8003';
 
@@ -57,6 +59,7 @@ export default function BonosPage() {
   const [activePath, setActivePath] = useState('/');
   const [perms, setPerms] = useState<BonosPerms>(DEFAULT_PERMS);
   const [retryCount, setRetryCount] = useState(0);
+  const [ssoConfirmed, setSsoConfirmed] = useState(false);
   const ssoConfirmedRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const maxRetries = 2;
@@ -92,6 +95,7 @@ export default function BonosPage() {
   useEffect(() => {
     setError(false);
     setSrc(null);
+    setSsoConfirmed(false);
     ssoConfirmedRef.current = false;
     clearSsoTimeout();
     buildSsoUrl().then(url => {
@@ -116,6 +120,7 @@ export default function BonosPage() {
 
     if (type === 'bonos:pagechange') {
       ssoConfirmedRef.current = true;
+      setSsoConfirmed(true);
       clearSsoTimeout();
       const p: string = event.data.path || '/';
       const match = SECTIONS.slice().reverse().find(s => p.startsWith(s.path) && s.path !== '/')
@@ -135,12 +140,14 @@ export default function BonosPage() {
         return;
       }
       ssoConfirmedRef.current = true;
+      setSsoConfirmed(true);
       clearSsoTimeout();
       setActivePath(path);
     }
 
     if (type === 'bonos:userinfo') {
       ssoConfirmedRef.current = true;
+      setSsoConfirmed(true);
       clearSsoTimeout();
       setPerms({
         role: event.data.role ?? event.data.payload?.role ?? '',
@@ -204,9 +211,30 @@ export default function BonosPage() {
 
   if (!src) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-3">
-        <Loader2 className="w-8 h-8 text-slate-400 animate-spin" />
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">Conectando con Central de Produccion...</p>
+      <div
+        className="flex flex-col items-center justify-center h-full gap-8"
+        style={{ background: 'rgba(9, 15, 26, 0.96)' }}
+      >
+        <LoadingOrb size={120} />
+        <div className="flex flex-col items-center gap-1">
+          <span className="text-white font-semibold text-sm tracking-wide">Conectando con Central de Produccion</span>
+          <div className="flex gap-1 mt-1">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="w-1.5 h-1.5 rounded-full bg-sky-400"
+                style={{ animation: `lo-dot-bounce 1.2s ease-in-out infinite ${i * 0.2}s` }}
+              />
+            ))}
+          </div>
+        </div>
+        <LoadingFactCard />
+        <style>{`
+          @keyframes lo-dot-bounce {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+            40% { transform: scale(1); opacity: 1; }
+          }
+        `}</style>
       </div>
     );
   }
@@ -242,6 +270,33 @@ export default function BonosPage() {
       </aside>
 
       <div className="flex-1 relative min-w-0 overflow-hidden">
+        {!ssoConfirmed && (
+          <div
+            className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-8"
+            style={{ background: 'rgba(9, 15, 26, 0.96)', backdropFilter: 'blur(8px)' }}
+          >
+            <LoadingOrb size={120} />
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-white font-semibold text-sm tracking-wide">Cargando Central de Produccion</span>
+              <div className="flex gap-1 mt-1">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="w-1.5 h-1.5 rounded-full bg-sky-400"
+                    style={{ animation: `lo-dot-bounce 1.2s ease-in-out infinite ${i * 0.2}s` }}
+                  />
+                ))}
+              </div>
+            </div>
+            <LoadingFactCard />
+            <style>{`
+              @keyframes lo-dot-bounce {
+                0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+                40% { transform: scale(1); opacity: 1; }
+              }
+            `}</style>
+          </div>
+        )}
         <iframe
           ref={iframeRef}
           src={src}
