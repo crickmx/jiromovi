@@ -63,6 +63,14 @@ Deno.serve(async (req: Request) => {
     const statusesCount = Array.isArray(parsedPayload!.statuses) ? (parsedPayload!.statuses as unknown[]).length : 0;
     const messagesCount = Array.isArray(parsedPayload!.messages) ? (parsedPayload!.messages as unknown[]).length : 0;
 
+    // Load the configured MOVI channel UUID to filter incoming messages
+    const { data: waConfig } = await supabase
+      .from("whatsapp_configuracion")
+      .select("channel_id_uuid")
+      .eq("activo", true)
+      .maybeSingle();
+    const moviChannelId: string | null = waConfig?.channel_id_uuid || null;
+
     // Load all active users once for phone matching
     const { data: allUsersData } = await supabase
       .from("usuarios")
@@ -190,6 +198,12 @@ Deno.serve(async (req: Request) => {
       for (const msg of (parsedPayload!.messages as Array<Record<string, unknown>>)) {
         if (msg.isDeleted || msg.isEdited) {
           logs.push(`skip_${msg.messageId}_deleted_or_edited`);
+          continue;
+        }
+
+        // Skip messages from non-MOVI channels
+        if (moviChannelId && msg.channelId && msg.channelId !== moviChannelId) {
+          logs.push(`skip_${msg.messageId}_wrong_channel=${msg.channelId}`);
           continue;
         }
 

@@ -90,12 +90,25 @@ export default function CentroContactoUnificado() {
     if (!userId) return;
     setLoading(true);
     try {
+      // Get the configured MOVI channel UUID for filtering
+      const { data: waConfig } = await supabase
+        .from('whatsapp_configuracion')
+        .select('channel_id_uuid')
+        .eq('activo', true)
+        .maybeSingle();
+      const moviChannelId = waConfig?.channel_id_uuid || null;
+
       // 1. WA MOVI: contact_center_messages
       let moviQuery = supabase
         .from('contact_center_messages')
-        .select('id, agent_user_id, contact_phone, contact_name, direction, body, channel, created_at, status, read_at')
+        .select('id, agent_user_id, contact_phone, contact_name, direction, body, channel, created_at, status, read_at, metadata')
         .eq('channel', 'whatsapp')
         .order('created_at', { ascending: false });
+
+      // Filter by MOVI channel: include messages from the configured channel or legacy messages (null channel_id)
+      if (moviChannelId) {
+        moviQuery = moviQuery.or(`metadata->>channel_id.eq.${moviChannelId},metadata->>channel_id.is.null`);
+      }
 
       if (!isAdmin && usuario?.oficina_id) {
         const { data: officeUsers } = await supabase
