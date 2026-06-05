@@ -724,8 +724,8 @@ export function ActividadRecienteWidget({ usuario }: { usuario: Usuario }) {
     (async () => {
       try {
         const { data } = await supabase.from('user_activity_logs')
-          .select('accion, modulo, created_at')
-          .eq('usuario_id', usuario.id)
+          .select('action, module, created_at')
+          .eq('user_id', usuario.id)
           .order('created_at', { ascending: false })
           .limit(6);
         setItems(data || []);
@@ -746,7 +746,7 @@ export function ActividadRecienteWidget({ usuario }: { usuario: Usuario }) {
             <li key={i} className="flex items-center gap-3 px-4 py-2.5">
               <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 flex-shrink-0" />
               <div className="min-w-0 flex-1">
-                <p className="text-xs text-neutral-600 dark:text-white/60 truncate">{a.accion} <span className="text-neutral-400 dark:text-white/30">· {a.modulo}</span></p>
+                <p className="text-xs text-neutral-600 dark:text-white/60 truncate">{a.action} <span className="text-neutral-400 dark:text-white/30">· {a.module}</span></p>
               </div>
               <p className="text-[10px] text-neutral-400 dark:text-white/25 flex-shrink-0">
                 {getRelativeTime(a.created_at)}
@@ -789,10 +789,10 @@ export function ProduccionPorAgenteWidget({ usuario }: { usuario: Usuario }) {
           {items.map((e: any, i) => (
             <li key={i} className="flex items-center justify-between gap-3 px-4 py-3">
               <div className="min-w-0">
-                <p className="text-sm text-neutral-700 dark:text-white/70 truncate">{e.nombre_asegurado || 'Cliente'}</p>
-                <p className="text-xs text-neutral-400 dark:text-white/30">{e.aseguradora || ''} · {e.ramo || ''}</p>
+                <p className="text-sm text-neutral-700 dark:text-white/70 truncate">{e.cliente || 'Cliente'}</p>
+                <p className="text-xs text-neutral-400 dark:text-white/30">{e.compania || ''} · {e.ramo || ''}</p>
               </div>
-              <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 flex-shrink-0">{formatCurrency(e.prima || 0)}</span>
+              <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 flex-shrink-0">{formatCurrency(e.prima_neta || 0)}</span>
             </li>
           ))}
         </ul>
