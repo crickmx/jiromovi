@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Upload, X, AlertCircle, Image as ImageIcon } from 'lucide-react';
-import { Button } from './ui/button';
-import { Card } from './ui/card';
+import { Upload, X, CircleAlert as AlertCircle, Image as ImageIcon } from 'lucide-react';
 import { uploadUserLogo, deleteUserLogo, getEffectiveUserLogo } from '../lib/logoUtils';
 import { trackLogoUpdated } from '../lib/activityLogger';
 
@@ -73,77 +71,63 @@ export function MiLogotipoEditor({ userId, currentLogoUrl, onLogoChange }: MiLog
   };
 
   return (
-    <Card className="p-6">
-      <h3 className="text-lg font-semibold mb-4">Mi Logotipo</h3>
-
-      <div className="space-y-4">
-        <div className="flex items-start gap-4">
-          {/* Vista previa del logotipo efectivo */}
-          <div className="flex-shrink-0">
-            <div className="w-32 h-32 border-2 border-gray-200 rounded-lg overflow-hidden bg-white flex items-center justify-center">
-              {effectiveLogoUrl ? (
-                <img
-                  src={effectiveLogoUrl}
-                  alt="Logotipo"
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <ImageIcon className="w-12 h-12 text-gray-400" />
-              )}
-            </div>
-            <p className="text-xs text-gray-500 mt-2 text-center">
-              {logoUrl ? 'Tu logo' : 'Logo efectivo'}
-            </p>
-          </div>
-
-          {/* Controles */}
-          <div className="flex-1 space-y-3">
-            <div>
-              <p className="text-sm text-gray-600 mb-2">
-                Sube tu logotipo personal. Se usará en PDFs y materiales de marketing.
-              </p>
-              <p className="text-xs text-gray-500">
-                <strong>Jerarquía:</strong> Mi Logotipo → Logo de Oficina → Logo JIRO
-              </p>
-            </div>
-
-            {error && (
-              <div className="flex items-center gap-2 text-red-600 text-sm">
-                <AlertCircle className="w-4 h-4" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                variant="outline"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                {logoUrl ? 'Cambiar logotipo' : 'Subir logotipo'}
-              </Button>
-
-              {logoUrl && (
-                <Button
-                  type="button"
-                  onClick={handleDelete}
-                  disabled={uploading}
-                  variant="outline"
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Eliminar
-                </Button>
-              )}
-            </div>
-
-            <p className="text-xs text-gray-500">
-              Formatos: PNG, JPG, JPEG | Tamaño máx: 5MB | Se redimensionará a 1500x1500px
-            </p>
-          </div>
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
+        <div className="w-16 h-16 rounded-xl border border-neutral-200 dark:border-white/10 overflow-hidden bg-white dark:bg-white/5 flex items-center justify-center flex-shrink-0">
+          {effectiveLogoUrl ? (
+            <img
+              src={effectiveLogoUrl}
+              alt="Logotipo"
+              className="w-full h-full object-contain p-1"
+            />
+          ) : (
+            <ImageIcon className="w-7 h-7 text-neutral-300 dark:text-white/20" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-neutral-500 dark:text-white/50 leading-relaxed">
+            Se usa en PDFs y materiales de marketing.
+          </p>
+          <p className="text-[10px] text-neutral-400 dark:text-white/30 mt-0.5">
+            Mi Logo &rarr; Oficina &rarr; JIRO
+          </p>
         </div>
       </div>
+
+      {error && (
+        <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-xs bg-red-50 dark:bg-red-500/10 rounded-lg px-3 py-2">
+          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-neutral-200 dark:border-white/10 text-neutral-700 dark:text-white/70 hover:bg-neutral-50 dark:hover:bg-white/5 transition disabled:opacity-50"
+        >
+          <Upload className="w-3.5 h-3.5" />
+          {uploading ? 'Subiendo...' : logoUrl ? 'Cambiar' : 'Subir logo'}
+        </button>
+
+        {logoUrl && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={uploading}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition disabled:opacity-50"
+          >
+            <X className="w-3.5 h-3.5" />
+            Eliminar
+          </button>
+        )}
+      </div>
+
+      <p className="text-[10px] text-neutral-400 dark:text-white/30">
+        PNG, JPG | Max 5MB | 1500x1500px
+      </p>
 
       <input
         ref={fileInputRef}
@@ -152,6 +136,6 @@ export function MiLogotipoEditor({ userId, currentLogoUrl, onLogoChange }: MiLog
         onChange={handleFileSelect}
         className="hidden"
       />
-    </Card>
+    </div>
   );
 }
