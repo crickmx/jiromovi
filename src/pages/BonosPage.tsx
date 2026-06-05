@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { useThemeMode } from '../hooks/useThemeMode';
 import { supabase } from '../lib/supabase';
@@ -50,98 +50,60 @@ export default function BonosPage() {
   const { usuario } = useMoviAuth();
   const { isDarkEffective } = useThemeMode();
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [iframeSrc, setIframeSrc] = useState<string | null>(null);
+  const [src, setSrc] = useState<string | null>(null);
+  const [error, setError] = useState(false);
   const [activePath, setActivePath] = useState('/');
   const [perms, setPerms] = useState<BonosPerms>(DEFAULT_PERMS);
-  const [ssoFailed, setSsoFailed] = useState(false);
-  const retryCountRef = useRef(0);
-  const MAX_RETRIES = 3;
-
-  const embeddedParams = useMemo(() => {
-    const params = new URLSearchParams();
-    params.set('embedded', 'true');
-    params.set('theme', isDarkEffective ? 'dark' : 'light');
-    if (usuario?.oficina?.accent_color) {
-      params.set('accentColor', usuario.oficina.accent_color.replace('#', ''));
-    }
-    if (usuario?.oficina_id) {
-      params.set('officeId', encodeURIComponent(usuario.oficina_id));
-    }
-    if (usuario?.id) {
-      params.set('userId', encodeURIComponent(usuario.id));
-    }
-    return params.toString();
-  }, [isDarkEffective, usuario?.oficina?.accent_color, usuario?.oficina_id, usuario?.id]);
 
   useEffect(() => {
-    let cancelled = false;
-    let retryTimeout: ReturnType<typeof setTimeout>;
+    setError(false);
 
-    async function buildUrl() {
-      try {
-        if (import.meta.env.DEV) {
-          const email = usuario?.email_laboral || 'dev@movi.digital';
-          setIframeSrc(`${BONOS_URL}/accounts/dev-login/?email=${encodeURIComponent(email)}&next=${encodeURIComponent('/')}&${embeddedParams}`);
-          return;
-        }
+    if (import.meta.env.DEV) {
+      const email = usuario?.email_laboral;
+      if (!email) { setError(true); return; }
+      const devUrl = new URL('/accounts/dev-login/', BONOS_URL);
+      devUrl.searchParams.set('email', email);
+      devUrl.searchParams.set('next', '/');
+      setSrc(devUrl.toString());
+      return;
+    }
 
-        const { data } = await supabase.auth.getSession();
-        const token = data.session?.access_token;
+    setSrc(null);
+    supabase.auth.getSession().then(({ data: { session }, error: sessionError }) => {
+      if (sessionError || !session?.access_token) { setError(true); return; }
+      const url = new URL('/accounts/supabase/', BONOS_URL);
+      url.searchParams.set('token', session.access_token);
+      url.searchParams.set('next', '/');
+      setSrc(url.toString());
+    });
+  }, [usuario?.email_laboral]);
 
-        if (!token) {
-          if (retryCountRef.current < MAX_RETRIES) {
-            retryCountRef.current += 1;
-            retryTimeout = setTimeout(() => {
-              if (!cancelled) buildUrl();
-            }, 1500);
-            return;
-          }
-          if (!cancelled) {
-            setError('No se pudo obtener la sesion. Intenta cerrar e iniciar sesion de nuevo.');
-          }
-          return;
-        }
+  const handleMessage = useCallback((event: MessageEvent) => {
+    if (!event.data?.type) return;
+    const { type } = event.data;
 
-        if (!cancelled) {
-          retryCountRef.current = 0;
-          setIframeSrc(`${BONOS_URL}/accounts/supabase/?token=${encodeURIComponent(token)}&${embeddedParams}`);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setError('Error al conectar con Central de Produccion.');
-        }
+    if (type === 'bonos:pagechange') {
+      const p: string = event.data.path || '/';
+      const match = SECTIONS.slice().reverse().find(s => p.startsWith(s.path) && s.path !== '/')
+        ?? (p === '/' ? SECTIONS[0] : null);
+      if (match) setActivePath(match.path);
+    }
+
+    if (type === 'bonos:navigate') {
+      const path = event.data.payload?.path || event.data.path || '/';
+      setActivePath(path);
+      if (path.includes('/accounts/login')) {
+        setError(true);
       }
     }
 
-    buildUrl();
-
-    return () => {
-      cancelled = true;
-      clearTimeout(retryTimeout);
-    };
-  }, [usuario?.email_laboral, embeddedParams]);
-
-  const handleMessage = useCallback((event: MessageEvent) => {
-    if (!event.origin.includes(new URL(BONOS_URL).host)) return;
-    const { type, payload } = event.data || {};
-    if (type === 'bonos:navigate') {
-      const path = payload?.path || '/';
-      setActivePath(path);
-      if (path.includes('/accounts/login') || path.includes('/accounts/sso')) {
-        setSsoFailed(true);
-      }
-    } else if (type === 'bonos:userinfo') {
-      setSsoFailed(false);
+    if (type === 'bonos:userinfo') {
       setPerms({
-        role: payload?.role || '',
-        can_admin: !!payload?.can_admin,
-        can_campanias: !!payload?.can_campanias,
-        can_users: !!payload?.can_users,
+        role: event.data.role ?? event.data.payload?.role ?? '',
+        can_admin: !!(event.data.can_admin ?? event.data.payload?.can_admin),
+        can_campanias: !!(event.data.can_campanias ?? event.data.payload?.can_campanias),
+        can_users: !!(event.data.can_users ?? event.data.payload?.can_users),
       });
-    } else if (type === 'bonos:sso_error') {
-      setSsoFailed(true);
     }
   }, []);
 
@@ -160,29 +122,24 @@ export default function BonosPage() {
   function navigateTo(path: string) {
     setActivePath(path);
     iframeRef.current?.contentWindow?.postMessage(
-      { type: 'bonos:navigate', payload: { path } },
+      { type: 'bonos:navigate', url: path },
       BONOS_URL
     );
   }
 
-  const visibleSections = SECTIONS.filter(s => s.show(perms));
-
-  if (error || ssoFailed) {
+  if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 p-8">
         <AlertCircle className="w-12 h-12 text-red-400" />
-        <p className="text-lg text-neutral-700 dark:text-neutral-300 text-center">
-          {error || 'No se pudo iniciar sesion automaticamente en Central de Produccion. Verifica que tu cuenta tenga acceso.'}
+        <p className="text-lg text-neutral-700 dark:text-neutral-300 text-center max-w-md">
+          No se pudo iniciar sesion en Central de Produccion.
+          <br />
+          <span className="text-base text-neutral-500 dark:text-neutral-400">
+            Vuelve a iniciar sesion en MOVI e intenta de nuevo.
+          </span>
         </p>
         <button
-          onClick={() => {
-            setSsoFailed(false);
-            setError(null);
-            setIframeSrc(null);
-            setLoading(true);
-            retryCountRef.current = 0;
-            window.location.reload();
-          }}
+          onClick={() => window.location.reload()}
           className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
         >
           Reintentar
@@ -191,9 +148,19 @@ export default function BonosPage() {
     );
   }
 
+  if (!src) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-3">
+        <Loader2 className="w-8 h-8 text-slate-400 animate-spin" />
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Conectando con Central de Produccion...</p>
+      </div>
+    );
+  }
+
+  const visibleSections = SECTIONS.filter(s => s.show(perms));
+
   return (
     <div className="flex h-full w-full overflow-hidden">
-      {/* Vertical sidebar navigation */}
       <aside className="hidden md:flex flex-col w-52 min-w-[208px] bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 overflow-y-auto shrink-0">
         <div className="px-4 py-3 border-b border-neutral-100 dark:border-neutral-800">
           <h2 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Central Produccion</h2>
@@ -220,23 +187,14 @@ export default function BonosPage() {
         </nav>
       </aside>
 
-      {/* Iframe container - seamless, no borders or padding */}
       <div className="flex-1 relative min-w-0 overflow-hidden">
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-neutral-900 z-10">
-            <Loader2 className="w-8 h-8 text-slate-400 animate-spin" />
-          </div>
-        )}
-        {iframeSrc && (
-          <iframe
-            ref={iframeRef}
-            src={iframeSrc}
-            className="w-full h-full border-0 block"
-            onLoad={() => setLoading(false)}
-            allow="clipboard-write"
-            style={{ margin: 0, padding: 0 }}
-          />
-        )}
+        <iframe
+          ref={iframeRef}
+          src={src}
+          className="w-full h-full border-0 block"
+          allow="clipboard-write"
+          style={{ margin: 0, padding: 0 }}
+        />
       </div>
     </div>
   );
