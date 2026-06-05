@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, RefreshCw, CheckCircle, XCircle, Building, Users, Trash2, Link as LinkIcon, FlaskConical, Stethoscope, AlertCircle, Zap, Square, Clock, SearchCheck, ChevronDown, ChevronRight } from 'lucide-react';
+import { Loader as Loader2, RefreshCw, CircleCheck as CheckCircle, Circle as XCircle, Building, Users, Trash2, Link as LinkIcon, FlaskConical, Stethoscope, CircleAlert as AlertCircle, Zap, Square, Clock, SearchCheck, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -26,8 +26,6 @@ import {
   unmapVendedor,
 } from '../lib/sicasUtils';
 import type { SicasConfig, SicasDespachoWithMapping, SicasVendedorWithMapping } from '../lib/sicasTypes';
-import HwcaptureConfigSection from '../components/produccion/HwcaptureConfigSection';
-import SicasRateControlPanel from '../components/produccion/SicasRateControlPanel';
 
 export default function SicasAdmin() {
   const navigate = useNavigate();
@@ -2261,12 +2259,22 @@ export default function SicasAdmin() {
 
         <TabsContent value="hwcapture">
           <Section>
-            <HwcaptureConfigSection />
+            <Card>
+              <CardContent className="p-6 text-center text-neutral-500">
+                Configuracion movida a Central de Produccion.
+              </CardContent>
+            </Card>
           </Section>
         </TabsContent>
 
         <TabsContent value="control">
-          <SicasRateControlPanel />
+          <Section>
+            <Card>
+              <CardContent className="p-6 text-center text-neutral-500">
+                Control de tasas movido a Central de Produccion.
+              </CardContent>
+            </Card>
+          </Section>
         </TabsContent>
 
         <TabsContent value="diagnostico">

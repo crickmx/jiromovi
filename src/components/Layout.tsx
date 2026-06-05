@@ -15,6 +15,7 @@ const FULL_HEIGHT_PREFIXES = [
   '/centro-contacto/',
   '/centro-contacto',
   '/chat',
+  '/produccion',
 ];
 
 interface LayoutProps {

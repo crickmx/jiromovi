@@ -53,12 +53,7 @@ const DisenadorAuto = lazy(() => import('./comercial/disenadores/DisenadorAuto')
 const DisenadorGMM = lazy(() => import('./comercial/disenadores/DisenadorGMM'));
 
 // Operaciones
-const ProduccionHub = lazy(() => import('./ProduccionHub'));
-const ProduccionSICASLive = lazy(() => import('./ProduccionSICASLive'));
-const ProduccionTotal = lazy(() => import('./ProduccionTotal'));
-const ProduccionConvenio = lazy(() => import('./ProduccionConvenio'));
-const ProduccionCargar = lazy(() => import('./ProduccionCargar'));
-const MisComisiones = lazy(() => import('./MisComisiones'));
+const BonosPage = lazy(() => import('./BonosPage'));
 const Comisiones = lazy(() => import('./Comisiones'));
 const ComisionesUpload = lazy(() => import('./ComisionesUpload'));
 const ComisionesUploadNuevo = lazy(() => import('./ComisionesUploadNuevo'));
@@ -102,7 +97,6 @@ const ImportacionMasivaCentroDigital = lazy(() => import('./ImportacionMasivaCen
 const RegimenFiscalAdmin = lazy(() => import('./RegimenFiscalAdmin'));
 const RegimenFiscalEditor = lazy(() => import('./RegimenFiscalEditor'));
 const MapeoVendedoresAdmin = lazy(() => import('./MapeoVendedoresAdmin'));
-const ProduccionConfiguracion = lazy(() => import('./ProduccionConfiguracion'));
 const SicasSaludAdmin = lazy(() => import('./SicasSaludAdmin'));
 const AsistenteEntrenamiento = lazy(() => import('./AsistenteEntrenamiento'));
 const ChavaAdmin = lazy(() => import('./ChavaAdmin'));
@@ -200,15 +194,11 @@ export default function MoviFullRoutes() {
           <Route path="/cotizar/multicotizador" element={<ProtectedRoute><MulticotizadorDigital /></ProtectedRoute>} />
 
           {/* Central de Produccion */}
-          <Route path="/produccion" element={<ProtectedRoute><ProduccionHub /></ProtectedRoute>} />
-          <Route path="/produccion/mi-produccion" element={<ProtectedRoute><ProduccionSICASLive /></ProtectedRoute>} />
-          <Route path="/produccion/total" element={<ProtectedRoute><ProduccionTotal /></ProtectedRoute>} />
-          <Route path="/produccion/convenio" element={<ProtectedRoute><ProduccionConvenio /></ProtectedRoute>} />
-          <Route path="/produccion/cargar" element={<ProtectedRoute requireAdmin><ProduccionCargar /></ProtectedRoute>} />
-          <Route path="/produccion/mis-comisiones" element={<ProtectedRoute><MisComisiones /></ProtectedRoute>} />
-          {/* Legacy production route redirect */}
-          <Route path="/mi-produccion-sicas-live" element={<Navigate to="/produccion/mi-produccion" replace />} />
-          <Route path="/mis-comisiones" element={<Navigate to="/produccion/mis-comisiones" replace />} />
+          <Route path="/produccion" element={<ProtectedRoute><BonosPage /></ProtectedRoute>} />
+          {/* Legacy production route redirects */}
+          <Route path="/produccion/*" element={<Navigate to="/produccion" replace />} />
+          <Route path="/mi-produccion-sicas-live" element={<Navigate to="/produccion" replace />} />
+          <Route path="/mis-comisiones" element={<Navigate to="/produccion" replace />} />
 
           {/* Comisiones Admin */}
           <Route path="/comisiones" element={<ProtectedRoute requireAdmin><Comisiones /></ProtectedRoute>} />
@@ -257,7 +247,6 @@ export default function MoviFullRoutes() {
           <Route path="/comisiones/regimen-fiscal" element={<ProtectedRoute requireAdmin><RegimenFiscalAdmin /></ProtectedRoute>} />
           <Route path="/comisiones/regimen-fiscal/:id" element={<ProtectedRoute requireAdmin><RegimenFiscalEditor /></ProtectedRoute>} />
           <Route path="/comisiones/mapeo-vendedores" element={<ProtectedRoute requireAdmin><MapeoVendedoresAdmin /></ProtectedRoute>} />
-          <Route path="/produccion/configuracion" element={<ProtectedRoute requireAdmin><ProduccionConfiguracion /></ProtectedRoute>} />
           <Route path="/sicas/salud" element={<ProtectedRoute requireAdmin><SicasSaludAdmin /></ProtectedRoute>} />
           <Route path="/admin/asistentes" element={<ProtectedRoute requireAdminOrGerente><AsistenteEntrenamiento /></ProtectedRoute>} />
           <Route path="/admin/asistentes/:id" element={<ProtectedRoute requireAdminOrGerente><AsistenteEntrenamiento /></ProtectedRoute>} />

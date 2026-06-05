@@ -117,13 +117,7 @@ const WORKSPACE_PRODUCCION: WorkspaceDefinition = {
   icon: BarChart3,
   visibleTo: ALL_ROLES,
   items: [
-    { path: '/produccion', label: 'Inicio', icon: LayoutDashboard, visibleTo: ALL_ROLES },
-    { path: '/produccion/mi-produccion', label: 'Mi Produccion', icon: TrendingUp, visibleTo: ALL_ROLES, matchPrefix: true },
-    { path: '/produccion/total', label: 'Produccion Total', icon: BarChart3, visibleTo: NOT_AGENT },
-    { path: '/produccion/convenio', label: 'Convenio', icon: Activity, visibleTo: NOT_AGENT },
-    { path: '/produccion/mis-comisiones', label: 'Mis Comisiones', icon: DollarSign, visibleTo: ALL_ROLES },
-    { path: '/produccion/cargar', label: 'Cargar Datos', icon: FolderOpen, visibleTo: ADMIN_ONLY },
-    { path: '/produccion/configuracion', label: 'Configuracion', icon: Settings, visibleTo: ADMIN_ONLY },
+    { path: '/produccion', label: 'Central Produccion', icon: BarChart3, visibleTo: ALL_ROLES },
   ],
 };
 
