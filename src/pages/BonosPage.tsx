@@ -57,7 +57,17 @@ export default function BonosPage() {
   const [activePath, setActivePath] = useState('/');
   const [perms, setPerms] = useState<BonosPerms>(DEFAULT_PERMS);
   const [retryCount, setRetryCount] = useState(0);
+  const ssoConfirmedRef = useRef(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const maxRetries = 2;
+  const SSO_TIMEOUT_MS = 8000;
+
+  const clearSsoTimeout = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
 
   const buildSsoUrl = useCallback(async (): Promise<string | null> => {
     if (import.meta.env.DEV) {
@@ -68,7 +78,6 @@ export default function BonosPage() {
       devUrl.searchParams.set('next', '/');
       return devUrl.toString();
     }
-    // Force refresh token on retry to ensure we send a valid JWT
     if (retryCount > 0) {
       await supabase.auth.refreshSession();
     }
@@ -83,36 +92,31 @@ export default function BonosPage() {
   useEffect(() => {
     setError(false);
     setSrc(null);
+    ssoConfirmedRef.current = false;
+    clearSsoTimeout();
     buildSsoUrl().then(url => {
       if (!url) { setError(true); return; }
       setSrc(url);
-    });
-  }, [isImpersonating, buildSsoUrl, retryCount]);
-
-  const handleIframeLoad = useCallback(() => {
-    try {
-      const iframe = iframeRef.current;
-      if (!iframe) return;
-      // Cross-origin will throw - that's expected when SSO succeeds (different origin)
-      const iframePath = iframe.contentWindow?.location?.pathname;
-      if (iframePath && iframePath.includes('/accounts/login')) {
-        if (retryCount < maxRetries) {
-          setRetryCount(c => c + 1);
-        } else {
-          setError(true);
+      timeoutRef.current = setTimeout(() => {
+        if (!ssoConfirmedRef.current) {
+          if (retryCount < maxRetries) {
+            setRetryCount(c => c + 1);
+          } else {
+            setError(true);
+          }
         }
-      }
-    } catch {
-      // Cross-origin error means iframe loaded CP successfully (different origin scenario)
-      // No action needed
-    }
-  }, [retryCount]);
+      }, SSO_TIMEOUT_MS);
+    });
+    return () => clearSsoTimeout();
+  }, [isImpersonating, buildSsoUrl, retryCount, clearSsoTimeout]);
 
   const handleMessage = useCallback((event: MessageEvent) => {
     if (!event.data?.type) return;
     const { type } = event.data;
 
     if (type === 'bonos:pagechange') {
+      ssoConfirmedRef.current = true;
+      clearSsoTimeout();
       const p: string = event.data.path || '/';
       const match = SECTIONS.slice().reverse().find(s => p.startsWith(s.path) && s.path !== '/')
         ?? (p === '/' ? SECTIONS[0] : null);
@@ -121,17 +125,23 @@ export default function BonosPage() {
 
     if (type === 'bonos:navigate') {
       const path = event.data.payload?.path || event.data.path || '/';
-      setActivePath(path);
       if (path.includes('/accounts/login')) {
+        clearSsoTimeout();
         if (retryCount < maxRetries) {
           setRetryCount(c => c + 1);
         } else {
           setError(true);
         }
+        return;
       }
+      ssoConfirmedRef.current = true;
+      clearSsoTimeout();
+      setActivePath(path);
     }
 
     if (type === 'bonos:userinfo') {
+      ssoConfirmedRef.current = true;
+      clearSsoTimeout();
       setPerms({
         role: event.data.role ?? event.data.payload?.role ?? '',
         can_admin: !!(event.data.can_admin ?? event.data.payload?.can_admin),
@@ -139,7 +149,7 @@ export default function BonosPage() {
         can_users: !!(event.data.can_users ?? event.data.payload?.can_users),
       });
     }
-  }, [retryCount]);
+  }, [retryCount, clearSsoTimeout]);
 
   useEffect(() => {
     window.addEventListener('message', handleMessage);
@@ -235,7 +245,6 @@ export default function BonosPage() {
         <iframe
           ref={iframeRef}
           src={src}
-          onLoad={handleIframeLoad}
           className="w-full h-full border-0 block"
           allow="clipboard-write"
           style={{ margin: 0, padding: 0 }}
