@@ -31,10 +31,12 @@ import {
   TopAseguradorasWidget,
   NotificacionesSinLeerWidget,
 } from './DashboardWidgets';
+import { CentroProduccionWidget } from './CentroProduccionWidget';
 import type { UserRole } from '@/lib/workspaceConfig';
 
 // Map widget_id → component
 const WIDGET_COMPONENTS: Record<string, React.ComponentType<{ usuario: Usuario; config: WidgetConfig }>> = {
+  centro_produccion:      CentroProduccionWidget,
   produccion_personal:    ProduccionPersonalWidget,
   comisiones_personal:    ComisionesPersonalWidget,
   tramites_pendientes:    TramitesPendientesWidget,
