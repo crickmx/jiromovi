@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
+import { useThemeMode } from '../hooks/useThemeMode';
 import { supabase } from '../lib/supabase';
 import { Hop as Home, ChartBar as BarChart2, DollarSign, Target, BookOpen, CloudUpload as UploadCloud, Trophy, Loader as Loader2, CircleAlert as AlertCircle, FileText, Calculator, ListFilter as Filter, Tag, Users, UserCheck, Settings, Clock, RefreshCw, MapPin } from 'lucide-react';
 
@@ -47,6 +48,7 @@ const SECTIONS: SectionDef[] = [
 
 export default function BonosPage() {
   const { usuario } = useMoviAuth();
+  const { isDarkEffective } = useThemeMode();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,12 +56,28 @@ export default function BonosPage() {
   const [activePath, setActivePath] = useState('/');
   const [perms, setPerms] = useState<BonosPerms>(DEFAULT_PERMS);
 
+  const embeddedParams = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set('embedded', 'true');
+    params.set('theme', isDarkEffective ? 'dark' : 'light');
+    if (usuario?.oficina?.accent_color) {
+      params.set('accentColor', usuario.oficina.accent_color.replace('#', ''));
+    }
+    if (usuario?.oficina_id) {
+      params.set('officeId', usuario.oficina_id);
+    }
+    if (usuario?.id) {
+      params.set('userId', usuario.id);
+    }
+    return params.toString();
+  }, [isDarkEffective, usuario?.oficina?.accent_color, usuario?.oficina_id, usuario?.id]);
+
   useEffect(() => {
     async function buildUrl() {
       try {
         if (import.meta.env.DEV) {
-          const email = usuario?.email || 'dev@movi.digital';
-          setIframeSrc(`${BONOS_URL}/accounts/dev-login/?email=${encodeURIComponent(email)}&next=/`);
+          const email = usuario?.email_laboral || 'dev@movi.digital';
+          setIframeSrc(`${BONOS_URL}/accounts/dev-login/?email=${encodeURIComponent(email)}&next=/&${embeddedParams}`);
         } else {
           const { data } = await supabase.auth.getSession();
           const token = data.session?.access_token;
@@ -67,14 +85,14 @@ export default function BonosPage() {
             setError('No se pudo obtener la sesion. Intenta cerrar e iniciar sesion de nuevo.');
             return;
           }
-          setIframeSrc(`${BONOS_URL}/accounts/sso/?token=${token}`);
+          setIframeSrc(`${BONOS_URL}/accounts/sso/?token=${token}&${embeddedParams}`);
         }
       } catch (e) {
         setError('Error al conectar con Central de Produccion.');
       }
     }
     buildUrl();
-  }, [usuario?.email]);
+  }, [usuario?.email_laboral, embeddedParams]);
 
   const handleMessage = useCallback((event: MessageEvent) => {
     if (!event.origin.includes(new URL(BONOS_URL).host)) return;
@@ -95,6 +113,13 @@ export default function BonosPage() {
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, [handleMessage]);
+
+  useEffect(() => {
+    iframeRef.current?.contentWindow?.postMessage(
+      { type: 'bonos:theme', payload: { theme: isDarkEffective ? 'dark' : 'light', accentColor: usuario?.oficina?.accent_color || null } },
+      BONOS_URL
+    );
+  }, [isDarkEffective, usuario?.oficina?.accent_color]);
 
   function navigateTo(path: string) {
     setActivePath(path);
@@ -150,8 +175,8 @@ export default function BonosPage() {
         </nav>
       </aside>
 
-      {/* Iframe container */}
-      <div className="flex-1 relative min-w-0">
+      {/* Iframe container - seamless, no borders or padding */}
+      <div className="flex-1 relative min-w-0 overflow-hidden">
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-neutral-900 z-10">
             <Loader2 className="w-8 h-8 text-slate-400 animate-spin" />
@@ -161,9 +186,10 @@ export default function BonosPage() {
           <iframe
             ref={iframeRef}
             src={iframeSrc}
-            className="w-full h-full border-0"
+            className="w-full h-full border-0 block"
             onLoad={() => setLoading(false)}
             allow="clipboard-write"
+            style={{ margin: 0, padding: 0 }}
           />
         )}
       </div>
