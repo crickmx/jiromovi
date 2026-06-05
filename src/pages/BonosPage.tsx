@@ -75,7 +75,7 @@ export default function BonosPage() {
     }
   }, []);
 
-  const buildSsoUrl = useCallback(async (): Promise<string | null> => {
+  const buildSsoUrl = useCallback(async (retry: number): Promise<string | null> => {
     if (import.meta.env.DEV) {
       const email = usuario?.email_laboral;
       if (!email) return null;
@@ -84,7 +84,7 @@ export default function BonosPage() {
       devUrl.searchParams.set('next', '/');
       return devUrl.toString();
     }
-    if (retryCount > 0) {
+    if (retry > 0) {
       await supabase.auth.refreshSession();
     }
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -93,15 +93,25 @@ export default function BonosPage() {
     url.searchParams.set('token', session.access_token);
     url.searchParams.set('next', '/');
     return url.toString();
-  }, [usuario?.email_laboral, retryCount]);
+  }, [usuario?.email_laboral]);
+
+  // Reset SSO state when impersonation changes
+  const prevImpersonating = useRef(isImpersonating);
+  useEffect(() => {
+    if (prevImpersonating.current !== isImpersonating) {
+      prevImpersonating.current = isImpersonating;
+      ssoConfirmedRef.current = false;
+      setSsoConfirmed(false);
+      setRetryCount(0);
+    }
+  }, [isImpersonating]);
 
   useEffect(() => {
+    if (ssoConfirmedRef.current) return;
     setError(false);
     setSrc(null);
-    setSsoConfirmed(false);
-    ssoConfirmedRef.current = false;
     clearSsoTimeout();
-    buildSsoUrl().then(url => {
+    buildSsoUrl(retryCount).then(url => {
       if (!url) { setError(true); return; }
       setSrc(url);
       timeoutRef.current = setTimeout(() => {
@@ -115,56 +125,60 @@ export default function BonosPage() {
       }, SSO_TIMEOUT_MS);
     });
     return () => clearSsoTimeout();
-  }, [isImpersonating, buildSsoUrl, retryCount, clearSsoTimeout]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buildSsoUrl, retryCount, clearSsoTimeout]);
 
-  const handleMessage = useCallback((event: MessageEvent) => {
-    if (!event.data?.type) return;
-    const { type } = event.data;
-
-    if (type === 'bonos:pagechange') {
-      ssoConfirmedRef.current = true;
-      setSsoConfirmed(true);
-      clearSsoTimeout();
-      const p: string = event.data.path || '/';
-      const match = SECTIONS.slice().reverse().find(s => p.startsWith(s.path) && s.path !== '/')
-        ?? (p === '/' ? SECTIONS[0] : null);
-      if (match) setActivePath(match.path);
-    }
-
-    if (type === 'bonos:navigate') {
-      const path = event.data.payload?.path || event.data.path || '/';
-      if (path.includes('/accounts/login')) {
-        clearSsoTimeout();
-        if (retryCount < maxRetries) {
-          setRetryCount(c => c + 1);
-        } else {
-          setError(true);
-        }
-        return;
-      }
-      ssoConfirmedRef.current = true;
-      setSsoConfirmed(true);
-      clearSsoTimeout();
-      setActivePath(path);
-    }
-
-    if (type === 'bonos:userinfo') {
-      ssoConfirmedRef.current = true;
-      setSsoConfirmed(true);
-      clearSsoTimeout();
-      setPerms({
-        role: event.data.role ?? event.data.payload?.role ?? '',
-        can_admin: !!(event.data.can_admin ?? event.data.payload?.can_admin),
-        can_campanias: !!(event.data.can_campanias ?? event.data.payload?.can_campanias),
-        can_users: !!(event.data.can_users ?? event.data.payload?.can_users),
-      });
-    }
-  }, [retryCount, clearSsoTimeout]);
+  const retryCountRef = useRef(retryCount);
+  retryCountRef.current = retryCount;
 
   useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (!event.data?.type) return;
+      const { type } = event.data;
+
+      if (type === 'bonos:pagechange') {
+        ssoConfirmedRef.current = true;
+        setSsoConfirmed(true);
+        clearSsoTimeout();
+        const p: string = event.data.path || '/';
+        const match = SECTIONS.slice().reverse().find(s => p.startsWith(s.path) && s.path !== '/')
+          ?? (p === '/' ? SECTIONS[0] : null);
+        if (match) setActivePath(match.path);
+      }
+
+      if (type === 'bonos:navigate') {
+        const path = event.data.payload?.path || event.data.path || '/';
+        if (path.includes('/accounts/login')) {
+          clearSsoTimeout();
+          if (retryCountRef.current < maxRetries) {
+            setRetryCount(c => c + 1);
+          } else {
+            setError(true);
+          }
+          return;
+        }
+        ssoConfirmedRef.current = true;
+        setSsoConfirmed(true);
+        clearSsoTimeout();
+        setActivePath(path);
+      }
+
+      if (type === 'bonos:userinfo') {
+        ssoConfirmedRef.current = true;
+        setSsoConfirmed(true);
+        clearSsoTimeout();
+        setPerms({
+          role: event.data.role ?? event.data.payload?.role ?? '',
+          can_admin: !!(event.data.can_admin ?? event.data.payload?.can_admin),
+          can_campanias: !!(event.data.can_campanias ?? event.data.payload?.can_campanias),
+          can_users: !!(event.data.can_users ?? event.data.payload?.can_users),
+        });
+      }
+    }
+
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [handleMessage]);
+  }, [clearSsoTimeout]);
 
   useEffect(() => {
     iframeRef.current?.contentWindow?.postMessage(
