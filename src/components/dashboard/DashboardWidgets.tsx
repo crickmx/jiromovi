@@ -144,7 +144,7 @@ export function ProduccionPersonalWidget({ usuario }: { usuario: Usuario }) {
     color: 'bg-emerald-50 dark:bg-emerald-500/10',
   } : null;
 
-  return <KPICard data={kpi} loading={loading} onNavigate="/mi-produccion-sicas-live" />;
+  return <KPICard data={kpi} loading={loading} onNavigate="/produccion/mi-produccion" />;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -176,7 +176,7 @@ export function ComisionesPersonalWidget({ usuario }: { usuario: Usuario }) {
     color: 'bg-blue-50 dark:bg-blue-500/10',
   } : null;
 
-  return <KPICard data={kpi} loading={loading} onNavigate="/mis-comisiones" />;
+  return <KPICard data={kpi} loading={loading} onNavigate="/produccion/mis-comisiones" />;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -724,8 +724,8 @@ export function ActividadRecienteWidget({ usuario }: { usuario: Usuario }) {
     (async () => {
       try {
         const { data } = await supabase.from('user_activity_logs')
-          .select('action, module, created_at')
-          .eq('user_id', usuario.id)
+          .select('accion, modulo, created_at')
+          .eq('usuario_id', usuario.id)
           .order('created_at', { ascending: false })
           .limit(6);
         setItems(data || []);
@@ -746,7 +746,7 @@ export function ActividadRecienteWidget({ usuario }: { usuario: Usuario }) {
             <li key={i} className="flex items-center gap-3 px-4 py-2.5">
               <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 flex-shrink-0" />
               <div className="min-w-0 flex-1">
-                <p className="text-xs text-neutral-600 dark:text-white/60 truncate">{a.action} <span className="text-neutral-400 dark:text-white/30">· {a.module}</span></p>
+                <p className="text-xs text-neutral-600 dark:text-white/60 truncate">{a.accion} <span className="text-neutral-400 dark:text-white/30">· {a.modulo}</span></p>
               </div>
               <p className="text-[10px] text-neutral-400 dark:text-white/25 flex-shrink-0">
                 {getRelativeTime(a.created_at)}
@@ -789,10 +789,10 @@ export function ProduccionPorAgenteWidget({ usuario }: { usuario: Usuario }) {
           {items.map((e: any, i) => (
             <li key={i} className="flex items-center justify-between gap-3 px-4 py-3">
               <div className="min-w-0">
-                <p className="text-sm text-neutral-700 dark:text-white/70 truncate">{e.cliente || 'Cliente'}</p>
-                <p className="text-xs text-neutral-400 dark:text-white/30">{e.compania || ''} · {e.ramo || ''}</p>
+                <p className="text-sm text-neutral-700 dark:text-white/70 truncate">{e.nombre_asegurado || 'Cliente'}</p>
+                <p className="text-xs text-neutral-400 dark:text-white/30">{e.aseguradora || ''} · {e.ramo || ''}</p>
               </div>
-              <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 flex-shrink-0">{formatCurrency(e.prima_neta || 0)}</span>
+              <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 flex-shrink-0">{formatCurrency(e.prima || 0)}</span>
             </li>
           ))}
         </ul>
@@ -825,11 +825,11 @@ export function ProduccionMensualWidget({ usuario }: { usuario: Usuario }) {
   }, [usuario.id]);
 
   return (
-    <WidgetShell title="Comparativo Produccion" icon={<TrendingUp className="w-4 h-4" />} onMore={() => nav('/mi-produccion-sicas-live')}>
+    <WidgetShell title="Comparativo Produccion" icon={<TrendingUp className="w-4 h-4" />} onMore={() => nav('/produccion/mi-produccion')}>
       {loading ? (
         <div className="p-4"><Skeleton className="h-32" /></div>
       ) : !data ? (
-        <EmptyState message="Sin datos de produccion" actionLabel="Ver produccion" actionPath="/mi-produccion-sicas-live" />
+        <EmptyState message="Sin datos de produccion" actionLabel="Ver produccion" actionPath="/produccion/mi-produccion" />
       ) : (
         <div className="p-4">
           <div className="grid grid-cols-2 gap-4 mb-4">
@@ -984,7 +984,7 @@ const QUICK_ACTIONS: Record<string, QuickAction[]> = {
     { label: 'Produccion', path: '/produccion/total', icon: <TrendingUp className="w-5 h-5" />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
     { label: 'Equipo', path: '/directorio', icon: <Users className="w-5 h-5" />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
     { label: 'Tramites', path: '/tramites', icon: <ClipboardList className="w-5 h-5" />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
-    { label: 'Comisiones', path: '/mis-comisiones', icon: <DollarSign className="w-5 h-5" />, color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-500/10' },
+    { label: 'Comisiones', path: '/produccion/mis-comisiones', icon: <DollarSign className="w-5 h-5" />, color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-500/10' },
     { label: 'CRM', path: '/mi-crm', icon: <Target className="w-5 h-5" />, color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-500/10' },
     { label: 'Chava IA', path: '/chava', icon: <Zap className="w-5 h-5" />, color: 'text-neutral-600 dark:text-white/60', bg: 'bg-neutral-100 dark:bg-white/8' },
   ],
@@ -1000,8 +1000,8 @@ const QUICK_ACTIONS: Record<string, QuickAction[]> = {
 
 const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
   { label: 'Mi Pagina Web', path: '/mercadotecnia/mi-pagina-web', icon: <Globe className="w-5 h-5" />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
-  { label: 'Mi Produccion', path: '/mi-produccion-sicas-live', icon: <TrendingUp className="w-5 h-5" />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
-  { label: 'Comisiones', path: '/mis-comisiones', icon: <DollarSign className="w-5 h-5" />, color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-500/10' },
+  { label: 'Mi Produccion', path: '/produccion/mi-produccion', icon: <TrendingUp className="w-5 h-5" />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+  { label: 'Comisiones', path: '/produccion/mis-comisiones', icon: <DollarSign className="w-5 h-5" />, color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-500/10' },
   { label: 'CRM', path: '/mi-crm', icon: <Target className="w-5 h-5" />, color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-500/10' },
   { label: 'Centro Digital', path: '/centro-digital', icon: <Activity className="w-5 h-5" />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
   { label: 'Chava IA', path: '/chava', icon: <Zap className="w-5 h-5" />, color: 'text-neutral-600 dark:text-white/60', bg: 'bg-neutral-100 dark:bg-white/8' },

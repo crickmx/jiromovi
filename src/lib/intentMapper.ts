@@ -55,7 +55,7 @@ function classifyByRouteAndKeyword(
   const mensajeNorm = mensaje.toLowerCase();
 
   if (modulo === 'comisiones') {
-    if (pathname.includes('/mis-comisiones/') && pathname.split('/').length > 2) {
+    if ((pathname.includes('/mis-comisiones/') || pathname.includes('/produccion/mis-comisiones')) && pathname.split('/').length > 2) {
       if (
         mensajeNorm.includes('explica') ||
         mensajeNorm.includes('detalle') ||

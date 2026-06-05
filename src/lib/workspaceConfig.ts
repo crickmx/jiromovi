@@ -5,6 +5,7 @@ export type WorkspaceId =
   | 'comercial'
   | 'centro-contacto'
   | 'cotizar'
+  | 'produccion'
   | 'mercadotecnia'
   | 'operaciones'
   | 'seguros-education'
@@ -110,6 +111,22 @@ const WORKSPACE_OPERACIONES: WorkspaceDefinition = {
   ],
 };
 
+const WORKSPACE_PRODUCCION: WorkspaceDefinition = {
+  id: 'produccion',
+  label: 'Central Produccion',
+  icon: BarChart3,
+  visibleTo: ALL_ROLES,
+  items: [
+    { path: '/produccion', label: 'Inicio', icon: LayoutDashboard, visibleTo: ALL_ROLES },
+    { path: '/produccion/mi-produccion', label: 'Mi Produccion', icon: TrendingUp, visibleTo: ALL_ROLES, matchPrefix: true },
+    { path: '/produccion/total', label: 'Produccion Total', icon: BarChart3, visibleTo: NOT_AGENT },
+    { path: '/produccion/convenio', label: 'Convenio', icon: Activity, visibleTo: NOT_AGENT },
+    { path: '/produccion/mis-comisiones', label: 'Mis Comisiones', icon: DollarSign, visibleTo: ALL_ROLES },
+    { path: '/produccion/cargar', label: 'Cargar Datos', icon: FolderOpen, visibleTo: ADMIN_ONLY },
+    { path: '/produccion/configuracion', label: 'Configuracion', icon: Settings, visibleTo: ADMIN_ONLY },
+  ],
+};
+
 const WORKSPACE_MERCADOTECNIA: WorkspaceDefinition = {
   id: 'mercadotecnia',
   label: 'Mercadotecnia',
@@ -153,7 +170,6 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/comisiones', label: 'Comisiones Admin', icon: CreditCard, visibleTo: ADMIN_ONLY, matchPrefix: true, excludePrefixes: ['/comisiones/regimen-fiscal', '/comisiones/mapeo-vendedores'] },
     { path: '/comisiones/regimen-fiscal', label: 'Regimen Fiscal', icon: DollarSign, visibleTo: ADMIN_ONLY, matchPrefix: true },
     { path: '/comisiones/mapeo-vendedores', label: 'Mapeo Vendedores', icon: Users, visibleTo: ADMIN_ONLY },
-    { path: '/produccion/configuracion', label: 'Config Produccion', icon: Settings, visibleTo: ADMIN_ONLY },
     { path: '/sicas/salud', label: 'SICAS Salud', icon: Activity, visibleTo: ADMIN_ONLY },
     { path: '/seguwallet-admin', label: 'Seguwallet', icon: Wallet, visibleTo: ADMIN_ONLY },
     { path: '/firmas-email', label: 'Firmas Email', icon: FileText, visibleTo: ADMIN_ONLY },
@@ -166,7 +182,6 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/admin/asistentes', label: 'Entrenamiento IA', icon: Bot, visibleTo: ADMIN_GERENTE, matchPrefix: true },
     { path: '/admin/automatizacion-ia', label: 'Robots IA', icon: Sparkles, visibleTo: ADMIN_ONLY, matchPrefix: true },
     { path: '/admin/chava-ia', label: 'Auditoria IA', icon: Brain, visibleTo: ADMIN_ONLY },
-    { path: '/admin/terminos', label: 'Términos y Condiciones', icon: FileText, visibleTo: ADMIN_ONLY },
   ],
 };
 
@@ -174,6 +189,7 @@ export const WORKSPACES: WorkspaceDefinition[] = [
   WORKSPACE_COMERCIAL,
   WORKSPACE_CENTRO_CONTACTO,
   WORKSPACE_COTIZAR,
+  WORKSPACE_PRODUCCION,
   WORKSPACE_OPERACIONES,
   WORKSPACE_MERCADOTECNIA,
   WORKSPACE_SEGUROS_EDUCATION,
@@ -186,6 +202,7 @@ export const NAV_ORDER: NavEntry[] = [
   { type: 'workspace', workspace: WORKSPACE_COMERCIAL },
   { type: 'workspace', workspace: WORKSPACE_CENTRO_CONTACTO },
   { type: 'workspace', workspace: WORKSPACE_COTIZAR },
+  { type: 'workspace', workspace: WORKSPACE_PRODUCCION },
   { type: 'workspace', workspace: WORKSPACE_OPERACIONES },
   { type: 'workspace', workspace: WORKSPACE_MERCADOTECNIA },
   { type: 'workspace', workspace: WORKSPACE_SEGUROS_EDUCATION },

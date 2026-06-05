@@ -2,12 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer utilities {
-  .mobile-page-content {
-    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
-  }
-}
-
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -238,4 +232,11 @@ body {
 .sidebar-rail-signout:hover {
   background: rgba(255,80,80,0.18);
   color: rgba(255,150,150,0.95);
+}
+
+/* Mobile content area — add bottom padding for the fixed nav bar */
+@media (max-width: 767px) {
+  .mobile-page-content {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  }
 }

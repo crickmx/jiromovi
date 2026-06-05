@@ -472,13 +472,13 @@ export default function ChavaAgenteAuthModal({ onClose, pendingMessage, initialV
       {/* Terms sub-modal */}
       {showTerms && (
         <SubModal title="Términos y Condiciones" onClose={() => setShowTerms(false)}>
-          <div dangerouslySetInnerHTML={{ __html: terms?.contenido_terminos || 'Cargando...' }} />
+          {terms?.contenido_terminos || 'Cargando...'}
         </SubModal>
       )}
 
       {showPrivacy && (
         <SubModal title="Política de Privacidad" onClose={() => setShowPrivacy(false)}>
-          <div dangerouslySetInnerHTML={{ __html: terms?.contenido_privacidad || '<p>Consulta el aviso de privacidad en <a href="https://jiro.mx/privacidad" target="_blank" style="color:#00E5FF">jiro.mx/privacidad</a></p>' }} />
+          {terms?.contenido_privacidad || 'Cargando...'}
         </SubModal>
       )}
 
@@ -625,7 +625,7 @@ function SubModal({ title, onClose, children }: { title: string; onClose: () => 
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
-        <div className="overflow-y-auto p-6 text-sm leading-relaxed prose prose-sm prose-invert max-w-none" style={{ color: 'rgba(255,255,255,0.65)' }}>
+        <div className="overflow-y-auto p-6 text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(255,255,255,0.65)' }}>
           {children}
         </div>
       </div>

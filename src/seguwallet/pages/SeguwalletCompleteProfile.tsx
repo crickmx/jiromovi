@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, MapPin, Calendar, ChevronDown, FileText, CircleCheck as CheckCircle2, Loader as Loader2 } from 'lucide-react';
+import { User, MapPin, Calendar, ChevronDown, FileText, CheckCircle2, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useSeguwallet } from '../lib/SeguwalletContext';
 import { useAgentBrand, SEGUWALLET_LOGO } from '../lib/AgentBrandContext';
@@ -33,7 +33,7 @@ interface FormData {
 
 export function SeguwalletCompleteProfile() {
   const navigate = useNavigate();
-  const { customer, platformTerms, needsProfileCompletion, needsTermsAcceptance, refresh, loading } = useSeguwallet();
+  const { customer, activeTerms, needsProfileCompletion, needsTermsAcceptance, refresh, loading } = useSeguwallet();
   const { brand } = useAgentBrand();
 
   const [step, setStep] = useState<'profile' | 'terms' | 'done'>('profile');
@@ -112,39 +112,17 @@ export function SeguwalletCompleteProfile() {
         });
       }
 
-      if (needsTermsAcceptance && platformTerms.length > 0) {
+      if (needsTermsAcceptance && activeTerms) {
         if (!form.terms_accepted) {
           setError('Debes aceptar los términos y condiciones para continuar.');
           setSaving(false);
           return;
         }
-
-        // Record acceptance in unified platform_terms_acceptance
-        let ipAddress = '';
-        try {
-          const resp = await fetch('https://api.ipify.org?format=json');
-          const ipData = await resp.json();
-          ipAddress = ipData.ip || '';
-        } catch { /* ignore */ }
-
-        const acceptanceRecords = platformTerms.map(t => ({
-          usuario_id: customer.auth_user_id,
-          terms_id: t.id,
-          terms_version: t.version,
-          terms_tipo: t.tipo,
-          platform: 'seguwallet' as const,
-          ip_address: ipAddress,
-          user_agent: navigator.userAgent,
-        }));
-
-        await supabase.from('platform_terms_acceptance').insert(acceptanceRecords);
-
-        // Also update legacy fields for backward compatibility
         Object.assign(updates, {
           terms_accepted: true,
           terms_accepted_at: now,
-          terms_version_accepted: String(platformTerms[0]?.version || '1'),
-          terms_id_accepted: platformTerms[0]?.id || null,
+          terms_version_accepted: activeTerms.version,
+          terms_id_accepted: activeTerms.id,
         });
       }
 
@@ -160,12 +138,12 @@ export function SeguwalletCompleteProfile() {
       if (needsProfileCompletion) {
         events.push({ customer_id: customer.id, event_type: 'profile_completed', metadata: {} });
       }
-      if (needsTermsAcceptance && platformTerms.length > 0) {
+      if (needsTermsAcceptance && activeTerms) {
         const wasAlreadyAccepted = customer.terms_accepted;
         events.push({
           customer_id: customer.id,
           event_type: wasAlreadyAccepted ? 'terms_reaccepted' : 'terms_accepted',
-          metadata: { version: platformTerms[0]?.version, terms_id: platformTerms[0]?.id },
+          metadata: { version: activeTerms.version, terms_id: activeTerms.id },
         });
       }
       if (events.length > 0) {
@@ -184,13 +162,13 @@ export function SeguwalletCompleteProfile() {
             if (error) console.error('[complete-profile] notify perfil_completado error:', error);
           });
         }
-        if (needsTermsAcceptance && platformTerms.length > 0) {
+        if (needsTermsAcceptance && activeTerms) {
           supabase.rpc('notify', {
             p_event_code: 'seguwallet_terminos_aceptados',
             p_user_ids: [customer.agent_user_id],
             p_payload: {
               cliente_nombre: customer.full_name || 'Cliente',
-              version_terminos: platformTerms[0]?.version,
+              version_terminos: activeTerms.version,
             },
             p_entity_id: customer.id,
           }).then(({ error }) => {
@@ -354,7 +332,7 @@ export function SeguwalletCompleteProfile() {
           )}
 
           {/* ── TERMS STEP ── */}
-          {step === 'terms' && platformTerms.length > 0 && (
+          {step === 'terms' && activeTerms && (
             <div className="space-y-6">
               <div className="text-center">
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: `${primaryColor}18` }}>
@@ -378,8 +356,8 @@ export function SeguwalletCompleteProfile() {
               <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden">
                 <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-bold text-neutral-900">{platformTerms[0]?.titulo}</p>
-                    <p className="text-xs text-neutral-400 mt-0.5">Versión {platformTerms[0]?.version}</p>
+                    <p className="text-sm font-bold text-neutral-900">{activeTerms.title}</p>
+                    <p className="text-xs text-neutral-400 mt-0.5">Versión {activeTerms.version}</p>
                   </div>
                   <button
                     onClick={() => setShowTermsModal(true)}
@@ -389,15 +367,12 @@ export function SeguwalletCompleteProfile() {
                     Leer completo
                   </button>
                 </div>
-                <div className="px-5 py-4 max-h-40 overflow-y-auto text-xs text-neutral-600 leading-relaxed prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: platformTerms[0]?.contenido_html?.substring(0, 600) + '...' }} />
-              </div>
-
-              {/* Privacy link */}
-              <div className="flex items-center gap-2 px-4 py-3 bg-neutral-50 rounded-2xl border border-neutral-100">
-                <span className="text-xs text-neutral-500">Aviso de Privacidad:</span>
-                <a href="https://jiro.mx/privacidad" target="_blank" rel="noopener noreferrer" className="text-xs font-semibold hover:underline" style={{ color: primaryColor }}>
-                  jiro.mx/privacidad
-                </a>
+                <div className="px-5 py-4 max-h-40 overflow-y-auto text-xs text-neutral-600 leading-relaxed">
+                  {activeTerms.content.substring(0, 400)}
+                  {activeTerms.content.length > 400 && (
+                    <span>... <button onClick={() => setShowTermsModal(true)} className="font-semibold text-[#1C37E0] hover:underline" style={{ color: primaryColor }}>ver más</button></span>
+                  )}
+                </div>
               </div>
 
               {/* Accept checkbox */}
@@ -422,10 +397,7 @@ export function SeguwalletCompleteProfile() {
                   >
                     Términos y Condiciones
                   </button>
-                  {' '}y el{' '}
-                  <a href="https://jiro.mx/privacidad" target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline" style={{ color: primaryColor }}>
-                    Aviso de Privacidad
-                  </a>.
+                  {' '}versión {activeTerms.version}.
                 </span>
               </label>
 
@@ -470,20 +442,22 @@ export function SeguwalletCompleteProfile() {
       </main>
 
       {/* Terms full modal */}
-      {showTermsModal && platformTerms.length > 0 && (
+      {showTermsModal && activeTerms && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-0 sm:px-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowTermsModal(false)} />
           <div className="relative bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100">
               <div>
-                <p className="font-bold text-neutral-900">{platformTerms[0]?.titulo}</p>
-                <p className="text-xs text-neutral-400">Versión {platformTerms[0]?.version}</p>
+                <p className="font-bold text-neutral-900">{activeTerms.title}</p>
+                <p className="text-xs text-neutral-400">Versión {activeTerms.version}</p>
               </div>
               <button onClick={() => setShowTermsModal(false)} className="p-2 rounded-xl hover:bg-neutral-100 transition-colors text-neutral-400">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
-            <div className="overflow-y-auto flex-1 px-5 py-4 text-sm text-neutral-700 leading-relaxed prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: platformTerms[0]?.contenido_html }} />
+            <div className="overflow-y-auto flex-1 px-5 py-4 text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">
+              {activeTerms.content}
+            </div>
             <div className="px-5 py-4 border-t border-neutral-100">
               <button
                 onClick={() => setShowTermsModal(false)}

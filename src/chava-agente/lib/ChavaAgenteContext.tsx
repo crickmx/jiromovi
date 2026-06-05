@@ -51,37 +51,14 @@ export function ChavaAgenteProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function loadTerms() {
-    // Load from unified platform_terms
     const { data } = await supabase
-      .from('platform_terms')
+      .from('chava_agente_terms')
       .select('*')
       .eq('activo', true)
-      .eq('tipo', 'terminos')
+      .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (data) {
-      // Map to ChavaTerms interface for backward compatibility
-      setTerms({
-        id: data.id,
-        version: String(data.version),
-        titulo: data.titulo,
-        contenido_terminos: data.contenido_html,
-        contenido_privacidad: '',
-        activo: data.activo,
-        created_at: data.created_at,
-      } as ChavaTerms);
-    }
-    // Also load privacy for the sub-modal
-    const { data: privData } = await supabase
-      .from('platform_terms')
-      .select('contenido_html')
-      .eq('activo', true)
-      .eq('tipo', 'privacidad')
-      .limit(1)
-      .maybeSingle();
-    if (privData && data) {
-      setTerms(prev => prev ? { ...prev, contenido_privacidad: privData.contenido_html } : prev);
-    }
+    if (data) setTerms(data as ChavaTerms);
   }
 
   async function checkSession() {
@@ -234,7 +211,6 @@ export function ChavaAgenteProvider({ children }: { children: ReactNode }) {
     if (error && error.code !== '23505') throw error;
 
     if (newUser) {
-      // Legacy audit
       await supabase.from('chava_agente_user_terms').upsert({
         chava_user_id: newUser.id,
         terms_id: undefined,
@@ -242,25 +218,6 @@ export function ChavaAgenteProvider({ children }: { children: ReactNode }) {
         accepted_at: new Date().toISOString(),
         ip_address: pending.terms_ip || null,
       }, { onConflict: 'chava_user_id,version' });
-
-      // Unified platform terms acceptance
-      const { data: activeTerms } = await supabase
-        .from('platform_terms')
-        .select('id, version, tipo')
-        .eq('activo', true);
-
-      if (activeTerms && activeTerms.length > 0) {
-        const records = activeTerms.map(t => ({
-          usuario_id: authUserId,
-          terms_id: t.id,
-          terms_version: t.version,
-          terms_tipo: t.tipo,
-          platform: 'chava' as const,
-          ip_address: pending.terms_ip || null,
-          user_agent: navigator.userAgent,
-        }));
-        await supabase.from('platform_terms_acceptance').insert(records);
-      }
     }
 
     return newUser;
@@ -273,6 +230,7 @@ export function ChavaAgenteProvider({ children }: { children: ReactNode }) {
     const pendingRaw = sessionStorage.getItem('chava_pending_registration');
     if (pendingRaw) {
       const pending: RegisterData = JSON.parse(pendingRaw);
+      // Update the provisional record with any missing term audit info
       const { data: existing } = await supabase
         .from('chava_agente_users')
         .select('id')
@@ -280,32 +238,12 @@ export function ChavaAgenteProvider({ children }: { children: ReactNode }) {
         .maybeSingle();
 
       if (existing) {
-        // Legacy audit
         await supabase.from('chava_agente_user_terms').upsert({
           chava_user_id: existing.id,
           version: pending.terms_version,
           accepted_at: new Date().toISOString(),
           ip_address: pending.terms_ip || null,
         }, { onConflict: 'chava_user_id,version' });
-
-        // Unified platform terms acceptance
-        const { data: activeTerms } = await supabase
-          .from('platform_terms')
-          .select('id, version, tipo')
-          .eq('activo', true);
-
-        if (activeTerms && activeTerms.length > 0) {
-          const records = activeTerms.map(t => ({
-            usuario_id: user.id,
-            terms_id: t.id,
-            terms_version: t.version,
-            terms_tipo: t.tipo,
-            platform: 'chava' as const,
-            ip_address: pending.terms_ip || null,
-            user_agent: navigator.userAgent,
-          }));
-          await supabase.from('platform_terms_acceptance').insert(records);
-        }
       }
       sessionStorage.removeItem('chava_pending_registration');
     }

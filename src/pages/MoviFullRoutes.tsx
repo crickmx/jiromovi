@@ -2,7 +2,6 @@ import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { Layout } from '../components/Layout';
-import { TermsGate } from '../components/TermsGate';
 import { AssistantProvider } from '../contexts/AssistantContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
 
@@ -54,9 +53,11 @@ const DisenadorAuto = lazy(() => import('./comercial/disenadores/DisenadorAuto')
 const DisenadorGMM = lazy(() => import('./comercial/disenadores/DisenadorGMM'));
 
 // Operaciones
+const ProduccionHub = lazy(() => import('./ProduccionHub'));
 const ProduccionSICASLive = lazy(() => import('./ProduccionSICASLive'));
 const ProduccionTotal = lazy(() => import('./ProduccionTotal'));
 const ProduccionConvenio = lazy(() => import('./ProduccionConvenio'));
+const ProduccionCargar = lazy(() => import('./ProduccionCargar'));
 const MisComisiones = lazy(() => import('./MisComisiones'));
 const Comisiones = lazy(() => import('./Comisiones'));
 const ComisionesUpload = lazy(() => import('./ComisionesUpload'));
@@ -112,7 +113,6 @@ const DiagnosticoWebhook = lazy(() => import('./DiagnosticoWebhook'));
 const GamificacionAdmin = lazy(() => import('./GamificacionAdmin'));
 const AutomatizacionIA = lazy(() => import('./AutomatizacionIA'));
 const MascaraAdmin = lazy(() => import('./MascaraAdmin'));
-const TerminosAdmin = lazy(() => import('./TerminosAdmin'));
 
 // Shared
 const Perfil = lazy(() => import('./Perfil'));
@@ -133,9 +133,7 @@ function LayoutShell() {
     <NotificationProvider>
       <AssistantProvider>
         <Layout>
-          <TermsGate platform="movi" platformName="MOVI Digital">
-            <Outlet />
-          </TermsGate>
+          <Outlet />
         </Layout>
       </AssistantProvider>
     </NotificationProvider>
@@ -201,16 +199,25 @@ export default function MoviFullRoutes() {
           <Route path="/cotizar/a-la-medida/gmm" element={<ProtectedRoute><DisenadorGMM /></ProtectedRoute>} />
           <Route path="/cotizar/multicotizador" element={<ProtectedRoute><MulticotizadorDigital /></ProtectedRoute>} />
 
-          {/* Operaciones */}
-          <Route path="/mi-produccion-sicas-live" element={<ProtectedRoute><ProduccionSICASLive /></ProtectedRoute>} />
+          {/* Central de Produccion */}
+          <Route path="/produccion" element={<ProtectedRoute><ProduccionHub /></ProtectedRoute>} />
+          <Route path="/produccion/mi-produccion" element={<ProtectedRoute><ProduccionSICASLive /></ProtectedRoute>} />
           <Route path="/produccion/total" element={<ProtectedRoute><ProduccionTotal /></ProtectedRoute>} />
           <Route path="/produccion/convenio" element={<ProtectedRoute><ProduccionConvenio /></ProtectedRoute>} />
-          <Route path="/mis-comisiones" element={<ProtectedRoute><MisComisiones /></ProtectedRoute>} />
+          <Route path="/produccion/cargar" element={<ProtectedRoute requireAdmin><ProduccionCargar /></ProtectedRoute>} />
+          <Route path="/produccion/mis-comisiones" element={<ProtectedRoute><MisComisiones /></ProtectedRoute>} />
+          {/* Legacy production route redirect */}
+          <Route path="/mi-produccion-sicas-live" element={<Navigate to="/produccion/mi-produccion" replace />} />
+          <Route path="/mis-comisiones" element={<Navigate to="/produccion/mis-comisiones" replace />} />
+
+          {/* Comisiones Admin */}
           <Route path="/comisiones" element={<ProtectedRoute requireAdmin><Comisiones /></ProtectedRoute>} />
           <Route path="/comisiones/upload" element={<ProtectedRoute requireAdmin><ComisionesUpload /></ProtectedRoute>} />
           <Route path="/comisiones/upload-nuevo" element={<ProtectedRoute requireAdmin><ComisionesUploadNuevo /></ProtectedRoute>} />
           <Route path="/comisiones/preparar-lote" element={<ProtectedRoute requireAdmin><ComisionesPrepararLote /></ProtectedRoute>} />
           <Route path="/comisiones/lote/:id" element={<ProtectedRoute requireAdmin><ComisionesLote /></ProtectedRoute>} />
+
+          {/* Operaciones */}
           <Route path="/espacio-jiro" element={<ProtectedRoute><EspacioJiro /></ProtectedRoute>} />
           <Route path="/vacaciones" element={<ProtectedRoute><Vacaciones /></ProtectedRoute>} />
           <Route path="/accesos-nacional" element={<ProtectedRoute><AccesosNacional /></ProtectedRoute>} />
@@ -262,7 +269,6 @@ export default function MoviFullRoutes() {
           <Route path="/admin/mascara" element={<ProtectedRoute requireAdmin><MascaraAdmin /></ProtectedRoute>} />
           <Route path="/admin/gamificacion" element={<ProtectedRoute requireAdmin><GamificacionAdmin /></ProtectedRoute>} />
           <Route path="/admin/automatizacion-ia" element={<ProtectedRoute requireAdmin><AutomatizacionIA /></ProtectedRoute>} />
-          <Route path="/admin/terminos" element={<ProtectedRoute requireAdmin><TerminosAdmin /></ProtectedRoute>} />
 
           {/* Shared profile */}
           <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />
