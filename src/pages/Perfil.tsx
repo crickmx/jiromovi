@@ -45,8 +45,6 @@ export default function Perfil() {
         celular_laboral: usuario.celular_laboral,
         email_laboral: usuario.email_laboral,
         extension_telefonica: usuario.extension_telefonica,
-        url_web_jiro: usuario.url_web_jiro,
-        url_web_multicotizador: usuario.url_web_multicotizador,
         regimen_fiscal_id: usuario.regimen_fiscal_id,
         banco: usuario.banco,
         clabe: usuario.clabe,
@@ -79,8 +77,6 @@ export default function Perfil() {
       email_personal: formData.email_personal || '',
       celular_laboral: formData.celular_laboral || '',
       extension_telefonica: formData.extension_telefonica || '',
-      url_web_jiro: formData.url_web_jiro || '',
-      url_web_multicotizador: formData.url_web_multicotizador || '',
       regimen_fiscal_id: formData.regimen_fiscal_id || null,
       banco: formData.banco || '',
       clabe: formData.clabe || '',
@@ -431,31 +427,8 @@ export default function Perfil() {
 
             {activeTab === 'enlaces' && (
               <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div className="md:col-span-2">
-                    <label className={labelCls}>URL Web Jiro</label>
-                    <input
-                      type="url"
-                      placeholder="https://..."
-                      value={formData.url_web_jiro || ''}
-                      onChange={(e) => setFormData({ ...formData, url_web_jiro: e.target.value })}
-                      className={inputCls}
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className={labelCls}>URL Multicotizador</label>
-                    <input
-                      type="url"
-                      placeholder="https://..."
-                      value={formData.url_web_multicotizador || ''}
-                      onChange={(e) => setFormData({ ...formData, url_web_multicotizador: e.target.value })}
-                      className={inputCls}
-                    />
-                  </div>
-                </div>
-
-                {webSlug && (
-                  <div className="mt-4 p-4 rounded-xl bg-accent/5 dark:bg-accent/10 border border-accent/20">
+                {webSlug ? (
+                  <div className="p-4 rounded-xl bg-accent/5 dark:bg-accent/10 border border-accent/20">
                     <label className={labelCls}>Mi Pagina Web Publica</label>
                     <div className="flex items-center gap-2 mt-1">
                       <input
@@ -481,6 +454,10 @@ export default function Perfil() {
                       </button>
                     </div>
                   </div>
+                ) : (
+                  <p className="text-sm text-neutral-500 dark:text-white/50">
+                    No tienes una pagina web publica configurada. Contacta a tu administrador para activarla.
+                  </p>
                 )}
               </div>
             )}
