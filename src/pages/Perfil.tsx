@@ -11,7 +11,7 @@ import { getMiPaginaWeb } from '../lib/webUrlUtils';
 import {
   User, Save, Camera, Mail, Phone, Building2, MapPin,
   Calendar, Briefcase, Link as LinkIcon, CreditCard, Shield,
-  Copy, Check, FileText
+  Copy, Check, FileText, Globe
 } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 
@@ -457,9 +457,17 @@ export default function Perfil() {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-neutral-500 dark:text-white/50">
-                    No tienes una pagina web publica configurada. Contacta a tu administrador para activarla.
-                  </p>
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-neutral-100 dark:bg-white/[0.06] flex items-center justify-center mb-4">
+                      <Globe className="w-7 h-7 text-neutral-400 dark:text-white/30" />
+                    </div>
+                    <h3 className="text-base font-semibold text-neutral-700 dark:text-white/80 mb-1">
+                      Sin pagina web publica
+                    </h3>
+                    <p className="text-sm text-neutral-500 dark:text-white/50 max-w-sm">
+                      Aun no tienes una pagina web publica configurada. Contacta a tu administrador para activarla.
+                    </p>
+                  </div>
                 )}
               </div>
             )}
