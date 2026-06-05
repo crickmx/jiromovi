@@ -45,6 +45,7 @@ export default function Perfil() {
         celular_laboral: usuario.celular_laboral,
         email_laboral: usuario.email_laboral,
         extension_telefonica: usuario.extension_telefonica,
+        fecha_ingreso: usuario.fecha_ingreso,
         regimen_fiscal_id: usuario.regimen_fiscal_id,
         banco: usuario.banco,
         clabe: usuario.clabe,
@@ -73,6 +74,7 @@ export default function Perfil() {
       nombre: formData.nombre,
       apellidos: formData.apellidos,
       fecha_nacimiento: formData.fecha_nacimiento || null,
+      fecha_ingreso: formData.fecha_ingreso || null,
       celular_personal: formData.celular_personal || '',
       email_personal: formData.email_personal || '',
       celular_laboral: formData.celular_laboral || '',
@@ -376,10 +378,10 @@ export default function Perfil() {
                   <div>
                     <label className={labelCls}>Fecha de Ingreso</label>
                     <input
-                      type="text"
-                      value={usuario.fecha_ingreso ? new Date(usuario.fecha_ingreso + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }) : 'No registrada'}
-                      disabled
-                      className={readOnlyCls}
+                      type="date"
+                      value={formData.fecha_ingreso || ''}
+                      onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })}
+                      className={inputCls}
                     />
                   </div>
                   <div>
