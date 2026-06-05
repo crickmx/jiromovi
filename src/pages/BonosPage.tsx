@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
+import { useImpersonation } from '../contexts/ImpersonationContext';
 import { useThemeMode } from '../hooks/useThemeMode';
 import { supabase } from '../lib/supabase';
 import { Hop as Home, ChartBar as BarChart2, DollarSign, Target, BookOpen, CloudUpload as UploadCloud, Trophy, Loader as Loader2, CircleAlert as AlertCircle, FileText, Calculator, ListFilter as Filter, Tag, Users, UserCheck, Settings, Clock, RefreshCw, MapPin } from 'lucide-react';
@@ -48,6 +49,7 @@ const SECTIONS: SectionDef[] = [
 
 export default function BonosPage() {
   const { usuario } = useMoviAuth();
+  const { isImpersonating } = useImpersonation();
   const { isDarkEffective } = useThemeMode();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [src, setSrc] = useState<string | null>(null);
@@ -76,7 +78,7 @@ export default function BonosPage() {
       url.searchParams.set('next', '/');
       setSrc(url.toString());
     });
-  }, [usuario?.email_laboral]);
+  }, [isImpersonating, usuario?.email_laboral]);
 
   const handleMessage = useCallback((event: MessageEvent) => {
     if (!event.data?.type) return;
