@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { Layout } from '../components/Layout';
+import { TermsGate } from '../components/TermsGate';
 import { AssistantProvider } from '../contexts/AssistantContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
 
@@ -111,6 +112,7 @@ const DiagnosticoWebhook = lazy(() => import('./DiagnosticoWebhook'));
 const GamificacionAdmin = lazy(() => import('./GamificacionAdmin'));
 const AutomatizacionIA = lazy(() => import('./AutomatizacionIA'));
 const MascaraAdmin = lazy(() => import('./MascaraAdmin'));
+const TerminosAdmin = lazy(() => import('./TerminosAdmin'));
 
 // Shared
 const Perfil = lazy(() => import('./Perfil'));
@@ -131,7 +133,9 @@ function LayoutShell() {
     <NotificationProvider>
       <AssistantProvider>
         <Layout>
-          <Outlet />
+          <TermsGate platform="movi" platformName="MOVI Digital">
+            <Outlet />
+          </TermsGate>
         </Layout>
       </AssistantProvider>
     </NotificationProvider>
@@ -258,6 +262,7 @@ export default function MoviFullRoutes() {
           <Route path="/admin/mascara" element={<ProtectedRoute requireAdmin><MascaraAdmin /></ProtectedRoute>} />
           <Route path="/admin/gamificacion" element={<ProtectedRoute requireAdmin><GamificacionAdmin /></ProtectedRoute>} />
           <Route path="/admin/automatizacion-ia" element={<ProtectedRoute requireAdmin><AutomatizacionIA /></ProtectedRoute>} />
+          <Route path="/admin/terminos" element={<ProtectedRoute requireAdmin><TerminosAdmin /></ProtectedRoute>} />
 
           {/* Shared profile */}
           <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />

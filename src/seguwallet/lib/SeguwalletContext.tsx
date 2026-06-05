@@ -1,11 +1,20 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { supabase } from '../../lib/supabase';
-import { getSeguwalletCustomer, getActiveSeguwalletTerms, type SeguwalletCustomer, type SeguwalletTerms } from './seguwalletAuth';
+import { getSeguwalletCustomer, type SeguwalletCustomer, type SeguwalletTerms } from './seguwalletAuth';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
+
+interface PlatformTermsDoc {
+  id: string;
+  version: number;
+  titulo: string;
+  contenido_html: string;
+  tipo: 'terminos' | 'privacidad';
+}
 
 interface SeguwalletContextType {
   customer: SeguwalletCustomer | null;
   activeTerms: SeguwalletTerms | null;
+  platformTerms: PlatformTermsDoc[];
   loading: boolean;
   isAuthenticated: boolean;
   needsProfileCompletion: boolean;
@@ -16,6 +25,7 @@ interface SeguwalletContextType {
 const SeguwalletContext = createContext<SeguwalletContextType>({
   customer: null,
   activeTerms: null,
+  platformTerms: [],
   loading: true,
   isAuthenticated: false,
   needsProfileCompletion: false,
@@ -23,14 +33,18 @@ const SeguwalletContext = createContext<SeguwalletContextType>({
   refresh: async () => {},
 });
 
-function computeNeeds(customer: SeguwalletCustomer | null, activeTerms: SeguwalletTerms | null) {
+function computeNeeds(
+  customer: SeguwalletCustomer | null,
+  platformTerms: PlatformTermsDoc[],
+  acceptedTermsIds: Set<string>,
+) {
   if (!customer) return { needsProfileCompletion: false, needsTermsAcceptance: false };
 
   const needsProfileCompletion = !customer.profile_completed;
 
   let needsTermsAcceptance = false;
-  if (activeTerms) {
-    needsTermsAcceptance = !customer.terms_accepted || customer.terms_version_accepted !== activeTerms.version;
+  if (platformTerms.length > 0) {
+    needsTermsAcceptance = platformTerms.some(t => !acceptedTermsIds.has(t.id));
   }
 
   return { needsProfileCompletion, needsTermsAcceptance };
@@ -39,6 +53,8 @@ function computeNeeds(customer: SeguwalletCustomer | null, activeTerms: Seguwall
 export function SeguwalletProvider({ children }: { children: ReactNode }) {
   const [customer, setCustomer] = useState<SeguwalletCustomer | null>(null);
   const [activeTerms, setActiveTerms] = useState<SeguwalletTerms | null>(null);
+  const [platformTerms, setPlatformTerms] = useState<PlatformTermsDoc[]>([]);
+  const [acceptedTermsIds, setAcceptedTermsIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const { isImpersonating, session, impersonatedCustomer } = useImpersonation();
 
@@ -49,12 +65,28 @@ export function SeguwalletProvider({ children }: { children: ReactNode }) {
         setCustomer(null);
         return;
       }
-      const [cust, terms] = await Promise.all([
-        getSeguwalletCustomer(user.id),
-        getActiveSeguwalletTerms(),
-      ]);
+
+      const cust = await getSeguwalletCustomer(user.id);
       setCustomer(cust && cust.status === 'active' ? cust : null);
-      setActiveTerms(terms);
+
+      // Load unified platform terms
+      const { data: pTerms } = await supabase
+        .from('platform_terms')
+        .select('*')
+        .eq('activo', true);
+      setPlatformTerms(pTerms || []);
+
+      // Check acceptances
+      if (pTerms && pTerms.length > 0) {
+        const { data: acceptances } = await supabase
+          .from('platform_terms_acceptance')
+          .select('terms_id')
+          .eq('usuario_id', user.id);
+        setAcceptedTermsIds(new Set((acceptances || []).map(a => a.terms_id)));
+      }
+
+      // Keep legacy terms for backward compat in the UI
+      setActiveTerms(null);
     } catch {
       setCustomer(null);
     } finally {
@@ -97,13 +129,15 @@ export function SeguwalletProvider({ children }: { children: ReactNode }) {
 
   const { needsProfileCompletion, needsTermsAcceptance } = computeNeeds(
     customer,
-    activeTerms
+    platformTerms,
+    acceptedTermsIds
   );
 
   return (
     <SeguwalletContext.Provider value={{
       customer,
       activeTerms,
+      platformTerms,
       loading,
       isAuthenticated: isImpersonatingSeguwallet ? true : !!customer,
       needsProfileCompletion: isImpersonatingSeguwallet ? false : needsProfileCompletion,

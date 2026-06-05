@@ -166,6 +166,7 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/admin/asistentes', label: 'Entrenamiento IA', icon: Bot, visibleTo: ADMIN_GERENTE, matchPrefix: true },
     { path: '/admin/automatizacion-ia', label: 'Robots IA', icon: Sparkles, visibleTo: ADMIN_ONLY, matchPrefix: true },
     { path: '/admin/chava-ia', label: 'Auditoria IA', icon: Brain, visibleTo: ADMIN_ONLY },
+    { path: '/admin/terminos', label: 'Términos y Condiciones', icon: FileText, visibleTo: ADMIN_ONLY },
   ],
 };
 
