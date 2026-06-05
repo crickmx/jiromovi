@@ -214,11 +214,13 @@ export function normalizeMexicanPhone(phone: string): string {
 }
 
 /**
- * Builds a name lookup map from CRM contacts and message metadata using normalized phones.
+ * Builds a name lookup map from CRM contacts, internal usuarios, and message metadata using normalized phones.
+ * Priority: CRM > usuarios (celular_laboral) > WhatsApp pushName
  */
 export function buildContactNameMap(
   crmContacts: { telefono?: string | null; nombre?: string | null; apellido?: string | null }[],
   messages: { contact_phone?: string | null; contact_name?: string | null; metadata?: any }[],
+  usuarios?: { celular_laboral?: string | null; nombre?: string | null; apellidos?: string | null }[],
 ): Record<string, string> {
   const nameMap: Record<string, string> = {};
 
@@ -229,6 +231,18 @@ export function buildContactNameMap(
     if (norm.length >= 10) {
       const fullName = [c.nombre, c.apellido].filter(Boolean).join(' ').trim();
       if (fullName) nameMap[norm] = fullName;
+    }
+  }
+
+  // Then internal usuarios matched by celular_laboral
+  if (usuarios) {
+    for (const u of usuarios) {
+      if (!u.celular_laboral) continue;
+      const norm = normalizeMexicanPhone(u.celular_laboral);
+      if (norm.length >= 10 && !nameMap[norm]) {
+        const fullName = [u.nombre, u.apellidos].filter(Boolean).join(' ').trim();
+        if (fullName) nameMap[norm] = fullName;
+      }
     }
   }
 

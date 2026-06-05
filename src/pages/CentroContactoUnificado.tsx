@@ -123,8 +123,19 @@ export default function CentroContactoUnificado() {
           .in('telefono', allPhoneVariants);
         crmContacts = data || [];
       }
-      // Build normalized name map (CRM priority > WhatsApp pushName from messages)
-      const normalizedNameMap = buildContactNameMap(crmContacts, moviMsgs || []);
+      // Query usuarios by celular_laboral to resolve internal user names
+      const normalizedMoviPhones = [...new Set(moviPhones.map(normalizeMexicanPhone).filter((p: string) => p.length >= 10))];
+      let usuariosByPhone: any[] = [];
+      if (normalizedMoviPhones.length > 0) {
+        const { data: usrData } = await supabase
+          .from('usuarios')
+          .select('celular_laboral, nombre, apellidos')
+          .not('celular_laboral', 'is', null);
+        usuariosByPhone = usrData || [];
+      }
+
+      // Build normalized name map (CRM > usuarios > WhatsApp pushName from messages)
+      const normalizedNameMap = buildContactNameMap(crmContacts, moviMsgs || [], usuariosByPhone);
       // Convert to format expected by mergeConversations (keyed by both original and normalized phone)
       const moviContactNames: Record<string, string> = { ...normalizedNameMap };
       for (const phone of moviPhones) {
