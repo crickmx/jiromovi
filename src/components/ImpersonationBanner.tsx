@@ -48,7 +48,7 @@ export function ImpersonationBanner() {
         <div className="flex items-center gap-2 shrink-0">
           <span className="hidden md:flex items-center gap-1 text-[11px] font-medium opacity-60">
             <Shield className="h-3 w-3" />
-            Solo lectura
+            Modo completo
           </span>
           <button
             onClick={handleExit}

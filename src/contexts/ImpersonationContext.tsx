@@ -69,7 +69,7 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
   });
 
   const isImpersonating = !!session;
-  const isReadOnly = isImpersonating;
+  const isReadOnly = false;
 
   // Apply impersonated user's theme when session is active (handles page reload)
   useEffect(() => {
@@ -106,12 +106,6 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
 
       if (error || !data) {
         console.error('[Impersonation] Error loading user:', error);
-        return false;
-      }
-
-      // Block impersonating another admin
-      if (data.rol === 'Administrador') {
-        console.warn('[Impersonation] Cannot impersonate another admin');
         return false;
       }
 
