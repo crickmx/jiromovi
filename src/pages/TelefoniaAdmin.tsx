@@ -76,8 +76,6 @@ function ConfigTab() {
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [form, setForm] = useState({
     pbx_url: '',
-    pbx_username: '',
-    pbx_token: '',
     api_mode: 'mock' as 'mock' | 'live',
     auto_sync: false,
     sync_interval_minutes: 60,
@@ -94,8 +92,6 @@ function ConfigTab() {
         setConfig(data);
         setForm({
           pbx_url: data.pbx_url,
-          pbx_username: data.pbx_username,
-          pbx_token: data.pbx_token,
           api_mode: data.api_mode,
           auto_sync: data.auto_sync,
           sync_interval_minutes: data.sync_interval_minutes,
@@ -125,10 +121,7 @@ function ConfigTab() {
     setTesting(true);
     setTestResult(null);
     try {
-      const result = await telefoniaService.testYeastarConnection({
-        ...config!,
-        ...form,
-      } as TelefoniaConfig);
+      const result = await telefoniaService.testYeastarConnection();
       setTestResult(result);
     } catch (err: any) {
       setTestResult({ success: false, message: err.message });
@@ -155,25 +148,13 @@ function ConfigTab() {
               className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">Usuario</label>
-            <input
-              type="text"
-              value={form.pbx_username}
-              onChange={e => setForm(f => ({ ...f, pbx_username: e.target.value }))}
-              placeholder="admin"
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">Token / Password</label>
-            <input
-              type="password"
-              value={form.pbx_token}
-              onChange={e => setForm(f => ({ ...f, pbx_token: e.target.value }))}
-              placeholder="••••••••••••"
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+          <div className="md:col-span-2">
+            <div className="flex items-center gap-2 px-3 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <p className="text-xs text-emerald-700">
+                Las credenciales (usuario/token) se configuran de forma segura como secretos del Edge Function y no se almacenan en la base de datos.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -797,12 +778,6 @@ function SyncTab() {
 
     setSyncing(true);
     try {
-      const config = await telefoniaService.getConfig();
-      if (!config) {
-        alert('Configura primero la conexion PBX');
-        return;
-      }
-
       const log = await telefoniaService.createSyncLog({
         tipo: 'bulk_sync',
         estado: 'en_proceso',
@@ -813,7 +788,7 @@ function SyncTab() {
       let errors = 0;
 
       for (const item of toCreate) {
-        const result = await telefoniaService.syncUserToYeastar(config, {
+        const result = await telefoniaService.syncUserToYeastar({
           number: item.extension_propuesta!,
           first_name: item.nombre,
           last_name: item.apellido,

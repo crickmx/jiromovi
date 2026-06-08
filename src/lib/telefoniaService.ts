@@ -3,8 +3,6 @@ import { supabase } from './supabase';
 export interface TelefoniaConfig {
   id: string;
   pbx_url: string;
-  pbx_username: string;
-  pbx_token: string;
   api_mode: 'mock' | 'live';
   auto_sync: boolean;
   sync_interval_minutes: number;
@@ -63,6 +61,30 @@ export interface TelefoniaSyncLog {
   error_mensaje: string | null;
   created_at: string;
   completed_at: string | null;
+}
+
+// ── Edge Function Proxy ─────────────────────────────────────────────────────
+
+async function callYeastarProxy(action: string, payload?: Record<string, unknown>): Promise<any> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('No hay sesion activa');
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const response = await fetch(`${supabaseUrl}/functions/v1/yeastar-proxy`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ action, payload }),
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+    throw new Error(errData.error || `Error ${response.status}`);
+  }
+
+  return response.json();
 }
 
 // ── Config CRUD ──────────────────────────────────────────────────────────────
@@ -274,7 +296,7 @@ export async function updateSyncLog(id: string, updates: Partial<TelefoniaSyncLo
   if (error) throw error;
 }
 
-// ── Yeastar Mock / Live Connector ────────────────────────────────────────────
+// ── Yeastar Proxy Connector (via Edge Function) ─────────────────────────────
 
 export interface YeastarExtensionPayload {
   number: string;
@@ -285,78 +307,24 @@ export interface YeastarExtensionPayload {
   registration_password?: string;
 }
 
-export async function testYeastarConnection(config: TelefoniaConfig): Promise<{ success: boolean; message: string }> {
-  if (config.api_mode === 'mock') {
-    return { success: true, message: 'Conexion simulada exitosa (modo mock)' };
-  }
-
-  try {
-    const response = await fetch(`${config.pbx_url}/api/v2.0.0/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: config.pbx_username, password: config.pbx_token }),
-    });
-    if (!response.ok) {
-      return { success: false, message: `Error HTTP ${response.status}` };
-    }
-    const data = await response.json();
-    if (data.errcode === 0) {
-      return { success: true, message: 'Conexion exitosa al PBX Yeastar' };
-    }
-    return { success: false, message: data.errmsg || 'Error desconocido' };
-  } catch (err: any) {
-    return { success: false, message: err.message || 'Error de conexion' };
-  }
+export async function testYeastarConnection(): Promise<{ success: boolean; message: string }> {
+  return callYeastarProxy('test_connection');
 }
 
 export async function syncUserToYeastar(
-  config: TelefoniaConfig,
   payload: YeastarExtensionPayload,
   mode: 'create' | 'update' = 'create'
 ): Promise<{ success: boolean; message: string; yeastarId?: string }> {
-  if (config.api_mode === 'mock') {
-    const mockId = `mock_${payload.number}_${Date.now()}`;
-    return {
-      success: true,
-      message: `Extension ${payload.number} ${mode === 'create' ? 'creada' : 'actualizada'} (modo mock)`,
-      yeastarId: mockId,
-    };
-  }
+  const action = mode === 'create' ? 'create_extension' : 'update_extension';
+  return callYeastarProxy(action, payload as unknown as Record<string, unknown>);
+}
 
-  try {
-    const loginRes = await fetch(`${config.pbx_url}/api/v2.0.0/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: config.pbx_username, password: config.pbx_token }),
-    });
-    const loginData = await loginRes.json();
-    if (loginData.errcode !== 0) {
-      return { success: false, message: 'Error de autenticacion con PBX' };
-    }
-    const token = loginData.token;
+export async function deleteYeastarExtension(extensionNumber: string): Promise<{ success: boolean; message: string }> {
+  return callYeastarProxy('delete_extension', { number: extensionNumber });
+}
 
-    const endpoint = mode === 'create'
-      ? `${config.pbx_url}/api/v2.0.0/extension/create?token=${token}`
-      : `${config.pbx_url}/api/v2.0.0/extension/update?token=${token}`;
-
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-
-    if (data.errcode === 0) {
-      return {
-        success: true,
-        message: `Extension ${payload.number} ${mode === 'create' ? 'creada' : 'actualizada'} en Yeastar`,
-        yeastarId: data.id || payload.number,
-      };
-    }
-    return { success: false, message: data.errmsg || 'Error en operacion Yeastar' };
-  } catch (err: any) {
-    return { success: false, message: err.message || 'Error de conexion con PBX' };
-  }
+export async function listYeastarExtensions(): Promise<{ success: boolean; extensions?: unknown[]; message?: string }> {
+  return callYeastarProxy('list_extensions');
 }
 
 // ── Auto-assign next available extension for an office ────────────────────────
