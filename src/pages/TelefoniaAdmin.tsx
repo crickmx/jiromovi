@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Phone, Settings, Users, Building2, RefreshCw, Activity, Plus, Trash2, CreditCard as Edit2, Check, X, Wifi, WifiOff, Download, ArrowUpDown, Search, CircleAlert as AlertCircle, CircleCheck as CheckCircle2, Clock, Loader as Loader2 } from 'lucide-react';
+import { Phone, Settings, Users, Building2, RefreshCw, Activity, Plus, Trash2, CreditCard as Edit2, Check, X, Wifi, WifiOff, Download, ArrowUpDown, Search, CircleAlert as AlertCircle, CircleCheck as CheckCircle2, Clock, Loader as Loader2, Stethoscope } from 'lucide-react';
 import * as telefoniaService from '../lib/telefoniaService';
 import type {
   TelefoniaConfig, TelefoniaOficinaConfig, TelefoniaExtension,
   TelefoniaUsuario, TelefoniaSyncLog, BulkSyncPreviewItem
 } from '../lib/telefoniaService';
 import { supabase } from '../lib/supabase';
+import DiagnosticoTab from '../components/DiagnosticoTab';
 
-type Tab = 'config' | 'oficinas' | 'extensiones' | 'asignaciones' | 'sync';
+type Tab = 'config' | 'oficinas' | 'extensiones' | 'asignaciones' | 'sync' | 'diagnostico';
 
 export default function TelefoniaAdmin() {
   const [activeTab, setActiveTab] = useState<Tab>('config');
@@ -18,6 +19,7 @@ export default function TelefoniaAdmin() {
     { id: 'extensiones', label: 'Extensiones', icon: Phone },
     { id: 'asignaciones', label: 'Asignaciones', icon: Users },
     { id: 'sync', label: 'Sincronizacion', icon: RefreshCw },
+    { id: 'diagnostico', label: 'Diagnostico', icon: Stethoscope },
   ];
 
   return (
@@ -61,6 +63,7 @@ export default function TelefoniaAdmin() {
         {activeTab === 'extensiones' && <ExtensionesTab />}
         {activeTab === 'asignaciones' && <AsignacionesTab />}
         {activeTab === 'sync' && <SyncTab />}
+        {activeTab === 'diagnostico' && <DiagnosticoTab />}
       </div>
     </div>
   );

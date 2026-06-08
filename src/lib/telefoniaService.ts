@@ -327,6 +327,74 @@ export async function listYeastarExtensions(): Promise<{ success: boolean; exten
   return callYeastarProxy('list_extensions');
 }
 
+// ── Diagnostic Functions (read-only) ──────────────────────────────────────────
+
+export interface DiagnosticConnectionResult {
+  success: boolean;
+  connection: {
+    reachable: boolean;
+    authenticated: boolean;
+    api_response: Record<string, unknown>;
+    timestamp: string;
+  };
+}
+
+export interface PbxInfoResult {
+  success: boolean;
+  pbx_info: Record<string, {
+    status: number;
+    ok: boolean;
+    data?: Record<string, unknown> | null;
+    error?: string;
+  }>;
+  timestamp: string;
+}
+
+export interface ApiVersionProbe {
+  version: string;
+  login_status: number | null;
+  login_ok: boolean;
+  list_status: number | null;
+  list_ok: boolean;
+  error?: string;
+}
+
+export interface ApiVersionsResult {
+  success: boolean;
+  api_versions: ApiVersionProbe[];
+  timestamp: string;
+}
+
+export interface EndpointProbe {
+  endpoint: string;
+  status: number | null;
+  available: boolean;
+  error?: string;
+}
+
+export interface EndpointProbeResult {
+  success: boolean;
+  endpoints: EndpointProbe[];
+  summary: { total: number; available: number; unavailable: number };
+  timestamp: string;
+}
+
+export async function diagnoseConnection(): Promise<DiagnosticConnectionResult> {
+  return callYeastarProxy('diagnose_connection');
+}
+
+export async function getPbxInfo(): Promise<PbxInfoResult> {
+  return callYeastarProxy('get_pbx_info');
+}
+
+export async function probeApiVersions(): Promise<ApiVersionsResult> {
+  return callYeastarProxy('probe_api_versions');
+}
+
+export async function probeEndpoints(): Promise<EndpointProbeResult> {
+  return callYeastarProxy('probe_endpoints');
+}
+
 // ── Auto-assign next available extension for an office ────────────────────────
 
 export async function getNextAvailableExtension(oficinaId: string): Promise<string | null> {

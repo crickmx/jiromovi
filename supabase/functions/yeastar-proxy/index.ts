@@ -192,11 +192,198 @@ async function executePbxAction(
         headers,
         body: JSON.stringify({ page: 1, page_size: 500 }),
       });
-      if (!res.ok) throw new Error(`List extensions failed: HTTP ${res.status}`);
+      if (!res.ok)
+        throw new Error(`List extensions failed: HTTP ${res.status}`);
       const data = await res.json();
       return {
         success: true,
         extensions: data.extension_list || data.data || [],
+      };
+    }
+
+    // ── Diagnostic Actions (read-only) ─────────────────────────────────────
+
+    case "diagnose_connection": {
+      const testRes = await fetch(`${url}/api/v2.0.0/extension/list`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ page: 1, page_size: 1 }),
+      });
+      const testOk = testRes.ok;
+      const testBody = await testRes.json().catch(() => ({}));
+
+      return {
+        success: true,
+        connection: {
+          reachable: true,
+          authenticated: testOk,
+          api_response: testBody,
+          timestamp: new Date().toISOString(),
+        },
+      };
+    }
+
+    case "get_pbx_info": {
+      const endpoints = [
+        { path: "/api/v2.0.0/system/get", label: "system_info" },
+        { path: "/api/v2.0.0/deviceinfo/get", label: "device_info" },
+        { path: "/api/v2.0.0/system/status", label: "system_status" },
+      ];
+
+      const results: Record<string, unknown> = {};
+      for (const ep of endpoints) {
+        try {
+          const res = await fetch(`${url}${ep.path}`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({}),
+          });
+          results[ep.label] = {
+            status: res.status,
+            ok: res.ok,
+            data: await res.json().catch(() => null),
+          };
+        } catch (e: any) {
+          results[ep.label] = { status: 0, ok: false, error: e.message };
+        }
+      }
+
+      return {
+        success: true,
+        pbx_info: results,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    case "probe_api_versions": {
+      const pbxUsername = Deno.env.get("YEASTAR_PBX_USERNAME")!;
+      const pbxPassword = Deno.env.get("YEASTAR_PBX_PASSWORD")!;
+      const versions = ["v2", "v2.0", "v2.0.0", "v1.0", "api"];
+      const probeResults: Array<{
+        version: string;
+        login_status: number | null;
+        login_ok: boolean;
+        list_status: number | null;
+        list_ok: boolean;
+        error?: string;
+      }> = [];
+
+      for (const ver of versions) {
+        const loginPath = `${url}/api/${ver}/login`;
+        const listPath = `${url}/api/${ver}/extension/list`;
+        let loginStatus: number | null = null;
+        let loginOk = false;
+        let listStatus: number | null = null;
+        let listOk = false;
+        let error: string | undefined;
+
+        try {
+          const loginRes = await fetch(loginPath, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              username: pbxUsername,
+              password: pbxPassword,
+            }),
+          });
+          loginStatus = loginRes.status;
+          loginOk = loginRes.ok;
+
+          if (loginOk) {
+            const loginData = await loginRes.json().catch(() => ({}));
+            const verToken = (loginData as any).token;
+            if (verToken) {
+              const listRes = await fetch(listPath, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-Auth-Token": verToken,
+                },
+                body: JSON.stringify({ page: 1, page_size: 1 }),
+              });
+              listStatus = listRes.status;
+              listOk = listRes.ok;
+            }
+          }
+        } catch (e: any) {
+          error = e.message;
+        }
+
+        probeResults.push({
+          version: ver,
+          login_status: loginStatus,
+          login_ok: loginOk,
+          list_status: listStatus,
+          list_ok: listOk,
+          ...(error ? { error } : {}),
+        });
+      }
+
+      return {
+        success: true,
+        api_versions: probeResults,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    case "probe_endpoints": {
+      const endpointList = [
+        "/api/v2.0.0/extension/list",
+        "/api/v2.0.0/trunk/list",
+        "/api/v2.0.0/inroute/list",
+        "/api/v2.0.0/outroute/list",
+        "/api/v2.0.0/ivr/list",
+        "/api/v2.0.0/queue/list",
+        "/api/v2.0.0/ringgroup/list",
+        "/api/v2.0.0/paginggroup/list",
+        "/api/v2.0.0/conference/list",
+        "/api/v2.0.0/voicemail/list",
+        "/api/v2.0.0/firewall/list",
+        "/api/v2.0.0/sip/get",
+        "/api/v2.0.0/system/get",
+        "/api/v2.0.0/deviceinfo/get",
+        "/api/v2.0.0/cdr/list",
+        "/api/v2.0.0/recording/list",
+      ];
+
+      const probeResults: Array<{
+        endpoint: string;
+        status: number | null;
+        available: boolean;
+        error?: string;
+      }> = [];
+
+      for (const ep of endpointList) {
+        try {
+          const res = await fetch(`${url}${ep}`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ page: 1, page_size: 1 }),
+          });
+          probeResults.push({
+            endpoint: ep,
+            status: res.status,
+            available: res.ok,
+          });
+        } catch (e: any) {
+          probeResults.push({
+            endpoint: ep,
+            status: null,
+            available: false,
+            error: e.message,
+          });
+        }
+      }
+
+      return {
+        success: true,
+        endpoints: probeResults,
+        summary: {
+          total: probeResults.length,
+          available: probeResults.filter((r) => r.available).length,
+          unavailable: probeResults.filter((r) => !r.available).length,
+        },
+        timestamp: new Date().toISOString(),
       };
     }
 
@@ -240,6 +427,119 @@ function getMockResponse(
           { number: "100", name: "Mock User 1", status: "registered" },
           { number: "101", name: "Mock User 2", status: "idle" },
         ],
+      };
+    case "diagnose_connection":
+      return {
+        success: true,
+        connection: {
+          reachable: true,
+          authenticated: true,
+          api_response: { mock: true },
+          timestamp: new Date().toISOString(),
+        },
+      };
+    case "get_pbx_info":
+      return {
+        success: true,
+        pbx_info: {
+          system_info: {
+            status: 200,
+            ok: true,
+            data: {
+              model: "P-Series (Mock)",
+              firmware: "83.14.0.50",
+              serial: "MOCK-SERIAL-001",
+              uptime: "7 days",
+            },
+          },
+          device_info: {
+            status: 200,
+            ok: true,
+            data: {
+              product_name: "Yeastar P570",
+              hardware_version: "1.0",
+              max_extensions: 500,
+              max_concurrent_calls: 120,
+            },
+          },
+          system_status: {
+            status: 200,
+            ok: true,
+            data: {
+              cpu_usage: "12%",
+              memory_usage: "34%",
+              disk_usage: "21%",
+              active_calls: 3,
+            },
+          },
+        },
+        timestamp: new Date().toISOString(),
+      };
+    case "probe_api_versions":
+      return {
+        success: true,
+        api_versions: [
+          {
+            version: "v2",
+            login_status: 404,
+            login_ok: false,
+            list_status: null,
+            list_ok: false,
+          },
+          {
+            version: "v2.0",
+            login_status: 404,
+            login_ok: false,
+            list_status: null,
+            list_ok: false,
+          },
+          {
+            version: "v2.0.0",
+            login_status: 200,
+            login_ok: true,
+            list_status: 200,
+            list_ok: true,
+          },
+          {
+            version: "v1.0",
+            login_status: 404,
+            login_ok: false,
+            list_status: null,
+            list_ok: false,
+          },
+          {
+            version: "api",
+            login_status: 404,
+            login_ok: false,
+            list_status: null,
+            list_ok: false,
+          },
+        ],
+        timestamp: new Date().toISOString(),
+      };
+    case "probe_endpoints":
+      return {
+        success: true,
+        endpoints: [
+          { endpoint: "/api/v2.0.0/extension/list", status: 200, available: true },
+          { endpoint: "/api/v2.0.0/trunk/list", status: 200, available: true },
+          { endpoint: "/api/v2.0.0/inroute/list", status: 200, available: true },
+          { endpoint: "/api/v2.0.0/outroute/list", status: 200, available: true },
+          { endpoint: "/api/v2.0.0/ivr/list", status: 200, available: true },
+          { endpoint: "/api/v2.0.0/queue/list", status: 200, available: true },
+          { endpoint: "/api/v2.0.0/ringgroup/list", status: 200, available: true },
+          { endpoint: "/api/v2.0.0/paginggroup/list", status: 403, available: false },
+          { endpoint: "/api/v2.0.0/conference/list", status: 200, available: true },
+          { endpoint: "/api/v2.0.0/voicemail/list", status: 200, available: true },
+          { endpoint: "/api/v2.0.0/firewall/list", status: 403, available: false },
+          { endpoint: "/api/v2.0.0/sip/get", status: 200, available: true },
+          { endpoint: "/api/v2.0.0/system/get", status: 200, available: true },
+          { endpoint: "/api/v2.0.0/deviceinfo/get", status: 200, available: true },
+          { endpoint: "/api/v2.0.0/cdr/list", status: 200, available: true },
+          { endpoint: "/api/v2.0.0/recording/list", status: 403, available: false },
+        ],
+        summary: { total: 16, available: 13, unavailable: 3 },
+        timestamp: new Date().toISOString(),
       };
     default:
       return { success: false, message: `[MOCK] Unknown action: ${action}` };
