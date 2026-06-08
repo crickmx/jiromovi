@@ -75,7 +75,6 @@ function ConfigTab() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [form, setForm] = useState({
-    pbx_url: '',
     api_mode: 'mock' as 'mock' | 'live',
     auto_sync: false,
     sync_interval_minutes: 60,
@@ -91,7 +90,6 @@ function ConfigTab() {
       if (data) {
         setConfig(data);
         setForm({
-          pbx_url: data.pbx_url,
           api_mode: data.api_mode,
           auto_sync: data.auto_sync,
           sync_interval_minutes: data.sync_interval_minutes,
@@ -135,26 +133,20 @@ function ConfigTab() {
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl border border-neutral-200 p-6">
-        <h2 className="text-lg font-semibold text-neutral-900 mb-4">Conexion PBX Yeastar</h2>
+        <h2 className="text-lg font-semibold text-neutral-900 mb-4">Estado de Conexion PBX</h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-neutral-700 mb-1">URL del PBX</label>
-            <input
-              type="text"
-              value={form.pbx_url}
-              onChange={e => setForm(f => ({ ...f, pbx_url: e.target.value }))}
-              placeholder="https://159.54.138.29:8088"
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 px-3 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+            <p className="text-xs text-emerald-700">
+              La URL y credenciales del PBX se configuran de forma segura como secretos del Edge Function. No se almacenan en la base de datos ni son visibles desde la interfaz.
+            </p>
           </div>
-          <div className="md:col-span-2">
-            <div className="flex items-center gap-2 px-3 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-              <p className="text-xs text-emerald-700">
-                Las credenciales (usuario/token) se configuran de forma segura como secretos del Edge Function y no se almacenan en la base de datos.
-              </p>
-            </div>
+          <div className="flex items-center gap-2 px-3 py-2.5 bg-blue-50 border border-blue-200 rounded-lg">
+            <Activity className="w-4 h-4 text-blue-600 flex-shrink-0" />
+            <p className="text-xs text-blue-700">
+              Modo actual: <span className="font-semibold">{form.api_mode === 'mock' ? 'Simulado (Mock)' : 'Produccion (Live)'}</span>
+            </p>
           </div>
         </div>
 
@@ -227,7 +219,7 @@ function ConfigTab() {
           </button>
           <button
             onClick={handleTest}
-            disabled={testing || !form.pbx_url}
+            disabled={testing}
             className="px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg text-sm font-medium hover:bg-neutral-200 disabled:opacity-50 flex items-center gap-2"
           >
             {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wifi className="w-4 h-4" />}
