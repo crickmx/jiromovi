@@ -40,6 +40,7 @@ export const MODULOS = {
   GMM_COTIZADOR: 'gmm_cotizador',
   MULTICOTIZADOR: 'multicotizador',
   SICAS: 'sicas',
+  TELEFONIA: 'telefonia',
 } as const;
 
 export type ModuloCodigo = typeof MODULOS[keyof typeof MODULOS];
