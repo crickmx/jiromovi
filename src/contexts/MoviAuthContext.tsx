@@ -39,38 +39,42 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const { isImpersonating, impersonatedUser } = useImpersonation();
 
-  async function loadProfile(userId: string, isInitial = false) {
+  async function loadProfile(userId: string) {
     console.log('[MoviAuth] loadProfile userId=', userId);
-    const { data } = await supabase
-      .from('usuarios')
-      .select(`
-        *,
-        oficina:oficinas(id, nombre, accent_color, logo_url, whatsapp, telefono, email, domicilio),
-        regimen_fiscal:commission_fiscal_regimes(id, name)
-      `)
-      .eq('id', userId)
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select(`
+          *,
+          oficina:oficinas(id, nombre, accent_color, logo_url, whatsapp, telefono, email, domicilio),
+          regimen_fiscal:commission_fiscal_regimes(id, name)
+        `)
+        .eq('id', userId)
+        .maybeSingle();
 
-    if (!data) {
-      console.log('[MoviAuth] No usuario found for userId=', userId);
-      if (isInitial) {
+      if (!data) {
+        console.log('[MoviAuth] No usuario found for userId=', userId, error?.message);
         setRealUser(null);
         setLoading(false);
+        return;
       }
-      return;
+
+      let u: Usuario = data as Usuario;
+      if (u.rol === 'Gerente') {
+        const permisos = await cargarPermisosAdicionales(u.id);
+        u = { ...u, permisosAdicionales: permisos };
+      }
+
+      if (u.oficina?.accent_color && !isImpersonating) applyTheme(u.oficina.accent_color);
+
+      console.log('[MoviAuth] Usuario loaded:', u.nombre, u.apellidos, 'rol=', u.rol);
+      setRealUser(u);
+      setLoading(false);
+    } catch (err: any) {
+      console.warn('[MoviAuth] loadProfile failed:', err?.message);
+      setRealUser(null);
+      setLoading(false);
     }
-
-    let u: Usuario = data as Usuario;
-    if (u.rol === 'Gerente') {
-      const permisos = await cargarPermisosAdicionales(u.id);
-      u = { ...u, permisosAdicionales: permisos };
-    }
-
-    if (u.oficina?.accent_color && !isImpersonating) applyTheme(u.oficina.accent_color);
-
-    console.log('[MoviAuth] Usuario loaded:', u.nombre, u.apellidos, 'rol=', u.rol);
-    setRealUser(u);
-    setLoading(false);
   }
 
   async function reloadUsuario() {
@@ -80,32 +84,38 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     console.log('[MoviAuth] init');
+    let initialLoadDone = false;
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         console.log('[MoviAuth] initial session found, userId=', session.user.id);
-        loadProfile(session.user.id, true);
+        initialLoadDone = true;
+        loadProfile(session.user.id);
       } else {
         console.log('[MoviAuth] no initial session');
+        initialLoadDone = true;
         setLoading(false);
       }
     }).catch((err) => {
       console.warn('[MoviAuth] getSession failed (network/refresh):', err?.message);
+      initialLoadDone = true;
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[MoviAuth] onAuthStateChange event=', event, 'hasSession=', !!session);
       if (event === 'SIGNED_IN' && session) {
+        if (!initialLoadDone) return;
         setRealUser(prev => {
           if (!prev) setLoading(true);
           return prev;
         });
-        (async () => { await loadProfile(session.user.id); })();
+        loadProfile(session.user.id);
       } else if (
         (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') &&
         session
       ) {
-        (async () => { await loadProfile(session.user.id); })();
+        loadProfile(session.user.id);
       } else if (event === 'SIGNED_OUT') {
         console.log('[MoviAuth] signed out');
         setRealUser(null);
