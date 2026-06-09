@@ -109,6 +109,9 @@ export function SeguwalletAuthProvider({ children }: { children: ReactNode }) {
         console.log('[SwAuth] no initial session');
         setLoading(false);
       }
+    }).catch((err) => {
+      console.warn('[SwAuth] getSession failed (network/refresh):', err?.message);
+      setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {

@@ -88,6 +88,9 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
         console.log('[MoviAuth] no initial session');
         setLoading(false);
       }
+    }).catch((err) => {
+      console.warn('[MoviAuth] getSession failed (network/refresh):', err?.message);
+      setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
