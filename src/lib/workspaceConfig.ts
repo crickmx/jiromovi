@@ -198,12 +198,12 @@ export const NAV_ORDER: NavEntry[] = [
   { type: 'workspace', workspace: WORKSPACE_CENTRO_CONTACTO },
   { type: 'workspace', workspace: WORKSPACE_COTIZAR },
   { type: 'workspace', workspace: WORKSPACE_PRODUCCION },
+  { type: 'workspace', workspace: WORKSPACE_ADMIN },
   { type: 'workspace', workspace: WORKSPACE_OPERACIONES },
   { type: 'workspace', workspace: WORKSPACE_MERCADOTECNIA },
   { type: 'workspace', workspace: WORKSPACE_SEGUROS_EDUCATION },
   { type: 'link', item: { path: '/store', label: 'MOVI Store', icon: ShoppingBag, visibleTo: ALL_ROLES } },
   { type: 'link', item: { path: '/comunicados', label: 'Comunicados', icon: FileText, visibleTo: ALL_ROLES, matchPrefix: true } },
-  { type: 'workspace', workspace: WORKSPACE_ADMIN },
 ];
 
 export function isWorkspaceVisible(ws: WorkspaceDefinition, userRole: UserRole): boolean {
