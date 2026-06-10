@@ -10,52 +10,32 @@ import {
   type WidgetDefinition,
 } from '@/lib/dashboardWidgets';
 import {
-  ProduccionPersonalWidget,
-  ComisionesPersonalWidget,
   TramitesPendientesWidget,
-  ProduccionOficinaWidget,
   AgentesActivosWidget,
   UsuariosActivosWidget,
   TramitesRecientesWidget,
   ComunicadosRecientesWidget,
-  ActividadRecienteWidget,
-  ProduccionPorAgenteWidget,
   DiagnosticoSistemaWidget,
-  GamificacionWidget,
-  ProduccionMensualWidget,
   AccesosRapidosWidget,
   CRMTareasWidget,
   ContactosWidget,
   PolizasVigentesWidget,
-  RenovacionesBreakdownWidget,
-  TopAseguradorasWidget,
   NotificacionesSinLeerWidget,
 } from './DashboardWidgets';
-import { CentroProduccionWidget } from './CentroProduccionWidget';
 import type { UserRole } from '@/lib/workspaceConfig';
 
 // Map widget_id → component
 const WIDGET_COMPONENTS: Record<string, React.ComponentType<{ usuario: Usuario; config: WidgetConfig }>> = {
-  centro_produccion:      CentroProduccionWidget,
-  produccion_personal:    ProduccionPersonalWidget,
-  comisiones_personal:    ComisionesPersonalWidget,
   tramites_pendientes:    TramitesPendientesWidget,
-  produccion_oficina:     ProduccionOficinaWidget,
   agentes_activos:        AgentesActivosWidget,
   usuarios_activos:       UsuariosActivosWidget,
   tramites_recientes:     TramitesRecientesWidget,
   comunicados_recientes:  ComunicadosRecientesWidget,
-  actividad_reciente:     ActividadRecienteWidget,
-  produccion_por_agente:  ProduccionPorAgenteWidget,
   diagnostico_sistema:    DiagnosticoSistemaWidget,
-  gamificacion:           GamificacionWidget,
-  produccion_mensual:     ProduccionMensualWidget,
   accesos_rapidos:        AccesosRapidosWidget,
   crm_tareas:             CRMTareasWidget,
   contactos:              ContactosWidget,
   polizas_vigentes:       PolizasVigentesWidget,
-  renovaciones_breakdown: RenovacionesBreakdownWidget,
-  top_aseguradoras:       TopAseguradorasWidget,
   notificaciones_sin_leer: NotificacionesSinLeerWidget,
 };
 
