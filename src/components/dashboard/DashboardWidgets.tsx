@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, Users, UserCheck, FileText, Bell, Activity, Zap, ArrowRight, Shield, ChevronRight, Globe, MessageCircle, Settings, Target, Briefcase, Phone, TrendingUp, DollarSign } from 'lucide-react';
+import { ClipboardList, Users, UserCheck, FileText, Bell, Activity, Zap, ArrowRight, Shield, ChevronRight, Globe, MessageCircle, Settings, Target, Briefcase, Phone, TrendingUp, DollarSign, ChartBar as BarChart3 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import type { Usuario } from '@/contexts/MoviAuthContext';
