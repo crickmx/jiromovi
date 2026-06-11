@@ -385,8 +385,8 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
         const senderIds = [...new Set((data || []).filter(m => m.direction === 'outbound' && m.sender_user_id).map(m => m.sender_user_id))];
         const senderMap: Record<string, string> = {};
         if (senderIds.length > 0) {
-          const { data: users } = await supabase.from('usuarios').select('id, nombres, apellido_paterno').in('id', senderIds);
-          for (const u of users || []) senderMap[u.id] = `${u.nombres} ${u.apellido_paterno}`.trim();
+          const { data: users } = await supabase.from('usuarios').select('id, nombre, apellidos').in('id', senderIds);
+          for (const u of users || []) senderMap[u.id] = `${u.nombre} ${u.apellidos}`.trim();
         }
 
         setMessages((data || []).map((m: any): UnifiedMessage => {
