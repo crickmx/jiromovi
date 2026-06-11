@@ -227,7 +227,7 @@ export default function MoviFullRoutes() {
           <Route path="/seguros-education/aula-virtual/:id" element={<ProtectedRoute><AulaVirtualSala /></ProtectedRoute>} />
           <Route path="/seguros-education/cedula-a" element={<ProtectedRoute><SegurosEducationCedulaA /></ProtectedRoute>} />
           <Route path="/seguros-education/cedula-a/curso/:id" element={<ProtectedRoute><CursoCedulaA /></ProtectedRoute>} />
-          <Route path="/seguros-education/cedula-a/examen/:id" element={<ProtectedRoute><ExamenInterface /></ProtectedRoute>} />
+          <Route path="/seguros-education/cedula-a/examen/:examenId" element={<ProtectedRoute><ExamenInterface /></ProtectedRoute>} />
           <Route path="/seguros-education/cedula-a/certificado" element={<ProtectedRoute><CertificadoCedulaA /></ProtectedRoute>} />
           <Route path="/manuales" element={<ProtectedRoute><Manuales /></ProtectedRoute>} />
           <Route path="/manuales/:slug" element={<ProtectedRoute><ManualViewer /></ProtectedRoute>} />
