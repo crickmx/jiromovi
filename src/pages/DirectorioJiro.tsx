@@ -78,7 +78,7 @@ export function DirectorioJiro() {
           oficina_id,
           oficinas:oficina_id (nombre, telefono, extension)
         `)
-        .in('rol', ['Empleado', 'Ejecutivo', 'Administrador', 'Gerente'])
+        .not('rol', 'in', '("Agente","Cliente")')
         .eq('activo', true)
         .order('nombre', { ascending: true });
 
@@ -103,6 +103,9 @@ export function DirectorioJiro() {
       }));
 
       setEmpleados(lista);
+      // Start all office sections collapsed
+      const oficinas = new Set(lista.map((e) => e.oficina));
+      setCollapsedOficinas(oficinas);
     } catch (err: any) {
       console.error('Error cargando empleados:', err);
     } finally {
