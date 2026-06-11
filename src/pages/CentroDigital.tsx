@@ -62,26 +62,37 @@ function SafeFileViewer({ archivo, onClose, onDownload }: {
 }) {
   const [viewError, setViewError] = useState(false);
   const [viewLoading, setViewLoading] = useState(true);
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const isImage = archivo.tipo_mime?.startsWith('image/') ?? false;
   const isPDF = archivo.tipo_mime?.includes('pdf') ?? false;
 
-  const storageUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/centro-digital-files/${archivo.ruta_storage}`;
+  useEffect(() => {
+    let cancelled = false;
+    setViewLoading(true);
+    setViewError(false);
+    setSignedUrl(null);
+    supabase.storage
+      .from('centro-digital-files')
+      .createSignedUrl(archivo.ruta_storage, 3600)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error || !data?.signedUrl) {
+          setViewError(true);
+          setViewLoading(false);
+        } else {
+          setSignedUrl(data.signedUrl);
+          if (!isImage && !isPDF) setViewLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) { setViewError(true); setViewLoading(false); }
+      });
+    return () => { cancelled = true; };
+  }, [archivo.ruta_storage, isImage, isPDF]);
 
   function handleIframeLoad() {
     setViewLoading(false);
-    // Check if iframe loaded an error response
-    try {
-      const doc = iframeRef.current?.contentDocument;
-      if (doc) {
-        const body = doc.body?.textContent || '';
-        if (body.includes('"statusCode"') || body.includes('Bucket not found') || body.includes('"error"')) {
-          setViewError(true);
-        }
-      }
-    } catch {
-      // Cross-origin — assume it's fine if status was ok
-    }
   }
 
   function handleIframeError() {
@@ -111,7 +122,11 @@ function SafeFileViewer({ archivo, onClose, onDownload }: {
           </div>
         </div>
         <div className="flex-1 overflow-auto p-4 bg-gray-50 min-h-[400px]">
-          {viewError ? (
+          {viewLoading && !viewError ? (
+            <div className="flex items-center justify-center h-full min-h-[400px]">
+              <RefreshCw className="w-6 h-6 animate-spin text-gray-400" />
+            </div>
+          ) : viewError ? (
             <div className="flex flex-col items-center justify-center h-full gap-4 py-16">
               <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
                 <AlertTriangle className="w-8 h-8 text-red-400" />
@@ -127,26 +142,21 @@ function SafeFileViewer({ archivo, onClose, onDownload }: {
                 <Download className="w-3.5 h-3.5 mr-1.5" />Intentar descarga
               </Button>
             </div>
-          ) : isImage ? (
+          ) : isImage && signedUrl ? (
             <div className="flex items-center justify-center h-full">
               <img
-                src={storageUrl}
+                src={signedUrl}
                 alt={archivo.nombre}
                 className="max-w-full max-h-full object-contain"
                 onLoad={() => setViewLoading(false)}
                 onError={() => { setViewLoading(false); setViewError(true); }}
               />
             </div>
-          ) : isPDF ? (
+          ) : isPDF && signedUrl ? (
             <div className="relative w-full h-full min-h-[600px]">
-              {viewLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
-                  <RefreshCw className="w-6 h-6 animate-spin text-gray-400" />
-                </div>
-              )}
               <iframe
                 ref={iframeRef}
-                src={storageUrl}
+                src={signedUrl}
                 className="w-full h-full min-h-[600px] rounded-lg"
                 title={archivo.nombre}
                 onLoad={handleIframeLoad}
