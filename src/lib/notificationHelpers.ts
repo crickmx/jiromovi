@@ -57,6 +57,7 @@ export async function crearNotificacionGlobal(
       p_accion_url: accion_url,
       p_filtros: filtros,
       p_enviar_whatsapp: enviar_whatsapp,
+      p_enviado_por: enviado_por,
     });
 
     if (error) throw error;
