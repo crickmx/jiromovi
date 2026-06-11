@@ -36,21 +36,26 @@ export async function crearNotificacionGlobal(
   mensaje: string,
   accion_url: string | null,
   destinatarios: {
-    tipo: 'todos' | 'oficina' | 'rol' | 'usuario';
+    tipo: 'todos' | 'oficina' | 'rol';
     oficina_id?: string;
     rol?: string;
-    user_id?: string;
   },
   enviado_por: string,
-  enviar_whatsapp: boolean = true // CAMBIO: Por defecto true para enviar WhatsApp
+  enviar_whatsapp: boolean = true
 ) {
   try {
+    const filtros: Record<string, string> = {};
+    if (destinatarios.tipo === 'oficina' && destinatarios.oficina_id) {
+      filtros.oficina_id = destinatarios.oficina_id;
+    } else if (destinatarios.tipo === 'rol' && destinatarios.rol) {
+      filtros.rol = destinatarios.rol;
+    }
+
     const { error } = await supabase.rpc('enviar_notificacion_global', {
       p_titulo: titulo,
       p_mensaje: mensaje,
       p_accion_url: accion_url,
-      p_destinatarios: destinatarios,
-      p_enviado_por: enviado_por,
+      p_filtros: filtros,
       p_enviar_whatsapp: enviar_whatsapp,
     });
 

@@ -42,10 +42,9 @@ export function CentroNotificacionesContent() {
     titulo: '',
     mensaje: '',
     accion_url: '',
-    tipo: 'todos' as 'todos' | 'oficina' | 'rol' | 'usuario',
+    tipo: 'todos' as 'todos' | 'oficina' | 'rol',
     oficina_id: '',
     rol: '',
-    user_id: '',
     enviar_whatsapp: false,
   });
 
@@ -101,8 +100,6 @@ export function CentroNotificacionesContent() {
         destinatarios.oficina_id = formData.oficina_id;
       } else if (formData.tipo === 'rol' && formData.rol) {
         destinatarios.rol = formData.rol;
-      } else if (formData.tipo === 'usuario' && formData.user_id) {
-        destinatarios.user_id = formData.user_id;
       }
 
       const result = await crearNotificacionGlobal(
@@ -123,7 +120,6 @@ export function CentroNotificacionesContent() {
           tipo: 'todos',
           oficina_id: '',
           rol: '',
-          user_id: '',
           enviar_whatsapp: false,
         });
         fetchData();
@@ -147,7 +143,6 @@ export function CentroNotificacionesContent() {
       return `Oficina: ${oficina?.nombre || 'Desconocida'}`;
     }
     if (destinatarios.tipo === 'rol') return `Rol: ${destinatarios.rol}`;
-    if (destinatarios.tipo === 'usuario') return 'Usuario especifico';
 
     return 'Desconocido';
   };
@@ -236,7 +231,7 @@ export function CentroNotificacionesContent() {
               Destinatarios <span className="text-red-500">*</span>
             </label>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div className="grid grid-cols-3 gap-3 mb-4">
               <button
                 onClick={() => setFormData({ ...formData, tipo: 'todos' })}
                 className={`p-4 border-2 rounded-lg transition-all ${
@@ -272,18 +267,6 @@ export function CentroNotificacionesContent() {
                 <UserCheck className="w-6 h-6 mx-auto mb-2 text-accent" />
                 <span className="text-sm font-medium">Rol</span>
               </button>
-
-              <button
-                onClick={() => setFormData({ ...formData, tipo: 'usuario' })}
-                className={`p-4 border-2 rounded-lg transition-all ${
-                  formData.tipo === 'usuario'
-                    ? 'border-accent bg-primary-50'
-                    : 'border-neutral-200 hover:border-primary-300'
-                }`}
-              >
-                <Bell className="w-6 h-6 mx-auto mb-2 text-accent" />
-                <span className="text-sm font-medium">Usuario</span>
-              </button>
             </div>
 
             {formData.tipo === 'oficina' && (
@@ -314,12 +297,6 @@ export function CentroNotificacionesContent() {
                   </option>
                 ))}
               </select>
-            )}
-
-            {formData.tipo === 'usuario' && (
-              <p className="text-sm text-neutral-500 mt-2">
-                Esta funcion requiere buscar usuarios. Por ahora, usa oficina o rol.
-              </p>
             )}
           </div>
 
