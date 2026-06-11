@@ -9,10 +9,23 @@ const corsHeaders = {
 };
 
 interface WhatsAppPayload {
-  phone: string;
-  message: string;
+  // Legacy format (direct)
+  phone?: string;
+  message?: string;
   documents?: Array<{ fileName: string; filePath: string }>;
   ticket_id?: string;
+  // DB-function format
+  tipo?: string;
+  numero?: string;
+  datos?: {
+    nombre?: string;
+    apellidos?: string;
+    titulo?: string;
+    mensaje?: string;
+    accion_url?: string;
+    [key: string]: unknown;
+  };
+  evento_id?: string;
 }
 
 async function getSignedUrl(
@@ -48,11 +61,26 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const payload: WhatsAppPayload = await req.json();
-    const { phone, message, documents, ticket_id } = payload;
+    const { documents, ticket_id } = payload;
+
+    // Support both { phone, message } (direct) and { tipo, numero, datos } (from DB functions)
+    let phone: string;
+    let message: string;
+
+    if (payload.numero && payload.datos) {
+      phone = payload.numero;
+      const d = payload.datos;
+      const nombre = [d.nombre, d.apellidos].filter(Boolean).join(' ') || 'Usuario';
+      const accion = d.accion_url ? `\n\n🔗 ${d.accion_url}` : '';
+      message = `📲 *${d.titulo || 'Notificación'}*\n\n${d.mensaje || ''}${accion}`;
+    } else {
+      phone = payload.phone || '';
+      message = payload.message || '';
+    }
 
     if (!phone || !message) {
       return new Response(
-        JSON.stringify({ success: false, error: "phone and message are required" }),
+        JSON.stringify({ success: false, error: "phone/numero and message/datos are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

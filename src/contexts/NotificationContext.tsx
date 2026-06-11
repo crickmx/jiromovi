@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 
@@ -34,19 +34,24 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [pushEnabled, setPushEnabled] = useState(false);
+  // Ref so the realtime callback always reads the latest value (no stale closure)
+  const pushEnabledRef = useRef(pushEnabled);
+  useEffect(() => { pushEnabledRef.current = pushEnabled; }, [pushEnabled]);
 
   useEffect(() => {
     if (usuario) {
       fetchNotifications();
-      const unsub = subscribeToNotifications();
       checkPushPermission();
+      const unsub = subscribeToNotifications();
       return unsub;
     }
-  }, [usuario]);
+  }, [usuario?.id]);
 
   const checkPushPermission = () => {
     if ('Notification' in window) {
-      setPushEnabled(Notification.permission === 'granted');
+      const granted = Notification.permission === 'granted';
+      setPushEnabled(granted);
+      pushEnabledRef.current = granted;
     }
   };
 
@@ -104,7 +109,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     if (!usuario) return;
 
     const channel = supabase
-      .channel('notificaciones-channel')
+      .channel(`notificaciones-${usuario.id}`)
       .on(
         'postgres_changes',
         {
@@ -117,7 +122,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           const newNotification = payload.new as Notification;
           setNotifications((prev) => [newNotification, ...prev]);
 
-          if (pushEnabled && 'Notification' in window && Notification.permission === 'granted') {
+          if (pushEnabledRef.current && 'Notification' in window && Notification.permission === 'granted') {
             showBrowserNotification(newNotification);
           }
           playNotificationSound();
@@ -147,7 +152,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           };
           setNotifications((prev) => [mapped, ...prev]);
 
-          if (pushEnabled && 'Notification' in window && Notification.permission === 'granted') {
+          if (pushEnabledRef.current && 'Notification' in window && Notification.permission === 'granted') {
             showBrowserNotification(mapped);
           }
           playNotificationSound();
@@ -208,7 +213,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           setNotifications((prev) => prev.filter((n) => n.id !== deletedId));
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('Notification channel error, will reconnect on next user change');
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -251,6 +260,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     try {
       const permission = await Notification.requestPermission();
       setPushEnabled(permission === 'granted');
+      pushEnabledRef.current = permission === 'granted';
 
       if (permission === 'granted') {
         showToast('Notificaciones activadas', 'success');
