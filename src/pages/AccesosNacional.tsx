@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Search, Plus, CreditCard as Edit2, Trash2, ExternalLink, Eye, Copy, Check, ChevronDown, ChevronRight, Key } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface AccesoNacional {
@@ -350,6 +350,18 @@ export function AccesosNacional() {
     return format(new Date(dateString), "dd/MM/yyyy HH:mm", { locale: es });
   };
 
+  const formatRelative = (acceso: AccesoNacional) => {
+    const dateStr = acceso.fecha_ultima_edicion || acceso.fecha_creacion;
+    if (!dateStr) return '-';
+    return formatDistanceToNow(new Date(dateStr), { addSuffix: true, locale: es });
+  };
+
+  const formatShortDate = (acceso: AccesoNacional) => {
+    const dateStr = acceso.fecha_ultima_edicion || acceso.fecha_creacion;
+    if (!dateStr) return '-';
+    return format(new Date(dateStr), "dd/MM/yyyy", { locale: es });
+  };
+
   if (loading) {
     return (
       <>
@@ -453,6 +465,9 @@ export function AccesosNacional() {
                                 <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-700 uppercase">
                                   Contraseña
                                 </th>
+                                <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-700 uppercase">
+                                  Ult. Actualización
+                                </th>
                                 <th className="px-3 py-2 text-center text-xs font-semibold text-neutral-700 uppercase">
                                   Acciones
                                 </th>
@@ -529,6 +544,12 @@ export function AccesosNacional() {
                                           <Copy className="w-3.5 h-3.5" />
                                         )}
                                       </button>
+                                    </div>
+                                  </td>
+                                  <td className="px-3 py-2.5">
+                                    <div className="flex flex-col gap-0.5">
+                                      <span className="text-xs text-neutral-900">{formatShortDate(acceso)}</span>
+                                      <span className="text-xs text-neutral-400">{formatRelative(acceso)}</span>
                                     </div>
                                   </td>
                                   <td className="px-3 py-2.5">
@@ -684,6 +705,14 @@ export function AccesosNacional() {
                                     <Copy className="w-4 h-4" />
                                   )}
                                 </button>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between text-xs pt-0.5">
+                              <span className="text-neutral-500 font-semibold">Ult. actualización</span>
+                              <div className="text-right">
+                                <span className="text-neutral-800">{formatShortDate(acceso)}</span>
+                                <span className="text-neutral-400 ml-1.5">{formatRelative(acceso)}</span>
                               </div>
                             </div>
 
