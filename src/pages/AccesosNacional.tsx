@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Search, Plus, CreditCard as Edit2, Trash2, ExternalLink, Eye, Copy, Check, ChevronDown, ChevronRight, Key } from 'lucide-react';
@@ -55,6 +55,37 @@ export function AccesosNacional() {
   const [expandedAseguradoras, setExpandedAseguradoras] = useState<Set<string>>(new Set());
 
   const canDelete = usuario?.rol === 'Administrador';
+
+  // Normalize text for accent/case-insensitive comparison
+  const normalize = (str: string) =>
+    str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+  // Unique sorted list of existing insurer names
+  const aseguradoraOptions = Array.from(new Set(accesos.map((a) => a.aseguradora))).sort();
+
+  // Combobox state
+  const [aseguradoraInput, setAseguradoraInput] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const aseguradoraRef = useRef<HTMLDivElement>(null);
+
+  const filteredSuggestions = aseguradoraOptions.filter((name) =>
+    normalize(name).includes(normalize(aseguradoraInput))
+  );
+
+  // Exact match check (case + accent insensitive)
+  const exactMatch = aseguradoraOptions.find(
+    (name) => normalize(name) === normalize(aseguradoraInput)
+  );
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (aseguradoraRef.current && !aseguradoraRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const toggleAseguradora = (aseguradora: string) => {
     const newExpanded = new Set(expandedAseguradoras);
@@ -189,6 +220,7 @@ export function AccesosNacional() {
         link: acceso.link,
         clave_agente: acceso.clave_agente || '',
       });
+      setAseguradoraInput(acceso.aseguradora);
     } else {
       setEditingAcceso(null);
       setFormData({
@@ -199,6 +231,7 @@ export function AccesosNacional() {
         link: '',
         clave_agente: '',
       });
+      setAseguradoraInput('');
     }
     setShowModal(true);
   };
@@ -206,6 +239,7 @@ export function AccesosNacional() {
   const closeModal = () => {
     setShowModal(false);
     setEditingAcceso(null);
+    setAseguradoraInput('');
     setFormData({
       aseguradora: '',
       usuario_1: '',
@@ -219,7 +253,11 @@ export function AccesosNacional() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.link.match(/^https?:\/\//)) {
+    // Use canonical name if an exact match exists, otherwise use trimmed input
+    const canonicalAseguradora = exactMatch || aseguradoraInput.trim();
+    const dataToSave = { ...formData, aseguradora: canonicalAseguradora };
+
+    if (!dataToSave.link.match(/^https?:\/\//)) {
       showToast('El link debe comenzar con http:// o https://', 'error');
       return;
     }
@@ -229,9 +267,9 @@ export function AccesosNacional() {
         const { error } = await supabase
           .from('accesos_nacional')
           .update({
-            ...formData,
-            usuario_2: formData.usuario_2 || null,
-            clave_agente: formData.clave_agente || null,
+            ...dataToSave,
+            usuario_2: dataToSave.usuario_2 || null,
+            clave_agente: dataToSave.clave_agente || null,
             ultima_edicion_por: usuario?.id,
             fecha_ultima_edicion: new Date().toISOString(),
           })
@@ -243,9 +281,9 @@ export function AccesosNacional() {
         const { error } = await supabase
           .from('accesos_nacional')
           .insert({
-            ...formData,
-            usuario_2: formData.usuario_2 || null,
-            clave_agente: formData.clave_agente || null,
+            ...dataToSave,
+            usuario_2: dataToSave.usuario_2 || null,
+            clave_agente: dataToSave.clave_agente || null,
             creado_por: usuario?.id,
           });
 
@@ -705,18 +743,53 @@ export function AccesosNacional() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
+              <div ref={aseguradoraRef} className="relative">
                 <label className="block text-sm font-semibold text-neutral-700 mb-2">
                   Aseguradora <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  value={formData.aseguradora}
-                  onChange={(e) => setFormData({ ...formData, aseguradora: e.target.value })}
+                  value={aseguradoraInput}
+                  onChange={(e) => {
+                    setAseguradoraInput(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
                   required
+                  autoComplete="off"
                   className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                   placeholder="Nombre de la aseguradora"
                 />
+                {showSuggestions && aseguradoraInput.length > 0 && filteredSuggestions.length > 0 && (
+                  <ul className="absolute z-50 w-full mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {filteredSuggestions.map((name) => {
+                      const isExact = normalize(name) === normalize(aseguradoraInput);
+                      return (
+                        <li key={name}>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                              setAseguradoraInput(name);
+                              setShowSuggestions(false);
+                            }}
+                            className={`w-full text-left px-4 py-2.5 text-sm hover:bg-accent/10 transition-colors flex items-center justify-between ${
+                              isExact ? 'font-semibold text-accent' : 'text-neutral-800'
+                            }`}
+                          >
+                            {name}
+                            {isExact && <Check className="w-3.5 h-3.5 text-accent flex-shrink-0" />}
+                          </button>
+                        </li>
+                      );
+                    })}
+                    {!exactMatch && aseguradoraInput.trim() && (
+                      <li className="px-4 py-2 text-xs text-neutral-400 border-t border-neutral-100 italic">
+                        Se creara nueva aseguradora: "{aseguradoraInput.trim()}"
+                      </li>
+                    )}
+                  </ul>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
