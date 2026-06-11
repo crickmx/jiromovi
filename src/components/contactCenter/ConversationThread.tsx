@@ -1,9 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  Send, RefreshCw, ArrowLeft, MoreVertical, Archive, CheckCircle, Clock,
-  Loader2, Smartphone, MessageSquare, Smile, FileText, FormInput, Plus,
-  Paperclip, Bot, Star, X, File,
-} from 'lucide-react';
+import { Send, RefreshCw, ArrowLeft, MoveVertical as MoreVertical, Archive, CircleCheck as CheckCircle, Clock, Loader as Loader2, Smartphone, MessageSquare, Smile, FileText, FolderInput as FormInput, Plus, Paperclip, Bot, Star, X, File } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -541,9 +537,6 @@ export function ConversationThread({ conversation, onBack, onStatusChange }: Con
             <button onClick={openPlantillas} className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 transition-colors text-[11px] font-medium" title="Plantillas">
               <FileText className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Plantillas</span>
             </button>
-            <button onClick={openForms} className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 transition-colors text-[11px] font-medium" title="Formularios">
-              <FormInput className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Formularios</span>
-            </button>
             <button onClick={openCreateTicket} className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 transition-colors text-[11px] font-medium" title="Crear tramite">
               <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Tramite</span>
             </button>
@@ -553,19 +546,6 @@ export function ConversationThread({ conversation, onBack, onStatusChange }: Con
               title="Adjuntar archivo"
             >
               <Paperclip className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Archivo</span>
-            </button>
-            <button
-              onClick={autoMode ? stopAutoMode : openAssistants}
-              className={cn(
-                'flex items-center gap-1 px-2 py-1.5 rounded-lg transition-colors text-[11px] font-medium ml-auto',
-                autoMode
-                  ? 'bg-emerald-500 text-white shadow-sm'
-                  : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-emerald-600'
-              )}
-              title="Modo IA / Automatico"
-            >
-              <Bot className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{autoMode ? 'Auto activo' : 'IA'}</span>
             </button>
           </div>
 
