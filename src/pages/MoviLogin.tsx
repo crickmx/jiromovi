@@ -140,11 +140,11 @@ export default function MoviLogin() {
         }
       });
 
-      const { error: otpError } = await supabase.auth.verifyOtp({
-        token_hash: data.token_hash,
-        type: 'magiclink',
+      const { error: sessionErr } = await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
       });
-      if (otpError) {
+      if (sessionErr) {
         subscription.unsubscribe();
         setError('Error al crear la sesión. Intenta de nuevo.');
         return;

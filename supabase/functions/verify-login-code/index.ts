@@ -17,6 +17,46 @@ async function sha256(text: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+async function createSessionForUser(supabaseUrl: string, serviceKey: string, email: string, supabase: ReturnType<typeof createClient>): Promise<{ access_token: string; refresh_token: string } | null> {
+  // Generate a one-time magic link (does NOT send email when using service role key)
+  const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+    type: 'magiclink',
+    email,
+  });
+
+  if (linkError || !linkData?.properties?.hashed_token) {
+    console.error('generateLink error:', linkError, linkData);
+    return null;
+  }
+
+  // Verify the magic link server-side to get session tokens directly
+  const verifyRes = await fetch(`${supabaseUrl}/auth/v1/verify`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': serviceKey,
+    },
+    body: JSON.stringify({
+      type: 'magiclink',
+      token_hash: linkData.properties.hashed_token,
+    }),
+  });
+
+  if (!verifyRes.ok) {
+    const errBody = await verifyRes.text().catch(() => '');
+    console.error('verify failed:', verifyRes.status, errBody);
+    return null;
+  }
+
+  const sessionJson = await verifyRes.json().catch(() => null);
+  if (!sessionJson?.access_token || !sessionJson?.refresh_token) {
+    console.error('verify response missing tokens:', sessionJson);
+    return null;
+  }
+
+  return { access_token: sessionJson.access_token, refresh_token: sessionJson.refresh_token };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -37,7 +77,7 @@ Deno.serve(async (req: Request) => {
       redirect_to?: string;
     };
 
-    const { email, code, magic_token, platform, redirect_to } = body;
+    const { email, code, magic_token, platform } = body;
 
     if (!platform || (platform !== 'movi' && platform !== 'seguwallet' && platform !== 'chava')) {
       return new Response(JSON.stringify({ error: 'Plataforma inválida.' }), {
@@ -87,14 +127,8 @@ Deno.serve(async (req: Request) => {
         .update({ used_at: new Date().toISOString() })
         .eq('id', token.id);
 
-      // Generate session
-      const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-        type: 'magiclink',
-        email: token.email,
-        options: { redirectTo: redirect_to || undefined },
-      });
-
-      if (linkError || !linkData?.properties?.hashed_token) {
+      const session = await createSessionForUser(supabaseUrl, supabaseServiceKey, token.email, supabase);
+      if (!session) {
         return new Response(JSON.stringify({ error: 'Error al crear sesión. Intenta de nuevo.' }), {
           status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -104,7 +138,8 @@ Deno.serve(async (req: Request) => {
         success: true,
         user_id: token.user_id,
         platform,
-        token_hash: linkData.properties.hashed_token,
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
         email: token.email,
       }), {
         status: 200,
@@ -191,15 +226,8 @@ Deno.serve(async (req: Request) => {
       .update({ used_at: new Date().toISOString() })
       .eq('id', token.id);
 
-    // Generate Supabase session token
-    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-      type: 'magiclink',
-      email: token.email,
-      options: { redirectTo: redirect_to || undefined },
-    });
-
-    if (linkError || !linkData?.properties?.hashed_token) {
-      console.error('Error generating link:', linkError, linkData);
+    const session = await createSessionForUser(supabaseUrl, supabaseServiceKey, token.email, supabase);
+    if (!session) {
       return new Response(JSON.stringify({ error: 'Error al crear sesión. Intenta de nuevo.' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -209,7 +237,8 @@ Deno.serve(async (req: Request) => {
       success: true,
       user_id: token.user_id,
       platform,
-      token_hash: linkData.properties.hashed_token,
+      access_token: session.access_token,
+      refresh_token: session.refresh_token,
       email: token.email,
     }), {
       status: 200,
