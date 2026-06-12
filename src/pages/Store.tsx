@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Package, Settings, ShoppingBag } from 'lucide-react';
+import { ShoppingCart, Package, Settings, ShoppingBag, CircleCheck as CheckCircle, Circle as XCircle } from 'lucide-react';
 import {
   obtenerProductos,
   obtenerCategorias,
@@ -29,6 +29,12 @@ export default function Store() {
   const [productoSeleccionado, setProductoSeleccionado] = useState<StoreProducto | null>(null);
   const [cantidadCarrito, setCantidadCarrito] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  }, []);
 
   useEffect(() => {
     trackStoreOpened();
@@ -64,10 +70,10 @@ export default function Store() {
       trackStorePurchaseStarted(producto.titulo);
       await agregarAlCarrito(usuario.id, producto.id, cantidad);
       setCantidadCarrito(prev => prev + cantidad);
-      alert(`${producto.titulo} agregado al carrito`);
+      showToast(`${producto.titulo} agregado al carrito`);
     } catch (error) {
       console.error('Error agregando al carrito:', error);
-      alert('Error al agregar producto al carrito');
+      showToast('Error al agregar producto al carrito', 'error');
     }
   };
 
@@ -81,6 +87,17 @@ export default function Store() {
 
   return (
     <>
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white text-sm font-medium ${
+          toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
+        }`}>
+          {toast.type === 'success'
+            ? <CheckCircle className="w-4 h-4 flex-shrink-0" />
+            : <XCircle className="w-4 h-4 flex-shrink-0" />
+          }
+          {toast.message}
+        </div>
+      )}
       <div className="space-y-5">
         <PageHeader
           title="MOVI Store"
@@ -185,4 +202,3 @@ export default function Store() {
     </>
   );
 }
-

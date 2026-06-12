@@ -59,29 +59,29 @@ export default function StoreCarrito() {
   };
 
   const handleRealizarPedido = async () => {
-    if (!usuario?.id || carrito.length === 0) return;
+    if (!usuario?.id || itemsValidos.length === 0) return;
 
     try {
       setProcesando(true);
-      await crearPedido(usuario.id, carrito, notasUsuario, direccionEntrega);
+      await crearPedido(usuario.id, itemsValidos, notasUsuario, direccionEntrega);
 
-      // Limpiar el estado local del carrito
       setCarrito([]);
       setNotasUsuario('');
       setDireccionEntrega('');
 
-      alert('Pedido realizado exitosamente');
       navigate('/store/mis-pedidos');
     } catch (error) {
       console.error('Error creando pedido:', error);
-      alert('Error al crear el pedido');
+      alert('Error al crear el pedido. Por favor intenta de nuevo.');
     } finally {
       setProcesando(false);
     }
   };
 
+  const itemsValidos = carrito.filter(item => item.producto);
+
   const calcularTotal = () => {
-    return carrito.reduce((sum, item) => sum + (item.producto!.precio * item.cantidad), 0);
+    return itemsValidos.reduce((sum, item) => sum + ((item.producto?.precio ?? 0) * item.cantidad), 0);
   };
 
   if (loading) {
@@ -106,7 +106,7 @@ export default function StoreCarrito() {
           className="mb-6 sm:mb-8"
         />
 
-        {carrito.length === 0 ? (
+        {itemsValidos.length === 0 ? (
           <div className="text-center py-12 bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10">
             <Package className="w-16 h-16 text-neutral-400 dark:text-white/40 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-neutral-700 dark:text-white/70 mb-2">
@@ -123,13 +123,14 @@ export default function StoreCarrito() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-3 sm:space-y-4">
-              {carrito.map(item => (
+              {itemsValidos.map(item => (
                 <div key={item.id} className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-3 sm:p-4">
                   <div className="flex gap-3 sm:gap-4">
                     <img
                       src={item.producto!.imagen_url}
                       alt={item.producto!.titulo}
                       className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg flex-shrink-0"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
 
                     <div className="flex-1 min-w-0">
@@ -200,7 +201,7 @@ export default function StoreCarrito() {
                       value={notasUsuario}
                       onChange={(e) => setNotasUsuario(e.target.value)}
                       placeholder="Instrucciones especiales..."
-                      className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
                       rows={3}
                     />
                   </div>
@@ -213,7 +214,7 @@ export default function StoreCarrito() {
                       value={direccionEntrega}
                       onChange={(e) => setDireccionEntrega(e.target.value)}
                       placeholder="Ingresa tu dirección..."
-                      className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
                       rows={3}
                     />
                   </div>

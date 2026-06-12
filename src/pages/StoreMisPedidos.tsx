@@ -93,7 +93,7 @@ export default function StoreMisPedidos() {
                 </thead>
                 <tbody className="bg-white divide-y divide-neutral-200 dark:divide-white/10">
                   {pedidos.map(pedido => (
-                    <tr key={pedido.id} className="hover:bg-neutral-50 dark:bg-white/5">
+                    <tr key={pedido.id} className="hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         {pedido.folio_oc ? (
                           <span className="text-sm font-semibold text-accent bg-primary-50 px-2 py-1 rounded">
