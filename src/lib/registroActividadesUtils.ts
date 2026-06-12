@@ -100,30 +100,44 @@ export async function getUsersByOffice(oficinaId?: string): Promise<UsuarioOfici
   }));
 }
 
-/**
- * Finds the best responsable for a ticket created by an agent.
- * Priority: Gerente first, then Empleado, from the same office.
- * Returns null if no suitable user is found.
- */
 export async function getResponsableByOffice(oficinaId: string): Promise<UsuarioOficina | null> {
+  // Check if the office has an explicit default responsable configured
+  const { data: oficina } = await supabase
+    .from('oficinas')
+    .select('responsable_default_id')
+    .eq('id', oficinaId)
+    .single();
+
+  if (oficina?.responsable_default_id) {
+    const { data: u } = await supabase
+      .from('usuarios')
+      .select(`id, nombre_completo, rol, oficina_id, oficinas:oficina_id (nombre)`)
+      .eq('id', oficina.responsable_default_id)
+      .eq('estado', 'activo')
+      .single();
+    if (u) {
+      return {
+        id: u.id,
+        nombre_completo: u.nombre_completo,
+        rol: u.rol,
+        oficina_id: u.oficina_id,
+        oficina_nombre: (u as any).oficinas?.nombre || null,
+      };
+    }
+  }
+
+  // Fallback: pick Gerente first, then Empleado from the same office
   const { data, error } = await supabase
     .from('usuarios')
-    .select(`
-      id,
-      nombre_completo,
-      rol,
-      oficina_id,
-      oficinas:oficina_id (nombre)
-    `)
+    .select(`id, nombre_completo, rol, oficina_id, oficinas:oficina_id (nombre)`)
     .eq('estado', 'activo')
     .eq('oficina_id', oficinaId)
     .in('rol', ['Gerente', 'Empleado'])
-    .order('rol') // 'Gerente' < 'Empleado' alphabetically — handle priority below
+    .order('rol')
     .order('nombre_completo');
 
   if (error || !data || data.length === 0) return null;
 
-  // Prefer Gerente over Empleado
   const gerente = data.find((u: any) => u.rol === 'Gerente');
   const chosen = gerente || data[0];
 
