@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Mail, ArrowRight, ChevronLeft, RotateCcw, CircleCheck as CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -35,6 +36,7 @@ type Step = 'email' | 'code';
 export default function MoviLogin() {
   useEffect(() => { document.title = 'MOVI Digital'; }, []);
 
+  const navigate = useNavigate();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -126,14 +128,23 @@ export default function MoviLogin() {
         return;
       }
 
-      if (!data.action_link) {
+      if (!data.access_token || !data.refresh_token) {
         setError('Error al crear la sesión. Intenta de nuevo.');
         return;
       }
 
-      // GoTrue magic link: redirect to action_link → GoTrue redirects back with
-      // tokens in URL hash → detectSessionInUrl:true fires SIGNED_IN automatically.
-      window.location.href = data.action_link;
+      // Set session directly — no browser navigation needed.
+      // onAuthStateChange fires SIGNED_IN → MoviAuthContext loads profile → dashboard.
+      const { error: sessionErr } = await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      });
+      if (sessionErr) {
+        setError('Error al iniciar sesión. Intenta de nuevo.');
+        return;
+      }
+      // Navigate after a short tick to let MoviAuthContext process SIGNED_IN
+      setTimeout(() => navigate('/dashboard', { replace: true }), 100);
     } catch {
       setError('Error de conexión. Intenta de nuevo.');
     } finally {

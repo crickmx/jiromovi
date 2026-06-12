@@ -17,7 +17,13 @@ async function sha256(text: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function generateActionLink(email: string, supabase: ReturnType<typeof createClient>): Promise<string | null> {
+interface SessionTokens {
+  access_token: string;
+  refresh_token: string;
+}
+
+async function createSessionForEmail(email: string, supabase: ReturnType<typeof createClient>): Promise<SessionTokens | null> {
+  // Generate a magic link server-side
   const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
     type: 'magiclink',
     email,
@@ -26,7 +32,55 @@ async function generateActionLink(email: string, supabase: ReturnType<typeof cre
     console.error('generateLink error:', JSON.stringify(linkError));
     return null;
   }
-  return linkData.properties.action_link;
+
+  const actionLink = linkData.properties.action_link;
+
+  // Fetch the magic link server-side to exchange for tokens.
+  // GoTrue returns a 303 redirect with tokens in the Location header hash.
+  const verifyRes = await fetch(actionLink, {
+    method: 'GET',
+    redirect: 'manual',
+    headers: { 'Accept': 'application/json' },
+  });
+
+  // Try JSON response first (some GoTrue versions return JSON directly)
+  const contentType = verifyRes.headers.get('content-type') || '';
+  if (contentType.includes('application/json') && verifyRes.status === 200) {
+    try {
+      const json = await verifyRes.json() as { access_token?: string; refresh_token?: string };
+      if (json.access_token && json.refresh_token) {
+        return { access_token: json.access_token, refresh_token: json.refresh_token };
+      }
+    } catch { /* fall through */ }
+  }
+
+  // Parse tokens from the Location header hash (redirect flow)
+  const location = verifyRes.headers.get('location') || '';
+  console.log('GoTrue redirect location:', location.substring(0, 100));
+
+  const hashPart = location.includes('#') ? location.split('#')[1] : '';
+  if (hashPart) {
+    const params = new URLSearchParams(hashPart);
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+    if (access_token && refresh_token) {
+      return { access_token, refresh_token };
+    }
+  }
+
+  // Some GoTrue versions return tokens as query params
+  const queryPart = location.includes('?') ? location.split('?')[1].split('#')[0] : '';
+  if (queryPart) {
+    const params = new URLSearchParams(queryPart);
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+    if (access_token && refresh_token) {
+      return { access_token, refresh_token };
+    }
+  }
+
+  console.error('Could not extract tokens from GoTrue response. Status:', verifyRes.status, 'Location:', location);
+  return null;
 }
 
 Deno.serve(async (req: Request) => {
@@ -84,8 +138,8 @@ Deno.serve(async (req: Request) => {
 
       await supabase.from('passwordless_login_tokens').update({ used_at: new Date().toISOString() }).eq('id', token.id);
 
-      const actionLink = await generateActionLink(token.email, supabase);
-      if (!actionLink) {
+      const session = await createSessionForEmail(token.email, supabase);
+      if (!session) {
         return new Response(JSON.stringify({ error: 'Error al crear sesión. Intenta de nuevo.' }), {
           status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -95,7 +149,8 @@ Deno.serve(async (req: Request) => {
         success: true,
         user_id: token.user_id,
         platform,
-        action_link: actionLink,
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
         email: token.email,
       }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -152,8 +207,8 @@ Deno.serve(async (req: Request) => {
 
     await supabase.from('passwordless_login_tokens').update({ used_at: new Date().toISOString() }).eq('id', token.id);
 
-    const actionLink = await generateActionLink(token.email, supabase);
-    if (!actionLink) {
+    const session = await createSessionForEmail(token.email, supabase);
+    if (!session) {
       return new Response(JSON.stringify({ error: 'Error al crear sesión. Intenta de nuevo.' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -163,7 +218,8 @@ Deno.serve(async (req: Request) => {
       success: true,
       user_id: token.user_id,
       platform,
-      action_link: actionLink,
+      access_token: session.access_token,
+      refresh_token: session.refresh_token,
       email: token.email,
     }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
