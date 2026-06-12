@@ -106,10 +106,7 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
       console.log('[MoviAuth] onAuthStateChange event=', event, 'hasSession=', !!session);
       if (event === 'SIGNED_IN' && session) {
         if (!initialLoadDone) return;
-        setRealUser(prev => {
-          if (!prev) setLoading(true);
-          return prev;
-        });
+        setLoading(true);
         loadProfile(session.user.id);
       } else if (
         (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') &&

@@ -127,15 +127,37 @@ export default function MoviLogin() {
         setError(data.error || 'Código incorrecto.');
         return;
       }
+
+      // Subscribe to auth state change BEFORE calling verifyOtp so the
+      // MoviAuthContext listener (registered earlier) fires first and sets
+      // loading=true, preventing ProtectedRoute from redirecting to /login.
+      let navigationDone = false;
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session && !navigationDone) {
+          navigationDone = true;
+          subscription.unsubscribe();
+          navigate('/dashboard', { replace: true });
+        }
+      });
+
       const { error: otpError } = await supabase.auth.verifyOtp({
         token_hash: data.token_hash,
         type: 'magiclink',
       });
       if (otpError) {
+        subscription.unsubscribe();
         setError('Error al crear la sesión. Intenta de nuevo.');
         return;
       }
-      navigate('/dashboard', { replace: true });
+      // Navigation is handled by the onAuthStateChange subscription above.
+      // Add a fallback in case the event doesn't fire within 5 seconds.
+      setTimeout(() => {
+        if (!navigationDone) {
+          navigationDone = true;
+          subscription.unsubscribe();
+          navigate('/dashboard', { replace: true });
+        }
+      }, 5000);
     } catch {
       setError('Error de conexión. Intenta de nuevo.');
     } finally {
