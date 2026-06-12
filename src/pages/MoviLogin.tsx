@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Mail, ArrowRight, ChevronLeft, RotateCcw, CircleCheck as CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -36,7 +35,6 @@ type Step = 'email' | 'code';
 export default function MoviLogin() {
   useEffect(() => { document.title = 'MOVI Digital'; }, []);
 
-  const navigate = useNavigate();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -128,33 +126,14 @@ export default function MoviLogin() {
         return;
       }
 
-      // Register listener BEFORE verifyOtp so MoviAuthContext sets loading=true
-      // (from its own SIGNED_IN handler) before ProtectedRoute can check.
-      let navigationDone = false;
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_IN' && session && !navigationDone) {
-          navigationDone = true;
-          subscription.unsubscribe();
-          navigate('/dashboard', { replace: true });
-        }
-      });
-
-      const { error: otpErr } = await supabase.auth.verifyOtp({
-        token_hash: data.hashed_token,
-        type: 'magiclink',
-      });
-      if (otpErr) {
-        subscription.unsubscribe();
+      if (!data.action_link) {
         setError('Error al crear la sesión. Intenta de nuevo.');
         return;
       }
-      setTimeout(() => {
-        if (!navigationDone) {
-          navigationDone = true;
-          subscription.unsubscribe();
-          navigate('/dashboard', { replace: true });
-        }
-      }, 3000);
+
+      // GoTrue magic link: redirect to action_link → GoTrue redirects back with
+      // tokens in URL hash → detectSessionInUrl:true fires SIGNED_IN automatically.
+      window.location.href = data.action_link;
     } catch {
       setError('Error de conexión. Intenta de nuevo.');
     } finally {

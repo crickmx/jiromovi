@@ -17,16 +17,16 @@ async function sha256(text: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function generateHashedToken(email: string, supabase: ReturnType<typeof createClient>): Promise<string | null> {
+async function generateActionLink(email: string, supabase: ReturnType<typeof createClient>): Promise<string | null> {
   const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
     type: 'magiclink',
     email,
   });
-  if (linkError || !linkData?.properties?.hashed_token) {
+  if (linkError || !linkData?.properties?.action_link) {
     console.error('generateLink error:', JSON.stringify(linkError));
     return null;
   }
-  return linkData.properties.hashed_token;
+  return linkData.properties.action_link;
 }
 
 Deno.serve(async (req: Request) => {
@@ -84,8 +84,8 @@ Deno.serve(async (req: Request) => {
 
       await supabase.from('passwordless_login_tokens').update({ used_at: new Date().toISOString() }).eq('id', token.id);
 
-      const hashedToken = await generateHashedToken(token.email, supabase);
-      if (!hashedToken) {
+      const actionLink = await generateActionLink(token.email, supabase);
+      if (!actionLink) {
         return new Response(JSON.stringify({ error: 'Error al crear sesión. Intenta de nuevo.' }), {
           status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -95,7 +95,7 @@ Deno.serve(async (req: Request) => {
         success: true,
         user_id: token.user_id,
         platform,
-        hashed_token: hashedToken,
+        action_link: actionLink,
         email: token.email,
       }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -152,8 +152,8 @@ Deno.serve(async (req: Request) => {
 
     await supabase.from('passwordless_login_tokens').update({ used_at: new Date().toISOString() }).eq('id', token.id);
 
-    const hashedToken = await generateHashedToken(token.email, supabase);
-    if (!hashedToken) {
+    const actionLink = await generateActionLink(token.email, supabase);
+    if (!actionLink) {
       return new Response(JSON.stringify({ error: 'Error al crear sesión. Intenta de nuevo.' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -163,7 +163,7 @@ Deno.serve(async (req: Request) => {
       success: true,
       user_id: token.user_id,
       platform,
-      hashed_token: hashedToken,
+      action_link: actionLink,
       email: token.email,
     }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
