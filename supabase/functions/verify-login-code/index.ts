@@ -17,44 +17,34 @@ async function sha256(text: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function createSessionForUser(supabaseUrl: string, serviceKey: string, email: string, supabase: ReturnType<typeof createClient>): Promise<{ access_token: string; refresh_token: string } | null> {
-  // Generate a one-time magic link (does NOT send email when using service role key)
+async function createSessionForUser(email: string, supabase: ReturnType<typeof createClient>): Promise<{ access_token: string; refresh_token: string } | null> {
+  // Generate a one-time magic link token (service role key = no email sent)
   const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
     type: 'magiclink',
     email,
   });
 
   if (linkError || !linkData?.properties?.hashed_token) {
-    console.error('generateLink error:', linkError, linkData);
+    console.error('generateLink error:', JSON.stringify(linkError), JSON.stringify(linkData));
     return null;
   }
 
-  // Verify the magic link server-side to get session tokens directly
-  const verifyRes = await fetch(`${supabaseUrl}/auth/v1/verify`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': serviceKey,
-    },
-    body: JSON.stringify({
-      type: 'magiclink',
-      token_hash: linkData.properties.hashed_token,
-    }),
+  // Verify the token server-side via supabase-js — this POSTs to /auth/v1/verify
+  // and returns the session tokens directly (no PKCE, no redirect)
+  const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+    token_hash: linkData.properties.hashed_token,
+    type: 'magiclink',
   });
 
-  if (!verifyRes.ok) {
-    const errBody = await verifyRes.text().catch(() => '');
-    console.error('verify failed:', verifyRes.status, errBody);
+  if (verifyError || !verifyData?.session) {
+    console.error('verifyOtp error:', JSON.stringify(verifyError), JSON.stringify(verifyData));
     return null;
   }
 
-  const sessionJson = await verifyRes.json().catch(() => null);
-  if (!sessionJson?.access_token || !sessionJson?.refresh_token) {
-    console.error('verify response missing tokens:', sessionJson);
-    return null;
-  }
-
-  return { access_token: sessionJson.access_token, refresh_token: sessionJson.refresh_token };
+  return {
+    access_token: verifyData.session.access_token,
+    refresh_token: verifyData.session.refresh_token,
+  };
 }
 
 Deno.serve(async (req: Request) => {
@@ -127,7 +117,7 @@ Deno.serve(async (req: Request) => {
         .update({ used_at: new Date().toISOString() })
         .eq('id', token.id);
 
-      const session = await createSessionForUser(supabaseUrl, supabaseServiceKey, token.email, supabase);
+      const session = await createSessionForUser(token.email, supabase);
       if (!session) {
         return new Response(JSON.stringify({ error: 'Error al crear sesión. Intenta de nuevo.' }), {
           status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -226,7 +216,7 @@ Deno.serve(async (req: Request) => {
       .update({ used_at: new Date().toISOString() })
       .eq('id', token.id);
 
-    const session = await createSessionForUser(supabaseUrl, supabaseServiceKey, token.email, supabase);
+    const session = await createSessionForUser(token.email, supabase);
     if (!session) {
       return new Response(JSON.stringify({ error: 'Error al crear sesión. Intenta de nuevo.' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
