@@ -59,21 +59,34 @@ export function TarifasAdminPanel() {
     setUploadSuccess(null);
 
     try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('product', uploadProduct);
-      formData.append('version_name', versionName.trim());
-
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token || '';
 
+      // Upload file to Supabase Storage first (avoids edge function body size limit)
+      const storagePath = `${uploadProduct}/${Date.now()}_${selectedFile.name}`;
+      const { error: storageError } = await supabase.storage
+        .from('tariff-uploads')
+        .upload(storagePath, selectedFile, { upsert: false });
+
+      if (storageError) {
+        setUploadError('Error subiendo archivo al almacenamiento: ' + storageError.message);
+        return;
+      }
+
+      // Call edge function with storage path
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
       const res = await fetch(`${supabaseUrl}/functions/v1/multicotizador-gmm-upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
-        body: formData,
+        body: JSON.stringify({
+          storage_path: storagePath,
+          product: uploadProduct,
+          version_name: versionName.trim(),
+          original_filename: selectedFile.name,
+        }),
       });
 
       let json: any;

@@ -25,13 +25,11 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const formData = await req.formData();
-    const file = formData.get("file") as File;
-    const product = formData.get("product") as string;
-    const versionName = formData.get("version_name") as string;
+    const body = await req.json();
+    const { storage_path, product, version_name: versionName, original_filename: originalFilename } = body;
 
-    if (!file || !product || !versionName) {
-      return new Response(JSON.stringify({ error: "Missing file, product, or version_name" }), {
+    if (!storage_path || !product || !versionName) {
+      return new Response(JSON.stringify({ error: "Missing storage_path, product, or version_name" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -42,7 +40,18 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const arrayBuffer = await file.arrayBuffer();
+    // Download file from Storage
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from("tariff-uploads")
+      .download(storage_path);
+
+    if (downloadError || !fileData) {
+      return new Response(JSON.stringify({ error: "Error downloading file from storage: " + (downloadError?.message || "file not found") }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const arrayBuffer = await fileData.arrayBuffer();
     const uint8 = new Uint8Array(arrayBuffer);
 
     // Compute hash
@@ -59,6 +68,8 @@ Deno.serve(async (req: Request) => {
       .limit(1);
 
     if (existing && existing.length > 0) {
+      // Clean up storage file
+      await supabase.storage.from("tariff-uploads").remove([storage_path]);
       return new Response(JSON.stringify({ error: "Este archivo ya fue cargado anteriormente", duplicate_id: existing[0].id }), {
         status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -69,6 +80,7 @@ Deno.serve(async (req: Request) => {
     const sheetNames = workbook.SheetNames;
 
     if (sheetNames.length === 0) {
+      await supabase.storage.from("tariff-uploads").remove([storage_path]);
       return new Response(JSON.stringify({ error: "El archivo no contiene hojas" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -90,11 +102,10 @@ Deno.serve(async (req: Request) => {
 
       if (jsonData.length < 2) continue;
 
-      // Try to detect if this is a rate sheet by looking for age column
       const headers = jsonData[0] as any[];
       if (!headers) continue;
 
-      // Try to find config values (derecho_poliza, asistencia, etc.)
+      // Try to find config values
       const lowerSheet = sheetName.toLowerCase();
       if (lowerSheet.includes("config") || lowerSheet.includes("param")) {
         for (const row of jsonData) {
@@ -109,14 +120,12 @@ Deno.serve(async (req: Request) => {
       }
 
       // Parse rate tables - detect format
-      // Format: First column = age, subsequent columns = rates for different plans/regions
       const ageColIdx = headers.findIndex((h: any) => {
         const s = String(h || "").toLowerCase();
         return s === "age" || s === "edad" || s === "edades";
       });
 
       if (ageColIdx === -1) {
-        // Try alternate format: rows have lookup_key, region, age, rate columns
         const lookupIdx = headers.findIndex((h: any) => String(h || "").toLowerCase().includes("lookup"));
         const regionIdx = headers.findIndex((h: any) => String(h || "").toLowerCase().includes("region"));
         const ageIdx2 = headers.findIndex((h: any) => String(h || "").toLowerCase() === "age" || String(h || "").toLowerCase() === "edad");
@@ -155,14 +164,12 @@ Deno.serve(async (req: Request) => {
         const colHeader = String(headers[colIdx] || "");
         if (!colHeader) continue;
 
-        // Try to detect region from sheet name or header
         let region = "Mexico Region 1";
         if (sheetName.toLowerCase().includes("region 2") || sheetName.toLowerCase().includes("zona 2") || colHeader.toLowerCase().includes("region 2")) {
           region = "Mexico Region 2";
         }
         detectedRegions.add(region);
 
-        // Parse plan code from header for SA/DED/COAS detection
         const saMatch = colHeader.match(/S(\d+)/i) || colHeader.match(/(\d{2,3})(?=D)/);
         const dedMatch = colHeader.match(/D(\d+)/i);
         const coasMatch = colHeader.match(/C(\d+)/i);
@@ -170,7 +177,6 @@ Deno.serve(async (req: Request) => {
         if (dedMatch) detectedDeducibles.add(Number(dedMatch[1]));
         if (coasMatch) detectedCoaseguros.add(Number(coasMatch[1]));
 
-        // Detect gender from column header for BNP
         let rateType = "Unisex";
         if (product === "BNP") {
           if (colHeader.toLowerCase().includes("female") || colHeader.toLowerCase().includes("mujer") || colHeader.toLowerCase().includes("fem")) {
@@ -201,6 +207,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (rates.length === 0) {
+      await supabase.storage.from("tariff-uploads").remove([storage_path]);
       return new Response(JSON.stringify({ error: "No se pudieron extraer tarifas del archivo. Verifique el formato." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -212,7 +219,7 @@ Deno.serve(async (req: Request) => {
       .insert({
         product,
         version_name: versionName,
-        source_filename: file.name,
+        source_filename: originalFilename || storage_path,
         source_hash: sourceHash,
         status: "draft",
         derecho_poliza: derechoPoliza,
@@ -228,6 +235,7 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (pkgError) {
+      await supabase.storage.from("tariff-uploads").remove([storage_path]);
       return new Response(JSON.stringify({ error: "Error creating package: " + pkgError.message }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -245,11 +253,15 @@ Deno.serve(async (req: Request) => {
         .insert(batch);
       if (rateError) {
         await supabase.from("multicotizador_gmm_packages").update({ status: "failed", validation_errors: { message: rateError.message } }).eq("id", pkg.id);
+        await supabase.storage.from("tariff-uploads").remove([storage_path]);
         return new Response(JSON.stringify({ error: "Error inserting rates: " + rateError.message }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
     }
+
+    // Clean up storage file after successful processing
+    await supabase.storage.from("tariff-uploads").remove([storage_path]);
 
     return new Response(JSON.stringify({
       success: true,
