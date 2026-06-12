@@ -65,7 +65,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Parse Excel
-    const workbook = XLSX.read(uint8, { type: "array" });
+    const workbook = XLSX.read(uint8, { type: "array", bookVBA: true });
     const sheetNames = workbook.SheetNames;
 
     if (sheetNames.length === 0) {

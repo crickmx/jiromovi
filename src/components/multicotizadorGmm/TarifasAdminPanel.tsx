@@ -76,9 +76,16 @@ export function TarifasAdminPanel() {
         body: formData,
       });
 
-      const json = await res.json();
+      let json: any;
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        json = await res.json();
+      } else {
+        const text = await res.text();
+        json = { error: text || `Error del servidor (${res.status})` };
+      }
       if (!res.ok) {
-        setUploadError(json.error || 'Error al subir archivo');
+        setUploadError(json.error || `Error al subir archivo (${res.status})`);
       } else {
         setUploadSuccess(`Tarifa cargada: ${json.rates_loaded} tarifas procesadas`);
         setSelectedFile(null);
@@ -141,7 +148,7 @@ export function TarifasAdminPanel() {
           <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Subir Nueva Tarifa</h3>
         </div>
         <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
-          Sube un archivo Excel (.xlsx) con las tarifas de Bupa Nacional Vital o Bupa Nacional Plus. La tarifa se guarda como borrador hasta que la actives.
+          Sube un archivo Excel (.xlsm, .xlsx) con las tarifas de Bupa Nacional Vital o Bupa Nacional Plus. La tarifa se guarda como borrador hasta que la actives.
         </p>
 
         <div className="grid sm:grid-cols-2 gap-4 mb-4">
