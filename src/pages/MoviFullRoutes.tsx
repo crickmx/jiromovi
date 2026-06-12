@@ -56,6 +56,7 @@ const MulticotizadorDigital = lazy(() => import('./MulticotizadorDigital'));
 const AlaMedida = lazy(() => import('./comercial/AlaMedida'));
 const DisenadorAuto = lazy(() => import('./comercial/disenadores/DisenadorAuto'));
 const DisenadorGMM = lazy(() => import('./comercial/disenadores/DisenadorGMM'));
+const MulticotizadorGMM = lazy(() => import('./MulticotizadorGMM'));
 
 // Operaciones
 const BonosPage = lazy(() => import('./BonosPage'));
@@ -207,6 +208,7 @@ export default function MoviFullRoutes() {
           <Route path="/cotizar/a-la-medida/auto" element={<ProtectedRoute><DisenadorAuto /></ProtectedRoute>} />
           <Route path="/cotizar/a-la-medida/gmm" element={<ProtectedRoute><DisenadorGMM /></ProtectedRoute>} />
           <Route path="/cotizar/multicotizador" element={<ProtectedRoute><MulticotizadorDigital /></ProtectedRoute>} />
+          <Route path="/cotizar/multicotizador-gmm" element={<ProtectedRoute><MulticotizadorGMM /></ProtectedRoute>} />
 
           {/* Central de Produccion */}
           <Route path="/produccion" element={<ProtectedRoute><BonosPage /></ProtectedRoute>} />

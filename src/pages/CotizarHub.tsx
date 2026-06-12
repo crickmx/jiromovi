@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Activity, Car, FolderInput as FormInput, Compass, ChevronRight, Calculator } from 'lucide-react';
+import { Activity, Car, FolderInput as FormInput, Compass, ChevronRight, Calculator, Heart } from 'lucide-react';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { useModuleVisibility } from '../lib/useModuleVisibility';
 import { isItemVisible, WORKSPACES } from '../lib/workspaceConfig';
@@ -17,6 +17,18 @@ const MODULES = [
     shadowHover: 'hover:shadow-sky-100/40 dark:hover:shadow-sky-900/20',
     iconColor: 'text-sky-600 dark:text-sky-400',
     logo: '/logo-bx.png',
+  },
+  {
+    path: '/cotizar/multicotizador-gmm',
+    label: 'Multicotizador GMM',
+    description: 'Compara cotizaciones de Gastos Medicos Mayores entre BX+, Bupa Nacional Vital y Bupa Nacional Plus.',
+    icon: Heart,
+    color: 'from-teal-500 to-cyan-600',
+    bgLight: 'bg-teal-50 dark:bg-teal-900/20',
+    borderHover: 'hover:border-teal-200 dark:hover:border-teal-700',
+    shadowHover: 'hover:shadow-teal-100/40 dark:hover:shadow-teal-900/20',
+    iconColor: 'text-teal-600 dark:text-teal-400',
+    logo: '/logo-bupa.png',
   },
   {
     path: '/cotizar/formularios',
