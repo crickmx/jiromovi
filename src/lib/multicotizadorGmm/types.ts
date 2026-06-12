@@ -161,6 +161,60 @@ export interface BnpCalculationResult {
 // BX+ Adapter Types
 // ========================
 
+export interface BxplusCoverages {
+  reconocimiento_antiguedad: boolean;
+  medicamentos_fuera: boolean;
+  complicaciones_no_amparadas: boolean;
+  padecimientos_preexistentes: boolean;
+  eliminacion_deducible_accidente: boolean;
+  multiregion: boolean;
+  vip: boolean;
+  emergencia_medica_extranjero: boolean;
+  enfermedades_graves_extranjero: boolean;
+  cobertura_internacional: boolean;
+  ampliacion_servicios: boolean;
+  ayuda_diaria: boolean;
+  indemnizacion_eg: boolean;
+  maternidad: boolean;
+  xtensuz: boolean;
+}
+
+export const BXPLUS_COVERAGE_LABELS: Record<keyof BxplusCoverages, string> = {
+  reconocimiento_antiguedad: 'Reconocimiento de antiguedad',
+  medicamentos_fuera: 'Medicamentos fuera del hospital',
+  complicaciones_no_amparadas: 'Complicaciones no amparadas',
+  padecimientos_preexistentes: 'Padecimientos preexistentes',
+  eliminacion_deducible_accidente: 'Eliminacion deducible por accidente',
+  multiregion: 'Multiregion',
+  vip: 'Beneficio VIP',
+  emergencia_medica_extranjero: 'Emergencia medica en el extranjero',
+  enfermedades_graves_extranjero: 'Enfermedades graves en el extranjero',
+  cobertura_internacional: 'Cobertura internacional',
+  ampliacion_servicios: 'Ampliacion de servicios',
+  ayuda_diaria: 'Ayuda diaria por hospitalizacion',
+  indemnizacion_eg: 'Indemnizacion por enfermedades graves',
+  maternidad: 'Maternidad',
+  xtensuz: 'Xtensuz',
+};
+
+export const DEFAULT_BXPLUS_COVERAGES: BxplusCoverages = {
+  reconocimiento_antiguedad: false,
+  medicamentos_fuera: false,
+  complicaciones_no_amparadas: false,
+  padecimientos_preexistentes: false,
+  eliminacion_deducible_accidente: false,
+  multiregion: false,
+  vip: false,
+  emergencia_medica_extranjero: false,
+  enfermedades_graves_extranjero: false,
+  cobertura_internacional: false,
+  ampliacion_servicios: false,
+  ayuda_diaria: false,
+  indemnizacion_eg: false,
+  maternidad: false,
+  xtensuz: false,
+};
+
 export interface BxplusQuoteInput {
   estado: string;
   nivel_hospitalario: string;
@@ -170,6 +224,7 @@ export interface BxplusQuoteInput {
   coaseguro: string;
   tope_coaseguro_seleccionado?: number;
   forma_pago: FormaPago;
+  coverages?: Partial<BxplusCoverages>;
 }
 
 export interface BxplusPaymentBreakdown {
@@ -207,9 +262,17 @@ export interface BxplusCalculationResult {
 
 export type CarrierResult = BnvCalculationResult | BnpCalculationResult | BxplusCalculationResult;
 
-export interface MultiGmmOption {
+export interface OptionResult {
+  option_id: string;
+  option_label: string;
   product_id: ProductId;
-  enabled: boolean;
+  result: CarrierResult;
+}
+
+export interface MultiGmmOption {
+  id: string;
+  label: string;
+  product_id: ProductId;
   input: BnvQuoteInput | BnpQuoteInput | BxplusQuoteInput;
 }
 
@@ -221,7 +284,7 @@ export interface MultiGmmQuoteInput {
 }
 
 export interface MultiGmmCalculationResults {
-  options: CarrierResult[];
+  options: OptionResult[];
   fecha_cotizacion: string;
 }
 
@@ -232,7 +295,7 @@ export interface SavedMultiGmmQuote {
   client_name: string;
   people_json: QuotePerson[];
   options_json: MultiGmmOption[];
-  results_json: CarrierResult[];
+  results_json: OptionResult[];
   selected_formas_pago: FormaPago[];
   status: 'draft' | 'calculated' | 'pdf_generated' | 'deleted';
   pdf_url: string | null;

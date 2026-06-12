@@ -2,7 +2,7 @@ import type {
   BxplusQuoteInput, BxplusCalculationResult, BxplusPaymentBreakdown,
   QuotePerson, FormaPago, GenderType,
 } from './types';
-import { PAYMENT_FACTORS as PF, IVA_RATE as IVA } from './types';
+import { DEFAULT_BXPLUS_COVERAGES } from './types';
 import { calculateQuoteV2, loadTariffTables } from '../gmmCalculationEngineV2';
 import type { QuoteInput, TariffTables } from '../gmmTypes';
 
@@ -14,6 +14,8 @@ export function calculateBxplus(
 ): BxplusCalculationResult {
   try {
     const tables: TariffTables = loadTariffTables(tariffTablesRaw);
+
+    const coberturas = { ...DEFAULT_BXPLUS_COVERAGES, ...input.coverages };
 
     const quoteInput: QuoteInput = {
       zona: '',
@@ -30,23 +32,7 @@ export function calculateBxplus(
         sexo: p.gender === 'Masculino' ? 'Hombre' : 'Mujer',
         edad: p.age,
       })),
-      coberturas: {
-        reconocimiento_antiguedad: false,
-        medicamentos_fuera: false,
-        complicaciones_no_amparadas: false,
-        padecimientos_preexistentes: false,
-        eliminacion_deducible_accidente: false,
-        multiregion: false,
-        vip: false,
-        emergencia_medica_extranjero: false,
-        enfermedades_graves_extranjero: false,
-        cobertura_internacional: false,
-        ampliacion_servicios: false,
-        ayuda_diaria: false,
-        indemnizacion_eg: false,
-        maternidad: false,
-        xtensuz: false,
-      },
+      coberturas,
     };
 
     const result = calculateQuoteV2(quoteInput, tables);

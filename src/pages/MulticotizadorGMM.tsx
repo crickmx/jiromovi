@@ -3,10 +3,14 @@ import { Heart, Calculator, History, Settings, Plus, Trash2, Users, FileDown, Sa
 import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { supabase } from '../lib/supabase';
 import { calculateBnv, calculateBxplus, calculateBnp } from '../lib/multicotizadorGmm';
-import type { ProductId, QuotePerson, FormaPago, CarrierResult, MultiGmmOption, BnvQuoteInput, BnpQuoteInput, BxplusQuoteInput, SavedMultiGmmQuote } from '../lib/multicotizadorGmm/types';
-import { PRODUCT_LABELS, PRODUCT_COLORS } from '../lib/multicotizadorGmm/types';
+import type {
+  ProductId, QuotePerson, FormaPago, MultiGmmOption, OptionResult,
+  BnvQuoteInput, BnpQuoteInput, BxplusQuoteInput, SavedMultiGmmQuote,
+} from '../lib/multicotizadorGmm/types';
+import { DEFAULT_BXPLUS_COVERAGES } from '../lib/multicotizadorGmm/types';
 import { TarifasAdminPanel } from '../components/multicotizadorGmm/TarifasAdminPanel';
 import { ComparisonResults } from '../components/multicotizadorGmm/ComparisonResults';
+import { OptionConfigurator } from '../components/multicotizadorGmm/OptionConfigurator';
 import { generateMultiGmmPdf } from '../lib/multicotizadorGmm/pdfGenerator';
 
 const TABS = [
@@ -25,39 +29,23 @@ const DEFAULT_PERSON: () => QuotePerson = () => ({
   age: 30,
 });
 
-const DEFAULT_BNV_INPUT: BnvQuoteInput = {
-  region_zone: 'Zona 1',
-  suma_asegurada: 100,
-  deducible: 35,
-  coaseguro: 10,
-  tope_coaseguro: 30000,
-  client_type: 'Normal',
-  asistencia_extranjero: true,
-  forma_pago: 'Anual',
-};
-
-const DEFAULT_BNP_INPUT: BnpQuoteInput = {
-  region_zone: 'Zona 1',
-  suma_asegurada: 50,
-  deducible: 35,
-  coaseguro: 10,
-  client_type: 'Normal',
-  maternidad_titular: false,
-  maternidad_conyuge: false,
-  asistencia_extranjero: true,
-  cobertura_catastrofica_extranjero: false,
-  forma_pago: 'Anual',
-};
-
-const DEFAULT_BXPLUS_INPUT: BxplusQuoteInput = {
-  estado: 'CDMX',
-  nivel_hospitalario: 'Alto',
-  tabulador: 'A',
-  suma_asegurada: '500',
-  deducible: '20000',
-  coaseguro: '10%',
-  forma_pago: 'Anual',
-};
+function createDefaultOption(index: number): MultiGmmOption {
+  return {
+    id: crypto.randomUUID(),
+    label: `Opcion ${index}`,
+    product_id: 'BXPLUS',
+    input: {
+      estado: 'CDMX',
+      nivel_hospitalario: 'Alto',
+      tabulador: 'A',
+      suma_asegurada: '500',
+      deducible: '20000',
+      coaseguro: '10%',
+      forma_pago: 'Anual',
+      coverages: { ...DEFAULT_BXPLUS_COVERAGES },
+    } as BxplusQuoteInput,
+  };
+}
 
 export default function MulticotizadorGMM() {
   const { usuario } = useMoviAuth();
@@ -66,13 +54,15 @@ export default function MulticotizadorGMM() {
 
   const [clientName, setClientName] = useState('');
   const [people, setPeople] = useState<QuotePerson[]>([DEFAULT_PERSON()]);
-  const [enabledProducts, setEnabledProducts] = useState<Record<ProductId, boolean>>({ BXPLUS: true, BNV: true, BNP: true });
-  const [bnvInput, setBnvInput] = useState<BnvQuoteInput>(DEFAULT_BNV_INPUT);
-  const [bnpInput, setBnpInput] = useState<BnpQuoteInput>(DEFAULT_BNP_INPUT);
-  const [bxplusInput, setBxplusInput] = useState<BxplusQuoteInput>(DEFAULT_BXPLUS_INPUT);
+  const [options, setOptions] = useState<MultiGmmOption[]>([
+    createDefaultOption(1),
+    createDefaultOption(2),
+    createDefaultOption(3),
+  ]);
+  const [expandedOptions, setExpandedOptions] = useState<Set<string>>(new Set([options[0].id]));
 
   const [calculating, setCalculating] = useState(false);
-  const [results, setResults] = useState<CarrierResult[] | null>(null);
+  const [results, setResults] = useState<OptionResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedQuotes, setSavedQuotes] = useState<SavedMultiGmmQuote[]>([]);
@@ -96,14 +86,51 @@ export default function MulticotizadorGMM() {
     setPeople(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
   };
 
+  const addOption = () => {
+    const newOpt = createDefaultOption(options.length + 1);
+    setOptions(prev => [...prev, newOpt]);
+    setExpandedOptions(prev => new Set([...prev, newOpt.id]));
+  };
+
+  const removeOption = (id: string) => {
+    setOptions(prev => prev.filter(o => o.id !== id));
+    setExpandedOptions(prev => { const s = new Set(prev); s.delete(id); return s; });
+  };
+
+  const duplicateOption = (id: string) => {
+    const source = options.find(o => o.id === id);
+    if (!source) return;
+    const newOpt: MultiGmmOption = {
+      ...structuredClone(source),
+      id: crypto.randomUUID(),
+      label: `${source.label} (copia)`,
+    };
+    const idx = options.findIndex(o => o.id === id);
+    const updated = [...options];
+    updated.splice(idx + 1, 0, newOpt);
+    setOptions(updated);
+    setExpandedOptions(prev => new Set([...prev, newOpt.id]));
+  };
+
+  const updateOption = (updated: MultiGmmOption) => {
+    setOptions(prev => prev.map(o => o.id === updated.id ? updated : o));
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpandedOptions(prev => {
+      const s = new Set(prev);
+      if (s.has(id)) s.delete(id); else s.add(id);
+      return s;
+    });
+  };
+
   const handleCalculate = async () => {
     if (people.length === 0 || people.some(p => !p.name.trim())) {
       setError('Agrega al menos un asegurado con nombre');
       return;
     }
-    const activeProducts = (Object.entries(enabledProducts) as [ProductId, boolean][]).filter(([, v]) => v).map(([k]) => k);
-    if (activeProducts.length === 0) {
-      setError('Selecciona al menos un producto para cotizar');
+    if (options.length === 0) {
+      setError('Agrega al menos una opcion para cotizar');
       return;
     }
 
@@ -112,9 +139,16 @@ export default function MulticotizadorGMM() {
     setResults(null);
 
     try {
-      const carrierResults: CarrierResult[] = [];
+      const optionResults: OptionResult[] = [];
 
-      if (enabledProducts.BNV) {
+      // Preload tariff data per product to avoid redundant fetches
+      const productTariffs: Record<string, any> = {};
+
+      const needsBnv = options.some(o => o.product_id === 'BNV');
+      const needsBnp = options.some(o => o.product_id === 'BNP');
+      const needsBxplus = options.some(o => o.product_id === 'BXPLUS');
+
+      if (needsBnv) {
         const { data: pkg } = await supabase
           .from('multicotizador_gmm_packages')
           .select('*')
@@ -126,23 +160,13 @@ export default function MulticotizadorGMM() {
             .from('multicotizador_gmm_rates')
             .select('lookup_key, region, age, rate, rate_type')
             .eq('package_id', pkg.id);
-          if (rates) {
-            const result = calculateBnv(bnvInput, people, {
-              package_id: pkg.id,
-              derecho_poliza: pkg.derecho_poliza,
-              asistencia_extranjero: pkg.asistencia_extranjero,
-              client_types: pkg.client_types || [],
-              internal_factors: pkg.internal_factors || [],
-              rates: rates as any,
-            });
-            carrierResults.push(result);
-          }
+          productTariffs.BNV = { pkg, rates };
         } else {
-          carrierResults.push({ product: 'BNV', people_results: [], prima_anual_total: 0, totals: {} as any, tariff_package_id: '', error: 'No hay tarifa BNV activa. Sube una tarifa en la pestana Tarifas.' });
+          productTariffs.BNV = { error: 'No hay tarifa BNV activa. Sube una tarifa en la pestana Tarifas.' };
         }
       }
 
-      if (enabledProducts.BNP) {
+      if (needsBnp) {
         const { data: pkg } = await supabase
           .from('multicotizador_gmm_packages')
           .select('*')
@@ -154,24 +178,13 @@ export default function MulticotizadorGMM() {
             .from('multicotizador_gmm_rates')
             .select('lookup_key, plan_name, region, age, rate, rate_type')
             .eq('package_id', pkg.id);
-          if (rates) {
-            const result = calculateBnp(bnpInput, people, {
-              package_id: pkg.id,
-              derecho_poliza: pkg.derecho_poliza,
-              asistencia_extranjero: pkg.asistencia_extranjero,
-              costo_catastrofica_extranjero: pkg.costo_catastrofica_extranjero || 5800,
-              client_types: pkg.client_types || [],
-              internal_factors: pkg.internal_factors || [],
-              rates: rates as any,
-            });
-            carrierResults.push(result);
-          }
+          productTariffs.BNP = { pkg, rates };
         } else {
-          carrierResults.push({ product: 'BNP', people_results: [], prima_anual_total: 0, totals: {} as any, tariff_package_id: '', error: 'No hay tarifa BNP activa. Sube una tarifa en la pestana Tarifas.' });
+          productTariffs.BNP = { error: 'No hay tarifa BNP activa. Sube una tarifa en la pestana Tarifas.' };
         }
       }
 
-      if (enabledProducts.BXPLUS) {
+      if (needsBxplus) {
         const { data: pkg } = await supabase
           .from('tariff_packages')
           .select('id')
@@ -182,16 +195,64 @@ export default function MulticotizadorGMM() {
             .from('tariff_tables')
             .select('table_key, data_json')
             .eq('tariff_package_id', pkg.id);
-          if (tables) {
-            const result = calculateBxplus(bxplusInput, people, tables, pkg.id);
-            carrierResults.push(result);
-          }
+          productTariffs.BXPLUS = { pkg, tables };
         } else {
-          carrierResults.push({ product: 'BXPLUS', people_results: [], prima_anual_total: 0, totals: {} as any, tariff_package_id: '', error: 'No hay tarifa BX+ activa.' });
+          productTariffs.BXPLUS = { error: 'No hay tarifa BX+ activa.' };
         }
       }
 
-      setResults(carrierResults);
+      // Calculate each option
+      for (const opt of options) {
+        const tariff = productTariffs[opt.product_id];
+
+        if (!tariff || tariff.error) {
+          optionResults.push({
+            option_id: opt.id,
+            option_label: opt.label,
+            product_id: opt.product_id,
+            result: {
+              product: opt.product_id,
+              people_results: [],
+              prima_anual_total: 0,
+              totals: {} as any,
+              tariff_package_id: '',
+              error: tariff?.error || 'Tarifa no disponible',
+            } as any,
+          });
+          continue;
+        }
+
+        if (opt.product_id === 'BNV') {
+          const { pkg, rates } = tariff;
+          const result = calculateBnv(opt.input as BnvQuoteInput, people, {
+            package_id: pkg.id,
+            derecho_poliza: pkg.derecho_poliza,
+            asistencia_extranjero: pkg.asistencia_extranjero,
+            client_types: pkg.client_types || [],
+            internal_factors: pkg.internal_factors || [],
+            rates,
+          });
+          optionResults.push({ option_id: opt.id, option_label: opt.label, product_id: 'BNV', result });
+        } else if (opt.product_id === 'BNP') {
+          const { pkg, rates } = tariff;
+          const result = calculateBnp(opt.input as BnpQuoteInput, people, {
+            package_id: pkg.id,
+            derecho_poliza: pkg.derecho_poliza,
+            asistencia_extranjero: pkg.asistencia_extranjero,
+            costo_catastrofica_extranjero: pkg.costo_catastrofica_extranjero || 5800,
+            client_types: pkg.client_types || [],
+            internal_factors: pkg.internal_factors || [],
+            rates,
+          });
+          optionResults.push({ option_id: opt.id, option_label: opt.label, product_id: 'BNP', result });
+        } else if (opt.product_id === 'BXPLUS') {
+          const { pkg, tables } = tariff;
+          const result = calculateBxplus(opt.input as BxplusQuoteInput, people, tables, pkg.id);
+          optionResults.push({ option_id: opt.id, option_label: opt.label, product_id: 'BXPLUS', result });
+        }
+      }
+
+      setResults(optionResults);
     } catch (err: any) {
       setError(err.message || 'Error al calcular');
     } finally {
@@ -203,16 +264,12 @@ export default function MulticotizadorGMM() {
     if (!results || !clientName.trim()) return;
     setSaving(true);
     try {
-      const options: MultiGmmOption[] = [];
-      if (enabledProducts.BNV) options.push({ product_id: 'BNV', enabled: true, input: bnvInput });
-      if (enabledProducts.BNP) options.push({ product_id: 'BNP', enabled: true, input: bnpInput });
-      if (enabledProducts.BXPLUS) options.push({ product_id: 'BXPLUS', enabled: true, input: bxplusInput });
-
       await supabase.from('multicotizador_gmm_quotes').insert({
         client_name: clientName,
         people_json: people,
         options_json: options,
         results_json: results,
+        selected_formas_pago: ['Anual', 'Semestral', 'Trimestral', 'Mensual'],
         status: 'calculated',
       });
       setError(null);
@@ -348,169 +405,29 @@ export default function MulticotizadorGMM() {
             </div>
           </div>
 
-          {/* Product Selection */}
-          <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-white/[0.06] p-5">
-            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-4">Productos a Comparar</h3>
-            <div className="grid sm:grid-cols-3 gap-3">
-              {(['BXPLUS', 'BNV', 'BNP'] as ProductId[]).map(pid => (
-                <label
-                  key={pid}
-                  className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    enabledProducts[pid]
-                      ? 'border-teal-300 dark:border-teal-600 bg-teal-50/50 dark:bg-teal-900/10'
-                      : 'border-neutral-200 dark:border-white/[0.06] hover:border-neutral-300 dark:hover:border-white/10'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={enabledProducts[pid]}
-                    onChange={e => setEnabledProducts(prev => ({ ...prev, [pid]: e.target.checked }))}
-                    className="w-4 h-4 rounded border-neutral-300 text-teal-600 focus:ring-teal-500"
-                  />
-                  <div>
-                    <span className="text-sm font-medium text-neutral-900 dark:text-white">{PRODUCT_LABELS[pid]}</span>
-                  </div>
-                </label>
+          {/* Options */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Opciones de Cotizacion</h3>
+              <button onClick={addOption} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300 text-xs font-medium hover:bg-teal-100 dark:hover:bg-teal-900/40 transition-colors">
+                <Plus className="w-3.5 h-3.5" /> Agregar Opcion
+              </button>
+            </div>
+            <div className="space-y-3">
+              {options.map(opt => (
+                <OptionConfigurator
+                  key={opt.id}
+                  option={opt}
+                  onUpdate={updateOption}
+                  onRemove={() => removeOption(opt.id)}
+                  onDuplicate={() => duplicateOption(opt.id)}
+                  canRemove={options.length > 1}
+                  isExpanded={expandedOptions.has(opt.id)}
+                  onToggleExpand={() => toggleExpand(opt.id)}
+                />
               ))}
             </div>
           </div>
-
-          {/* BNV Parameters */}
-          {enabledProducts.BNV && (
-            <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-white/[0.06] p-5">
-              <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-4" style={{ color: PRODUCT_COLORS.BNV }}>Bupa Nacional Vital - Parametros</h3>
-              <div className="grid sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Region</label>
-                  <select value={bnvInput.region_zone} onChange={e => setBnvInput(prev => ({ ...prev, region_zone: e.target.value as any }))} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white">
-                    <option value="Zona 1">Zona 1 (CDMX, ZM, MTY)</option>
-                    <option value="Zona 2">Zona 2 (Resto)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Suma Asegurada (MMDP)</label>
-                  <select value={bnvInput.suma_asegurada} onChange={e => setBnvInput(prev => ({ ...prev, suma_asegurada: Number(e.target.value) }))} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white">
-                    {[3, 5, 10, 15, 20, 30, 50, 75, 100].map(v => <option key={v} value={v}>{v} MDP</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Deducible (miles)</label>
-                  <select value={bnvInput.deducible} onChange={e => setBnvInput(prev => ({ ...prev, deducible: Number(e.target.value) }))} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white">
-                    {[5, 10, 15, 20, 25, 30, 35, 40, 50, 100].map(v => <option key={v} value={v}>${v},000</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Coaseguro (%)</label>
-                  <select value={bnvInput.coaseguro} onChange={e => setBnvInput(prev => ({ ...prev, coaseguro: Number(e.target.value) }))} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white">
-                    {[0, 10, 20, 30].map(v => <option key={v} value={v}>{v}%</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Tope Coaseguro</label>
-                  <select value={bnvInput.tope_coaseguro} onChange={e => setBnvInput(prev => ({ ...prev, tope_coaseguro: Number(e.target.value) }))} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white">
-                    {[0, 30000, 40000, 50000, 60000].map(v => <option key={v} value={v}>{v === 0 ? 'Sin tope' : `$${v.toLocaleString()}`}</option>)}
-                  </select>
-                </div>
-                <div className="flex items-end">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={bnvInput.asistencia_extranjero} onChange={e => setBnvInput(prev => ({ ...prev, asistencia_extranjero: e.target.checked }))} className="w-4 h-4 rounded border-neutral-300 text-teal-600" />
-                    <span className="text-xs text-neutral-700 dark:text-neutral-300">Asistencia Extranjero</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* BNP Parameters */}
-          {enabledProducts.BNP && (
-            <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-white/[0.06] p-5">
-              <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-4" style={{ color: PRODUCT_COLORS.BNP }}>Bupa Nacional Plus - Parametros</h3>
-              <div className="grid sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Region</label>
-                  <select value={bnpInput.region_zone} onChange={e => setBnpInput(prev => ({ ...prev, region_zone: e.target.value as any }))} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white">
-                    <option value="Zona 1">Zona 1 (CDMX, ZM, MTY)</option>
-                    <option value="Zona 2">Zona 2 (Resto)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Suma Asegurada (MDP)</label>
-                  <select value={bnpInput.suma_asegurada} onChange={e => setBnpInput(prev => ({ ...prev, suma_asegurada: Number(e.target.value) }))} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white">
-                    {[5, 10, 15, 20, 30, 50, 75, 100].map(v => <option key={v} value={v}>{v} MDP</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Deducible (miles)</label>
-                  <select value={bnpInput.deducible} onChange={e => setBnpInput(prev => ({ ...prev, deducible: Number(e.target.value) }))} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white">
-                    {[5, 10, 15, 20, 25, 30, 35, 50].map(v => <option key={v} value={v}>${v},000</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Coaseguro (%)</label>
-                  <select value={bnpInput.coaseguro} onChange={e => setBnpInput(prev => ({ ...prev, coaseguro: Number(e.target.value) }))} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white">
-                    {[0, 10, 20, 30].map(v => <option key={v} value={v}>{v}%</option>)}
-                  </select>
-                </div>
-                <div className="flex items-end gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={bnpInput.asistencia_extranjero} onChange={e => setBnpInput(prev => ({ ...prev, asistencia_extranjero: e.target.checked }))} className="w-4 h-4 rounded border-neutral-300 text-teal-600" />
-                    <span className="text-xs text-neutral-700 dark:text-neutral-300">Asistencia Ext.</span>
-                  </label>
-                </div>
-                <div className="flex items-end">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={bnpInput.cobertura_catastrofica_extranjero} onChange={e => setBnpInput(prev => ({ ...prev, cobertura_catastrofica_extranjero: e.target.checked }))} className="w-4 h-4 rounded border-neutral-300 text-teal-600" />
-                    <span className="text-xs text-neutral-700 dark:text-neutral-300">Catastrofica Ext.</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* BX+ Parameters */}
-          {enabledProducts.BXPLUS && (
-            <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-white/[0.06] p-5">
-              <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-4" style={{ color: PRODUCT_COLORS.BXPLUS }}>BX+ - Parametros</h3>
-              <div className="grid sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Estado</label>
-                  <select value={bxplusInput.estado} onChange={e => setBxplusInput(prev => ({ ...prev, estado: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white">
-                    {['CDMX', 'JALISCO', 'NUEVO LEON', 'ESTADO DE MEXICO', 'PUEBLA', 'QUERETARO', 'GUANAJUATO', 'SONORA', 'CHIHUAHUA', 'YUCATAN'].map(v => <option key={v} value={v}>{v}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Nivel Hospitalario</label>
-                  <select value={bxplusInput.nivel_hospitalario} onChange={e => setBxplusInput(prev => ({ ...prev, nivel_hospitalario: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white">
-                    {['Alto', 'Medio', 'Basico'].map(v => <option key={v} value={v}>{v}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Tabulador</label>
-                  <select value={bxplusInput.tabulador} onChange={e => setBxplusInput(prev => ({ ...prev, tabulador: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white">
-                    {['A', 'B', 'C'].map(v => <option key={v} value={v}>{v}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Suma Asegurada</label>
-                  <select value={bxplusInput.suma_asegurada} onChange={e => setBxplusInput(prev => ({ ...prev, suma_asegurada: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white">
-                    {['200', '300', '400', '500', '750', '1000'].map(v => <option key={v} value={v}>${v} MDP</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Deducible</label>
-                  <select value={bxplusInput.deducible} onChange={e => setBxplusInput(prev => ({ ...prev, deducible: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white">
-                    {['10000', '15000', '20000', '25000', '30000', '40000', '50000'].map(v => <option key={v} value={v}>${Number(v).toLocaleString()}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Coaseguro</label>
-                  <select value={bxplusInput.coaseguro} onChange={e => setBxplusInput(prev => ({ ...prev, coaseguro: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white">
-                    {['0%', '10%', '20%', '30%'].map(v => <option key={v} value={v}>{v}</option>)}
-                  </select>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Error */}
           {error && (
@@ -545,7 +462,7 @@ export default function MulticotizadorGMM() {
           </div>
 
           {/* Results */}
-          {results && <ComparisonResults results={results} selectedFormaPago={bnvInput.forma_pago} />}
+          {results && <ComparisonResults results={results} selectedFormaPago="Anual" />}
         </div>
       )}
 

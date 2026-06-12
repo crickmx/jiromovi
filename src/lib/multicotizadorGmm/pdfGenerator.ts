@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import type { CarrierResult, QuotePerson, FormaPago } from './types';
-import { PRODUCT_LABELS, PRODUCT_COLORS, PAYMENT_FACTORS } from './types';
+import type { QuotePerson, FormaPago, OptionResult } from './types';
+import { PRODUCT_LABELS, PAYMENT_FACTORS } from './types';
 
 const FORMAS_PAGO: FormaPago[] = ['Anual', 'Semestral', 'Trimestral', 'Mensual'];
 
@@ -9,13 +9,8 @@ function fmt(n: number): string {
   return n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
-function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace('#', '');
-  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
-}
-
 export async function generateMultiGmmPdf(
-  results: CarrierResult[],
+  results: OptionResult[],
   people: QuotePerson[],
   clientName: string,
   usuario: any
@@ -25,7 +20,7 @@ export async function generateMultiGmmPdf(
   const margin = 15;
   let y = margin;
 
-  const validResults = results.filter(r => !r.error);
+  const validOptions = results.filter(r => !r.result.error);
 
   // Header
   doc.setFontSize(18);
@@ -89,17 +84,18 @@ export async function generateMultiGmmPdf(
   y = (doc as any).lastAutoTable.finalY + 8;
 
   // Comparison by forma de pago
-  if (validResults.length > 0) {
+  if (validOptions.length > 0) {
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(23, 23, 23);
     doc.text('Comparativa por Forma de Pago', margin, y);
     y += 4;
 
-    const headers = ['Forma de Pago', ...validResults.map(r => PRODUCT_LABELS[r.product])];
+    const headers = ['Forma de Pago', ...validOptions.map(opt => `${opt.option_label}\n(${PRODUCT_LABELS[opt.product_id]})`)];
     const body = FORMAS_PAGO.map(fp => {
       const row: string[] = [fp];
-      for (const r of validResults) {
+      for (const opt of validOptions) {
+        const r = opt.result;
         if (!r.totals || !r.totals[fp]) {
           row.push('-');
         } else {
@@ -118,7 +114,7 @@ export async function generateMultiGmmPdf(
       headStyles: { fillColor: [15, 148, 136], textColor: 255, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
       columnStyles: Object.fromEntries(
-        validResults.map((_, i) => [i + 1, { halign: 'right' as const }])
+        validOptions.map((_, i) => [i + 1, { halign: 'right' as const }])
       ),
     });
 
@@ -126,18 +122,18 @@ export async function generateMultiGmmPdf(
   }
 
   // Per-person breakdown
-  if (validResults.length > 0 && y < 220) {
+  if (validOptions.length > 0 && y < 220) {
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(23, 23, 23);
     doc.text('Desglose por Asegurado (Prima Anual)', margin, y);
     y += 4;
 
-    const headers = ['Asegurado', 'Edad', ...validResults.map(r => PRODUCT_LABELS[r.product])];
+    const headers = ['Asegurado', 'Edad', ...validOptions.map(opt => opt.option_label)];
     const body = people.map((p, pIdx) => {
       const row: string[] = [p.name, String(p.age)];
-      for (const r of validResults) {
-        const pr = r.people_results[pIdx];
+      for (const opt of validOptions) {
+        const pr = opt.result.people_results[pIdx];
         let amount = 0;
         if (pr) {
           if ('discounted_rate' in pr) amount = (pr as any).discounted_rate;
@@ -149,7 +145,7 @@ export async function generateMultiGmmPdf(
       return row;
     });
 
-    body.push(['Total', '', ...validResults.map(r => fmt(r.prima_anual_total))]);
+    body.push(['Total', '', ...validOptions.map(opt => fmt(opt.result.prima_anual_total))]);
 
     autoTable(doc, {
       startY: y,
@@ -160,7 +156,7 @@ export async function generateMultiGmmPdf(
       headStyles: { fillColor: [15, 148, 136], textColor: 255, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
       columnStyles: Object.fromEntries(
-        validResults.map((_, i) => [i + 2, { halign: 'right' as const }])
+        validOptions.map((_, i) => [i + 2, { halign: 'right' as const }])
       ),
     });
 
