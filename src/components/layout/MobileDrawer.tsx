@@ -18,9 +18,11 @@ interface Props {
   userRole: UserRole;
   usuario: Usuario | null;
   onSignOut: () => void;
+  isModuleVisible?: (key: string, role: string, oficina_id?: string | null) => boolean;
+  oficinaId?: string | null;
 }
 
-export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, usuario, onSignOut }: Props) {
+export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, usuario, onSignOut, isModuleVisible, oficinaId }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -189,7 +191,10 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
                 </p>
               </div>
               <div className="space-y-0.5">
-                {workspace.items.filter(item => isItemVisible(item, userRole)).map((item) => {
+                {workspace.items.filter(item =>
+                    isItemVisible(item, userRole) &&
+                    (isModuleVisible ? isModuleVisible(item.path, userRole, oficinaId) : true)
+                  ).map((item) => {
                   const active = isActive(item);
                   return (
                     <button
@@ -230,6 +235,7 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
                 if (entry.type === 'link') {
                   const item = entry.item;
                   if (!isTopLevelItemVisible(item, userRole)) return null;
+                  if (isModuleVisible && !isModuleVisible(item.path, userRole, oficinaId)) return null;
                   const Icon = item.icon;
                   const active = isTopLevelActive(item.path, item.matchPrefix);
                   return (
@@ -251,6 +257,13 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
 
                 const ws = entry.workspace;
                 if (!isWorkspaceVisible(ws, userRole)) return null;
+                if (isModuleVisible) {
+                  const anyVisible = ws.items.some(item =>
+                    isTopLevelItemVisible(item as any, userRole) &&
+                    isModuleVisible(item.path, userRole, oficinaId)
+                  );
+                  if (!anyVisible) return null;
+                }
                 const Icon = ws.icon;
                 const active = ws.id === (workspace?.id ?? null);
                 const firstPath = ws.items[0]?.path || '/dashboard';

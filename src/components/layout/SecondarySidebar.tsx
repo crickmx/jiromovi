@@ -12,13 +12,18 @@ interface Props {
   onToggleCollapse: () => void;
   mobileMode?: boolean;
   onMobileItemClick?: () => void;
+  isModuleVisible?: (key: string, role: string, oficina_id?: string | null) => boolean;
+  oficinaId?: string | null;
 }
 
-export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, onToggleCollapse, mobileMode, onMobileItemClick }: Props) {
+export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, onToggleCollapse, mobileMode, onMobileItemClick, isModuleVisible, oficinaId }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const visibleItems = workspace.items.filter(item => isItemVisible(item, userRole));
+  const visibleItems = workspace.items.filter(item =>
+    isItemVisible(item, userRole) &&
+    (isModuleVisible ? isModuleVisible(item.path, userRole, oficinaId) : true)
+  );
 
   const isActive = (item: WorkspaceNavItem) => {
     if (location.pathname === item.path) return true;

@@ -16,11 +16,13 @@ interface Props {
   onSignOut: () => void;
   mobileMode?: boolean;
   onMobileClose?: () => void;
+  isModuleVisible?: (key: string, role: string, oficina_id?: string | null) => boolean;
+  oficinaId?: string | null;
 }
 
 const TOOLTIP_CLS = "text-xs font-semibold bg-slate-900 text-white border-slate-700/60 shadow-xl rounded-xl px-3 py-1.5";
 
-export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut, mobileMode, onMobileClose }: Props) {
+export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut, mobileMode, onMobileClose, isModuleVisible, oficinaId }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -76,6 +78,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
             if (entry.type === 'link') {
               const item = entry.item;
               if (!isTopLevelItemVisible(item, userRole)) return null;
+              if (isModuleVisible && !isModuleVisible(item.path, userRole, oficinaId)) return null;
               const Icon = item.icon;
               const isActive = isTopLevelActive(item.path, item.matchPrefix);
 
@@ -111,6 +114,14 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
 
             const ws = entry.workspace;
             if (!isWorkspaceVisible(ws, userRole)) return null;
+            // Hide workspace rail button if all its items are overridden to hidden
+            if (isModuleVisible) {
+              const anyVisible = ws.items.some(item =>
+                isTopLevelItemVisible(item as any, userRole) &&
+                isModuleVisible(item.path, userRole, oficinaId)
+              );
+              if (!anyVisible) return null;
+            }
             const Icon = ws.icon;
             const isActive = ws.id === activeWorkspaceId;
             const firstPath = ws.items[0]?.path || '/dashboard';

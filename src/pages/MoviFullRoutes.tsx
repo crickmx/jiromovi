@@ -114,6 +114,7 @@ const GamificacionAdmin = lazy(() => import('./GamificacionAdmin'));
 const AutomatizacionIA = lazy(() => import('./AutomatizacionIA'));
 const MascaraAdmin = lazy(() => import('./MascaraAdmin'));
 const TelefoniaAdmin = lazy(() => import('./TelefoniaAdmin'));
+const ModulosAdmin = lazy(() => import('./ModulosAdmin'));
 
 // Shared
 const Perfil = lazy(() => import('./Perfil'));
@@ -274,6 +275,7 @@ export default function MoviFullRoutes() {
           <Route path="/admin/telefonia" element={<ProtectedRoute requireAdmin><TelefoniaAdmin /></ProtectedRoute>} />
           <Route path="/admin/gamificacion" element={<ProtectedRoute requireAdmin><GamificacionAdmin /></ProtectedRoute>} />
           <Route path="/admin/automatizacion-ia" element={<ProtectedRoute requireAdmin><AutomatizacionIA /></ProtectedRoute>} />
+          <Route path="/admin/modulos" element={<ProtectedRoute requireAdmin><ModulosAdmin /></ProtectedRoute>} />
 
           {/* Shared profile */}
           <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />

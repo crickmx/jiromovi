@@ -9,6 +9,7 @@ import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { useImpersonation } from '../contexts/ImpersonationContext';
 import { resolveWorkspace } from '../lib/workspaceConfig';
 import type { UserRole } from '../lib/workspaceConfig';
+import { useModuleVisibility } from '../lib/useModuleVisibility';
 
 // Routes that need full-height layout (no padding, overflow-hidden)
 const FULL_HEIGHT_PREFIXES = [
@@ -31,6 +32,8 @@ export function Layout({ children }: LayoutProps) {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   const userRole = (usuario?.rol as UserRole) || 'Agente';
+  const oficinaId = (usuario as any)?.oficina_id ?? null;
+  const { isVisible: isModuleVisible } = useModuleVisibility();
   const { workspace, activeItem } = resolveWorkspace(location.pathname, userRole);
 
   const isFullHeight = FULL_HEIGHT_PREFIXES.some(prefix => location.pathname.startsWith(prefix));
@@ -57,6 +60,8 @@ export function Layout({ children }: LayoutProps) {
           userRole={userRole}
           usuario={usuario}
           onSignOut={handleSignOut}
+          isModuleVisible={isModuleVisible}
+          oficinaId={oficinaId}
         />
       </div>
 
@@ -69,6 +74,8 @@ export function Layout({ children }: LayoutProps) {
             userRole={userRole}
             collapsed={secondaryCollapsed}
             onToggleCollapse={() => setSecondaryCollapsed(c => !c)}
+            isModuleVisible={isModuleVisible}
+            oficinaId={oficinaId}
           />
         </div>
       )}
@@ -82,6 +89,8 @@ export function Layout({ children }: LayoutProps) {
         userRole={userRole}
         usuario={usuario}
         onSignOut={handleSignOut}
+        isModuleVisible={isModuleVisible}
+        oficinaId={oficinaId}
       />
 
       {/* Main content — shift down when banner is visible */}

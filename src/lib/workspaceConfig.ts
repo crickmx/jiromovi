@@ -171,6 +171,7 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/admin/diagnostico', label: 'Diagnostico', icon: Activity, visibleTo: ADMIN_ONLY },
     { path: '/admin/mascara', label: 'Mascara de Usuario', icon: Eye, visibleTo: ADMIN_ONLY },
     { path: '/admin/telefonia', label: 'Telefonía', icon: Phone, visibleTo: ADMIN_ONLY },
+    { path: '/admin/modulos', label: 'Visibilidad Modulos', icon: Layers, visibleTo: ADMIN_ONLY },
     // Inteligencia Artificial
     { path: '/admin/chava-inteligencia', label: 'Dashboard IA', icon: BarChart3, visibleTo: ADMIN_ONLY },
     { path: '/admin/base-conocimiento', label: 'Base Conocimiento', icon: BookOpen, visibleTo: ADMIN_ONLY },
