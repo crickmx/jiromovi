@@ -9,6 +9,12 @@ import { NotificationProvider } from '../contexts/NotificationContext';
 const MoviDashboard = lazy(() => import('./Dashboard'));
 const Chava = lazy(() => import('./Chava'));
 const Store = lazy(() => import('./Store'));
+const StoreCarrito = lazy(() => import('./StoreCarrito'));
+const StoreAdmin = lazy(() => import('./StoreAdmin'));
+const StorePedidos = lazy(() => import('./StorePedidos'));
+const StoreMisPedidos = lazy(() => import('./StoreMisPedidos'));
+const StorePedidoDetalle = lazy(() => import('./StorePedidoDetalle'));
+const StorePedidosReporte = lazy(() => import('./StorePedidosReporte'));
 const Comunicados = lazy(() => import('./Comunicados'));
 const ComunicadoDetalle = lazy(() => import('./ComunicadoDetalle'));
 const ComunicadoEditor = lazy(() => import('./ComunicadoEditor'));
@@ -149,6 +155,12 @@ export default function MoviFullRoutes() {
           <Route path="/dashboard" element={<ProtectedRoute><MoviDashboard /></ProtectedRoute>} />
           <Route path="/chava" element={<ProtectedRoute><Chava /></ProtectedRoute>} />
           <Route path="/store" element={<ProtectedRoute><Store /></ProtectedRoute>} />
+          <Route path="/store/carrito" element={<ProtectedRoute><StoreCarrito /></ProtectedRoute>} />
+          <Route path="/store/admin" element={<ProtectedRoute><StoreAdmin /></ProtectedRoute>} />
+          <Route path="/store/pedidos" element={<ProtectedRoute><StorePedidos /></ProtectedRoute>} />
+          <Route path="/store/mis-pedidos" element={<ProtectedRoute><StoreMisPedidos /></ProtectedRoute>} />
+          <Route path="/store/pedido/:id" element={<ProtectedRoute><StorePedidoDetalle /></ProtectedRoute>} />
+          <Route path="/store/reporte" element={<ProtectedRoute><StorePedidosReporte /></ProtectedRoute>} />
           <Route path="/comunicados" element={<ProtectedRoute><Comunicados /></ProtectedRoute>} />
           <Route path="/comunicados/:id" element={<ProtectedRoute><ComunicadoDetalle /></ProtectedRoute>} />
           <Route path="/comunicados/editor/:id" element={<ProtectedRoute><ComunicadoEditor /></ProtectedRoute>} />
