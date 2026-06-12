@@ -179,7 +179,7 @@ export function TarifasAdminPanel() {
               </span>
               <input
                 type="file"
-                accept=".xlsx,.xls"
+                accept=".xlsm,.xlsx,.xls"
                 className="hidden"
                 onChange={e => { setSelectedFile(e.target.files?.[0] || null); setUploadError(null); setUploadSuccess(null); }}
               />
