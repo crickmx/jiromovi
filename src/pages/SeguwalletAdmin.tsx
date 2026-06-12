@@ -238,7 +238,7 @@ export function SeguwalletAdmin() {
     const { data } = await supabase
       .from('usuarios')
       .select('id, nombre, apellidos')
-      .in('rol', ['Agente', 'Administrador', 'Gerente', 'Ejecutivo'])
+      .in('rol', ['Agente', 'Administrador', 'Gerente', 'Empleado'])
       .eq('activo', true)
       .order('nombre');
     setAgents(data || []);

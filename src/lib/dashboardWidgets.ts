@@ -21,7 +21,7 @@ export interface WidgetConfig {
   custom_settings: Record<string, any>;
 }
 
-const ALL_ROLES: UserRole[] = ['Administrador', 'Gerente', 'Empleado', 'Agente', 'Ejecutivo'];
+const ALL_ROLES: UserRole[] = ['Administrador', 'Gerente', 'Empleado', 'Agente'];
 const ADMIN_ONLY: UserRole[] = ['Administrador'];
 const ADMIN_GERENTE: UserRole[] = ['Administrador', 'Gerente'];
 

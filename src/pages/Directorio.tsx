@@ -52,11 +52,7 @@ export function Directorio() {
 
   useEffect(() => {
     loadData();
-    // Forzar refresh del usuario para evitar cache
-    if (refreshUsuario) {
-      refreshUsuario();
-    }
-  }, []);
+  }, [currentUser]);
 
   const handleSendAccess = async (usuario: Usuario) => {
     if (!usuario.email_laboral || sendingAccessId) return;
@@ -82,9 +78,10 @@ export function Directorio() {
     try {
       let usuariosQuery = supabase
         .from('usuarios')
-        .select('*, oficinas(nombre)')
+        .select('id, nombre, apellidos, email_laboral, email_personal, celular_personal, celular_laboral, username, rol, estado, activo, oficina_id, puesto, avatar_url, is_deleted, oficinas(nombre)')
         .eq('is_deleted', false)
-        .order('nombre');
+        .order('nombre')
+        .limit(2000);
 
       // Gerentes solo ven usuarios de su oficina
       if (isGerente && currentUser?.oficina_id) {
@@ -93,11 +90,14 @@ export function Directorio() {
 
       const [usuariosRes, oficinasRes] = await Promise.all([
         usuariosQuery,
-        supabase.from('oficinas').select('*').order('nombre'),
+        supabase.from('oficinas').select('id, nombre').eq('activa', true).order('nombre'),
       ]);
 
-      if (usuariosRes.data) setUsuarios(usuariosRes.data);
-      if (oficinasRes.data) setOficinas(oficinasRes.data);
+      if (usuariosRes.error) {
+        console.error('[DIRECTORIO] Error cargando usuarios:', usuariosRes.error);
+      }
+      if (usuariosRes.data) setUsuarios(usuariosRes.data as any);
+      if (oficinasRes.data) setOficinas(oficinasRes.data as any);
     } catch (error) {
       console.error('Error cargando datos:', error);
     } finally {

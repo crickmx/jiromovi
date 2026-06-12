@@ -249,7 +249,7 @@ export function AgentesActivosWidget({ usuario }: { usuario: Usuario }) {
     (async () => {
       try {
         let query = supabase.from('usuarios').select('id', { count: 'exact', head: true })
-          .eq('estado', 'activo').in('rol', ['Agente', 'Ejecutivo']);
+          .eq('estado', 'activo').in('rol', ['Agente', 'Empleado']);
         if (usuario.oficina_id && usuario.rol === 'Gerente') {
           query = query.eq('oficina_id', usuario.oficina_id);
         }

@@ -29,7 +29,7 @@ interface Oficina {
   nombre: string;
 }
 
-const ALL_ROLES: UserRole[] = ['Administrador', 'Gerente', 'Empleado', 'Ejecutivo', 'Agente'];
+const ALL_ROLES: UserRole[] = ['Administrador', 'Gerente', 'Empleado', 'Agente'];
 
 // Build the flat module list from workspaceConfig
 function buildModuleList(): ModuleRow[] {

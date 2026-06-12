@@ -50,7 +50,7 @@ export type ModuloCodigo = typeof MODULOS[keyof typeof MODULOS];
  */
 export interface UsuarioConPermisos {
   id: string;
-  rol: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente' | 'Ejecutivo';
+  rol: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente';
   permisosAdicionales?: string[]; // Lista de códigos de módulos con permisos admin
 }
 

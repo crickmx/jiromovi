@@ -1,11 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import {
-  BarChart3, TrendingUp, Clock, CheckCircle2, AlertCircle, Users, Building2,
-  Filter, Download, Search, ChevronDown, Eye, X,
-  AlertTriangle, Flame, Timer, Inbox, Activity, Target
-} from 'lucide-react';
+import { ChartBar as BarChart3, TrendingUp, Clock, CircleCheck as CheckCircle2, CircleAlert as AlertCircle, Users, Building2, ListFilter as Filter, Download, Search, ChevronDown, Eye, X, TriangleAlert as AlertTriangle, Flame, Timer, Inbox, Activity, Target } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import * as XLSX from 'xlsx';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
@@ -500,7 +496,7 @@ export default function TramitesReportes() {
       'Tipo': t.tipo_tramite,
       'Prioridad': t.prioridad,
       'Estatus': t.estatus_calculado,
-      'Ejecutivo': t.solicitante_nombre,
+      'Empleado': t.solicitante_nombre,
       'Agente': t.asignado_nombre,
       'Oficina': t.oficina_nombre,
       'Fecha Solicitud': new Date(t.fecha_solicitud).toLocaleDateString('es-MX'),

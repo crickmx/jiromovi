@@ -11,7 +11,7 @@ export type WorkspaceId =
   | 'seguros-education'
   | 'administracion';
 
-export type UserRole = 'Administrador' | 'Gerente' | 'Empleado' | 'Agente' | 'Ejecutivo';
+export type UserRole = 'Administrador' | 'Gerente' | 'Empleado' | 'Agente';
 
 export interface WorkspaceNavItem {
   path: string;
@@ -43,10 +43,10 @@ export type NavEntry =
   | { type: 'workspace'; workspace: WorkspaceDefinition };
 
 const ALL_ROLES: UserRole[] = [];
-const NOT_AGENT: UserRole[] = ['Administrador', 'Gerente', 'Empleado', 'Ejecutivo'];
+const NOT_AGENT: UserRole[] = ['Administrador', 'Gerente', 'Empleado'];
 const ADMIN_ONLY: UserRole[] = ['Administrador'];
 const ADMIN_GERENTE: UserRole[] = ['Administrador', 'Gerente'];
-const NO_EMPLEADO_AGENTE: UserRole[] = ['Administrador', 'Gerente', 'Ejecutivo'];
+const NO_EMPLEADO_AGENTE: UserRole[] = ['Administrador', 'Gerente'];
 
 export const TOP_LEVEL_ITEMS: TopLevelNavItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visibleTo: ALL_ROLES },

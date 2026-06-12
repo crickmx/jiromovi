@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { MessageCircle, Mail, Search, Filter, Send, Phone, Building2, User, Clock, CheckCircle2, XCircle, AlertCircle, Loader2, ChevronLeft, RefreshCw, X, MessageSquare, Zap, Check, ListTodo, Plus, Link2, FileText, Image, Music, Video, Paperclip, UserX, UserPlus, Eye, Download, ExternalLink, Smile, LayoutTemplate as BookTemplate, ClipboardList, Star, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, Globe, Lock, ChevronDown, Bot, Play, Pause, ArrowRightLeft, StopCircle, ChevronUp, Settings, Sparkles, Brain } from 'lucide-react';
+import { MessageCircle, Mail, Search, ListFilter as Filter, Send, Phone, Building2, User, Clock, CircleCheck as CheckCircle2, Circle as XCircle, CircleAlert as AlertCircle, Loader as Loader2, ChevronLeft, RefreshCw, X, MessageSquare, Zap, Check, ListTodo, Plus, Link2, FileText, Image, Music, Video, Paperclip, UserX, UserPlus, Eye, Download, ExternalLink, Smile, LayoutTemplate as BookTemplate, ClipboardList, Star, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, Globe, Lock, ChevronDown, Bot, Play, Pause, ArrowRightLeft, CircleStop as StopCircle, ChevronUp, Settings, Sparkles, Brain } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -2447,7 +2447,7 @@ function TransferSessionModal({ sessionId: _sessionId, onTransfer, onClose, load
       .from('usuarios')
       .select('id, nombre_completo, rol')
       .eq('activo', true)
-      .in('rol', ['Administrador', 'Gerente', 'Empleado', 'Ejecutivo'])
+      .in('rol', ['Administrador', 'Gerente', 'Empleado'])
       .order('nombre_completo')
       .then(({ data }) => {
         if (data) setUsers(data);

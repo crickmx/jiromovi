@@ -450,7 +450,6 @@ export function ActividadUsuarios() {
             <option value="Gerente">Gerente</option>
             <option value="Empleado">Empleado</option>
             <option value="Agente">Agente</option>
-            <option value="Ejecutivo">Ejecutivo</option>
           </select>
           <select value={filterOffice} onChange={e => setFilterOffice(e.target.value)} className="text-xs rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 px-2.5 py-2 text-neutral-700 dark:text-white/70 focus:outline-none focus:ring-2 focus:ring-accent/30">
             <option value="">Oficina</option>

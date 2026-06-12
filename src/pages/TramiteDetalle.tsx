@@ -222,7 +222,7 @@ export function TramiteDetalle() {
       tramite.tipo_tramite === 'cotizacion_emision' &&
       !tramite.assigned_to_user_id &&
       !tramite.cerrado_en &&
-      ['Empleado', 'Gerente', 'Administrador', 'Ejecutivo'].includes(usuario.rol)
+      ['Empleado', 'Gerente', 'Administrador'].includes(usuario.rol)
     ) {
       claimedRef.current = true;
       (async () => {

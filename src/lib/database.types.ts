@@ -85,7 +85,7 @@ export interface Database {
       usuarios: {
         Row: {
           id: string
-          rol: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente' | 'Ejecutivo'
+          rol: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente'
           nombre: string
           apellidos: string
           puesto: string
@@ -110,7 +110,7 @@ export interface Database {
         }
         Insert: {
           id: string
-          rol: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente' | 'Ejecutivo'
+          rol: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente'
           nombre: string
           apellidos: string
           email_laboral: string
@@ -135,7 +135,7 @@ export interface Database {
         }
         Update: {
           id?: string
-          rol?: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente' | 'Ejecutivo'
+          rol?: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente'
           nombre?: string
           apellidos?: string
           puesto?: string
@@ -229,7 +229,7 @@ export interface Database {
         }
         Insert: {
           id?: string
-          rol: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente' | 'Ejecutivo'
+          rol: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente'
           nombre_campo: string
           editable?: boolean
           visible?: boolean
@@ -238,7 +238,7 @@ export interface Database {
         }
         Update: {
           id?: string
-          rol?: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente' | 'Ejecutivo'
+          rol?: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente'
           nombre_campo?: string
           editable?: boolean
           visible?: boolean

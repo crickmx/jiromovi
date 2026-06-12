@@ -1,11 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import {
-  Users, UserPlus, UserMinus, Search, ShieldCheck, Briefcase, Wrench,
-  Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, Building2,
-  X, Check, AlertTriangle, Loader2, Globe,
-} from 'lucide-react';
+import { Users, UserPlus, UserMinus, Search, ShieldCheck, Briefcase, Wrench, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, Building2, X, Check, TriangleAlert as AlertTriangle, Loader as Loader2, Globe } from 'lucide-react';
 import { AREA_CONFIG, type AreaCategoria } from '../../lib/registroActividadesTypes';
 
 interface Grupo {
@@ -110,7 +106,7 @@ export function GestionGruposVisualizacion() {
       .from('usuarios')
       .select('id, nombre_completo, rol, oficinas(nombre)')
       .eq('estado', 'activo')
-      .in('rol', ['Empleado', 'Gerente', 'Administrador', 'Ejecutivo'])
+      .in('rol', ['Empleado', 'Gerente', 'Administrador'])
       .order('nombre_completo');
     if (data) {
       setUsuarios(data.map(u => ({
