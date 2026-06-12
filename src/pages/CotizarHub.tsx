@@ -1,6 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { Activity, Car, FolderInput as FormInput, Compass, ChevronRight, Calculator } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useMoviAuth } from '../contexts/MoviAuthContext';
+import { useModuleVisibility } from '../lib/useModuleVisibility';
+import { isItemVisible, WORKSPACES } from '../lib/workspaceConfig';
+import type { UserRole } from '../lib/workspaceConfig';
 
 const MODULES = [
   {
@@ -14,7 +17,6 @@ const MODULES = [
     shadowHover: 'hover:shadow-sky-100/40 dark:hover:shadow-sky-900/20',
     iconColor: 'text-sky-600 dark:text-sky-400',
     logo: '/logo-bx.png',
-    adminOnly: true,
   },
   {
     path: '/cotizar/formularios',
@@ -27,7 +29,6 @@ const MODULES = [
     shadowHover: 'hover:shadow-emerald-100/40 dark:hover:shadow-emerald-900/20',
     iconColor: 'text-emerald-600 dark:text-emerald-400',
     logo: null,
-    adminOnly: false,
   },
   {
     path: '/cotizar/a-la-medida',
@@ -40,7 +41,6 @@ const MODULES = [
     shadowHover: 'hover:shadow-amber-100/40 dark:hover:shadow-amber-900/20',
     iconColor: 'text-amber-600 dark:text-amber-400',
     logo: null,
-    adminOnly: false,
   },
   {
     path: '/cotizar/multicotizador',
@@ -53,17 +53,27 @@ const MODULES = [
     shadowHover: 'hover:shadow-rose-100/40 dark:hover:shadow-rose-900/20',
     iconColor: 'text-rose-600 dark:text-rose-400',
     logo: null,
-    adminOnly: false,
   },
 ];
 
+const cotizarWorkspace = WORKSPACES.find(w => w.id === 'cotizar')!;
+
 export default function CotizarHub() {
   const navigate = useNavigate();
-  const { usuario } = useAuth();
-  const rol = usuario?.rol;
-  const canSeeBxPlus = ['Administrador', 'Gerente', 'Empleado', 'Agente', 'Ejecutivo'].includes(rol || '');
+  const { usuario } = useMoviAuth();
+  const { isVisible } = useModuleVisibility();
 
-  const visibleModules = MODULES.filter(m => !m.adminOnly || canSeeBxPlus);
+  const rol = (usuario?.rol || '') as UserRole;
+  const oficinaId = usuario?.oficina_id ?? null;
+
+  const visibleModules = MODULES.filter(mod => {
+    // Find matching workspace nav item to check role-based visibility
+    const navItem = cotizarWorkspace.items.find(item => item.path === mod.path || mod.path.startsWith(item.path + '/'));
+    if (navItem && !isItemVisible(navItem, rol)) return false;
+    // Check database-driven module visibility rules
+    if (!isVisible(mod.path, rol, oficinaId)) return false;
+    return true;
+  });
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-7">

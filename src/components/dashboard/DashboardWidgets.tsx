@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ClipboardList, Users, UserCheck, FileText, Bell, Activity, Zap, ArrowRight, Shield, ChevronRight, Globe, MessageCircle, Settings, Target, Briefcase, Phone, TrendingUp, DollarSign, ChartBar as BarChart3 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
+import { useModuleVisibility } from '@/lib/useModuleVisibility';
 import type { Usuario } from '@/contexts/MoviAuthContext';
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
@@ -582,11 +583,17 @@ const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
 
 export function AccesosRapidosWidget({ usuario }: { usuario: Usuario }) {
   const nav = useNavigate();
+  const { isVisible } = useModuleVisibility();
+  const rol = usuario.rol || '';
+  const oficinaId = usuario.oficina_id ?? null;
+
   const baseActions = QUICK_ACTIONS[usuario.rol] || DEFAULT_QUICK_ACTIONS;
 
-  const actions = baseActions.map(a => {
-    if (a.path === '/mercadotecnia/mi-pagina-web' && (usuario as any).web_slug) {
-      return { ...a, href: `https://agentedeseguros.website/${(usuario as any).web_slug}` };
+  const actions = baseActions
+    .filter(a => isVisible(a.path, rol, oficinaId))
+    .map(a => {
+      if (a.path === '/mercadotecnia/mi-pagina-web' && (usuario as any).web_slug) {
+        return { ...a, href: `https://agentedeseguros.website/${(usuario as any).web_slug}` };
     }
     return a;
   });
