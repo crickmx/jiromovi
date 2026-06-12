@@ -161,8 +161,8 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
         <div className="flex flex-col items-center gap-2.5 pb-4 pt-3 w-full">
           <div className="sidebar-rail-sep w-8 h-px mb-1" />
 
-          {/* Chava AI */}
-          {mobileMode ? (
+          {/* Chava AI — admin only */}
+          {userRole === 'Administrador' && (mobileMode ? (
             <button
               onClick={() => handleNav('/chava')}
               className="sidebar-rail-chava-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90"
@@ -184,7 +184,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                 Chava IA
               </TooltipContent>
             </Tooltip>
-          )}
+          ))}
 
           {/* Notification Bell */}
           <div className="flex items-center justify-center w-11">

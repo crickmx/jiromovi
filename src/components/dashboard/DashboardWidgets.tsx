@@ -562,7 +562,6 @@ const QUICK_ACTIONS: Record<string, QuickAction[]> = {
     { label: 'Tramites', path: '/tramites', icon: <ClipboardList className="w-5 h-5" />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
     { label: 'Comisiones', path: '/produccion/mis-comisiones', icon: <DollarSign className="w-5 h-5" />, color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-500/10' },
     { label: 'CRM', path: '/mi-crm', icon: <Target className="w-5 h-5" />, color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-500/10' },
-    { label: 'Chava IA', path: '/chava', icon: <Zap className="w-5 h-5" />, color: 'text-neutral-600 dark:text-white/60', bg: 'bg-neutral-100 dark:bg-white/8' },
   ],
   Empleado: [
     { label: 'Tramites', path: '/tramites', icon: <ClipboardList className="w-5 h-5" />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
@@ -570,7 +569,6 @@ const QUICK_ACTIONS: Record<string, QuickAction[]> = {
     { label: 'Contactos', path: '/contactos', icon: <MessageCircle className="w-5 h-5" />, color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-500/10' },
     { label: 'Comunicados', path: '/comunicados', icon: <Bell className="w-5 h-5" />, color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-500/10' },
     { label: 'CRM', path: '/mi-crm', icon: <Target className="w-5 h-5" />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
-    { label: 'Chava IA', path: '/chava', icon: <Zap className="w-5 h-5" />, color: 'text-neutral-600 dark:text-white/60', bg: 'bg-neutral-100 dark:bg-white/8' },
   ],
 };
 
@@ -580,7 +578,6 @@ const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
   { label: 'Comisiones', path: '/produccion/mis-comisiones', icon: <DollarSign className="w-5 h-5" />, color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-500/10' },
   { label: 'CRM', path: '/mi-crm', icon: <Target className="w-5 h-5" />, color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-500/10' },
   { label: 'Centro Digital', path: '/centro-digital', icon: <Activity className="w-5 h-5" />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
-  { label: 'Chava IA', path: '/chava', icon: <Zap className="w-5 h-5" />, color: 'text-neutral-600 dark:text-white/60', bg: 'bg-neutral-100 dark:bg-white/8' },
 ];
 
 export function AccesosRapidosWidget({ usuario }: { usuario: Usuario }) {

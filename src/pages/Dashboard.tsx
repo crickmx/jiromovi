@@ -18,8 +18,8 @@ export default function Dashboard() {
       {/* Hero: greeting, avatar, office */}
       <DashboardHero usuario={usuario} />
 
-      {/* Chava AI Insights */}
-      <ChavaInsightsCard usuario={usuario} />
+      {/* Chava AI Insights — admin only */}
+      {usuario.rol === 'Administrador' && <ChavaInsightsCard usuario={usuario} />}
 
       {/* Accesos Rápidos — always pinned after Chava */}
       <AccesosRapidosWidget usuario={usuario} />
