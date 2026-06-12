@@ -133,18 +133,34 @@ export default function MoviLogin() {
         return;
       }
 
-      // Set session directly — no browser navigation needed.
-      // onAuthStateChange fires SIGNED_IN → MoviAuthContext loads profile → dashboard.
+      // Register listener BEFORE setSession so we catch SIGNED_IN reliably
+      let navigationDone = false;
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session && !navigationDone) {
+          navigationDone = true;
+          subscription.unsubscribe();
+          navigate('/dashboard', { replace: true });
+        }
+      });
+
       const { error: sessionErr } = await supabase.auth.setSession({
         access_token: data.access_token,
         refresh_token: data.refresh_token,
       });
       if (sessionErr) {
+        subscription.unsubscribe();
         setError('Error al iniciar sesión. Intenta de nuevo.');
         return;
       }
-      // Navigate after a short tick to let MoviAuthContext process SIGNED_IN
-      setTimeout(() => navigate('/dashboard', { replace: true }), 100);
+
+      // Fallback: if SIGNED_IN never fires, navigate anyway after 3s
+      setTimeout(() => {
+        if (!navigationDone) {
+          navigationDone = true;
+          subscription.unsubscribe();
+          navigate('/dashboard', { replace: true });
+        }
+      }, 3000);
     } catch {
       setError('Error de conexión. Intenta de nuevo.');
     } finally {
