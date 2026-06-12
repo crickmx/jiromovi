@@ -617,11 +617,14 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
   };
 
   const applyTemplate = (t: Template) => {
-    const agentName = usuario ? `${usuario.nombres} ${usuario.apellido_paterno}`.trim() : 'Asesor';
+    const agentName = usuario ? (usuario.nombre_completo || `${usuario.nombres} ${usuario.apellido_paterno}`.trim()) : 'Asesor';
+    const oficinaNombre = usuario?.oficina?.nombre || '';
     const today = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
     let content = t.content
       .replace(/\{\{nombre_agente\}\}/g, agentName)
+      .replace(/\{\{nombre_usuario\}\}/g, agentName)
       .replace(/\{\{nombre_contacto\}\}/g, name)
+      .replace(/\{\{nombre_oficina\}\}/g, oficinaNombre)
       .replace(/\{\{fecha\}\}/g, today);
     setText(content);
     setShowPlantillas(false);
@@ -812,11 +815,14 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
   };
 
   const applyWaTemplate = (t: UserTemplate) => {
-    const agentName = usuario ? `${usuario.nombres} ${usuario.apellido_paterno}`.trim() : 'Asesor';
+    const agentName = usuario ? (usuario.nombre_completo || `${usuario.nombres} ${usuario.apellido_paterno}`.trim()) : 'Asesor';
+    const oficinaNombre = usuario?.oficina?.nombre || '';
     const today = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
     const content = t.body
       .replace(/\{\{nombre_agente\}\}/g, agentName)
+      .replace(/\{\{nombre_usuario\}\}/g, agentName)
       .replace(/\{\{nombre_contacto\}\}/g, name)
+      .replace(/\{\{nombre_oficina\}\}/g, oficinaNombre)
       .replace(/\{\{fecha\}\}/g, today);
     setText(content);
     setShowWaTemplates(false);

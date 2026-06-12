@@ -245,12 +245,15 @@ export function ConversationThread({ conversation, onBack, onStatusChange }: Con
   };
 
   const applyTemplate = (t: Template) => {
-    const agentName = usuario ? `${usuario.nombres} ${usuario.apellido_paterno}`.trim() : 'Asesor';
+    const agentName = usuario ? (usuario.nombre_completo || `${usuario.nombres} ${usuario.apellido_paterno}`.trim()) : 'Asesor';
+    const oficinaNombre = usuario?.oficina?.nombre || '';
     const today = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
     const contactName = formatConversationName(conversation);
     const content = t.content
       .replace(/\{\{nombre_agente\}\}/g, agentName)
+      .replace(/\{\{nombre_usuario\}\}/g, agentName)
       .replace(/\{\{nombre_contacto\}\}/g, contactName)
+      .replace(/\{\{nombre_oficina\}\}/g, oficinaNombre)
       .replace(/\{\{fecha\}\}/g, today);
     setText(content);
     setShowPlantillas(false);
