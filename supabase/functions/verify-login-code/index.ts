@@ -23,6 +23,13 @@ interface SessionTokens {
 }
 
 async function createSessionForUser(userId: string, supabase: ReturnType<typeof createClient>): Promise<SessionTokens | null> {
+  // Ensure email is confirmed so GoTrue allows session creation
+  const { error: updateErr } = await supabase.auth.admin.updateUserById(userId, { email_confirm: true });
+  if (updateErr) {
+    console.error('admin.updateUserById error:', JSON.stringify(updateErr));
+    // Non-fatal — attempt session creation anyway
+  }
+
   const { data, error } = await supabase.auth.admin.createSession({ userId });
   if (error || !data?.session) {
     console.error('admin.createSession error:', JSON.stringify(error));
