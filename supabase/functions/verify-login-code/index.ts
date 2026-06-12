@@ -17,28 +17,23 @@ async function sha256(text: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-interface SessionTokens {
-  access_token: string;
-  refresh_token: string;
-}
-
-async function createSessionForUser(userId: string, supabase: ReturnType<typeof createClient>): Promise<SessionTokens | null> {
-  // Ensure email is confirmed so GoTrue allows session creation
-  const { error: updateErr } = await supabase.auth.admin.updateUserById(userId, { email_confirm: true });
-  if (updateErr) {
-    console.error('admin.updateUserById error:', JSON.stringify(updateErr));
-    // Non-fatal — attempt session creation anyway
+// Returns a hashed_token the client can use with verifyOtp({ token_hash, type: 'magiclink' })
+async function generateHashedToken(userId: string, email: string, supabase: ReturnType<typeof createClient>): Promise<string | null> {
+  // Confirm email so GoTrue doesn't block the magic link generation
+  const { error: confirmErr } = await supabase.auth.admin.updateUserById(userId, { email_confirm: true });
+  if (confirmErr) {
+    console.error('updateUserById error (non-fatal):', JSON.stringify(confirmErr));
   }
 
-  const { data, error } = await supabase.auth.admin.createSession({ userId });
-  if (error || !data?.session) {
-    console.error('admin.createSession error:', JSON.stringify(error));
+  const { data, error } = await supabase.auth.admin.generateLink({
+    type: 'magiclink',
+    email,
+  });
+  if (error || !data?.properties?.hashed_token) {
+    console.error('admin.generateLink error:', JSON.stringify(error));
     return null;
   }
-  return {
-    access_token: data.session.access_token,
-    refresh_token: data.session.refresh_token,
-  };
+  return data.properties.hashed_token;
 }
 
 Deno.serve(async (req: Request) => {
@@ -96,8 +91,8 @@ Deno.serve(async (req: Request) => {
 
       await supabase.from('passwordless_login_tokens').update({ used_at: new Date().toISOString() }).eq('id', token.id);
 
-      const session = await createSessionForUser(token.user_id, supabase);
-      if (!session) {
+      const hashedToken = await generateHashedToken(token.user_id, token.email, supabase);
+      if (!hashedToken) {
         return new Response(JSON.stringify({ error: 'Error al crear sesión. Intenta de nuevo.' }), {
           status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -107,8 +102,7 @@ Deno.serve(async (req: Request) => {
         success: true,
         user_id: token.user_id,
         platform,
-        access_token: session.access_token,
-        refresh_token: session.refresh_token,
+        hashed_token: hashedToken,
         email: token.email,
       }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -172,8 +166,8 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const session = await createSessionForUser(token.user_id, supabase);
-    if (!session) {
+    const hashedToken = await generateHashedToken(token.user_id, token.email, supabase);
+    if (!hashedToken) {
       return new Response(JSON.stringify({ error: 'Error al crear sesión. Intenta de nuevo.' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -183,8 +177,7 @@ Deno.serve(async (req: Request) => {
       success: true,
       user_id: token.user_id,
       platform,
-      access_token: session.access_token,
-      refresh_token: session.refresh_token,
+      hashed_token: hashedToken,
       email: token.email,
     }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 

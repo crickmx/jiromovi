@@ -128,12 +128,12 @@ export default function MoviLogin() {
         return;
       }
 
-      if (!data.access_token || !data.refresh_token) {
+      if (!data.hashed_token || !data.email) {
         setError('Error al crear la sesión. Intenta de nuevo.');
         return;
       }
 
-      // Register listener BEFORE setSession so we catch SIGNED_IN reliably
+      // Register listener BEFORE verifyOtp so we catch SIGNED_IN reliably
       let navigationDone = false;
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_IN' && session && !navigationDone) {
@@ -143,12 +143,13 @@ export default function MoviLogin() {
         }
       });
 
-      const { error: sessionErr } = await supabase.auth.setSession({
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
+      const { error: otpErr } = await supabase.auth.verifyOtp({
+        token_hash: data.hashed_token,
+        type: 'magiclink',
       });
-      if (sessionErr) {
+      if (otpErr) {
         subscription.unsubscribe();
+        console.error('verifyOtp error:', otpErr.message);
         setError('Error al iniciar sesión. Intenta de nuevo.');
         return;
       }
