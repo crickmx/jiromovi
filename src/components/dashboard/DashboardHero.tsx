@@ -27,11 +27,15 @@ function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+function toTitleCase(s: string): string {
+  return s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+}
+
 export function DashboardHero({ usuario }: Props) {
   const greeting = useMemo(() => getGreeting(), []);
   const dateStr = useMemo(() => capitalize(formatDate()), []);
 
-  const nombre = usuario.nombre || usuario.nombre_completo?.split(' ')[0] || 'Usuario';
+  const nombre = toTitleCase(usuario.nombre || usuario.nombre_completo?.split(' ')[0] || 'Usuario');
   const oficina = (usuario.oficina as any);
   const oficinaNombre = oficina?.nombre;
   const logoUrl = oficina?.logo_url;
@@ -68,13 +72,13 @@ export function DashboardHero({ usuario }: Props) {
         {/* Office logo */}
         {logoUrl && (
           <div className={cn(
-            'h-10 max-w-[120px] flex items-center justify-center',
-            'bg-neutral-50 dark:bg-white/5 rounded-xl px-3 border border-neutral-100 dark:border-white/8'
+            'h-14 max-w-[160px] flex items-center justify-center',
+            'bg-white dark:bg-white/[0.07] rounded-2xl px-4 border border-neutral-200 dark:border-white/10 shadow-sm'
           )}>
             <img
               src={logoUrl}
               alt={oficinaNombre ?? 'Oficina'}
-              className="h-6 w-auto max-w-[100px] object-contain"
+              className="h-8 w-auto max-w-[130px] object-contain"
               onError={e => { (e.currentTarget as HTMLImageElement).parentElement!.style.display = 'none'; }}
             />
           </div>
