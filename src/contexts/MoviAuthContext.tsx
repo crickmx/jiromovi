@@ -46,7 +46,7 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
         .from('usuarios')
         .select(`
           *,
-          oficina:oficinas(id, nombre, accent_color, logo_url, whatsapp, telefono, email, domicilio),
+          oficina:oficinas!oficina_id(id, nombre, accent_color, logo_url, whatsapp, telefono, email, domicilio),
           regimen_fiscal:commission_fiscal_regimes(id, name)
         `)
         .eq('id', userId)
