@@ -128,9 +128,8 @@ export default function MoviLogin() {
         return;
       }
 
-      // Subscribe to auth state change BEFORE calling verifyOtp so the
-      // MoviAuthContext listener (registered earlier) fires first and sets
-      // loading=true, preventing ProtectedRoute from redirecting to /login.
+      // Register listener BEFORE verifyOtp so MoviAuthContext sets loading=true
+      // (from its own SIGNED_IN handler) before ProtectedRoute can check.
       let navigationDone = false;
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_IN' && session && !navigationDone) {
@@ -140,24 +139,22 @@ export default function MoviLogin() {
         }
       });
 
-      const { error: sessionErr } = await supabase.auth.setSession({
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
+      const { error: otpErr } = await supabase.auth.verifyOtp({
+        token_hash: data.hashed_token,
+        type: 'magiclink',
       });
-      if (sessionErr) {
+      if (otpErr) {
         subscription.unsubscribe();
         setError('Error al crear la sesión. Intenta de nuevo.');
         return;
       }
-      // Navigation is handled by the onAuthStateChange subscription above.
-      // Add a fallback in case the event doesn't fire within 5 seconds.
       setTimeout(() => {
         if (!navigationDone) {
           navigationDone = true;
           subscription.unsubscribe();
           navigate('/dashboard', { replace: true });
         }
-      }, 5000);
+      }, 3000);
     } catch {
       setError('Error de conexión. Intenta de nuevo.');
     } finally {
