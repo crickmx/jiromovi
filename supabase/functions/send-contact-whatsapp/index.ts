@@ -96,8 +96,8 @@ Deno.serve(async (req) => {
       normalizedPhone = "521" + normalizedPhone.substring(3);
     }
 
-    const truncatedMessage = message.length > 550
-      ? message.substring(0, 547) + "..."
+    const truncatedMessage = message.length > 4000
+      ? message.substring(0, 3997) + "..."
       : message;
 
     const wazzupPayload = {

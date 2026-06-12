@@ -191,6 +191,26 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    try {
+      await supabase.rpc('registrar_envio_notificacion', {
+        p_tipo_notificacion_codigo: 'whatsapp_directo',
+        p_canal_envio: 'whatsapp',
+        p_usuario_id: null,
+        p_destinatario_email: 'whatsapp@sistema.local',
+        p_destinatario_nombre: null,
+        p_numero_destino: chatId,
+        p_asunto: 'Mensaje WhatsApp',
+        p_cuerpo_html: message,
+        p_estado: 'enviado',
+        p_error_mensaje: null,
+        p_enviado_por: null,
+        p_evento_id: payload.evento_id || null,
+        p_provider_response: { documents_sent: documentsSent, documents_failed: failedDocuments }
+      });
+    } catch (logErr) {
+      console.error('enviar-whatsapp: error logging send:', logErr);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
