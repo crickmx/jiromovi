@@ -392,10 +392,12 @@ export async function obtenerTodosPedidos() {
     // Fetch usuarios separately (RLS allows seeing all active users)
     const usuariosMap = new Map<string, any>();
     if (usuarioIds.length > 0) {
-      const { data: usuarios } = await supabase
+      const { data: usuarios, error: usuariosError } = await supabase
         .from('usuarios')
-        .select('id, nombre, nombre_completo, clave_agente, oficina_id, celular_laboral, celular_personal, email, email_laboral, rol')
+        .select('id, nombre, nombre_completo, nombre_sicas, id_sicas, oficina_id, celular_laboral, celular_personal, email_laboral, email_personal, rol')
         .in('id', usuarioIds);
+
+      if (usuariosError) console.error('Error fetching usuarios:', usuariosError);
 
       const oficinaIds = [...new Set((usuarios || []).map((u: any) => u.oficina_id).filter(Boolean))];
       const oficinasMap = new Map<string, string>();
@@ -408,24 +410,10 @@ export async function obtenerTodosPedidos() {
       }
 
       (usuarios || []).forEach((u: any) => {
-        usuariosMap.set(u.id, { ...u, oficina_nombre: oficinasMap.get(u.oficina_id) || null });
-      });
-    }
-
-    // Obtener nombres SICAS desde vendor_mappings
-    const vendorMappingMap = new Map<string, string>();
-    const pedidoUsuarioIds = [...new Set(pedidos.map((p: any) => p.usuario_id).filter(Boolean))];
-    if (pedidoUsuarioIds.length > 0) {
-      const { data: vmData } = await supabase
-        .from('vendor_mappings')
-        .select('movi_user_id, source_value, created_at')
-        .in('movi_user_id', pedidoUsuarioIds)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false });
-      vmData?.forEach((vm: any) => {
-        if (!vendorMappingMap.has(vm.movi_user_id)) {
-          vendorMappingMap.set(vm.movi_user_id, vm.source_value);
-        }
+        usuariosMap.set(u.id, {
+          ...u,
+          oficina_nombre: oficinasMap.get(u.oficina_id) || null,
+        });
       });
     }
 
@@ -463,18 +451,17 @@ export async function obtenerTodosPedidos() {
       const u = usuariosMap.get(pedido.usuario_id);
       const responsable = usuariosMap.get(pedido.responsable_pago_id);
       const ocGenerador = usuariosMap.get(pedido.oc_generada_por);
-      const nombreSicas = vendorMappingMap.get(pedido.usuario_id) || null;
       return {
         ...pedido,
         usuario: u ? {
           nombre: u.nombre,
           nombre_completo: u.nombre_completo,
-          nombre_sicas: nombreSicas,
-          clave_agente: u.clave_agente,
+          nombre_sicas: u.nombre_sicas || null,
+          clave_agente: u.id_sicas || null,
           oficina: u.oficina_nombre,
           celular_laboral: u.celular_laboral,
           celular_personal: u.celular_personal,
-          email: u.email,
+          email: u.email_personal,
           email_laboral: u.email_laboral,
           rol: u.rol
         } : undefined,
