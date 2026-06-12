@@ -17,8 +17,16 @@ async function sha256(text: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function createSessionForUser(email: string, supabase: ReturnType<typeof createClient>): Promise<{ access_token: string; refresh_token: string } | null> {
-  // Generate a one-time magic link token (service role key = no email sent)
+async function createSessionForUser(
+  email: string,
+  supabaseUrl: string,
+  serviceKey: string,
+): Promise<{ access_token: string; refresh_token: string } | null> {
+  const supabase = createClient(supabaseUrl, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  // Step 1: generate a magic-link token without sending an email
   const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
     type: 'magiclink',
     email,
@@ -29,22 +37,72 @@ async function createSessionForUser(email: string, supabase: ReturnType<typeof c
     return null;
   }
 
-  // Verify the token server-side via supabase-js — this POSTs to /auth/v1/verify
-  // and returns the session tokens directly (no PKCE, no redirect)
-  const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
-    token_hash: linkData.properties.hashed_token,
-    type: 'magiclink',
-  });
+  const hashedToken = linkData.properties.hashed_token;
+  console.log('generateLink ok, hashed_token length=', hashedToken.length);
 
-  if (verifyError || !verifyData?.session) {
-    console.error('verifyOtp error:', JSON.stringify(verifyError), JSON.stringify(verifyData));
+  // Step 2: POST to /auth/v1/verify directly, preventing redirect follow
+  const verifyUrl = `${supabaseUrl}/auth/v1/verify`;
+  let verifyRes: Response;
+  try {
+    verifyRes = await fetch(verifyUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': serviceKey,
+        'Authorization': `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({ token_hash: hashedToken, type: 'magiclink', redirect_to: '' }),
+      redirect: 'manual',
+    });
+  } catch (fetchErr: any) {
+    console.error('fetch /auth/v1/verify threw:', fetchErr?.message);
     return null;
   }
 
-  return {
-    access_token: verifyData.session.access_token,
-    refresh_token: verifyData.session.refresh_token,
-  };
+  console.log('verify status=', verifyRes.status);
+
+  // GoTrue returns 303 redirect on success — session is in the Location hash
+  if (verifyRes.status === 303 || verifyRes.status === 302) {
+    const location = verifyRes.headers.get('location') ?? '';
+    console.log('verify redirect location=', location);
+
+    // Extract access_token and refresh_token from the hash fragment
+    const hashPart = location.includes('#') ? location.split('#')[1] : '';
+    const params = new URLSearchParams(hashPart);
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+
+    if (access_token && refresh_token) {
+      return { access_token, refresh_token };
+    }
+
+    // Tokens may be in query string (some GoTrue versions)
+    const urlObj = new URL(location.startsWith('http') ? location : `http://x${location}`);
+    const qat = urlObj.searchParams.get('access_token');
+    const qrt = urlObj.searchParams.get('refresh_token');
+    if (qat && qrt) return { access_token: qat, refresh_token: qrt };
+
+    console.error('tokens not found in redirect location=', location);
+    return null;
+  }
+
+  // If GoTrue returns 200 JSON (no redirect configured)
+  if (verifyRes.status === 200) {
+    try {
+      const json = await verifyRes.json() as any;
+      const at = json?.access_token;
+      const rt = json?.refresh_token;
+      if (at && rt) return { access_token: at, refresh_token: rt };
+      console.error('200 but no tokens in json=', JSON.stringify(json));
+    } catch (e: any) {
+      console.error('json parse error on 200:', e?.message);
+    }
+    return null;
+  }
+
+  const body = await verifyRes.text().catch(() => '');
+  console.error('verify unexpected status=', verifyRes.status, 'body=', body);
+  return null;
 }
 
 Deno.serve(async (req: Request) => {
@@ -117,7 +175,7 @@ Deno.serve(async (req: Request) => {
         .update({ used_at: new Date().toISOString() })
         .eq('id', token.id);
 
-      const session = await createSessionForUser(token.email, supabase);
+      const session = await createSessionForUser(token.email, supabaseUrl, supabaseServiceKey);
       if (!session) {
         return new Response(JSON.stringify({ error: 'Error al crear sesión. Intenta de nuevo.' }), {
           status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -216,7 +274,7 @@ Deno.serve(async (req: Request) => {
       .update({ used_at: new Date().toISOString() })
       .eq('id', token.id);
 
-    const session = await createSessionForUser(token.email, supabase);
+    const session = await createSessionForUser(token.email, supabaseUrl, supabaseServiceKey);
     if (!session) {
       return new Response(JSON.stringify({ error: 'Error al crear sesión. Intenta de nuevo.' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },

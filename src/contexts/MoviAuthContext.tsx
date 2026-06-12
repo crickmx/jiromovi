@@ -84,28 +84,23 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     console.log('[MoviAuth] init');
-    let initialLoadDone = false;
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         console.log('[MoviAuth] initial session found, userId=', session.user.id);
-        initialLoadDone = true;
         loadProfile(session.user.id);
       } else {
         console.log('[MoviAuth] no initial session');
-        initialLoadDone = true;
         setLoading(false);
       }
     }).catch((err) => {
       console.warn('[MoviAuth] getSession failed (network/refresh):', err?.message);
-      initialLoadDone = true;
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[MoviAuth] onAuthStateChange event=', event, 'hasSession=', !!session);
       if (event === 'SIGNED_IN' && session) {
-        if (!initialLoadDone) return;
         setLoading(true);
         loadProfile(session.user.id);
       } else if (
