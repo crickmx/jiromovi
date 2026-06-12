@@ -372,267 +372,114 @@ export async function obtenerPedidosUsuario(usuarioId: string) {
 }
 
 export async function obtenerTodosPedidos() {
-  console.log('🔍 Obteniendo todos los pedidos del sistema...');
-
   try {
-    // Primero obtener los pedidos con estatus
     const { data: pedidos, error: pedidosError } = await supabase
       .from('store_pedidos')
       .select(`
         *,
-        estatus:store_estatus_pedidos(*)
+        estatus:store_estatus_pedidos(*),
+        usuario_data:usuarios!store_pedidos_usuario_id_fkey(
+          id, nombre, nombre_completo, clave_agente, oficina_id,
+          celular_laboral, celular_personal, email, email_laboral, rol,
+          oficina:oficinas(nombre)
+        ),
+        responsable_data:usuarios!store_pedidos_responsable_pago_id_fkey(
+          id, nombre, nombre_completo
+        ),
+        oc_generador_data:usuarios!store_pedidos_oc_generada_por_fkey(
+          id, nombre_completo
+        )
       `)
       .order('created_at', { ascending: false });
 
-    if (pedidosError) {
-      console.error('❌ Error obteniendo pedidos:', pedidosError);
-      throw pedidosError;
-    }
+    if (pedidosError) throw pedidosError;
+    if (!pedidos || pedidos.length === 0) return [];
 
-    if (!pedidos || pedidos.length === 0) {
-      console.log('ℹ️ No hay pedidos en el sistema');
-      return [];
-    }
-
-    // Obtener IDs únicos de usuarios
     const usuarioIds = [...new Set(pedidos.map(p => p.usuario_id).filter(Boolean))];
-    const responsableIds = [...new Set(pedidos.filter(p => p.responsable_pago_id).map(p => p.responsable_pago_id).filter(Boolean))];
-    const ocGeneradaPorIds = [...new Set(pedidos.filter(p => p.oc_generada_por).map(p => p.oc_generada_por).filter(Boolean))];
 
-    console.log(`📋 Pedidos: ${pedidos.length}, Usuario IDs únicos: ${usuarioIds.length}`);
-    console.log(`📋 Usuario IDs ejemplo:`, usuarioIds.slice(0, 3));
-
-    // Obtener información completa de los usuarios
-    let usuarios: any[] = [];
+    // Obtener nombres SICAS desde vendor_mappings
+    const vendorMappingMap = new Map<string, string>();
     if (usuarioIds.length > 0) {
-      const { data: usuariosData, error: usuariosError } = await supabase
-        .from('usuarios')
-        .select('id, nombre, nombre_completo, clave_agente, oficina_id, celular_laboral, celular_personal, email, email_laboral, rol')
-        .in('id', usuarioIds);
-
-      if (usuariosError) {
-        console.error('❌ Error obteniendo usuarios:', usuariosError);
-      } else {
-        usuarios = usuariosData || [];
-        console.log(`✅ Usuarios obtenidos: ${usuarios.length}`);
-        if (usuarios.length > 0) {
-          console.log(`📋 Ejemplo de usuario:`, {
-            id: usuarios[0].id,
-            nombre: usuarios[0].nombre,
-            nombre_completo: usuarios[0].nombre_completo,
-            clave_agente: usuarios[0].clave_agente
-          });
-        }
-      }
-    }
-
-    // Obtener oficinas
-    const oficinaIds = [...new Set(usuarios?.filter(u => u.oficina_id).map(u => u.oficina_id).filter(Boolean) || [])];
-    let oficinas: any[] = [];
-    if (oficinaIds.length > 0) {
-      const { data: oficinasData } = await supabase
-        .from('oficinas')
-        .select('id, nombre')
-        .in('id', oficinaIds);
-      oficinas = oficinasData || [];
-      console.log(`✅ Oficinas obtenidas: ${oficinas.length}`);
-    }
-
-    // Obtener nombres SICAS desde vendor_mappings (ordenados por created_at desc para obtener el más reciente)
-    let vendorMappingsRaw: any[] = [];
-    if (usuarioIds.length > 0) {
-      const { data: vendorMappingsData } = await supabase
+      const { data: vmData } = await supabase
         .from('vendor_mappings')
         .select('movi_user_id, source_value, created_at')
         .in('movi_user_id', usuarioIds)
         .eq('status', 'active')
         .order('created_at', { ascending: false });
-      vendorMappingsRaw = vendorMappingsData || [];
-      console.log(`🔍 Vendor mappings encontrados: ${vendorMappingsRaw.length}`);
+      vmData?.forEach(vm => {
+        if (!vendorMappingMap.has(vm.movi_user_id)) {
+          vendorMappingMap.set(vm.movi_user_id, vm.source_value);
+        }
+      });
     }
 
-    // Crear un mapa para obtener solo el mapping más reciente por usuario (evitar duplicados)
-    const vendorMappingMap = new Map<string, string>();
-    vendorMappingsRaw?.forEach(vm => {
-      if (!vendorMappingMap.has(vm.movi_user_id)) {
-        vendorMappingMap.set(vm.movi_user_id, vm.source_value);
-      }
-    });
-    console.log(`📋 Vendor mappings únicos: ${vendorMappingMap.size}`);
-
-    // Obtener responsables de pago
-    let responsables: any[] = [];
-    if (responsableIds.length > 0) {
-      const { data: responsablesData } = await supabase
-        .from('usuarios')
-        .select('id, nombre, nombre_completo')
-        .in('id', responsableIds);
-      responsables = responsablesData || [];
-      console.log(`✅ Responsables de pago obtenidos: ${responsables.length}`);
-    }
-
-    // Obtener quién generó la OC
-    let ocGeneradores: any[] = [];
-    if (ocGeneradaPorIds.length > 0) {
-      const { data: ocGeneradoresData } = await supabase
-        .from('usuarios')
-        .select('id, nombre_completo')
-        .in('id', ocGeneradaPorIds);
-      ocGeneradores = ocGeneradoresData || [];
-      console.log(`✅ Generadores OC obtenidos: ${ocGeneradores.length}`);
-    }
-
-    // Obtener todos los detalles de pedidos con productos
+    // Obtener detalles de pedidos
     const pedidoIds = pedidos.map(p => p.id);
-    console.log(`🔍 Buscando detalles para ${pedidoIds.length} pedidos...`);
-
-    const { data: detalles, error: detallesError } = await supabase
+    const { data: detalles } = await supabase
       .from('store_pedidos_detalle')
       .select(`
-        pedido_id,
-        producto_id,
-        cantidad,
-        precio_unitario,
+        pedido_id, cantidad, precio_unitario,
         store_productos!store_pedidos_detalle_producto_id_fkey(
-          titulo,
-          descripcion,
-          store_categorias!store_productos_categoria_id_fkey(
-            nombre
-          )
+          titulo, descripcion,
+          store_categorias!store_productos_categoria_id_fkey(nombre)
         )
       `)
       .in('pedido_id', pedidoIds);
 
-    if (detallesError) {
-      console.error('⚠️ Error obteniendo detalles:', detallesError);
-    }
-
-    console.log(`📦 Detalles encontrados: ${detalles?.length || 0} productos en total`);
-    if (detalles && detalles.length > 0) {
-      console.log(`📦 Ejemplo de detalle RAW:`, {
-        pedido_id: detalles[0].pedido_id,
-        cantidad: detalles[0].cantidad,
-        precio_unitario: detalles[0].precio_unitario,
-        tipo: typeof detalles[0].precio_unitario
-      });
-    }
-
-    // Calcular totales por pedido y agrupar detalles
     const totalesPorPedido = new Map<string, number>();
     const detallesPorPedido = new Map<string, any[]>();
 
-    if (detalles && detalles.length > 0) {
-      detalles.forEach((detalle: any) => {
-        const total = totalesPorPedido.get(detalle.pedido_id) || 0;
-        // IMPORTANTE: Convertir precio_unitario a número (viene como string desde PostgreSQL)
-        const precioUnitario = typeof detalle.precio_unitario === 'string'
-          ? parseFloat(detalle.precio_unitario)
-          : (detalle.precio_unitario || 0);
-        const subtotal = (detalle.cantidad || 0) * precioUnitario;
-        totalesPorPedido.set(
-          detalle.pedido_id,
-          total + subtotal
-        );
+    (detalles || []).forEach((detalle: any) => {
+      const precioUnitario = typeof detalle.precio_unitario === 'string'
+        ? parseFloat(detalle.precio_unitario)
+        : (detalle.precio_unitario || 0);
+      const subtotal = (detalle.cantidad || 0) * precioUnitario;
+      totalesPorPedido.set(detalle.pedido_id, (totalesPorPedido.get(detalle.pedido_id) || 0) + subtotal);
 
-        // Agrupar detalles por pedido y renombrar store_productos a producto
-        const detallesPedido = detallesPorPedido.get(detalle.pedido_id) || [];
-        const productoData = detalle.store_productos;
-        detallesPedido.push({
-          ...detalle,
-          precio_unitario: precioUnitario,
-          producto: productoData ? {
-            titulo: productoData.titulo,
-            descripcion: productoData.descripcion,
-            categoria: productoData.store_categorias
-          } : null
-        });
-        detallesPorPedido.set(detalle.pedido_id, detallesPedido);
+      const list = detallesPorPedido.get(detalle.pedido_id) || [];
+      const prod = detalle.store_productos;
+      list.push({
+        ...detalle,
+        precio_unitario: precioUnitario,
+        producto: prod ? { titulo: prod.titulo, descripcion: prod.descripcion, categoria: prod.store_categorias } : null
       });
-      console.log(`💰 Totales calculados para ${totalesPorPedido.size} pedidos`);
-      const ejemploTotales = Array.from(totalesPorPedido.entries()).slice(0, 3);
-      console.log(`💵 Ejemplo de totales:`, ejemploTotales.map(([id, total]) => ({
-        pedido_id: id.substring(0, 8) + '...',
-        total: `$${total.toFixed(2)}`
-      })));
-    } else {
-      console.warn('⚠️ No se encontraron detalles de productos para ningún pedido');
-    }
-
-    // Mapear toda la información a los pedidos
-    const pedidosCompletos = pedidos.map((pedido, index) => {
-      const usuarioData = usuarios?.find(u => u.id === pedido.usuario_id);
-      const oficinaData = oficinas?.find(o => o.id === usuarioData?.oficina_id);
-      const nombreSicas = vendorMappingMap.get(pedido.usuario_id) || null;
-      const responsableData = responsables?.find(r => r.id === pedido.responsable_pago_id);
-      const ocGeneradorData = ocGeneradores?.find(g => g.id === pedido.oc_generada_por);
-
-      const pedidoTotal = totalesPorPedido.get(pedido.id) || 0;
-      const pedidoDetalles = detallesPorPedido.get(pedido.id) || [];
-
-      // Log de los primeros 3 pedidos para debug
-      if (index < 3) {
-        console.log(`🔍 DEBUG Pedido ${index + 1}/${pedidos.length}:`, {
-          pedido_id: pedido.id.substring(0, 8) + '...',
-          usuario_id: pedido.usuario_id?.substring(0, 8) + '...',
-          usuarioData: usuarioData ? {
-            id: usuarioData.id.substring(0, 8) + '...',
-            nombre: usuarioData.nombre,
-            nombre_completo: usuarioData.nombre_completo
-          } : 'NO ENCONTRADO',
-          nombreSicas,
-          oficinaData: oficinaData?.nombre || 'Sin oficina',
-          total: pedidoTotal,
-          num_detalles: pedidoDetalles.length
-        });
-      }
-
-      // Log si no se encuentra usuario
-      if (!usuarioData && pedido.usuario_id) {
-        console.warn(`⚠️ Usuario NO encontrado para pedido ${pedido.id.substring(0, 8)}`, {
-          usuario_id_buscado: pedido.usuario_id,
-          usuarios_disponibles: usuarios?.length || 0,
-          usuario_ids_disponibles: usuarios?.slice(0, 3).map(u => u.id.substring(0, 8)) || []
-        });
-      }
-
-      return {
-        ...pedido,
-        usuario: usuarioData ? {
-          nombre: usuarioData.nombre,
-          nombre_completo: usuarioData.nombre_completo,
-          nombre_sicas: nombreSicas,
-          clave_agente: usuarioData.clave_agente,
-          oficina: oficinaData?.nombre || null,
-          telefono: usuarioData.celular_laboral || usuarioData.celular_personal || 'Sin teléfono',
-          celular_laboral: usuarioData.celular_laboral,
-          celular_personal: usuarioData.celular_personal,
-          email: usuarioData.email,
-          email_laboral: usuarioData.email_laboral,
-          rol: usuarioData.rol
-        } : undefined,
-        responsable_pago: responsableData ? {
-          nombre: responsableData.nombre,
-          nombre_completo: responsableData.nombre_completo
-        } : undefined,
-        oc_generada_por_usuario: ocGeneradorData ? {
-          nombre_completo: ocGeneradorData.nombre_completo
-        } : undefined,
-        total: pedidoTotal,
-        detalles: pedidoDetalles
-      };
+      detallesPorPedido.set(detalle.pedido_id, list);
     });
 
-    const pedidosConTotal = pedidosCompletos.filter(p => p.total > 0).length;
-    const pedidosConDetalles = pedidosCompletos.filter(p => p.detalles.length > 0).length;
-
-    console.log(`✅ Pedidos cargados exitosamente: ${pedidosCompletos.length} pedidos`);
-    console.log(`   💰 Pedidos con total > 0: ${pedidosConTotal}`);
-    console.log(`   📦 Pedidos con detalles: ${pedidosConDetalles}`);
-
-    return pedidosCompletos as StorePedido[];
+    return pedidos.map((pedido: any) => {
+      const u = pedido.usuario_data;
+      const nombreSicas = vendorMappingMap.get(pedido.usuario_id) || null;
+      return {
+        ...pedido,
+        usuario_data: undefined,
+        responsable_data: undefined,
+        oc_generador_data: undefined,
+        usuario: u ? {
+          nombre: u.nombre,
+          nombre_completo: u.nombre_completo,
+          nombre_sicas: nombreSicas,
+          clave_agente: u.clave_agente,
+          oficina: u.oficina?.nombre || null,
+          celular_laboral: u.celular_laboral,
+          celular_personal: u.celular_personal,
+          email: u.email,
+          email_laboral: u.email_laboral,
+          rol: u.rol
+        } : undefined,
+        responsable_pago: pedido.responsable_data ? {
+          nombre: pedido.responsable_data.nombre,
+          nombre_completo: pedido.responsable_data.nombre_completo
+        } : undefined,
+        oc_generada_por_usuario: pedido.oc_generador_data ? {
+          nombre_completo: pedido.oc_generador_data.nombre_completo
+        } : undefined,
+        total: totalesPorPedido.get(pedido.id) || 0,
+        detalles: detallesPorPedido.get(pedido.id) || []
+      };
+    }) as StorePedido[];
 
   } catch (error) {
-    console.error('❌ Error fatal en obtenerTodosPedidos:', error);
+    console.error('❌ Error en obtenerTodosPedidos:', error);
     throw error;
   }
 }

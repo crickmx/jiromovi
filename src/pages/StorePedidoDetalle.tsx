@@ -13,7 +13,7 @@ import { supabase } from '../lib/supabase';
 
 export default function StorePedidoDetalle() {
   const { usuario } = useAuth();
-  const { pedidoId } = useParams<{ pedidoId: string }>();
+  const { id: pedidoId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [pedido, setPedido] = useState<StorePedidoCompleto | null>(null);
   const [estatus, setEstatus] = useState<StoreEstatusPedido[]>([]);
