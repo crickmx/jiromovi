@@ -51,7 +51,7 @@ export function Directorio() {
   }, [currentUser, isAdmin, isGerente, isReadOnly]);
 
   useEffect(() => {
-    loadData();
+    if (currentUser) loadData();
   }, [currentUser]);
 
   const handleSendAccess = async (usuario: Usuario) => {
@@ -78,7 +78,7 @@ export function Directorio() {
     try {
       let usuariosQuery = supabase
         .from('usuarios')
-        .select('id, nombre, apellidos, email_laboral, email_personal, celular_personal, celular_laboral, username, rol, estado, activo, oficina_id, puesto, avatar_url, is_deleted, oficinas(nombre)')
+        .select('id, nombre, apellidos, email_laboral, email_personal, celular_personal, celular_laboral, username, rol, estado, activo, oficina_id, puesto, imagen_perfil_url, is_deleted, oficinas(nombre)')
         .eq('is_deleted', false)
         .order('nombre')
         .limit(2000);
