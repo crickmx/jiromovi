@@ -29,7 +29,7 @@ const DEFAULT_BNP_INPUT: BnpQuoteInput = {
 };
 
 const DEFAULT_BXPLUS_INPUT: BxplusQuoteInput = {
-  estado: 'CDMX', nivel_hospitalario: 'Alto', tabulador: 'A',
+  estado: 'CIUDAD DE MEXICO', nivel_hospitalario: 'Alto', tabulador: 'A',
   suma_asegurada: '500', deducible: '20000', coaseguro: '10%', forma_pago: 'Anual',
   coverages: { ...DEFAULT_BXPLUS_COVERAGES },
 };
@@ -246,7 +246,7 @@ function BxplusParams({ input, onChange }: { input: BxplusQuoteInput; onChange: 
     <div className="grid grid-cols-3 gap-3">
       <Field label="Estado">
         <select value={input.estado} onChange={e => onChange({ estado: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {['CDMX', 'JALISCO', 'NUEVO LEON', 'ESTADO DE MEXICO', 'PUEBLA', 'QUERETARO', 'GUANAJUATO', 'SONORA', 'CHIHUAHUA', 'YUCATAN'].map(v => <option key={v} value={v}>{v}</option>)}
+          {['CIUDAD DE MEXICO', 'ESTADO DE MEXICO', 'JALISCO', 'NUEVO LEON', 'PUEBLA', 'QUERETARO', 'GUANAJUATO', 'AGUASCALIENTES', 'BAJA CALIFORNIA NORTE', 'BAJA CALIFORNIA SUR', 'CAMPECHE', 'CHIAPAS', 'CHIHUAHUA', 'COAHUILA', 'COLIMA', 'DURANGO', 'GUERRERO', 'HIDALGO', 'MICHOACAN', 'MORELOS', 'NAYARIT', 'OAXACA', 'QUINTANA ROO', 'SAN LUIS POTOSI', 'SINALOA', 'SONORA', 'TABASCO', 'TAMAULIPAS', 'TLAXCALA', 'VERACRUZ', 'YUCATAN', 'ZACATECAS'].map(v => <option key={v} value={v}>{v}</option>)}
         </select>
       </Field>
       <Field label="Nivel Hospitalario">

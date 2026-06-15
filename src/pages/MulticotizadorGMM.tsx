@@ -35,7 +35,7 @@ function createDefaultOption(index: number): MultiGmmOption {
     label: `Opcion ${index}`,
     product_id: 'BXPLUS',
     input: {
-      estado: 'CDMX',
+      estado: 'CIUDAD DE MEXICO',
       nivel_hospitalario: 'Alto',
       tabulador: 'A',
       suma_asegurada: '500',

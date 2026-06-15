@@ -1,4 +1,4 @@
-// Uninstall service worker - clear all caches and unregister
+// Force-uninstall service worker v2 - clears ALL caches and unregisters
 self.addEventListener('install', () => {
   self.skipWaiting();
 });
@@ -10,4 +10,9 @@ self.addEventListener('activate', (event) => {
     ).then(() => self.clients.claim())
     .then(() => self.registration.unregister())
   );
+});
+
+// Passthrough all fetch requests to network (no caching)
+self.addEventListener('fetch', (event) => {
+  event.respondWith(fetch(event.request));
 });

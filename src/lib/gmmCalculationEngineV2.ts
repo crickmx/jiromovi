@@ -105,6 +105,25 @@ function roundTo5Decimals(value: number): number {
 // CAPA 1: DATOS BASE (LOOKUP PURO - SIN CÁLCULOS)
 // ============================================================================
 
+const ESTADO_ALIASES: Record<string, string> = {
+  'CDMX': 'CIUDAD DE MEXICO',
+  'CD. DE MEXICO': 'CIUDAD DE MEXICO',
+  'EDO. DE MEXICO': 'ESTADO DE MEXICO',
+  'EDO DE MEXICO': 'ESTADO DE MEXICO',
+  'EDOMEX': 'ESTADO DE MEXICO',
+  'NL': 'NUEVO LEON',
+  'BC': 'BAJA CALIFORNIA NORTE',
+  'BCS': 'BAJA CALIFORNIA SUR',
+  'QROO': 'QUINTANA ROO',
+  'Q. ROO': 'QUINTANA ROO',
+  'SLP': 'SAN LUIS POTOSI',
+};
+
+function normalizeEstado(estado: string): string {
+  const upper = estado.toUpperCase().trim();
+  return ESTADO_ALIASES[upper] || upper;
+}
+
 /**
  * Búsqueda genérica en tabla (vlookup puro)
  * NO calcula nada, solo busca valores
@@ -234,7 +253,8 @@ function calcularPrimaBaseFinal(
   const baseEdadSexo = vlookupByAge(tables.base_intermedia_edad_sexo, edad, sexo);
 
   // 2. Obtener todos los factores del plan
-  const factorEstado = vlookup(tables.factor_estado, input.estado, 2, 'Factor Estado');
+  const estadoNorm = normalizeEstado(input.estado);
+  const factorEstado = vlookup(tables.factor_estado, estadoNorm, 2, 'Factor Estado');
   const factorNivelHospitalario = vlookup(tables.factor_nivel_hospitalario, input.nivel_hospitalario, 1, 'Nivel Hospitalario');
   const factorTabulador = vlookup(tables.factor_tabulador, input.tabulador, 1, 'Tabulador');
   const factorSumaAsegurada = vlookup(tables.factor_suma_asegurada, input.suma_asegurada, 1, 'Suma Asegurada');

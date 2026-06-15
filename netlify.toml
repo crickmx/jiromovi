@@ -9,7 +9,7 @@ NODE_OPTIONS = "--max-old-space-size=4096"
 
 # Hashed assets — immutable, cache for 1 year
 [[headers]]
-for = "/assets/*"
+for = "/_static/*"
 [headers.values]
 Cache-Control = "public, max-age=31536000, immutable"
 

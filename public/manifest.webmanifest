@@ -4,7 +4,7 @@
   "description": "La plataforma digital para agentes de seguros",
   "start_url": "/dashboard",
   "scope": "/",
-  "display": "standalone",
+  "display": "browser",
   "background_color": "#030d1a",
   "theme_color": "#030d1a",
   "orientation": "portrait-primary",
