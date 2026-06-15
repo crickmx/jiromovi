@@ -30,26 +30,19 @@ export function Directorio() {
   const [sendingAccessId, setSendingAccessId] = useState<string | null>(null);
   const [accessSentId, setAccessSentId] = useState<string | null>(null);
   const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const { startImpersonation } = useImpersonation();
 
   const isAdmin = currentUser?.rol === 'Administrador';
   const isGerente = currentUser?.rol === 'Gerente';
   const isReadOnly = !isAdmin && !isGerente;
 
-  // Debug: mostrar info del usuario actual
+  // Load on mount unconditionally - anon policy allows reading
   useEffect(() => {
-    if (currentUser) {
-      console.log('[DIRECTORIO] Usuario actual cargado:', {
-        id: currentUser.id,
-        email: currentUser.email_laboral,
-        rol: currentUser.rol,
-        isAdmin,
-        isGerente,
-        isReadOnly
-      });
-    }
-  }, [currentUser, isAdmin, isGerente, isReadOnly]);
+    loadData();
+  }, []);
 
+  // Reload when user context arrives (for role-based filtering)
   useEffect(() => {
     if (currentUser) loadData();
   }, [currentUser]);
@@ -75,31 +68,43 @@ export function Directorio() {
 
   const loadData = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
-      let usuariosQuery = supabase
+      // Direct query - works with both authenticated and anon roles
+      const usersQuery = supabase
         .from('usuarios')
-        .select('id, nombre, apellidos, email_laboral, email_personal, celular_personal, celular_laboral, username, rol, estado, activo, oficina_id, puesto, imagen_perfil_url, is_deleted, oficinas(nombre)')
-        .or('is_deleted.eq.false,is_deleted.is.null')
+        .select('id, nombre, apellidos, email_laboral, email_personal, celular_personal, celular_laboral, username, rol, estado, activo, oficina_id, puesto, imagen_perfil_url, is_deleted')
+        .eq('is_deleted', false)
         .order('nombre')
         .limit(2000);
 
-      // Gerentes solo ven usuarios de su oficina
       if (isGerente && currentUser?.oficina_id) {
-        usuariosQuery = usuariosQuery.eq('oficina_id', currentUser.oficina_id);
+        usersQuery.eq('oficina_id', currentUser.oficina_id);
       }
 
       const [usuariosRes, oficinasRes] = await Promise.all([
-        usuariosQuery,
+        usersQuery,
         supabase.from('oficinas').select('id, nombre').eq('activa', true).order('nombre'),
       ]);
 
       if (usuariosRes.error) {
-        console.error('[DIRECTORIO] Error cargando usuarios:', usuariosRes.error);
+        console.error('[DIRECTORIO] Query error:', usuariosRes.error);
+        setLoadError(`Error: ${usuariosRes.error.message}`);
+      } else if (usuariosRes.data && usuariosRes.data.length > 0) {
+        const oficinasMap = new Map((oficinasRes.data || []).map((o: any) => [o.id, o.nombre]));
+        const mapped = (usuariosRes.data as any[]).map((u: any) => ({
+          ...u,
+          oficinas: u.oficina_id ? { nombre: oficinasMap.get(u.oficina_id) || '-' } : null,
+        }));
+        setUsuarios(mapped as any);
+      } else {
+        setLoadError(`La consulta devolvio 0 usuarios. Verifica tu sesion o recarga la pagina (v2).`);
       }
-      if (usuariosRes.data) setUsuarios(usuariosRes.data as any);
+
       if (oficinasRes.data) setOficinas(oficinasRes.data as any);
-    } catch (error) {
-      console.error('Error cargando datos:', error);
+    } catch (error: any) {
+      console.error('[DIRECTORIO] Exception:', error);
+      setLoadError(error?.message || 'Error de conexion');
     } finally {
       setLoading(false);
     }
@@ -248,7 +253,7 @@ export function Directorio() {
     <div className="space-y-5">
       <PageHeader
         title="Usuarios"
-        description={isGerente ? 'Gestiona usuarios de tu oficina' : 'Directorio de usuarios del sistema'}
+        description={isGerente ? 'Gestiona usuarios de tu oficina' : 'Directorio de usuarios del sistema (v2)'}
         icon={Users}
         badge={isReadOnly ? (
           <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400">
@@ -262,6 +267,21 @@ export function Directorio() {
           </Button>
         }
       />
+
+      {loadError && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <p className="text-sm text-red-700 dark:text-red-300 font-medium">Error cargando usuarios</p>
+          <p className="text-xs text-red-600 dark:text-red-400 mt-1 break-all">{loadError}</p>
+          <div className="mt-3 flex gap-2">
+            <button onClick={loadData} className="text-xs font-medium text-white bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-md transition">
+              Reintentar
+            </button>
+            <button onClick={() => window.location.reload()} className="text-xs font-medium text-red-700 dark:text-red-300 border border-red-300 px-3 py-1.5 rounded-md hover:bg-red-100 transition">
+              Recargar pagina
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden">
         <div className="p-4 border-b border-neutral-100 dark:border-white/5">
