@@ -19,6 +19,7 @@ export const TIPO_TRAMITE_OPTIONS: TipoTramiteConfig[] = [
   { value: 'registro_poliza',                 label: 'Registro de póliza',                area: 'Operaciones',  tipoAplicable: 'general' },
   { value: 'solicitud_comisiones_pendientes', label: 'Solicitud de comisiones',           area: 'Operaciones',  tipoAplicable: 'solicitud_comisiones' },
   { value: 'cambio_bancario',                 label: 'Cambio bancario',                   area: 'Operaciones',  tipoAplicable: 'general' },
+  { value: 'cancelacion_poliza',             label: 'Cancelación de Póliza',             area: 'Operaciones',  tipoAplicable: 'general' },
   { value: 'renovaciones',                    label: 'Renovaciones',                      area: 'Comercial',    tipoAplicable: 'general' },
   { value: 'cobranza',                        label: 'Cobranza',                          area: 'Comercial',    tipoAplicable: 'general' },
   { value: 'otros_comercial',                 label: 'Otros',                             area: 'Comercial',    tipoAplicable: 'general' },

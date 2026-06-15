@@ -251,6 +251,7 @@ export function TramiteDetalle() {
     lead_registro_movi: 'general',
     solicitud_comisiones_pendientes: 'solicitud_comisiones',
     cambio_bancario: 'cambio_bancario',
+    cancelacion_poliza: 'general',
     renovaciones: 'general',
     cobranza: 'general',
     otros_comercial: 'general',
