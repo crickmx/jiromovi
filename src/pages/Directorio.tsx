@@ -79,7 +79,7 @@ export function Directorio() {
       let usuariosQuery = supabase
         .from('usuarios')
         .select('id, nombre, apellidos, email_laboral, email_personal, celular_personal, celular_laboral, username, rol, estado, activo, oficina_id, puesto, imagen_perfil_url, is_deleted, oficinas(nombre)')
-        .eq('is_deleted', false)
+        .or('is_deleted.eq.false,is_deleted.is.null')
         .order('nombre')
         .limit(2000);
 
