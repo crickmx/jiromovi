@@ -30,18 +30,12 @@ for = "/version.json"
 [headers.values]
 Cache-Control = "no-cache, no-store, must-revalidate"
 
-# Service worker — must always be fresh so browsers pick up updates immediately
+# Service worker (uninstaller) — must always be fresh
 [[headers]]
 for = "/sw.js"
 [headers.values]
 Cache-Control = "no-cache, no-store, must-revalidate"
 Service-Worker-Allowed = "/"
-
-# PWA manifest — always fresh
-[[headers]]
-for = "/manifest.webmanifest"
-[headers.values]
-Cache-Control = "no-cache, no-store, must-revalidate"
 
 [[redirects]]
 from = "/*"
