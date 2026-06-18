@@ -3,11 +3,12 @@ import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { useImpersonation } from '../contexts/ImpersonationContext';
 import { useThemeMode } from '../hooks/useThemeMode';
 import { supabase } from '../lib/supabase';
-import { Hop as Home, ChartBar as BarChart2, DollarSign, Target, BookOpen, CloudUpload as UploadCloud, Trophy, CircleAlert as AlertCircle, FileText, Calculator, ListFilter as Filter, Tag, Users, UserCheck, Settings, Clock, RefreshCw, MapPin, Paintbrush, LayoutDashboard } from 'lucide-react';
+import { Hop as Home, ChartBar as BarChart2, DollarSign, Target, BookOpen, CloudUpload as UploadCloud, Trophy, CircleAlert as AlertCircle, FileText, Calculator, ListFilter as Filter, Tag, Users, UserCheck, Settings, Clock, RefreshCw, MapPin, Paintbrush, LayoutDashboard, Menu, X } from 'lucide-react';
 import { LoadingOrb } from '../components/loading/LoadingOrb';
 import { LoadingFactCard } from '../components/loading/LoadingFactCard';
 
 const BONOS_URL = import.meta.env.VITE_BONOS_URL || 'http://localhost:8003';
+const IS_LOCAL_BONOS = BONOS_URL.includes('localhost') || BONOS_URL.includes('127.0.');
 
 interface BonosPerms {
   role: string;
@@ -54,7 +55,7 @@ const SECTIONS: SectionDef[] = [
 
 export default function BonosPage() {
   const { usuario } = useMoviAuth();
-  const { isImpersonating } = useImpersonation();
+  const { isImpersonating, impersonatedUser } = useImpersonation();
   const { isDarkEffective } = useThemeMode();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [src, setSrc] = useState<string | null>(null);
@@ -62,6 +63,7 @@ export default function BonosPage() {
   const [activePath, setActivePath] = useState('/');
   const [perms, setPerms] = useState<BonosPerms>(DEFAULT_PERMS);
   const [retryCount, setRetryCount] = useState(0);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [ssoConfirmed, setSsoConfirmed] = useState(false);
   const ssoConfirmedRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -76,11 +78,17 @@ export default function BonosPage() {
   }, []);
 
   const buildSsoUrl = useCallback(async (retry: number): Promise<string | null> => {
-    if (import.meta.env.DEV) {
-      const email = usuario?.email_laboral;
-      if (!email) return null;
+    if (IS_LOCAL_BONOS) {
+      const impersonating = isImpersonating && impersonatedUser;
+      const email = impersonating ? impersonatedUser.email_laboral : usuario?.email_laboral;
+      if (!email && !impersonating) return null;
       const devUrl = new URL('/accounts/dev-login/', BONOS_URL);
-      devUrl.searchParams.set('email', email);
+      if (email) devUrl.searchParams.set('email', email);
+      if (impersonating) {
+        devUrl.searchParams.set('supabase_uuid', impersonatedUser.id);
+        if (impersonatedUser.nombre) devUrl.searchParams.set('first_name', impersonatedUser.nombre);
+        if (impersonatedUser.apellidos) devUrl.searchParams.set('last_name', impersonatedUser.apellidos);
+      }
       devUrl.searchParams.set('next', '/');
       return devUrl.toString();
     }
@@ -92,8 +100,11 @@ export default function BonosPage() {
     const url = new URL('/accounts/supabase/', BONOS_URL);
     url.searchParams.set('token', session.access_token);
     url.searchParams.set('next', '/');
+    if (isImpersonating && impersonatedUser?.email_laboral) {
+      url.searchParams.set('impersonate_email', impersonatedUser.email_laboral);
+    }
     return url.toString();
-  }, [usuario?.email_laboral]);
+  }, [usuario?.email_laboral, isImpersonating, impersonatedUser?.email_laboral]);
 
   // Reset SSO state when impersonation changes
   const prevImpersonating = useRef(isImpersonating);
@@ -196,19 +207,31 @@ export default function BonosPage() {
   }
 
   if (error) {
+    const diagItems = IS_LOCAL_BONOS
+      ? ['CP local no está corriendo en localhost:8003', 'El usuario no existe en la BD local de CP']
+      : [
+          'CP bloqueó el iframe por CSP (frame-ancestors) — agrega http://localhost:5174 a MOVI_ORIGIN en el .env de producción de CP',
+          'El navegador bloqueó cookies de terceros — prueba abrir en nueva ventana',
+          'Tu cuenta de admin no existe o no tiene rol admin en CP',
+          isImpersonating ? `El usuario ${impersonatedUser?.email_laboral ?? '?'} no existe en CP` : null,
+        ].filter(Boolean);
+
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 p-8">
         <AlertCircle className="w-12 h-12 text-red-400" />
-        <p className="text-lg text-neutral-700 dark:text-neutral-300 text-center max-w-md">
-          No se pudo iniciar sesion en Central de Produccion.
-          <br />
-          <span className="text-base text-neutral-500 dark:text-neutral-400">
-            El servidor de CP no acepto la sesion actual. Verifica que tu cuenta tenga acceso configurado en cp.movi.digital.
-          </span>
+        <p className="text-lg text-neutral-700 dark:text-neutral-300 text-center">
+          No se pudo conectar con Central de Produccion
         </p>
+        <div className="text-sm text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 rounded-lg p-4 max-w-lg w-full space-y-1">
+          <p className="font-semibold text-neutral-600 dark:text-neutral-300 mb-2">Causas posibles:</p>
+          {diagItems.map((item, i) => (
+            <p key={i} className="flex gap-2"><span className="text-red-400 shrink-0">•</span>{item}</p>
+          ))}
+          <p className="mt-3 text-xs text-neutral-400">Servidor: <code className="font-mono">{BONOS_URL}</code>{isImpersonating ? ` · Impersonando: ${impersonatedUser?.email_laboral ?? '?'}` : ''}</p>
+        </div>
         <div className="flex gap-3">
           <button
-            onClick={() => { setError(false); setRetryCount(0); }}
+            onClick={() => { setError(false); setRetryCount(0); setSsoConfirmed(false); ssoConfirmedRef.current = false; }}
             className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
           >
             Reintentar
@@ -257,70 +280,119 @@ export default function BonosPage() {
   }
 
   const visibleSections = SECTIONS.filter(s => s.show(perms));
+  const activeSection = visibleSections.find(s => s.path === activePath);
+
+  const SectionNav = ({ onSelect }: { onSelect?: () => void }) => (
+    <>
+      {visibleSections.map(section => {
+        const Icon = section.icon;
+        const isActive = activePath === section.path;
+        return (
+          <button
+            key={section.path}
+            onClick={() => { navigateTo(section.path); onSelect?.(); }}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
+              isActive
+                ? 'bg-slate-800 text-white'
+                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+            }`}
+          >
+            <Icon className="w-4 h-4 shrink-0" />
+            <span className="truncate">{section.label}</span>
+          </button>
+        );
+      })}
+    </>
+  );
 
   return (
     <div className="flex h-full w-full overflow-hidden">
+      {/* Mobile nav overlay */}
+      {mobileNavOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setMobileNavOpen(false)}
+          />
+          <div className="absolute left-0 top-0 h-full w-64 bg-white dark:bg-neutral-900 shadow-xl flex flex-col">
+            <div className="px-4 py-3 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between shrink-0">
+              <h2 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Central Produccion</h2>
+              <button
+                onClick={() => setMobileNavOpen(false)}
+                className="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <nav className="flex flex-col gap-0.5 p-2 overflow-y-auto flex-1">
+              <SectionNav onSelect={() => setMobileNavOpen(false)} />
+            </nav>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop sidebar */}
       <aside className="hidden md:flex flex-col w-52 min-w-[208px] bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 overflow-y-auto shrink-0">
         <div className="px-4 py-3 border-b border-neutral-100 dark:border-neutral-800">
           <h2 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Central Produccion</h2>
         </div>
         <nav className="flex flex-col gap-0.5 p-2">
-          {visibleSections.map(section => {
-            const Icon = section.icon;
-            const isActive = activePath === section.path;
-            return (
-              <button
-                key={section.path}
-                onClick={() => navigateTo(section.path)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
-                  isActive
-                    ? 'bg-slate-800 text-white'
-                    : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
-                }`}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span className="truncate">{section.label}</span>
-              </button>
-            );
-          })}
+          <SectionNav />
         </nav>
       </aside>
 
-      <div className="flex-1 relative min-w-0 overflow-hidden">
-        {!ssoConfirmed && (
-          <div
-            className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-8"
-            style={{ background: 'rgba(9, 15, 26, 0.96)', backdropFilter: 'blur(8px)' }}
+      {/* Right column */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Mobile top bar */}
+        <div className="md:hidden flex items-center gap-2 px-3 py-2 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shrink-0">
+          <button
+            onClick={() => setMobileNavOpen(true)}
+            className="p-1.5 rounded-lg text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
           >
-            <LoadingOrb size={120} />
-            <div className="flex flex-col items-center gap-1">
-              <span className="text-white font-semibold text-sm tracking-wide">Cargando Central de Produccion</span>
-              <div className="flex gap-1 mt-1">
-                {[0, 1, 2].map((i) => (
-                  <div
-                    key={i}
-                    className="w-1.5 h-1.5 rounded-full bg-sky-400"
-                    style={{ animation: `lo-dot-bounce 1.2s ease-in-out infinite ${i * 0.2}s` }}
-                  />
-                ))}
+            <Menu className="w-5 h-5" />
+          </button>
+          <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300 truncate">
+            {activeSection?.label || 'Central de Produccion'}
+          </span>
+        </div>
+
+        {/* Iframe area */}
+        <div className="flex-1 relative min-w-0 overflow-hidden">
+          {!ssoConfirmed && (
+            <div
+              className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-8"
+              style={{ background: 'rgba(9, 15, 26, 0.96)', backdropFilter: 'blur(8px)' }}
+            >
+              <LoadingOrb size={120} />
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-white font-semibold text-sm tracking-wide">Cargando Central de Produccion</span>
+                <div className="flex gap-1 mt-1">
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className="w-1.5 h-1.5 rounded-full bg-sky-400"
+                      style={{ animation: `lo-dot-bounce 1.2s ease-in-out infinite ${i * 0.2}s` }}
+                    />
+                  ))}
+                </div>
               </div>
+              <LoadingFactCard />
+              <style>{`
+                @keyframes lo-dot-bounce {
+                  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+                  40% { transform: scale(1); opacity: 1; }
+                }
+              `}</style>
             </div>
-            <LoadingFactCard />
-            <style>{`
-              @keyframes lo-dot-bounce {
-                0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-                40% { transform: scale(1); opacity: 1; }
-              }
-            `}</style>
-          </div>
-        )}
-        <iframe
-          ref={iframeRef}
-          src={src}
-          className="w-full h-full border-0 block"
-          allow="clipboard-write"
-          style={{ margin: 0, padding: 0 }}
-        />
+          )}
+          <iframe
+            ref={iframeRef}
+            src={src}
+            className="w-full h-full border-0 block"
+            allow="clipboard-write"
+            style={{ margin: 0, padding: 0 }}
+          />
+        </div>
       </div>
     </div>
   );

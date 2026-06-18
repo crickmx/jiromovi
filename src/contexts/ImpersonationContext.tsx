@@ -62,7 +62,7 @@ const STORAGE_KEY = 'movi-impersonation-session';
 export function ImpersonationProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<ImpersonationSession | null>(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = sessionStorage.getItem(STORAGE_KEY);
       if (stored) return JSON.parse(stored);
     } catch { /* ignore */ }
     return null;
@@ -97,11 +97,10 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
         .from('usuarios')
         .select(`
           *,
-          oficina:oficinas(id, nombre, accent_color, logo_url),
-          regimen_fiscal:commission_fiscal_regimes(id, name)
+          oficina:oficinas!oficina_id(id, nombre, accent_color, logo_url)
         `)
         .eq('id', userId)
-        .is('deleted_at', null)
+        .eq('activo', true)
         .maybeSingle();
 
       if (error || !data) {
@@ -167,7 +166,7 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
     }
 
     setSession(newSession);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
     return true;
   }, []);
 
@@ -184,7 +183,7 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
     }
 
     setSession(null);
-    localStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(STORAGE_KEY);
 
     // Restore the real user's theme by reloading their office color
     const { data: { user } } = await supabase.auth.getUser();

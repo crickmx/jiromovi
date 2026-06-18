@@ -85,7 +85,7 @@ export function MascaraAdmin() {
     const { data } = await supabase
       .from('usuarios')
       .select('id, nombre, apellidos, rol, oficina_id')
-      .eq('is_deleted', false)
+      .eq('activo', true)
       .or(`nombre.ilike.%${term}%,apellidos.ilike.%${term}%`)
       .order('nombre')
       .limit(15);
