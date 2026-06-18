@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Video, Plus, Calendar, Clock, Copy, ExternalLink, Search, Trash2, Zap } from 'lucide-react';
 import { createMeeting, formatMeetingDateTime, getMeetingUrl, getStatusBadgeClass, getStatusLabel } from '../lib/meetingUtils';
+import { PageHeader } from '@/components/ui/page-header';
 import type { Database } from '../lib/database.types';
 
 type Meeting = Database['public']['Tables']['meetings']['Row'];
@@ -135,57 +136,55 @@ export function MoviMeet() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl shadow-lg p-8 text-white">
-        <div className="flex items-center space-x-4 mb-6">
-          <Video className="w-12 h-12" />
-          <div>
-            <h1 className="text-3xl font-bold">MOVI Meet</h1>
-            <p className="text-purple-100">Sistema de reuniones virtuales integrado</p>
+      <PageHeader
+        title="MOVI Meet"
+        description="Sistema de reuniones virtuales integrado"
+        icon={Video}
+        actions={
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => setShowExpressModal(true)}
+              className="flex items-center space-x-2 bg-amber-400 text-neutral-900 px-4 py-2 rounded-lg font-semibold hover:bg-amber-300 transition"
+            >
+              <Zap className="w-4 h-4" />
+              <span>Reunión Express</span>
+            </button>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center space-x-2 bg-accent text-white px-4 py-2 rounded-lg font-semibold hover:bg-accent-hover transition"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Nueva Reunión</span>
+            </button>
           </div>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={() => setShowExpressModal(true)}
-            className="flex items-center space-x-2 bg-yellow-400 text-slate-900 px-6 py-3 rounded-lg font-semibold hover:bg-yellow-300 transition shadow-md"
-          >
-            <Zap className="w-5 h-5" />
-            <span>Reunión Express</span>
-          </button>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center space-x-2 bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition shadow-md"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Nueva Reunión</span>
-          </button>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-accent">Mis Reuniones</h2>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 dark:text-white/40 w-5 h-5" />
             <input
               type="text"
               placeholder="Buscar reunión..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="pl-10 pr-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
             />
           </div>
         </div>
 
         {filteredMeetings.length === 0 ? (
           <div className="text-center py-12">
-            <Video className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-            <p className="text-slate-500 text-lg">
+            <Video className="w-16 h-16 text-neutral-300 dark:text-white/20 mx-auto mb-4" />
+            <p className="text-neutral-500 dark:text-white/50 text-lg">
               {searchTerm ? 'No se encontraron reuniones' : 'No tienes reuniones creadas'}
             </p>
             {!searchTerm && (
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="mt-4 text-purple-600 hover:text-purple-700 font-medium"
+                className="mt-4 text-accent hover:text-accent-hover font-medium"
               >
                 Crear tu primera reunión →
               </button>
@@ -198,14 +197,14 @@ export function MoviMeet() {
               return (
                 <div
                   key={meeting.id}
-                  className="border border-slate-200 rounded-lg p-5 hover:shadow-md transition"
+                  className="border border-neutral-200/60 dark:border-white/8 rounded-lg p-5 hover:shadow-md transition"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-slate-800 mb-2">
+                      <h3 className="text-xl font-semibold text-neutral-800 dark:text-white mb-2">
                         {meeting.title}
                       </h3>
-                      <div className="flex items-center space-x-4 text-sm text-slate-600">
+                      <div className="flex items-center space-x-4 text-sm text-neutral-600 dark:text-white/60">
                         <span className="flex items-center">
                           <Calendar className="w-4 h-4 mr-1" />
                           {formattedDate}
@@ -222,12 +221,12 @@ export function MoviMeet() {
                   </div>
 
                   <div className="flex items-center space-x-2 mb-3">
-                    <code className="flex-1 bg-slate-100 px-3 py-2 rounded text-sm font-mono text-slate-700">
+                    <code className="flex-1 bg-neutral-100 dark:bg-neutral-700/50 px-3 py-2 rounded text-sm font-mono text-neutral-700 dark:text-white/70">
                       {getMeetingUrl(meeting.code)}
                     </code>
                     <button
                       onClick={() => handleCopyLink(meeting.code)}
-                      className="p-2 text-slate-600 hover:text-purple-600 hover:bg-slate-100 rounded transition"
+                      className="p-2 text-neutral-600 dark:text-white/60 hover:text-accent hover:bg-neutral-100 dark:hover:bg-white/5 rounded transition"
                       title="Copiar enlace"
                     >
                       {copiedCode === meeting.code ? (
@@ -241,7 +240,7 @@ export function MoviMeet() {
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => handleJoinMeeting(meeting.code)}
-                      className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition font-medium"
+                      className="flex items-center space-x-2 bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover transition font-medium"
                     >
                       <ExternalLink className="w-4 h-4" />
                       <span>Unirse</span>
@@ -265,14 +264,14 @@ export function MoviMeet() {
 
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full my-8 flex flex-col max-h-[85vh]">
-            <div className="flex-shrink-0 border-b border-slate-200 px-6 py-4">
-              <h2 className="text-xl font-bold text-slate-900">Nueva Reunión</h2>
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl max-w-md w-full my-8 flex flex-col max-h-[85vh]">
+            <div className="flex-shrink-0 border-b border-neutral-200 dark:border-white/8 px-6 py-4">
+              <h2 className="text-xl font-bold text-neutral-900 dark:text-white">Nueva Reunión</h2>
             </div>
             <div className="flex-1 overflow-y-auto px-6 py-4">
               <form id="create-meeting-form" onSubmit={handleCreateMeeting} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                   Título de la reunión
                 </label>
                 <input
@@ -280,13 +279,13 @@ export function MoviMeet() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   required
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                   placeholder="Ej: Reunión de equipo"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                   Fecha
                 </label>
                 <input
@@ -294,12 +293,12 @@ export function MoviMeet() {
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                   required
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                   Hora
                 </label>
                 <input
@@ -307,12 +306,12 @@ export function MoviMeet() {
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
                   required
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                 />
               </div>
               </form>
             </div>
-            <div className="flex-shrink-0 border-t border-slate-200 px-6 py-4">
+            <div className="flex-shrink-0 border-t border-neutral-200 dark:border-white/8 px-6 py-4">
               <div className="flex space-x-3">
                 <button
                   type="button"
@@ -322,7 +321,7 @@ export function MoviMeet() {
                     setDate('');
                     setTime('');
                   }}
-                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium"
+                  className="flex-1 px-4 py-2 border border-neutral-300 dark:border-white/10 text-neutral-700 dark:text-neutral-300 rounded-lg hover:bg-neutral-50 dark:hover:bg-white/5 transition font-medium"
                 >
                   Cancelar
                 </button>
@@ -330,7 +329,7 @@ export function MoviMeet() {
                   type="submit"
                   form="create-meeting-form"
                   disabled={creating}
-                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {creating ? 'Creando...' : 'Crear Reunión'}
                 </button>
@@ -342,22 +341,22 @@ export function MoviMeet() {
 
       {showExpressModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full my-8 flex flex-col max-h-[85vh]">
-            <div className="flex-shrink-0 border-b border-slate-200 px-6 py-4">
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl max-w-md w-full my-8 flex flex-col max-h-[85vh]">
+            <div className="flex-shrink-0 border-b border-neutral-200 dark:border-white/8 px-6 py-4">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-yellow-100 rounded-lg">
+                <div className="p-2 bg-yellow-100 dark:bg-yellow-500/15 rounded-lg">
                   <Zap className="w-6 h-6 text-yellow-600" />
                 </div>
-                <h2 className="text-xl font-bold text-slate-900">Reunión Express</h2>
+                <h2 className="text-xl font-bold text-neutral-900 dark:text-white">Reunión Express</h2>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto px-6 py-4">
-              <p className="text-slate-600 mb-4">
+              <p className="text-neutral-600 dark:text-white/60 mb-4">
                 Crea una reunión instantánea y únete inmediatamente
               </p>
               <form id="express-meeting-form" onSubmit={handleCreateExpressMeeting} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                   Nombre de la reunión
                 </label>
                 <input
@@ -365,13 +364,13 @@ export function MoviMeet() {
                   value={expressTitle}
                   onChange={(e) => setExpressTitle(e.target.value)}
                   required
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  className="w-full px-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                   placeholder="Ej: Reunión rápida de equipo"
                 />
               </div>
               </form>
             </div>
-            <div className="flex-shrink-0 border-t border-slate-200 px-6 py-4">
+            <div className="flex-shrink-0 border-t border-neutral-200 dark:border-white/8 px-6 py-4">
               <div className="flex space-x-3">
                 <button
                   type="button"
@@ -379,7 +378,7 @@ export function MoviMeet() {
                     setShowExpressModal(false);
                     setExpressTitle('');
                   }}
-                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium"
+                  className="flex-1 px-4 py-2 border border-neutral-300 dark:border-white/10 text-neutral-700 dark:text-neutral-300 rounded-lg hover:bg-neutral-50 dark:hover:bg-white/5 transition font-medium"
                 >
                   Cancelar
                 </button>
@@ -387,7 +386,7 @@ export function MoviMeet() {
                   type="submit"
                   form="express-meeting-form"
                   disabled={creating}
-                  className="flex-1 px-4 py-2 bg-yellow-400 text-slate-900 rounded-lg hover:bg-yellow-300 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2 bg-amber-400 text-neutral-900 rounded-lg hover:bg-amber-300 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {creating ? 'Creando...' : 'Iniciar Ahora'}
                 </button>

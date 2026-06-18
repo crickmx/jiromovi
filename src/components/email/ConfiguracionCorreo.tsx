@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Server, Mail, Lock, Check, AlertCircle, Shield } from 'lucide-react';
+import { X, Server, Mail, Lock, Check, CircleAlert as AlertCircle, Shield } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -26,6 +26,7 @@ export function ConfiguracionCorreo({ isOpen, onClose, onSuccess, configuracion 
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [hasExistingPassword, setHasExistingPassword] = useState(false);
   const [configGlobal, setConfigGlobal] = useState<ConfigGlobal | null>(null);
 
   const isAdmin = usuario?.rol === 'Administrador';
@@ -34,6 +35,15 @@ export function ConfiguracionCorreo({ isOpen, onClose, onSuccess, configuracion 
     loadConfigGlobal();
     if (usuario) {
       setEmail(usuario.email_cuenta || '');
+      // Check if a password is already stored
+      supabase
+        .from('usuarios')
+        .select('email_password')
+        .eq('id', usuario.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          setHasExistingPassword(!!data?.email_password);
+        });
     }
   }, [usuario]);
 
@@ -112,8 +122,12 @@ export function ConfiguracionCorreo({ isOpen, onClose, onSuccess, configuracion 
   };
 
   const handleGuardar = async () => {
-    if (!email || !password) {
-      setError('Por favor completa todos los campos');
+    if (!email) {
+      setError('Por favor ingresa tu correo electrónico');
+      return;
+    }
+    if (!password && !hasExistingPassword) {
+      setError('Por favor ingresa tu contraseña');
       return;
     }
 
@@ -121,17 +135,18 @@ export function ConfiguracionCorreo({ isOpen, onClose, onSuccess, configuracion 
     setError('');
 
     try {
+      const updates: Record<string, string> = { email_cuenta: email };
+      if (password) updates.email_password = password;
+
       const { error: updateError } = await supabase
         .from('usuarios')
-        .update({
-          email_cuenta: email,
-          email_password: password
-        })
+        .update(updates)
         .eq('id', usuario!.id);
 
       if (updateError) throw updateError;
 
       setSuccess('Configuración guardada correctamente');
+      if (password) setHasExistingPassword(true);
       setTimeout(() => {
         onSuccess();
       }, 1500);
@@ -212,10 +227,12 @@ export function ConfiguracionCorreo({ isOpen, onClose, onSuccess, configuracion 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
-                placeholder="Tu contraseña de correo"
+                placeholder={hasExistingPassword ? '(sin cambios)' : 'Tu contraseña de correo'}
               />
               <p className="text-xs text-neutral-500 mt-1">
-                La contraseña se guarda encriptada y nunca se muestra
+                {hasExistingPassword
+                  ? 'Dejar vacío para mantener la contraseña actual'
+                  : 'La contraseña se guarda encriptada y nunca se muestra'}
               </p>
             </div>
 
@@ -303,7 +320,7 @@ export function ConfiguracionCorreo({ isOpen, onClose, onSuccess, configuracion 
 
           <button
             onClick={handleGuardar}
-            disabled={loading || !email || !password}
+            disabled={loading || !email || (!password && !hasExistingPassword)}
             className="px-6 py-2.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl hover:shadow-medium transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Guardando...' : 'Guardar cambios'}

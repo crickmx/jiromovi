@@ -1,22 +1,21 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Layout } from '../components/Layout';
-import { PageHeader } from '../components/ui/page-header';
-import { Section } from '../components/ui/section';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { useAuth } from '../contexts/AuthContext';
-import { Plus, Calendar, Pin, FileText, Settings, Filter, X, ChevronRight } from 'lucide-react';
+import { Plus, Calendar, Pin, FileText, Settings, ListFilter as Filter, X, ChevronRight } from 'lucide-react';
 import { obtenerComunicados, obtenerCategoriasActivas } from '../lib/comunicadosUtils';
 import type { ComunicadoPublicacion, ComunicadoCategoria } from '../lib/comunicadosTypes';
 import { extraerTextoPlano, formatearFecha } from '../lib/comunicadosUtils';
 import { cn } from '@/lib/utils';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
 import { trackAnnouncementListViewed, trackAnnouncementOpened } from '../lib/activityLogger';
+import { useMoviAuth } from '../contexts/MoviAuthContext';
+import { PageHeader } from '@/components/ui/page-header';
+import { Section } from '@/components/ui/section';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 export default function Comunicados() {
-  const { usuario } = useAuth();
+  const { usuario } = useMoviAuth();
   const navigate = useNavigate();
   const [comunicados, setComunicados] = useState<ComunicadoPublicacion[]>([]);
   const [loading, setLoading] = useState(true);
@@ -132,18 +131,18 @@ export default function Comunicados() {
 
   if (loading) {
     return (
-      <Layout hideHeader>
+      <>
         <div className="space-y-4">
           <div className="skeleton h-24 w-full" />
           <div className="skeleton h-64 w-full" />
           <div className="skeleton h-64 w-full" />
         </div>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout hideHeader>
+    <>
       <div className="max-w-7xl mx-auto">
         <PageHeader
           title="Comunicados"
@@ -315,8 +314,9 @@ export default function Comunicados() {
                         <img
                           src={comunicado.imagen_principal}
                           alt={comunicado.titulo}
+                          crossOrigin="anonymous"
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          loading="lazy"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         />
                       </div>
 
@@ -387,6 +387,6 @@ export default function Comunicados() {
           )}
         </div>
       </div>
-    </Layout>
+    </>
   );
 }

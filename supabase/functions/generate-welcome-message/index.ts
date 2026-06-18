@@ -171,14 +171,14 @@ async function buildFullContext(
   const { data: usuario } = await supabase
     .from("usuarios")
     .select(
-      "nombre_completo, nombre, rol, oficina_id, web_slug, id_sicas, email_laboral, fecha_ingreso, oficinas(nombre)"
+      "nombre_completo, nombre_publico, nombre, rol, oficina_id, web_slug, id_sicas, email_laboral, fecha_ingreso, oficinas(nombre)"
     )
     .eq("id", userId)
     .maybeSingle();
 
   const ctx: FullContext = {
     usuario: {
-      nombre: usuario?.nombre_completo || usuario?.nombre || "Usuario",
+      nombre: (usuario as any)?.nombre_publico?.trim() || usuario?.nombre_completo || usuario?.nombre || "Usuario",
       rol: usuario?.rol || "Agente",
       oficina: (usuario?.oficinas as any)?.nombre || null,
       oficina_id: usuario?.oficina_id || null,

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 
@@ -34,18 +34,24 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [pushEnabled, setPushEnabled] = useState(false);
+  // Ref so the realtime callback always reads the latest value (no stale closure)
+  const pushEnabledRef = useRef(pushEnabled);
+  useEffect(() => { pushEnabledRef.current = pushEnabled; }, [pushEnabled]);
 
   useEffect(() => {
     if (usuario) {
       fetchNotifications();
-      subscribeToNotifications();
       checkPushPermission();
+      const unsub = subscribeToNotifications();
+      return unsub;
     }
-  }, [usuario]);
+  }, [usuario?.id]);
 
   const checkPushPermission = () => {
     if ('Notification' in window) {
-      setPushEnabled(Notification.permission === 'granted');
+      const granted = Notification.permission === 'granted';
+      setPushEnabled(granted);
+      pushEnabledRef.current = granted;
     }
   };
 
@@ -102,115 +108,136 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const subscribeToNotifications = () => {
     if (!usuario) return;
 
-    const channel = supabase
-      .channel('notificaciones-channel')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notificaciones',
-          filter: `usuario_id=eq.${usuario.id}`,
-        },
-        (payload) => {
-          const newNotification = payload.new as Notification;
-          setNotifications((prev) => [newNotification, ...prev]);
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+    let currentChannel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
 
-          if (pushEnabled && 'Notification' in window && Notification.permission === 'granted') {
-            showBrowserNotification(newNotification);
-          }
-          playNotificationSound();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${usuario.id}`,
-        },
-        (payload) => {
-          const newNotif = payload.new as any;
-          const mapped: Notification = {
-            id: newNotif.id,
-            titulo: newNotif.title,
-            mensaje: newNotif.body,
-            modulo: 'Comisiones',
-            accion_url: newNotif.link_url,
-            accion_texto: 'Ver',
-            leida: newNotif.is_read,
-            created_at: newNotif.created_at,
-            tipo: 'transaccional',
-            prioridad: 'normal'
-          };
-          setNotifications((prev) => [mapped, ...prev]);
+    const connect = () => {
+      if (cancelled) return;
 
-          if (pushEnabled && 'Notification' in window && Notification.permission === 'granted') {
-            showBrowserNotification(mapped);
+      const channel = supabase
+        .channel(`notificaciones-${usuario.id}-${Date.now()}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notificaciones',
+            filter: `usuario_id=eq.${usuario.id}`,
+          },
+          (payload) => {
+            const newNotification = payload.new as Notification;
+            setNotifications((prev) => [newNotification, ...prev]);
+
+            if (pushEnabledRef.current && 'Notification' in window && Notification.permission === 'granted') {
+              showBrowserNotification(newNotification);
+            }
+            playNotificationSound();
           }
-          playNotificationSound();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notificaciones',
-          filter: `usuario_id=eq.${usuario.id}`,
-        },
-        (payload) => {
-          const updatedNotification = payload.new as Notification;
-          setNotifications((prev) =>
-            prev.map((n) => (n.id === updatedNotification.id ? updatedNotification : n))
-          );
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${usuario.id}`,
-        },
-        (payload) => {
-          const updated = payload.new as any;
-          const mapped: Notification = {
-            id: updated.id,
-            titulo: updated.title,
-            mensaje: updated.body,
-            modulo: 'Comisiones',
-            accion_url: updated.link_url,
-            accion_texto: 'Ver',
-            leida: updated.is_read,
-            created_at: updated.created_at,
-            tipo: 'transaccional',
-            prioridad: 'normal'
-          };
-          setNotifications((prev) =>
-            prev.map((n) => (n.id === mapped.id ? mapped : n))
-          );
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'notificaciones',
-          filter: `usuario_id=eq.${usuario.id}`,
-        },
-        (payload) => {
-          const deletedId = payload.old.id;
-          setNotifications((prev) => prev.filter((n) => n.id !== deletedId));
-        }
-      )
-      .subscribe();
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${usuario.id}`,
+          },
+          (payload) => {
+            const newNotif = payload.new as any;
+            const mapped: Notification = {
+              id: newNotif.id,
+              titulo: newNotif.title,
+              mensaje: newNotif.body,
+              modulo: 'Comisiones',
+              accion_url: newNotif.link_url,
+              accion_texto: 'Ver',
+              leida: newNotif.is_read,
+              created_at: newNotif.created_at,
+              tipo: 'transaccional',
+              prioridad: 'normal'
+            };
+            setNotifications((prev) => [mapped, ...prev]);
+
+            if (pushEnabledRef.current && 'Notification' in window && Notification.permission === 'granted') {
+              showBrowserNotification(mapped);
+            }
+            playNotificationSound();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'notificaciones',
+            filter: `usuario_id=eq.${usuario.id}`,
+          },
+          (payload) => {
+            const updatedNotification = payload.new as Notification;
+            setNotifications((prev) =>
+              prev.map((n) => (n.id === updatedNotification.id ? updatedNotification : n))
+            );
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${usuario.id}`,
+          },
+          (payload) => {
+            const updated = payload.new as any;
+            const mapped: Notification = {
+              id: updated.id,
+              titulo: updated.title,
+              mensaje: updated.body,
+              modulo: 'Comisiones',
+              accion_url: updated.link_url,
+              accion_texto: 'Ver',
+              leida: updated.is_read,
+              created_at: updated.created_at,
+              tipo: 'transaccional',
+              prioridad: 'normal'
+            };
+            setNotifications((prev) =>
+              prev.map((n) => (n.id === mapped.id ? mapped : n))
+            );
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'notificaciones',
+            filter: `usuario_id=eq.${usuario.id}`,
+          },
+          (payload) => {
+            const deletedId = payload.old.id;
+            setNotifications((prev) => prev.filter((n) => n.id !== deletedId));
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            if (!cancelled) {
+              supabase.removeChannel(channel);
+              retryTimeout = setTimeout(connect, 3000);
+            }
+          }
+        });
+
+      currentChannel = channel;
+    };
+
+    connect();
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      if (retryTimeout) clearTimeout(retryTimeout);
+      if (currentChannel) supabase.removeChannel(currentChannel);
     };
   };
 
@@ -250,6 +277,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     try {
       const permission = await Notification.requestPermission();
       setPushEnabled(permission === 'granted');
+      pushEnabledRef.current = permission === 'granted';
 
       if (permission === 'granted') {
         showToast('Notificaciones activadas', 'success');

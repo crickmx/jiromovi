@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Users, UserX, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Users, UserX, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AsignarVendedorStagingModal from '../components/comisiones/AsignarVendedorStagingModal';
+import { PageHeader } from '@/components/ui/page-header';
+import { LoadingState } from '@/components/ui/loading-state';
+import { Button } from '@/components/ui/button';
 
 interface VendorGroup {
   vendor_key: string;
@@ -234,21 +237,21 @@ export default function ComisionesPrepararLote() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-6">
-        <div className="bg-white rounded-3xl shadow-soft p-12 text-center max-w-md">
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center p-6">
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-12 text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-neutral-900 mb-2">
+          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
             Acceso Denegado
           </h2>
-          <p className="text-neutral-600 mb-6">
+          <p className="text-neutral-600 dark:text-white/60 mb-6">
             Solo los administradores pueden acceder a esta sección.
           </p>
-          <button
+          <Button
             onClick={() => navigate('/dashboard')}
-            className="px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors font-semibold"
+            size="lg"
           >
             Volver al Dashboard
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -256,26 +259,26 @@ export default function ComisionesPrepararLote() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-accent animate-spin" />
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center">
+        <LoadingState text="Cargando sesión..." />
       </div>
     );
   }
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-6">
-        <div className="bg-white rounded-3xl shadow-soft p-12 text-center max-w-md">
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center p-6">
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-12 text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-neutral-900 mb-2">
+          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
             Sesión no encontrada
           </h2>
-          <button
+          <Button
             onClick={() => navigate('/comisiones/upload-nuevo')}
-            className="px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors font-semibold"
+            size="lg"
           >
             Volver a cargar archivo
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -286,25 +289,15 @@ export default function ComisionesPrepararLote() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate('/comisiones/upload-nuevo')}
-              className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6 text-neutral-700" />
-            </button>
-            <div>
-              <h1 className="text-3xl font-display font-bold text-accent mb-1">
-                Preparar Lote
-              </h1>
-              <p className="text-neutral-600">
-                {session.file_name}
-              </p>
-            </div>
-          </div>
-        </div>
+      <PageHeader
+        title="Preparar Lote"
+        description={session.file_name}
+        icon={Users}
+        backTo="/comisiones/upload-nuevo"
+        backLabel="Volver"
+      />
+
+      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-6">
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start space-x-3">
@@ -353,7 +346,7 @@ export default function ComisionesPrepararLote() {
 
         {recognizedGroups.length > 0 && (
           <div className="mb-6">
-            <h2 className="text-xl font-bold text-neutral-900 mb-4 flex items-center space-x-2">
+            <h2 className="text-xl font-bold text-neutral-900 dark:text-white mb-4 flex items-center space-x-2">
               <Users className="w-6 h-6 text-green-600" />
               <span>Vendedores Reconocidos ({recognizedGroups.length})</span>
             </h2>
@@ -373,29 +366,30 @@ export default function ComisionesPrepararLote() {
                     <div className="flex items-center space-x-3">
                       <CheckCircle className="w-5 h-5 text-green-600" />
                       <div>
-                        <div className="font-semibold text-neutral-900">
+                        <div className="font-semibold text-neutral-900 dark:text-white">
                           {group.vendor_name_raw}
                         </div>
-                        <div className="text-sm text-neutral-600">
+                        <div className="text-sm text-neutral-600 dark:text-white/60">
                           Asignado a: {group.movi_user_name}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center space-x-4">
                       <div className="text-right">
-                        <div className="text-lg font-bold text-neutral-900">
+                        <div className="text-lg font-bold text-neutral-900 dark:text-white">
                           {group.items_count} documentos
                         </div>
-                        <div className="text-sm text-neutral-600">
+                        <div className="text-sm text-neutral-600 dark:text-white/60">
                           ${group.total_comision.toFixed(2)}
                         </div>
                       </div>
-                      <button
+                      <Button
                         onClick={() => setSelectedVendor(group)}
-                        className="px-4 py-2 bg-white text-neutral-700 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors font-semibold"
+                        variant="outline"
+                        size="sm"
                       >
                         Cambiar
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -406,7 +400,7 @@ export default function ComisionesPrepararLote() {
 
         {pendingGroups.length > 0 && (
           <div className="mb-6">
-            <h2 className="text-xl font-bold text-neutral-900 mb-4 flex items-center space-x-2">
+            <h2 className="text-xl font-bold text-neutral-900 dark:text-white mb-4 flex items-center space-x-2">
               <UserX className="w-6 h-6 text-orange-600" />
               <span>Vendedores Sin Asignar ({pendingGroups.length})</span>
             </h2>
@@ -420,35 +414,35 @@ export default function ComisionesPrepararLote() {
               {pendingGroups.map(group => (
                 <div
                   key={group.vendor_key}
-                  className="bg-white border border-orange-200 rounded-xl p-4"
+                  className="bg-white dark:bg-neutral-800/50 border border-orange-200 dark:border-orange-200/30 rounded-xl p-4"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <AlertCircle className="w-5 h-5 text-orange-600" />
                       <div>
-                        <div className="font-semibold text-neutral-900">
+                        <div className="font-semibold text-neutral-900 dark:text-white">
                           {group.vendor_name_raw}
                         </div>
-                        <div className="text-sm text-neutral-600">
+                        <div className="text-sm text-neutral-600 dark:text-white/60">
                           Sin asignar
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center space-x-4">
                       <div className="text-right">
-                        <div className="text-lg font-bold text-neutral-900">
+                        <div className="text-lg font-bold text-neutral-900 dark:text-white">
                           {group.items_count} documentos
                         </div>
-                        <div className="text-sm text-neutral-600">
+                        <div className="text-sm text-neutral-600 dark:text-white/60">
                           ${group.total_comision.toFixed(2)}
                         </div>
                       </div>
-                      <button
+                      <Button
                         onClick={() => setSelectedVendor(group)}
-                        className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors font-semibold"
+                        size="sm"
                       >
                         Asignar
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -457,21 +451,21 @@ export default function ComisionesPrepararLote() {
           </div>
         )}
 
-        <div className="flex justify-end pt-6 border-t border-neutral-200">
-          <button
+        <div className="flex justify-end pt-6 border-t border-neutral-200 dark:border-white/10">
+          <Button
             onClick={handleCrearLotes}
             disabled={creating || session.recognized_count === 0}
-            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl hover:shadow-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+            size="lg"
           >
             {creating ? (
               <>
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
                 <span>Creando lotes...</span>
               </>
             ) : (
               <span>Crear Lotes Semanales</span>
             )}
-          </button>
+          </Button>
         </div>
       </div>
 

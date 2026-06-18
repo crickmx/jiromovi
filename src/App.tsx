@@ -1,874 +1,231 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { HelmetProvider } from 'react-helmet-async';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { NotificationProvider } from './contexts/NotificationContext';
-import { AssistantProvider } from './contexts/AssistantContext';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import { Layout } from './components/Layout';
-import { Login } from './pages/Login';
-import Registro from './pages/Registro';
-import { ResetPassword } from './pages/ResetPassword';
-import { Dashboard } from './pages/Dashboard';
-import { Perfil } from './pages/Perfil';
-import { PerfilUsuario } from './pages/PerfilUsuario';
-import { Directorio } from './pages/Directorio';
-import { Oficinas } from './pages/Oficinas';
-import { Configuracion } from './pages/Configuracion';
-import ConfiguracionHub from './pages/ConfiguracionHub';
-import { CentroCorreos } from './pages/CentroCorreos';
-import { Vacaciones } from './pages/Vacaciones';
-import { EspacioJiro } from './pages/EspacioJiro';
-import MulticotizadorDigital from './pages/MulticotizadorDigital';
-import { GestorEmails } from './pages/GestorEmails';
-import { Chat } from './pages/Chat';
-import { AccesosNacional } from './pages/AccesosNacional';
-import { DirectorioJiro } from './pages/DirectorioJiro';
-import { SegurosEducation } from './pages/SegurosEducation';
-import { SegurosEducationOnDemand } from './pages/SegurosEducationOnDemand';
-import { SegurosEducationAulaVirtual } from './pages/SegurosEducationAulaVirtual';
-import { SegurosEducationAulaDigital } from './pages/SegurosEducationAulaDigital';
-import { SegurosEducationAnalytics } from './pages/SegurosEducationAnalytics';
-import { CentroNotificaciones } from './pages/CentroNotificaciones';
-import { Tramites } from './pages/Tramites';
-import TramitesReportes from './pages/TramitesReportes';
-import { TramiteDetalle } from './pages/TramiteDetalle';
-import { ConfiguracionCatalogos } from './pages/ConfiguracionCatalogos';
-import { MeetingRoom } from './pages/MeetingRoom';
-import { AulaVirtualSala } from './pages/AulaVirtualSala';
-import { NotificacionesTransaccionales } from './pages/NotificacionesTransaccionales';
-import MiCRM from './pages/MiCRM';
-import CRMContactos from './pages/CRMContactos';
-import CRMContactoPerfil from './pages/CRMContactoPerfil';
-import CRMTareas from './pages/CRMTareas';
-import CRMReportes from './pages/CRMReportes';
-import CRMConfiguracion from './pages/CRMConfiguracion';
-import Comunicados from './pages/Comunicados';
-import ComunicadoDetalle from './pages/ComunicadoDetalle';
-import ComunicadoEditor from './pages/ComunicadoEditor';
-import ComunicadoCategorias from './pages/ComunicadoCategorias';
-import Store from './pages/Store';
-import StoreCarrito from './pages/StoreCarrito';
-import StoreMisPedidos from './pages/StoreMisPedidos';
-import StorePedidoDetalle from './pages/StorePedidoDetalle';
-import StorePedidos from './pages/StorePedidos';
-import StoreAdmin from './pages/StoreAdmin';
-import Comisiones from './pages/Comisiones';
-import ComisionesLote from './pages/ComisionesLote';
-import MisComisiones from './pages/MisComisiones';
-import ComisionesUpload from './pages/ComisionesUpload';
-import ComisionesUploadNuevo from './pages/ComisionesUploadNuevo';
-import ComisionesPrepararLote from './pages/ComisionesPrepararLote';
-import MapeoVendedores from './pages/MapeoVendedores';
-import DocumentosImportar from './pages/DocumentosImportar';
-import MapeoVendedoresAdmin from './pages/MapeoVendedoresAdmin';
-import ProduccionTotal from './pages/ProduccionTotal';
-import ProduccionConvenio from './pages/ProduccionConvenio';
-import ProduccionConfiguracion from './pages/ProduccionConfiguracion';
-import MiProduccion from './pages/MiProduccion';
-import MiProduccionSICASMirror from './pages/MiProduccionSICASMirror';
-import MisPolizas from './pages/MisPolizas';
-import GMMTarifasAdmin from './pages/GMMTarifasAdmin';
-import GMMCotizador from './pages/GMMCotizador';
-import CatalogosWeb from './pages/CatalogosWeb';
-import Mercadotecnia from './pages/Mercadotecnia';
-import PaginaPublicaAsesor from './pages/PaginaPublicaAsesor';
-import ChatGPTTest from './pages/ChatGPTTest';
-import SicasAdmin from './pages/SicasAdmin';
-import SicasTestCatalogs from './pages/SicasTestCatalogs';
-import SicasDiagnostico from './pages/SicasDiagnostico';
-import SicasRestTest from './pages/SicasRestTest';
-import SicasVigentesTest from './pages/SicasVigentesTest';
-import CentroDigital from './pages/CentroDigital';
-import CursoCedulaA from './pages/CursoCedulaA';
-import ModuloViewer from './pages/ModuloViewer';
-import CedulaAExamenes from './pages/CedulaAExamenes';
-import ExamenInterface from './pages/ExamenInterface';
-import CertificadoCedulaA from './pages/CertificadoCedulaA';
-import MiProgreso from './pages/MiProgreso';
-import GamificacionAdmin from './pages/GamificacionAdmin';
-import CargaMasivaUsuarios from './pages/CargaMasivaUsuarios';
-import { ActividadUsuarios } from './pages/ActividadUsuarios';
-import RegistroPersonal from './pages/RegistroPersonal';
-import RegimenFiscalAdmin from './pages/RegimenFiscalAdmin';
-import RegimenFiscalEditor from './pages/RegimenFiscalEditor';
-import ProduccionSICASLive from './pages/ProduccionSICASLive';
-import CentroContacto from './pages/CentroContacto';
-import CentroContactoHub from './pages/CentroContactoHub';
-import LectorQualitas from './pages/LectorQualitas';
-import EntregaPolizas from './pages/EntregaPolizas';
-import FormulariosCotizacion from './pages/FormulariosCotizacion';
-import QuoteFormWizard from './pages/QuoteFormWizard';
-import { BonosPage } from './pages/BonosPage';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { Suspense, lazy } from 'react';
+import './index.css';
+import { MoviAuthProvider } from './contexts/MoviAuthContext';
+import { ImpersonationProvider } from './contexts/ImpersonationContext';
+import { LoadingProvider } from './contexts/LoadingContext';
+import { LoadingOverlay } from './components/loading/LoadingOverlay';
+import MoviFullRoutes from './pages/MoviFullRoutes';
+import MoviLogin from './pages/MoviLogin';
 
-function AppRoutes() {
-  const { usuario, loading } = useAuth();
+// ── Seguwallet pages (lazy) ────────────────────────────────────────────────
+import { SeguwalletAuthProvider } from './seguwallet/lib/SeguwalletAuthContext';
+import { SeguwalletProvider } from './seguwallet/lib/SeguwalletContext';
+import { AgentBrandProvider } from './seguwallet/lib/AgentBrandContext';
+import { SeguwalletProtectedRoute } from './seguwallet/components/SeguwalletProtectedRoute';
+const SeguwalletLogin     = lazy(() => import('./seguwallet/pages/SeguwalletLogin').then(m => ({ default: m.SeguwalletLogin })));
+const SeguwalletDashboard = lazy(() => import('./seguwallet/pages/SeguwalletDashboard').then(m => ({ default: m.SeguwalletDashboard })));
+const SeguwalletPolizas   = lazy(() => import('./seguwallet/pages/SeguwalletPolizas').then(m => ({ default: m.SeguwalletPolizas })));
+const SeguwalletChava     = lazy(() => import('./seguwallet/pages/SeguwalletChava').then(m => ({ default: m.SeguwalletChava })));
+const SeguwalletPerfil    = lazy(() => import('./seguwallet/pages/SeguwalletPerfil').then(m => ({ default: m.SeguwalletPerfil })));
+const SeguwalletCotizar   = lazy(() => import('./seguwallet/pages/SeguwalletCotizar').then(m => ({ default: m.SeguwalletCotizar })));
+const SeguwalletDescargas = lazy(() => import('./seguwallet/pages/SeguwalletDescargas').then(m => ({ default: m.SeguwalletDescargas })));
+const SeguwalletAseguradoras = lazy(() => import('./seguwallet/pages/SeguwalletAseguradoras').then(m => ({ default: m.SeguwalletAseguradoras })));
+const SeguwalletCompleteProfile = lazy(() => import('./seguwallet/pages/SeguwalletCompleteProfile').then(m => ({ default: m.SeguwalletCompleteProfile })));
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600">Cargando...</p>
-        </div>
-      </div>
-    );
+// ── Chava Agente pages (lazy) ──────────────────────────────────────────────
+import { ChavaAgenteProvider } from './chava-agente/lib/ChavaAgenteContext';
+const ChavaAgenteLanding = lazy(() => import('./chava-agente/pages/ChavaAgenteLanding'));
+
+// ── Public advisor page (lazy, no auth) ───────────────────────────────────
+const PaginaPublicaAsesor = lazy(() => import('./pages/PaginaPublicaAsesor'));
+
+// ── Domain detection ──────────────────────────────────────────────────────
+const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
+const isAgenteSite    = HOST === 'agentedeseguros.website' || HOST.endsWith('.agentedeseguros.website');
+const isChavaSite     = HOST === 'agentedeseguros.ai'      || HOST.endsWith('.agentedeseguros.ai');
+const isSeguwalletSite = HOST === 'seguwallet.mx' || HOST.endsWith('.seguwallet.mx');
+// Everything else (app.movi.digital, localhost, Bolt preview, etc.) is MOVI
+
+// ── Redirect to grupojiro.com for bare agentedeseguros.website root ────────
+function AgenteRootRedirect() {
+  const { slug } = useParams<{ slug: string }>();
+  if (!slug) {
+    if (typeof window !== 'undefined') window.location.replace('https://www.grupojiro.com');
+    return null;
   }
+  return null;
+}
 
+// ── Seguwallet provider stack ─────────────────────────────────────────────
+function SeguwalletStack({ children }: { children: React.ReactNode }) {
   return (
-    <Routes>
-      <Route path="/login" element={usuario ? <Navigate to="/dashboard" replace /> : <Login />} />
-
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Dashboard />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/perfil"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Perfil />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/directorio"
-        element={
-          <ProtectedRoute requireDirectorioAccess>
-            <Layout>
-              <Directorio />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/directorio-jiro"
-        element={
-          <ProtectedRoute requireDirectorioAccess>
-            <DirectorioJiro />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/usuario/:id"
-        element={
-          <ProtectedRoute requireAdminOrGerente>
-            <Layout>
-              <PerfilUsuario />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/oficinas"
-        element={<Navigate to="/configuracion" replace />}
-      />
-
-      <Route
-        path="/configuracion"
-        element={
-          <ProtectedRoute requireAdmin>
-            <Layout>
-              <ConfiguracionHub />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/notificaciones-transaccionales"
-        element={<Navigate to="/centro-contacto" replace />}
-      />
-
-      <Route
-        path="/centro-correos"
-        element={
-          <ProtectedRoute requireAdminOrGerente>
-            <Layout>
-              <CentroCorreos />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-
-      <Route
-        path="/vacaciones"
-        element={
-          <ProtectedRoute excludeAgente>
-            <Layout>
-              <Vacaciones />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/espacio-jiro"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <EspacioJiro />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-
-      <Route
-        path="/multicotizador-digital"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <MulticotizadorDigital />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route path="/publicidad" element={<Navigate to="/mercadotecnia/publicidad" replace />} />
-
-      <Route
-        path="/gestor-emails"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <GestorEmails />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/centro-digital"
-        element={
-          <ProtectedRoute>
-            <CentroDigital />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/chat"
-        element={<Navigate to="/centro-contacto" replace />}
-      />
-
-      <Route
-        path="/accesos-nacional"
-        element={
-          <ProtectedRoute>
-            <AccesosNacional />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/seguros-education"
-        element={
-          <ProtectedRoute>
-            <SegurosEducation />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/seguros-education/on-demand"
-        element={
-          <ProtectedRoute>
-            <SegurosEducationOnDemand />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/seguros-education/aula-virtual"
-        element={
-          <ProtectedRoute>
-            <SegurosEducationAulaDigital />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/seguros-education/analytics"
-        element={
-          <ProtectedRoute>
-            <SegurosEducationAnalytics />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Ruta antigua oculta - mantener por compatibilidad pero no usar */}
-      <Route
-        path="/seguros-education/aula-virtual-old"
-        element={
-          <ProtectedRoute>
-            <SegurosEducationAulaVirtual />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/aula-virtual/sala/:roomId"
-        element={
-          <ProtectedRoute>
-            <AulaVirtualSala />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/centro-notificaciones"
-        element={<Navigate to="/centro-contacto" replace />}
-      />
-
-      <Route
-        path="/tramites"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Tramites />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/tramites/:id"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <TramiteDetalle />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/mi-crm"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <MiCRM />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/comunicados"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Comunicados />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/comunicados/categorias"
-        element={
-          <ProtectedRoute requireAdmin>
-            <ComunicadoCategorias />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/comunicados/nuevo"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <ComunicadoEditor />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/comunicados/editar/:id"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <ComunicadoEditor />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/comunicados/:id"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <ComunicadoDetalle />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/mi-crm/contactos"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <CRMContactos />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/mi-crm/contactos/:id"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <CRMContactoPerfil />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/mi-crm/tareas"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <CRMTareas />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/mi-crm/reportes"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <CRMReportes />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/mi-crm/configuracion"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <CRMConfiguracion />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/store"
-        element={
-          <ProtectedRoute>
-            <Store />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/store/carrito"
-        element={
-          <ProtectedRoute>
-            <StoreCarrito />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/store/mis-pedidos"
-        element={
-          <ProtectedRoute>
-            <StoreMisPedidos />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/store/admin"
-        element={
-          <ProtectedRoute requireAdmin>
-            <StoreAdmin />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/store/pedido/:pedidoId"
-        element={
-          <ProtectedRoute>
-            <StorePedidoDetalle />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/store/pedidos"
-        element={
-          <ProtectedRoute requireAdmin>
-            <StorePedidos />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/comisiones"
-        element={
-          <ProtectedRoute requireAdmin>
-            <Layout>
-              <Comisiones />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/comisiones/lote/:id"
-        element={
-          <ProtectedRoute requireAdmin>
-            <Layout>
-              <ComisionesLote />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/comisiones/upload"
-        element={
-          <ProtectedRoute requireAdmin>
-            <Layout>
-              <ComisionesUpload />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/comisiones/upload-nuevo"
-        element={
-          <ProtectedRoute requireAdmin>
-            <Layout>
-              <ComisionesUploadNuevo />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/comisiones/preparar-lote/:sessionId"
-        element={
-          <ProtectedRoute requireAdmin>
-            <Layout>
-              <ComisionesPrepararLote />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      {/* <Route
-        path="/comisiones/mapeo-vendedores"
-        element={
-          <ProtectedRoute requireAdmin>
-            <Layout>
-              <MapeoVendedores />
-            </Layout>
-          </ProtectedRoute>
-        }
-      /> */}
-
-      <Route
-        path="/comisiones/importar-documentos"
-        element={
-          <ProtectedRoute requireAdmin>
-            <Layout>
-              <DocumentosImportar />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      {/* <Route
-        path="/configuracion/mapeo-vendedores"
-        element={
-          <ProtectedRoute requireAdmin>
-            <Layout>
-              <MapeoVendedoresAdmin />
-            </Layout>
-          </ProtectedRoute>
-        }
-      /> */}
-
-      <Route
-        path="/mis-comisiones"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <MisComisiones />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/mi-progreso"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <MiProgreso />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/gamificacion/admin"
-        element={<Navigate to="/configuracion" replace />}
-      />
-
-      <Route
-        path="/produccion/total"
-        element={
-          <ProtectedRoute requireAdmin={false} requireGerente>
-            <Layout>
-              <ProduccionTotal />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/produccion/convenio"
-        element={
-          <ProtectedRoute requireAdmin={false} requireGerente>
-            <Layout>
-              <ProduccionConvenio />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/mi-produccion"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <MiProduccion />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/produccion/configuracion"
-        element={
-          <ProtectedRoute requireAdmin>
-            <Layout>
-              <ProduccionConfiguracion />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/gmm/tarifas"
-        element={<Navigate to="/configuracion" replace />}
-      />
-
-      <Route
-        path="/gmm/cotizador"
-        element={
-          <ProtectedRoute requireAdmin>
-            <GMMCotizador />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/catalogos-web"
-        element={<Navigate to="/configuracion" replace />}
-      />
-
-      <Route path="/mi-pagina-web" element={<Navigate to="/mercadotecnia/mi-pagina-web" replace />} />
-
-      <Route path="/mercadotecnia" element={<Navigate to="/mercadotecnia/mi-marca" replace />} />
-      <Route
-        path="/mercadotecnia/mi-marca"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Mercadotecnia section="mi-marca" />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/mercadotecnia/mi-pagina-web"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Mercadotecnia section="mi-pagina-web" />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/mercadotecnia/publicidad"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Mercadotecnia section="publicidad" />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
+    <SeguwalletAuthProvider>
+      <SeguwalletProvider>
+        <AgentBrandProvider>
+          {children}
+        </AgentBrandProvider>
+      </SeguwalletProvider>
+    </SeguwalletAuthProvider>
+  );
+}
+
+// ── Per-domain apps ───────────────────────────────────────────────────────
+
+function AgenteWebsiteApp() {
+  return (
+    <BrowserRouter>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Root with no slug → redirect to grupojiro.com */}
+          <Route path="/" element={<RootToGrupoJiro />} />
+          {/* Any slug → public advisor page */}
+          <Route path="/:slug" element={<PaginaPublicaAsesor />} />
+          <Route path="*" element={<RootToGrupoJiro />} />
+        </Routes>
+      </Suspense>
+    </BrowserRouter>
+  );
+}
+
+function RootToGrupoJiro() {
+  if (typeof window !== 'undefined') window.location.replace('https://www.grupojiro.com');
+  return null;
+}
+
+function ChavaAIApp() {
+  return (
+    <BrowserRouter>
+      <ChavaAgenteProvider>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/*" element={<ChavaAgenteLanding />} />
+          </Routes>
+        </Suspense>
+      </ChavaAgenteProvider>
+    </BrowserRouter>
+  );
+}
+
+function SeguwalletApp() {
+  return (
+    <BrowserRouter>
+      <SeguwalletStack>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/login" element={<SeguwalletLogin />} />
+            <Route path="/completa-perfil" element={
+              <SeguwalletProtectedRoute><SeguwalletCompleteProfile /></SeguwalletProtectedRoute>
+            } />
+            <Route path="/dashboard" element={
+              <SeguwalletProtectedRoute><SeguwalletDashboard /></SeguwalletProtectedRoute>
+            } />
+            <Route path="/polizas" element={
+              <SeguwalletProtectedRoute><SeguwalletPolizas /></SeguwalletProtectedRoute>
+            } />
+            <Route path="/polizas/:id" element={
+              <SeguwalletProtectedRoute><SeguwalletPolizas /></SeguwalletProtectedRoute>
+            } />
+            <Route path="/chava" element={
+              <SeguwalletProtectedRoute><SeguwalletChava /></SeguwalletProtectedRoute>
+            } />
+            <Route path="/perfil" element={
+              <SeguwalletProtectedRoute><SeguwalletPerfil /></SeguwalletProtectedRoute>
+            } />
+            <Route path="/cotizar" element={
+              <SeguwalletProtectedRoute><SeguwalletCotizar /></SeguwalletProtectedRoute>
+            } />
+            <Route path="/descargas" element={
+              <SeguwalletProtectedRoute><SeguwalletDescargas /></SeguwalletProtectedRoute>
+            } />
+            <Route path="/aseguradoras" element={
+              <SeguwalletProtectedRoute><SeguwalletAseguradoras /></SeguwalletProtectedRoute>
+            } />
+            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </Suspense>
+      </SeguwalletStack>
+    </BrowserRouter>
+  );
+}
+
+function MoviApp() {
+  return (
+    <BrowserRouter>
+      <ImpersonationProvider>
+        <MoviAuthProvider>
+          <LoadingProvider>
+            <LoadingOverlay />
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                {/* MOVI login (passwordless) */}
+                <Route path="/login" element={<MoviLogin />} />
+
+                {/* Seguwallet customer sub-app under /seguwallet/* */}
+                <Route path="/seguwallet/login" element={
+                  <SeguwalletStack><SeguwalletLogin /></SeguwalletStack>
+                } />
+                <Route path="/seguwallet/completa-perfil" element={
+                  <SeguwalletStack>
+                    <SeguwalletProtectedRoute><SeguwalletCompleteProfile /></SeguwalletProtectedRoute>
+                  </SeguwalletStack>
+                } />
+                <Route path="/seguwallet/dashboard" element={
+                  <SeguwalletStack>
+                    <SeguwalletProtectedRoute><SeguwalletDashboard /></SeguwalletProtectedRoute>
+                  </SeguwalletStack>
+                } />
+                <Route path="/seguwallet/polizas" element={
+                  <SeguwalletStack>
+                    <SeguwalletProtectedRoute><SeguwalletPolizas /></SeguwalletProtectedRoute>
+                  </SeguwalletStack>
+                } />
+                <Route path="/seguwallet/polizas/:id" element={
+                  <SeguwalletStack>
+                    <SeguwalletProtectedRoute><SeguwalletPolizas /></SeguwalletProtectedRoute>
+                  </SeguwalletStack>
+                } />
+                <Route path="/seguwallet/chava" element={
+                  <SeguwalletStack>
+                    <SeguwalletProtectedRoute><SeguwalletChava /></SeguwalletProtectedRoute>
+                  </SeguwalletStack>
+                } />
+                <Route path="/seguwallet/perfil" element={
+                  <SeguwalletStack>
+                    <SeguwalletProtectedRoute><SeguwalletPerfil /></SeguwalletProtectedRoute>
+                  </SeguwalletStack>
+                } />
+                <Route path="/seguwallet/cotizar" element={
+                  <SeguwalletStack>
+                    <SeguwalletProtectedRoute><SeguwalletCotizar /></SeguwalletProtectedRoute>
+                  </SeguwalletStack>
+                } />
+                <Route path="/seguwallet/descargas" element={
+                  <SeguwalletStack>
+                    <SeguwalletProtectedRoute><SeguwalletDescargas /></SeguwalletProtectedRoute>
+                  </SeguwalletStack>
+                } />
+                <Route path="/seguwallet/aseguradoras" element={
+                  <SeguwalletStack>
+                    <SeguwalletProtectedRoute><SeguwalletAseguradoras /></SeguwalletProtectedRoute>
+                  </SeguwalletStack>
+                } />
+
+                {/* Full MOVI platform routes */}
+                <Route path="/*" element={<MoviFullRoutes />} />
+              </Routes>
+            </Suspense>
+          </LoadingProvider>
+        </MoviAuthProvider>
+      </ImpersonationProvider>
+    </BrowserRouter>
+  );
+}
+
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#040c1f]">
+      <div className="w-10 h-10 border-[3px] border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+    </div>
   );
 }
 
 function App() {
-  return (
-    <HelmetProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <NotificationProvider>
-            <AssistantProvider>
-              <Routes>
-              {/* Rutas autenticadas - se evalúan primero */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/registro" element={<Registro />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
-              <Route path="/perfil" element={<ProtectedRoute><Layout><Perfil /></Layout></ProtectedRoute>} />
-              <Route path="/directorio" element={<ProtectedRoute requireDirectorioAccess><Layout><Directorio /></Layout></ProtectedRoute>} />
-              <Route path="/directorio-jiro" element={<ProtectedRoute requireDirectorioAccess><DirectorioJiro /></ProtectedRoute>} />
-              <Route path="/usuario/:id" element={<ProtectedRoute requireAdminOrGerente><Layout><PerfilUsuario /></Layout></ProtectedRoute>} />
-              <Route path="/oficinas" element={<Navigate to="/configuracion" replace />} />
-              <Route path="/configuracion" element={<ProtectedRoute requireAdmin><Layout><ConfiguracionHub /></Layout></ProtectedRoute>} />
-              <Route path="/notificaciones-transaccionales" element={<Navigate to="/centro-contacto" replace />} />
-              <Route path="/centro-correos" element={<ProtectedRoute requireAdminOrGerente><Layout><CentroCorreos /></Layout></ProtectedRoute>} />
-              <Route path="/centro-contacto" element={<ProtectedRoute excludeAgente><Layout><CentroContactoHub /></Layout></ProtectedRoute>} />
-              <Route path="/vacaciones" element={<ProtectedRoute excludeAgente><Layout><Vacaciones /></Layout></ProtectedRoute>} />
-              <Route path="/espacio-jiro" element={<ProtectedRoute><Layout><EspacioJiro /></Layout></ProtectedRoute>} />
-              <Route path="/multicotizador-digital" element={<ProtectedRoute><Layout><MulticotizadorDigital /></Layout></ProtectedRoute>} />
-              <Route path="/lector-qualitas" element={<ProtectedRoute excludeAgente><Layout><LectorQualitas /></Layout></ProtectedRoute>} />
-              <Route path="/entrega-polizas" element={<ProtectedRoute excludeAgente><Layout><EntregaPolizas /></Layout></ProtectedRoute>} />
-              <Route path="/publicidad" element={<Navigate to="/mercadotecnia/publicidad" replace />} />
-              <Route path="/mercadotecnia" element={<Navigate to="/mercadotecnia/mi-marca" replace />} />
-              <Route path="/mercadotecnia/mi-marca" element={<ProtectedRoute><Layout><Mercadotecnia section="mi-marca" /></Layout></ProtectedRoute>} />
-              <Route path="/mercadotecnia/mi-pagina-web" element={<ProtectedRoute><Layout><Mercadotecnia section="mi-pagina-web" /></Layout></ProtectedRoute>} />
-              <Route path="/mercadotecnia/publicidad" element={<ProtectedRoute><Layout><Mercadotecnia section="publicidad" /></Layout></ProtectedRoute>} />
-              <Route path="/gestor-emails" element={<ProtectedRoute><Layout><GestorEmails /></Layout></ProtectedRoute>} />
-              <Route path="/centro-digital" element={<ProtectedRoute><CentroDigital /></ProtectedRoute>} />
-              <Route path="/chat" element={<Navigate to="/centro-contacto" replace />} />
-              <Route path="/accesos-nacional" element={<ProtectedRoute><AccesosNacional /></ProtectedRoute>} />
-              <Route path="/seguros-education" element={<ProtectedRoute><SegurosEducation /></ProtectedRoute>} />
-              <Route path="/seguros-education/on-demand" element={<ProtectedRoute><SegurosEducationOnDemand /></ProtectedRoute>} />
-              <Route path="/seguros-education/aula-virtual" element={<ProtectedRoute><SegurosEducationAulaDigital /></ProtectedRoute>} />
-              <Route path="/seguros-education/analytics" element={<ProtectedRoute><SegurosEducationAnalytics /></ProtectedRoute>} />
-              <Route path="/seguros-education/aula-virtual-old" element={<ProtectedRoute><SegurosEducationAulaVirtual /></ProtectedRoute>} />
-              <Route path="/aula-virtual/sala/:roomId" element={<ProtectedRoute><AulaVirtualSala /></ProtectedRoute>} />
-              <Route path="/seguros-education/cedula-a" element={<ProtectedRoute><Layout><CursoCedulaA /></Layout></ProtectedRoute>} />
-              <Route path="/seguros-education/cedula-a/modulo/:moduloId" element={<ProtectedRoute><Layout><ModuloViewer /></Layout></ProtectedRoute>} />
-              <Route path="/seguros-education/cedula-a/examenes" element={<ProtectedRoute><Layout><CedulaAExamenes /></Layout></ProtectedRoute>} />
-              <Route path="/seguros-education/cedula-a/examen/:examenId" element={<ProtectedRoute><Layout><ExamenInterface /></Layout></ProtectedRoute>} />
-              <Route path="/seguros-education/cedula-a/certificado/:certificadoId" element={<ProtectedRoute><Layout><CertificadoCedulaA /></Layout></ProtectedRoute>} />
-              <Route path="/centro-notificaciones" element={<Navigate to="/centro-contacto" replace />} />
-              <Route path="/tramites" element={<ProtectedRoute><Layout><Tramites /></Layout></ProtectedRoute>} />
-              <Route path="/tramites/reportes" element={<ProtectedRoute><Layout><TramitesReportes /></Layout></ProtectedRoute>} />
-              <Route path="/tramites/formularios" element={<ProtectedRoute><Layout><FormulariosCotizacion /></Layout></ProtectedRoute>} />
-              <Route path="/tramites/formularios/nuevo/:formType" element={<ProtectedRoute><Layout><QuoteFormWizard /></Layout></ProtectedRoute>} />
-              <Route path="/tramites/formularios/:formId" element={<ProtectedRoute><Layout><QuoteFormWizard /></Layout></ProtectedRoute>} />
-              <Route path="/tramites/:id" element={<ProtectedRoute><Layout><TramiteDetalle /></Layout></ProtectedRoute>} />
-              <Route path="/configuracion/catalogos" element={<ProtectedRoute requireAdmin><Layout><ConfiguracionCatalogos /></Layout></ProtectedRoute>} />
-              <Route path="/mi-crm" element={<ProtectedRoute><Layout><MiCRM /></Layout></ProtectedRoute>} />
-              <Route path="/mi-crm/contactos" element={<ProtectedRoute><Layout><CRMContactos /></Layout></ProtectedRoute>} />
-              <Route path="/mi-crm/contactos/:id" element={<ProtectedRoute><Layout><CRMContactoPerfil /></Layout></ProtectedRoute>} />
-              <Route path="/mi-crm/tareas" element={<ProtectedRoute><Layout><CRMTareas /></Layout></ProtectedRoute>} />
-              <Route path="/mi-crm/reportes" element={<ProtectedRoute><Layout><CRMReportes /></Layout></ProtectedRoute>} />
-              <Route path="/mi-crm/configuracion" element={<ProtectedRoute><Layout><CRMConfiguracion /></Layout></ProtectedRoute>} />
-              <Route path="/comunicados" element={<ProtectedRoute><Layout><Comunicados /></Layout></ProtectedRoute>} />
-              <Route path="/comunicados/categorias" element={<ProtectedRoute requireAdmin><ComunicadoCategorias /></ProtectedRoute>} />
-              <Route path="/comunicados/nuevo" element={<ProtectedRoute><Layout><ComunicadoEditor /></Layout></ProtectedRoute>} />
-              <Route path="/comunicados/editar/:id" element={<ProtectedRoute><Layout><ComunicadoEditor /></Layout></ProtectedRoute>} />
-              <Route path="/comunicados/:id" element={<ProtectedRoute><Layout><ComunicadoDetalle /></Layout></ProtectedRoute>} />
-              <Route path="/store" element={<ProtectedRoute><Store /></ProtectedRoute>} />
-              <Route path="/store/carrito" element={<ProtectedRoute><StoreCarrito /></ProtectedRoute>} />
-              <Route path="/store/mis-pedidos" element={<ProtectedRoute><StoreMisPedidos /></ProtectedRoute>} />
-              <Route path="/store/admin" element={<ProtectedRoute requireAdmin><StoreAdmin /></ProtectedRoute>} />
-              <Route path="/store/pedido/:pedidoId" element={<ProtectedRoute><StorePedidoDetalle /></ProtectedRoute>} />
-              <Route path="/store/pedidos" element={<ProtectedRoute requireAdmin><StorePedidos /></ProtectedRoute>} />
-              <Route path="/comisiones" element={<ProtectedRoute requireAdmin><Layout><Comisiones /></Layout></ProtectedRoute>} />
-              <Route path="/comisiones/lote/:id" element={<ProtectedRoute requireAdmin><Layout><ComisionesLote /></Layout></ProtectedRoute>} />
-              <Route path="/comisiones/upload" element={<ProtectedRoute requireAdmin><Layout><ComisionesUpload /></Layout></ProtectedRoute>} />
-              <Route path="/comisiones/upload-nuevo" element={<ProtectedRoute requireAdmin><Layout><ComisionesUploadNuevo /></Layout></ProtectedRoute>} />
-              <Route path="/comisiones/preparar-lote/:sessionId" element={<ProtectedRoute requireAdmin><Layout><ComisionesPrepararLote /></Layout></ProtectedRoute>} />
-              <Route path="/comisiones/mapeo-vendedores" element={<ProtectedRoute requireAdmin><Layout><MapeoVendedores /></Layout></ProtectedRoute>} />
-              <Route path="/comisiones/importar-documentos" element={<ProtectedRoute requireAdmin><Layout><DocumentosImportar /></Layout></ProtectedRoute>} />
-              <Route path="/configuracion/mapeo-vendedores" element={<ProtectedRoute requireAdmin><Layout><MapeoVendedoresAdmin /></Layout></ProtectedRoute>} />
-              <Route path="/mis-comisiones" element={<ProtectedRoute><Layout><MisComisiones /></Layout></ProtectedRoute>} />
-              <Route path="/gamificacion/admin" element={<Navigate to="/configuracion" replace />} />
-              <Route path="/mi-progreso" element={<ProtectedRoute><Layout><MiProgreso /></Layout></ProtectedRoute>} />
-              <Route path="/produccion/total" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionTotal /></Layout></ProtectedRoute>} />
-              <Route path="/produccion/convenio" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionConvenio /></Layout></ProtectedRoute>} />
-              <Route path="/mi-produccion" element={<ProtectedRoute><Layout><MiProduccion /></Layout></ProtectedRoute>} />
-              <Route path="/mi-produccion-sicas-live" element={<ProtectedRoute><Layout><ProduccionSICASLive /></Layout></ProtectedRoute>} />
-              <Route path="/mi-produccion-sicas-soap" element={<ProtectedRoute><Layout><MiProduccionSICASMirror /></Layout></ProtectedRoute>} />
-              <Route path="/mis-polizas" element={<ProtectedRoute><Layout><MisPolizas /></Layout></ProtectedRoute>} />
-              <Route path="/produccion/configuracion" element={<ProtectedRoute requireAdmin><Layout><ProduccionConfiguracion /></Layout></ProtectedRoute>} />
-              <Route path="/gmm/tarifas" element={<Navigate to="/configuracion" replace />} />
-              <Route path="/gmm/cotizador" element={<ProtectedRoute requireAdmin><GMMCotizador /></ProtectedRoute>} />
-              <Route path="/catalogos-web" element={<Navigate to="/configuracion" replace />} />
-              <Route path="/sicas" element={<Navigate to="/configuracion" replace />} />
-              <Route path="/sicas/test-catalogs" element={<ProtectedRoute requireAdmin><Layout><SicasTestCatalogs /></Layout></ProtectedRoute>} />
-              <Route path="/sicas/diagnostico" element={<ProtectedRoute requireAdmin><SicasDiagnostico /></ProtectedRoute>} />
-              <Route path="/sicas/rest-test" element={<ProtectedRoute requireAdminOrGerente><Layout><SicasRestTest /></Layout></ProtectedRoute>} />
-              <Route path="/sicas/vigentes-test" element={<ProtectedRoute requireAdmin><Layout><SicasVigentesTest /></Layout></ProtectedRoute>} />
-              <Route path="/mi-pagina-web" element={<Navigate to="/mercadotecnia/mi-pagina-web" replace />} />
-              <Route path="/chatgpt-test" element={<ProtectedRoute><Layout><ChatGPTTest /></Layout></ProtectedRoute>} />
-              <Route path="/carga-masiva-usuarios" element={<ProtectedRoute requireAdmin><Layout><CargaMasivaUsuarios /></Layout></ProtectedRoute>} />
-              <Route path="/actividad-usuarios" element={<ProtectedRoute requireAdmin><Layout><ActividadUsuarios /></Layout></ProtectedRoute>} />
-              <Route path="/comisiones/regimen-fiscal" element={<ProtectedRoute requireAdmin><Layout><RegimenFiscalAdmin /></Layout></ProtectedRoute>} />
-              <Route path="/comisiones/regimen-fiscal/:id" element={<ProtectedRoute requireAdmin><Layout><RegimenFiscalEditor /></Layout></ProtectedRoute>} />
-
-              {/* Plataforma de Bonos */}
-              <Route path="/bonos" element={<ProtectedRoute><Layout><BonosPage /></Layout></ProtectedRoute>} />
-
-              {/* Redirect raíz */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
-              {/* Ruta pública - Registro de Personal */}
-              <Route path="/registro-personal" element={<RegistroPersonal />} />
-
-              {/* Ruta pública - catch-all para slugs */}
-              <Route path="/:slug" element={<PaginaPublicaAsesor />} />
-            </Routes>
-            </AssistantProvider>
-          </NotificationProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </HelmetProvider>
-  );
+  if (isAgenteSite) return <AgenteWebsiteApp />;
+  if (isChavaSite)  return <ChavaAIApp />;
+  if (isSeguwalletSite) return <SeguwalletApp />;
+  return <MoviApp />;
 }
 
 export default App;

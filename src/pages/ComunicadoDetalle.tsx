@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Layout } from '../components/Layout';
 import { Container } from '../components/ui/container';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Calendar, Download, Pin, Edit, Trash2, FileText } from 'lucide-react';
+import { Calendar, Download, Pin, CreditCard as Edit, Trash2, FileText, Newspaper } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import { obtenerComunicadoPorId, eliminarComunicado, verificarVisibilidad } from '../lib/comunicadosUtils';
 import type { ComunicadoPublicacion } from '../lib/comunicadosTypes';
 import { formatearFechaHora } from '../lib/comunicadosUtils';
@@ -68,19 +68,19 @@ export default function ComunicadoDetalle() {
 
   if (loading) {
     return (
-      <Layout hideHeader>
+      <>
         <Container size="lg">
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-3 border-accent border-t-transparent"></div>
           </div>
         </Container>
-      </Layout>
+      </>
     );
   }
 
   if (!puedeVer) {
     return (
-      <Layout hideHeader>
+      <>
         <Container size="lg">
           <div className="bg-white rounded-xl border border-neutral-200 shadow-ios p-8 sm:p-12 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
@@ -97,13 +97,13 @@ export default function ComunicadoDetalle() {
             </Button>
           </div>
         </Container>
-      </Layout>
+      </>
     );
   }
 
   if (!comunicado) {
     return (
-      <Layout hideHeader>
+      <>
         <Container size="lg">
           <div className="bg-white rounded-xl border border-neutral-200 shadow-ios p-8 sm:p-12 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
@@ -117,7 +117,7 @@ export default function ComunicadoDetalle() {
             </Button>
           </div>
         </Container>
-      </Layout>
+      </>
     );
   }
 
@@ -125,40 +125,38 @@ export default function ComunicadoDetalle() {
   const puedeEditar = esAdmin || (esGerente && comunicado.creado_por === usuario?.id);
 
   return (
-    <Layout hideHeader>
+    <>
       <Container size="lg">
         {/* Navegación y acciones */}
-        <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/comunicados')}
-            className="btn-touch"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Volver
-          </Button>
-
-          {puedeEditar && (
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Button
-                variant="outline"
-                onClick={() => navigate(`/comunicados/editar/${comunicado.id}`)}
-                className="btn-touch flex-1 sm:flex-initial"
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                Editar
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleEliminar}
-                className="btn-touch flex-1 sm:flex-initial text-red-600 hover:text-red-700 hover:bg-red-50"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Eliminar
-              </Button>
-            </div>
-          )}
-        </div>
+        <PageHeader
+          title={comunicado.titulo}
+          icon={Newspaper}
+          backTo="/comunicados"
+          backLabel="Volver"
+          actions={
+            puedeEditar ? (
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(`/comunicados/editar/${comunicado.id}`)}
+                  className="btn-touch flex-1 sm:flex-initial"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Editar
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleEliminar}
+                  className="btn-touch flex-1 sm:flex-initial text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Eliminar
+                </Button>
+              </div>
+            ) : undefined
+          }
+          className="mb-4 sm:mb-6"
+        />
 
         {/* Artículo */}
         <article
@@ -274,6 +272,6 @@ export default function ComunicadoDetalle() {
           </div>
         </article>
       </Container>
-    </Layout>
+    </>
   );
 }

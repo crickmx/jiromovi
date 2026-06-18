@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, RefreshCw, CheckCircle, XCircle, Building, Users, Trash2, Link as LinkIcon, FlaskConical, Stethoscope, AlertCircle, Zap, Square, Clock, SearchCheck, ChevronDown, ChevronRight } from 'lucide-react';
+import { Loader as Loader2, RefreshCw, CircleCheck as CheckCircle, Circle as XCircle, Building, Users, Trash2, Link as LinkIcon, FlaskConical, Stethoscope, CircleAlert as AlertCircle, Zap, Square, Clock, SearchCheck, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -10,6 +10,7 @@ import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Container } from '../components/ui/container';
 import { PageHeader } from '../components/ui/page-header';
+import { LoadingState } from '../components/ui/loading-state';
 import { Section } from '../components/ui/section';
 import { supabase } from '../lib/supabase';
 import {
@@ -25,8 +26,6 @@ import {
   unmapVendedor,
 } from '../lib/sicasUtils';
 import type { SicasConfig, SicasDespachoWithMapping, SicasVendedorWithMapping } from '../lib/sicasTypes';
-import HwcaptureConfigSection from '../components/produccion/HwcaptureConfigSection';
-import SicasRateControlPanel from '../components/produccion/SicasRateControlPanel';
 
 export default function SicasAdmin() {
   const navigate = useNavigate();
@@ -929,9 +928,7 @@ export default function SicasAdmin() {
   if (loading) {
     return (
       <Container>
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-accent" />
-        </div>
+        <LoadingState text="Cargando configuración SICAS..." />
       </Container>
     );
   }
@@ -2262,12 +2259,22 @@ export default function SicasAdmin() {
 
         <TabsContent value="hwcapture">
           <Section>
-            <HwcaptureConfigSection />
+            <Card>
+              <CardContent className="p-6 text-center text-neutral-500">
+                Configuracion movida a Central de Produccion.
+              </CardContent>
+            </Card>
           </Section>
         </TabsContent>
 
         <TabsContent value="control">
-          <SicasRateControlPanel />
+          <Section>
+            <Card>
+              <CardContent className="p-6 text-center text-neutral-500">
+                Control de tasas movido a Central de Produccion.
+              </CardContent>
+            </Card>
+          </Section>
         </TabsContent>
 
         <TabsContent value="diagnostico">

@@ -1,456 +1,482 @@
-import { useEffect, useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useEffect, useState, useRef } from 'react';
+import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { supabase } from '../lib/supabase';
-import { Save, Upload, User as UserIcon, Copy, Check } from 'lucide-react';
-import { CustomFields } from '../components/CustomFields';
-import { PaymentFields } from '../components/PaymentFields';
-import { CorreoIONOSFields } from '../components/CorreoIONOSFields';
-import { ExpedienteSection } from '../components/ExpedienteSection';
-import { MiLogotipoEditor } from '../components/MiLogotipoEditor';
-import { getMiPaginaWeb } from '../lib/webUrlUtils';
-import { trackProfileUpdate } from '../lib/activityLogger';
-import type { Database } from '../lib/database.types';
+import { User, Phone, Mail, MapPin, Building2, Shield, Camera, Check, Loader as Loader2, Pencil, X, Globe, CreditCard, Calendar, BadgeCheck } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 
-type Usuario = Database['public']['Tables']['usuarios']['Row'];
-type Oficina = Database['public']['Tables']['oficinas']['Row'];
-type PermisosCampo = Database['public']['Tables']['permisos_campos']['Row'];
+function toTitleCase(s: string): string {
+  return s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+}
 
-export function Perfil() {
-  const { usuario, refreshUsuario } = useAuth();
-  const [formData, setFormData] = useState<Partial<Usuario>>({});
-  const [oficinas, setOficinas] = useState<Oficina[]>([]);
-  const [permisos, setPermisos] = useState<PermisosCampo[]>([]);
-  const [loading, setLoading] = useState(true);
+function formatFieldName(key: string): string {
+  const map: Record<string, string> = {
+    nombre: 'Nombre(s)',
+    apellidos: 'Apellidos',
+    celular_personal: 'Celular Personal',
+    email_personal: 'Correo Personal',
+    celular_laboral: 'Celular Laboral',
+    email_laboral: 'Correo Laboral',
+    puesto: 'Puesto',
+    extension_telefonica: 'Extensión',
+    fecha_nacimiento: 'Fecha de Nacimiento',
+    banco: 'Banco',
+    clabe: 'CLABE',
+    url_web_jiro: 'Web Jiro',
+    url_web_multicotizador: 'Web Multicotizador',
+  };
+  return map[key] || key;
+}
+
+type EditableField =
+  | 'nombre' | 'apellidos' | 'celular_personal' | 'email_personal'
+  | 'celular_laboral' | 'email_laboral' | 'extension_telefonica'
+  | 'banco' | 'clabe' | 'url_web_jiro' | 'url_web_multicotizador';
+
+type RolEditable = Record<EditableField, boolean>;
+
+const EDITABLES_BY_ROL: Record<string, RolEditable> = {
+  Administrador: {
+    nombre: true, apellidos: true, celular_personal: true, email_personal: true,
+    celular_laboral: true, email_laboral: true, extension_telefonica: true,
+    banco: true, clabe: true, url_web_jiro: true, url_web_multicotizador: true,
+  },
+  Gerente: {
+    nombre: false, apellidos: false, celular_personal: true, email_personal: true,
+    celular_laboral: true, email_laboral: true, extension_telefonica: true,
+    banco: true, clabe: true, url_web_jiro: true, url_web_multicotizador: true,
+  },
+  Agente: {
+    nombre: false, apellidos: false, celular_personal: true, email_personal: true,
+    celular_laboral: true, email_laboral: true, extension_telefonica: false,
+    banco: true, clabe: true, url_web_jiro: false, url_web_multicotizador: false,
+  },
+  Empleado: {
+    nombre: false, apellidos: false, celular_personal: true, email_personal: true,
+    celular_laboral: true, email_laboral: true, extension_telefonica: false,
+    banco: false, clabe: false, url_web_jiro: false, url_web_multicotizador: false,
+  },
+};
+
+const DEFAULT_EDITABLES: RolEditable = {
+  nombre: false, apellidos: false, celular_personal: true, email_personal: true,
+  celular_laboral: true, email_laboral: true, extension_telefonica: false,
+  banco: false, clabe: false, url_web_jiro: false, url_web_multicotizador: false,
+};
+
+function getEditables(rol: string): RolEditable {
+  return EDITABLES_BY_ROL[rol] ?? DEFAULT_EDITABLES;
+}
+
+interface Section {
+  title: string;
+  icon: React.ElementType;
+  fields: EditableField[];
+}
+
+const SECTIONS: Section[] = [
+  {
+    title: 'Datos Personales',
+    icon: User,
+    fields: ['nombre', 'apellidos', 'celular_personal', 'email_personal', 'fecha_nacimiento' as any],
+  },
+  {
+    title: 'Datos Laborales',
+    icon: BadgeCheck,
+    fields: ['celular_laboral', 'email_laboral', 'extension_telefonica', 'url_web_jiro', 'url_web_multicotizador'],
+  },
+  {
+    title: 'Datos Bancarios',
+    icon: CreditCard,
+    fields: ['banco', 'clabe'],
+  },
+];
+
+interface FieldRowProps {
+  label: string;
+  value: string;
+  editable: boolean;
+  editing: boolean;
+  onChange: (v: string) => void;
+  type?: string;
+  icon?: React.ElementType;
+}
+
+function FieldRow({ label, value, editable, editing, onChange, type = 'text', icon: Icon }: FieldRowProps) {
+  return (
+    <div className="group flex flex-col gap-1">
+      <label className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-white/35 flex items-center gap-1.5">
+        {Icon && <Icon className="w-3 h-3" />}
+        {label}
+      </label>
+      {editing && editable ? (
+        <input
+          type={type}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="h-9 w-full rounded-xl border border-accent/40 bg-accent/5 dark:bg-accent/10 px-3 text-sm text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all"
+        />
+      ) : (
+        <p className={cn(
+          'text-sm min-h-[36px] flex items-center px-3 rounded-xl',
+          value ? 'text-neutral-800 dark:text-white/85' : 'text-neutral-400 dark:text-white/25 italic',
+          !editable && editing && 'bg-neutral-50 dark:bg-white/[0.02] border border-neutral-100 dark:border-white/5',
+        )}>
+          {value || '—'}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export default function Perfil() {
+  useEffect(() => { document.title = 'Mi Perfil · MOVI Digital'; }, []);
+  const { usuario, reloadUsuario } = useMoviAuth();
+  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [copiedUrl, setCopiedUrl] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  type FormState = Record<EditableField, string>;
+
+  const buildForm = (): FormState => ({
+    nombre: usuario?.nombre || '',
+    apellidos: usuario?.apellidos || '',
+    celular_personal: usuario?.celular_personal || '',
+    email_personal: usuario?.email_personal || '',
+    celular_laboral: usuario?.celular_laboral || '',
+    email_laboral: usuario?.email_laboral || '',
+    extension_telefonica: usuario?.extension_telefonica || '',
+    banco: usuario?.banco || '',
+    clabe: usuario?.clabe || '',
+    url_web_jiro: usuario?.url_web_jiro || '',
+    url_web_multicotizador: usuario?.url_web_multicotizador || '',
+  });
+
+  const [form, setForm] = useState<FormState>(buildForm);
 
   useEffect(() => {
-    if (usuario) {
-      setFormData(usuario);
-      loadData();
-    }
+    setForm(buildForm());
   }, [usuario]);
-
-  const loadData = async () => {
-    try {
-      const [oficinasRes, permisosRes] = await Promise.all([
-        supabase.from('oficinas').select('*').eq('activa', true).order('nombre'),
-        supabase.from('permisos_campos').select('*').eq('rol', usuario?.rol || ''),
-      ]);
-
-      if (oficinasRes.data) setOficinas(oficinasRes.data);
-      if (permisosRes.data) setPermisos(permisosRes.data);
-    } catch (error) {
-      console.error('Error cargando datos:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const isFieldEditable = (fieldName: string) => {
-    const permiso = permisos.find(p => p.nombre_campo === fieldName);
-    return permiso?.editable ?? false;
-  };
-
-  const isFieldVisible = (fieldName: string) => {
-    const permiso = permisos.find(p => p.nombre_campo === fieldName);
-    return permiso?.visible ?? true;
-  };
-
-  const handleSave = async () => {
-    if (!usuario) return;
-
-    setSaving(true);
-    setMessage(null);
-
-    // Guardar valores originales de información de pago para detectar cambios
-    const originalBanco = usuario.banco;
-    const originalClabe = usuario.clabe;
-    const originalRegimenFiscalId = usuario.regimen_fiscal_id;
-
-    const updateData: Partial<Usuario> = {};
-    Object.keys(formData).forEach((key) => {
-      if (isFieldEditable(key)) {
-        updateData[key as keyof Usuario] = formData[key as keyof Usuario];
-      }
-    });
-
-    // Siempre incluir campos de información de pago si están presentes en formData
-    // Estos campos son editables desde PaymentFields y deben guardarse
-    const paymentFields = ['banco', 'clabe', 'regimen_fiscal_id'];
-    paymentFields.forEach((field) => {
-      if (field in formData) {
-        updateData[field as keyof Usuario] = formData[field as keyof Usuario];
-      }
-    });
-
-    updateData.updated_at = new Date().toISOString();
-
-    // Debug: Verificar que los campos de pago se incluyen
-    console.log('Datos a actualizar:', {
-      banco: updateData.banco,
-      clabe: updateData.clabe,
-      regimen_fiscal_id: updateData.regimen_fiscal_id,
-      totalFields: Object.keys(updateData).length
-    });
-
-    const { error } = await supabase
-      .from('usuarios')
-      .update(updateData)
-      .eq('id', usuario.id);
-
-    if (error) {
-      console.error('Error al actualizar perfil:', error);
-      setMessage({
-        type: 'error',
-        text: `Error al guardar cambios: ${error.message || 'Error desconocido'}`
-      });
-      setSaving(false);
-      return;
-    }
-
-    trackProfileUpdate('perfil general');
-
-    // Detectar si cambió información de pago
-    // Comparar con los valores actuales en formData, no con updateData
-    const cambioBanco = formData.banco !== originalBanco;
-    const cambioClabe = formData.clabe !== originalClabe;
-    const cambioRegimenFiscal = formData.regimen_fiscal_id !== originalRegimenFiscalId;
-
-    console.log('🔍 Detección de cambios en información de pago:', {
-      cambioBanco,
-      cambioClabe,
-      cambioRegimenFiscal,
-      banco: { original: originalBanco, nuevo: formData.banco },
-      clabe: { original: originalClabe, nuevo: formData.clabe },
-      regimenFiscal: { original: originalRegimenFiscalId, nuevo: formData.regimen_fiscal_id }
-    });
-
-    // Si cambió algún dato de pago, crear ticket automáticamente
-    if (cambioBanco || cambioClabe || cambioRegimenFiscal) {
-      console.log('✅ Se detectaron cambios en información de pago, creando ticket...');
-
-      try {
-        // Obtener nombre del régimen fiscal si cambió
-        let regimenFiscalNombre = null;
-        if (formData.regimen_fiscal_id) {
-          console.log('📋 Obteniendo nombre del régimen fiscal:', formData.regimen_fiscal_id);
-
-          const { data: regimenData, error: regimenError } = await supabase
-            .from('commission_fiscal_regimes')
-            .select('name')
-            .eq('id', formData.regimen_fiscal_id)
-            .maybeSingle();
-
-          if (regimenError) {
-            console.error('Error al obtener régimen fiscal:', regimenError);
-          } else if (regimenData) {
-            regimenFiscalNombre = regimenData.name;
-            console.log('✅ Régimen fiscal encontrado:', regimenFiscalNombre);
-          }
-        }
-
-        // Llamar a la función de crear ticket
-        console.log('📞 Llamando a crear_ticket_cambio_bancario con parámetros:', {
-          p_usuario_id: usuario.id,
-          p_regimen_fiscal_nombre: regimenFiscalNombre,
-          p_banco: formData.banco || null,
-          p_clabe: formData.clabe || null
-        });
-
-        const { data: ticketResult, error: ticketError } = await supabase.rpc(
-          'crear_ticket_cambio_bancario',
-          {
-            p_usuario_id: usuario.id,
-            p_regimen_fiscal_nombre: regimenFiscalNombre,
-            p_banco: formData.banco || null,
-            p_clabe: formData.clabe || null
-          }
-        );
-
-        if (ticketError) {
-          console.error('❌ Error al crear ticket:', ticketError);
-          setMessage({
-            type: 'error',
-            text: `Cambios guardados, pero no se pudo crear el ticket de cambios bancarios: ${ticketError.message}`
-          });
-        } else if (ticketResult) {
-          console.log('✅ Ticket creado/actualizado exitosamente:', ticketResult);
-          setMessage({
-            type: 'success',
-            text: `Cambios guardados correctamente. Ticket de cambios bancarios ${ticketResult.accion} con folio ${ticketResult.folio}`
-          });
-        }
-      } catch (ticketErr) {
-        console.error('❌ Error en proceso de ticket:', ticketErr);
-        setMessage({
-          type: 'error',
-          text: `Cambios guardados, pero hubo un error al crear el ticket: ${ticketErr}`
-        });
-      }
-    } else {
-      console.log('ℹ️ No se detectaron cambios en información de pago, no se creará ticket');
-      setMessage({ type: 'success', text: 'Cambios guardados correctamente' });
-    }
-
-    await refreshUsuario();
-    setSaving(false);
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !usuario) return;
-
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${usuario.id}-${Date.now()}.${fileExt}`;
-    const filePath = fileName; // No incluir 'avatars/' ya que es el nombre del bucket
-
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(filePath, file);
-
-    if (uploadError) {
-      setMessage({ type: 'error', text: 'Error al subir imagen' });
-      return;
-    }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('avatars')
-      .getPublicUrl(filePath);
-
-    setFormData({ ...formData, imagen_perfil_url: publicUrl });
-
-    const { error: updateError } = await supabase
-      .from('usuarios')
-      .update({ imagen_perfil_url: publicUrl, updated_at: new Date().toISOString() })
-      .eq('id', usuario.id);
-
-    if (updateError) {
-      setMessage({ type: 'error', text: 'Error al actualizar imagen' });
-    } else {
-      setMessage({ type: 'success', text: 'Imagen actualizada correctamente' });
-      await refreshUsuario();
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
 
   if (!usuario) return null;
 
-  const fields = [
-    { key: 'nombre', label: 'Nombre', type: 'text' },
-    { key: 'apellidos', label: 'Apellidos', type: 'text' },
-    { key: 'puesto', label: 'Puesto', type: 'text' },
-    { key: 'oficina_id', label: 'Oficina', type: 'select' },
-    { key: 'fecha_nacimiento', label: 'Fecha de Nacimiento', type: 'date' },
-    { key: 'fecha_ingreso', label: 'Fecha de Ingreso', type: 'date' },
-    { key: 'celular_personal', label: 'Celular Personal', type: 'tel' },
-    { key: 'email_personal', label: 'Email Personal', type: 'email' },
-    { key: 'celular_laboral', label: 'Celular Laboral', type: 'tel' },
-    { key: 'email_laboral', label: 'Email Laboral', type: 'email' },
-    { key: 'extension_telefonica', label: 'Extensión Telefónica', type: 'text' },
-    { key: 'equipo_computo', label: 'Equipo de Cómputo', type: 'text' },
-    { key: 'equipo_celular', label: 'Equipo Celular', type: 'text' },
-    { key: 'web_slug', label: 'Slug', type: 'text' },
-  ];
+  const rol = usuario.rol || 'Agente';
+  const editables = getEditables(rol);
+  const fullName = toTitleCase(`${usuario.nombre || ''} ${usuario.apellidos || ''}`.trim());
+  const initials = `${usuario.nombre?.[0] || ''}${usuario.apellidos?.[0] || ''}`.toUpperCase();
+  const oficina = usuario.oficina;
 
-  const handleCopyUrl = async () => {
-    const miPaginaWeb = getMiPaginaWeb(formData.web_slug);
-    if (miPaginaWeb) {
-      await navigator.clipboard.writeText(`https://${miPaginaWeb}`);
-      setCopiedUrl(true);
-      setTimeout(() => setCopiedUrl(false), 2000);
+  const hasAnyEditable = Object.values(editables).some(Boolean);
+
+  function handleCancel() {
+    setForm(buildForm());
+    setEditing(false);
+    setError(null);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    try {
+      const payload: Partial<Record<EditableField, string | null>> = {};
+      (Object.keys(editables) as EditableField[]).forEach(key => {
+        if (editables[key]) {
+          payload[key] = form[key].trim() || null;
+        }
+      });
+
+      const { error: updateError } = await supabase
+        .from('usuarios')
+        .update(payload as any)
+        .eq('id', usuario.id);
+
+      if (updateError) throw updateError;
+
+      await reloadUsuario();
+      setEditing(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err: any) {
+      setError(err?.message || 'Error al guardar los cambios.');
+    } finally {
+      setSaving(false);
     }
+  }
+
+  async function handleAvatarUpload(file: File) {
+    setUploadingAvatar(true);
+    setError(null);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `avatars/${usuario.id}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('usuarios')
+        .upload(path, file, { upsert: true, contentType: file.type });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from('usuarios').getPublicUrl(path);
+
+      const { error: updateError } = await supabase
+        .from('usuarios')
+        .update({ imagen_perfil_url: publicUrl } as any)
+        .eq('id', usuario.id);
+
+      if (updateError) throw updateError;
+      await reloadUsuario();
+    } catch (err: any) {
+      setError(err?.message || 'Error al subir la imagen.');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
+
+  const rolColor: Record<string, string> = {
+    Administrador: 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400',
+    Gerente: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
+    Agente: 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-400',
+    Empleado: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
   };
+  const rolBadgeCls = rolColor[rol] || 'bg-neutral-100 text-neutral-600 dark:bg-white/10 dark:text-white/60';
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
-          <h1 className="text-2xl font-bold text-white">Mi Perfil</h1>
-          <p className="text-primary-100 mt-1">Administra tu información personal</p>
+    <div className="pb-10">
+      {/* Page title row */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Mi Perfil</h1>
+          <p className="text-sm text-neutral-400 dark:text-white/40 mt-0.5">Información de tu cuenta MOVI Digital</p>
         </div>
-
-        <div className="p-8">
-          {message && (
-            <div
-              className={`mb-6 px-4 py-3 rounded-lg ${
-                message.type === 'success'
-                  ? 'bg-green-50 text-green-700 border border-green-200'
-                  : 'bg-red-50 text-red-700 border border-red-200'
-              }`}
+        {hasAnyEditable && !editing && (
+          <button
+            onClick={() => setEditing(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 active:scale-95 transition-all shadow-sm"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            Editar perfil
+          </button>
+        )}
+        {editing && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCancel}
+              disabled={saving}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-neutral-200 dark:border-white/10 text-sm font-medium text-neutral-600 dark:text-white/60 hover:bg-neutral-50 dark:hover:bg-white/[0.04] transition-all active:scale-95"
             >
-              {message.text}
-            </div>
-          )}
-
-          <div className="flex flex-col items-center mb-8">
-            <div className="relative group">
-              {formData.imagen_perfil_url ? (
-                <img
-                  src={formData.imagen_perfil_url}
-                  alt="Perfil"
-                  className="w-32 h-32 rounded-full object-cover border-4 border-slate-200"
-                />
-              ) : (
-                <div className="w-32 h-32 rounded-full bg-accent flex items-center justify-center border-4 border-slate-200">
-                  <UserIcon className="w-16 h-16 text-white" />
-                </div>
-              )}
-              {isFieldEditable('imagen_perfil_url') && (
-                <label className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition cursor-pointer">
-                  <Upload className="w-8 h-8 text-white" />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
-                </label>
-              )}
-            </div>
-            <p className="text-sm text-slate-500 mt-2">
-              {usuario.rol}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {fields.map((field) => {
-              if (!isFieldVisible(field.key)) return null;
-              const editable = isFieldEditable(field.key);
-
-              return (
-                <div key={field.key}>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    {field.label}
-                  </label>
-                  {field.type === 'select' ? (
-                    <select
-                      value={formData[field.key as keyof Usuario] as string || ''}
-                      onChange={(e) =>
-                        setFormData({ ...formData, [field.key]: e.target.value || null })
-                      }
-                      disabled={!editable}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500"
-                    >
-                      <option value="">Seleccionar oficina</option>
-                      {oficinas.map((oficina) => (
-                        <option key={oficina.id} value={oficina.id}>
-                          {oficina.nombre}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type={field.type}
-                      value={(formData[field.key as keyof Usuario] as string) || ''}
-                      onChange={(e) =>
-                        setFormData({ ...formData, [field.key]: e.target.value })
-                      }
-                      disabled={!editable}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500"
-                    />
-                  )}
-                </div>
-              );
-            })}
-
-            {formData.web_slug && (
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Mi Página Web
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={getMiPaginaWeb(formData.web_slug)}
-                    readOnly
-                    className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 font-medium"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleCopyUrl}
-                    className="px-4 py-2.5 bg-accent text-white rounded-lg hover:bg-accent-hover transition flex items-center gap-2"
-                  >
-                    {copiedUrl ? (
-                      <>
-                        <Check className="w-4 h-4" />
-                        <span>Copiado</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4" />
-                        <span>Copiar URL</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                <p className="text-xs text-slate-500 mt-1">
-                  Esta es tu página web pública que puedes compartir con tus clientes
-                </p>
-              </div>
-            )}
-
-            <CustomFields usuarioId={usuario.id} editable={true} />
-          </div>
-
-          {/* Configuración de correos IONOS - Oculto para todos los roles */}
-          {false && (
-            <div className="mt-8">
-              <CorreoIONOSFields
-                emailCuenta={formData.email_cuenta || null}
-                emailPassword={formData.email_password || null}
-                emailVerificado={formData.email_verificado || null}
-                emailUltimaVerificacion={formData.email_ultima_verificacion || null}
-                emailErrorMensaje={formData.email_error_mensaje || null}
-                onChange={(field, value) => setFormData({ ...formData, [field]: value })}
-                editable={true}
-                usuarioId={usuario.id}
-              />
-            </div>
-          )}
-
-          <div className="mt-8">
-            <PaymentFields
-              regimenFiscalId={formData.regimen_fiscal_id || ''}
-              banco={formData.banco || ''}
-              clabe={formData.clabe || ''}
-              onChange={(field, value) => setFormData({ ...formData, [field]: value })}
-              editable={true}
-            />
-          </div>
-
-          <div className="mt-8">
-            <MiLogotipoEditor
-              userId={usuario.id}
-              currentLogoUrl={formData.mi_logotipo_url}
-              onLogoChange={(url) => setFormData({ ...formData, mi_logotipo_url: url })}
-            />
-          </div>
-
-          <div className="mt-8">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Expediente</h3>
-            <ExpedienteSection usuarioId={usuario.id} canEdit={false} />
-          </div>
-
-
-          <div className="mt-8 flex justify-end">
+              <X className="w-3.5 h-3.5" />
+              Cancelar
+            </button>
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center space-x-2 bg-accent hover:bg-accent-hover text-white px-6 py-3 rounded-lg font-medium transition disabled:opacity-50"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 active:scale-95 transition-all shadow-sm disabled:opacity-60"
             >
-              <Save className="w-5 h-5" />
-              <span>{saving ? 'Guardando...' : 'Guardar Cambios'}</span>
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+              {saving ? 'Guardando...' : 'Guardar'}
             </button>
           </div>
+        )}
+      </div>
+
+      {saved && (
+        <div className="mb-4 flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl px-4 py-2.5">
+          <Check className="w-4 h-4" />
+          Cambios guardados correctamente.
+        </div>
+      )}
+      {error && (
+        <div className="mb-4 flex items-center gap-2 text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl px-4 py-2.5">
+          <X className="w-4 h-4" />
+          {error}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Left column: avatar + identity */}
+        <div className="lg:col-span-1 space-y-4">
+          {/* Avatar card */}
+          <div className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200 dark:border-white/[0.06] p-6 flex flex-col items-center gap-4">
+            <div className="relative">
+              <Avatar className="h-24 w-24 rounded-2xl">
+                <AvatarImage
+                  src={usuario.imagen_perfil_url || undefined}
+                  alt={fullName}
+                  crossOrigin="anonymous"
+                  className="rounded-2xl object-cover"
+                />
+                <AvatarFallback className="rounded-2xl text-2xl font-bold bg-accent/10 text-accent">
+                  {initials || <User className="w-10 h-10" />}
+                </AvatarFallback>
+              </Avatar>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="absolute -bottom-2 -right-2 w-8 h-8 rounded-xl bg-accent text-white flex items-center justify-center shadow-md hover:bg-accent/90 active:scale-90 transition-all disabled:opacity-60"
+                title="Cambiar foto"
+              >
+                {uploadingAvatar ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Camera className="w-3.5 h-3.5" />
+                )}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => {
+                  const file = e.target.files?.[0];
+                  if (file) handleAvatarUpload(file);
+                  e.target.value = '';
+                }}
+              />
+            </div>
+
+            <div className="text-center">
+              <p className="font-bold text-neutral-900 dark:text-white text-lg leading-tight">{fullName || '—'}</p>
+              {usuario.puesto && (
+                <p className="text-sm text-neutral-400 dark:text-white/40 mt-0.5">{usuario.puesto}</p>
+              )}
+              <span className={cn('inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full mt-2', rolBadgeCls)}>
+                <Shield className="w-3 h-3" />
+                {rol}
+              </span>
+            </div>
+
+            {usuario.fecha_ingreso && (
+              <div className="w-full flex items-center gap-2 text-xs text-neutral-400 dark:text-white/35 border-t border-neutral-100 dark:border-white/5 pt-3 justify-center">
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Ingresó el {new Date(usuario.fecha_ingreso).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Office card */}
+          {oficina && (
+            <div className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200 dark:border-white/[0.06] p-5 space-y-4">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-accent" />
+                <p className="text-sm font-semibold text-neutral-700 dark:text-white/80">Mi Oficina</p>
+              </div>
+
+              {oficina.logo_url && (
+                <div className="flex justify-center py-2">
+                  <div className="h-12 px-4 flex items-center justify-center bg-neutral-50 dark:bg-white/5 rounded-xl border border-neutral-100 dark:border-white/8">
+                    <img
+                      src={oficina.logo_url}
+                      alt={oficina.nombre}
+                      className="h-8 w-auto max-w-[120px] object-contain"
+                      onError={e => { (e.currentTarget as HTMLImageElement).parentElement!.style.display = 'none'; }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-white/30">Nombre</p>
+                  <p className="text-sm text-neutral-800 dark:text-white/80 mt-0.5">{oficina.nombre}</p>
+                </div>
+                {oficina.domicilio && (
+                  <div className="flex items-start gap-2">
+                    <MapPin className="w-3.5 h-3.5 text-neutral-400 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-neutral-500 dark:text-white/40">{oficina.domicilio}</p>
+                  </div>
+                )}
+                {oficina.telefono && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                    <p className="text-xs text-neutral-500 dark:text-white/40">{oficina.telefono}</p>
+                  </div>
+                )}
+                {oficina.email && (
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                    <p className="text-xs text-neutral-500 dark:text-white/40">{oficina.email}</p>
+                  </div>
+                )}
+                {oficina.whatsapp && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                    <p className="text-xs text-neutral-500 dark:text-white/40">{oficina.whatsapp} (WhatsApp)</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right column: editable sections */}
+        <div className="lg:col-span-2 space-y-4">
+          {SECTIONS.map(section => {
+            const SectionIcon = section.icon;
+            const visibleFields = section.fields.filter(f => {
+              // fecha_nacimiento is read-only for everyone, always show
+              if (f === 'fecha_nacimiento' as any) return !!(usuario as any).fecha_nacimiento;
+              return true;
+            });
+            if (visibleFields.length === 0) return null;
+
+            return (
+              <div key={section.title} className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200 dark:border-white/[0.06] p-5">
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-neutral-100 dark:border-white/[0.05]">
+                  <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center">
+                    <SectionIcon className="w-3.5 h-3.5 text-accent" />
+                  </div>
+                  <p className="text-sm font-semibold text-neutral-700 dark:text-white/80">{section.title}</p>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {visibleFields.map(field => {
+                    if (field === 'fecha_nacimiento' as any) {
+                      return (
+                        <FieldRow
+                          key={field}
+                          label={formatFieldName(field)}
+                          value={(usuario as any).fecha_nacimiento
+                            ? new Date((usuario as any).fecha_nacimiento).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
+                            : ''}
+                          editable={false}
+                          editing={editing}
+                          onChange={() => {}}
+                          icon={Calendar}
+                        />
+                      );
+                    }
+
+                    const isEditable = editables[field] ?? false;
+                    let displayValue = form[field];
+                    if ((field === 'nombre' || field === 'apellidos') && !editing) {
+                      displayValue = toTitleCase(displayValue);
+                    }
+
+                    const iconMap: Partial<Record<EditableField, React.ElementType>> = {
+                      email_personal: Mail, email_laboral: Mail,
+                      celular_personal: Phone, celular_laboral: Phone,
+                      url_web_jiro: Globe, url_web_multicotizador: Globe,
+                    };
+
+                    return (
+                      <FieldRow
+                        key={field}
+                        label={formatFieldName(field)}
+                        value={displayValue}
+                        editable={isEditable}
+                        editing={editing}
+                        onChange={v => setForm(prev => ({ ...prev, [field]: v }))}
+                        type={field.includes('email') ? 'email' : field.includes('clabe') ? 'text' : 'text'}
+                        icon={iconMap[field]}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

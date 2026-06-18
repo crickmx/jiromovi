@@ -4,7 +4,7 @@ import { useAssistant } from '../contexts/AssistantContext';
 import { useLocation } from 'react-router-dom';
 import { getSuggestionsForRoute } from '../lib/suggestionsService';
 import { getModuleDisplayName, formatRelativeTime } from '../lib/assistantUtils';
-import { parseStructuredResponse } from '../lib/responseParser';
+import { parseStructuredResponse, normalizeChavaResponse } from '../lib/responseParser';
 import type { AssistantSuggestion } from '../lib/assistantTypes';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -240,28 +240,44 @@ export function AssistantModal() {
               <div className="space-y-4">
                 {messages.map((message) => {
                   const isUser = message.rol === 'user';
-                  const structuredResponse = message.respuesta_estructurada_json
-                    ? parseStructuredResponse(message.respuesta_estructurada_json)
+
+                  if (isUser) {
+                    return (
+                      <div key={message.id} className="flex justify-end">
+                        <div className="max-w-[80%] rounded-lg p-3 bg-accent text-white [&_*]:text-white">
+                          <p className="text-sm whitespace-pre-wrap text-white">{message.contenido}</p>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Normalize before rendering — blocks internal prompts and raw JSON
+                  const normalized = normalizeChavaResponse(
+                    message.contenido,
+                    message.respuesta_estructurada_json
+                  );
+
+                  if (!normalized.safe) {
+                    return (
+                      <div key={message.id} className="flex justify-start">
+                        <div className="max-w-[80%] rounded-lg p-3 bg-amber-50 border border-amber-200">
+                          <p className="text-sm text-amber-700">{normalized.error}</p>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  const structuredResponse = normalized.structured
+                    ? parseStructuredResponse(normalized.structured)
                     : null;
 
                   return (
-                    <div
-                      key={message.id}
-                      className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-[80%] rounded-lg p-3 ${
-                          isUser
-                            ? 'bg-accent text-white [&_*]:text-white'
-                            : 'bg-gray-100 text-gray-900'
-                        }`}
-                      >
-                        {isUser ? (
-                          <p className="text-sm whitespace-pre-wrap text-white">{message.contenido}</p>
-                        ) : structuredResponse ? (
+                    <div key={message.id} className="flex justify-start">
+                      <div className="max-w-[80%] rounded-lg p-3 bg-gray-100 text-gray-900">
+                        {structuredResponse ? (
                           <ResponseMessage response={structuredResponse} />
                         ) : (
-                          <p className="text-sm whitespace-pre-wrap">{message.contenido}</p>
+                          <p className="text-sm whitespace-pre-wrap">{normalized.text}</p>
                         )}
                       </div>
                     </div>

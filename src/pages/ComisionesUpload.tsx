@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Upload, FileSpreadsheet, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { Upload, FileSpreadsheet, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { groupByWeek } from '../lib/commissionUtils';
 import type { WeekSummary } from '../lib/commissionTypes';
 import { supabase } from '../lib/supabase';
+import { PageHeader } from '@/components/ui/page-header';
+import { LoadingState } from '@/components/ui/loading-state';
+import { Button } from '@/components/ui/button';
 
 interface ExcelRow {
   FPago: string;
@@ -333,21 +336,21 @@ export default function ComisionesUpload() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-6">
-        <div className="bg-white rounded-3xl shadow-soft p-12 text-center max-w-md">
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center p-6">
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-12 text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-neutral-900 mb-2">
+          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
             Acceso Denegado
           </h2>
-          <p className="text-neutral-600 mb-6">
+          <p className="text-neutral-600 dark:text-white/60 mb-6">
             Solo los administradores pueden acceder a esta sección.
           </p>
-          <button
+          <Button
             onClick={() => navigate('/dashboard')}
-            className="px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors font-semibold"
+            size="lg"
           >
             Volver al Dashboard
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -355,25 +358,15 @@ export default function ComisionesUpload() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate('/comisiones')}
-              className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6 text-neutral-700" />
-            </button>
-            <div>
-              <h1 className="text-3xl font-display font-bold text-accent mb-1">
-                Subir Archivo de Comisiones
-              </h1>
-              <p className="text-neutral-600">
-                Sube un archivo Excel con las comisiones a procesar
-              </p>
-            </div>
-          </div>
-        </div>
+      <PageHeader
+        title="Subir Archivo de Comisiones"
+        description="Sube un archivo Excel con las comisiones a procesar"
+        icon={Upload}
+        backTo="/comisiones"
+        backLabel="Volver"
+      />
+
+      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-6">
 
         <div className="bg-primary-50 border border-primary-200 rounded-xl p-4 mb-6">
           <h3 className="font-semibold text-primary-900 mb-2">
@@ -409,7 +402,7 @@ export default function ComisionesUpload() {
         </div>
 
         {!file ? (
-          <div className="border-2 border-dashed border-neutral-300 rounded-2xl p-12 text-center hover:border-primary-400 transition-colors">
+          <div className="border-2 border-dashed border-neutral-300 dark:border-white/15 rounded-2xl p-12 text-center hover:border-primary-400 transition-colors">
             <label
               htmlFor="file-upload"
               className="cursor-pointer block"
@@ -433,11 +426,11 @@ export default function ComisionesUpload() {
                 }}
                 className="hidden"
               />
-              <Upload className="w-16 h-16 text-neutral-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-neutral-700 mb-2">
+              <Upload className="w-16 h-16 text-neutral-400 dark:text-white/40 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-neutral-700 dark:text-white/70 mb-2">
                 Haz clic para seleccionar un archivo
               </h3>
-              <p className="text-neutral-500">
+              <p className="text-neutral-500 dark:text-white/50">
                 o arrastra y suelta aquí un archivo .xlsx
               </p>
             </label>
@@ -483,19 +476,16 @@ export default function ComisionesUpload() {
             )}
 
             {validating && (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-8 h-8 text-accent animate-spin" />
-                <span className="ml-3 text-neutral-700">Validando archivo...</span>
-              </div>
+              <LoadingState text="Validando archivo..." />
             )}
 
             {!validating && !validationError && weeks.length > 0 && (
               <div className="space-y-4">
                 <div>
-                  <h3 className="text-xl font-bold text-neutral-900 mb-4">
+                  <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-4">
                     Selecciona las semanas a procesar
                   </h3>
-                  <p className="text-sm text-neutral-600 mb-4">
+                  <p className="text-sm text-neutral-600 dark:text-white/60 mb-4">
                     Las filas se han agrupado automáticamente por semana calendario (lunes a domingo).
                     Selecciona las semanas que deseas procesar.
                   </p>
@@ -508,8 +498,8 @@ export default function ComisionesUpload() {
                       onClick={() => toggleWeekSelection(index)}
                       className={`border-2 rounded-xl p-4 cursor-pointer transition-all ${
                         week.selected
-                          ? 'border-accent bg-primary-50'
-                          : 'border-neutral-200 hover:border-primary-300'
+                          ? 'border-accent bg-primary-50 dark:bg-accent/10'
+                          : 'border-neutral-200 dark:border-white/10 hover:border-primary-300 dark:hover:border-white/20'
                       }`}
                     >
                       <div className="flex items-center justify-between">
@@ -517,17 +507,17 @@ export default function ComisionesUpload() {
                           <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
                             week.selected
                               ? 'bg-accent border-accent'
-                              : 'border-neutral-400'
+                              : 'border-neutral-400 dark:border-white/40'
                           }`}>
                             {week.selected && (
                               <CheckCircle className="w-4 h-4 text-white" />
                             )}
                           </div>
                           <div>
-                            <div className="font-semibold text-neutral-900">
+                            <div className="font-semibold text-neutral-900 dark:text-white">
                               Semana {week.weekNumber}
                             </div>
-                            <div className="text-sm text-neutral-600">
+                            <div className="text-sm text-neutral-600 dark:text-white/60">
                               {week.dateFrom} al {week.dateTo}
                             </div>
                           </div>
@@ -536,7 +526,7 @@ export default function ComisionesUpload() {
                           <div className="text-2xl font-bold text-accent">
                             {week.count}
                           </div>
-                          <div className="text-xs text-neutral-600">
+                          <div className="text-xs text-neutral-600 dark:text-white/60">
                             pólizas
                           </div>
                         </div>
@@ -545,30 +535,30 @@ export default function ComisionesUpload() {
                   ))}
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-neutral-200">
+                <div className="flex items-center justify-between pt-4 border-t border-neutral-200 dark:border-white/10">
                   <button
                     onClick={() => setWeeks(prev => prev.map(w => ({ ...w, selected: !prev.every(w => w.selected) })))}
                     className="text-accent hover:text-primary-700 font-semibold text-sm"
                   >
                     {weeks.every(w => w.selected) ? 'Deseleccionar todas' : 'Seleccionar todas'}
                   </button>
-                  <button
+                  <Button
                     onClick={handleProcess}
                     disabled={processing || !weeks.some(w => w.selected)}
-                    className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl hover:shadow-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                    size="lg"
                   >
                     {processing ? (
                       <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
                         <span>Procesando...</span>
                       </>
                     ) : (
                       <>
-                        <FileSpreadsheet className="w-5 h-5" />
+                        <FileSpreadsheet className="w-5 h-5 mr-2" />
                         <span>Procesar Comisiones</span>
                       </>
                     )}
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}

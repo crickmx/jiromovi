@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Calculator, Save, FileText, Plus, Trash2, Calendar, DollarSign, Users, ChevronDown, ChevronRight, Download, Search, CreditCard as Edit, ArrowLeftRight } from 'lucide-react';
-import { Layout } from '../components/Layout';
-import { PageHeader } from '../components/ui/page-header';
+import { Calculator, Save, FileText, Plus, Trash2, Calendar, DollarSign, Users, ChevronDown, ChevronRight, Download, Search, CreditCard as Edit, ArrowLeftRight, Upload } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { InfoTooltip } from '../components/ui/info-tooltip';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { MultiOptionQuote } from '../components/gmm/MultiOptionQuote';
 import {
   calculateQuoteV2 as calculateQuote,
@@ -21,6 +20,7 @@ import { getCoverageHelpText, COVERAGE_LABELS } from '../lib/gmmCoverageHelp';
 import { formatMoneySafe } from '../lib/gmmParsingUtils';
 import { getDisplayName } from '../lib/utils';
 import { getEffectiveUserLogo } from '../lib/logoUtils';
+import GMMTarifasAdmin from './GMMTarifasAdmin';
 import type {
   QuoteInput,
   QuoteInputInsured,
@@ -83,6 +83,8 @@ function formatDate(dateString: string): string {
 
 export default function GMMCotizador() {
   const location = useLocation();
+  const { usuario } = useAuth();
+  const isAdmin = usuario?.rol === 'Administrador';
   const [activeTab, setActiveTab] = useState('cotizador');
   const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
   const [editedFromQuotationId, setEditedFromQuotationId] = useState<string | null>(null);
@@ -596,32 +598,40 @@ export default function GMMCotizador() {
 
   if (loading) {
     return (
-      <Layout>
+      <>
         <div className="flex items-center justify-center h-96">
           <div className="text-gray-500">Cargando tarifas...</div>
         </div>
-      </Layout>
+      </>
     );
   }
 
   if (!tariffTables) {
     return (
-      <Layout>
+      <>
         <div className="flex items-center justify-center h-96">
           <div className="text-gray-500">No hay tarifas activas</div>
         </div>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
-      <PageHeader
-        title="GMM BX+"
-        subtitle="Cotizador de Gastos Médicos Mayores"
-      />
+    <>
+      {/* Section header — unified Cotizar style */}
+      <div className="max-w-7xl mx-auto px-6 pt-7 pb-2">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-900/20 border border-sky-100 dark:border-sky-800/30 flex-shrink-0 overflow-hidden p-1.5">
+            <img src="/logo-bx.png" alt="BX+" className="w-full h-full object-contain" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-neutral-900 dark:text-white tracking-tight">GMM BX+</h1>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">Cotizador de Gastos Medicos Mayores</p>
+          </div>
+        </div>
+      </div>
 
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="max-w-7xl mx-auto px-6 pb-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6">
             <TabsTrigger value="cotizador">
@@ -632,6 +642,12 @@ export default function GMMCotizador() {
               <FileText className="w-4 h-4 mr-2" />
               Mis Cotizaciones
             </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="tarifas">
+                <Upload className="w-4 h-4 mr-2" />
+                Tarifas Admin
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="cotizador">
@@ -1160,8 +1176,13 @@ export default function GMMCotizador() {
               </>
             )}
           </TabsContent>
+          {isAdmin && (
+            <TabsContent value="tarifas">
+              <GMMTarifasAdmin />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
-    </Layout>
+    </>
   );
 }

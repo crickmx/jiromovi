@@ -16,7 +16,7 @@ interface ContactoConCumpleanos {
 
 export default function CumpleanosContactos() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { usuario: user } = useAuth();
   const [contactos, setContactos] = useState<ContactoConCumpleanos[]>([]);
   const [loading, setLoading] = useState(true);
   const [periodo, setPeriodo] = useState<'semana' | 'mes' | 'trimestre'>('mes');
@@ -135,7 +135,7 @@ export default function CumpleanosContactos() {
             </div>
           </div>
           <button
-            onClick={() => navigate('/mi-crm/contactos')}
+            onClick={() => navigate('/contactos')}
             className="text-accent hover:text-primary-700 text-sm font-medium flex items-center gap-1"
           >
             Ver todos
@@ -197,7 +197,7 @@ export default function CumpleanosContactos() {
             return (
               <div
                 key={contacto.id}
-                onClick={() => navigate(`/mi-crm/contactos/${contacto.id}`)}
+                onClick={() => navigate(`/contactos/${contacto.id}`)}
                 className="p-4 hover:bg-gray-50 cursor-pointer transition group"
               >
                 <div className="flex items-start justify-between">

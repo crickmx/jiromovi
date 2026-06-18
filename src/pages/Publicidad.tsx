@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Image, Video, Plus, Filter, Trash2, Palette } from 'lucide-react';
+import { Image, Video, Plus, ListFilter as Filter, Trash2, Sparkles, TriangleAlert as AlertTriangle, RefreshCw, Eye } from 'lucide-react';
 import { NuevaPlantillaModal } from '../components/NuevaPlantillaModal';
 import { PersonalizarPlantillaModal } from '../components/PersonalizarPlantillaModal';
 import { PlanMKTPremiumBlock } from '../components/PlanMKTPremiumBlock';
+import { DesignDetailModal } from '../components/publicidad/DesignDetailModal';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
 import { trackPublicityCreated } from '../lib/activityLogger';
+import { Button } from '@/components/ui/button';
+import { LoadingState } from '@/components/ui/loading-state';
+import { EmptyState } from '@/components/ui/empty-state';
+import { resolveImageUrl } from '../lib/storageUtils';
 
 const CATEGORIAS_LIST = [
   'Redes Sociales', 'Campanas', 'Promociones', 'Eventos', 'Presentaciones',
@@ -26,6 +31,7 @@ interface Plantilla {
   ramo: string;
   archivo_url: string;
   miniatura_url: string | null;
+  thumbnail_url: string | null;
   ancho: number | null;
   alto: number | null;
   duracion: number | null;
@@ -40,7 +46,15 @@ interface Diseno {
   id: string;
   plantilla_id: string;
   archivo_resultante_url: string | null;
+  thumbnail_url: string | null;
+  rendered_storage_path: string | null;
+  needs_regeneration: boolean;
   created_at: string;
+  ai_copy: any | null;
+  ai_copy_generated_at: string | null;
+  ai_copy_version: number;
+  ai_copy_editado_manual: boolean;
+  ai_copy_original: any | null;
   publicidad_plantillas?: {
     titulo: string | null;
     tipo: string;
@@ -49,9 +63,84 @@ interface Diseno {
   } | null;
 }
 
-export function Publicidad() {
+// Reusable image with skeleton loading + error fallback for publicity cards
+function PlantillaImage({
+  src,
+  alt,
+  tipo,
+  objectFit = 'cover',
+}: {
+  src: string | null | undefined;
+  alt: string;
+  tipo: 'imagen' | 'video';
+  objectFit?: 'cover' | 'contain';
+}) {
+  const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+  const [retrySrc, setRetrySrc] = useState<string | null>(null);
+  const resolved = resolveImageUrl(src);
+  const effectiveSrc = retrySrc ?? resolved;
+
+  useEffect(() => {
+    setStatus(resolved ? 'loading' : 'error');
+    setRetrySrc(null);
+  }, [resolved]);
+
+  if (!resolved) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center absolute inset-0 gap-1.5">
+        {tipo === 'imagen' ? (
+          <Image className="w-10 h-10 text-neutral-300 dark:text-white/20" />
+        ) : (
+          <Video className="w-10 h-10 text-neutral-300 dark:text-white/20" />
+        )}
+        <span className="text-[10px] text-neutral-400 dark:text-white/30">Sin imagen</span>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {status === 'loading' && (
+        <div className="absolute inset-0 bg-neutral-200 dark:bg-neutral-700 animate-pulse" />
+      )}
+      {status === 'error' && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
+          {tipo === 'imagen' ? (
+            <Image className="w-10 h-10 text-neutral-300 dark:text-white/20" />
+          ) : (
+            <Video className="w-10 h-10 text-neutral-300 dark:text-white/20" />
+          )}
+          <span className="text-[10px] text-neutral-400 dark:text-white/30">Vista previa no disponible</span>
+        </div>
+      )}
+      <img
+        src={effectiveSrc}
+        alt={alt}
+        crossOrigin="anonymous"
+        className={`w-full h-full transition-opacity duration-300 ${objectFit === 'contain' ? 'object-contain' : 'object-cover'} ${status === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
+        onLoad={() => setStatus('loaded')}
+        onError={() => {
+          // Retry once with a cache-busting param before showing error
+          if (!retrySrc && resolved) {
+            const sep = resolved.includes('?') ? '&' : '?';
+            setRetrySrc(`${resolved}${sep}_r=${Date.now()}`);
+          } else {
+            console.warn('[Publicidad] Image failed to load:', src);
+            setStatus('error');
+          }
+        }}
+      />
+    </>
+  );
+}
+
+interface PublicidadProps {
+  initialTab?: 'biblioteca' | 'mis-disenos';
+}
+
+export default function Publicidad({ initialTab = 'biblioteca' }: PublicidadProps) {
   const { usuario } = useAuth();
-  const [activeTab, setActiveTab] = useState<'biblioteca' | 'mis-disenos'>('biblioteca');
+  const [activeTab, setActiveTab] = useState<'biblioteca' | 'mis-disenos'>(initialTab);
   const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
   const [disenos, setDisenos] = useState<Diseno[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,6 +151,7 @@ export function Publicidad() {
   const [showPersonalizarModal, setShowPersonalizarModal] = useState(false);
   const [selectedPlantilla, setSelectedPlantilla] = useState<Plantilla | null>(null);
   const [showPlanBlock, setShowPlanBlock] = useState(false);
+  const [selectedDiseno, setSelectedDiseno] = useState<Diseno | null>(null);
 
   const isAdmin = tienePermisoAdminEnModulo(usuario, MODULOS.PUBLICIDAD);
   const isAgente = usuario?.rol === 'Agente';
@@ -154,7 +244,13 @@ export function Publicidad() {
       .eq('usuario_id', usuario.id)
       .order('created_at', { ascending: false });
 
-    if (data) setDisenos(data);
+    if (data) {
+      setDisenos(data);
+      if (selectedDiseno) {
+        const updated = data.find(d => d.id === selectedDiseno.id);
+        if (updated) setSelectedDiseno(updated);
+      }
+    }
   };
 
   useEffect(() => {
@@ -219,80 +315,47 @@ export function Publicidad() {
     }
   };
 
-  const handleDescargarDiseno = (url: string) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `diseno-${Date.now()}.png`;
-    link.click();
+  const handleVerDetalle = (diseno: Diseno) => {
+    setSelectedDiseno(diseno);
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
-      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
+    <div className="space-y-4">
+      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4 sm:p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-accent mb-1 sm:mb-2">
-              Publicidad
-            </h1>
-            <p className="text-sm sm:text-base text-neutral-600">
-              Crea diseños personalizados con tu logo y texto
+            <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
+              {activeTab === 'biblioteca' ? 'Biblioteca de Plantillas' : 'Mis Diseños'}
+            </h2>
+            <p className="text-sm text-neutral-500 dark:text-white/50 mt-0.5">
+              {activeTab === 'biblioteca'
+                ? 'Elige una plantilla y personalízala con tu logo y texto'
+                : 'Diseños personalizados que has creado'}
             </p>
           </div>
-          {isAdmin && (
-            <button
-              onClick={() => setShowNuevaPlantillaModal(true)}
-              className="flex items-center justify-center space-x-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-4 sm:px-5 py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold min-h-[44px] w-full sm:w-auto"
-            >
-              <Plus className="w-5 h-5" />
-              <span>Nueva Plantilla</span>
-            </button>
+          {isAdmin && activeTab === 'biblioteca' && (
+            <Button size="sm" onClick={() => setShowNuevaPlantillaModal(true)}>
+              <Plus className="w-4 h-4 mr-1.5" />
+              Nueva Plantilla
+            </Button>
           )}
-        </div>
-
-        <div className="flex overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 space-x-2 sm:space-x-2 border-b border-neutral-200 scrollbar-hide">
-          <button
-            onClick={() => setActiveTab('biblioteca')}
-            className={`flex-shrink-0 px-4 sm:px-6 py-3 font-semibold transition-all min-h-[44px] ${
-              activeTab === 'biblioteca'
-                ? 'text-accent border-b-2 border-accent'
-                : 'text-neutral-600 hover:text-neutral-900'
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              <Palette className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-sm sm:text-base">Biblioteca</span>
-            </div>
-          </button>
-          <button
-            onClick={() => setActiveTab('mis-disenos')}
-            className={`flex-shrink-0 px-4 sm:px-6 py-3 font-semibold transition-all min-h-[44px] ${
-              activeTab === 'mis-disenos'
-                ? 'text-accent border-b-2 border-accent'
-                : 'text-neutral-600 hover:text-neutral-900'
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              <Image className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-sm sm:text-base">Mis Diseños</span>
-            </div>
-          </button>
         </div>
       </div>
 
       {activeTab === 'biblioteca' && (
-        <div className="space-y-4 sm:space-y-6">
-          <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-3 sm:p-4">
+        <div className="space-y-4">
+          <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-3">
-              <Filter className="w-4 h-4 text-neutral-500" />
-              <span className="text-sm font-medium text-neutral-700">Filtros</span>
+              <Filter className="w-4 h-4 text-neutral-500 dark:text-white/40" />
+              <span className="text-sm font-medium text-neutral-700 dark:text-white/70">Filtros</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <select
                 value={selectedCategoria}
                 onChange={(e) => setSelectedCategoria(e.target.value)}
-                className="px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all min-h-[44px]"
+                className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
               >
-                <option value="todas">Todas las categorías</option>
+                <option value="todas">Todas las categorias</option>
                 {CATEGORIAS_LIST.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
@@ -300,7 +363,7 @@ export function Publicidad() {
               <select
                 value={selectedRamo}
                 onChange={(e) => setSelectedRamo(e.target.value)}
-                className="px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all min-h-[44px]"
+                className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
               >
                 <option value="todos">Todos los ramos</option>
                 {RAMOS_LIST.map(ramo => (
@@ -310,63 +373,41 @@ export function Publicidad() {
               <select
                 value={selectedTipo}
                 onChange={(e) => setSelectedTipo(e.target.value)}
-                className="px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all min-h-[44px]"
+                className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
               >
                 <option value="todos">Todos los tipos</option>
-                <option value="imagen">Imágenes</option>
+                <option value="imagen">Imagenes</option>
                 <option value="video">Videos</option>
               </select>
             </div>
           </div>
 
           {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-            </div>
+            <LoadingState text="Cargando plantillas..." />
           ) : plantillas.length === 0 ? (
-            <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-8 sm:p-12 text-center">
-              <Palette className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300 mx-auto mb-3 sm:mb-4" />
-              <h3 className="text-lg sm:text-xl font-semibold text-neutral-700 mb-2">
-                No hay plantillas disponibles
-              </h3>
-              <p className="text-sm sm:text-base text-neutral-500">
-                {isAdmin ? 'Crea tu primera plantilla para comenzar' : 'Próximamente habrá plantillas disponibles'}
-              </p>
-            </div>
+            <EmptyState
+              icon={Palette}
+              title="No hay plantillas disponibles"
+              description={isAdmin ? 'Crea tu primera plantilla para comenzar' : 'Proximamente habra plantillas disponibles'}
+            />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {plantillas.map(plantilla => (
                 <div
                   key={plantilla.id}
-                  className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 overflow-hidden hover:shadow-medium transition-all duration-200 active:scale-[0.98]"
+                  className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden hover:border-neutral-300 dark:hover:border-white/15 hover:shadow-sm transition-all duration-200"
                 >
                   <div className="relative aspect-[4/5] bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
-                    {plantilla.miniatura_url ? (
-                      <img
-                        src={plantilla.miniatura_url}
-                        alt={plantilla.titulo || plantilla.categoria}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                        onError={(e) => {
-                          const target = e.currentTarget;
-                          target.style.display = 'none';
-                          const fallback = target.nextElementSibling as HTMLElement;
-                          if (fallback) fallback.style.display = 'flex';
-                        }}
-                      />
-                    ) : null}
-                    <div className={`w-full h-full items-center justify-center absolute inset-0 ${plantilla.miniatura_url ? 'hidden' : 'flex'}`}>
-                      {plantilla.tipo === 'imagen' ? (
-                        <Image className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300" />
-                      ) : (
-                        <Video className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300" />
-                      )}
-                    </div>
-                    <div className="absolute top-2 sm:top-3 left-2 sm:left-3 right-2 sm:right-3 flex items-center justify-between">
-                      <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold ${
+                    <PlantillaImage
+                      src={plantilla.thumbnail_url || plantilla.miniatura_url || plantilla.archivo_url}
+                      alt={plantilla.titulo || plantilla.categoria}
+                      tipo={plantilla.tipo}
+                    />
+                    <div className="absolute top-2 left-2 right-2 flex items-center justify-between">
+                      <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${
                         plantilla.tipo === 'imagen'
-                          ? 'bg-primary-100 text-primary-700'
-                          : 'bg-teal-100 text-teal-700'
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
+                          : 'bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300'
                       }`}>
                         {plantilla.tipo === 'imagen' ? 'Imagen' : 'Video'}
                       </span>
@@ -376,29 +417,30 @@ export function Publicidad() {
                             e.stopPropagation();
                             handleEliminarPlantilla(plantilla);
                           }}
-                          className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all duration-200 shadow-lg min-w-[44px] min-h-[44px] flex items-center justify-center active:scale-95"
+                          className="p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all"
                           title="Eliminar plantilla"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       )}
                     </div>
                   </div>
-                  <div className="p-3 sm:p-4">
+                  <div className="p-3">
                     <div className="flex flex-wrap gap-1.5 mb-3">
-                      <span className="inline-block px-2 py-0.5 bg-neutral-100 text-neutral-700 text-xs rounded-lg font-medium">
+                      <span className="inline-block px-2 py-0.5 bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-white/60 text-xs rounded-md font-medium">
                         {plantilla.categoria}
                       </span>
-                      <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-lg font-medium">
+                      <span className="inline-block px-2 py-0.5 bg-accent/10 text-accent text-xs rounded-md font-medium">
                         {plantilla.ramo}
                       </span>
                     </div>
-                    <button
+                    <Button
+                      size="sm"
+                      className="w-full"
                       onClick={() => handleUsarPlantilla(plantilla)}
-                      className="w-full bg-gradient-to-r from-primary-500 to-primary-600 text-white py-2.5 sm:py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold text-sm sm:text-base min-h-[44px] active:scale-95"
                     >
-                      Usar este diseño
-                    </button>
+                      Usar este diseno
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -408,94 +450,129 @@ export function Publicidad() {
       )}
 
       {activeTab === 'mis-disenos' && (
-        <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-4 sm:p-6">
-          <h2 className="text-xl sm:text-2xl font-display font-bold text-neutral-900 mb-4 sm:mb-6">
-            Mis Diseños Personalizados
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4 sm:p-5">
+          <h2 className="text-base font-bold text-neutral-900 dark:text-white mb-4">
+            Mis Disenos Personalizados
           </h2>
           {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-            </div>
+            <LoadingState text="Cargando disenos..." />
           ) : disenos.length === 0 ? (
-            <div className="text-center py-8 sm:py-12">
-              <Image className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300 mx-auto mb-3 sm:mb-4" />
-              <h3 className="text-lg sm:text-xl font-semibold text-neutral-700 mb-2">
-                No tienes diseños personalizados
-              </h3>
-              <p className="text-sm sm:text-base text-neutral-500 mb-4 sm:mb-6">
-                Crea tu primer diseño desde la biblioteca
-              </p>
-              <button
-                onClick={() => setActiveTab('biblioteca')}
-                className="bg-gradient-to-r from-primary-500 to-primary-600 text-white px-5 sm:px-6 py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold min-h-[44px]"
-              >
-                Ir a la Biblioteca
-              </button>
-            </div>
+            <EmptyState
+              icon={Image}
+              title="No tienes disenos personalizados"
+              description="Crea tu primer diseno desde la biblioteca"
+              action={{ label: 'Ir a la Biblioteca', onClick: () => setActiveTab('biblioteca') }}
+            />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {disenos.map(diseno => (
-                <div
-                  key={diseno.id}
-                  className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 overflow-hidden hover:shadow-medium transition-all duration-200 active:scale-[0.98]"
-                >
-                  <div className="relative aspect-[4/5] bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
-                    {diseno.archivo_resultante_url ? (
-                      <img
-                        src={diseno.archivo_resultante_url}
-                        alt="Diseño personalizado"
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                        onError={(e) => {
-                          const target = e.currentTarget;
-                          target.style.display = 'none';
-                          const fallback = target.nextElementSibling as HTMLElement;
-                          if (fallback) fallback.style.display = 'flex';
-                        }}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {disenos.map(diseno => {
+                const previewUrl = diseno.thumbnail_url || diseno.archivo_resultante_url;
+                const hasImage = !!previewUrl;
+                return (
+                  <div
+                    key={diseno.id}
+                    className="group bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden hover:border-accent/40 dark:hover:border-accent/30 hover:shadow-md transition-all duration-200 cursor-pointer"
+                    onClick={() => setSelectedDiseno(diseno)}
+                  >
+                    <div className="relative aspect-[4/5] bg-neutral-50 dark:bg-neutral-800 overflow-hidden">
+                      <PlantillaImage
+                        src={previewUrl}
+                        alt="Diseno personalizado"
+                        tipo="imagen"
+                        objectFit="contain"
                       />
-                    ) : null}
-                    <div className={`w-full h-full items-center justify-center absolute inset-0 ${diseno.archivo_resultante_url ? 'hidden' : 'flex'}`}>
-                      <Image className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300" />
+                      {/* Overlay on hover */}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 dark:group-hover:bg-white/5 transition-all duration-200 flex items-center justify-center">
+                        <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 px-3 py-1.5 bg-white/90 dark:bg-neutral-900/90 text-neutral-900 dark:text-white text-xs font-medium rounded-full shadow-sm">
+                          Ver detalle
+                        </span>
+                      </div>
+                      {/* AI Copy badge */}
+                      {diseno.ai_copy && (
+                        <div className="absolute top-2 right-2">
+                          <span className="flex items-center gap-1 px-2 py-0.5 bg-accent/90 text-white text-xs font-medium rounded-full shadow-sm">
+                            <Sparkles className="w-3 h-3" />
+                            Chava AI
+                          </span>
+                        </div>
+                      )}
+                      {/* Needs regeneration badge */}
+                      {(!hasImage || diseno.needs_regeneration) && (
+                        <div className="absolute top-2 left-2">
+                          <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-500/90 text-white text-xs font-medium rounded-full shadow-sm">
+                            <AlertTriangle className="w-3 h-3" />
+                            Regenerar
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex flex-wrap gap-1.5">
+                          {diseno.publicidad_plantillas?.categoria && (
+                            <span className="inline-block px-2 py-0.5 bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-white/60 text-xs rounded-md font-medium">
+                              {diseno.publicidad_plantillas.categoria}
+                            </span>
+                          )}
+                          {diseno.publicidad_plantillas?.ramo && (
+                            <span className="inline-block px-2 py-0.5 bg-accent/10 text-accent text-xs rounded-md font-medium">
+                              {diseno.publicidad_plantillas.ramo}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-xs text-neutral-500 dark:text-white/40 mt-1 mb-2">
+                        {new Date(diseno.created_at).toLocaleDateString('es-MX', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric'
+                        })}
+                      </p>
+                      <div className="flex gap-2 mt-3">
+                        {(!hasImage || diseno.needs_regeneration) ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const plantilla = plantillas.find(p => p.id === diseno.plantilla_id);
+                              if (plantilla) {
+                                setSelectedPlantilla(plantilla);
+                                setShowPersonalizarModal(true);
+                              } else {
+                                supabase.from('publicidad_plantillas').select('*').eq('id', diseno.plantilla_id).single()
+                                  .then(({ data }) => {
+                                    if (data) { setSelectedPlantilla(data); setShowPersonalizarModal(true); }
+                                  });
+                              }
+                            }}
+                          >
+                            <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                            Regenerar
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            className="flex-1"
+                            onClick={(e) => { e.stopPropagation(); handleVerDetalle(diseno); }}
+                          >
+                            <Eye className="w-3.5 h-3.5 mr-1.5" />
+                            Ver y descargar
+                          </Button>
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleEliminarDiseno(diseno); }}
+                          className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all border border-neutral-200 dark:border-white/10"
+                          title="Eliminar diseno"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                  <div className="p-3 sm:p-4">
-                    <div className="flex flex-wrap gap-1.5 mb-1">
-                      {diseno.publicidad_plantillas?.categoria && (
-                        <span className="inline-block px-2 py-0.5 bg-neutral-100 text-neutral-700 text-xs rounded-lg font-medium">
-                          {diseno.publicidad_plantillas.categoria}
-                        </span>
-                      )}
-                      {diseno.publicidad_plantillas?.ramo && (
-                        <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-lg font-medium">
-                          {diseno.publicidad_plantillas.ramo}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs sm:text-sm text-neutral-600 mb-3">
-                      {new Date(diseno.created_at).toLocaleDateString('es-MX', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric'
-                      })}
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleDescargarDiseno(diseno.archivo_resultante_url || '')}
-                        className="flex-1 bg-gradient-to-r from-primary-500 to-primary-600 text-white py-2.5 sm:py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold text-sm sm:text-base min-h-[44px] active:scale-95"
-                      >
-                        Descargar
-                      </button>
-                      <button
-                        onClick={() => handleEliminarDiseno(diseno)}
-                        className="p-2.5 sm:p-3 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-all duration-200 hover:scale-105 min-w-[44px] min-h-[44px] flex items-center justify-center active:scale-95"
-                        title="Eliminar diseño"
-                      >
-                        <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -529,6 +606,15 @@ export function Publicidad() {
       {showPlanBlock && (
         <PlanMKTPremiumBlock
           onClose={() => setShowPlanBlock(false)}
+        />
+      )}
+
+      {selectedDiseno && (
+        <DesignDetailModal
+          isOpen={!!selectedDiseno}
+          onClose={() => setSelectedDiseno(null)}
+          diseno={selectedDiseno}
+          onUpdate={() => loadDisenos()}
         />
       )}
     </div>

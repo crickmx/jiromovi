@@ -2,10 +2,7 @@ export type TipoContacto = 'Persona' | 'Empresa';
 
 export type EstatusContacto =
   | 'Prospecto'
-  | 'Cotización Presentada'
-  | 'Negociación'
-  | 'Cliente'
-  | 'Perdido';
+  | 'Cliente';
 
 export type EstatusCotizacion =
   | 'Nueva'
@@ -28,6 +25,9 @@ export interface CRMContacto {
   celular: string;
   email?: string;
   fecha_nacimiento?: string;
+  genero?: string;
+  estado?: string;
+  municipio?: string;
   estatus: EstatusContacto;
   fuente_origen?: string;
   etiquetas_segmentacion: string[];

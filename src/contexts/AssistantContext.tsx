@@ -44,7 +44,7 @@ interface AssistantContextType {
 const AssistantContext = createContext<AssistantContextType | undefined>(undefined);
 
 export function AssistantProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { usuario: user } = useAuth();
   const location = useLocation();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -243,6 +243,8 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
                 created_at: new Date().toISOString(),
                 modo_usado: response.modo_usado,
                 router_confidence: response.router_confidence,
+                web_sources: response.web_sources,
+                rag_fuentes: response.fuentes,
               }
             ];
           });

@@ -606,7 +606,7 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess }: NuevaPlantil
               }
             }}
             disabled={loading}
-            className="px-6 py-2.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl hover:shadow-ios-md transition-all duration-200 hover:scale-105 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Guardando...' : step === 1 ? 'Siguiente' : 'Crear Plantilla'}
           </button>

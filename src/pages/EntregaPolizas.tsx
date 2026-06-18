@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Upload, FileText, Download, Loader2, CheckCircle2, AlertCircle, X, Send, Search, Clock, UploadCloud, ShieldAlert, Ban, Zap, CreditCard as Edit3, Eye, RefreshCw } from 'lucide-react';
+import { Upload, FileText, Download, Loader as Loader2, CircleCheck as CheckCircle2, CircleAlert as AlertCircle, X, Send, Search, Clock, CloudUpload as UploadCloud, ShieldAlert, Ban, Zap, CreditCard as Edit3, Eye, RefreshCw } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -1069,7 +1069,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
-  const canRegisterSicas = isAdmin || isGerente || usuario?.rol === 'Empleado' || usuario?.rol === 'Ejecutivo';
+  const canRegisterSicas = isAdmin || isGerente || usuario?.rol === 'Empleado';
 
   const loadRecords = useCallback(async () => {
     setLoading(true);

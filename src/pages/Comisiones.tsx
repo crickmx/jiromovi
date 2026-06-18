@@ -2,9 +2,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { DollarSign, Plus, Calendar, FileSpreadsheet, CheckCircle, Clock, AlertCircle, Upload, Percent } from 'lucide-react';
+import { DollarSign, Plus, Calendar, FileSpreadsheet, CheckCircle, Clock, AlertCircle, Percent } from 'lucide-react';
 import type { CommissionBatch } from '../lib/commissionTypes';
-import { formatCurrency, formatDate } from '../lib/commissionUtils';
+import { formatDate } from '../lib/commissionUtils';
+import { PageHeader } from '@/components/ui/page-header';
+import { Button } from '@/components/ui/button';
+import { LoadingState } from '@/components/ui/loading-state';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export default function Comisiones() {
   const { usuario } = useAuth();
@@ -71,161 +75,93 @@ export default function Comisiones() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-6">
-        <div className="bg-white rounded-3xl shadow-soft p-12 text-center max-w-md">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-neutral-900 mb-2">
-            Acceso Denegado
-          </h2>
-          <p className="text-neutral-600 mb-6">
-            Solo los administradores pueden acceder a esta sección.
-          </p>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors font-semibold"
-          >
-            Volver al Dashboard
-          </button>
-        </div>
+      <div className="flex items-center justify-center py-20">
+        <EmptyState
+          icon={AlertCircle}
+          title="Acceso Denegado"
+          description="Solo los administradores pueden acceder a esta seccion."
+          action={{ label: 'Volver al Dashboard', onClick: () => navigate('/dashboard') }}
+        />
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
-      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
-          <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-accent mb-1 sm:mb-2">
-              Comisiones
-            </h1>
-            <p className="text-sm sm:text-base text-neutral-600">
-              Gestiona lotes de comisiones y pagos a agentes
-            </p>
+    <div className="space-y-5">
+      <PageHeader
+        title="Comisiones"
+        description="Gestiona lotes de comisiones y pagos a agentes"
+        icon={DollarSign}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate('/comisiones/regimen-fiscal')}>
+              <Percent className="w-4 h-4 mr-1.5" />
+              <span className="hidden sm:inline">Regimen Fiscal</span>
+            </Button>
+            <Button size="sm" onClick={() => navigate('/comisiones/upload-nuevo')}>
+              <Plus className="w-4 h-4 mr-1.5" />
+              Cargar
+            </Button>
           </div>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        }
+      >
+        {/* Filter Tabs */}
+        <div className="flex gap-1 border-b border-neutral-200 dark:border-white/8">
+          {([['all', 'Todos'], ['draft', 'Borradores'], ['closed', 'Cerrados']] as const).map(([key, label]) => (
             <button
-              onClick={() => navigate('/comisiones/regimen-fiscal')}
-              className="flex items-center justify-center space-x-2 border border-neutral-300 text-neutral-700 bg-white px-4 sm:px-5 py-3 rounded-xl hover:bg-neutral-50 hover:border-neutral-400 transition-all duration-200 font-semibold min-h-[44px] w-full sm:w-auto"
+              key={key}
+              onClick={() => setFilter(key)}
+              className={`px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
+                filter === key
+                  ? 'text-accent border-accent'
+                  : 'text-neutral-500 dark:text-white/50 border-transparent hover:text-neutral-700 dark:hover:text-white/70'
+              }`}
             >
-              <Percent className="w-4 h-4" />
-              <span>Régimen Fiscal</span>
+              {label}
             </button>
-            <button
-              onClick={() => navigate('/comisiones/upload-nuevo')}
-              className="flex items-center justify-center space-x-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-4 sm:px-5 py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold min-h-[44px] w-full sm:w-auto"
-            >
-              <Plus className="w-5 h-5" />
-              <span>Cargar Archivo</span>
-            </button>
-          </div>
+          ))}
         </div>
-
-        <div className="flex flex-wrap gap-2 mb-4 sm:mb-6">
-          <button
-            onClick={() => setFilter('all')}
-            className={`flex-1 sm:flex-none px-4 py-2.5 rounded-lg font-semibold transition-colors min-h-[44px] text-sm sm:text-base ${
-              filter === 'all'
-                ? 'bg-accent text-white'
-                : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-            }`}
-          >
-            Todos
-          </button>
-          <button
-            onClick={() => setFilter('draft')}
-            className={`flex-1 sm:flex-none px-4 py-2.5 rounded-lg font-semibold transition-colors min-h-[44px] text-sm sm:text-base ${
-              filter === 'draft'
-                ? 'bg-accent text-white'
-                : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-            }`}
-          >
-            Borradores
-          </button>
-          <button
-            onClick={() => setFilter('closed')}
-            className={`flex-1 sm:flex-none px-4 py-2.5 rounded-lg font-semibold transition-colors min-h-[44px] text-sm sm:text-base ${
-              filter === 'closed'
-                ? 'bg-accent text-white'
-                : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-            }`}
-          >
-            Cerrados
-          </button>
-        </div>
-      </div>
+      </PageHeader>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-        </div>
+        <LoadingState text="Cargando comisiones..." />
       ) : filteredBatches.length === 0 ? (
-        <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-8 sm:p-12 text-center">
-          <DollarSign className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300 mx-auto mb-3 sm:mb-4" />
-          <h3 className="text-lg sm:text-xl font-semibold text-neutral-700 mb-2">
-            No hay lotes de comisiones
-          </h3>
-          <p className="text-sm sm:text-base text-neutral-500 mb-4 sm:mb-6">
-            Crea tu primer lote subiendo un archivo Excel
-          </p>
-          <button
-            onClick={() => navigate('/comisiones/upload-nuevo')}
-            className="inline-flex items-center justify-center space-x-2 bg-accent text-white px-5 sm:px-6 py-3 rounded-xl hover:bg-accent-hover transition-colors font-semibold min-h-[44px] w-full sm:w-auto"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Cargar Archivo</span>
-          </button>
-        </div>
+        <EmptyState
+          icon={DollarSign}
+          title="No hay lotes de comisiones"
+          description="Crea tu primer lote subiendo un archivo Excel"
+          action={{ label: 'Cargar Archivo', onClick: () => navigate('/comisiones/upload-nuevo') }}
+        />
       ) : (
-        <div className="grid gap-3 sm:gap-4">
+        <div className="grid gap-3">
           {filteredBatches.map(batch => (
             <div
               key={batch.id}
-              className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-4 sm:p-6 hover:shadow-medium transition-all duration-200"
+              onClick={() => navigate(`/comisiones/lote/${batch.id}`)}
+              className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4 sm:p-5 hover:border-neutral-300 dark:hover:border-white/15 hover:shadow-sm transition-all duration-200 cursor-pointer group"
             >
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
-                <div
-                  className="flex-1 min-w-0 cursor-pointer"
-                  onClick={() => navigate(`/comisiones/lote/${batch.id}`)}
-                >
-                  <div className="flex items-start space-x-2 sm:space-x-3 mb-3">
-                    <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0 mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg sm:text-xl font-bold text-neutral-900 mb-2 break-words">
-                        {batch.name}
-                      </h3>
-                      {getStatusBadge(batch.status)}
-                    </div>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <FileSpreadsheet className="w-4 h-4 text-accent flex-shrink-0" />
+                    <h3 className="text-sm font-bold text-neutral-900 dark:text-white truncate">
+                      {batch.name}
+                    </h3>
                   </div>
-
-                  <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-neutral-600">
-                    <span className="flex items-center space-x-1">
-                      <Calendar className="w-4 h-4 flex-shrink-0" />
-                      <span className="font-medium">Periodo:</span>
-                      <span className="truncate">{formatDate(batch.period_start || batch.date_from)} - {formatDate(batch.period_end || batch.date_to)}</span>
+                  {getStatusBadge(batch.status)}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2.5 text-xs text-neutral-500 dark:text-white/40">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {formatDate(batch.period_start || batch.date_from)} - {formatDate(batch.period_end || batch.date_to)}
                     </span>
                     {batch.source_file && (
-                      <span className="flex items-center space-x-1 min-w-0">
-                        <FileSpreadsheet className="w-4 h-4 flex-shrink-0" />
-                        <span className="font-medium">Archivo:</span>
-                        <span className="truncate">{batch.source_file}</span>
-                      </span>
+                      <span className="truncate max-w-[200px]">{batch.source_file}</span>
                     )}
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2 flex-shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-neutral-100">
-                  <div className="text-left sm:text-right text-xs sm:text-sm text-neutral-500">
-                    <div className="font-medium">
-                      Creado: {formatDate(batch.created_at)}
-                    </div>
-                    <div className="text-xs mt-1">
-                      {new Date(batch.created_at).toLocaleTimeString('es-MX', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </div>
-                  </div>
+                <div className="text-xs text-neutral-400 dark:text-white/30 flex-shrink-0">
+                  {formatDate(batch.created_at)}
                 </div>
               </div>
             </div>

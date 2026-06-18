@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Info, Send, Paperclip, Download, FileText, Image as ImageIcon, Video, Music } from 'lucide-react';
+import { Info, Send, Paperclip, Download, FileText, Image as ImageIcon, Video, Music, ArrowLeft } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { format } from 'date-fns';
@@ -9,9 +9,10 @@ interface ChatMessagesProps {
   chat: any;
   getChatName: (chat: any) => string;
   onShowInfo: () => void;
+  onBack?: () => void;
 }
 
-export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProps) {
+export function ChatMessages({ chat, getChatName, onShowInfo, onBack }: ChatMessagesProps) {
   const { usuario } = useAuth();
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -401,18 +402,23 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
   return (
     <div className="flex-1 flex flex-col h-full">
       {/* Header */}
-      <div className="bg-white border-b border-neutral-200 px-6 py-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-bold text-neutral-900">{getChatName(chat)}</h2>
-          <p className="text-sm text-neutral-600">
+      <div className="bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700 px-4 py-3 flex items-center gap-3">
+        {onBack && (
+          <button onClick={onBack} className="sm:hidden p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+            <ArrowLeft className="w-4 h-4 text-neutral-600 dark:text-neutral-300" />
+          </button>
+        )}
+        <div className="flex-1 min-w-0">
+          <h2 className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{getChatName(chat)}</h2>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
             {chat.miembros?.length || 0} participantes
           </p>
         </div>
         <button
           onClick={onShowInfo}
-          className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+          className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors flex-shrink-0"
         >
-          <Info className="w-5 h-5 text-neutral-600" />
+          <Info className="w-4 h-4 text-neutral-600 dark:text-neutral-300" />
         </button>
       </div>
 

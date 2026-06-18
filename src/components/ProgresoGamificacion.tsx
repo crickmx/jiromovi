@@ -16,7 +16,7 @@ import { Button } from './ui/button';
 import { cn } from '../lib/utils';
 
 export default function ProgresoGamificacion() {
-  const { user } = useAuth();
+  const { usuario: user } = useAuth();
   const navigate = useNavigate();
   const [perfil, setPerfil] = useState<AgentGamificationProfile | null>(null);
   const [posicion, setPosicion] = useState<PosicionAgente | null>(null);

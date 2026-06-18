@@ -24,12 +24,11 @@ export function parseStructuredResponse(data: any): StructuredResponse | null {
   const type = data.type as ResponseType;
 
   if (!type) {
-    // If no type specified, try to display as text
     console.warn('Response missing type, attempting to extract text');
-    const text = data.text || data.message || data.contenido || JSON.stringify(data, null, 2);
+    const text = data.text || data.message || data.contenido || '';
     return {
       type: 'text',
-      text,
+      text: text || 'Respuesta recibida.',
       actions: parseActions(data.actions),
     };
   }
@@ -78,10 +77,9 @@ export function parseStructuredResponse(data: any): StructuredResponse | null {
       break;
     default:
       console.warn('Unknown response type, falling back to text:', type);
-      // Fall back to text response for unknown types
       return {
         type: 'text',
-        text: data.text || data.message || data.contenido || JSON.stringify(data, null, 2),
+        text: data.text || data.message || data.contenido || 'Respuesta recibida.',
         actions: parseActions(data.actions),
       };
   }
@@ -372,8 +370,7 @@ export function extractTextFromResponse(response: StructuredResponse): string {
   }
 }
 
-export function hasActions(response: StructuredResponse): boolean {
-  switch (response.type) {
+export function hasActions(response: StructuredResponse): boolean {  switch (response.type) {
     case 'dashboard_summary':
     case 'performance_summary':
     case 'commission_explain':
@@ -396,3 +393,89 @@ export function hasActions(response: StructuredResponse): boolean {
       return false;
   }
 }
+
+// ── Internal prompt detection ─────────────────────────────────────────────────
+const INTERNAL_PROMPT_MARKERS = [
+  'Eres Chava',
+  'Genera un análisis JSON',
+  'Responde SOLO con el JSON',
+  'CTAs válidos',
+  'formato EXACTO',
+  'sin markdown, solo JSON',
+  'solo JSON',
+  'sin markdown',
+  'formato JSON',
+  'Eres un asistente virtual',
+  'Eres el asistente',
+  'system prompt',
+  'You are Chava',
+  'You are an assistant',
+];
+
+export function isInternalPrompt(text: string): boolean {
+  if (!text || typeof text !== 'string') return false;
+  const lower = text.toLowerCase();
+  return INTERNAL_PROMPT_MARKERS.some(marker => lower.includes(marker.toLowerCase()));
+}
+
+export function isRawJson(text: string): boolean {
+  if (!text || typeof text !== 'string') return false;
+  const trimmed = text.trim();
+  return (trimmed.startsWith('{') || trimmed.startsWith('[')) && (trimmed.endsWith('}') || trimmed.endsWith(']'));
+}
+
+/**
+ * Normalizes any Chava AI response before rendering to the user.
+ * - Blocks internal prompts from being shown
+ * - Parses and validates structured JSON responses
+ * - Returns safe displayable text or a structured response object
+ */
+export function normalizeChavaResponse(
+  contenido: string,
+  respuestaEstructurada?: any
+): { safe: true; text: string; structured?: any } | { safe: false; error: string } {
+  // Block internal prompts
+  if (isInternalPrompt(contenido)) {
+    console.error('[Chava] Internal prompt leaked to UI. Blocking display.');
+    return {
+      safe: false,
+      error: 'Tuve un problema al preparar la respuesta. Ya lo registré para revisión. Intenta nuevamente.',
+    };
+  }
+
+  // If there's a structured response, try to parse and validate it
+  if (respuestaEstructurada) {
+    try {
+      const parsed = typeof respuestaEstructurada === 'string'
+        ? JSON.parse(respuestaEstructurada)
+        : respuestaEstructurada;
+      // Validate it has a type field (our known schema)
+      if (parsed && typeof parsed === 'object' && 'type' in parsed) {
+        return { safe: true, text: contenido || '', structured: parsed };
+      }
+    } catch {
+      // Malformed JSON in structured field — ignore, fall through to text
+    }
+  }
+
+  // If the contenido itself is raw JSON that looks like an internal schema, parse it visually
+  if (isRawJson(contenido)) {
+    try {
+      const parsed = JSON.parse(contenido);
+      if (parsed && typeof parsed === 'object' && 'type' in parsed) {
+        return { safe: true, text: '', structured: parsed };
+      }
+      // It's JSON but not a known structured response — block it
+      console.warn('[Chava] Raw JSON in contenido without type field. Blocking display.');
+      return {
+        safe: false,
+        error: 'Tuve un problema al preparar la respuesta. Ya lo registré para revisión. Intenta nuevamente.',
+      };
+    } catch {
+      // Not valid JSON, treat as text
+    }
+  }
+
+  return { safe: true, text: contenido || '' };
+}
+

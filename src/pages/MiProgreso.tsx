@@ -41,7 +41,7 @@ import { PageHeader } from '../components/ui/page-header';
 import { cn } from '../lib/utils';
 
 export default function MiProgreso() {
-  const { user } = useAuth();
+  const { usuario: user } = useAuth();
   const [perfil, setPerfil] = useState<AgentGamificationProfile | null>(null);
   const [misiones, setMisiones] = useState<MisionAgente[]>([]);
   const [posicion, setPosicion] = useState<PosicionAgente | null>(null);

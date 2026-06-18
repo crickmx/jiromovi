@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { MessageSquare, Plus, Users, Search } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { cn } from '../lib/utils';
 import { ChatSidebar } from '../components/chat/ChatSidebar';
 import { ChatMessages } from '../components/chat/ChatMessages';
 import { NuevoChatModal } from '../components/chat/NuevoChatModal';
@@ -119,41 +120,46 @@ export function Chat() {
 
       console.log('[Chat] Chats cargados:', chatsData?.length);
 
-      // Enriquecer con información de miembros y último mensaje
-      const enrichedChats = await Promise.all(
-        (chatsData || []).map(async (chat) => {
-          // Cargar miembros
-          const { data: miembrosData } = await supabase
-            .from('chat_miembros')
-            .select(`
-              usuario_id,
-              unido_at,
-              usuarios (
-                id,
-                nombre,
-                apellidos,
-                rol,
-                imagen_perfil_url
-              )
-            `)
-            .eq('chat_id', chat.id);
+      // Batch-load all members for all chats at once (avoids N+1)
+      const { data: allMiembros } = await supabase
+        .from('chat_miembros')
+        .select(`
+          chat_id,
+          usuario_id,
+          unido_at,
+          usuarios (
+            id,
+            nombre,
+            apellidos,
+            rol,
+            imagen_perfil_url
+          )
+        `)
+        .in('chat_id', chatIds)
+        .eq('eliminado', false);
 
-          // Cargar último mensaje
-          const { data: ultimoMensaje } = await supabase
-            .from('chat_mensajes')
-            .select('*')
-            .eq('chat_id', chat.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+      // Batch-load unread counts for current user
+      const { data: unreadRows } = await supabase
+        .from('chat_miembros')
+        .select('chat_id, mensajes_no_leidos')
+        .in('chat_id', chatIds)
+        .eq('usuario_id', usuario.id);
 
-          return {
-            ...chat,
-            miembros: miembrosData || [],
-            ultimo_mensaje: ultimoMensaje
-          };
-        })
-      );
+      const miembrosByChat: Record<string, any[]> = {};
+      const unreadByChat: Record<string, number> = {};
+      (allMiembros || []).forEach(m => {
+        if (!miembrosByChat[m.chat_id]) miembrosByChat[m.chat_id] = [];
+        miembrosByChat[m.chat_id].push(m);
+      });
+      (unreadRows || []).forEach(r => {
+        unreadByChat[r.chat_id] = r.mensajes_no_leidos || 0;
+      });
+
+      const enrichedChats = (chatsData || []).map(chat => ({
+        ...chat,
+        miembros: miembrosByChat[chat.id] || [],
+        mensajes_no_leidos: unreadByChat[chat.id] || 0,
+      }));
 
       console.log('[Chat] Chats enriquecidos:', enrichedChats.length);
       setChats(enrichedChats);
@@ -234,131 +240,138 @@ export function Chat() {
     return chatName.includes(searchTerm.toLowerCase());
   });
 
+  const [mobileView, setMobileView] = useState<'list' | 'thread'>('list');
+
   if (!usuario || !['Administrador', 'Gerente', 'Empleado'].includes(usuario.rol)) {
     return null;
   }
 
   return (
-    <div className="h-full flex flex-col bg-neutral-50">
-      {/* Header */}
-      <div className="bg-white border-b border-neutral-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="p-2 bg-primary-100 rounded-lg">
-              <MessageSquare className="w-6 h-6 text-accent" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-accent">Chat</h1>
-              <p className="text-sm text-neutral-600">Mensajería interna en tiempo real</p>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setShowNuevoChat(true)}
-              className="flex items-center space-x-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-all"
-            >
-              <Plus className="w-5 h-5" />
-              <span>Nuevo Chat</span>
-            </button>
-
-            {usuario.rol !== 'Empleado' && (
+    <div className="h-full flex overflow-hidden">
+      {/* Sidebar */}
+      <div className={cn(
+        'flex-shrink-0 flex flex-col border-r border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900',
+        'w-full sm:w-80',
+        mobileView === 'thread' ? 'hidden sm:flex' : 'flex'
+      )}>
+        {/* Sidebar header */}
+        <div className="px-4 pt-4 pb-3 border-b border-neutral-100 dark:border-neutral-800">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-neutral-800 dark:text-white text-sm">Mensajes</h2>
+            <div className="flex gap-1.5">
               <button
-                onClick={() => setShowNuevoGrupo(true)}
-                className="flex items-center space-x-2 px-4 py-2 border border-accent text-accent rounded-lg hover:bg-primary-50 transition-all"
+                onClick={() => setShowNuevoChat(true)}
+                className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors"
               >
-                <Users className="w-5 h-5" />
-                <span>Nuevo Grupo</span>
+                <Plus className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Chat</span>
               </button>
-            )}
+              {usuario.rol !== 'Empleado' && (
+                <button
+                  onClick={() => setShowNuevoGrupo(true)}
+                  className="p-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                  title="Nuevo grupo"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden min-h-0">
-        {/* Sidebar */}
-        <div className="w-80 border-r border-neutral-200 bg-white flex flex-col">
           {/* Search */}
-          <div className="p-4 border-b border-neutral-200">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar chats..."
-                className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          {/* Chat List */}
-          <div className="flex-1 overflow-y-auto">
-            {loading ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-neutral-600">Cargando chats...</div>
-              </div>
-            ) : filteredChats.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-                <MessageSquare className="w-16 h-16 text-neutral-300 mb-4" />
-                <p className="text-neutral-600 mb-2">No tienes chats aún</p>
-                <p className="text-sm text-neutral-500">
-                  Crea un nuevo chat o grupo para comenzar
-                </p>
-              </div>
-            ) : (
-              <ChatSidebar
-                chats={filteredChats}
-                selectedChat={selectedChat}
-                onSelectChat={handleChatSelect}
-                getChatName={getChatName}
-                currentUserId={usuario.id}
-                onChatDeleted={handleChatDeleted}
-              />
-            )}
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar chats..."
+              className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-accent/40 transition"
+            />
           </div>
         </div>
 
-        {/* Messages Area */}
-        <div className="flex-1 flex flex-col">
-          {selectedChat ? (
-            <>
-              <ChatMessages
-                chat={selectedChat}
-                getChatName={getChatName}
-                onShowInfo={() => setShowChatInfo(true)}
-              />
-            </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center bg-neutral-100">
-              <div className="text-center">
-                <MessageSquare className="w-24 h-24 text-neutral-300 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-neutral-600 mb-2">
-                  Selecciona un chat
-                </h3>
-                <p className="text-neutral-500">
-                  Elige una conversación para ver los mensajes
-                </p>
-              </div>
+        {/* Chat List */}
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <div className="flex flex-col p-3 gap-1">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-xl animate-pulse">
+                  <div className="w-10 h-10 rounded-full bg-neutral-100 dark:bg-neutral-800 flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 bg-neutral-100 dark:bg-neutral-800 rounded-full w-2/3" />
+                    <div className="h-2.5 bg-neutral-100 dark:bg-neutral-800 rounded-full w-1/2" />
+                  </div>
+                </div>
+              ))}
             </div>
+          ) : filteredChats.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-center px-6">
+              <div className="w-12 h-12 rounded-2xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-3">
+                <MessageSquare className="w-6 h-6 text-neutral-300 dark:text-neutral-600" />
+              </div>
+              <p className="text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
+                {searchTerm ? 'Sin resultados' : 'Sin chats aun'}
+              </p>
+              {!searchTerm && (
+                <p className="text-[10px] text-neutral-400 dark:text-neutral-500 leading-relaxed">
+                  Crea un nuevo chat para comunicarte con tu equipo
+                </p>
+              )}
+            </div>
+          ) : (
+            <ChatSidebar
+              chats={filteredChats}
+              selectedChat={selectedChat}
+              onSelectChat={(chat) => { handleChatSelect(chat); setMobileView('thread'); }}
+              getChatName={getChatName}
+              currentUserId={usuario.id}
+              onChatDeleted={handleChatDeleted}
+            />
           )}
         </div>
+      </div>
 
-        {/* Info Panel */}
-        {showChatInfo && selectedChat && (
-          <ChatInfo
+      {/* Messages Area */}
+      <div className={cn(
+        'flex-1 flex flex-col overflow-hidden',
+        mobileView === 'list' ? 'hidden sm:flex' : 'flex'
+      )}>
+        {selectedChat ? (
+          <ChatMessages
             chat={selectedChat}
-            onClose={() => setShowChatInfo(false)}
-            onUpdate={() => {
-              loadChats();
-              if (selectedChat) {
-                loadChatDetails(selectedChat.id);
-              }
-            }}
+            getChatName={getChatName}
+            onShowInfo={() => setShowChatInfo(true)}
+            onBack={() => setMobileView('list')}
           />
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950 text-center p-8">
+            <div className="w-16 h-16 rounded-2xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-4">
+              <MessageSquare className="w-8 h-8 text-neutral-300 dark:text-neutral-600" />
+            </div>
+            <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-1">
+              Selecciona un chat
+            </h3>
+            <p className="text-xs text-neutral-400 dark:text-neutral-500 max-w-xs">
+              Elige una conversacion del panel izquierdo para ver los mensajes.
+            </p>
+          </div>
         )}
       </div>
+
+      {/* Info Panel */}
+      {showChatInfo && selectedChat && (
+        <ChatInfo
+          chat={selectedChat}
+          onClose={() => setShowChatInfo(false)}
+          onUpdate={() => {
+            loadChats();
+            if (selectedChat) {
+              loadChatDetails(selectedChat.id);
+            }
+          }}
+        />
+      )}
 
       {/* Modales */}
       {showNuevoChat && (
@@ -379,3 +392,4 @@ export function Chat() {
     </div>
   );
 }
+export default Chat;

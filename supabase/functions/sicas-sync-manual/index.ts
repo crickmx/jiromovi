@@ -13,28 +13,6 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Validar que las credenciales SICAS estén configuradas ANTES de hacer nada
-    const sicasUsername = Deno.env.get('SICAS_USERNAME');
-    const sicasPassword = Deno.env.get('SICAS_PASSWORD');
-
-    if (!sicasUsername || !sicasPassword) {
-      console.error('[SICAS-Sync-Manual] ❌ Credenciales SICAS no configuradas');
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Credenciales SICAS no configuradas en el servidor. Contacta al administrador.',
-          details: {
-            username_configured: !!sicasUsername,
-            password_configured: !!sicasPassword,
-          }
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -48,55 +26,71 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { syncType } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const syncType: string = body.syncType || "completa";
+    const mode: string = body.mode || "full";
 
-    const results = {
+    console.log(`[SICAS-Sync-Manual] Iniciando sincronización: ${syncType}, modo: ${mode}`);
+
+    const results: {
+      job_id?: string;
+      polizas_vigentes: number;
+      cobranza_pendiente: number;
+      errors: string[];
+      already_running?: boolean;
+    } = {
       polizas_vigentes: 0,
       cobranza_pendiente: 0,
-      errors: [] as string[],
+      errors: [],
     };
 
-    console.log(`[SICAS-Sync-Manual] Iniciando sincronización: ${syncType || 'completa'}`);
+    // Documentos via bulk-sync SOAP (the only working path for this SICAS account)
+    if (syncType === "polizas" || syncType === "completa") {
+      console.log("[SICAS-Sync-Manual] Delegando a sicas-bulk-sync (SOAP ProcesarWS)...");
 
-    // Run polizas and cobranza in PARALLEL for faster sync
-    const syncPolizas = async () => {
-      if (syncType && syncType !== 'polizas' && syncType !== 'completa') return;
-
-      console.log('[SICAS-Sync-Manual] Llamando a sicas-get-polizas-vigentes-rest...');
-
-      const polizasResponse = await fetch(
-        `${Deno.env.get("SUPABASE_URL")}/functions/v1/sicas-get-polizas-vigentes-rest`,
+      const bulkResponse = await fetch(
+        `${Deno.env.get("SUPABASE_URL")}/functions/v1/sicas-bulk-sync`,
         {
           method: "POST",
           headers: {
-            "Authorization": authHeader,
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({}),
+          body: JSON.stringify({ action: "start", mode, triggeredBy: "manual" }),
         }
       );
 
-      const polizasData = await polizasResponse.json();
-
-      if (polizasResponse.ok && polizasData.success) {
-        results.polizas_vigentes = polizasData.polizas?.length || 0;
-        console.log(`[SICAS-Sync-Manual] Pólizas sincronizadas: ${results.polizas_vigentes}`);
+      if (bulkResponse.ok) {
+        const bulkData = await bulkResponse.json();
+        if (bulkData.alreadyRunning) {
+          console.log(`[SICAS-Sync-Manual] Ya hay una sincronización en progreso: ${bulkData.jobId}`);
+          results.already_running = true;
+          results.job_id = bulkData.jobId;
+        } else if (bulkData.ok || bulkData.jobId) {
+          results.job_id = bulkData.jobId;
+          console.log(`[SICAS-Sync-Manual] Job creado: ${bulkData.jobId}`);
+        } else {
+          const errorMsg = bulkData.error || "Error al iniciar sincronización SOAP";
+          results.errors.push(`Error en pólizas: ${errorMsg}`);
+          console.error("[SICAS-Sync-Manual] Error bulk-sync:", errorMsg);
+        }
       } else {
-        const errorMsg = polizasData.error || polizasData.message || 'Error desconocido en SICAS REST';
-        results.errors.push(`Error en pólizas: ${errorMsg}`);
-        console.error("[SICAS-Sync-Manual] Error en pólizas REST:", errorMsg);
+        const errorText = await bulkResponse.text();
+        results.errors.push(`Error en pólizas: HTTP ${bulkResponse.status} - ${errorText.slice(0, 200)}`);
+        console.error("[SICAS-Sync-Manual] Error HTTP bulk-sync:", bulkResponse.status);
       }
-    };
+    }
 
-    const syncCobranza = async () => {
-      if (syncType && syncType !== 'cobranza' && syncType !== 'completa') return;
+    // Cobranza via dedicated SOAP function
+    if (syncType === "cobranza" || syncType === "completa") {
+      console.log("[SICAS-Sync-Manual] Sincronizando cobranza...");
 
       const cobranzaResponse = await fetch(
         `${Deno.env.get("SUPABASE_URL")}/functions/v1/sicas-sync-cobranza`,
         {
           method: "POST",
           headers: {
-            "Authorization": authHeader,
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
             "Content-Type": "application/json",
           },
         }
@@ -106,7 +100,7 @@ Deno.serve(async (req: Request) => {
         const cobranzaData = await cobranzaResponse.json();
         results.cobranza_pendiente = cobranzaData.records_count || 0;
         if (cobranzaData.report_available === false) {
-          console.log(`[SICAS-Sync-Manual] Reporte de cobranza no disponible en SICAS`);
+          console.log("[SICAS-Sync-Manual] Reporte de cobranza no disponible en SICAS");
         } else {
           console.log(`[SICAS-Sync-Manual] Cobranza sincronizada: ${results.cobranza_pendiente}`);
         }
@@ -114,27 +108,11 @@ Deno.serve(async (req: Request) => {
         const errorText = await cobranzaResponse.text();
         let errorMsg = errorText;
         try {
-          const errorJson = JSON.parse(errorText);
-          errorMsg = errorJson.error || errorText;
+          errorMsg = JSON.parse(errorText).error || errorText;
         } catch (_) { /* use text as-is */ }
         results.errors.push(`Error en cobranza: ${errorMsg}`);
         console.error("[SICAS-Sync-Manual] Error en cobranza:", errorMsg);
       }
-    };
-
-    // Execute both in parallel
-    const [polizasResult, cobranzaResult] = await Promise.allSettled([
-      syncPolizas(),
-      syncCobranza(),
-    ]);
-
-    if (polizasResult.status === "rejected") {
-      results.errors.push(`Error en pólizas: ${polizasResult.reason?.message || 'Error de conexión'}`);
-      console.error("[SICAS-Sync-Manual] Error en pólizas:", polizasResult.reason);
-    }
-    if (cobranzaResult.status === "rejected") {
-      results.errors.push(`Error en cobranza: ${cobranzaResult.reason?.message || 'Error de conexión'}`);
-      console.error("[SICAS-Sync-Manual] Error en cobranza:", cobranzaResult.reason);
     }
 
     const success = results.errors.length === 0;
@@ -150,9 +128,8 @@ Deno.serve(async (req: Request) => {
 
   } catch (error) {
     console.error("[SICAS-Sync-Manual] Error general:", error);
-
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as Error).message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

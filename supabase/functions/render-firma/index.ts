@@ -6,33 +6,60 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
-// Helper para generar Mi Página Web desde slug
-function getMiPaginaWeb(slug: string | null | undefined): string {
-  if (!slug) return '';
-  return `agentedeseguros.website/${slug}`;
+function stripPhoneFormat(phone: string | null | undefined): string {
+  if (!phone) return '';
+  return phone.replace(/[^0-9]/g, '');
 }
 
-// Simple Handlebars-like template engine
-function renderTemplate(template: string, data: any): string {
+function buildWhatsAppLink(rawPhone: string | null | undefined): string {
+  if (!rawPhone) return '';
+  let digits = rawPhone.replace(/[^0-9]/g, '');
+  if (!digits) return '';
+  if (digits.length === 10) digits = '521' + digits;
+  else if (digits.length === 12 && digits.startsWith('52')) digits = '521' + digits.slice(2);
+  return `https://wa.me/${digits}`;
+}
+
+function sanitizeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function sanitizeUrl(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('mailto:') || trimmed.startsWith('tel:')) {
+    return trimmed;
+  }
+  return '';
+}
+
+function renderTemplate(template: string, data: Record<string, string>): string {
   let result = template;
-  
-  // Replace simple variables {{variable}}
-  result = result.replace(/\{\{([^#\/][^}]+)\}\}/g, (match, key) => {
-    const trimmedKey = key.trim();
-    return data[trimmedKey] !== undefined && data[trimmedKey] !== null ? String(data[trimmedKey]) : '';
-  });
-  
-  // Handle conditional blocks {{#if variable}}...{{/if}}
-  result = result.replace(/\{\{#if ([^}]+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (match, key, content) => {
-    const trimmedKey = key.trim();
-    const value = data[trimmedKey];
-    if (value && value !== '' && value !== null && value !== undefined) {
-      // Recursively render the content inside the if block
-      return renderTemplate(content, data);
+
+  // Process {{#if variable}}...{{/if}} (handle nested by iterating)
+  let prev = '';
+  while (prev !== result) {
+    prev = result;
+    result = result.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (_match: string, key: string, content: string) => {
+      const value = data[key];
+      return (value && value.trim()) ? content : '';
+    });
+  }
+
+  // Replace {{variable}} with sanitized values
+  result = result.replace(/\{\{(\w+)\}\}/g, (_match: string, key: string) => {
+    const value = data[key];
+    if (value == null || value === '') return '';
+    if (key.includes('link') || key.includes('logo') || key.includes('imagen') || key.includes('sitio_web') || key.includes('color')) {
+      return sanitizeUrl(value) || sanitizeHtml(value);
     }
-    return '';
+    return sanitizeHtml(value);
   });
-  
+
   return result;
 }
 
@@ -76,7 +103,13 @@ Deno.serve(async (req: Request) => {
           telefono,
           email,
           facebook,
-          instagram
+          instagram,
+          logo_url,
+          accent_color,
+          color_secundario,
+          extension,
+          whatsapp,
+          sitio_web
         )
       `)
       .eq('id', targetUserId)
@@ -159,27 +192,40 @@ Deno.serve(async (req: Request) => {
     }
 
     // Preparar datos para el template
-    const templateData: any = {
-      // Datos del usuario
+    const celularRaw = usuario.celular_laboral || '';
+    const celularSinFormato = stripPhoneFormat(celularRaw);
+    const whatsappLink = buildWhatsAppLink(celularRaw);
+
+    const templateData: Record<string, string> = {
+      // Usuario
       nombre: usuario.nombre || '',
       apellidos: usuario.apellidos || '',
+      nombre_completo: usuario.nombre_completo || `${usuario.nombre || ''} ${usuario.apellidos || ''}`.trim(),
       rol: usuario.rol || '',
       puesto: usuario.puesto || '',
       email_laboral: usuario.email_laboral || '',
-      celular_laboral: usuario.celular_laboral || '',
+      celular_laboral: celularRaw,
+      celular_laboral_sin_formato: celularSinFormato,
+      whatsapp_link: whatsappLink,
       extension_telefonica: usuario.extension_telefonica || '',
-      mi_pagina_web: getMiPaginaWeb(usuario.web_slug),
-      web_slug: usuario.web_slug || '',
       imagen_perfil: usuario.imagen_perfil_url || '',
+      web_slug: usuario.web_slug || '',
+      mi_pagina_web: usuario.web_slug ? `agentedeseguros.website/${usuario.web_slug}` : '',
     };
 
-    // Datos de la oficina
+    // Oficina
     if (usuario.oficinas) {
       const oficina = usuario.oficinas;
+      templateData.oficina_logo = oficina.logo_url || '';
       templateData.oficina_nombre = oficina.nombre || '';
-      templateData.oficina_direccion = oficina.domicilio || '';
-      templateData.oficina_domicilio = oficina.domicilio || '';
+      templateData.oficina_color_primario = oficina.accent_color || '#0E23E2';
+      templateData.oficina_color_secundario = oficina.color_secundario || '';
       templateData.oficina_telefono = oficina.telefono || '';
+      templateData.oficina_domicilio = oficina.domicilio || '';
+      templateData.oficina_direccion = oficina.domicilio || '';
+      templateData.oficina_extension = oficina.extension || '';
+      templateData.oficina_whatsapp = oficina.whatsapp || '';
+      templateData.oficina_sitio_web = oficina.sitio_web || '';
       templateData.oficina_email = oficina.email || '';
       templateData.oficina_facebook = oficina.facebook || '';
       templateData.oficina_instagram = oficina.instagram || '';

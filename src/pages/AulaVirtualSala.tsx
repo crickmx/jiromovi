@@ -572,3 +572,4 @@ export function AulaVirtualSala() {
     </div>
   );
 }
+export default AulaVirtualSala;

@@ -96,6 +96,7 @@ export async function getConversationMessages(
     .from('mensajes_chatgpt')
     .select('*')
     .eq('conversacion_id', conversacionId)
+    .eq('visible_to_user', true)
     .order('created_at', { ascending: true })
     .limit(limit);
 
@@ -271,6 +272,69 @@ export async function markEventsAsRead(
   }
 
   return true;
+}
+
+export async function sendChavaMessage(
+  request: SendMessageRequest
+): Promise<SendMessageResponse | null> {
+  try {
+    const { conversacion_id, mensaje, modulo, ruta, parametros, file_paths } = request;
+
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+      throw new Error('Tu sesion ha expirado. Por favor inicia sesion nuevamente.');
+    }
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const url = `${supabaseUrl}/functions/v1/chava-query`;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        conversacion_id,
+        mensaje,
+        modulo: modulo || 'chava',
+        ruta: ruta || '/chava',
+        parametros: parametros || {},
+        file_paths: file_paths || [],
+      }),
+    });
+
+    const text = await res.text();
+    let json: any = null;
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      // ignore parse error
+    }
+
+    if (!res.ok) {
+      const errorMessage = json?.error || json?.message || text || `HTTP ${res.status}`;
+      const err = new Error(errorMessage) as any;
+      err.ref_id = json?.ref_id || null;
+      err.error_tipo = json?.error_tipo || null;
+      throw err;
+    }
+
+    if (json && json.error) {
+      const err = new Error(json.error) as any;
+      err.ref_id = json?.ref_id || null;
+      throw err;
+    }
+
+    if (!json) {
+      throw new Error('No se recibio respuesta del asistente');
+    }
+
+    return json;
+  } catch (error: any) {
+    console.error('Error sending chava message:', error);
+    throw error;
+  }
 }
 
 export async function getAllEvents(usuarioId: string): Promise<AssistantEvent[]> {

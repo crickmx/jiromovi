@@ -34,7 +34,7 @@ interface Props {
 }
 
 export default function TareaModal({ contactoId, tarea, boardId, initialFechaVencimiento, onClose, onSave, onDelete }: Props) {
-  const { user } = useAuth();
+  const { usuario: user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [contactos, setContactos] = useState<CRMContacto[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);

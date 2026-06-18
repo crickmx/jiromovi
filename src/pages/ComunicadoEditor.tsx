@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Layout } from '../components/Layout';
 import { Container } from '../components/ui/container';
 import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
 import { RichTextEditor } from '../components/RichTextEditor';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Save, Upload, X, Calendar, Pin, Image, Paperclip, Eye, Users, Building2, User, FileText, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Save, Upload, X, Calendar, Pin, Image, Paperclip, Eye, Users, Building2, User, FileText, CircleAlert as AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn } from '@/lib/utils';
 import {
@@ -426,7 +425,7 @@ export default function ComunicadoEditor() {
 
   if (gerenteSinOficina) {
     return (
-      <Layout hideHeader>
+      <>
         <Container size="lg">
           <div className="bg-red-50 border border-red-200 rounded-xl p-6 sm:p-8 md:p-12 text-center shadow-ios">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
@@ -443,24 +442,24 @@ export default function ComunicadoEditor() {
             </Button>
           </div>
         </Container>
-      </Layout>
+      </>
     );
   }
 
   if (loading) {
     return (
-      <Layout hideHeader>
+      <>
         <Container size="lg">
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-3 border-accent border-t-transparent"></div>
           </div>
         </Container>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout hideHeader>
+    <>
       <Container size="lg">
         {/* Navegación */}
         <div className="mb-4 sm:mb-6">
@@ -859,6 +858,6 @@ export default function ComunicadoEditor() {
           </div>
         </div>
       </Container>
-    </Layout>
+    </>
   );
 }

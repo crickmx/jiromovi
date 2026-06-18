@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, ChevronDown, Wallet, CircleAlert as AlertCircle } from 'lucide-react';
 import { trackCrmAction } from '../../lib/activityLogger';
 import {
   crearContacto,
@@ -8,21 +8,42 @@ import {
   obtenerEtiquetas,
   obtenerFuentesOrigen,
 } from '../../lib/crmUtils';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import type { CRMContacto, CRMCampoPersonalizado, CRMEtiqueta, CRMFuenteOrigen } from '../../lib/crmTypes';
 
+const MEXICAN_STATES = [
+  'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche',
+  'Chiapas', 'Chihuahua', 'Ciudad de México', 'Coahuila', 'Colima',
+  'Durango', 'Estado de México', 'Guanajuato', 'Guerrero', 'Hidalgo',
+  'Jalisco', 'Michoacán', 'Morelos', 'Nayarit', 'Nuevo León', 'Oaxaca',
+  'Puebla', 'Querétaro', 'Quintana Roo', 'San Luis Potosí', 'Sinaloa',
+  'Sonora', 'Tabasco', 'Tamaulipas', 'Tlaxcala', 'Veracruz',
+  'Yucatán', 'Zacatecas',
+];
+
+const GENDER_OPTIONS = [
+  { value: 'masculino', label: 'Masculino' },
+  { value: 'femenino', label: 'Femenino' },
+  { value: 'no_binario', label: 'No binario' },
+  { value: 'prefiero_no_decir', label: 'Prefiero no decir' },
+];
+
 interface Props {
   contacto: CRMContacto | null;
+  seguwalletCustomerId?: string | null;
   onClose: () => void;
   onSave: () => void;
 }
 
-export default function ContactoModal({ contacto, onClose, onSave }: Props) {
-  const { user } = useAuth();
+export default function ContactoModal({ contacto, seguwalletCustomerId, onClose, onSave }: Props) {
+  const { usuario: user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [camposPersonalizados, setCamposPersonalizados] = useState<CRMCampoPersonalizado[]>([]);
   const [etiquetas, setEtiquetas] = useState<CRMEtiqueta[]>([]);
   const [fuentes, setFuentes] = useState<CRMFuenteOrigen[]>([]);
+  const [hasSW, setHasSW] = useState(false);
 
   const [formData, setFormData] = useState({
     tipo_contacto: 'Persona',
@@ -30,6 +51,9 @@ export default function ContactoModal({ contacto, onClose, onSave }: Props) {
     celular: '',
     email: '',
     fecha_nacimiento: '',
+    genero: '',
+    estado: '',
+    municipio: '',
     estatus: 'Prospecto',
     fuente_origen: '',
     etiquetas_segmentacion: [] as string[],
@@ -38,20 +62,53 @@ export default function ContactoModal({ contacto, onClose, onSave }: Props) {
 
   useEffect(() => {
     cargarConfiguracion();
-    if (contacto) {
-      setFormData({
-        tipo_contacto: contacto.tipo_contacto,
-        nombre_completo: contacto.nombre_completo,
-        celular: contacto.celular,
-        email: contacto.email || '',
-        fecha_nacimiento: (contacto as any).fecha_nacimiento || '',
-        estatus: contacto.estatus,
-        fuente_origen: contacto.fuente_origen || '',
-        etiquetas_segmentacion: contacto.etiquetas_segmentacion || [],
-        campos_personalizados: contacto.campos_personalizados || {},
-      });
+  }, []);
+
+  useEffect(() => {
+    if (!contacto) return;
+
+    const base = {
+      tipo_contacto: contacto.tipo_contacto,
+      nombre_completo: contacto.nombre_completo,
+      celular: contacto.celular,
+      email: contacto.email || '',
+      fecha_nacimiento: contacto.fecha_nacimiento || '',
+      genero: contacto.genero || '',
+      estado: contacto.estado || '',
+      municipio: contacto.municipio || '',
+      estatus: contacto.estatus,
+      fuente_origen: contacto.fuente_origen || '',
+      etiquetas_segmentacion: contacto.etiquetas_segmentacion || [],
+      campos_personalizados: contacto.campos_personalizados || {},
+    };
+
+    if (seguwalletCustomerId) {
+      setHasSW(true);
+      // Load Seguwallet data and merge — SW fields take precedence when they exist
+      supabase
+        .from('seguwallet_customers')
+        .select('phone, state, municipality, birth_date, gender, whatsapp')
+        .eq('id', seguwalletCustomerId)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setFormData({
+              ...base,
+              celular: base.celular || data.phone || '',
+              fecha_nacimiento: data.birth_date || base.fecha_nacimiento,
+              genero: data.gender || base.genero,
+              estado: data.state || base.estado,
+              municipio: data.municipality || base.municipio,
+            });
+          } else {
+            setFormData(base);
+          }
+        });
+    } else {
+      setHasSW(false);
+      setFormData(base);
     }
-  }, [contacto]);
+  }, [contacto, seguwalletCustomerId]);
 
   const cargarConfiguracion = async () => {
     try {
@@ -71,20 +128,37 @@ export default function ContactoModal({ contacto, onClose, onSave }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    setSaveError('');
 
     try {
       setLoading(true);
+
       if (contacto) {
         await actualizarContacto(contacto.id, formData);
-        trackCrmAction('contact_update', 'contacto', contacto.id, `Actualizo contacto: ${formData.nombre}`);
+        trackCrmAction('contact_update', 'contacto', contacto.id, `Actualizo contacto: ${formData.nombre_completo}`);
+
+        if (seguwalletCustomerId) {
+          await supabase
+            .from('seguwallet_customers')
+            .update({
+              phone: formData.celular || null,
+              state: formData.estado || null,
+              municipality: formData.municipio || null,
+              birth_date: formData.fecha_nacimiento || null,
+              gender: formData.genero || null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', seguwalletCustomerId);
+        }
       } else {
         await crearContacto(formData, user.id);
-        trackCrmAction('contact_create', 'contacto', 'new', `Creo contacto: ${formData.nombre}`);
+        trackCrmAction('contact_create', 'contacto', 'new', `Creo contacto: ${formData.nombre_completo}`);
       }
+
       onSave();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error);
-      alert('Error al guardar contacto');
+      setSaveError(error.message || 'Error al guardar contacto');
     } finally {
       setLoading(false);
     }
@@ -102,10 +176,18 @@ export default function ContactoModal({ contacto, onClose, onSave }: Props) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
-          <h2 className="text-xl font-bold text-gray-900">
-            {contacto ? 'Editar Contacto' : 'Nuevo Contacto'}
-          </h2>
+        <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">
+              {contacto ? 'Editar Contacto' : 'Nuevo Contacto'}
+            </h2>
+            {hasSW && (
+              <span className="inline-flex items-center gap-1 text-xs text-cyan-600 font-medium mt-0.5">
+                <Wallet className="h-3 w-3" />
+                Datos sincronizados con Seguwallet
+              </span>
+            )}
+          </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="h-6 w-6" />
           </button>
@@ -137,10 +219,7 @@ export default function ContactoModal({ contacto, onClose, onSave }: Props) {
                 required
               >
                 <option value="Prospecto">Prospecto</option>
-                <option value="Cotización Presentada">Cotización Presentada</option>
-                <option value="Negociación">Negociación</option>
                 <option value="Cliente">Cliente</option>
-                <option value="Perdido">Perdido</option>
               </select>
             </div>
           </div>
@@ -194,10 +273,67 @@ export default function ContactoModal({ contacto, onClose, onSave }: Props) {
                 max={new Date().toISOString().split('T')[0]}
               />
               <p className="text-xs text-gray-500 mt-1">
-                📅 Se generará un recordatorio automático en tu calendario el día del cumpleaños
+                Se generara un recordatorio automatico en tu calendario el dia del cumpleanos
               </p>
             </div>
           )}
+
+          {formData.tipo_contacto === 'Persona' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Genero</label>
+              <div className="grid grid-cols-2 gap-2">
+                {GENDER_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        genero: formData.genero === opt.value ? '' : opt.value,
+                      })
+                    }
+                    className={`px-3 py-2 rounded-lg border text-sm font-medium text-left transition ${
+                      formData.genero === opt.value
+                        ? 'bg-blue-50 border-blue-400 text-blue-700'
+                        : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+              <div className="relative">
+                <select
+                  value={formData.estado}
+                  onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
+                  className="w-full appearance-none px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 pr-9"
+                >
+                  <option value="">Seleccionar...</option>
+                  {MEXICAN_STATES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Municipio / Alcaldia</label>
+              <input
+                type="text"
+                value={formData.municipio}
+                onChange={(e) => setFormData({ ...formData, municipio: e.target.value })}
+                placeholder="Ej. Monterrey"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Fuente de Origen</label>
@@ -217,7 +353,7 @@ export default function ContactoModal({ contacto, onClose, onSave }: Props) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Etiquetas de Segmentación
+              Etiquetas de Segmentacion
             </label>
             <div className="flex flex-wrap gap-2">
               {etiquetas.map((etiqueta) => (
@@ -327,6 +463,12 @@ export default function ContactoModal({ contacto, onClose, onSave }: Props) {
           )}
 
           <div className="flex justify-end gap-3 pt-4 border-t">
+            {saveError && (
+              <div className="flex-1 flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                {saveError}
+              </div>
+            )}
             <button
               type="button"
               onClick={onClose}

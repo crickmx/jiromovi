@@ -55,7 +55,7 @@ function classifyByRouteAndKeyword(
   const mensajeNorm = mensaje.toLowerCase();
 
   if (modulo === 'comisiones') {
-    if (pathname.includes('/mis-comisiones/') && pathname.split('/').length > 2) {
+    if ((pathname.includes('/mis-comisiones/') || pathname.includes('/produccion/mis-comisiones')) && pathname.split('/').length > 2) {
       if (
         mensajeNorm.includes('explica') ||
         mensajeNorm.includes('detalle') ||
@@ -89,7 +89,7 @@ function classifyByRouteAndKeyword(
   }
 
   if (modulo === 'crm') {
-    if (pathname === '/mi-crm/contactos' || pathname.startsWith('/mi-crm/contactos/')) {
+    if (pathname === '/contactos' || pathname.startsWith('/contactos/') || pathname === '/mi-crm/contactos' || pathname.startsWith('/mi-crm/contactos/')) {
       if (mensajeNorm.includes('contactar') || mensajeNorm.includes('llamar') || mensajeNorm.includes('plan')) {
         return 'client_outreach_plan';
       }

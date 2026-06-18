@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseUrl } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, Filter, UserPlus, CreditCard as Edit, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Search, UserPlus, CreditCard as Edit, Trash2, ToggleLeft, ToggleRight, Users, ListFilter as Filter, Send, CircleCheck as CheckCircle, Eye } from 'lucide-react';
 import { UserModal } from '../components/UserModal';
+import { PageHeader } from '@/components/ui/page-header';
+import { Button } from '@/components/ui/button';
+import { LoadingState } from '@/components/ui/loading-state';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 import type { Database } from '../lib/database.types';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
@@ -11,7 +15,7 @@ type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
 
 export function Directorio() {
-  const { usuario: currentUser, refreshUsuario } = useAuth();
+  const { usuario: currentUser, reloadUsuario: refreshUsuario } = useAuth();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,56 +27,84 @@ export function Directorio() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<Usuario | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [sendingAccessId, setSendingAccessId] = useState<string | null>(null);
+  const [accessSentId, setAccessSentId] = useState<string | null>(null);
+  const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const { startImpersonation } = useImpersonation();
 
   const isAdmin = currentUser?.rol === 'Administrador';
   const isGerente = currentUser?.rol === 'Gerente';
   const isReadOnly = !isAdmin && !isGerente;
 
-  // Debug: mostrar info del usuario actual
-  useEffect(() => {
-    if (currentUser) {
-      console.log('[DIRECTORIO] Usuario actual cargado:', {
-        id: currentUser.id,
-        email: currentUser.email_laboral,
-        rol: currentUser.rol,
-        isAdmin,
-        isGerente,
-        isReadOnly
-      });
-    }
-  }, [currentUser, isAdmin, isGerente, isReadOnly]);
-
+  // Load on mount unconditionally - anon policy allows reading
   useEffect(() => {
     loadData();
-    // Forzar refresh del usuario para evitar cache
-    if (refreshUsuario) {
-      refreshUsuario();
-    }
   }, []);
+
+  // Reload when user context arrives (for role-based filtering)
+  useEffect(() => {
+    if (currentUser) loadData();
+  }, [currentUser]);
+
+  const handleSendAccess = async (usuario: Usuario) => {
+    if (!usuario.email_laboral || sendingAccessId) return;
+    setSendingAccessId(usuario.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await fetch(`${supabaseUrl}/functions/v1/send-login-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ email: usuario.email_laboral, platform: 'movi' }),
+      });
+      setAccessSentId(usuario.id);
+      setTimeout(() => setAccessSentId(null), 5000);
+    } catch {
+      // silent
+    } finally {
+      setSendingAccessId(null);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
-      let usuariosQuery = supabase
+      // Direct query - works with both authenticated and anon roles
+      const usersQuery = supabase
         .from('usuarios')
-        .select('*, oficinas(nombre)')
+        .select('id, nombre, apellidos, email_laboral, email_personal, celular_personal, celular_laboral, username, rol, estado, activo, oficina_id, puesto, imagen_perfil_url, is_deleted')
         .eq('is_deleted', false)
-        .order('nombre');
+        .order('nombre')
+        .limit(2000);
 
-      // Gerentes solo ven usuarios de su oficina
       if (isGerente && currentUser?.oficina_id) {
-        usuariosQuery = usuariosQuery.eq('oficina_id', currentUser.oficina_id);
+        usersQuery.eq('oficina_id', currentUser.oficina_id);
       }
 
       const [usuariosRes, oficinasRes] = await Promise.all([
-        usuariosQuery,
-        supabase.from('oficinas').select('*').order('nombre'),
+        usersQuery,
+        supabase.from('oficinas').select('id, nombre').eq('activa', true).order('nombre'),
       ]);
 
-      if (usuariosRes.data) setUsuarios(usuariosRes.data);
-      if (oficinasRes.data) setOficinas(oficinasRes.data);
-    } catch (error) {
-      console.error('Error cargando datos:', error);
+      if (usuariosRes.error) {
+        console.error('[DIRECTORIO] Query error:', usuariosRes.error);
+        setLoadError(`Error: ${usuariosRes.error.message}`);
+      } else if (usuariosRes.data && usuariosRes.data.length > 0) {
+        const oficinasMap = new Map((oficinasRes.data || []).map((o: any) => [o.id, o.nombre]));
+        const mapped = (usuariosRes.data as any[]).map((u: any) => ({
+          ...u,
+          oficinas: u.oficina_id ? { nombre: oficinasMap.get(u.oficina_id) || '-' } : null,
+        }));
+        setUsuarios(mapped as any);
+      } else {
+        setLoadError(`La consulta devolvio 0 usuarios. Verifica tu sesion o recarga la pagina (v2).`);
+      }
+
+      if (oficinasRes.data) setOficinas(oficinasRes.data as any);
+    } catch (error: any) {
+      console.error('[DIRECTORIO] Exception:', error);
+      setLoadError(error?.message || 'Error de conexion');
     } finally {
       setLoading(false);
     }
@@ -214,68 +246,61 @@ export function Directorio() {
   });
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
+    return <LoadingState text="Cargando directorio..." />;
   }
 
   return (
-    <div>
-      {/* Alerta si el usuario no tiene permisos pero el frontend dice que sí */}
-      {!isAdmin && !isGerente && (
-        <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-center space-x-2">
-            <svg className="w-5 h-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-            <div>
-              <p className="text-sm font-medium text-yellow-800">Modo Solo Lectura</p>
-              <p className="text-xs text-yellow-700 mt-1">No tienes permisos de administrador. Solo puedes ver la información.</p>
-            </div>
-          </div>
-        </div>
-      )}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-white">Usuarios</h1>
-              <p className="text-primary-100 mt-1 text-sm sm:text-base">
-                {isGerente ? 'Gestiona usuarios de tu oficina' : 'Consulta el directorio de usuarios'}
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                setSelectedUser(null);
-                setModalOpen(true);
-              }}
-              className="flex items-center space-x-2 bg-white text-primary-700 px-4 py-2 rounded-lg font-medium hover:bg-primary-50 transition w-full sm:w-auto justify-center"
-            >
-              <UserPlus className="w-5 h-5" />
-              <span>Nuevo Usuario</span>
+    <div className="space-y-5">
+      <PageHeader
+        title="Usuarios"
+        description={isGerente ? 'Gestiona usuarios de tu oficina' : 'Directorio de usuarios del sistema (v2)'}
+        icon={Users}
+        badge={isReadOnly ? (
+          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400">
+            Solo lectura
+          </span>
+        ) : undefined}
+        actions={
+          <Button size="sm" onClick={() => { setSelectedUser(null); setModalOpen(true); }}>
+            <UserPlus className="w-4 h-4 mr-1.5" />
+            Nuevo
+          </Button>
+        }
+      />
+
+      {loadError && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <p className="text-sm text-red-700 dark:text-red-300 font-medium">Error cargando usuarios</p>
+          <p className="text-xs text-red-600 dark:text-red-400 mt-1 break-all">{loadError}</p>
+          <div className="mt-3 flex gap-2">
+            <button onClick={loadData} className="text-xs font-medium text-white bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-md transition">
+              Reintentar
+            </button>
+            <button onClick={() => window.location.reload()} className="text-xs font-medium text-red-700 dark:text-red-300 border border-red-300 px-3 py-1.5 rounded-md hover:bg-red-100 transition">
+              Recargar pagina
             </button>
           </div>
         </div>
+      )}
 
-        <div className="p-4 sm:p-6 border-b border-slate-200 bg-slate-50">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden">
+        <div className="p-4 border-b border-neutral-100 dark:border-white/5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="sm:col-span-2 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-white/30" />
               <input
                 type="text"
-                placeholder="Buscar por nombre, correo, teléfono..."
+                placeholder="Buscar por nombre, correo, telefono..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-9 pr-4 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all placeholder:text-neutral-400 dark:placeholder:text-white/30 text-neutral-900 dark:text-white"
               />
             </div>
 
             <select
               value={filterRol}
               onChange={(e) => setFilterRol(e.target.value)}
-              className="px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/80"
             >
               <option value="">Todos los roles</option>
               <option value="Administrador">Administrador</option>
@@ -288,7 +313,7 @@ export function Directorio() {
               <select
                 value={filterOficina}
                 onChange={(e) => setFilterOficina(e.target.value)}
-                className="px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/80"
               >
                 <option value="">Todas las oficinas</option>
                 {oficinas.map((oficina) => (
@@ -300,14 +325,10 @@ export function Directorio() {
             )}
           </div>
 
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-sm text-slate-600">
-              Mostrando {filteredUsuarios.length} de {usuarios.length} usuarios
+          <div className="mt-3 flex items-center justify-between">
+            <p className="text-xs text-neutral-500 dark:text-white/40">
+              {filteredUsuarios.length} de {usuarios.length} usuarios
             </p>
-            {/* Debug info */}
-            <div className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
-              Usuario: {currentUser?.email_laboral} | Rol: {currentUser?.rol} | isAdmin: {isAdmin ? 'Sí' : 'No'}
-            </div>
           </div>
         </div>
 
@@ -341,7 +362,9 @@ export function Directorio() {
                         <img
                           src={usuario.imagen_perfil_url}
                           alt=""
+                          crossOrigin="anonymous"
                           className="w-10 h-10 rounded-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
@@ -418,7 +441,50 @@ export function Directorio() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end space-x-2">
+                    <div className="flex justify-end items-center space-x-2">
+                      {(isAdmin || isGerente) && usuario.estado === 'activo' && (
+                        <button
+                          onClick={() => handleSendAccess(usuario)}
+                          disabled={sendingAccessId === usuario.id || accessSentId === usuario.id}
+                          className={`flex items-center gap-1.5 px-2 lg:px-3 py-2 rounded-lg text-sm font-medium transition disabled:opacity-60 ${
+                            accessSentId === usuario.id
+                              ? 'text-green-700 bg-green-50'
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                          }`}
+                          title="Enviar código de acceso al correo y WhatsApp"
+                        >
+                          {accessSentId === usuario.id
+                            ? <><CheckCircle className="w-4 h-4" /><span className="hidden lg:inline">Enviado</span></>
+                            : sendingAccessId === usuario.id
+                            ? <><span className="w-4 h-4 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" /></>
+                            : <><Send className="w-4 h-4" /><span className="hidden lg:inline">Enviar acceso</span></>
+                          }
+                        </button>
+                      )}
+                      {isAdmin && usuario.id !== currentUser?.id && usuario.rol !== 'Administrador' && (
+                        <button
+                          disabled={!!impersonatingId}
+                          onClick={async () => {
+                            setImpersonatingId(usuario.id);
+                            const ok = await startImpersonation({ platform: 'movi', userId: usuario.id });
+                            if (ok) {
+                              window.location.href = '/dashboard';
+                            } else {
+                              setImpersonatingId(null);
+                            }
+                          }}
+                          className="flex items-center gap-1.5 px-2 lg:px-3 py-2 rounded-lg text-sm font-medium text-amber-700 hover:text-amber-900 hover:bg-amber-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Ver como este usuario"
+                        >
+                          {impersonatingId === usuario.id
+                            ? <span className="w-4 h-4 border-2 border-amber-400 border-t-amber-700 rounded-full animate-spin" />
+                            : <Eye className="w-4 h-4" />
+                          }
+                          <span className="hidden xl:inline">
+                            {impersonatingId === usuario.id ? 'Cargando...' : 'Ver como'}
+                          </span>
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           setSelectedUser(usuario);
@@ -561,3 +627,4 @@ export function Directorio() {
     </div>
   );
 }
+export default Directorio;

@@ -38,6 +38,18 @@ export default function GraficaCircular({
   const segments = useMemo(() => {
     if (data.length === 0) return [];
 
+    // Single-segment: SVG arc with identical start/end points renders nothing.
+    // Use a full circle path instead.
+    if (data.length === 1) {
+      return [{
+        path: 'M 50 10 A 40 40 0 1 1 49.999 10 Z',
+        color: data[0].color || colors[0],
+        label: data[0].label,
+        value: data[0].value,
+        percentage: '100.0',
+      }];
+    }
+
     let currentAngle = -90;
 
     return data.map((item, index) => {

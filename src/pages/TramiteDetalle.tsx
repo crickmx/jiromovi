@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, XCircle, RefreshCw, Save, ChevronDown, AlertCircle, FileText } from 'lucide-react';
+import { Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
 import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
@@ -221,7 +222,7 @@ export function TramiteDetalle() {
       tramite.tipo_tramite === 'cotizacion_emision' &&
       !tramite.assigned_to_user_id &&
       !tramite.cerrado_en &&
-      ['Empleado', 'Gerente', 'Administrador', 'Ejecutivo'].includes(usuario.rol)
+      ['Empleado', 'Gerente', 'Administrador'].includes(usuario.rol)
     ) {
       claimedRef.current = true;
       (async () => {
@@ -250,6 +251,7 @@ export function TramiteDetalle() {
     lead_registro_movi: 'general',
     solicitud_comisiones_pendientes: 'solicitud_comisiones',
     cambio_bancario: 'cambio_bancario',
+    cancelacion_poliza: 'general',
     renovaciones: 'general',
     cobranza: 'general',
     otros_comercial: 'general',
@@ -388,9 +390,21 @@ export function TramiteDetalle() {
 
     setSaving(true);
     try {
-      const estatusEnProceso = estatusList.find(e => e.nombre === 'En proceso');
-      if (!estatusEnProceso) {
-        alert('No se encontró el estatus "En proceso". Verifica la configuración.');
+      // Prefer "En Proceso" by name; fall back to the first status in the
+      // already type-filtered list so cotizacion_emision and other types work.
+      const nonClosingStatuses = estatusList.filter(e => {
+        const n = e.nombre.toLowerCase();
+        return !n.includes('cerrad') && !n.includes('emitid') && !n.includes('perdid')
+          && !n.includes('ganad') && !n.includes('no emitido') && !n.includes('concluid')
+          && !n.includes('finaliz') && !n.includes('resuelto') && !n.includes('rechazad')
+          && !n.includes('cancelad');
+      });
+      const reopenEstatus =
+        nonClosingStatuses.find(e => e.nombre.toLowerCase() === 'en proceso') ||
+        nonClosingStatuses[0];
+
+      if (!reopenEstatus) {
+        alert('No hay un estatus activo disponible para reabrir este tramite. Verifica la configuración.');
         setSaving(false);
         return;
       }
@@ -398,7 +412,7 @@ export function TramiteDetalle() {
       const { error } = await supabase
         .from('tickets')
         .update({
-          estatus_id: estatusEnProceso.id,
+          estatus_id: reopenEstatus.id,
           cerrado_en: null,
           cerrado_por: null,
           modificado_por: usuario.id
@@ -438,98 +452,92 @@ export function TramiteDetalle() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={() => navigate('/tramites')}
-            className="flex items-center space-x-2 text-neutral-600 hover:text-neutral-900 transition-all"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="font-semibold">Volver a Tramites</span>
-          </button>
-
-          <div className="flex items-center space-x-2">
-            {canEdit && !isCerrado && (
-              <>
-                <button
-                  onClick={handleSave}
-                  disabled={saving || !isDirty}
-                  className="flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+      <div className="bg-white dark:bg-neutral-800 rounded-3xl shadow-soft border border-neutral-200 dark:border-neutral-700 p-6">
+        <PageHeader
+          title={`Tramite ${tramite.folio}`}
+          icon={ClipboardList}
+          backTo="/tramites"
+          backLabel="Volver a Tramites"
+          badge={
+            <div className="flex items-center gap-3">
+              {tramite.estatus && (
+                <span
+                  className="px-3 py-1 rounded-full text-sm font-semibold"
+                  style={{
+                    backgroundColor: tramite.estatus.color + '20',
+                    color: tramite.estatus.color,
+                    borderColor: tramite.estatus.color,
+                    borderWidth: '1px'
+                  }}
                 >
-                  <Save className="w-4 h-4" />
-                  <span>{saving ? 'Guardando...' : 'Guardar'}</span>
-                </button>
-                <div className="relative" ref={cerrarMenuRef}>
+                  {tramite.estatus.nombre}
+                </span>
+              )}
+              {isCerrado && (
+                <span className="text-sm text-neutral-500 dark:text-white/50">
+                  Cerrado el {new Date(tramite.cerrado_en!).toLocaleDateString('es-MX')}
+                </span>
+              )}
+            </div>
+          }
+          actions={
+            <div className="flex items-center space-x-2">
+              {canEdit && !isCerrado && (
+                <>
                   <button
-                    onClick={() => setShowCerrarMenu(v => !v)}
-                    disabled={saving}
-                    className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all font-semibold disabled:opacity-50"
+                    onClick={handleSave}
+                    disabled={saving || !isDirty}
+                    className="flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <XCircle className="w-4 h-4" />
-                    <span>Cerrar Trámite</span>
-                    <ChevronDown className="w-4 h-4" />
+                    <Save className="w-4 h-4" />
+                    <span>{saving ? 'Guardando...' : 'Guardar'}</span>
                   </button>
-                  {showCerrarMenu && cerrarOptions.length > 0 && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white border border-neutral-200 rounded-xl shadow-lg z-20 overflow-hidden">
-                      <div className="px-4 py-2 text-xs font-semibold text-neutral-500 bg-neutral-50 border-b border-neutral-200">
-                        Cerrar con estatus:
+                  <div className="relative" ref={cerrarMenuRef}>
+                    <button
+                      onClick={() => setShowCerrarMenu(v => !v)}
+                      disabled={saving}
+                      className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all font-semibold disabled:opacity-50"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      <span>Cerrar Trámite</span>
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                    {showCerrarMenu && cerrarOptions.length > 0 && (
+                      <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg z-20 overflow-hidden">
+                        <div className="px-4 py-2 text-xs font-semibold text-neutral-500 dark:text-white/50 bg-neutral-50 dark:bg-neutral-700 border-b border-neutral-200 dark:border-neutral-600">
+                          Cerrar con estatus:
+                        </div>
+                        {cerrarOptions.map(estatus => (
+                          <button
+                            key={estatus.id}
+                            onClick={() => handleCerrarCon(estatus.id)}
+                            className="w-full text-left px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all flex items-center space-x-2"
+                          >
+                            <span
+                              className="w-2.5 h-2.5 rounded-full"
+                              style={{ backgroundColor: estatus.color }}
+                            />
+                            <span className="text-sm font-medium text-neutral-900 dark:text-white">{estatus.nombre}</span>
+                          </button>
+                        ))}
                       </div>
-                      {cerrarOptions.map(estatus => (
-                        <button
-                          key={estatus.id}
-                          onClick={() => handleCerrarCon(estatus.id)}
-                          className="w-full text-left px-4 py-3 hover:bg-neutral-50 transition-all flex items-center space-x-2"
-                        >
-                          <span
-                            className="w-2.5 h-2.5 rounded-full"
-                            style={{ backgroundColor: estatus.color }}
-                          />
-                          <span className="text-sm font-medium text-neutral-900">{estatus.nombre}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-            {canEdit && isCerrado && (
-              <button
-                onClick={handleReabrir}
-                disabled={saving}
-                className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all font-semibold disabled:opacity-50"
-              >
-                <RefreshCw className="w-4 h-4" />
-                <span>Reabrir Tramite</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div>
-          <h1 className="text-3xl font-display font-bold text-accent mb-2">
-            Tramite {tramite.folio}
-          </h1>
-          <div className="flex items-center space-x-3">
-            {tramite.estatus && (
-              <span
-                className="px-3 py-1 rounded-full text-sm font-semibold"
-                style={{
-                  backgroundColor: tramite.estatus.color + '20',
-                  color: tramite.estatus.color,
-                  borderColor: tramite.estatus.color,
-                  borderWidth: '1px'
-                }}
-              >
-                {tramite.estatus.nombre}
-              </span>
-            )}
-            {isCerrado && (
-              <span className="text-sm text-neutral-500">
-                Cerrado el {new Date(tramite.cerrado_en!).toLocaleDateString('es-MX')}
-              </span>
-            )}
-          </div>
-        </div>
+                    )}
+                  </div>
+                </>
+              )}
+              {canEdit && isCerrado && (
+                <button
+                  onClick={handleReabrir}
+                  disabled={saving}
+                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all font-semibold disabled:opacity-50"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Reabrir Tramite</span>
+                </button>
+              )}
+            </div>
+          }
+        />
 
 
         {isCommercialViewerOnly && (
@@ -591,3 +599,4 @@ export function TramiteDetalle() {
     </div>
   );
 }
+export default TramiteDetalle;

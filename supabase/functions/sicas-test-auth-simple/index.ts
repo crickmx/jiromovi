@@ -31,7 +31,7 @@ Deno.serve(async (req: Request) => {
         description: 'Endpoint .com con password original'
       },
       {
-        endpoint: 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx',
+        endpoint: 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx',
         username: SICAS_USERNAME,
         password: SICAS_PASSWORD,
         description: 'Endpoint .com.mx con password original'
@@ -43,7 +43,7 @@ Deno.serve(async (req: Request) => {
         description: 'Endpoint .com con password decodificado (URL decoded)'
       },
       {
-        endpoint: 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx',
+        endpoint: 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx',
         username: SICAS_USERNAME,
         password: decodeURIComponent(SICAS_PASSWORD),
         description: 'Endpoint .com.mx con password decodificado (URL decoded)'

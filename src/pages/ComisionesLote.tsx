@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { ArrowLeft, FileSpreadsheet, DollarSign, Users, AlertCircle, XCircle, CheckCircle, Wrench, Download, Loader2 } from 'lucide-react';
+import { FileSpreadsheet, DollarSign, Users, AlertCircle, XCircle, CheckCircle, Wrench, Download, Loader2, FileText } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import type { CommissionBatch, CommissionDetail, CommissionError } from '../lib/commissionTypes';
 import { calculateBatchSummary, calculateAgentSummaries, formatCurrency, formatDate } from '../lib/commissionUtils';
 import { generateOrdenDePagoPDF, downloadPDF } from '../lib/pdfUtils';
@@ -447,71 +448,62 @@ export default function ComisionesLote() {
 
   return (
     <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
-      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
-        <div className="flex flex-col gap-4 mb-4 sm:mb-6">
-          <div className="flex items-start gap-3">
-            <button
-              onClick={() => navigate('/comisiones')}
-              className="p-2 hover:bg-neutral-100 rounded-lg transition-colors flex-shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center"
-            >
-              <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-neutral-700" />
-            </button>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-accent mb-1 break-words">
-                {batch.name}
-              </h1>
-              <p className="text-sm sm:text-base text-neutral-600">
-                Periodo: {formatDate(batch.period_start || batch.date_from)} - {formatDate(batch.period_end || batch.date_to)}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            <button
-              onClick={handleRecalculateBatch}
-              disabled={recalculating}
-              className="flex items-center justify-center space-x-2 px-4 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors font-semibold min-h-[44px] w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {recalculating ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Recalculando...</span>
-                </>
-              ) : (
-                <>
-                  <Wrench className="w-5 h-5" />
-                  <span>Recalcular Lote</span>
-                </>
-              )}
-            </button>
-
-            {batch.status !== 'closed' ? (
-              <>
+      <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 dark:border-neutral-800 p-4 sm:p-6">
+        <div className="mb-4 sm:mb-6">
+          <PageHeader
+            title={batch.name}
+            description={`Periodo: ${formatDate(batch.period_start || batch.date_from)} - ${formatDate(batch.period_end || batch.date_to)}`}
+            icon={FileText}
+            backTo="/comisiones"
+            actions={
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <button
-                  onClick={handleCloseBatch}
-                  className="flex items-center justify-center space-x-2 px-4 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-semibold min-h-[44px] w-full sm:w-auto"
+                  onClick={handleRecalculateBatch}
+                  disabled={recalculating}
+                  className="flex items-center justify-center space-x-2 px-4 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors font-semibold min-h-[44px] w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <CheckCircle className="w-5 h-5" />
-                  <span>Cerrar Lote</span>
+                  {recalculating ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>Recalculando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Wrench className="w-5 h-5" />
+                      <span>Recalcular Lote</span>
+                    </>
+                  )}
                 </button>
-                <button
-                  onClick={handleDeleteBatch}
-                  className="flex items-center justify-center space-x-2 px-4 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-semibold min-h-[44px] w-full sm:w-auto"
-                >
-                  <XCircle className="w-5 h-5" />
-                  <span>Eliminar</span>
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={handleDeleteBatch}
-                className="flex items-center justify-center space-x-2 px-4 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-semibold min-h-[44px] w-full sm:w-auto"
-              >
-                <XCircle className="w-5 h-5" />
-                <span>Eliminar Lote</span>
-              </button>
-            )}
-          </div>
+
+                {batch.status !== 'closed' ? (
+                  <>
+                    <button
+                      onClick={handleCloseBatch}
+                      className="flex items-center justify-center space-x-2 px-4 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-semibold min-h-[44px] w-full sm:w-auto"
+                    >
+                      <CheckCircle className="w-5 h-5" />
+                      <span>Cerrar Lote</span>
+                    </button>
+                    <button
+                      onClick={handleDeleteBatch}
+                      className="flex items-center justify-center space-x-2 px-4 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-semibold min-h-[44px] w-full sm:w-auto"
+                    >
+                      <XCircle className="w-5 h-5" />
+                      <span>Eliminar</span>
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleDeleteBatch}
+                    className="flex items-center justify-center space-x-2 px-4 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-semibold min-h-[44px] w-full sm:w-auto"
+                  >
+                    <XCircle className="w-5 h-5" />
+                    <span>Eliminar Lote</span>
+                  </button>
+                )}
+              </div>
+            }
+          />
         </div>
 
         <div className="flex overflow-x-auto space-x-2 border-b border-neutral-200 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">

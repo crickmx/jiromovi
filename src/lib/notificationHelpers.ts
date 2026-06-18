@@ -36,22 +36,28 @@ export async function crearNotificacionGlobal(
   mensaje: string,
   accion_url: string | null,
   destinatarios: {
-    tipo: 'todos' | 'oficina' | 'rol' | 'usuario';
+    tipo: 'todos' | 'oficina' | 'rol';
     oficina_id?: string;
     rol?: string;
-    user_id?: string;
   },
   enviado_por: string,
-  enviar_whatsapp: boolean = true // CAMBIO: Por defecto true para enviar WhatsApp
+  enviar_whatsapp: boolean = true
 ) {
   try {
+    const filtros: Record<string, string> = {};
+    if (destinatarios.tipo === 'oficina' && destinatarios.oficina_id) {
+      filtros.oficina_id = destinatarios.oficina_id;
+    } else if (destinatarios.tipo === 'rol' && destinatarios.rol) {
+      filtros.rol = destinatarios.rol;
+    }
+
     const { error } = await supabase.rpc('enviar_notificacion_global', {
       p_titulo: titulo,
       p_mensaje: mensaje,
       p_accion_url: accion_url,
-      p_destinatarios: destinatarios,
-      p_enviado_por: enviado_por,
+      p_filtros: filtros,
       p_enviar_whatsapp: enviar_whatsapp,
+      p_enviado_por: enviado_por,
     });
 
     if (error) throw error;
@@ -73,7 +79,7 @@ export const NotificationTemplates = {
       mensaje: `Has recibido un nuevo correo de ${remitente}.`,
       modulo: 'Correos',
       icono: 'mail',
-      accion_url: '/gestor-emails',
+      accion_url: '/centro-contacto/email',
       accion_texto: 'Ver correo',
     }),
 
@@ -84,7 +90,7 @@ export const NotificationTemplates = {
       mensaje: 'Tu correo programado fue enviado correctamente.',
       modulo: 'Correos',
       icono: 'mail',
-      accion_url: '/gestor-emails',
+      accion_url: '/centro-contacto/email',
       accion_texto: 'Ver enviados',
     }),
 
@@ -96,7 +102,7 @@ export const NotificationTemplates = {
       mensaje: `Nuevo mensaje de ${nombre}.`,
       modulo: 'Chat',
       icono: 'message',
-      accion_url: `/chat?id=${chat_id}`,
+      accion_url: `/centro-contacto/chat?id=${chat_id}`,
       accion_texto: 'Abrir chat',
     }),
 
@@ -107,7 +113,7 @@ export const NotificationTemplates = {
       mensaje: `${nombre} te ha agregado al grupo ${grupo}.`,
       modulo: 'Chat',
       icono: 'users',
-      accion_url: `/chat?id=${chat_id}`,
+      accion_url: `/centro-contacto/chat?id=${chat_id}`,
       accion_texto: 'Ver grupo',
     }),
 

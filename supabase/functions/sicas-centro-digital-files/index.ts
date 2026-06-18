@@ -131,8 +131,21 @@ Deno.serve(async (req: Request) => {
     }
 
     // Step 1: Get auth token
-    const tokenParams = new URLSearchParams({ sUserName: sicasUsername, sPassword: sicasPassword });
+    // IMPORTANT: Use encodeURIComponent on username so that literal '%' in the stored
+    // value (e.g. j1r0%25$) gets encoded to %25, producing j1r0%2525%24 in the URL.
+    // SICAS then decodes once and receives the original value j1r0%25$.
+    // DO NOT pass username as-is: sending j1r0%25$ literally lets SICAS decode %25 → %
+    // and receive j1r0%$ which fails authentication.
+    // DO NOT double-encode: if username were already j1r0%2525$ that would be wrong too.
+    const tokenParams = new URLSearchParams({
+      sUserName: sicasUsername,
+      sPassword: sicasPassword,
+    });
     if (sicasCodeAuth) tokenParams.append("sCodeAuth", sicasCodeAuth);
+
+    // Log masked URL for debugging (never log full password or token)
+    const maskedUrl = `${sicasRestUrl}/Security/GetToken?sUserName=${encodeURIComponent(sicasUsername)}&sPassword=***`;
+    console.log("[Centro Digital] GetToken URL (masked):", maskedUrl);
 
     const tokenResponse = await fetch(`${sicasRestUrl}/Security/GetToken?${tokenParams.toString()}`, {
       method: "POST",

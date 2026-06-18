@@ -7,6 +7,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Alert } from '../components/ui/alert';
+import { PageHeader } from '@/components/ui/page-header';
 
 interface Oficina {
   id: string;
@@ -225,18 +226,18 @@ export default function RegistroPersonal() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-900 dark:to-neutral-950 p-4">
         <Card className="max-w-md w-full p-8 text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-8 h-8 text-green-600" />
+          <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">
+          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
             Registro enviado correctamente
           </h2>
-          <p className="text-slate-600 mb-4">
+          <p className="text-neutral-600 dark:text-white/70 mb-4">
             Tu solicitud de registro fue enviada exitosamente. Un administrador revisará tu información y activará tu cuenta en breve.
           </p>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-neutral-500 dark:text-white/50">
             Recibirás un correo electrónico con tus credenciales de acceso una vez que tu cuenta sea activada.
           </p>
         </Card>
@@ -245,7 +246,7 @@ export default function RegistroPersonal() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-900 dark:to-neutral-950 py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8 text-center">
           <div className="flex items-center justify-center gap-6 mb-6">
@@ -254,22 +255,18 @@ export default function RegistroPersonal() {
               alt="JIRO y Asociados"
               className="h-16 object-contain"
             />
-            <div className="h-12 w-px bg-slate-300"></div>
+            <div className="h-12 w-px bg-neutral-300 dark:bg-white/20"></div>
             <img
               src="/movirecurso_1.png"
               alt="MOVI Digital"
               className="h-16 object-contain"
             />
           </div>
-          <div className="flex items-center justify-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center">
-              <UserPlus className="w-6 h-6 text-accent" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">Registro de Personal</h1>
-              <p className="text-slate-600">Pre-registro para empleados de JIRO</p>
-            </div>
-          </div>
+          <PageHeader
+            title="Registro de Personal"
+            description="Pre-registro para empleados de JIRO"
+            icon={UserPlus}
+          />
         </div>
 
         {error && (
@@ -281,7 +278,7 @@ export default function RegistroPersonal() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <Card className="p-6">
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">
+            <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-4">
               Datos Personales
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -334,7 +331,7 @@ export default function RegistroPersonal() {
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">
+            <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-4">
               Datos Laborales
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -408,7 +405,7 @@ export default function RegistroPersonal() {
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">
+            <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-4">
               Equipos Asignados
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -420,7 +417,7 @@ export default function RegistroPersonal() {
                   value={formData.equipo_computo}
                   onChange={(e) => setFormData({ ...formData, equipo_computo: e.target.value })}
                 />
-                <p className="text-sm text-slate-500 mt-1">
+                <p className="text-sm text-neutral-500 dark:text-white/50 mt-1">
                   Modelo y detalles del equipo de cómputo asignado
                 </p>
               </div>
@@ -433,7 +430,7 @@ export default function RegistroPersonal() {
                   value={formData.equipo_celular}
                   onChange={(e) => setFormData({ ...formData, equipo_celular: e.target.value })}
                 />
-                <p className="text-sm text-slate-500 mt-1">
+                <p className="text-sm text-neutral-500 dark:text-white/50 mt-1">
                   Modelo y detalles del equipo celular asignado
                 </p>
               </div>
@@ -441,7 +438,7 @@ export default function RegistroPersonal() {
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">
+            <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-4">
               Foto de Perfil
             </h2>
             <div className="space-y-4">
@@ -450,16 +447,16 @@ export default function RegistroPersonal() {
                   <img
                     src={imagePreview}
                     alt="Preview"
-                    className="w-24 h-24 rounded-full object-cover border-2 border-slate-200"
+                    className="w-24 h-24 rounded-full object-cover border-2 border-neutral-200 dark:border-white/10"
                   />
                 ) : (
-                  <div className="w-24 h-24 rounded-full bg-slate-100 flex items-center justify-center">
-                    <UserPlus className="w-8 h-8 text-slate-400" />
+                  <div className="w-24 h-24 rounded-full bg-neutral-100 dark:bg-white/10 flex items-center justify-center">
+                    <UserPlus className="w-8 h-8 text-neutral-400 dark:text-white/40" />
                   </div>
                 )}
                 <div className="flex-1">
                   <Label htmlFor="imagen_perfil" className="cursor-pointer">
-                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors inline-flex">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-neutral-100 dark:bg-white/10 hover:bg-neutral-200 dark:hover:bg-white/20 rounded-lg transition-colors inline-flex">
                       <Upload className="w-4 h-4" />
                       <span>Seleccionar imagen</span>
                     </div>
@@ -471,13 +468,13 @@ export default function RegistroPersonal() {
                     onChange={handleImageChange}
                     className="hidden"
                   />
-                  <p className="text-sm text-slate-500 mt-2">
+                  <p className="text-sm text-neutral-500 dark:text-white/50 mt-2">
                     Imagen opcional. Máximo 5MB.
                   </p>
                 </div>
               </div>
               {uploadingImage && (
-                <div className="flex items-center gap-2 text-sm text-slate-600">
+                <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-white/60">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Subiendo imagen...
                 </div>
@@ -505,7 +502,7 @@ export default function RegistroPersonal() {
             </Button>
           </div>
 
-          <p className="text-center text-sm text-slate-500 mt-4">
+          <p className="text-center text-sm text-neutral-500 dark:text-white/50 mt-4">
             Al enviar este formulario, tu información será revisada por un administrador. <br />
             Recibirás un correo electrónico cuando tu cuenta sea activada.
           </p>

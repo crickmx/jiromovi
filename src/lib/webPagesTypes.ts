@@ -46,6 +46,29 @@ export interface UserWebPageCategory {
   created_at: string;
 }
 
+export interface SharedFormLink {
+  slug: string;
+  form_title: string;
+  form_type: string;
+  form_slug: string;
+  quote_form_template_id: string | null;
+  featured_on_website?: boolean;
+  featured_order?: number | null;
+}
+
+export interface FormTemplate {
+  id: string;
+  form_type: string;
+  title: string;
+  category: string;
+  icon: string;
+  slug: string | null;
+  public_url: string | null;
+  link_slug: string | null;
+  is_featured: boolean;
+  featured_order: number;
+}
+
 export interface PublicWebPageData {
   user: {
     id: string;
@@ -80,6 +103,8 @@ export interface PublicWebPageData {
     card_title: string;
     card_description: string;
   }> | null;
+  form_links: SharedFormLink[] | null;
+  form_templates: FormTemplate[] | null;
 }
 
 export interface UserWebPageConfig {

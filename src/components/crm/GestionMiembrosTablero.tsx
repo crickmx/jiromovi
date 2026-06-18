@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Crown, Shield, Edit, Eye, Trash2, AlertCircle } from 'lucide-react';
+import { Users, Crown, Shield, CreditCard as Edit, Eye, Trash2, CircleAlert as AlertCircle } from 'lucide-react';
 import {
   obtenerMiembrosTablero,
   actualizarRolMiembro,
@@ -23,7 +23,7 @@ export default function GestionMiembrosTablero({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { usuario: user } = useAuth();
 
   const canManageMembers = myRole === 'owner' || myRole === 'admin';
 

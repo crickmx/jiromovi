@@ -41,8 +41,9 @@ Deno.serve(async (req: Request) => {
     } = body;
 
     // Credenciales SICAS
+    // Fallback uses .com (HTTPS valid cert). .com.mx has invalid TLS (UnknownIssuer).
     const sicasEndpoint = Deno.env.get('SICAS_ENDPOINT') ||
-      'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx';
+      'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx';
     const sicasUsername = Deno.env.get('SICAS_USERNAME');
     const sicasPassword = Deno.env.get('SICAS_PASSWORD');
 

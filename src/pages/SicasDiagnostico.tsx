@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, AlertCircle, CheckCircle, XCircle, Loader2, Copy, RefreshCw } from 'lucide-react';
+import { Stethoscope, Play, AlertCircle, CheckCircle, XCircle, Loader2, Copy, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
+import { PageHeader } from '@/components/ui/page-header';
 
 interface DiagnosticStep {
   id: string;
@@ -255,46 +256,34 @@ export default function SicasDiagnostico() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 p-6">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <PageHeader
+          title="Diagnóstico SICAS"
+          description="Herramienta de diagnóstico paso a paso para identificar problemas de conexión"
+          icon={Stethoscope}
+          backTo="/admin/sicas"
+          backLabel="Volver"
+          actions={
             <Button
-              variant="ghost"
-              onClick={() => navigate('/admin/sicas')}
+              onClick={runDiagnostic}
+              disabled={running}
               className="gap-2"
             >
-              <ArrowLeft className="w-4 h-4" />
-              Volver
+              {running ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Ejecutando...
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4" />
+                  Iniciar Diagnóstico
+                </>
+              )}
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-neutral-900">
-                Diagnóstico SICAS
-              </h1>
-              <p className="text-sm text-neutral-600">
-                Herramienta de diagnóstico paso a paso para identificar problemas de conexión
-              </p>
-            </div>
-          </div>
-          <Button
-            onClick={runDiagnostic}
-            disabled={running}
-            className="gap-2"
-          >
-            {running ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Ejecutando...
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4" />
-                Iniciar Diagnóstico
-              </>
-            )}
-          </Button>
-        </div>
+          }
+        />
 
         {/* Info Banner */}
         <Card className="bg-green-50 border-green-200">

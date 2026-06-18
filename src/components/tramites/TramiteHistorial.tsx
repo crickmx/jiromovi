@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Clock, Activity, Filter } from 'lucide-react';
+import { Clock, Activity, ListFilter as Filter } from 'lucide-react';
 
 interface HistorialItem {
   id: string;
@@ -141,7 +141,6 @@ export function TramiteHistorial({ tramiteId }: TramiteHistorialProps) {
       'nombre_archivo': 'Archivo',
       'tipo': 'Tipo',
       'tamano_mb': 'Tamaño',
-      'ejecutivo': 'Ejecutivo',
       'asignado_por': 'Asignado por',
       'descripcion_preview': 'Descripción',
       'descripcion_anterior_preview': 'Descripción anterior',

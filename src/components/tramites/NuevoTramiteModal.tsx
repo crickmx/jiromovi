@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Upload, User, AlertCircle, FileText, Package, DollarSign, Building2, Plus, Trash2, Calendar, Shield, Clock, CheckCircle2, ChevronRight, Lock } from 'lucide-react';
+import { X, Upload, User, CircleAlert as AlertCircle, FileText, Package, DollarSign, Building2, Plus, Trash2, Calendar, Shield, Clock, CircleCheck as CheckCircle2, ChevronRight, Lock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseModal } from '../BaseModal';
@@ -8,6 +8,7 @@ import {
   getInsuranceTypes,
   getAseguradoras as getAseguradorasRA,
   getUsersByOffice,
+  getResponsableByOffice,
   createRegistroActividad,
   formatDateTimeForInput,
   formatDateTimeFromInput
@@ -150,6 +151,7 @@ export function NuevoTramiteModal({
   const isAgent = usuario?.rol === 'Agente';
   const canAssignOthers = !isAgent;
   const [canAccessRegistroAct, setCanAccessRegistroAct] = useState(false);
+  const [autoResponsableId, setAutoResponsableId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen && usuario) {
@@ -160,6 +162,15 @@ export function NuevoTramiteModal({
       loadUsuarios();
       loadLotesDisponibles();
       checkRegistroAccess();
+
+      // Auto-find responsable from agent's office
+      if (isAgent && usuario.oficina_id) {
+        getResponsableByOffice(usuario.oficina_id).then((resp) => {
+          setAutoResponsableId(resp?.id ?? null);
+        });
+      } else {
+        setAutoResponsableId(null);
+      }
 
       // Resetear la bandera después de un breve delay para permitir que los efectos se ejecuten
       setTimeout(() => {
@@ -516,6 +527,8 @@ export function NuevoTramiteModal({
     if (!usuario) return;
 
     const effectiveAgenteId = isAgent ? usuario.id : ceAgenteUserId;
+    // When agent creates, auto-assign responsable from office; otherwise use current user
+    const effectiveAttendingId = isAgent ? (autoResponsableId || '') : usuario.id;
 
     const formData = {
       tipo_tramite: 'cotizacion_emision',
@@ -523,7 +536,7 @@ export function NuevoTramiteModal({
       agente_usuario_id: effectiveAgenteId,
       insurance_type_id: ceInsuranceTypeId,
       insurers: ceSelectedInsurers,
-      attending_user_id: isAgent ? '' : usuario.id,
+      attending_user_id: effectiveAttendingId,
       request_datetime: formatDateTimeFromInput(ceRequestDatetime),
       completion_datetime: (!isAgent && ceCompletionDatetime) ? formatDateTimeFromInput(ceCompletionDatetime) : undefined,
       estatus_nombre: isAgent ? 'Iniciado' : ceEstatusNombre,
@@ -567,6 +580,8 @@ export function NuevoTramiteModal({
       }
 
       const isCommercial = isCommercialTicketType(tipoTramite);
+      // For agents: use auto-resolved office responsable; for non-agents: use the selected assignee
+      const responsableId = isAgent ? (autoResponsableId || null) : (isCommercial ? usuario.id : asignado);
       const assignedTo = isCommercial ? usuario.id : (isAgent ? usuario.id : asignado);
 
       const ticketData: any = {
@@ -576,13 +591,17 @@ export function NuevoTramiteModal({
         instrucciones: isCommercial ? buildCommercialDescription() : (descripcion.trim() || 'Sin descripción'),
         creado_por: usuario.id,
         modificado_por: usuario.id,
-        agente_id: isCommercial ? comAgenteUserId : assignedTo,
+        agente_id: isCommercial ? comAgenteUserId : (isAgent ? usuario.id : assignedTo),
         agente_usuario_id: isCommercial ? comAgenteUserId : undefined,
-        assigned_to_user_id: usuario.id
+        assigned_to_user_id: responsableId
       };
 
       if (tipoTramite === 'correccion_poliza_registrada') {
         ticketData.poliza = polizaNumero.trim() || null;
+      }
+
+      if (tipoTramite === 'correccion_poliza_endoso') {
+        ticketData.poliza = comPoliza.trim() || null;
       }
 
       if (tipoTramite === 'correccion_comisiones') {
@@ -608,12 +627,12 @@ export function NuevoTramiteModal({
       if (ticketError) throw ticketError;
 
       // Crear asignación en ticket_asignaciones
-      if (assignedTo) {
+      if (responsableId) {
         const { error: assignError } = await supabase
           .from('ticket_asignaciones')
           .insert({
             ticket_id: ticket.id,
-            ejecutivo_id: assignedTo,
+            ejecutivo_id: responsableId,
             asignado_por: usuario.id
           });
 
@@ -789,7 +808,9 @@ export function NuevoTramiteModal({
       case 'cotizacion_emision':
         return 'Cotización / Emisión - Proceso completo de cotización y emisión de pólizas';
       case 'correccion_poliza_registrada':
-        return 'Corrección de póliza registrada';
+        return 'Corrección de Registro de Póliza - Corrección en datos registrados en Operaciones';
+      case 'correccion_poliza_endoso':
+        return 'Corrección de Póliza / Endoso - Corrección o endoso de póliza (Comercial)';
       case 'correccion_comisiones':
         return 'Corrección de comisiones';
       case 'registro_poliza':
@@ -1096,6 +1117,22 @@ export function NuevoTramiteModal({
                   value={comAsunto}
                   onChange={(e) => setComAsunto(e.target.value)}
                   placeholder="Describe brevemente el asunto del trámite"
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                />
+              </div>
+            )}
+
+            {tipoTramite === 'correccion_poliza_endoso' && (
+              <div>
+                <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                  <FileText className="w-4 h-4 inline mr-2" />
+                  Número de Póliza
+                </label>
+                <input
+                  type="text"
+                  value={comPoliza}
+                  onChange={(e) => setComPoliza(e.target.value)}
+                  placeholder="Ingresa el número de póliza"
                   className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
                 />
               </div>

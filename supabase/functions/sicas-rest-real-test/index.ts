@@ -31,6 +31,9 @@ Deno.serve(async (req: Request) => {
     // Test 1: GET /Security/GetToken
     if (endpoint === 'GetToken' || endpoint === 'all') {
       try {
+        // Use URLSearchParams so that literal '%' in username (e.g. j1r0%25$)
+        // gets encoded to %25 → URL contains j1r0%2525%24.
+        // SICAS decodes once and receives the original value j1r0%25$.
         const params = new URLSearchParams({
           Usuario: config.usuario,
           Password: config.password,

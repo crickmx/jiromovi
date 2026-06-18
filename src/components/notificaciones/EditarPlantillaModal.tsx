@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
-import { X, Mail, MessageCircle, AlertCircle, Save, Bell, Eye, Code, Bold, Italic, List, Link as LinkIcon, Image } from 'lucide-react';
+import { X, Mail, MessageCircle, AlertCircle, Save, Bell, Eye, Code, Bold, Italic, List, Link as LinkIcon, Image, Monitor, Smartphone } from 'lucide-react';
 
 interface Plantilla {
   id: string;
@@ -18,11 +18,12 @@ interface Plantilla {
 interface EditarPlantillaModalProps {
   tipoId: string;
   tipoNombre: string;
+  platform?: 'movi' | 'seguwallet';
   onClose: () => void;
   onSave: () => void;
 }
 
-export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: EditarPlantillaModalProps) {
+export function EditarPlantillaModal({ tipoId, tipoNombre, platform, onClose, onSave }: EditarPlantillaModalProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [plantilla, setPlantilla] = useState<Plantilla | null>(null);
@@ -200,7 +201,18 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-neutral-200">
           <div>
-            <h2 className="text-2xl font-bold text-neutral-800">Editar Plantilla</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-neutral-800">Editar Plantilla</h2>
+              {platform === 'seguwallet' ? (
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-teal-100 text-teal-700 text-xs rounded-full font-semibold border border-teal-200">
+                  <Smartphone className="w-3 h-3" /> Seguwallet
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-semibold border border-blue-200">
+                  <Monitor className="w-3 h-3" /> MOVI
+                </span>
+              )}
+            </div>
             <p className="text-sm text-neutral-600 mt-1">{tipoNombre}</p>
           </div>
           <button

@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Video } from 'lucide-react';
-import { Layout } from '../components/Layout';
+import { Calendar, Video } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import {
   obtenerEventos,
@@ -15,10 +13,10 @@ import {
 import { FormularioEvento, type EventoData } from '../components/eventos/FormularioEvento';
 import { TarjetaEvento } from '../components/eventos/TarjetaEvento';
 import { type PermisosSeleccionados } from '../components/eventos/SelectorPermisos';
+import { SegurosEducationLayout } from '../components/segurosEducation/SegurosEducationLayout';
 
 export function SegurosEducationAulaDigital() {
   const { usuario } = useAuth();
-  const navigate = useNavigate();
 
   // Estados para eventos
   const [eventos, setEventos] = useState<AulaEvento[]>([]);
@@ -149,66 +147,55 @@ export function SegurosEducationAulaDigital() {
 
   if (loading) {
     return (
-      <Layout>
-        <div className="flex justify-center items-center py-12">
-          <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      </Layout>
+      <>
+        <SegurosEducationLayout sectionTitle="Aula Virtual" sectionDescription="Capacitaciones y eventos en vivo">
+          <div className="flex justify-center items-center py-16">
+            <div className="w-8 h-8 border-[3px] border-[#1C37E0]/20 border-t-[#1C37E0] rounded-full animate-spin" />
+          </div>
+        </SegurosEducationLayout>
+      </>
     );
   }
 
   return (
-    <Layout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        {/* Botón de regreso */}
-        <button
-          onClick={() => navigate('/seguros-education')}
-          className="flex items-center space-x-2 text-neutral-600 hover:text-neutral-900 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Volver a Seguros Education</span>
-        </button>
-
-        <div className="bg-gradient-to-r from-accent to-accent-dark rounded-2xl shadow-lg p-8 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold mb-2 text-white">Aula Digital - Eventos</h1>
-              <p className="text-white/90">
-                Capacitaciones y eventos en vivo
-              </p>
-            </div>
-            {isAdmin && (
-              <button
-                onClick={() => {
-                  setEventoSeleccionado(null);
-                  setPermisosSeleccionados(undefined);
-                  setShowEventoModal(true);
-                }}
-                className="flex items-center space-x-2 bg-white text-primary-700 px-6 py-3 rounded-xl font-semibold hover:bg-primary-50 transition"
-              >
-                <Video className="w-5 h-5" />
-                <span>Nuevo Evento</span>
-              </button>
-            )}
+    <>
+      <SegurosEducationLayout sectionTitle="Aula Virtual" sectionDescription="Capacitaciones y eventos en vivo">
+      <div className="space-y-5">
+        {/* Section header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold text-neutral-900 dark:text-white">Eventos y sesiones</h2>
+            <p className="text-xs text-neutral-500 dark:text-white/40 mt-0.5">{eventos.length} evento{eventos.length !== 1 ? 's' : ''} disponible{eventos.length !== 1 ? 's' : ''}</p>
           </div>
+          {isAdmin && (
+            <button
+              onClick={() => {
+                setEventoSeleccionado(null);
+                setPermisosSeleccionados(undefined);
+                setShowEventoModal(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1C37E0] text-white text-sm font-semibold hover:bg-[#1630C8] transition-all shadow-sm"
+            >
+              <Video className="w-4 h-4" />
+              Nuevo Evento
+            </button>
+          )}
         </div>
 
         {/* Contenido de Eventos */}
-        <div className="space-y-6">
+        <div>
           {eventos.length === 0 ? (
-            <div className="bg-white rounded-xl border-2 border-dashed border-neutral-300 p-12 text-center">
-              <Video className="w-16 h-16 text-neutral-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-neutral-700 mb-2">
-                No hay eventos disponibles
-              </h3>
-              <p className="text-neutral-500">
-                {isAdmin
-                  ? 'Crea tu primer evento para comenzar'
-                  : 'No tienes eventos programados en este momento'}
+            <div className="bg-white dark:bg-white/[0.03] rounded-2xl border-2 border-dashed border-neutral-200 dark:border-white/10 p-14 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-neutral-100 dark:bg-white/5 flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-6 h-6 text-neutral-400" />
+              </div>
+              <h3 className="text-base font-bold text-neutral-700 dark:text-white/70 mb-1">Sin eventos disponibles</h3>
+              <p className="text-sm text-neutral-400">
+                {isAdmin ? 'Crea tu primer evento para comenzar' : 'No tienes eventos programados en este momento'}
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {eventos.map(evento => (
                 <TarjetaEvento
                   key={evento.id}
@@ -237,6 +224,7 @@ export function SegurosEducationAulaDigital() {
           />
         )}
       </div>
-    </Layout>
+      </SegurosEducationLayout>
+    </>
   );
 }

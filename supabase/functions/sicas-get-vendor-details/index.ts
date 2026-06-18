@@ -6,7 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const SICAS_ENDPOINT = 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx';
+// Fallback uses .com (HTTPS valid cert). .com.mx has invalid TLS (UnknownIssuer).
+const SICAS_ENDPOINT = 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx';
 const SICAS_USERNAME = Deno.env.get('SICAS_USERNAME') || 'j1r0%25$';
 const SICAS_PASSWORD = Deno.env.get('SICAS_PASSWORD') || '$45oc14d05$';
 

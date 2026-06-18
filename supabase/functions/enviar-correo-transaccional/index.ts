@@ -25,6 +25,148 @@ interface NotificationPayload {
   attachment_file_ids?: string[];
 }
 
+interface ResolvedEmailChannel {
+  api_key: string;
+  from_name: string;
+  from_email: string;
+  channel_id: string | null;
+  channel_name: string | null;
+  header_html: string | null;
+  footer_html: string | null;
+}
+
+interface ResolvedWhatsAppChannel {
+  api_key: string;
+  channel_id_uuid: string;
+  channel_id: string | null;
+  channel_name: string | null;
+}
+
+// ============================================================
+// Channel resolution helpers
+// ============================================================
+
+async function resolveEmailChannel(
+  supabase: ReturnType<typeof createClient>,
+  preferredChannelId?: string | null
+): Promise<ResolvedEmailChannel | null> {
+  // 1. Try preferred channel
+  if (preferredChannelId) {
+    const { data } = await supabase
+      .from("notification_channels")
+      .select("id, name, config, branding, is_active")
+      .eq("id", preferredChannelId)
+      .eq("type", "email_resend")
+      .eq("is_active", true)
+      .maybeSingle();
+    if (data?.config?.api_key) {
+      return {
+        api_key: data.config.api_key,
+        from_name: data.config.from_name || data.branding?.sender_name || "MOVI Digital",
+        from_email: data.config.from_email || "notificaciones@movi.digital",
+        channel_id: data.id,
+        channel_name: data.name,
+        header_html: data.branding?.header_html || null,
+        footer_html: data.branding?.footer_html || null,
+      };
+    }
+  }
+
+  // 2. Try default channel
+  const { data: def } = await supabase
+    .from("notification_channels")
+    .select("id, name, config, branding, is_active")
+    .eq("type", "email_resend")
+    .eq("is_default", true)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (def?.config?.api_key) {
+    return {
+      api_key: def.config.api_key,
+      from_name: def.config.from_name || def.branding?.sender_name || "MOVI Digital",
+      from_email: def.config.from_email || "notificaciones@movi.digital",
+      channel_id: def.id,
+      channel_name: def.name,
+      header_html: def.branding?.header_html || null,
+      footer_html: def.branding?.footer_html || null,
+    };
+  }
+
+  // 3. Fallback to env var
+  const envKey = Deno.env.get("RESEND_API_KEY");
+  if (envKey) {
+    return {
+      api_key: envKey,
+      from_name: "MOVI Digital",
+      from_email: "notificaciones@movi.digital",
+      channel_id: null,
+      channel_name: null,
+      header_html: null,
+      footer_html: null,
+    };
+  }
+
+  return null;
+}
+
+async function resolveWhatsAppChannel(
+  supabase: ReturnType<typeof createClient>,
+  preferredChannelId?: string | null
+): Promise<ResolvedWhatsAppChannel | null> {
+  // 1. Try preferred channel
+  if (preferredChannelId) {
+    const { data } = await supabase
+      .from("notification_channels")
+      .select("id, name, config, is_active")
+      .eq("id", preferredChannelId)
+      .eq("type", "whatsapp_wazzup24")
+      .eq("is_active", true)
+      .maybeSingle();
+    if (data?.config?.api_key && data?.config?.channel_id) {
+      return {
+        api_key: data.config.api_key,
+        channel_id_uuid: data.config.channel_id,
+        channel_id: data.id,
+        channel_name: data.name,
+      };
+    }
+  }
+
+  // 2. Try default channel
+  const { data: def } = await supabase
+    .from("notification_channels")
+    .select("id, name, config, is_active")
+    .eq("type", "whatsapp_wazzup24")
+    .eq("is_default", true)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (def?.config?.api_key && def?.config?.channel_id) {
+    return {
+      api_key: def.config.api_key,
+      channel_id_uuid: def.config.channel_id,
+      channel_id: def.id,
+      channel_name: def.name,
+    };
+  }
+
+  // 3. Fallback to legacy whatsapp_configuracion
+  const { data: legacy } = await supabase
+    .from("whatsapp_configuracion")
+    .select("api_key, channel_id_uuid, activo")
+    .eq("activo", true)
+    .maybeSingle();
+  if (legacy?.api_key) {
+    return {
+      api_key: legacy.api_key,
+      channel_id_uuid: legacy.channel_id_uuid || "",
+      channel_id: null,
+      channel_name: null,
+    };
+  }
+
+  return null;
+}
+
 // ============================================================
 // Ticket enrichment helpers
 // ============================================================
@@ -127,14 +269,12 @@ async function enrichTicketVariables(
 
   const desc = getShortDescription({ ...ticket, activity_subtype_name: actSubtypeName });
 
-  // Build segment vars
   const enriched = { ...existingVars };
   enriched.cliente_segmento = clientName ? ` - ${clientName}` : "";
   enriched.poliza_segmento = policyNumber ? ` - Póliza ${policyNumber}` : "";
   enriched.aseguradora_segmento = insurerName ? ` - ${insurerName}` : "";
   enriched.descripcion_breve = desc;
 
-  // Data identification HTML/text
   const htmlRows: string[] = [];
   const textLines: string[] = [];
   if (clientName) {
@@ -153,7 +293,6 @@ async function enrichTicketVariables(
   enriched.datos_identificacion_texto = textLines.length > 0 ? "\n" + textLines.join("\n") + "\n" : "";
   enriched.adjuntos_advertencia_html = "";
 
-  // Build enhanced subject
   const folio = ticket.folio || existingVars.folio || ticketId.substring(0, 8);
   const eventLabel = existingVars.estatus_nuevo || desc;
   const enhancedSubject = buildEnhancedSubject(folio, eventLabel, clientName, policyNumber, insurerName);
@@ -224,19 +363,12 @@ async function downloadAndEncodeAttachments(
 // ============================================================
 
 async function sendWhatsApp(
+  channel: ResolvedWhatsAppChannel,
   supabase: ReturnType<typeof createClient>,
   phone: string,
   message: string,
   attachments: Array<{ fileName: string; filePath: string }>
 ): Promise<{ sent: boolean; documentsSent: number; error?: string; failedDocs: string[] }> {
-  const { data: config } = await supabase
-    .from("whatsapp_configuracion")
-    .select("api_key, channel_id_uuid, activo")
-    .eq("activo", true)
-    .maybeSingle();
-
-  if (!config?.api_key) return { sent: false, documentsSent: 0, error: "WhatsApp not configured", failedDocs: [] };
-
   let normalizedPhone = phone.replace(/[^0-9]/g, "");
   if (normalizedPhone.length === 10) {
     normalizedPhone = "521" + normalizedPhone;
@@ -249,12 +381,11 @@ async function sendWhatsApp(
   const failedDocs: string[] = [];
   let documentsSent = 0;
 
-  // Send text message
   try {
     const res = await fetch("https://api.wazzup24.com/v3/message", {
       method: "POST",
-      headers: { Authorization: `Bearer ${config.api_key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ channelId: config.channel_id_uuid, chatType: "whatsapp", chatId, text: message }),
+      headers: { Authorization: `Bearer ${channel.api_key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ channelId: channel.channel_id_uuid, chatType: "whatsapp", chatId, text: message }),
     });
     if (!res.ok) {
       const err = await res.text();
@@ -264,7 +395,6 @@ async function sendWhatsApp(
     return { sent: false, documentsSent: 0, error: err instanceof Error ? err.message : "WhatsApp error", failedDocs: [] };
   }
 
-  // Send documents
   for (const att of attachments) {
     try {
       let url = att.filePath;
@@ -275,8 +405,8 @@ async function sendWhatsApp(
       }
       const res = await fetch("https://api.wazzup24.com/v3/message", {
         method: "POST",
-        headers: { Authorization: `Bearer ${config.api_key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ channelId: config.channel_id_uuid, chatType: "whatsapp", chatId, contentUri: url, fileName: att.fileName }),
+        headers: { Authorization: `Bearer ${channel.api_key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ channelId: channel.channel_id_uuid, chatType: "whatsapp", chatId, contentUri: url, fileName: att.fileName }),
       });
       if (res.ok) documentsSent++;
       else failedDocs.push(att.fileName);
@@ -323,7 +453,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 1. Get template
+    // 1. Get template (includes channel assignments)
     const { data: template } = await supabase
       .from("transactional_notification_templates")
       .select("*")
@@ -355,7 +485,11 @@ Deno.serve(async (req: Request) => {
     const userEmail = user.email_laboral;
     const userPhone = user.celular_laboral || user.celular_personal;
 
-    // 3. Determine if this is a ticket event and enrich variables
+    // 3. Resolve channels (prefer template-assigned channels)
+    const emailChannel = await resolveEmailChannel(supabase, template.resend_channel_id || null);
+    const waChannel = await resolveWhatsAppChannel(supabase, template.wazzup24_channel_id || null);
+
+    // 4. Determine if this is a ticket event and enrich variables
     const isTicketEvent = event_key.startsWith("tramite_");
     let finalVars = { ...variables };
     let enhancedSubject = "";
@@ -363,7 +497,6 @@ Deno.serve(async (req: Request) => {
     let ticketFolio = variables.folio || "";
 
     if (isTicketEvent) {
-      // Try to find ticket_id from variables.url or from the payload
       if (!resolvedTicketId && variables.url) {
         const match = variables.url.match(/\/tramites\/([a-f0-9-]+)/);
         if (match) resolvedTicketId = match[1];
@@ -377,91 +510,93 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // 4. Render templates
+    // 5. Render templates
     const renderedSubjectRaw = renderTemplate(template.email_subject_template || "", finalVars);
     const renderedSubject = isTicketEvent && enhancedSubject ? enhancedSubject : renderedSubjectRaw;
     const renderedEmailBody = renderTemplate(template.email_body_template || "", finalVars);
     const renderedWhatsApp = renderTemplate(template.whatsapp_body_template || "", finalVars);
 
-    // 5. Get attachments for ticket events
+    // 6. Get attachments for ticket events
     let attachments: Array<{ id: string; fileName: string; filePath: string; fileUrl?: string; mimeType?: string; size?: number }> = [];
     if (isTicketEvent && resolvedTicketId) {
       attachments = await getTicketAttachments(supabase, resolvedTicketId, attachment_file_ids);
     }
 
-    // 6. Send email
+    // 7. Send email via resolved channel
     let emailSent = false;
     let emailError: string | null = null;
     let emailAttachmentsSent = 0;
     let emailFailedAttachments: string[] = [];
 
-    if (userEmail) {
-      const resendApiKey = Deno.env.get("RESEND_API_KEY");
-      if (resendApiKey) {
-        // Prepare attachments
-        let emailPayloadAttachments: Array<{ filename: string; content: string }> = [];
-        if (attachments.length > 0) {
-          const { encoded, failed } = await downloadAndEncodeAttachments(supabase, attachments);
-          emailPayloadAttachments = encoded;
-          emailFailedAttachments = failed;
-          emailAttachmentsSent = encoded.length;
-        }
-
-        // Add warning for failed attachments
-        let finalBody = renderedEmailBody;
-        if (emailFailedAttachments.length > 0) {
-          const warning = `<p style="margin-top:15px; padding:10px; background:#fef3c7; border:1px solid #f59e0b; border-radius:4px; font-size:12px; color:#92400e;">Algunos documentos no pudieron adjuntarse por tamaño o disponibilidad. Puedes consultarlos desde el trámite en MOVI.</p>`;
-          finalBody = finalBody.replace("{{adjuntos_advertencia_html}}", warning);
-        }
-        finalBody = finalBody.replace("{{adjuntos_advertencia_html}}", "");
-
-        const emailPayload: Record<string, unknown> = {
-          from: "MOVI Digital <notificaciones@movi.digital>",
-          to: [userEmail],
-          subject: renderedSubject,
-          html: finalBody,
-        };
-        if (emailPayloadAttachments.length > 0) {
-          emailPayload.attachments = emailPayloadAttachments;
-        }
-
-        try {
-          const res = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
-            body: JSON.stringify(emailPayload),
-          });
-          emailSent = res.ok;
-          if (!res.ok) {
-            emailError = `Resend ${res.status}: ${await res.text()}`;
-          }
-        } catch (err) {
-          emailError = err instanceof Error ? err.message : "Email error";
-        }
-      } else {
-        emailError = "RESEND_API_KEY not configured";
+    if (userEmail && emailChannel) {
+      let emailPayloadAttachments: Array<{ filename: string; content: string }> = [];
+      if (attachments.length > 0) {
+        const { encoded, failed } = await downloadAndEncodeAttachments(supabase, attachments);
+        emailPayloadAttachments = encoded;
+        emailFailedAttachments = failed;
+        emailAttachmentsSent = encoded.length;
       }
+
+      let finalBody = renderedEmailBody;
+      if (emailFailedAttachments.length > 0) {
+        const warning = `<p style="margin-top:15px; padding:10px; background:#fef3c7; border:1px solid #f59e0b; border-radius:4px; font-size:12px; color:#92400e;">Algunos documentos no pudieron adjuntarse por tamaño o disponibilidad. Puedes consultarlos desde el trámite en MOVI.</p>`;
+        finalBody = finalBody.replace("{{adjuntos_advertencia_html}}", warning);
+      }
+      finalBody = finalBody.replace("{{adjuntos_advertencia_html}}", "");
+
+      // Wrap body with channel branding header/footer
+      if (emailChannel.header_html || emailChannel.footer_html) {
+        finalBody = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head><body style="margin:0;padding:16px;background-color:#f4f4f4;font-family:Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center"><table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">${emailChannel.header_html ? `<tr><td>${emailChannel.header_html}</td></tr>` : ""}<tr><td style="padding:32px;">${finalBody}</td></tr>${emailChannel.footer_html ? `<tr><td>${emailChannel.footer_html}</td></tr>` : ""}</table></td></tr></table></body></html>`;
+      }
+
+      const emailPayload: Record<string, unknown> = {
+        from: `${emailChannel.from_name} <${emailChannel.from_email}>`,
+        to: [userEmail],
+        subject: renderedSubject,
+        html: finalBody,
+      };
+      if (emailPayloadAttachments.length > 0) {
+        emailPayload.attachments = emailPayloadAttachments;
+      }
+
+      try {
+        const res = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${emailChannel.api_key}`, "Content-Type": "application/json" },
+          body: JSON.stringify(emailPayload),
+        });
+        emailSent = res.ok;
+        if (!res.ok) {
+          emailError = `Resend ${res.status}: ${await res.text()}`;
+        }
+      } catch (err) {
+        emailError = err instanceof Error ? err.message : "Email error";
+      }
+    } else if (!emailChannel) {
+      emailError = "No email channel configured";
     } else {
       emailError = "User has no email";
     }
 
-    // 7. Send WhatsApp
+    // 8. Send WhatsApp via resolved channel
     let whatsappSent = false;
     let whatsappError: string | null = null;
     let whatsappDocsSent = 0;
     let whatsappFailedDocs: string[] = [];
 
-    if (userPhone) {
-      const waResult = await sendWhatsApp(supabase, userPhone, renderedWhatsApp, attachments);
+    if (userPhone && waChannel) {
+      const waResult = await sendWhatsApp(waChannel, supabase, userPhone, renderedWhatsApp, attachments);
       whatsappSent = waResult.sent;
       whatsappError = waResult.error || null;
       whatsappDocsSent = waResult.documentsSent;
       whatsappFailedDocs = waResult.failedDocs;
+    } else if (!waChannel) {
+      whatsappError = "No WhatsApp channel configured";
     } else {
       whatsappError = "User has no phone";
     }
 
-    // 8. Create in-app notification
+    // 9. Create in-app notification
     let inappNotifId: string | null = null;
     if (template.inapp_title_template || template.inapp_body_template) {
       const inappTitle = renderTemplate(template.inapp_title_template || "", finalVars);
@@ -482,7 +617,7 @@ Deno.serve(async (req: Request) => {
       inappNotifId = notif?.id || null;
     }
 
-    // 9. Log history
+    // 10. Log history with channel tracking
     await supabase.from("transactional_notification_history").insert({
       event_key,
       user_id,
@@ -505,7 +640,7 @@ Deno.serve(async (req: Request) => {
       recipient_phone: userPhone || null,
     });
 
-    // 10. Log attachment details
+    // 11. Log attachment details
     if (attachments.length > 0 && resolvedTicketId) {
       const attLogs = attachments.flatMap((att) => {
         const logs = [];
@@ -542,13 +677,54 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Also log to correo_historial_envios for email
+    if (emailSent || emailError) {
+      await supabase.from("correo_historial_envios").insert({
+        tipo_codigo: event_key,
+        canal_envio: "correo",
+        destinatario_email: userEmail || null,
+        destinatario_nombre: `${user.nombre || ""} ${user.apellidos || ""}`.trim() || null,
+        usuario_id: user_id,
+        asunto: renderedSubject,
+        estado: emailSent ? "enviado" : "fallido",
+        proveedor: "resend",
+        channel_id: emailChannel?.channel_id || null,
+        channel_name: emailChannel?.channel_name || null,
+        channel_type: emailChannel ? "email_resend" : null,
+        error_mensaje: emailError || null,
+        fecha_envio: new Date().toISOString(),
+      }).catch(() => {});
+    }
+
+    // Also log to correo_historial_envios for whatsapp
+    if (whatsappSent || (whatsappError && whatsappError !== "User has no phone" && whatsappError !== "No WhatsApp channel configured")) {
+      await supabase.from("correo_historial_envios").insert({
+        tipo_codigo: event_key,
+        canal_envio: "whatsapp",
+        destinatario_email: null,
+        destinatario_nombre: `${user.nombre || ""} ${user.apellidos || ""}`.trim() || null,
+        numero_destino: userPhone || null,
+        usuario_id: user_id,
+        asunto: null,
+        estado: whatsappSent ? "enviado" : "fallido",
+        proveedor: "wazzup24",
+        channel_id: waChannel?.channel_id || null,
+        channel_name: waChannel?.channel_name || null,
+        channel_type: waChannel ? "whatsapp_wazzup24" : null,
+        error_mensaje: whatsappError || null,
+        fecha_envio: new Date().toISOString(),
+      }).catch(() => {});
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         email_sent: emailSent,
         email_error: emailError,
+        email_channel: emailChannel?.channel_name || null,
         whatsapp_sent: whatsappSent,
         whatsapp_error: whatsappError,
+        whatsapp_channel: waChannel?.channel_name || null,
         subject: renderedSubject,
         attachments_count: attachments.length,
         email_attachments_sent: emailAttachmentsSent,

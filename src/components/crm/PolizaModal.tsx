@@ -12,7 +12,7 @@ interface Props {
 }
 
 export default function PolizaModal({ contactoId, poliza, onClose, onSave }: Props) {
-  const { user } = useAuth();
+  const { usuario: user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [archivo, setArchivo] = useState<File | null>(null);
 

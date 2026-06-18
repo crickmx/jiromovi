@@ -6,8 +6,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
+function generateSecurePassword(): string {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+  const arr = new Uint8Array(24);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => chars[b % chars.length]).join('');
+}
+
 interface CreateUserRequest {
-  password: string;
   userData: {
     nombre: string;
     apellidos: string;
@@ -78,9 +84,9 @@ Deno.serve(async (req: Request) => {
     const isAdmin = currentUserData?.rol === 'Administrador';
 
     const body = await req.json();
-    console.log('[create-user] Request body:', JSON.stringify(body, null, 2));
+    console.log('[create-user] Request body:', JSON.stringify({ ...body, password: '[REDACTED]' }, null, 2));
 
-    const { password, userData }: CreateUserRequest = body;
+    const { userData }: CreateUserRequest = body;
 
     if (!userData) {
       return new Response(
@@ -92,14 +98,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (!userData.email_laboral || !password) {
+    if (!userData.email_laboral) {
       return new Response(
         JSON.stringify({
-          error: 'Email laboral and password are required',
-          details: {
-            email_laboral: userData.email_laboral ? 'provided' : 'missing',
-            password: password ? 'provided' : 'missing'
-          }
+          error: 'Email laboral es requerido',
+          details: { email_laboral: 'missing' }
         }),
         {
           status: 400,
@@ -107,6 +110,9 @@ Deno.serve(async (req: Request) => {
         }
       );
     }
+
+    // Auto-generate a secure internal password - user authenticates via code only
+    const password = generateSecurePassword();
 
     if (!userData.nombre || !userData.apellidos) {
       return new Response(
@@ -253,7 +259,6 @@ Deno.serve(async (req: Request) => {
           p_modulo: 'usuarios',
           p_datos_adicionales: {
             email_laboral: userData.email_laboral,
-            password: password, // Solo se incluye cuando el usuario es creado directamente
             rol: userData.rol,
             oficina: nombreOficina,
             pagina_web: paginaWeb,
