@@ -63,10 +63,10 @@ export function LoadingFactCard() {
           {fact.categoria.charAt(0).toUpperCase() + fact.categoria.slice(1)}
         </span>
       )}
-      <h3 className="text-white font-semibold text-sm mb-2">{fact.titulo}</h3>
-      <p className="text-surface-400 text-xs leading-relaxed">{fact.hecho}</p>
+      <h3 className="text-neutral-900 dark:text-white font-semibold text-sm mb-2">{fact.titulo}</h3>
+      <p className="text-neutral-600 dark:text-neutral-400 text-xs leading-relaxed">{fact.hecho}</p>
       {fact.fuente && (
-        <p className="text-surface-600 text-xs mt-2">— {fact.fuente}</p>
+        <p className="text-neutral-400 dark:text-neutral-500 text-xs mt-2">— {fact.fuente}</p>
       )}
     </div>
   );
