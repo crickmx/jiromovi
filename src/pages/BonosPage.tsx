@@ -253,16 +253,16 @@ export default function BonosPage() {
     return (
       <div
         className="flex flex-col items-center justify-center h-full gap-8"
-        style={{ background: 'rgba(9, 15, 26, 0.96)' }}
+        style={{ background: 'rgba(248, 250, 255, 0.97)' }}
       >
-        <LoadingOrb size={120} />
+        <LoadingOrb size={120} theme="light" />
         <div className="flex flex-col items-center gap-1">
-          <span className="text-white font-semibold text-sm tracking-wide">Conectando con Central de Produccion</span>
+          <span className="text-neutral-800 font-semibold text-sm tracking-wide">Conectando con Central de Produccion</span>
           <div className="flex gap-1 mt-1">
             {[0, 1, 2].map((i) => (
               <div
                 key={i}
-                className="w-1.5 h-1.5 rounded-full bg-sky-400"
+                className="w-1.5 h-1.5 rounded-full bg-blue-700"
                 style={{ animation: `lo-dot-bounce 1.2s ease-in-out infinite ${i * 0.2}s` }}
               />
             ))}
@@ -361,16 +361,16 @@ export default function BonosPage() {
           {!ssoConfirmed && (
             <div
               className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-8"
-              style={{ background: 'rgba(9, 15, 26, 0.96)', backdropFilter: 'blur(8px)' }}
+              style={{ background: 'rgba(248, 250, 255, 0.97)', backdropFilter: 'blur(8px)' }}
             >
-              <LoadingOrb size={120} />
+              <LoadingOrb size={120} theme="light" />
               <div className="flex flex-col items-center gap-1">
-                <span className="text-white font-semibold text-sm tracking-wide">Cargando Central de Produccion</span>
+                <span className="text-neutral-800 font-semibold text-sm tracking-wide">Cargando Central de Produccion</span>
                 <div className="flex gap-1 mt-1">
                   {[0, 1, 2].map((i) => (
                     <div
                       key={i}
-                      className="w-1.5 h-1.5 rounded-full bg-sky-400"
+                      className="w-1.5 h-1.5 rounded-full bg-blue-700"
                       style={{ animation: `lo-dot-bounce 1.2s ease-in-out infinite ${i * 0.2}s` }}
                     />
                   ))}

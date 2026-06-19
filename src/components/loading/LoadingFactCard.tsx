@@ -46,11 +46,11 @@ export function LoadingFactCard() {
   );
 
   const categoryColors: Record<string, string> = {
-    vida: 'text-emerald-400 bg-emerald-400/10',
-    auto: 'text-amber-400 bg-amber-400/10',
-    salud: 'text-rose-400 bg-rose-400/10',
-    tecnologia: 'text-sky-400 bg-sky-400/10',
-    negocio: 'text-violet-400 bg-violet-400/10',
+    vida: 'text-emerald-700 bg-emerald-100',
+    auto: 'text-amber-700 bg-amber-100',
+    salud: 'text-rose-700 bg-rose-100',
+    tecnologia: 'text-blue-700 bg-blue-100',
+    negocio: 'text-violet-700 bg-violet-100',
   };
 
   const catKey = fact.categoria ?? 'tecnologia';
@@ -63,10 +63,10 @@ export function LoadingFactCard() {
           {fact.categoria.charAt(0).toUpperCase() + fact.categoria.slice(1)}
         </span>
       )}
-      <h3 className="text-neutral-900 dark:text-white font-semibold text-sm mb-2">{fact.titulo}</h3>
-      <p className="text-neutral-600 dark:text-neutral-400 text-xs leading-relaxed">{fact.hecho}</p>
+      <h3 className="text-neutral-800 font-semibold text-sm mb-2">{fact.titulo}</h3>
+      <p className="text-neutral-600 text-xs leading-relaxed">{fact.hecho}</p>
       {fact.fuente && (
-        <p className="text-neutral-400 dark:text-neutral-500 text-xs mt-2">— {fact.fuente}</p>
+        <p className="text-neutral-400 text-xs mt-2">— {fact.fuente}</p>
       )}
     </div>
   );
