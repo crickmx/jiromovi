@@ -439,7 +439,7 @@ export default function CentroContacto() {
         action: 'get_session_state',
         agent_user_id: agentUserId,
       });
-      if (isAdmin && result.mode === 'automatic' && result.active_session) {
+      if (false && result.mode === 'automatic' && result.active_session) {
         setConversationMode('automatic');
         const s = result.active_session;
         const rawData: Array<Record<string, unknown>> = s.contact_center_assistant_session_data || [];
