@@ -251,7 +251,6 @@ export default function CentroContacto() {
   // Load conversations
   const loadConversations = useCallback(async () => {
     if (!usuario) return;
-    setLoading(true);
     try {
       const { data, error } = await supabase.rpc('get_contact_center_summary', {
         p_user_id: usuario.id,
@@ -1523,13 +1522,6 @@ export default function CentroContacto() {
                     <Mail className="w-3.5 h-3.5" /> Correo
                   </button>
                   <div className="ml-auto flex items-center gap-1">
-                    <button
-                      onClick={() => { setShowPlantillasModal(true); setShowEmojiPicker(false); }}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors border border-neutral-200 dark:border-neutral-700"
-                      title="Plantillas de mensaje"
-                    >
-                      <BookTemplate className="w-3.5 h-3.5" /> Plantillas
-                    </button>
                     <button
                       onClick={() => { setShowFormulariosModal(true); setShowEmojiPicker(false); }}
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors border border-neutral-200 dark:border-neutral-700"

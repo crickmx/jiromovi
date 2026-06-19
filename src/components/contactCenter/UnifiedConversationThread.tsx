@@ -374,7 +374,6 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
 
   // ── Load messages ───────────────────────────────────────────────────────────
   const loadMessages = useCallback(async () => {
-    setLoading(true);
     const { channel, sourceId } = conversation;
     try {
       if (channel === 'wa_movi') {
@@ -492,7 +491,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
     }
   }, [conversation.id, conversation.channel, conversation.sourceId, currentUserId, participantNames, conversation.agentUserId]);
 
-  useEffect(() => { loadMessages(); setText(''); setSelectionMode(false); setSelectedIds(new Set()); }, [loadMessages]);
+  useEffect(() => { setLoading(true); loadMessages(); setText(''); setSelectionMode(false); setSelectedIds(new Set()); }, [loadMessages]);
 
   // Scroll to bottom — instant on first load, smooth on new messages if already near bottom
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
@@ -953,8 +952,9 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
 
             <div className="flex items-center gap-1.5">
               {/* Selection mode */}
-              <button onClick={() => setSelectionMode(true)} title="Seleccionar mensajes" className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400">
+              <button onClick={() => setSelectionMode(true)} title="Seleccionar para Trámite" className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-lime-400 to-green-500 hover:from-lime-500 hover:to-green-600 text-black font-bold text-xs transition-colors shadow-sm">
                 <CheckSquare className="w-4 h-4" />
+                <span>Seleccionar para Trámite</span>
               </button>
               {/* Menu */}
               <div className="relative" ref={menuRef}>
@@ -1207,19 +1207,6 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
         <div className="flex items-center gap-1 mb-2">
           <button onClick={() => setShowEmoji(v => !v)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 transition-colors" title="Emojis">
             <Smile className="w-4 h-4" />
-          </button>
-          {/* Plantillas: WA Personal uses private templates, others use shared */}
-          {isWaPersonal ? (
-            <button onClick={openWaTemplates} className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 transition-colors text-[11px] font-medium" title="Mis plantillas">
-              <Star className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Plantilla</span>
-            </button>
-          ) : (
-            <button onClick={openPlantillas} className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 transition-colors text-[11px] font-medium" title="Plantillas">
-              <FileText className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Plantilla</span>
-            </button>
-          )}
-          <button onClick={openCreateTicket} className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 transition-colors text-[11px] font-medium" title="Crear tramite">
-            <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Tramite</span>
           </button>
           {/* WA Personal: file attachment button */}
           {isWaPersonal && (
