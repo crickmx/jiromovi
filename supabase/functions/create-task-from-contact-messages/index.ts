@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
         agente_id: agentUserId,
         agente_usuario_id: agentUserId,
         creado_por: senderUser.id,
-        assigned_to_user_id: isCommercial ? senderUser.id : senderUser.id,
+        assigned_to_user_id: isCommercial ? senderUser.id : agentUserId,
         cerrado: false,
         metadata: {
           source: "centro_contacto",

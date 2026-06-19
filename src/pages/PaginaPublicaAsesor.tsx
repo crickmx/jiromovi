@@ -1467,74 +1467,66 @@ export default function PaginaPublicaAsesor() {
               className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
               onClick={e => e.stopPropagation()}
             >
-              {/* Header */}
+              {/* Hero gradient header */}
               <div
-                className="px-6 pt-6 pb-5 flex items-start justify-between"
-                style={{ borderBottom: `3px solid ${primaryColor}` }}
+                className="relative pt-8 pb-6 px-6 flex flex-col items-center text-center"
+                style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)` }}
               >
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">Guardar Contacto</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">Descarga la tarjeta digital del asesor</p>
-                </div>
                 <button
                   onClick={() => setShowContactModal(false)}
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all ml-3 flex-shrink-0"
+                  className="absolute top-3 right-3 p-1.5 rounded-lg bg-white/20 text-white hover:bg-white/30 transition-all"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
+
+                {user.photo_url ? (
+                  <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg mb-3 flex-shrink-0">
+                    <img src={user.photo_url} alt={user.name} crossOrigin="anonymous" className="w-full h-full object-cover" onError={e => { e.currentTarget.style.display = 'none'; }} />
+                  </div>
+                ) : (
+                  <div
+                    className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold text-white border-4 border-white/30 shadow-lg mb-3 flex-shrink-0"
+                    style={{ background: 'rgba(255,255,255,0.2)' }}
+                  >
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+
+                <h3 className="text-xl font-bold text-white leading-tight">{user.name}</h3>
+                <p className="text-white/80 text-sm font-medium mt-0.5">Agente de Seguros</p>
+                {user.office?.name && (
+                  <p className="text-white/70 text-xs mt-1">{user.office.name}</p>
+                )}
               </div>
 
-              {/* Agent card */}
-              <div className="px-6 py-5 space-y-4">
-                {/* Photo + name */}
-                <div className="flex items-center gap-4">
-                  {user.photo_url ? (
-                    <div
-                      className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0"
-                      style={{ border: `2px solid ${primaryColor}` }}
-                    >
-                      <img src={user.photo_url} alt={user.name} crossOrigin="anonymous" className="w-full h-full object-cover" onError={e => { e.currentTarget.style.display = 'none'; }} />
+              {/* Contact details */}
+              <div className="px-6 py-4 space-y-2.5 border-b border-gray-100">
+                {user.phone && (
+                  <div className="flex items-center gap-3 text-sm text-gray-700">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${primaryColor}1a` }}>
+                      <Phone className="w-4 h-4" style={{ color: primaryColor }} />
                     </div>
-                  ) : (
-                    <div
-                      className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold text-white flex-shrink-0"
-                      style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)` }}
-                    >
-                      {user.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <p className="font-bold text-gray-900 text-base leading-tight">{user.name}</p>
-                    <p className="text-xs font-medium mt-0.5" style={{ color: primaryColor }}>Agente de Seguros</p>
-                    {user.office?.name && (
-                      <p className="text-xs text-gray-500 mt-0.5 truncate">{user.office.name}</p>
-                    )}
+                    <span>{user.phone}</span>
                   </div>
-                </div>
-
-                {/* Contact details */}
-                <div className="space-y-2 text-sm">
-                  {user.phone && (
-                    <div className="flex items-center gap-2.5 text-gray-700">
-                      <Phone className="w-4 h-4 flex-shrink-0" style={{ color: primaryColor }} />
-                      <span>{user.phone}</span>
+                )}
+                {user.email && (
+                  <div className="flex items-center gap-3 text-sm text-gray-700">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${primaryColor}1a` }}>
+                      <Mail className="w-4 h-4" style={{ color: primaryColor }} />
                     </div>
-                  )}
-                  {user.email && (
-                    <div className="flex items-center gap-2.5 text-gray-700">
-                      <Mail className="w-4 h-4 flex-shrink-0" style={{ color: primaryColor }} />
-                      <span className="truncate text-xs">{user.email}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2.5 text-gray-500">
-                    <Globe className="w-4 h-4 flex-shrink-0" style={{ color: primaryColor }} />
-                    <span className="text-xs truncate">agentedeseguros.website/{slug}</span>
+                    <span className="text-xs truncate">{user.email}</span>
                   </div>
+                )}
+                <div className="flex items-center gap-3 text-sm text-gray-500">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${primaryColor}1a` }}>
+                    <Globe className="w-4 h-4" style={{ color: primaryColor }} />
+                  </div>
+                  <span className="text-xs truncate">agentedeseguros.website/{slug}</span>
                 </div>
               </div>
 
               {/* Download CTA */}
-              <div className="px-6 pb-6">
+              <div className="px-6 py-5">
                 <button
                   onClick={handleDownloadVCard}
                   disabled={vcardLoading}
@@ -1544,9 +1536,9 @@ export default function PaginaPublicaAsesor() {
                   {vcardLoading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Download className="w-4 h-4" />
+                    <UserPlus className="w-4 h-4" />
                   )}
-                  {vcardLoading ? 'Generando...' : 'Descargar .vcf'}
+                  {vcardLoading ? 'Generando...' : 'Guardar en contactos'}
                 </button>
                 <p className="text-center text-xs text-gray-400 mt-2">
                   Compatible con iPhone, Android, Outlook y Gmail
