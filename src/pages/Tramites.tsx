@@ -537,71 +537,99 @@ export function Tramites() {
             </p>
           </div>
 
-          {filteredTramites.map(tramite => (
-            <div
-              key={tramite.id}
-              onClick={() => navigate(`/tramites/${tramite.id}`)}
-              className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4 sm:p-5 hover:border-neutral-300 dark:hover:border-white/15 hover:shadow-sm transition-all duration-200 cursor-pointer group"
-            >
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-accent">{tramite.folio}</span>
-                  <span className="text-xs text-neutral-400 dark:text-white/30">
-                    {new Date(tramite.fecha_creacion).toLocaleDateString('es-MX', {
-                      day: 'numeric',
-                      month: 'short',
-                    })}
-                  </span>
-                </div>
+          {filteredTramites.map(tramite => {
+            const area = getTipoTramiteArea(tramite.tipo_tramite);
+            const ac = AREA_CONFIG[area];
+            const barClass = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
 
-                <div className="flex items-center flex-wrap gap-1.5">
-                  {(() => {
-                    const area = getTipoTramiteArea(tramite.tipo_tramite);
-                    const ac = AREA_CONFIG[area];
-                    return (
-                      <span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold ${ac.bg} ${ac.color}`}>
+            return (
+              <div
+                key={tramite.id}
+                onClick={() => navigate(`/tramites/${tramite.id}`)}
+                className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden hover:shadow-md hover:border-neutral-300 dark:hover:border-white/15 transition-all duration-200 cursor-pointer group flex"
+              >
+                {/* Colored left strip */}
+                <div className={`w-1.5 shrink-0 ${barClass}`} />
+
+                {/* Card body */}
+                <div className="flex flex-1 min-w-0 flex-col sm:flex-row sm:divide-x divide-neutral-100 dark:divide-white/8">
+
+                  {/* Left: meta info */}
+                  <div className="px-4 pt-4 pb-3 sm:pb-4 flex flex-col gap-2 sm:w-[38%] sm:shrink-0">
+                    {/* Agent name + tipo */}
+                    <div>
+                      <p className={`font-extrabold text-sm uppercase tracking-wide leading-tight ${ac.color}`}>
+                        {tramite.agente?.nombre_completo || 'Sin asignar'}
+                      </p>
+                      <p className={`text-[11px] font-semibold mt-0.5 uppercase tracking-wide opacity-80 ${ac.color}`}>
                         {getTipoTramiteLabel(tramite.tipo_tramite)}
-                      </span>
-                    );
-                  })()}
-                  {tramite.estatus && (
-                    <span
-                      className="px-2 py-0.5 rounded-md text-[11px] font-semibold"
-                      style={{
-                        backgroundColor: tramite.estatus.color + '15',
-                        color: tramite.estatus.color,
-                      }}
-                    >
-                      {tramite.estatus.nombre}
-                    </span>
-                  )}
-                  <span className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold ${getPrioridadColor(tramite.prioridad)}`}>
-                    {getPrioridadIcon(tramite.prioridad)}
-                    <span>{tramite.prioridad}</span>
-                  </span>
-                </div>
+                      </p>
+                    </div>
 
-                <p className="text-sm text-neutral-800 dark:text-white/80 font-medium line-clamp-2">
-                  {tramite.instrucciones}
-                </p>
+                    {/* Status / priority / dates */}
+                    <div className="space-y-0.5 text-xs">
+                      {tramite.estatus && (
+                        <p className="text-neutral-600 dark:text-white/60">
+                          <span className="text-neutral-400 dark:text-white/35">Estatus: </span>
+                          <span className="font-bold uppercase" style={{ color: tramite.estatus.color }}>
+                            {tramite.estatus.nombre}
+                          </span>
+                        </p>
+                      )}
+                      {!isAgente && (
+                        <p className="text-neutral-600 dark:text-white/60">
+                          <span className="text-neutral-400 dark:text-white/35">Prioridad: </span>
+                          <span className={`font-bold uppercase ${tramite.prioridad === 'Alta' ? 'text-red-600' : tramite.prioridad === 'Media' ? 'text-amber-600' : 'text-green-600'}`}>
+                            {tramite.prioridad}
+                          </span>
+                        </p>
+                      )}
+                      <p className="text-neutral-600 dark:text-white/60">
+                        <span className="text-neutral-400 dark:text-white/35">Fecha creación: </span>
+                        <span className="font-medium">
+                          {new Date(tramite.fecha_creacion).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </span>
+                      </p>
+                      {tramite.cerrado_en && (
+                        <p className="text-neutral-600 dark:text-white/60">
+                          <span className="text-neutral-400 dark:text-white/35">Fecha finalización: </span>
+                          <span className="font-bold">
+                            {new Date(tramite.cerrado_en).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                          </span>
+                        </p>
+                      )}
+                    </div>
 
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500 dark:text-white/40">
-                  <span>
-                    <span className="font-medium">Agente:</span> {tramite.agente?.nombre_completo || 'Sin asignar'}
-                  </span>
-                  {tramite.poliza && (
-                    <span className="flex items-center gap-1">
-                      <FileText className="w-3 h-3" />
-                      {tramite.poliza}
-                    </span>
-                  )}
-                  <span>
-                    <span className="font-medium">Responsable:</span> {tramite.responsable?.nombre_completo || 'Sin asignar'}
-                  </span>
+                    {/* Folio */}
+                    <p className={`text-[11px] font-extrabold uppercase tracking-widest mt-auto ${ac.color}`}>
+                      Folio: {tramite.folio}
+                    </p>
+                  </div>
+
+                  {/* Right: message + responsable */}
+                  <div className="flex-1 px-4 pt-3 sm:pt-4 pb-4 flex flex-col justify-between gap-3 min-w-0">
+                    <p className="text-xs text-neutral-700 dark:text-white/75 leading-relaxed line-clamp-4 sm:line-clamp-5">
+                      <span className="font-semibold text-neutral-500 dark:text-white/50">Mensaje: </span>
+                      {tramite.instrucciones}
+                    </p>
+                    <div className="flex items-end justify-between gap-2 mt-auto">
+                      {tramite.poliza && (
+                        <span className="flex items-center gap-1 text-[11px] text-neutral-400 dark:text-white/35">
+                          <FileText className="w-3 h-3" />
+                          {tramite.poliza}
+                        </span>
+                      )}
+                      {!tramite.poliza && <span />}
+                      <p className="text-[11px] font-extrabold uppercase tracking-wide text-neutral-400 dark:text-white/35 text-right shrink-0">
+                        Responsable: {tramite.responsable?.nombre_completo || 'Sin asignar'}
+                      </p>
+                    </div>
+                  </div>
+
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
