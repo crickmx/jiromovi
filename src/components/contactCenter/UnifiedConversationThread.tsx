@@ -657,6 +657,42 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
   };
 
   // ── Create ticket ───────────────────────────────────────────────────────────
+  // Extracts all media files from a message for auto-attaching to a tramite
+  const extractMediaFiles = (msg: UnifiedMessage): Array<{ url: string; nombre: string; tipo: string }> => {
+    const files: Array<{ url: string; nombre: string; tipo: string }> = [];
+    const mimeFromType: Record<string, string> = {
+      image: 'image/jpeg', video: 'video/mp4', audio: 'audio/ogg',
+      voice_note: 'audio/ogg', document: 'application/octet-stream', sticker: 'image/webp',
+    };
+    const extFromMime: Record<string, string> = {
+      'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp',
+      'video/mp4': '.mp4', 'audio/ogg': '.ogg', 'audio/mpeg': '.mp3',
+      'application/pdf': '.pdf',
+    };
+    const typeLabel: Record<string, string> = {
+      image: 'imagen', video: 'video', audio: 'audio',
+      voice_note: 'nota_voz', document: 'documento', sticker: 'sticker',
+    };
+
+    if (msg.mediaUrl) {
+      const mime = msg.mediaMime || mimeFromType[msg.messageType] || 'application/octet-stream';
+      const ext = extFromMime[mime] || '';
+      const nombre = msg.mediaFilename || `${typeLabel[msg.messageType] || 'archivo'}_whatsapp${ext}`;
+      files.push({ url: msg.mediaUrl, nombre, tipo: mime });
+    }
+    // WA MOVI: attachment_urls can have multiple files — add any beyond the first (already in mediaUrl)
+    if (msg.raw) {
+      const atts = (msg.raw as Record<string, unknown>).attachment_urls;
+      if (Array.isArray(atts)) {
+        for (const att of (atts as Array<{ url?: string; name?: string; content_type?: string }>).slice(1)) {
+          if (!att.url) continue;
+          files.push({ url: att.url, nombre: att.name || 'archivo_whatsapp.bin', tipo: att.content_type || 'application/octet-stream' });
+        }
+      }
+    }
+    return files;
+  };
+
   const openCreateTicket = () => {
     const selected = messages.filter(m => selectedIds.has(m.id));
     const ctx = selected.length > 0 ? selected.map(m => m.body).filter(Boolean).join('\n') : messages.slice(-3).map(m => m.body).filter(Boolean).join('\n');
@@ -668,6 +704,8 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
     const selected = messages.filter(m => selectedIds.has(m.id));
     const msgsToLink = selected.length > 0 ? selected : messages.slice(-5);
     const agentUserId = conversation.agentUserId || currentUserId;
+
+    // Link messages to ticket
     const rows = msgsToLink.map(m => ({
       ticket_id: ticketId,
       contact_center_message_id: m.id,
@@ -678,6 +716,22 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
     if (rows.length > 0) {
       await supabase.from('task_contact_center_items').insert(rows);
     }
+
+    // Auto-attach any media files from the linked messages
+    const archivos = msgsToLink.flatMap(m =>
+      extractMediaFiles(m).map(f => ({
+        ticket_id: ticketId,
+        usuario_id: currentUserId,
+        nombre: f.nombre,
+        url: f.url,
+        tipo: f.tipo,
+        tamano: null as number | null,
+      }))
+    );
+    if (archivos.length > 0) {
+      await supabase.from('ticket_archivos').insert(archivos);
+    }
+
     setSelectionMode(false);
     setSelectedIds(new Set());
   };
@@ -734,13 +788,11 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
     const selected = messages.filter(m => selectedIds.has(m.id));
     const msgsToLink = selected.length > 0 ? selected : messages.slice(-3);
     const messageIds = msgsToLink.map(m => m.id);
-    console.log('[addToTicket] ticketId:', ticketId, 'messageIds:', messageIds, 'channel:', conversation.channel);
     const result = await callEdgeFn('add-contact-messages-to-task', {
       agentUserId: conversation.agentUserId || currentUserId,
       ticketId,
       messageIds,
     }).catch(() => ({ success: false, error: 'Error de conexion' }));
-    console.log('[addToTicket] result:', result);
     setAddingToTicket(null);
     if (result?.success === false) {
       setAddTicketError(result.error || 'Error al agregar mensajes al tramite');
@@ -749,9 +801,24 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
     const added = typeof result?.added === 'number' ? result.added : messageIds.length;
     if (added === 0) {
       setAddTicketError(result?.message || 'Estos mensajes ya estaban vinculados a este tramite. Selecciona otros mensajes o elige un tramite diferente.');
-      setAddingToTicket(null);
       return;
     }
+
+    // Auto-attach any media files from the linked messages
+    const archivos = msgsToLink.flatMap(m =>
+      extractMediaFiles(m).map(f => ({
+        ticket_id: ticketId,
+        usuario_id: currentUserId,
+        nombre: f.nombre,
+        url: f.url,
+        tipo: f.tipo,
+        tamano: null as number | null,
+      }))
+    );
+    if (archivos.length > 0) {
+      await supabase.from('ticket_archivos').insert(archivos);
+    }
+
     setShowAddTicket(false);
     setSelectionMode(false);
     setSelectedIds(new Set());

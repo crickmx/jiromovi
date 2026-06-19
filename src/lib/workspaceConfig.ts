@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Send, DollarSign, Activity, Trophy, FileText, MapPin, Car, FolderOpen, BookOpen, Users, CreditCard, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartBar as BarChart3, Video, BookMarked, BadgeCheck, Compass, Calculator, Smartphone, Mail, MessageSquare, Bell, Sparkles, Brain, Database, Eye, Image as ImageIcon, Phone } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
@@ -50,10 +50,10 @@ const NO_EMPLEADO_AGENTE: UserRole[] = ['Administrador', 'Gerente'];
 
 export const TOP_LEVEL_ITEMS: TopLevelNavItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visibleTo: ALL_ROLES },
-  { path: '/chava', label: 'Chava', icon: Sparkles, visibleTo: ADMIN_ONLY },
-  { path: '/centro-digital', label: 'Centro Digital', icon: FolderOpen, visibleTo: ALL_ROLES },
+  { path: '/chava', label: 'Chava', icon: BrainCircuit, visibleTo: ADMIN_ONLY },
+  { path: '/centro-digital', label: 'Centro Digital', icon: Monitor, visibleTo: ALL_ROLES },
   { path: '/store', label: 'MOVI Store', icon: ShoppingBag, visibleTo: ALL_ROLES },
-  { path: '/comunicados', label: 'Comunicados', icon: FileText, visibleTo: ALL_ROLES, matchPrefix: true },
+  { path: '/comunicados', label: 'Comunicados', icon: Newspaper, visibleTo: ALL_ROLES, matchPrefix: true },
 ];
 
 const WORKSPACE_COMERCIAL: WorkspaceDefinition = {
@@ -65,8 +65,8 @@ const WORKSPACE_COMERCIAL: WorkspaceDefinition = {
     { path: '/tramites', label: 'Tramites', icon: ClipboardList, visibleTo: ALL_ROLES, matchPrefix: true, excludePrefixes: ['/tramites/formularios'] },
     { path: '/contactos', label: 'Contactos', icon: BookUser, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/mi-crm', label: 'CRM', icon: Users, visibleTo: ALL_ROLES, matchPrefix: true },
-    { path: '/entrega-polizas', label: 'Entrega Polizas', icon: Send, visibleTo: NOT_AGENT },
-    { path: '/lector-qualitas', label: 'Lector Qualitas', icon: BookOpen, visibleTo: NOT_AGENT },
+    { path: '/entrega-polizas', label: 'Entrega Polizas', icon: PackageCheck, visibleTo: NOT_AGENT },
+    { path: '/lector-qualitas', label: 'Lector Qualitas', icon: FileSearch, visibleTo: NOT_AGENT },
     { path: '/mi-progreso', label: 'Mi Progreso', icon: Trophy, visibleTo: NO_EMPLEADO_AGENTE },
   ],
 };
@@ -77,10 +77,10 @@ const WORKSPACE_CENTRO_CONTACTO: WorkspaceDefinition = {
   icon: Headphones,
   visibleTo: ALL_ROLES,
   items: [
-    { path: '/centro-contacto/whatsapp', label: 'WhatsApp', icon: Smartphone, visibleTo: NOT_AGENT },
+    { path: '/centro-contacto/whatsapp', label: 'WhatsApp', icon: MessageCircle, visibleTo: NOT_AGENT },
     { path: '/centro-contacto/email', label: 'Email', icon: Mail, visibleTo: ALL_ROLES },
     { path: '/centro-contacto/chat', label: 'Chat', icon: MessageSquare, visibleTo: NOT_AGENT },
-    { path: '/directorio-jiro', label: 'Directorio JIRO', icon: BookUser, visibleTo: NOT_AGENT },
+    { path: '/directorio-jiro', label: 'Directorio JIRO', icon: Building2, visibleTo: NOT_AGENT },
     { path: '/centro-contacto/notificaciones', label: 'Notificaciones', icon: Bell, visibleTo: ADMIN_ONLY },
   ],
 };
@@ -91,23 +91,23 @@ const WORKSPACE_COTIZAR: WorkspaceDefinition = {
   icon: Calculator,
   visibleTo: ALL_ROLES,
   items: [
-    { path: '/cotizar', label: 'Inicio', icon: LayoutDashboard, visibleTo: ALL_ROLES },
-    { path: '/cotizar/gmm-bx', label: 'GMM BX+', icon: Activity, visibleTo: ADMIN_ONLY },
+    { path: '/cotizar', label: 'Inicio', icon: House, visibleTo: ALL_ROLES },
+    { path: '/cotizar/gmm-bx', label: 'GMM BX+', icon: HeartPulse, visibleTo: ADMIN_ONLY },
     { path: '/cotizar/formularios', label: 'Formularios', icon: FormInput, visibleTo: ALL_ROLES, matchPrefix: true },
-    { path: '/cotizar/a-la-medida', label: 'A la Medida', icon: Compass, visibleTo: ALL_ROLES, matchPrefix: true },
+    { path: '/cotizar/a-la-medida', label: 'A la Medida', icon: SlidersHorizontal, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/cotizar/multicotizador', label: 'Multicotizador', icon: Car, visibleTo: ALL_ROLES },
-    { path: '/cotizar/multicotizador-gmm', label: 'Multicotizador GMM', icon: Activity, visibleTo: ALL_ROLES },
+    { path: '/cotizar/multicotizador-gmm', label: 'Multicotizador GMM', icon: Stethoscope, visibleTo: ALL_ROLES },
   ],
 };
 
 const WORKSPACE_OPERACIONES: WorkspaceDefinition = {
   id: 'operaciones',
   label: 'Operaciones',
-  icon: TrendingUp,
+  icon: Cog,
   visibleTo: ALL_ROLES,
   items: [
     { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, visibleTo: NOT_AGENT },
-    { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, visibleTo: ALL_ROLES },
+    { path: '/espacio-jiro', label: 'Espacio JIRO', icon: Landmark, visibleTo: ALL_ROLES },
     { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, visibleTo: NOT_AGENT },
   ],
 };
@@ -115,10 +115,10 @@ const WORKSPACE_OPERACIONES: WorkspaceDefinition = {
 const WORKSPACE_PRODUCCION: WorkspaceDefinition = {
   id: 'produccion',
   label: 'Central Produccion',
-  icon: BarChart3,
+  icon: TrendingUp,
   visibleTo: ALL_ROLES,
   items: [
-    { path: '/produccion', label: 'Central Produccion', icon: BarChart3, visibleTo: ALL_ROLES },
+    { path: '/produccion', label: 'Central Produccion', icon: TrendingUp, visibleTo: ALL_ROLES },
   ],
 };
 
@@ -129,9 +129,9 @@ const WORKSPACE_MERCADOTECNIA: WorkspaceDefinition = {
   visibleTo: ALL_ROLES,
   items: [
     { path: '/mercadotecnia/publicidad', label: 'Publicidad', icon: Megaphone, visibleTo: ALL_ROLES },
-    { path: '/mercadotecnia/mis-disenos', label: 'Mis Diseños', icon: ImageIcon, visibleTo: ALL_ROLES },
+    { path: '/mercadotecnia/mis-disenos', label: 'Mis Diseños', icon: Paintbrush, visibleTo: ALL_ROLES },
     { path: '/mercadotecnia/mi-pagina-web', label: 'Mi Página Web', icon: Globe, visibleTo: ALL_ROLES },
-    { path: '/mercadotecnia/mi-marca', label: 'Mi Marca', icon: BadgeCheck, visibleTo: ALL_ROLES },
+    { path: '/mercadotecnia/mi-marca', label: 'Mi Marca', icon: Fingerprint, visibleTo: ALL_ROLES },
   ],
 };
 
@@ -141,12 +141,12 @@ const WORKSPACE_SEGUROS_EDUCATION: WorkspaceDefinition = {
   icon: GraduationCap,
   visibleTo: ALL_ROLES,
   items: [
-    { path: '/seguros-education', label: 'Inicio', icon: LayoutDashboard, visibleTo: ALL_ROLES },
+    { path: '/seguros-education', label: 'Inicio', icon: House, visibleTo: ALL_ROLES },
     { path: '/seguros-education/on-demand', label: 'On Demand', icon: Video, visibleTo: ALL_ROLES },
-    { path: '/seguros-education/aula-virtual', label: 'Aula Virtual', icon: BookMarked, visibleTo: ALL_ROLES },
+    { path: '/seguros-education/aula-virtual', label: 'Aula Virtual', icon: MonitorPlay, visibleTo: ALL_ROLES },
     { path: '/seguros-education/cedula-a', label: 'Cedula A', icon: BadgeCheck, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/manuales', label: 'Manuales', icon: BookOpen, visibleTo: ALL_ROLES, matchPrefix: true },
-    { path: '/seguros-education/analytics', label: 'Analytics', icon: BarChart3, visibleTo: ADMIN_GERENTE },
+    { path: '/seguros-education/analytics', label: 'Analytics', icon: ChartLine, visibleTo: ADMIN_GERENTE },
   ],
 };
 
@@ -157,27 +157,27 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
   visibleTo: ADMIN_GERENTE,
   items: [
     { path: '/directorio', label: 'Usuarios', icon: Users, visibleTo: ADMIN_GERENTE },
-    { path: '/configuracion', label: 'Configuracion', icon: Settings, visibleTo: ADMIN_ONLY, matchPrefix: true },
-    { path: '/actividad-usuarios', label: 'Actividad', icon: Activity, visibleTo: ADMIN_ONLY },
-    { path: '/carga-masiva-usuarios', label: 'Carga Masiva', icon: Users, visibleTo: ADMIN_ONLY },
-    { path: '/admin-digital', label: 'Admin Digital', icon: CreditCard, visibleTo: ADMIN_ONLY },
+    { path: '/configuracion', label: 'Configuracion', icon: SlidersHorizontal, visibleTo: ADMIN_ONLY, matchPrefix: true },
+    { path: '/actividad-usuarios', label: 'Actividad', icon: UserCheck, visibleTo: ADMIN_ONLY },
+    { path: '/carga-masiva-usuarios', label: 'Carga Masiva', icon: Upload, visibleTo: ADMIN_ONLY },
+    { path: '/admin-digital', label: 'Admin Digital', icon: LayoutTemplate, visibleTo: ADMIN_ONLY },
     { path: '/admin/importacion-masiva', label: 'Importación Masiva', icon: Database, visibleTo: ADMIN_ONLY },
-    { path: '/comisiones', label: 'Comisiones Admin', icon: CreditCard, visibleTo: ADMIN_ONLY, matchPrefix: true, excludePrefixes: ['/comisiones/regimen-fiscal', '/comisiones/mapeo-vendedores'] },
-    { path: '/comisiones/regimen-fiscal', label: 'Regimen Fiscal', icon: DollarSign, visibleTo: ADMIN_ONLY, matchPrefix: true },
-    { path: '/comisiones/mapeo-vendedores', label: 'Mapeo Vendedores', icon: Users, visibleTo: ADMIN_ONLY },
-    { path: '/sicas/salud', label: 'SICAS Salud', icon: Activity, visibleTo: ADMIN_ONLY },
+    { path: '/comisiones', label: 'Comisiones Admin', icon: Percent, visibleTo: ADMIN_ONLY, matchPrefix: true, excludePrefixes: ['/comisiones/regimen-fiscal', '/comisiones/mapeo-vendedores'] },
+    { path: '/comisiones/regimen-fiscal', label: 'Regimen Fiscal', icon: Receipt, visibleTo: ADMIN_ONLY, matchPrefix: true },
+    { path: '/comisiones/mapeo-vendedores', label: 'Mapeo Vendedores', icon: GitBranch, visibleTo: ADMIN_ONLY },
+    { path: '/sicas/salud', label: 'SICAS Salud', icon: HeartPulse, visibleTo: ADMIN_ONLY },
     { path: '/seguwallet-admin', label: 'Seguwallet', icon: Wallet, visibleTo: ADMIN_ONLY },
-    { path: '/firmas-email', label: 'Firmas Email', icon: FileText, visibleTo: ADMIN_ONLY },
-    { path: '/admin/transaccionales', label: 'Transaccionales', icon: Send, visibleTo: ADMIN_ONLY },
-    { path: '/admin/diagnostico', label: 'Diagnostico', icon: Activity, visibleTo: ADMIN_ONLY },
-    { path: '/admin/mascara', label: 'Mascara de Usuario', icon: Eye, visibleTo: ADMIN_ONLY },
+    { path: '/firmas-email', label: 'Firmas Email', icon: PenLine, visibleTo: ADMIN_ONLY },
+    { path: '/admin/transaccionales', label: 'Transaccionales', icon: ArrowLeftRight, visibleTo: ADMIN_ONLY },
+    { path: '/admin/diagnostico', label: 'Diagnostico', icon: SearchCode, visibleTo: ADMIN_ONLY },
+    { path: '/admin/mascara', label: 'Mascara de Usuario', icon: UserCog, visibleTo: ADMIN_ONLY },
     { path: '/admin/telefonia', label: 'Telefonía', icon: Phone, visibleTo: ADMIN_ONLY },
-    { path: '/admin/modulos', label: 'Control de Módulos', icon: Eye, visibleTo: ADMIN_ONLY },
+    { path: '/admin/modulos', label: 'Control de Módulos', icon: LayoutGrid, visibleTo: ADMIN_ONLY },
     // Inteligencia Artificial
-    { path: '/admin/chava-inteligencia', label: 'Dashboard IA', icon: BarChart3, visibleTo: ADMIN_ONLY },
-    { path: '/admin/base-conocimiento', label: 'Base Conocimiento', icon: BookOpen, visibleTo: ADMIN_ONLY },
+    { path: '/admin/chava-inteligencia', label: 'Dashboard IA', icon: BrainCircuit, visibleTo: ADMIN_ONLY },
+    { path: '/admin/base-conocimiento', label: 'Base Conocimiento', icon: LibraryBig, visibleTo: ADMIN_ONLY },
     { path: '/admin/asistentes', label: 'Entrenamiento IA', icon: Bot, visibleTo: ADMIN_GERENTE, matchPrefix: true },
-    { path: '/admin/automatizacion-ia', label: 'Robots IA', icon: Sparkles, visibleTo: ADMIN_ONLY, matchPrefix: true },
+    { path: '/admin/automatizacion-ia', label: 'Robots IA', icon: Workflow, visibleTo: ADMIN_ONLY, matchPrefix: true },
     { path: '/admin/chava-ia', label: 'Auditoria IA', icon: Brain, visibleTo: ADMIN_ONLY },
   ],
 };
@@ -195,7 +195,7 @@ export const WORKSPACES: WorkspaceDefinition[] = [
 
 export const NAV_ORDER: NavEntry[] = [
   { type: 'link', item: { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visibleTo: ALL_ROLES } },
-  { type: 'link', item: { path: '/centro-digital', label: 'Centro Digital', icon: FolderOpen, visibleTo: ALL_ROLES } },
+  { type: 'link', item: { path: '/centro-digital', label: 'Centro Digital', icon: Monitor, visibleTo: ALL_ROLES } },
   { type: 'workspace', workspace: WORKSPACE_COMERCIAL },
   { type: 'workspace', workspace: WORKSPACE_CENTRO_CONTACTO },
   { type: 'workspace', workspace: WORKSPACE_COTIZAR },
@@ -205,7 +205,7 @@ export const NAV_ORDER: NavEntry[] = [
   { type: 'workspace', workspace: WORKSPACE_MERCADOTECNIA },
   { type: 'workspace', workspace: WORKSPACE_SEGUROS_EDUCATION },
   { type: 'link', item: { path: '/store', label: 'MOVI Store', icon: ShoppingBag, visibleTo: ALL_ROLES } },
-  { type: 'link', item: { path: '/comunicados', label: 'Comunicados', icon: FileText, visibleTo: ALL_ROLES, matchPrefix: true } },
+  { type: 'link', item: { path: '/comunicados', label: 'Comunicados', icon: Newspaper, visibleTo: ALL_ROLES, matchPrefix: true } },
 ];
 
 export function isWorkspaceVisible(ws: WorkspaceDefinition, userRole: UserRole): boolean {
