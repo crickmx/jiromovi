@@ -529,7 +529,7 @@ export function NuevoTramiteModal({
   const handleSubmitCotizacionEmision = async () => {
     if (!usuario) return;
 
-    const effectiveAgenteId = isAgent ? usuario.id : ceAgenteUserId;
+    const effectiveAgenteId = isAgent ? usuario.id : (ceAgenteUserId || (preloadedData?.instrucciones ? usuario.id : ''));
     // When agent creates, auto-assign responsable from office; otherwise use current user
     const effectiveAttendingId = isAgent ? (autoResponsableId || '') : usuario.id;
 
@@ -547,10 +547,10 @@ export function NuevoTramiteModal({
       instrucciones: descripcion
     };
 
-    if (!effectiveAgenteId) { setError('El agente es obligatorio'); return; }
-    if (!ceInsuranceTypeId) { setError('El tipo de seguro es obligatorio'); return; }
-    if (ceSelectedInsurers.length === 0) { setError('Debe seleccionar al menos una aseguradora'); return; }
-    if (!ceRequestDatetime) { setError('La fecha de inicio es obligatoria'); return; }
+    if (!effectiveAgenteId && !preloadedData?.instrucciones) { setError('El agente es obligatorio'); return; }
+    if (!ceInsuranceTypeId && !preloadedData?.instrucciones) { setError('El tipo de seguro es obligatorio'); return; }
+    if (ceSelectedInsurers.length === 0 && !preloadedData?.instrucciones) { setError('Debe seleccionar al menos una aseguradora'); return; }
+    if (!ceRequestDatetime && !preloadedData?.instrucciones) { setError('La fecha de inicio es obligatoria'); return; }
 
     setLoading(true);
     setError('');
