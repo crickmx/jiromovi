@@ -8,6 +8,7 @@ import {
   getConversationDisplayName, CHANNEL_LABELS, formatMoviPhone,
 } from '@/lib/unifiedContactCenter';
 import { ChannelBadge } from './ChannelBadge';
+import { NuevoTramiteModal } from '../tramites/NuevoTramiteModal';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -338,6 +339,14 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
   const [ticketLoading, setTicketLoading] = useState(false);
   const [creatingTicket, setCreatingTicket] = useState(false);
   const [ticketInstructions, setTicketInstructions] = useState('');
+  const [ticketTipo, setTicketTipo] = useState('cotizacion_emision');
+  const [ticketPrioridad, setTicketPrioridad] = useState('Media');
+  const [ticketError, setTicketError] = useState('');
+  const [addTicketError, setAddTicketError] = useState('');
+  const [showNuevoTramiteModal, setShowNuevoTramiteModal] = useState(false);
+  const [prefilledInstrucciones, setPrefilledInstrucciones] = useState('');
+  const [estatusList, setEstatusList] = useState<Array<{id: string; nombre: string}>>([]);
+  const [addingToTicket, setAddingToTicket] = useState<string | null>(null);
 
   // Automatic/AI mode
   const [assistants, setAssistants] = useState<CcAssistant[]>([]);
@@ -535,6 +544,12 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
+  useEffect(() => {
+    supabase.from('ticket_estatus').select('id, nombre').order('nombre').then(({ data }) => {
+      if (data) setEstatusList(data);
+    });
+  }, []);
+
   // ── Load auto mode state for WA MOVI ───────────────────────────────────────
   useEffect(() => {
     if (!isMoviChannel || !conversation.agentUserId) return;
@@ -651,30 +666,56 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
   const openCreateTicket = () => {
     const selected = messages.filter(m => selectedIds.has(m.id));
     const ctx = selected.length > 0 ? selected.map(m => m.body).filter(Boolean).join('\n') : messages.slice(-3).map(m => m.body).filter(Boolean).join('\n');
-    setTicketInstructions(ctx.slice(0, 500));
-    setShowCreateTicket(true);
+    setPrefilledInstrucciones(ctx.slice(0, 500));
+    setShowNuevoTramiteModal(true);
+  };
+
+  const handleNewTicketCreated = async (ticketId: string) => {
+    const selected = messages.filter(m => selectedIds.has(m.id));
+    const msgsToLink = selected.length > 0 ? selected : messages.slice(-5);
+    const agentUserId = conversation.agentUserId || currentUserId;
+    const rows = msgsToLink.map(m => ({
+      ticket_id: ticketId,
+      contact_center_message_id: m.id,
+      agent_user_id: agentUserId,
+      added_by_user_id: currentUserId,
+      action_type: 'created_task',
+    }));
+    if (rows.length > 0) {
+      await supabase.from('task_contact_center_items').insert(rows);
+    }
+    setSelectionMode(false);
+    setSelectedIds(new Set());
   };
 
   const createTicket = async () => {
     if (!ticketInstructions.trim() || creatingTicket) return;
     setCreatingTicket(true);
+    setTicketError('');
     try {
       const selectedMsgs = messages.filter(m => selectedIds.has(m.id));
-      await callEdgeFn('create-task-from-contact-messages', {
-        agent_user_id: conversation.agentUserId || currentUserId,
-        contact_phone: conversation.contactPhone,
-        contact_name: name,
-        messages: (selectedMsgs.length > 0 ? selectedMsgs : messages.slice(-5)).map(m => ({
-          id: m.id, body: m.body, direction: m.direction, created_at: m.sentAt,
-        })),
-        instrucciones: ticketInstructions,
-        tipo_tramite: 'Atencion_General',
-        prioridad: 'media',
+      const msgsToLink = selectedMsgs.length > 0 ? selectedMsgs : messages.slice(-5);
+      const agentUserId = conversation.agentUserId || currentUserId;
+      const result = await callEdgeFn('create-task-from-contact-messages', {
+        agentUserId,
+        messageIds: msgsToLink.map(m => m.id),
+        task: {
+          instrucciones: ticketInstructions.trim(),
+          tipo_tramite: ticketTipo,
+          prioridad: ticketPrioridad,
+        },
       });
-      setShowCreateTicket(false);
-      setSelectionMode(false);
-      setSelectedIds(new Set());
-    } catch { /* ignore */ } finally {
+      if (result?.success === false) {
+        setTicketError(result.error || 'Error al crear el tramite');
+      } else {
+        setShowCreateTicket(false);
+        setSelectionMode(false);
+        setSelectedIds(new Set());
+        alert(`Tramite ${result?.folio || ''} creado correctamente`);
+      }
+    } catch (e: unknown) {
+      setTicketError(e instanceof Error ? e.message : 'Error desconocido');
+    } finally {
       setCreatingTicket(false);
     }
   };
@@ -683,21 +724,44 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
   const openAddTicket = async () => {
     setShowAddTicket(true);
     setTicketLoading(true);
-    const result = await callEdgeFn('get-agent-open-tickets', { agent_user_id: currentUserId }).catch(() => ({ tickets: [] }));
+    setAddTicketError('');
+    const result = await callEdgeFn('get-agent-open-tickets', { agentUserId: conversation.agentUserId || currentUserId })
+      .catch(() => ({ success: false, tickets: [], error: 'Error de conexion al cargar tramites' }));
+    if (result?.success === false && result?.error) {
+      setAddTicketError(result.error);
+    }
     setOpenTickets(result?.tickets || []);
     setTicketLoading(false);
   };
 
   const addToTicket = async (ticketId: string) => {
+    setAddingToTicket(ticketId);
+    setAddTicketError('');
     const selected = messages.filter(m => selectedIds.has(m.id));
-    await callEdgeFn('add-contact-messages-to-task', {
-      ticket_id: ticketId,
-      agent_user_id: currentUserId,
-      messages: (selected.length > 0 ? selected : messages.slice(-3)).map(m => ({ id: m.id, body: m.body, direction: m.direction, created_at: m.sentAt })),
-    }).catch(() => {});
+    const msgsToLink = selected.length > 0 ? selected : messages.slice(-3);
+    const messageIds = msgsToLink.map(m => m.id);
+    console.log('[addToTicket] ticketId:', ticketId, 'messageIds:', messageIds, 'channel:', conversation.channel);
+    const result = await callEdgeFn('add-contact-messages-to-task', {
+      agentUserId: conversation.agentUserId || currentUserId,
+      ticketId,
+      messageIds,
+    }).catch(() => ({ success: false, error: 'Error de conexion' }));
+    console.log('[addToTicket] result:', result);
+    setAddingToTicket(null);
+    if (result?.success === false) {
+      setAddTicketError(result.error || 'Error al agregar mensajes al tramite');
+      return;
+    }
+    const added = typeof result?.added === 'number' ? result.added : messageIds.length;
+    if (added === 0) {
+      setAddTicketError(result?.message || 'Estos mensajes ya estaban vinculados a este tramite. Selecciona otros mensajes o elige un tramite diferente.');
+      setAddingToTicket(null);
+      return;
+    }
     setShowAddTicket(false);
     setSelectionMode(false);
     setSelectedIds(new Set());
+    alert(`${added} mensaje(s) vinculado(s) al tramite correctamente`);
   };
 
   // ── Assistants / Auto mode ──────────────────────────────────────────────────
@@ -1264,36 +1328,42 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
       )}
 
       {/* ── Crear tramite modal ──────────────────────────────────── */}
-      {showCreateTicket && (
-        <Modal title="Crear tramite" onClose={() => setShowCreateTicket(false)}>
-          <p className="text-xs text-neutral-500 mb-2">Instrucciones para el tramite (resumen de la conversacion):</p>
-          <textarea
-            value={ticketInstructions}
-            onChange={e => setTicketInstructions(e.target.value)}
-            rows={5}
-            className="w-full px-3 py-2.5 text-sm rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 focus:outline-none focus:ring-1 focus:ring-accent/40 resize-none mb-3"
-          />
-          <div className="flex gap-2">
-            <button onClick={() => setShowCreateTicket(false)} className="flex-1 px-4 py-2 text-sm border border-neutral-200 dark:border-neutral-700 rounded-xl text-neutral-600 hover:bg-neutral-50">Cancelar</button>
-            <button onClick={createTicket} disabled={creatingTicket || !ticketInstructions.trim()} className="flex-1 px-4 py-2 text-sm bg-accent text-white rounded-xl hover:bg-accent/90 disabled:opacity-50">
-              {creatingTicket ? 'Creando...' : 'Crear tramite'}
-            </button>
-          </div>
-        </Modal>
-      )}
+      <NuevoTramiteModal
+        isOpen={showNuevoTramiteModal}
+        onClose={() => setShowNuevoTramiteModal(false)}
+        onSuccess={() => setShowNuevoTramiteModal(false)}
+        onSuccessWithId={handleNewTicketCreated}
+        estatusList={estatusList}
+        preloadedData={{ instrucciones: prefilledInstrucciones }}
+      />
 
       {/* ── Agregar a tramite modal ──────────────────────────────── */}
       {showAddTicket && (
         <Modal title="Agregar a tramite existente" onClose={() => setShowAddTicket(false)}>
           <input value={ticketSearch} onChange={e => setTicketSearch(e.target.value)} placeholder="Buscar tramite..." className="w-full px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 mb-3 focus:outline-none focus:ring-1 focus:ring-accent/40" />
-          {ticketLoading ? <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-neutral-300" /></div>
-            : filteredTickets.length === 0 ? <p className="text-xs text-neutral-400 text-center py-6">Sin tramites abiertos</p>
+          {addTicketError && (
+            <p className="text-xs text-red-500 mb-3 flex items-center gap-1">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />{addTicketError}
+            </p>
+          )}
+          {ticketLoading
+            ? <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-neutral-300" /></div>
+            : filteredTickets.length === 0
+            ? <p className="text-xs text-neutral-400 text-center py-6">Sin tramites abiertos para este agente</p>
             : <div className="space-y-2 max-h-72 overflow-y-auto">
                 {filteredTickets.map(t => (
-                  <button key={t.id} onClick={() => addToTicket(t.id)} className="w-full text-left p-3 rounded-xl border border-neutral-100 dark:border-neutral-700 hover:border-accent/30 hover:bg-accent/5 transition-all">
+                  <button
+                    key={t.id}
+                    onClick={() => addToTicket(t.id)}
+                    disabled={addingToTicket === t.id}
+                    className="w-full text-left p-3 rounded-xl border border-neutral-100 dark:border-neutral-700 hover:border-accent/30 hover:bg-accent/5 transition-all disabled:opacity-60"
+                  >
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{t.folio}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-700 text-neutral-500 rounded-full">{t.estatus_nombre}</span>
+                      <div className="flex items-center gap-1.5">
+                        {addingToTicket === t.id && <Loader2 className="w-3 h-3 animate-spin text-accent" />}
+                        <span className="text-[10px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-700 text-neutral-500 rounded-full">{t.estatus_nombre}</span>
+                      </div>
                     </div>
                     <p className="text-xs text-neutral-500 line-clamp-2">{t.instrucciones}</p>
                   </button>

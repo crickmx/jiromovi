@@ -1072,7 +1072,7 @@ export default function CentroContacto() {
                 <select value={filterType} onChange={e => setFilterType(e.target.value)} className="text-xs rounded-md border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 py-1.5 px-2">
                   <option value="">Todo tipo</option>
                   <option value="manual">Manual</option>
-                  <option value="automatic">Automatico</option>
+                  {isAdmin && <option value="automatic">Automatico</option>}
                 </select>
                 {canFilterOffice && (
                   <select value={filterOffice} onChange={e => setFilterOffice(e.target.value)} className="text-xs rounded-md border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 py-1.5 px-2 col-span-2">
@@ -1171,8 +1171,8 @@ export default function CentroContacto() {
                 </div>
                 <div className="flex items-center gap-2">
                   {/* Mode toggle badge */}
-                  {/* Smart Assistant toggle — only for registered (non-external) agents */}
-                  {!selectedAgent.is_external && selectedAgent.agent_user_id && (
+                  {/* Smart Assistant (IA) — Admin only */}
+                  {isAdmin && !selectedAgent.is_external && selectedAgent.agent_user_id && (
                     <button
                       onClick={handleToggleSmartAssistant}
                       disabled={smartAssistantLoading}
@@ -1190,7 +1190,8 @@ export default function CentroContacto() {
                       )}
                     </button>
                   )}
-                  {conversationMode === 'automatic' && activeSession ? (
+                  {/* Auto mode — Admin only */}
+                  {isAdmin && (conversationMode === 'automatic' && activeSession ? (
                     <div className="flex items-center gap-1.5">
                       <span className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                         <Bot className="w-3 h-3" />
@@ -1221,7 +1222,7 @@ export default function CentroContacto() {
                     >
                       <Bot className="w-3 h-3" /> Auto
                     </button>
-                  )}
+                  ))}
                   {isUnassigned && (isAdmin || isGerente) && (
                     <button onClick={() => setShowAssignModal(true)} className="flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400">
                       <UserPlus className="w-3 h-3" /> Asignar
@@ -1271,8 +1272,8 @@ export default function CentroContacto() {
                 </div>
               )}
 
-              {/* Automatic mode panel */}
-              {conversationMode === 'automatic' && activeSession && (
+              {/* Automatic mode panel — Admin only */}
+              {isAdmin && conversationMode === 'automatic' && activeSession && (
                 <div className={`border-b ${
                   activeSession.current_stage === 'completion'
                     ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20'
@@ -1458,8 +1459,8 @@ export default function CentroContacto() {
                 </div>
               )}
 
-              {/* Smart Assistant Panel */}
-              {smartAssistantState && conversationMode !== 'automatic' && (
+              {/* Smart Assistant Panel — Admin only */}
+              {isAdmin && smartAssistantState && conversationMode !== 'automatic' && (
                 smartAssistantState.smart_assistant_status === 'awaiting_confirmation' ||
                 smartAssistantState.smart_assistant_status === 'paused'
               ) && (
@@ -1679,7 +1680,7 @@ export default function CentroContacto() {
       )}
 
       {/* Start Auto Mode Modal */}
-      {showStartAutoModal && selectedAgent && (
+      {isAdmin && showStartAutoModal && selectedAgent && (
         <StartAutoModeModal
           agentName={selectedAgent.agent_name}
           officeId={selectedAgent.agent_office_id}

@@ -79,11 +79,13 @@ interface NuevoTramiteModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  onSuccessWithId?: (ticketId: string) => void;
   estatusList: TramiteEstatus[];
   preloadedData?: {
     tipoTramite?: string;
     comisionesLoteId?: string;
     comisionesLoteLabel?: string;
+    instrucciones?: string;
   };
 }
 
@@ -91,6 +93,7 @@ export function NuevoTramiteModal({
   isOpen,
   onClose,
   onSuccess,
+  onSuccessWithId,
   estatusList,
   preloadedData
 }: NuevoTramiteModalProps) {
@@ -260,7 +263,7 @@ export function NuevoTramiteModal({
     }
 
     setPrioridad('Baja');
-    setDescripcion('');
+    setDescripcion(preloadedData?.instrucciones || '');
     setArchivos([]);
     setPolizaNumero('');
 
@@ -552,7 +555,8 @@ export function NuevoTramiteModal({
     setLoading(true);
     setError('');
     try {
-      await createRegistroActividad({ ...formData, creado_por: usuario.id });
+      const ticket = await createRegistroActividad({ ...formData, creado_por: usuario.id });
+      if (ticket?.id) onSuccessWithId?.(ticket.id);
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -793,6 +797,7 @@ export function NuevoTramiteModal({
         }
       }
 
+      if (ticket?.id) onSuccessWithId?.(ticket.id);
       onSuccess();
       onClose();
     } catch (err: any) {
