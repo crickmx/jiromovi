@@ -557,13 +557,8 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
       action: 'get_session_state',
       agent_user_id: conversation.agentUserId,
     }).then(d => {
-      if (d?.mode === 'automatic' && d?.active_session) {
-        setAutoMode(true);
-        setAutoSession(d.active_session);
-      } else {
-        setAutoMode(false);
-        setAutoSession(null);
-      }
+      setAutoMode(false);
+      setAutoSession(null);
     }).catch(() => {});
   }, [conversation.id, isMoviChannel, conversation.agentUserId]);
 
