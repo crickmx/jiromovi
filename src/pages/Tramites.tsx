@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X } from 'lucide-react';
+import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip } from 'lucide-react';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
 import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
@@ -46,6 +46,14 @@ interface TramiteItem {
   ticket_asignaciones: Array<{
     ejecutivo: { nombre_completo: string } | null;
   }>;
+  ticket_archivos: Array<{ id: string }>;
+}
+
+interface TicketTipoDB {
+  value: string;
+  label: string;
+  area: string;
+  color: string;
 }
 
 const TRAMITE_OPTIONS_FOR_FILTER = TIPO_TRAMITE_OPTIONS.filter(
@@ -93,6 +101,17 @@ export function Tramites() {
   const availablePrioridades = PRIORIDADES;
 
   const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const [tiposDb, setTiposDb] = useState<Map<string, TicketTipoDB>>(new Map());
+
+  useEffect(() => {
+    supabase.from('ticket_tipos').select('value, label, area, color').eq('activo', true).then(({ data }) => {
+      if (data) {
+        const map = new Map<string, TicketTipoDB>();
+        for (const t of data) map.set(t.value, t);
+        setTiposDb(map);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     loadUserArea();
@@ -178,7 +197,8 @@ export function Tramites() {
           agente:agente_id(nombre_completo, oficina_id, oficina:oficina_id(nombre)),
           responsable:assigned_to_user_id(nombre_completo),
           estatus:estatus_id(*),
-          ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo))
+          ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo)),
+          ticket_archivos(id)
         `)
         .order('fecha_creacion', { ascending: false });
 
@@ -540,7 +560,11 @@ export function Tramites() {
           {filteredTramites.map(tramite => {
             const area = getTipoTramiteArea(tramite.tipo_tramite);
             const ac = AREA_CONFIG[area];
-            const barClass = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
+            const tipoDb = tiposDb.get(tramite.tipo_tramite);
+            // Use DB color if available, otherwise fall back to area config
+            const dbColor = tipoDb?.color;
+            const fallbackBarClass = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
+            const hasArchivos = (tramite.ticket_archivos?.length ?? 0) > 0;
 
             return (
               <div
@@ -549,7 +573,10 @@ export function Tramites() {
                 className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden hover:shadow-md hover:border-neutral-300 dark:hover:border-white/15 transition-all duration-200 cursor-pointer group flex"
               >
                 {/* Colored left strip */}
-                <div className={`w-1.5 shrink-0 ${barClass}`} />
+                <div
+                  className={`w-1.5 shrink-0 ${!dbColor ? fallbackBarClass : ''}`}
+                  style={dbColor ? { backgroundColor: dbColor } : undefined}
+                />
 
                 {/* Card body */}
                 <div className="flex flex-1 min-w-0 flex-col sm:flex-row sm:divide-x divide-neutral-100 dark:divide-white/8">
@@ -558,11 +585,17 @@ export function Tramites() {
                   <div className="px-4 pt-4 pb-3 sm:pb-4 flex flex-col gap-2 sm:w-[38%] sm:shrink-0">
                     {/* Agent name + tipo */}
                     <div>
-                      <p className={`font-extrabold text-sm uppercase tracking-wide leading-tight ${ac.color}`}>
+                      <p
+                        className={`font-extrabold text-sm uppercase tracking-wide leading-tight ${!dbColor ? ac.color : ''}`}
+                        style={dbColor ? { color: dbColor } : undefined}
+                      >
                         {tramite.agente?.nombre_completo || 'Sin asignar'}
                       </p>
-                      <p className={`text-[11px] font-semibold mt-0.5 uppercase tracking-wide opacity-80 ${ac.color}`}>
-                        {getTipoTramiteLabel(tramite.tipo_tramite)}
+                      <p
+                        className={`text-[11px] font-semibold mt-0.5 uppercase tracking-wide opacity-80 ${!dbColor ? ac.color : ''}`}
+                        style={dbColor ? { color: dbColor } : undefined}
+                      >
+                        {tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}
                       </p>
                     </div>
 
@@ -600,9 +633,13 @@ export function Tramites() {
                       )}
                     </div>
 
-                    {/* Folio */}
-                    <p className={`text-[11px] font-extrabold uppercase tracking-widest mt-auto ${ac.color}`}>
+                    {/* Folio + clip indicator */}
+                    <p
+                      className={`text-[11px] font-extrabold uppercase tracking-widest mt-auto flex items-center gap-1.5 ${!dbColor ? ac.color : ''}`}
+                      style={dbColor ? { color: dbColor } : undefined}
+                    >
                       Folio: {tramite.folio}
+                      {hasArchivos && <Paperclip className="w-3 h-3 shrink-0" title={`${tramite.ticket_archivos.length} archivo(s) adjunto(s)`} />}
                     </p>
                   </div>
 
@@ -613,13 +650,20 @@ export function Tramites() {
                       {tramite.instrucciones}
                     </p>
                     <div className="flex items-end justify-between gap-2 mt-auto">
-                      {tramite.poliza && (
-                        <span className="flex items-center gap-1 text-[11px] text-neutral-400 dark:text-white/35">
-                          <FileText className="w-3 h-3" />
-                          {tramite.poliza}
-                        </span>
-                      )}
-                      {!tramite.poliza && <span />}
+                      <div className="flex items-center gap-2">
+                        {tramite.poliza && (
+                          <span className="flex items-center gap-1 text-[11px] text-neutral-400 dark:text-white/35">
+                            <FileText className="w-3 h-3" />
+                            {tramite.poliza}
+                          </span>
+                        )}
+                        {hasArchivos && (
+                          <span className="flex items-center gap-1 text-[11px] text-neutral-400 dark:text-white/35">
+                            <Paperclip className="w-3 h-3" />
+                            {tramite.ticket_archivos.length}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[11px] font-extrabold uppercase tracking-wide text-neutral-400 dark:text-white/35 text-right shrink-0">
                         Responsable: {tramite.responsable?.nombre_completo || 'Sin asignar'}
                       </p>

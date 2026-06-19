@@ -657,6 +657,45 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
   };
 
   // ── Create ticket ───────────────────────────────────────────────────────────
+  // Downloads a WhatsApp media URL, re-uploads to Supabase Storage, stores permanent URL
+  const attachMediaToTicket = async (msgsToLink: UnifiedMessage[], ticketId: string) => {
+    const mediaFiles = msgsToLink.flatMap(m => extractMediaFiles(m));
+    if (mediaFiles.length === 0) return;
+
+    const archivos: Array<{ ticket_id: string; usuario_id: string; nombre: string; url: string; tipo: string; tamano: number | null }> = [];
+
+    for (const f of mediaFiles) {
+      let finalUrl = f.url;
+      let tamano: number | null = null;
+
+      try {
+        const resp = await fetch(f.url);
+        if (resp.ok) {
+          const blob = await resp.blob();
+          const ext = f.nombre.includes('.') ? (f.nombre.split('.').pop() || 'bin') : 'bin';
+          const path = `${ticketId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+          const { error: uploadErr } = await supabase.storage
+            .from('ticket-archivos')
+            .upload(path, blob, { contentType: f.tipo });
+          if (!uploadErr) {
+            const { data: { publicUrl } } = supabase.storage.from('ticket-archivos').getPublicUrl(path);
+            finalUrl = publicUrl;
+            tamano = blob.size;
+          }
+        }
+      } catch {
+        // CORS or network error — fall back to original URL
+      }
+
+      archivos.push({ ticket_id: ticketId, usuario_id: currentUserId, nombre: f.nombre, url: finalUrl, tipo: f.tipo, tamano });
+    }
+
+    if (archivos.length > 0) {
+      const { error } = await supabase.from('ticket_archivos').insert(archivos);
+      if (error) console.error('Error attaching WhatsApp media to tramite:', error);
+    }
+  };
+
   // Extracts all media files from a message for auto-attaching to a tramite
   const extractMediaFiles = (msg: UnifiedMessage): Array<{ url: string; nombre: string; tipo: string }> => {
     const files: Array<{ url: string; nombre: string; tipo: string }> = [];
@@ -717,20 +756,8 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
       await supabase.from('task_contact_center_items').insert(rows);
     }
 
-    // Auto-attach any media files from the linked messages
-    const archivos = msgsToLink.flatMap(m =>
-      extractMediaFiles(m).map(f => ({
-        ticket_id: ticketId,
-        usuario_id: currentUserId,
-        nombre: f.nombre,
-        url: f.url,
-        tipo: f.tipo,
-        tamano: null as number | null,
-      }))
-    );
-    if (archivos.length > 0) {
-      await supabase.from('ticket_archivos').insert(archivos);
-    }
+    // Auto-attach media files: download from WhatsApp CDN → re-upload to Supabase Storage
+    await attachMediaToTicket(msgsToLink, ticketId);
 
     setSelectionMode(false);
     setSelectedIds(new Set());
@@ -804,20 +831,8 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
       return;
     }
 
-    // Auto-attach any media files from the linked messages
-    const archivos = msgsToLink.flatMap(m =>
-      extractMediaFiles(m).map(f => ({
-        ticket_id: ticketId,
-        usuario_id: currentUserId,
-        nombre: f.nombre,
-        url: f.url,
-        tipo: f.tipo,
-        tamano: null as number | null,
-      }))
-    );
-    if (archivos.length > 0) {
-      await supabase.from('ticket_archivos').insert(archivos);
-    }
+    // Auto-attach media files: download from WhatsApp CDN → re-upload to Supabase Storage
+    await attachMediaToTicket(msgsToLink, ticketId);
 
     setShowAddTicket(false);
     setSelectionMode(false);
@@ -853,6 +868,12 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
   const stopAutoMode = async () => {
     if (!conversation.agentUserId) return;
     await callEdgeFn('contact-center-assistant-process', { action: 'cancel_session', agent_user_id: conversation.agentUserId }).catch(() => {});
+    // Disable smart assistant in DB so the webhook stops auto-creating new sessions
+    await supabase
+      .from('contact_center_smart_assistant_config')
+      .update({ smart_assistant_enabled: false, smart_assistant_status: 'inactive' })
+      .eq('agent_user_id', conversation.agentUserId)
+      .catch(() => {});
     setAutoMode(false);
     setAutoSession(null);
   };
