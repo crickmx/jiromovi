@@ -191,17 +191,34 @@ export function FilePreviewModal({
       );
     }
 
-    // PDFs
+    // PDFs — use <object> for better cross-browser inline rendering
     if (effectiveType?.includes('pdf')) {
       return (
-        <div className="flex-1 bg-neutral-50 rounded-xl overflow-hidden">
-          <iframe
-            src={`${signedUrl}#view=FitH`}
-            className="w-full h-full min-h-[70vh]"
-            title={friendlyName}
+        <div className="flex-1 bg-neutral-50 rounded-xl overflow-hidden flex flex-col">
+          <object
+            data={signedUrl}
+            type="application/pdf"
+            className="w-full flex-1 min-h-[70vh]"
             onLoad={() => setLoading(false)}
-            onError={() => { setLoading(false); setError(true); }}
-          />
+          >
+            {/* Fallback when browser can't render PDF inline */}
+            <div className="flex-1 flex items-center justify-center bg-neutral-50 rounded-xl min-h-[70vh]">
+              <div className="text-center space-y-4">
+                <FileText className="w-16 h-16 text-red-400 mx-auto" />
+                <div>
+                  <p className="text-lg font-semibold text-neutral-900">{friendlyName}</p>
+                  <p className="text-sm text-neutral-500 mt-1">Tu navegador no puede mostrar el PDF directamente</p>
+                </div>
+                <button
+                  onClick={() => { setLoading(false); window.open(signedUrl, '_blank'); }}
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-all font-semibold inline-flex items-center space-x-2"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Abrir en nueva pestaña</span>
+                </button>
+              </div>
+            </div>
+          </object>
         </div>
       );
     }
