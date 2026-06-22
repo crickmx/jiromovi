@@ -19,7 +19,20 @@ interface TicketTipo {
   activo: boolean;
   is_custom: boolean;
   orden: number;
+  assignment_mode: string;
 }
+
+const ASSIGNMENT_MODE_LABELS: Record<string, string> = {
+  direct: 'Asignación directa',
+  pool:   'Cola Mesa de Control (sin asignar)',
+  auto:   'Auto-asignar desde oficina',
+};
+
+const ASSIGNMENT_MODE_DESCRIPTIONS: Record<string, string> = {
+  direct: 'El creador elige explícitamente el responsable al abrir el trámite.',
+  pool:   'El trámite queda sin responsable. Mesa de Control o los ejecutivos se autoasignan.',
+  auto:   'Se asigna automáticamente al responsable configurado en la oficina del agente.',
+};
 
 const AREAS = ['Comercial', 'Operaciones', 'Mercadotecnia', 'Administración', 'Otro'] as const;
 
@@ -92,7 +105,7 @@ export function GestionCatalogosRegistro() {
   const [editingTipo, setEditingTipo] = useState<string | null>(null);
   const [showNewTipoForm, setShowNewTipoForm] = useState(false);
   const [newTipo, setNewTipo] = useState({ label: '', area: 'Comercial' as typeof AREAS[number], color: '#0369a1' });
-  const [editTipoData, setEditTipoData] = useState({ label: '', area: 'Comercial' as typeof AREAS[number], color: '#0369a1' });
+  const [editTipoData, setEditTipoData] = useState({ label: '', area: 'Comercial' as typeof AREAS[number], color: '#0369a1', assignment_mode: 'direct' });
 
   const isAdmin = usuario?.rol === 'Administrador';
 
@@ -229,14 +242,18 @@ export function GestionCatalogosRegistro() {
 
   const startEditTipo = (t: TicketTipo) => {
     setEditingTipo(t.id);
-    setEditTipoData({ label: t.label, area: t.area as typeof AREAS[number], color: t.color });
+    setEditTipoData({ label: t.label, area: t.area as typeof AREAS[number], color: t.color, assignment_mode: t.assignment_mode || 'direct' });
   };
 
   const handleEditTipo = async (id: string, isCustom: boolean) => {
     if (!editTipoData.label.trim()) { flash('El nombre es obligatorio', 'error'); return; }
     setLoading(true);
     try {
-      const updatePayload: Record<string, string> = { label: editTipoData.label.trim(), color: editTipoData.color };
+      const updatePayload: Record<string, string> = {
+        label: editTipoData.label.trim(),
+        color: editTipoData.color,
+        assignment_mode: editTipoData.assignment_mode,
+      };
       if (isCustom) updatePayload.area = editTipoData.area;
       const { error: updateError } = await supabase.from('ticket_tipos').update(updatePayload).eq('id', id);
       if (updateError) throw updateError;
@@ -556,6 +573,27 @@ export function GestionCatalogosRegistro() {
                             <label className="block text-sm font-medium text-neutral-700 mb-2">Color</label>
                             <ColorPicker value={editTipoData.color} onChange={(c) => setEditTipoData({ ...editTipoData, color: c })} />
                           </div>
+                          <div>
+                            <label className="block text-sm font-medium text-neutral-700 mb-1.5">Modo de asignación</label>
+                            <div className="space-y-2">
+                              {(['direct', 'pool', 'auto'] as const).map(mode => (
+                                <label key={mode} className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${editTipoData.assignment_mode === mode ? 'bg-blue-50 border-blue-300' : 'border-neutral-200 hover:bg-neutral-50'}`}>
+                                  <input
+                                    type="radio"
+                                    name="assignment_mode"
+                                    value={mode}
+                                    checked={editTipoData.assignment_mode === mode}
+                                    onChange={() => setEditTipoData({ ...editTipoData, assignment_mode: mode })}
+                                    className="mt-0.5 shrink-0"
+                                  />
+                                  <div>
+                                    <p className="text-sm font-semibold text-neutral-800">{ASSIGNMENT_MODE_LABELS[mode]}</p>
+                                    <p className="text-xs text-neutral-500 mt-0.5">{ASSIGNMENT_MODE_DESCRIPTIONS[mode]}</p>
+                                  </div>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleEditTipo(tipo.id, tipo.is_custom)}
@@ -594,6 +632,11 @@ export function GestionCatalogosRegistro() {
                               )}
                             </div>
                             <p className="text-[11px] text-neutral-400 font-mono mt-0.5">{tipo.value}</p>
+                            {tipo.assignment_mode && tipo.assignment_mode !== 'direct' && (
+                              <span className={`inline-block mt-1 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${tipo.assignment_mode === 'pool' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                                {ASSIGNMENT_MODE_LABELS[tipo.assignment_mode] || tipo.assignment_mode}
+                              </span>
+                            )}
                           </div>
                           {/* Actions */}
                           <div className="flex items-center gap-1 shrink-0">

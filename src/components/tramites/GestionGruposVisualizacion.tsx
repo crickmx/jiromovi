@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Users, UserPlus, UserMinus, Search, ShieldCheck, Briefcase, Wrench, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, Building2, X, Check, TriangleAlert as AlertTriangle, Loader as Loader2, Globe } from 'lucide-react';
+import { Users, UserPlus, UserMinus, Search, ShieldCheck, Briefcase, Wrench, Plus, Pencil, Trash2, ChevronRight, Building2, X, Check, TriangleAlert as AlertTriangle, Loader as Loader2, Globe, Crown, Zap, Eye } from 'lucide-react';
 import { AREA_CONFIG, type AreaCategoria } from '../../lib/registroActividadesTypes';
 
 interface Grupo {
@@ -25,7 +25,14 @@ interface Miembro {
   oficina_nombre: string | null;
   rol: string;
   oficina_id: string | null;
+  rol_en_equipo: 'lider' | 'ejecutivo' | 'miembro';
 }
+
+const ROL_CONFIG = {
+  lider:     { label: 'Líder',     bg: 'bg-amber-100',   text: 'text-amber-800',  icon: Crown },
+  ejecutivo: { label: 'Ejecutivo', bg: 'bg-blue-100',    text: 'text-blue-700',   icon: Zap   },
+  miembro:   { label: 'Miembro',   bg: 'bg-neutral-100', text: 'text-neutral-600', icon: Eye  },
+} as const;
 
 interface GrupoOficina {
   id: string;
@@ -66,6 +73,8 @@ export function GestionGruposVisualizacion() {
   // Members panel
   const [miembros, setMiembros] = useState<Miembro[]>([]);
   const [searchMiembro, setSearchMiembro] = useState('');
+  const [pendingAdd, setPendingAdd] = useState<{ userId: string; rol: 'lider' | 'ejecutivo' | 'miembro' } | null>(null);
+  const [editingRolMiembro, setEditingRolMiembro] = useState<string | null>(null);
 
   // Offices panel
   const [grupoOficinas, setGrupoOficinas] = useState<GrupoOficina[]>([]);
@@ -273,18 +282,30 @@ export function GestionGruposVisualizacion() {
     setPanel('members');
   };
 
-  const handleAgregarMiembro = async (usuarioId: string) => {
+  const handleAgregarMiembro = async (usuarioId: string, rol: 'lider' | 'ejecutivo' | 'miembro' = 'ejecutivo') => {
     if (!selectedGrupo) return;
     const { error } = await supabase
       .from('tramites_grupos_miembros')
-      .insert({ grupo_id: selectedGrupo.id, usuario_id: usuarioId });
+      .insert({ grupo_id: selectedGrupo.id, usuario_id: usuarioId, rol_en_equipo: rol });
     if (error && error.code !== '23505') { alert('Error: ' + error.message); return; }
     await supabase.from('ticket_team_audit_logs').insert({
       team_id: selectedGrupo.id, action: 'member_added',
-      new_value: { usuario_id: usuarioId }, performed_by: usuario?.id,
+      new_value: { usuario_id: usuarioId, rol_en_equipo: rol }, performed_by: usuario?.id,
     });
     await loadMiembros(selectedGrupo.id);
     await loadGrupos();
+  };
+
+  const handleChangeRolMiembro = async (usuarioId: string, nuevoRol: 'lider' | 'ejecutivo' | 'miembro') => {
+    if (!selectedGrupo) return;
+    const { error } = await supabase
+      .from('tramites_grupos_miembros')
+      .update({ rol_en_equipo: nuevoRol })
+      .eq('grupo_id', selectedGrupo.id)
+      .eq('usuario_id', usuarioId);
+    if (error) { alert('Error: ' + error.message); return; }
+    setEditingRolMiembro(null);
+    await loadMiembros(selectedGrupo.id);
   };
 
   const handleRemoverMiembro = async (usuarioId: string) => {
@@ -724,24 +745,59 @@ export function GestionGruposVisualizacion() {
               {miembros.length === 0 ? (
                 <p className="text-sm text-neutral-400 text-center py-6">No hay miembros asignados</p>
               ) : (
-                miembros.map(m => (
-                  <div key={m.usuario_id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl group hover:bg-neutral-100 transition-colors">
-                    <div className="min-w-0">
-                      <p className="font-medium text-neutral-900 text-sm truncate">{m.nombre_completo}</p>
-                      <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-500">
-                        <span>{m.rol}</span>
-                        {m.oficina_nombre && <><span className="text-neutral-300">·</span><span>{m.oficina_nombre}</span></>}
+                miembros.map(m => {
+                  const rc = ROL_CONFIG[m.rol_en_equipo] ?? ROL_CONFIG.miembro;
+                  const RolIcon = rc.icon;
+                  return (
+                    <div key={m.usuario_id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl group hover:bg-neutral-100 transition-colors">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium text-neutral-900 text-sm truncate">{m.nombre_completo}</p>
+                          <div className="relative">
+                            <button
+                              onClick={() => setEditingRolMiembro(editingRolMiembro === m.usuario_id ? null : m.usuario_id)}
+                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-semibold ${rc.bg} ${rc.text} hover:opacity-75 transition-opacity flex-shrink-0`}
+                              title="Cambiar rol en equipo"
+                            >
+                              <RolIcon className="w-2.5 h-2.5" />
+                              {rc.label}
+                            </button>
+                            {editingRolMiembro === m.usuario_id && (
+                              <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-neutral-200 rounded-xl shadow-lg p-1 space-y-0.5 min-w-[130px]">
+                                {(['lider', 'ejecutivo', 'miembro'] as const).map(rol => {
+                                  const rci = ROL_CONFIG[rol];
+                                  const RCI = rci.icon;
+                                  return (
+                                    <button
+                                      key={rol}
+                                      onClick={() => handleChangeRolMiembro(m.usuario_id, rol)}
+                                      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${m.rol_en_equipo === rol ? `${rci.bg} ${rci.text}` : 'text-neutral-700 hover:bg-neutral-50'}`}
+                                    >
+                                      <RCI className="w-3 h-3" />
+                                      {rci.label}
+                                      {m.rol_en_equipo === rol && <Check className="w-3 h-3 ml-auto" />}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-500">
+                          <span>{m.rol}</span>
+                          {m.oficina_nombre && <><span className="text-neutral-300">·</span><span>{m.oficina_nombre}</span></>}
+                        </div>
                       </div>
+                      <button
+                        onClick={() => handleRemoverMiembro(m.usuario_id)}
+                        className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-all ml-2 flex-shrink-0"
+                        title="Remover del equipo"
+                      >
+                        <UserMinus className="w-4 h-4 text-red-600" />
+                      </button>
                     </div>
-                    <button
-                      onClick={() => handleRemoverMiembro(m.usuario_id)}
-                      className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-all"
-                      title="Remover del equipo"
-                    >
-                      <UserMinus className="w-4 h-4 text-red-600" />
-                    </button>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
@@ -771,21 +827,61 @@ export function GestionGruposVisualizacion() {
                   </p>
                 ) : (
                   miembrosDisponibles.map(u => (
-                    <div key={u.id} className="flex items-center justify-between p-3 border border-neutral-100 rounded-xl hover:bg-neutral-50 transition-colors">
-                      <div className="min-w-0">
-                        <p className="font-medium text-neutral-900 text-sm truncate">{u.nombre_completo}</p>
-                        <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-500">
-                          <span>{u.rol}</span>
-                          {u.oficina_nombre && <><span className="text-neutral-300">·</span><span>{u.oficina_nombre}</span></>}
+                    <div key={u.id} className="border border-neutral-100 rounded-xl overflow-hidden">
+                      <div className="flex items-center justify-between p-3 hover:bg-neutral-50 transition-colors">
+                        <div className="min-w-0">
+                          <p className="font-medium text-neutral-900 text-sm truncate">{u.nombre_completo}</p>
+                          <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-500">
+                            <span>{u.rol}</span>
+                            {u.oficina_nombre && <><span className="text-neutral-300">·</span><span>{u.oficina_nombre}</span></>}
+                          </div>
                         </div>
+                        {pendingAdd?.userId === u.id ? (
+                          <button
+                            onClick={() => setPendingAdd(null)}
+                            className="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors flex-shrink-0"
+                          >
+                            <X className="w-3.5 h-3.5 text-neutral-400" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setPendingAdd({ userId: u.id, rol: 'ejecutivo' })}
+                            className="p-1.5 rounded-lg hover:bg-green-100 transition-colors flex-shrink-0"
+                            title="Agregar al equipo"
+                          >
+                            <UserPlus className="w-4 h-4 text-green-600" />
+                          </button>
+                        )}
                       </div>
-                      <button
-                        onClick={() => handleAgregarMiembro(u.id)}
-                        className="p-1.5 rounded-lg hover:bg-green-100 transition-colors flex-shrink-0"
-                        title="Agregar al equipo"
-                      >
-                        <UserPlus className="w-4 h-4 text-green-600" />
-                      </button>
+                      {pendingAdd?.userId === u.id && (
+                        <div className="px-3 pb-3 bg-neutral-50 border-t border-neutral-100">
+                          <p className="text-[11px] text-neutral-500 font-medium mb-2 mt-2">Rol en el equipo:</p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {(['lider', 'ejecutivo', 'miembro'] as const).map(rol => {
+                              const rci = ROL_CONFIG[rol];
+                              const RCI = rci.icon;
+                              return (
+                                <button
+                                  key={rol}
+                                  onClick={() => { void handleAgregarMiembro(u.id, rol); setPendingAdd(null); }}
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border-2 transition-colors ${pendingAdd.rol === rol ? `${rci.bg} ${rci.text} border-current` : 'border-neutral-200 text-neutral-500 hover:border-neutral-400'}`}
+                                  onMouseEnter={() => setPendingAdd(prev => prev ? { ...prev, rol } : prev)}
+                                >
+                                  <RCI className="w-3 h-3" />
+                                  {rci.label}
+                                </button>
+                              );
+                            })}
+                            <button
+                              onClick={() => { void handleAgregarMiembro(u.id, pendingAdd.rol); setPendingAdd(null); }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors ml-auto"
+                            >
+                              <Check className="w-3 h-3" />
+                              Agregar
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))
                 )}

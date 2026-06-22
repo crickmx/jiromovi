@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getCached, setCached, invalidateCacheByPrefix } from '../lib/sessionCache';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw } from 'lucide-react';
+import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check } from 'lucide-react';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
 import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
@@ -56,6 +57,7 @@ interface TicketTipoDB {
   label: string;
   area: string;
   color: string;
+  assignment_mode: string;
 }
 
 const TRAMITE_OPTIONS_FOR_FILTER = TIPO_TRAMITE_OPTIONS.filter(
@@ -89,6 +91,12 @@ export function Tramites() {
   const isAgente = usuario?.rol === 'Agente';
   const canManageCatalogs = isAdmin || isGerente;
 
+  // Assignment UI state
+  const [myOperacionesRole, setMyOperacionesRole] = useState<'lider' | 'ejecutivo' | 'miembro' | null>(null);
+  const [assigningTramiteId, setAssigningTramiteId] = useState<string | null>(null);
+  const [teamEjecutivos, setTeamEjecutivos] = useState<Array<{ id: string; nombre_completo: string }>>([]);
+  const [assignTargetId, setAssignTargetId] = useState('');
+
   // Estatus filtered by selected tipo_tramite
   const filteredEstatusList = (() => {
     if (selectedTipo === 'todos') return estatusList;
@@ -107,7 +115,7 @@ export function Tramites() {
   const [tiposDb, setTiposDb] = useState<Map<string, TicketTipoDB>>(new Map());
 
   useEffect(() => {
-    supabase.from('ticket_tipos').select('value, label, area, color').eq('activo', true).then(({ data }) => {
+    supabase.from('ticket_tipos').select('value, label, area, color, assignment_mode').eq('activo', true).then(({ data }) => {
       if (data) {
         const map = new Map<string, TicketTipoDB>();
         for (const t of data) map.set(t.value, t);
@@ -118,6 +126,7 @@ export function Tramites() {
 
   useEffect(() => {
     loadUserArea();
+    loadMyOperacionesRole();
   }, [usuario?.id]);
 
   useEffect(() => {
@@ -133,7 +142,7 @@ export function Tramites() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'tickets' },
-        () => { loadTramites(); }
+        () => { loadTramites(true); } // bypass cache on realtime change
       )
       .subscribe();
 
@@ -182,17 +191,31 @@ export function Tramites() {
   };
 
   const loadEstatus = async () => {
+    const ESTATUS_CACHE_KEY = 'tramites_estatus';
+    const cached = getCached<TramiteEstatus[]>(ESTATUS_CACHE_KEY);
+    if (cached) { setEstatusList(cached); return; }
+
     const { data } = await supabase
       .from('ticket_estatus')
       .select('*')
       .eq('activo', true)
       .order('orden');
 
-    if (data) setEstatusList(data);
+    if (data) {
+      setEstatusList(data);
+      setCached(ESTATUS_CACHE_KEY, data, 10 * 60 * 1000); // 10 min — estatus rarely changes
+    }
   };
 
-  const loadTramites = async () => {
+  const loadTramites = async (bypassCache = false) => {
     if (!usuario) return;
+
+    const cacheKey = `tramites_${activeTab}`;
+
+    if (!bypassCache) {
+      const cached = getCached<TramiteItem[]>(cacheKey);
+      if (cached) { setTramites(cached); return; }
+    }
 
     try {
       let query = supabase
@@ -236,8 +259,10 @@ export function Tramites() {
         }));
 
         setTramites(tramitesWithAsignaciones as TramiteItem[]);
+        setCached(cacheKey, tramitesWithAsignaciones as TramiteItem[], 3 * 60 * 1000); // 3 min
       } else {
         setTramites([]);
+        setCached(cacheKey, [], 3 * 60 * 1000);
       }
     } catch (error) {
       console.error('Exception loading tramites:', error);
@@ -273,6 +298,7 @@ export function Tramites() {
       eliminado_at: new Date().toISOString(),
       eliminado_por: usuario.id,
     }).eq('id', tramiteId);
+    invalidateCacheByPrefix('tramites_');
     setTramites(prev => prev.filter(t => t.id !== tramiteId));
     loadPapelera();
   };
@@ -282,8 +308,9 @@ export function Tramites() {
       eliminado_at: null,
       eliminado_por: null,
     }).eq('id', tramiteId);
+    invalidateCacheByPrefix('tramites_');
     setTramitesPapelera(prev => prev.filter(t => t.id !== tramiteId));
-    loadTramites();
+    loadTramites(true);
   };
 
   const handlePermanentDelete = async (tramiteId: string) => {
@@ -297,7 +324,66 @@ export function Tramites() {
     if (!confirm(`¿Vaciar la papelera? Se eliminarán permanentemente ${tramitesPapelera.length} trámite(s). Esta acción no se puede deshacer.`)) return;
     const ids = tramitesPapelera.map(t => t.id);
     await supabase.from('tickets').delete().in('id', ids);
+    invalidateCacheByPrefix('tramites_');
     setTramitesPapelera([]);
+  };
+
+  const loadMyOperacionesRole = async () => {
+    if (!usuario?.id) return;
+    const { data } = await supabase
+      .from('tramites_grupos_miembros')
+      .select('rol_en_equipo, grupo:grupo_id(area_categoria, activo)')
+      .eq('usuario_id', usuario.id);
+    if (data) {
+      type Row = { rol_en_equipo: string; grupo: { area_categoria: string; activo: boolean } | null };
+      const opsEntry = (data as Row[]).find(m => m.grupo?.area_categoria === 'Operaciones' && m.grupo?.activo);
+      setMyOperacionesRole(opsEntry ? (opsEntry.rol_en_equipo as 'lider' | 'ejecutivo' | 'miembro') : null);
+    }
+  };
+
+  const loadTeamEjecutivos = async () => {
+    const { data: grupos } = await supabase
+      .from('tramites_grupos_visualizacion')
+      .select('id')
+      .eq('area_categoria', 'Operaciones')
+      .eq('activo', true);
+    if (!grupos || grupos.length === 0) return;
+    const grupoIds = grupos.map((g: { id: string }) => g.id);
+    const { data: miembros } = await supabase
+      .from('tramites_grupos_miembros')
+      .select('usuario_id, usuarios!inner(nombre_completo)')
+      .in('grupo_id', grupoIds)
+      .in('rol_en_equipo', ['lider', 'ejecutivo']);
+    if (miembros) {
+      type MRow = { usuario_id: string; usuarios: { nombre_completo: string } };
+      const unique = new Map<string, string>();
+      for (const m of miembros as MRow[]) {
+        if (!unique.has(m.usuario_id)) unique.set(m.usuario_id, m.usuarios.nombre_completo);
+      }
+      setTeamEjecutivos([...unique.entries()].map(([id, nombre_completo]) => ({ id, nombre_completo })));
+    }
+  };
+
+  const handleTakeTramite = async (tramiteId: string) => {
+    if (!usuario) return;
+    await supabase.from('tickets').update({ assigned_to_user_id: usuario.id }).eq('id', tramiteId);
+    await supabase.from('ticket_asignaciones').insert({
+      ticket_id: tramiteId, ejecutivo_id: usuario.id, asignado_por: usuario.id,
+    });
+    invalidateCacheByPrefix('tramites_');
+    loadTramites(true);
+  };
+
+  const handleAssignTramite = async (tramiteId: string, ejecutivoId: string) => {
+    if (!usuario || !ejecutivoId) return;
+    await supabase.from('tickets').update({ assigned_to_user_id: ejecutivoId }).eq('id', tramiteId);
+    await supabase.from('ticket_asignaciones').insert({
+      ticket_id: tramiteId, ejecutivo_id: ejecutivoId, asignado_por: usuario.id,
+    });
+    setAssigningTramiteId(null);
+    setAssignTargetId('');
+    invalidateCacheByPrefix('tramites_');
+    loadTramites(true);
   };
 
   const getTipoTramiteLabel = (tipo: string) => centralGetLabel(tipo);
@@ -852,7 +938,7 @@ export function Tramites() {
                       <span className="font-semibold text-neutral-500 dark:text-white/50">Mensaje: </span>
                       {tramite.instrucciones}
                     </p>
-                    <div className="flex items-end justify-between gap-2 mt-auto">
+                    <div className="flex items-end justify-between gap-2 mt-auto flex-wrap">
                       <div className="flex items-center gap-2">
                         {tramite.poliza && (
                           <span className="flex items-center gap-1 text-[11px] text-neutral-400 dark:text-white/35">
@@ -867,9 +953,73 @@ export function Tramites() {
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] font-extrabold uppercase tracking-wide text-neutral-400 dark:text-white/35 text-right shrink-0">
-                        Responsable: {tramite.responsable?.nombre_completo || 'Sin asignar'}
-                      </p>
+                      {(() => {
+                        const isPool = tiposDb.get(tramite.tipo_tramite)?.assignment_mode === 'pool';
+                        const isUnassigned = tramite.assigned_to_user_id === null;
+                        const canTake = myOperacionesRole === 'ejecutivo' || myOperacionesRole === 'miembro' || myOperacionesRole === 'lider';
+                        const canAssign = myOperacionesRole === 'lider' || isAdmin;
+                        if (isPool && isUnassigned && activeTab === 'activos') {
+                          return (
+                            <div className="flex items-center gap-1.5 flex-wrap justify-end" onClick={e => e.stopPropagation()}>
+                              <span className="text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/40">
+                                Sin Asignar
+                              </span>
+                              {canTake && !canAssign && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); void handleTakeTramite(tramite.id); }}
+                                  className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 transition-colors"
+                                >
+                                  <UserCheck className="w-3 h-3" />
+                                  Tomar
+                                </button>
+                              )}
+                              {canAssign && (
+                                assigningTramiteId === tramite.id ? (
+                                  <div className="flex items-center gap-1">
+                                    <select
+                                      value={assignTargetId}
+                                      onChange={e => setAssignTargetId(e.target.value)}
+                                      onClick={e => e.stopPropagation()}
+                                      className="text-xs border border-neutral-200 dark:border-white/15 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none max-w-[150px] bg-white dark:bg-neutral-800 dark:text-white"
+                                    >
+                                      <option value="">Ejecutivo...</option>
+                                      {teamEjecutivos.map(u => (
+                                        <option key={u.id} value={u.id}>{u.nombre_completo}</option>
+                                      ))}
+                                    </select>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); void handleAssignTramite(tramite.id, assignTargetId); }}
+                                      disabled={!assignTargetId}
+                                      className="p-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition-colors"
+                                    >
+                                      <Check className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setAssigningTramiteId(null); setAssignTargetId(''); }}
+                                      className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/8 transition-colors text-neutral-400"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setAssigningTramiteId(tramite.id); setAssignTargetId(''); void loadTeamEjecutivos(); }}
+                                    className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-lg bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-white/8 dark:text-white/70 border border-neutral-200 dark:border-white/10 transition-colors"
+                                  >
+                                    <UserPlus className="w-3 h-3" />
+                                    Asignar
+                                  </button>
+                                )
+                              )}
+                            </div>
+                          );
+                        }
+                        return (
+                          <p className="text-[11px] font-extrabold uppercase tracking-wide text-neutral-400 dark:text-white/35 text-right shrink-0">
+                            Responsable: {tramite.responsable?.nombre_completo || 'Sin asignar'}
+                          </p>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -885,6 +1035,7 @@ export function Tramites() {
         onClose={() => setShowNuevoModal(false)}
         onSuccess={() => {
           setShowNuevoModal(false);
+          invalidateCacheByPrefix('tramites_');
           loadData();
         }}
         estatusList={estatusList}

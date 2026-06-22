@@ -10,6 +10,24 @@ import { LoadingFactCard } from '../components/loading/LoadingFactCard';
 const BONOS_URL = import.meta.env.VITE_BONOS_URL || 'http://localhost:8003';
 const IS_LOCAL_BONOS = BONOS_URL.includes('localhost') || BONOS_URL.includes('127.0.');
 
+const SSO_CACHE_KEY = 'bonos_sso_ts';
+const SSO_CACHE_TTL_MS = 45 * 60 * 1000; // 45 min
+
+function readSsoCache(): boolean {
+  try {
+    const ts = sessionStorage.getItem(SSO_CACHE_KEY);
+    return !!ts && Date.now() - parseInt(ts) < SSO_CACHE_TTL_MS;
+  } catch { return false; }
+}
+
+function writeSsoCache(): void {
+  try { sessionStorage.setItem(SSO_CACHE_KEY, Date.now().toString()); } catch {}
+}
+
+function clearSsoCacheStorage(): void {
+  try { sessionStorage.removeItem(SSO_CACHE_KEY); } catch {}
+}
+
 interface BonosPerms {
   role: string;
   can_admin: boolean;
@@ -64,7 +82,9 @@ export default function BonosPage() {
   const [perms, setPerms] = useState<BonosPerms>(DEFAULT_PERMS);
   const [retryCount, setRetryCount] = useState(0);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [ssoConfirmed, setSsoConfirmed] = useState(false);
+  // Initialize from cache so the loading overlay is skipped on re-navigation
+  const [ssoConfirmed, setSsoConfirmed] = useState<boolean>(() => readSsoCache());
+  // ssoConfirmedRef stays false so the SSO useEffect always runs to build the URL
   const ssoConfirmedRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const maxRetries = 2;
@@ -106,7 +126,7 @@ export default function BonosPage() {
     return url.toString();
   }, [usuario?.email_laboral, isImpersonating, impersonatedUser?.email_laboral]);
 
-  // Reset SSO state when impersonation changes
+  // Reset SSO state when impersonation changes — different Django session context
   const prevImpersonating = useRef(isImpersonating);
   useEffect(() => {
     if (prevImpersonating.current !== isImpersonating) {
@@ -114,6 +134,7 @@ export default function BonosPage() {
       ssoConfirmedRef.current = false;
       setSsoConfirmed(false);
       setRetryCount(0);
+      clearSsoCacheStorage();
     }
   }, [isImpersonating]);
 
@@ -150,6 +171,7 @@ export default function BonosPage() {
       if (type === 'bonos:pagechange') {
         ssoConfirmedRef.current = true;
         setSsoConfirmed(true);
+        writeSsoCache();
         clearSsoTimeout();
         const p: string = event.data.path || '/';
         const match = SECTIONS.slice().reverse().find(s => p.startsWith(s.path) && s.path !== '/')
@@ -161,6 +183,7 @@ export default function BonosPage() {
         const path = event.data.payload?.path || event.data.path || '/';
         if (path.includes('/accounts/login')) {
           clearSsoTimeout();
+          clearSsoCacheStorage();
           if (retryCountRef.current < maxRetries) {
             setRetryCount(c => c + 1);
           } else {
@@ -170,6 +193,7 @@ export default function BonosPage() {
         }
         ssoConfirmedRef.current = true;
         setSsoConfirmed(true);
+        writeSsoCache();
         clearSsoTimeout();
         setActivePath(path);
       }
@@ -177,6 +201,7 @@ export default function BonosPage() {
       if (type === 'bonos:userinfo') {
         ssoConfirmedRef.current = true;
         setSsoConfirmed(true);
+        writeSsoCache();
         clearSsoTimeout();
         setPerms({
           role: event.data.role ?? event.data.payload?.role ?? '',
@@ -231,7 +256,7 @@ export default function BonosPage() {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => { setError(false); setRetryCount(0); setSsoConfirmed(false); ssoConfirmedRef.current = false; }}
+            onClick={() => { setError(false); setRetryCount(0); setSsoConfirmed(false); ssoConfirmedRef.current = false; clearSsoCacheStorage(); }}
             className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
           >
             Reintentar
