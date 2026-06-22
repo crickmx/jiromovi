@@ -32,9 +32,6 @@ export default function StorePedidoDetalle() {
   const [guardandoPago, setGuardandoPago] = useState(false);
   const [generandoOC, setGenerandoOC] = useState(false);
 
-  // Review & collection fields
-  const [revisadoPor, setRevisadoPor] = useState('');
-  const [cobrado, setCobrado] = useState(false);
 
   // Order expenses
   const [pedidoGastos, setPedidoGastos] = useState<StorePedidoGasto[]>([]);
@@ -64,8 +61,6 @@ export default function StorePedidoDetalle() {
       setMetodoPago(pedido.metodo_pago || '');
       setMetodoPagoOtroDetalle(pedido.metodo_pago_otro_detalle || '');
       setObservacionesOC(pedido.observaciones_oc || '');
-      setRevisadoPor(pedido.revisado_por || '');
-      setCobrado(pedido.cobrado || false);
       cargarUsuariosOficina();
       if (isAdmin) {
         cargarGastosPedido();
@@ -173,20 +168,6 @@ export default function StorePedidoDetalle() {
     }
   };
 
-  const handleGuardarRevision = async () => {
-    if (!pedidoId || !isAdmin) return;
-    const updates: any = { revisado_por: revisadoPor || null, cobrado };
-    if (cobrado && !pedido?.cobrado) {
-      updates.cobrado_en = new Date().toISOString();
-      updates.cobrado_por = usuario?.id;
-    }
-    if (!cobrado) {
-      updates.cobrado_en = null;
-      updates.cobrado_por = null;
-    }
-    await supabase.from('store_pedidos').update(updates).eq('id', pedidoId);
-    await cargarDatos();
-  };
 
   const handleGuardarPago = async () => {
     if (!pedidoId || !isAdmin || !formaPago || !metodoPago) return;
@@ -680,52 +661,6 @@ export default function StorePedidoDetalle() {
                   Notas del Cliente
                 </h2>
                 <p className="text-sm text-neutral-600 dark:text-white/60">{pedido.notas_usuario}</p>
-              </div>
-            )}
-
-            {/* Review & Collection - Admin only */}
-            {isAdmin && (
-              <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
-                <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4 flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5" />
-                  Revision y Cobro
-                </h2>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">Revisado por:</p>
-                    <div className="flex flex-col gap-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="revisado" value="mesa_control" checked={revisadoPor === 'mesa_control'} onChange={e => setRevisadoPor(e.target.value)} className="text-accent" />
-                        <span className="text-sm">Mesa de control</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="revisado" value="descuento_nomina" checked={revisadoPor === 'descuento_nomina'} onChange={e => setRevisadoPor(e.target.value)} className="text-accent" />
-                        <span className="text-sm">Descuento de nomina</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="revisado" value="" checked={revisadoPor === ''} onChange={() => setRevisadoPor('')} className="text-accent" />
-                        <span className="text-sm text-neutral-400 dark:text-white/40">Sin revision</span>
-                      </label>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input type="checkbox" checked={cobrado} onChange={e => setCobrado(e.target.checked)} className="w-4 h-4 text-accent rounded" />
-                      <span className="text-sm font-medium text-neutral-700 dark:text-white/70">Cobrado</span>
-                    </label>
-                    {pedido.cobrado && pedido.cobrado_en && (
-                      <p className="text-xs text-neutral-400 dark:text-white/40 mt-1 ml-7">
-                        {format(new Date(pedido.cobrado_en), "d MMM yyyy HH:mm", { locale: es })}
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    onClick={handleGuardarRevision}
-                    className="w-full bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 px-4 py-2 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/15 transition-colors text-sm font-medium"
-                  >
-                    Guardar revision
-                  </button>
-                </div>
               </div>
             )}
 
