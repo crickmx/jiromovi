@@ -151,6 +151,8 @@ export function NuevoTramiteModal({
   // Ref para rastrear si estamos inicializando con datos precargados
   const isInitializingWithPreloadedData = useRef(false);
 
+  const [tiposDb, setTiposDb] = useState<Array<{ value: string; label: string; area: string; is_custom: boolean }>>([]);
+
   const isAgent = usuario?.rol === 'Agente';
   const canAssignOthers = !isAgent;
   const [canAccessRegistroAct, setCanAccessRegistroAct] = useState(false);
@@ -165,6 +167,7 @@ export function NuevoTramiteModal({
       loadUsuarios();
       loadLotesDisponibles();
       checkRegistroAccess();
+      loadTiposDb();
 
       // Auto-find responsable from agent's office
       if (isAgent && usuario.oficina_id) {
@@ -185,6 +188,15 @@ export function NuevoTramiteModal({
   const checkRegistroAccess = async () => {
     const access = await canAccessRegistroActividades();
     setCanAccessRegistroAct(access);
+  };
+
+  const loadTiposDb = async () => {
+    const { data } = await supabase
+      .from('ticket_tipos')
+      .select('value, label, area, is_custom')
+      .eq('activo', true)
+      .order('orden');
+    if (data) setTiposDb(data as Array<{ value: string; label: string; area: string; is_custom: boolean }>);
   };
 
   const COTIZACION_EMISION_SUBTYPE_ID = '2ef883f9-96fc-452e-92eb-ff6826be412d';
@@ -863,27 +875,36 @@ export function NuevoTramiteModal({
             disabled={!!preloadedData?.tipoTramite}
             className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-100 disabled:cursor-not-allowed"
           >
-            <optgroup label="Comercial">
-              {canAccessRegistroAct && (
-                <option value="cotizacion_emision">Cotización / Emisión</option>
-              )}
-              {getTipoTramitesByArea('Comercial')
-                .filter(t => t.value !== 'cotizacion_emision' && t.value !== 'formulario_cotizacion')
-                .filter(t => !isAgent || !isCommercialTicketType(t.value))
-                .map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </optgroup>
-            <optgroup label="Operaciones">
-              {getTipoTramitesByArea('Operaciones')
-                .filter(t => t.value !== 'cambio_bancario')
-                .map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </optgroup>
+            {(['Comercial', 'Operaciones', 'Mercadotecnia', 'Administración', 'Otro'] as const).map(area => {
+              const tiposForArea = tiposDb
+                .filter(t => t.area === area)
+                .filter(t => {
+                  if (t.value === 'formulario_cotizacion' || t.value === 'cambio_bancario') return false;
+                  if (t.value === 'cotizacion_emision') return !!canAccessRegistroAct;
+                  if (isAgent && isCommercialTicketType(t.value)) return false;
+                  return true;
+                });
+              if (tiposForArea.length === 0) return null;
+              return (
+                <optgroup key={area} label={area}>
+                  {tiposForArea.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </optgroup>
+              );
+            })}
           </select>
-          <p className="text-xs text-neutral-500 mt-1">
-            <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 ${AREA_CONFIG[getTipoTramiteArea(tipoTramite)].bg} ${AREA_CONFIG[getTipoTramiteArea(tipoTramite)].color}`}>
-              {getTipoTramiteArea(tipoTramite)}
-            </span>
-            {getTipoLabel(tipoTramite)}
-          </p>
+          {(() => {
+            const tipoInfo = tiposDb.find(t => t.value === tipoTramite);
+            const areaName = tipoInfo?.area || getTipoTramiteArea(tipoTramite);
+            const areaCfg = AREA_CONFIG[areaName as keyof typeof AREA_CONFIG] || AREA_CONFIG['Comercial'];
+            return (
+              <p className="text-xs text-neutral-500 mt-1">
+                <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 ${areaCfg.bg} ${areaCfg.color}`}>
+                  {areaName}
+                </span>
+                {tipoInfo?.label || getTipoLabel(tipoTramite)}
+              </p>
+            );
+          })()}
         </div>
 
         {/* ===== SECCIÓN COTIZACIÓN / EMISIÓN ===== */}
