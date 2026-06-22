@@ -3,11 +3,10 @@ import type { StoreProducto } from '../../lib/storeTypes';
 
 interface Props {
   producto: StoreProducto;
-  onAgregar: (producto: StoreProducto) => void;
   onVerDetalle: (producto: StoreProducto) => void;
 }
 
-export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
+export function ProductoCard({ producto, onVerDetalle }: Props) {
   const PLACEHOLDER_SVG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23f3f4f6'/%3E%3Cpath d='M80 120l20-30 20 30M110 120l15-20 15 20' stroke='%239ca3af' stroke-width='2' fill='none'/%3E%3Ccircle cx='90' cy='80' r='8' fill='%239ca3af'/%3E%3Crect x='60' y='60' width='80' height='80' rx='4' stroke='%239ca3af' stroke-width='2' fill='none'/%3E%3C/svg%3E";
 
   const getImageUrl = (imagenUrl: string) => {
@@ -65,7 +64,7 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
           </p>
 
           <button
-            onClick={() => onAgregar(producto)}
+            onClick={() => onVerDetalle(producto)}
             className="w-full sm:w-auto flex items-center justify-center gap-2 bg-accent text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-accent-hover transition-colors font-medium text-sm sm:text-base"
           >
             <ShoppingCart className="w-4 h-4" />
