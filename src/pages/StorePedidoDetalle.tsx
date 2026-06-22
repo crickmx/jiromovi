@@ -202,6 +202,18 @@ export default function StorePedidoDetalle() {
 
   const handleCambiarEstatus = async (nuevoEstatusId: string) => {
     if (!pedidoId || !isAdmin) return;
+
+    const estatusSeleccionado = estatus.find(e => e.id === nuevoEstatusId);
+    if (estatusSeleccionado?.nombre === 'Liquidado') {
+      const total = calcularTotal();
+      const totalPagado = pagos.reduce((sum, p) => sum + p.monto, 0);
+      const saldoPendiente = total - totalPagado;
+      if (saldoPendiente > 0.01) {
+        alert('No se puede marcar como Liquidado. El pedido tiene un saldo pendiente de $' + saldoPendiente.toLocaleString('es-MX', { minimumFractionDigits: 2 }) + '. Debe estar completamente pagado.');
+        return;
+      }
+    }
+
     if (!confirm('Cambiar el estatus de este pedido?')) return;
     try {
       setActualizandoEstatus(true);
@@ -889,6 +901,9 @@ export default function StorePedidoDetalle() {
                 >
                   {estatus.map(est => <option key={est.id} value={est.id}>{est.nombre}</option>)}
                 </select>
+                <p className="text-xs text-neutral-500 dark:text-white/40 mt-2">
+                  Liquidado solo se habilita cuando el saldo pendiente es $0.00
+                </p>
               </div>
             )}
 
