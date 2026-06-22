@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { supabase } from '../lib/supabase';
-import { User, Phone, Mail, MapPin, Building2, Shield, Camera, Check, Loader as Loader2, Pencil, X, Globe, CreditCard, Calendar, BadgeCheck, Info } from 'lucide-react';
+import { User, Phone, Mail, MapPin, Building2, Shield, Camera, Check, Loader as Loader2, Pencil, X, Globe, CreditCard, Calendar, BadgeCheck, Info, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 
@@ -32,8 +32,6 @@ function formatFieldName(key: string): string {
     regimen_fiscal_id: 'Régimen Fiscal',
     banco: 'Banco',
     clabe: 'CLABE',
-    url_web_jiro: 'Web Jiro',
-    url_web_multicotizador: 'Web Multicotizador',
   };
   return map[key] || key;
 }
@@ -41,7 +39,7 @@ function formatFieldName(key: string): string {
 type EditableField =
   | 'nombre' | 'apellidos' | 'celular_personal' | 'email_personal'
   | 'celular_laboral' | 'email_laboral' | 'extension_telefonica'
-  | 'regimen_fiscal_id' | 'banco' | 'clabe' | 'url_web_jiro' | 'url_web_multicotizador'
+  | 'regimen_fiscal_id' | 'banco' | 'clabe'
   | 'fecha_nacimiento' | 'puesto' | 'fecha_ingreso';
 
 type RolEditable = Record<EditableField, boolean>;
@@ -50,25 +48,25 @@ const EDITABLES_BY_ROL: Record<string, RolEditable> = {
   Administrador: {
     nombre: true, apellidos: true, celular_personal: true, email_personal: true,
     celular_laboral: true, email_laboral: true, extension_telefonica: true,
-    regimen_fiscal_id: true, banco: true, clabe: true, url_web_jiro: true, url_web_multicotizador: true,
+    regimen_fiscal_id: true, banco: true, clabe: true,
     fecha_nacimiento: true, puesto: true, fecha_ingreso: true,
   },
   Gerente: {
     nombre: false, apellidos: false, celular_personal: true, email_personal: true,
     celular_laboral: true, email_laboral: true, extension_telefonica: true,
-    regimen_fiscal_id: true, banco: true, clabe: true, url_web_jiro: true, url_web_multicotizador: true,
+    regimen_fiscal_id: true, banco: true, clabe: true,
     fecha_nacimiento: true, puesto: false, fecha_ingreso: false,
   },
   Agente: {
     nombre: false, apellidos: false, celular_personal: true, email_personal: true,
     celular_laboral: true, email_laboral: true, extension_telefonica: false,
-    regimen_fiscal_id: true, banco: true, clabe: true, url_web_jiro: false, url_web_multicotizador: false,
+    regimen_fiscal_id: true, banco: true, clabe: true,
     fecha_nacimiento: true, puesto: false, fecha_ingreso: false,
   },
   Empleado: {
     nombre: false, apellidos: false, celular_personal: true, email_personal: true,
     celular_laboral: true, email_laboral: true, extension_telefonica: false,
-    regimen_fiscal_id: false, banco: false, clabe: false, url_web_jiro: false, url_web_multicotizador: false,
+    regimen_fiscal_id: false, banco: false, clabe: false,
     fecha_nacimiento: true, puesto: false, fecha_ingreso: false,
   },
 };
@@ -76,7 +74,7 @@ const EDITABLES_BY_ROL: Record<string, RolEditable> = {
 const DEFAULT_EDITABLES: RolEditable = {
   nombre: false, apellidos: false, celular_personal: true, email_personal: true,
   celular_laboral: true, email_laboral: true, extension_telefonica: false,
-  regimen_fiscal_id: false, banco: false, clabe: false, url_web_jiro: false, url_web_multicotizador: false,
+  regimen_fiscal_id: false, banco: false, clabe: false,
   fecha_nacimiento: true, puesto: false, fecha_ingreso: false,
 };
 
@@ -99,7 +97,7 @@ const SECTIONS: Section[] = [
   {
     title: 'Datos Laborales',
     icon: BadgeCheck,
-    fields: ['puesto', 'fecha_ingreso', 'celular_laboral', 'email_laboral', 'extension_telefonica', 'url_web_jiro', 'url_web_multicotizador'],
+    fields: ['puesto', 'fecha_ingreso', 'celular_laboral', 'email_laboral', 'extension_telefonica'],
   },
   {
     title: 'Datos Bancarios',
@@ -177,8 +175,6 @@ export default function Perfil() {
     regimen_fiscal_id: usuario?.regimen_fiscal_id || '',
     banco: usuario?.banco || '',
     clabe: usuario?.clabe || '',
-    url_web_jiro: usuario?.url_web_jiro || '',
-    url_web_multicotizador: usuario?.url_web_multicotizador || '',
     fecha_nacimiento: usuario?.fecha_nacimiento || '',
     puesto: usuario?.puesto || '',
     fecha_ingreso: usuario?.fecha_ingreso || '',
@@ -514,7 +510,6 @@ export default function Perfil() {
                     const iconMap: Partial<Record<EditableField, React.ElementType>> = {
                       email_personal: Mail, email_laboral: Mail,
                       celular_personal: Phone, celular_laboral: Phone,
-                      url_web_jiro: Globe, url_web_multicotizador: Globe,
                       fecha_nacimiento: Calendar, fecha_ingreso: Calendar,
                     };
 
@@ -532,6 +527,31 @@ export default function Perfil() {
                     );
                   })}
                 </div>
+
+                {section.title === 'Datos Laborales' && usuario.web_slug && (
+                  <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-white/[0.05]">
+                    <div className="group flex flex-col gap-1">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-white/35 flex items-center gap-1.5">
+                        <Globe className="w-3 h-3" />
+                        Página Web MOVI
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-neutral-800 dark:text-white/85 px-3 min-h-[36px] flex items-center">
+                          agentedeseguros.website/{usuario.web_slug}
+                        </p>
+                        <a
+                          href={`https://agentedeseguros.website/${usuario.web_slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:text-accent/80 transition-colors"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          Abrir
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {section.title === 'Datos Bancarios' && (
                   <div className="mt-4 flex items-start gap-2 sm:gap-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl p-3 sm:p-4">
