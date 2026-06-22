@@ -127,17 +127,22 @@ export function GestionGruposVisualizacion() {
   const loadUsuarios = async () => {
     const { data } = await supabase
       .from('usuarios')
-      .select('id, nombre_completo, rol, oficinas(nombre)')
+      .select('id, nombre_completo, nombre, apellidos, rol, oficinas(nombre)')
       .eq('estado', 'activo')
       .in('rol', ['Empleado', 'Gerente', 'Administrador'])
       .order('nombre_completo');
     if (data) {
-      setUsuarios(data.map(u => ({
-        id: u.id,
-        nombre_completo: u.nombre_completo || '',
-        rol: u.rol,
-        oficina_nombre: (u.oficinas as { nombre: string } | null)?.nombre || null,
-      })));
+      setUsuarios(data.map(u => {
+        const nc = u.nombre_completo ||
+          ((u as { nombre?: string; apellidos?: string }).nombre || '') + ' ' +
+          ((u as { nombre?: string; apellidos?: string }).apellidos || '');
+        return {
+          id: u.id,
+          nombre_completo: nc.trim() || u.id,
+          rol: u.rol,
+          oficina_nombre: (u.oficinas as { nombre: string } | null)?.nombre || null,
+        };
+      }));
     }
   };
 
