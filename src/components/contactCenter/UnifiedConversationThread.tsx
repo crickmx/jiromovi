@@ -59,6 +59,8 @@ interface OpenTicket {
   instrucciones: string;
   tipo_tramite: string;
   estatus_nombre: string;
+  agente: { id: string; nombre_completo: string } | null;
+  responsable: { id: string; nombre_completo: string } | null;
 }
 
 interface CcAssistant {
@@ -300,6 +302,8 @@ function RichMessageBubble({
 
 export function UnifiedConversationThread({ conversation, onBack, currentUserId, participantNames }: Props) {
   const { usuario } = useAuth();
+  const isAdmin = usuario?.rol === 'Administrador';
+  const isEmpleado = ['Empleado', 'Ejecutivo', 'Gerente'].includes(usuario?.rol || '');
   const [messages, setMessages] = useState<UnifiedMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -343,10 +347,18 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
   const [ticketPrioridad, setTicketPrioridad] = useState('Media');
   const [ticketError, setTicketError] = useState('');
   const [addTicketError, setAddTicketError] = useState('');
+  const [addTicketSuccess, setAddTicketSuccess] = useState('');
   const [showNuevoTramiteModal, setShowNuevoTramiteModal] = useState(false);
   const [prefilledInstrucciones, setPrefilledInstrucciones] = useState('');
   const [estatusList, setEstatusList] = useState<Array<{id: string; nombre: string}>>([]);
   const [addingToTicket, setAddingToTicket] = useState<string | null>(null);
+  const [filterAgente, setFilterAgente] = useState('');
+  const [filterResponsable, setFilterResponsable] = useState('');
+  const [filterTipo, setFilterTipo] = useState('');
+  const [agentesList, setAgentesList] = useState<Array<{id: string; nombre_completo: string}>>([]);
+  const [responsablesList, setResponsablesList] = useState<Array<{id: string; nombre_completo: string}>>([]);
+  // Create tramite success notification
+  const [createTicketSuccessMsg, setCreateTicketSuccessMsg] = useState('');
 
   // Automatic/AI mode
   const [assistants, setAssistants] = useState<CcAssistant[]>([]);
@@ -783,10 +795,13 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
       if (result?.success === false) {
         setTicketError(result.error || 'Error al crear el tramite');
       } else {
-        setShowCreateTicket(false);
-        setSelectionMode(false);
-        setSelectedIds(new Set());
-        alert(`Tramite ${result?.folio || ''} creado correctamente`);
+        setCreateTicketSuccessMsg(`Trámite ${result?.folio || ''} creado correctamente`);
+        setTimeout(() => {
+          setShowCreateTicket(false);
+          setCreateTicketSuccessMsg('');
+          setSelectionMode(false);
+          setSelectedIds(new Set());
+        }, 1800);
       }
     } catch (e: unknown) {
       setTicketError(e instanceof Error ? e.message : 'Error desconocido');
@@ -800,18 +815,61 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
     setShowAddTicket(true);
     setTicketLoading(true);
     setAddTicketError('');
-    const result = await callEdgeFn('get-agent-open-tickets', { agentUserId: conversation.agentUserId || currentUserId })
-      .catch(() => ({ success: false, tickets: [], error: 'Error de conexion al cargar tramites' }));
-    if (result?.success === false && result?.error) {
-      setAddTicketError(result.error);
+    setAddTicketSuccess('');
+    setTicketSearch('');
+    setFilterAgente('');
+    setFilterResponsable('');
+    setFilterTipo('');
+
+    try {
+      let query = supabase
+        .from('tickets')
+        .select(`id, folio, instrucciones, tipo_tramite,
+          agente:agente_id(id, nombre_completo),
+          responsable:assigned_to_user_id(id, nombre_completo),
+          estatus:estatus_id(nombre)`)
+        .is('cerrado_en', null)
+        .is('eliminado_at', null)
+        .order('fecha_creacion', { ascending: false })
+        .limit(200);
+
+      if (!isAdmin && !isEmpleado) {
+        const agentId = conversation.agentUserId || currentUserId;
+        query = (query as any).or(`agente_id.eq.${agentId},assigned_to_user_id.eq.${currentUserId}`);
+      }
+
+      const { data } = await query;
+      const mapped = ((data || []) as any[]).map(t => ({
+        id: t.id,
+        folio: t.folio || '',
+        instrucciones: t.instrucciones || '',
+        tipo_tramite: t.tipo_tramite || '',
+        estatus_nombre: (t.estatus as any)?.nombre || '',
+        agente: t.agente || null,
+        responsable: t.responsable || null,
+      }));
+      setOpenTickets(mapped);
+
+      if (isAdmin || isEmpleado) {
+        const { data: agentes } = await supabase
+          .from('usuarios').select('id, nombre_completo').eq('rol', 'Agente').order('nombre_completo');
+        setAgentesList((agentes || []) as Array<{id: string; nombre_completo: string}>);
+      }
+      if (isAdmin) {
+        const { data: resps } = await supabase
+          .from('usuarios').select('id, nombre_completo').neq('rol', 'Agente').order('nombre_completo');
+        setResponsablesList((resps || []) as Array<{id: string; nombre_completo: string}>);
+      }
+    } catch {
+      setAddTicketError('Error al cargar trámites');
     }
-    setOpenTickets(result?.tickets || []);
     setTicketLoading(false);
   };
 
   const addToTicket = async (ticketId: string) => {
     setAddingToTicket(ticketId);
     setAddTicketError('');
+    setAddTicketSuccess('');
     const selected = messages.filter(m => selectedIds.has(m.id));
     const msgsToLink = selected.length > 0 ? selected : messages.slice(-3);
     const messageIds = msgsToLink.map(m => m.id);
@@ -827,17 +885,35 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
     }
     const added = typeof result?.added === 'number' ? result.added : messageIds.length;
     if (added === 0) {
-      setAddTicketError(result?.message || 'Estos mensajes ya estaban vinculados a este tramite. Selecciona otros mensajes o elige un tramite diferente.');
+      setAddTicketError(result?.message || 'Estos mensajes ya estaban vinculados a este trámite. Selecciona otros mensajes o elige un trámite diferente.');
       return;
     }
 
-    // Auto-attach media files: download from WhatsApp CDN → re-upload to Supabase Storage
+    // Media → ticket_archivos
     await attachMediaToTicket(msgsToLink, ticketId);
 
-    setShowAddTicket(false);
+    // Text messages → ticket_comentarios
+    const textMsgs = msgsToLink.filter(m => m.body?.trim() && !m.mediaUrl);
+    if (textMsgs.length > 0) {
+      const commentText = textMsgs.map(m => {
+        const time = new Date(m.sentAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+        const who = m.direction === 'outbound' ? 'Agente' : (conversation.contactName || 'Cliente');
+        return `[${who} ${time}]: ${m.body!.trim()}`;
+      }).join('\n');
+      await supabase.from('ticket_comentarios').insert({
+        ticket_id: ticketId,
+        usuario_id: currentUserId,
+        mensaje: commentText,
+      });
+    }
+
+    setAddTicketSuccess(`✓ ${added} mensaje(s) vinculado(s) al trámite`);
     setSelectionMode(false);
     setSelectedIds(new Set());
-    alert(`${added} mensaje(s) vinculado(s) al tramite correctamente`);
+    setTimeout(() => {
+      setShowAddTicket(false);
+      setAddTicketSuccess('');
+    }, 1800);
   };
 
   // ── Assistants / Auto mode ──────────────────────────────────────────────────
@@ -992,7 +1068,15 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
 
   const filteredTemplates = templates.filter(t => !tmplSearch || t.name.toLowerCase().includes(tmplSearch.toLowerCase()) || t.content.toLowerCase().includes(tmplSearch.toLowerCase()));
   const filteredForms = forms.filter(f => !formSearch || f.title.toLowerCase().includes(formSearch.toLowerCase()));
-  const filteredTickets = openTickets.filter(t => !ticketSearch || t.folio.toLowerCase().includes(ticketSearch.toLowerCase()) || t.instrucciones?.toLowerCase().includes(ticketSearch.toLowerCase()));
+  const filteredTickets = openTickets.filter(t => {
+    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const q = norm(ticketSearch);
+    const matchSearch = !ticketSearch || norm(t.folio).includes(q) || norm(t.instrucciones || '').includes(q);
+    const matchAgente = !filterAgente || t.agente?.id === filterAgente;
+    const matchResponsable = !filterResponsable || t.responsable?.id === filterResponsable;
+    const matchTipo = !filterTipo || t.tipo_tramite === filterTipo;
+    return matchSearch && matchAgente && matchResponsable && matchTipo;
+  });
 
   return (
     <div className="flex flex-col h-full bg-neutral-50 dark:bg-neutral-950 relative">
@@ -1402,44 +1486,150 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
         isOpen={showNuevoTramiteModal}
         onClose={() => setShowNuevoTramiteModal(false)}
         onSuccess={() => setShowNuevoTramiteModal(false)}
-        onSuccessWithId={handleNewTicketCreated}
+        onSuccessWithId={(ticketId) => { handleNewTicketCreated(ticketId); setShowNuevoTramiteModal(false); }}
         estatusList={estatusList}
         preloadedData={{ instrucciones: prefilledInstrucciones }}
       />
 
       {/* ── Agregar a tramite modal ──────────────────────────────── */}
       {showAddTicket && (
-        <Modal title="Agregar a tramite existente" onClose={() => setShowAddTicket(false)}>
-          <input value={ticketSearch} onChange={e => setTicketSearch(e.target.value)} placeholder="Buscar tramite..." className="w-full px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 mb-3 focus:outline-none focus:ring-1 focus:ring-accent/40" />
-          {addTicketError && (
-            <p className="text-xs text-red-500 mb-3 flex items-center gap-1">
-              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />{addTicketError}
-            </p>
-          )}
-          {ticketLoading
-            ? <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-neutral-300" /></div>
-            : filteredTickets.length === 0
-            ? <p className="text-xs text-neutral-400 text-center py-6">Sin tramites abiertos para este agente</p>
-            : <div className="space-y-2 max-h-72 overflow-y-auto">
-                {filteredTickets.map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => addToTicket(t.id)}
-                    disabled={addingToTicket === t.id}
-                    className="w-full text-left p-3 rounded-xl border border-neutral-100 dark:border-neutral-700 hover:border-accent/30 hover:bg-accent/5 transition-all disabled:opacity-60"
+        <Modal title="Agregar a trámite existente" onClose={() => { setShowAddTicket(false); setAddTicketSuccess(''); }}>
+          {/* Success state */}
+          {addTicketSuccess ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-3">
+              <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <Check className="w-6 h-6 text-green-600 dark:text-green-400" />
+              </div>
+              <p className="text-sm font-semibold text-green-700 dark:text-green-400 text-center">{addTicketSuccess}</p>
+              <p className="text-xs text-neutral-400">Cerrando...</p>
+            </div>
+          ) : (
+            <>
+              {/* Search */}
+              <div className="relative mb-3">
+                <ClipboardList className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+                <input
+                  value={ticketSearch}
+                  onChange={e => setTicketSearch(e.target.value)}
+                  placeholder="Buscar por folio o descripción..."
+                  className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-accent/40 text-neutral-800 dark:text-white placeholder:text-neutral-400"
+                />
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-wrap gap-2 mb-3">
+                {(isAdmin || isEmpleado) && agentesList.length > 0 && (
+                  <select
+                    value={filterAgente}
+                    onChange={e => setFilterAgente(e.target.value)}
+                    className="flex-1 min-w-[130px] px-2.5 py-1.5 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-white/80 focus:outline-none focus:ring-1 focus:ring-accent/40"
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{t.folio}</span>
-                      <div className="flex items-center gap-1.5">
-                        {addingToTicket === t.id && <Loader2 className="w-3 h-3 animate-spin text-accent" />}
-                        <span className="text-[10px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-700 text-neutral-500 rounded-full">{t.estatus_nombre}</span>
+                    <option value="">Todos los agentes</option>
+                    {agentesList.map(a => (
+                      <option key={a.id} value={a.id}>{a.nombre_completo}</option>
+                    ))}
+                  </select>
+                )}
+                {isAdmin && responsablesList.length > 0 && (
+                  <select
+                    value={filterResponsable}
+                    onChange={e => setFilterResponsable(e.target.value)}
+                    className="flex-1 min-w-[130px] px-2.5 py-1.5 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-white/80 focus:outline-none focus:ring-1 focus:ring-accent/40"
+                  >
+                    <option value="">Todos los responsables</option>
+                    {responsablesList.map(r => (
+                      <option key={r.id} value={r.id}>{r.nombre_completo}</option>
+                    ))}
+                  </select>
+                )}
+                <select
+                  value={filterTipo}
+                  onChange={e => setFilterTipo(e.target.value)}
+                  className="flex-1 min-w-[130px] px-2.5 py-1.5 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-white/80 focus:outline-none focus:ring-1 focus:ring-accent/40"
+                >
+                  <option value="">Todos los tipos</option>
+                  {[...new Set(openTickets.map(t => t.tipo_tramite))].filter(Boolean).map(tipo => (
+                    <option key={tipo} value={tipo}>{tipo.replace(/_/g, ' ')}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Results count */}
+              {!ticketLoading && (
+                <p className="text-[11px] text-neutral-400 dark:text-white/30 mb-2 px-0.5">
+                  {filteredTickets.length} trámite{filteredTickets.length !== 1 ? 's' : ''} encontrado{filteredTickets.length !== 1 ? 's' : ''}
+                </p>
+              )}
+
+              {/* Error */}
+              {addTicketError && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 mb-3">
+                  <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-red-600 dark:text-red-400">{addTicketError}</p>
+                </div>
+              )}
+
+              {/* List */}
+              {ticketLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-neutral-300" />
+                </div>
+              ) : filteredTickets.length === 0 ? (
+                <div className="text-center py-8">
+                  <ClipboardList className="w-8 h-8 text-neutral-200 dark:text-neutral-700 mx-auto mb-2" />
+                  <p className="text-xs text-neutral-400">Sin trámites que coincidan</p>
+                </div>
+              ) : (
+                <div className="space-y-2 overflow-y-auto" style={{ maxHeight: '21rem' }}>
+                  {filteredTickets.map(t => (
+                    <div
+                      key={t.id}
+                      className="rounded-xl border border-neutral-100 dark:border-neutral-700 overflow-hidden hover:border-accent/40 hover:shadow-sm transition-all"
+                    >
+                      {/* Card header */}
+                      <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5 bg-neutral-50 dark:bg-neutral-800/60">
+                        <span className="text-xs font-bold text-neutral-800 dark:text-white tracking-wide">{t.folio}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 text-neutral-500 dark:text-white/60 font-medium">{t.estatus_nombre}</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent font-semibold">{t.tipo_tramite.replace(/_/g, ' ')}</span>
+                        </div>
+                      </div>
+                      {/* Card body */}
+                      <div className="px-3 pb-2 pt-1">
+                        {(t.agente || t.responsable) && (
+                          <div className="flex items-center gap-3 mb-1.5">
+                            {t.agente && (
+                              <span className="flex items-center gap-1 text-[10px] text-neutral-500 dark:text-white/40">
+                                <User className="w-3 h-3" />
+                                {t.agente.nombre_completo}
+                              </span>
+                            )}
+                            {t.responsable && (
+                              <span className="flex items-center gap-1 text-[10px] text-neutral-400 dark:text-white/30">
+                                <CheckSquare className="w-3 h-3" />
+                                {t.responsable.nombre_completo}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        <p className="text-xs text-neutral-500 dark:text-white/50 line-clamp-2 leading-relaxed mb-2">{t.instrucciones}</p>
+                        <button
+                          onClick={() => addToTicket(t.id)}
+                          disabled={!!addingToTicket}
+                          className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-accent hover:bg-accent/90 text-white text-xs font-semibold transition-all disabled:opacity-60"
+                        >
+                          {addingToTicket === t.id
+                            ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Agregando...</>
+                            : <><Plus className="w-3.5 h-3.5" /> Agregar a este trámite</>
+                          }
+                        </button>
                       </div>
                     </div>
-                    <p className="text-xs text-neutral-500 line-clamp-2">{t.instrucciones}</p>
-                  </button>
-                ))}
-              </div>
-          }
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </Modal>
       )}
 
