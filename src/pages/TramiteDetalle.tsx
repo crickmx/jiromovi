@@ -33,6 +33,7 @@ interface TramiteData {
   cerrado_en: string | null;
   creado_por: string;
   assigned_to_user_id: string | null;
+  grupo_asignado_id: string | null;
   estatus_id: string;
   agente: Usuario | null;
   responsable: Usuario | null;
@@ -384,6 +385,20 @@ export function TramiteDetalle() {
     }
   };
 
+  const handleResponsableChange = async (userId: string) => {
+    if (!tramite || !usuario) return;
+    await supabase.from('tickets').update({
+      assigned_to_user_id: userId || null,
+      modificado_por: usuario.id,
+    }).eq('id', tramite.id);
+    if (userId) {
+      await supabase.from('ticket_asignaciones').insert({
+        ticket_id: tramite.id, ejecutivo_id: userId, asignado_por: usuario.id,
+      });
+    }
+    await loadTramite();
+  };
+
   const handleReabrir = async () => {
     if (!tramite || !usuario) return;
     if (!confirm('¿Estás seguro de reabrir este tramite?')) return;
@@ -588,6 +603,8 @@ export function TramiteDetalle() {
             selectedPrioridad={selectedPrioridad}
             setSelectedPrioridad={setSelectedPrioridad}
             canEdit={canEdit && !isCerrado}
+            grupoAsignadoId={tramite.grupo_asignado_id}
+            onResponsableChange={handleResponsableChange}
           />
         )}
         {activeTab === 'comentarios' && <TramiteComentarios tramiteId={tramite.id} />}

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getCached, setCached, invalidateCacheByPrefix } from '../lib/sessionCache';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check } from 'lucide-react';
+import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound } from 'lucide-react';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
 import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
@@ -43,6 +43,7 @@ interface TramiteItem {
   agente_id: string | null;
   creado_por: string | null;
   assigned_to_user_id: string | null;
+  grupo_asignado_id: string | null;
   agente: { nombre_completo: string; oficina_id: string | null; oficina: { nombre: string } | null } | null;
   responsable: { nombre_completo: string } | null;
   estatus: TramiteEstatus | null;
@@ -93,6 +94,8 @@ export function Tramites() {
 
   // Assignment UI state
   const [myOperacionesRole, setMyOperacionesRole] = useState<'lider' | 'ejecutivo' | 'miembro' | null>(null);
+  const [myGrupoIds, setMyGrupoIds] = useState<string[]>([]);
+  const [filterMiEquipo, setFilterMiEquipo] = useState(false);
   const [assigningTramiteId, setAssigningTramiteId] = useState<string | null>(null);
   const [teamEjecutivos, setTeamEjecutivos] = useState<Array<{ id: string; nombre_completo: string }>>([]);
   const [assignTargetId, setAssignTargetId] = useState('');
@@ -332,12 +335,14 @@ export function Tramites() {
     if (!usuario?.id) return;
     const { data } = await supabase
       .from('tramites_grupos_miembros')
-      .select('rol_en_equipo, grupo:grupo_id(area_categoria, activo)')
+      .select('grupo_id, rol_en_equipo, grupo:grupo_id(area_categoria, activo)')
       .eq('usuario_id', usuario.id);
     if (data) {
-      type Row = { rol_en_equipo: string; grupo: { area_categoria: string; activo: boolean } | null };
-      const opsEntry = (data as Row[]).find(m => m.grupo?.area_categoria === 'Operaciones' && m.grupo?.activo);
+      type Row = { grupo_id: string; rol_en_equipo: string; grupo: { area_categoria: string; activo: boolean } | null };
+      const opsEntries = (data as Row[]).filter(m => m.grupo?.area_categoria === 'Operaciones' && m.grupo?.activo);
+      const opsEntry = opsEntries[0] ?? null;
       setMyOperacionesRole(opsEntry ? (opsEntry.rol_en_equipo as 'lider' | 'ejecutivo' | 'miembro') : null);
+      setMyGrupoIds(opsEntries.map(m => m.grupo_id));
     }
   };
 
@@ -452,8 +457,11 @@ export function Tramites() {
     const matchTipo = selectedTipo === 'todos' || tramite.tipo_tramite === selectedTipo;
     const matchEstatus = selectedEstatus === 'todos' || tramite.estatus?.id === selectedEstatus;
     const matchPrioridad = selectedPrioridad === 'todas' || tramite.prioridad === selectedPrioridad;
+    const matchMiEquipo = !filterMiEquipo || (
+      tramite.grupo_asignado_id !== null && myGrupoIds.includes(tramite.grupo_asignado_id)
+    );
 
-    return matchSearch && matchTipo && matchEstatus && matchPrioridad;
+    return matchSearch && matchTipo && matchEstatus && matchPrioridad && matchMiEquipo;
   });
 
   const getPrioridadColor = (prioridad: string) => {
@@ -474,13 +482,14 @@ export function Tramites() {
     }
   };
 
-  const hasActiveFilters = selectedTipo !== 'todos' || selectedEstatus !== 'todos' || selectedPrioridad !== 'todas' || searchTerm !== '';
+  const hasActiveFilters = selectedTipo !== 'todos' || selectedEstatus !== 'todos' || selectedPrioridad !== 'todas' || searchTerm !== '' || filterMiEquipo;
 
   const clearFilters = () => {
     setSelectedTipo('todos');
     setSelectedEstatus('todos');
     setSelectedPrioridad('todas');
     setSearchTerm('');
+    setFilterMiEquipo(false);
   };
 
   return (
@@ -681,6 +690,19 @@ export function Tramites() {
               </select>
             </div>
 
+            {myGrupoIds.length > 0 && (
+              <button
+                onClick={() => setFilterMiEquipo(f => !f)}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border transition-colors ${
+                  filterMiEquipo
+                    ? 'bg-amber-500 text-white border-amber-500 hover:bg-amber-600'
+                    : 'bg-neutral-100 dark:bg-white/8 text-neutral-600 dark:text-white/60 border-neutral-200 dark:border-white/10 hover:bg-neutral-200 dark:hover:bg-white/12'
+                }`}
+              >
+                <UsersRound className="w-3.5 h-3.5" />
+                Mi Equipo
+              </button>
+            )}
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Users, UserPlus, UserMinus, Search, ShieldCheck, Briefcase, Wrench, Plus, Pencil, Trash2, ChevronRight, Building2, X, Check, TriangleAlert as AlertTriangle, Loader as Loader2, Globe, Crown, Zap, Eye } from 'lucide-react';
+import { Users, UserPlus, UserMinus, Search, ShieldCheck, Briefcase, Wrench, Plus, Pencil, Trash2, ChevronRight, Building2, X, Check, TriangleAlert as AlertTriangle, Loader as Loader2, Globe, Crown, Zap, Eye, GitBranch } from 'lucide-react';
 import { AREA_CONFIG, type AreaCategoria } from '../../lib/registroActividadesTypes';
 
 interface Grupo {
@@ -39,6 +39,15 @@ interface GrupoOficina {
   oficina_id: string;
   oficina_nombre: string;
 }
+
+interface GrupoRegla {
+  id: string;
+  oficina_id: string;
+  oficina_nombre: string;
+  area_categoria: string;
+}
+
+type FormTab = 'general' | 'miembros' | 'oficinas' | 'asignacion';
 
 interface Usuario {
   id: string;
@@ -90,6 +99,11 @@ export function GestionGruposVisualizacion() {
   const [formOficinaSearch, setFormOficinaSearch] = useState('');
   const [formSaving, setFormSaving] = useState(false);
   const [formError, setFormError] = useState('');
+
+  // Form tabs (when editing)
+  const [formTab, setFormTab] = useState<FormTab>('general');
+  const [grupoReglas, setGrupoReglas] = useState<GrupoRegla[]>([]);
+  const [searchReglaOficina, setSearchReglaOficina] = useState('');
 
   // Delete confirm
   const [confirmDelete, setConfirmDelete] = useState<Grupo | null>(null);
@@ -164,9 +178,20 @@ export function GestionGruposVisualizacion() {
     setFormAllOffices(g.all_offices);
     setFormOficinaSearch('');
     setFormError('');
-    // Load current offices for this group
-    const { data } = await supabase.rpc('get_grupo_oficinas', { p_grupo_id: g.id });
-    setFormSelectedOficinas(data ? (data as GrupoOficina[]).map(o => o.oficina_id) : []);
+    setFormTab('general');
+    setSearchMiembro('');
+    setSearchOficina('');
+    setSearchReglaOficina('');
+    setEditingRolMiembro(null);
+    setPendingAdd(null);
+    // Load all tab data in parallel
+    const [oficinasRes] = await Promise.all([
+      supabase.rpc('get_grupo_oficinas', { p_grupo_id: g.id }),
+      loadMiembros(g.id),
+      loadGrupoOficinas(g.id),
+      loadGrupoReglas(g.id),
+    ]);
+    setFormSelectedOficinas(oficinasRes.data ? (oficinasRes.data as GrupoOficina[]).map(o => o.oficina_id) : []);
     setPanel('form');
   };
 
@@ -321,6 +346,43 @@ export function GestionGruposVisualizacion() {
     });
     await loadMiembros(selectedGrupo.id);
     await loadGrupos();
+  };
+
+  // ── REGLAS ────────────────────────────────────────────────────────────────────
+
+  const loadGrupoReglas = async (grupoId: string) => {
+    const { data } = await supabase
+      .from('tramites_grupos_reglas')
+      .select('id, oficina_id, area_categoria, oficinas(nombre)')
+      .eq('grupo_id', grupoId)
+      .eq('activo', true);
+    if (data) {
+      setGrupoReglas(data.map((r: Record<string, unknown>) => ({
+        id: r.id as string,
+        oficina_id: r.oficina_id as string,
+        oficina_nombre: (r.oficinas as { nombre: string } | null)?.nombre || '',
+        area_categoria: r.area_categoria as string,
+      })));
+    }
+  };
+
+  const handleAgregarRegla = async (oficina_id: string) => {
+    if (!selectedGrupo) return;
+    const { error } = await supabase.from('tramites_grupos_reglas').insert({
+      grupo_id: selectedGrupo.id,
+      oficina_id,
+      area_categoria: selectedGrupo.area_categoria || 'Operaciones',
+      created_by: usuario?.id,
+    });
+    if (error) { alert('Error: ' + error.message); return; }
+    setSearchReglaOficina('');
+    await loadGrupoReglas(selectedGrupo.id);
+  };
+
+  const handleRemoverRegla = async (reglaId: string) => {
+    if (!selectedGrupo) return;
+    await supabase.from('tramites_grupos_reglas').update({ activo: false }).eq('id', reglaId);
+    await loadGrupoReglas(selectedGrupo.id);
   };
 
   // ── OFFICES ───────────────────────────────────────────────────────────────────
@@ -545,6 +607,42 @@ export function GestionGruposVisualizacion() {
           </div>
         </div>
 
+        {/* Tab bar — only shown when editing an existing group */}
+        {selectedGrupo && (
+          <div className="flex gap-1 border-b border-neutral-200">
+            {([
+              { key: 'general',    label: 'General',    icon: Wrench },
+              { key: 'miembros',   label: 'Miembros',   icon: Users },
+              { key: 'oficinas',   label: 'Oficinas',   icon: Building2 },
+              { key: 'asignacion', label: 'Asignación', icon: GitBranch },
+            ] as const).map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => setFormTab(key)}
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-all border-b-2 -mb-px ${
+                  formTab === key
+                    ? 'text-neutral-900 border-amber-500'
+                    : 'text-neutral-500 border-transparent hover:text-neutral-700'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {label}
+                {key === 'miembros' && miembros.length > 0 && (
+                  <span className="text-[11px] bg-neutral-200 text-neutral-600 px-1.5 py-0.5 rounded-full font-semibold">{miembros.length}</span>
+                )}
+                {key === 'oficinas' && grupoOficinas.length > 0 && !selectedGrupo.all_offices && (
+                  <span className="text-[11px] bg-neutral-200 text-neutral-600 px-1.5 py-0.5 rounded-full font-semibold">{grupoOficinas.length}</span>
+                )}
+                {key === 'asignacion' && grupoReglas.length > 0 && (
+                  <span className="text-[11px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold">{grupoReglas.length}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* ── TAB: GENERAL ── */}
+        {(!selectedGrupo || formTab === 'general') && (
         <div className="space-y-4 bg-white rounded-2xl border border-neutral-200 p-5">
           <div>
             <label className="block text-sm font-semibold text-neutral-700 mb-1.5">Nombre del equipo *</label>
@@ -694,6 +792,268 @@ export function GestionGruposVisualizacion() {
           {formError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{formError}</p>}
         </div>
 
+        )} {/* end General tab */}
+
+        {/* ── TAB: MIEMBROS ── */}
+        {selectedGrupo && formTab === 'miembros' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="border-2 border-amber-200 rounded-2xl overflow-hidden">
+              <div className="px-4 py-3 bg-amber-50">
+                <h4 className="font-bold text-sm text-amber-700 flex items-center gap-2">
+                  <Users className="w-4 h-4" /> Miembros actuales ({miembros.length})
+                </h4>
+              </div>
+              <div className="p-4 space-y-2 max-h-80 overflow-y-auto">
+                {miembros.length === 0 ? (
+                  <p className="text-sm text-neutral-400 text-center py-6">No hay miembros asignados</p>
+                ) : (
+                  miembros.map(m => {
+                    const rc = ROL_CONFIG[m.rol_en_equipo] ?? ROL_CONFIG.miembro;
+                    const RolIcon = rc.icon;
+                    return (
+                      <div key={m.usuario_id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl group hover:bg-neutral-100 transition-colors">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-medium text-neutral-900 text-sm truncate">{m.nombre_completo}</p>
+                            <div className="relative">
+                              <button
+                                onClick={() => setEditingRolMiembro(editingRolMiembro === m.usuario_id ? null : m.usuario_id)}
+                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-semibold ${rc.bg} ${rc.text} hover:opacity-75 transition-opacity flex-shrink-0`}
+                              >
+                                <RolIcon className="w-2.5 h-2.5" />{rc.label}
+                              </button>
+                              {editingRolMiembro === m.usuario_id && (
+                                <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-neutral-200 rounded-xl shadow-lg p-1 space-y-0.5 min-w-[130px]">
+                                  {(['lider', 'ejecutivo', 'miembro'] as const).map(rol => {
+                                    const rci = ROL_CONFIG[rol]; const RCI = rci.icon;
+                                    return (
+                                      <button key={rol} onClick={() => handleChangeRolMiembro(m.usuario_id, rol)}
+                                        className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${m.rol_en_equipo === rol ? `${rci.bg} ${rci.text}` : 'text-neutral-700 hover:bg-neutral-50'}`}>
+                                        <RCI className="w-3 h-3" />{rci.label}
+                                        {m.rol_en_equipo === rol && <Check className="w-3 h-3 ml-auto" />}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-500">
+                            <span>{m.rol}</span>
+                            {m.oficina_nombre && <><span className="text-neutral-300">·</span><span>{m.oficina_nombre}</span></>}
+                          </div>
+                        </div>
+                        <button onClick={() => handleRemoverMiembro(m.usuario_id)} className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-all ml-2 flex-shrink-0">
+                          <UserMinus className="w-4 h-4 text-red-600" />
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+            <div className="border border-neutral-200 rounded-2xl overflow-hidden">
+              <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-100">
+                <h4 className="font-bold text-sm text-neutral-700 flex items-center gap-2"><UserPlus className="w-4 h-4" /> Agregar miembros</h4>
+              </div>
+              <div className="p-4 space-y-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                  <input type="text" placeholder="Buscar por nombre..." value={searchMiembro} onChange={e => setSearchMiembro(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 outline-none" />
+                </div>
+                <div className="max-h-64 overflow-y-auto space-y-1">
+                  {miembrosDisponibles.length === 0 ? (
+                    <p className="text-sm text-neutral-400 text-center py-4">{searchMiembro ? 'Sin resultados' : 'Todos ya están asignados'}</p>
+                  ) : (
+                    miembrosDisponibles.map(u => (
+                      <div key={u.id} className="border border-neutral-100 rounded-xl overflow-hidden">
+                        <div className="flex items-center justify-between p-3 hover:bg-neutral-50 transition-colors">
+                          <div className="min-w-0">
+                            <p className="font-medium text-neutral-900 text-sm truncate">{u.nombre_completo}</p>
+                            <p className="text-xs text-neutral-500">{u.rol}{u.oficina_nombre ? ` · ${u.oficina_nombre}` : ''}</p>
+                          </div>
+                          {pendingAdd?.userId === u.id ? (
+                            <button onClick={() => setPendingAdd(null)} className="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors flex-shrink-0">
+                              <X className="w-3.5 h-3.5 text-neutral-400" />
+                            </button>
+                          ) : (
+                            <button onClick={() => setPendingAdd({ userId: u.id, rol: 'ejecutivo' })} className="p-1.5 rounded-lg hover:bg-green-100 transition-colors flex-shrink-0">
+                              <UserPlus className="w-4 h-4 text-green-600" />
+                            </button>
+                          )}
+                        </div>
+                        {pendingAdd?.userId === u.id && (
+                          <div className="px-3 pb-3 bg-neutral-50 border-t border-neutral-100">
+                            <p className="text-[11px] text-neutral-500 font-medium mb-2 mt-2">Rol en el equipo:</p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {(['lider', 'ejecutivo', 'miembro'] as const).map(rol => {
+                                const rci = ROL_CONFIG[rol]; const RCI = rci.icon;
+                                return (
+                                  <button key={rol} onClick={() => { void handleAgregarMiembro(u.id, rol); setPendingAdd(null); }}
+                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border-2 transition-colors ${pendingAdd.rol === rol ? `${rci.bg} ${rci.text} border-current` : 'border-neutral-200 text-neutral-500 hover:border-neutral-400'}`}
+                                    onMouseEnter={() => setPendingAdd(prev => prev ? { ...prev, rol } : prev)}>
+                                    <RCI className="w-3 h-3" />{rci.label}
+                                  </button>
+                                );
+                              })}
+                              <button onClick={() => { void handleAgregarMiembro(u.id, pendingAdd.rol); setPendingAdd(null); }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors ml-auto">
+                                <Check className="w-3 h-3" /> Agregar
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── TAB: OFICINAS ── */}
+        {selectedGrupo && formTab === 'oficinas' && (
+          <div className="space-y-3">
+            {selectedGrupo.all_offices ? (
+              <div className="bg-teal-50 border border-teal-200 rounded-xl p-3 flex items-center gap-2 text-sm text-teal-800">
+                <Globe className="w-4 h-4 flex-shrink-0" />
+                Este equipo tiene acceso a <strong>todas las oficinas</strong>. Edita la pestaña General para cambiar esto.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="border-2 border-amber-200 rounded-2xl overflow-hidden">
+                  <div className="px-4 py-3 bg-amber-50">
+                    <h4 className="font-bold text-sm text-amber-700 flex items-center gap-2"><Building2 className="w-4 h-4" /> Asignadas ({grupoOficinas.length})</h4>
+                  </div>
+                  <div className="p-4 space-y-2 max-h-80 overflow-y-auto">
+                    {grupoOficinas.length === 0 ? (
+                      <div className="text-center py-6">
+                        <AlertTriangle className="w-8 h-8 mx-auto text-amber-400 mb-2" />
+                        <p className="text-sm text-neutral-400">Sin oficinas asignadas</p>
+                      </div>
+                    ) : (
+                      grupoOficinas.map(go => (
+                        <div key={go.id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl group hover:bg-neutral-100 transition-colors">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                            <span className="text-sm font-medium text-neutral-800">{go.oficina_nombre}</span>
+                          </div>
+                          <button onClick={() => handleRemoverOficina(go.id, go.oficina_id)} className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-all">
+                            <X className="w-4 h-4 text-red-600" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+                <div className="border border-neutral-200 rounded-2xl overflow-hidden">
+                  <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-100">
+                    <h4 className="font-bold text-sm text-neutral-700 flex items-center gap-2"><Plus className="w-4 h-4" /> Agregar oficinas</h4>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                      <input type="text" placeholder="Buscar oficina..." value={searchOficina} onChange={e => setSearchOficina(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 outline-none" />
+                    </div>
+                    <div className="max-h-64 overflow-y-auto space-y-1">
+                      {oficinasDisponibles.length === 0 ? (
+                        <p className="text-sm text-neutral-400 text-center py-4">{searchOficina ? 'Sin resultados' : 'Todas ya están asignadas'}</p>
+                      ) : (
+                        oficinasDisponibles.map(o => (
+                          <div key={o.id} className="flex items-center justify-between p-3 border border-neutral-100 rounded-xl hover:bg-neutral-50 transition-colors">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                              <span className="text-sm font-medium text-neutral-800">{o.nombre}</span>
+                            </div>
+                            <button onClick={() => handleAgregarOficina(o.id)} className="p-1.5 rounded-lg hover:bg-teal-100 transition-colors flex-shrink-0">
+                              <Plus className="w-4 h-4 text-teal-600" />
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── TAB: ASIGNACIÓN ── */}
+        {selectedGrupo && formTab === 'asignacion' && (
+          <div className="space-y-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 text-sm text-amber-800">
+              <GitBranch className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>Define qué oficinas envían sus trámites <strong>automáticamente</strong> a este equipo. Una oficina solo puede tener una regla por área.</span>
+            </div>
+
+            <div className="border border-neutral-200 rounded-2xl overflow-hidden">
+              <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-100">
+                <h4 className="font-bold text-sm text-neutral-700">Reglas activas ({grupoReglas.length})</h4>
+              </div>
+              <div className="p-4 space-y-2 max-h-60 overflow-y-auto">
+                {grupoReglas.length === 0 ? (
+                  <p className="text-sm text-neutral-400 text-center py-6">Sin reglas configuradas. Los trámites llegarán al pool general.</p>
+                ) : (
+                  grupoReglas.map(r => (
+                    <div key={r.id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl group hover:bg-neutral-100 transition-colors">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                        <span className="text-sm font-medium text-neutral-800">{r.oficina_nombre}</span>
+                        <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">{r.area_categoria}</span>
+                      </div>
+                      <button onClick={() => handleRemoverRegla(r.id)} className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-all">
+                        <X className="w-4 h-4 text-red-600" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="border border-neutral-200 rounded-2xl overflow-hidden">
+              <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-100">
+                <h4 className="font-bold text-sm text-neutral-700 flex items-center gap-2"><Plus className="w-4 h-4" /> Agregar regla</h4>
+              </div>
+              <div className="p-4 space-y-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                  <input type="text" placeholder="Buscar oficina..." value={searchReglaOficina} onChange={e => setSearchReglaOficina(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 outline-none" />
+                </div>
+                <div className="max-h-48 overflow-y-auto space-y-1">
+                  {oficinas.filter(o =>
+                    !grupoReglas.some(r => r.oficina_id === o.id) &&
+                    o.nombre.toLowerCase().includes(searchReglaOficina.toLowerCase())
+                  ).length === 0 ? (
+                    <p className="text-sm text-neutral-400 text-center py-4">{searchReglaOficina ? 'Sin resultados' : 'Todas las oficinas ya tienen regla'}</p>
+                  ) : (
+                    oficinas.filter(o =>
+                      !grupoReglas.some(r => r.oficina_id === o.id) &&
+                      o.nombre.toLowerCase().includes(searchReglaOficina.toLowerCase())
+                    ).map(o => (
+                      <div key={o.id} className="flex items-center justify-between p-3 border border-neutral-100 rounded-xl hover:bg-neutral-50 transition-colors">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                          <span className="text-sm font-medium text-neutral-800">{o.nombre}</span>
+                        </div>
+                        <button onClick={() => handleAgregarRegla(o.id)} className="p-1.5 rounded-lg hover:bg-amber-100 transition-colors flex-shrink-0">
+                          <Plus className="w-4 h-4 text-amber-600" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bottom actions — only on General tab */}
+        {(!selectedGrupo || formTab === 'general') && (
         <div className="flex gap-3 justify-end">
           <button onClick={() => setPanel('list')} className="px-5 py-2.5 text-sm rounded-xl border border-neutral-200 hover:bg-neutral-50 font-medium">Cancelar</button>
           <button
@@ -706,6 +1066,14 @@ export function GestionGruposVisualizacion() {
             {selectedGrupo ? 'Guardar cambios' : 'Crear equipo'}
           </button>
         </div>
+        )}
+
+        {/* Back button for non-General tabs */}
+        {selectedGrupo && formTab !== 'general' && (
+          <div className="flex justify-end">
+            <button onClick={() => setPanel('list')} className="px-5 py-2.5 text-sm rounded-xl border border-neutral-200 hover:bg-neutral-50 font-medium">Cerrar</button>
+          </div>
+        )}
       </div>
     );
   }

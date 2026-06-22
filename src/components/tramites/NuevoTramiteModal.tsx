@@ -35,6 +35,7 @@ interface Usuario {
   id: string;
   nombre_completo: string;
   rol: string;
+  oficina_id: string | null;
 }
 
 interface CommissionBatch {
@@ -377,10 +378,19 @@ export function NuevoTramiteModal({
   const loadUsuarios = async () => {
     const { data } = await supabase
       .from('usuarios')
-      .select('id, nombre_completo, rol')
+      .select('id, nombre_completo, rol, oficina_id')
       .order('nombre_completo');
 
-    if (data) setUsuariosDisponibles(data);
+    if (data) setUsuariosDisponibles(data as Usuario[]);
+  };
+
+  const resolveGrupoParaTicket = async (oficina_id: string | null): Promise<string | null> => {
+    if (!oficina_id) return null;
+    const { data } = await supabase.rpc('get_grupo_para_ticket', {
+      p_oficina_id: oficina_id,
+      p_area_categoria: 'Operaciones',
+    });
+    return (data as string | null) ?? null;
   };
 
   const loadLotesDisponibles = async (forUserId?: string) => {
@@ -663,6 +673,11 @@ export function NuevoTramiteModal({
       const isPoolMode = tiposDb.find(t => t.value === tipoTramite)?.assignment_mode === 'pool';
       // pool mode: ticket goes to Mesa de Control queue — no responsable until assigned
       const responsableId = isPoolMode ? null : (isAgent ? (autoResponsableId || null) : (isCommercial ? usuario.id : asignado));
+      // Auto-resolve team based on agent's office
+      const agentOficinaId = isAgent
+        ? (usuario.oficina_id ?? null)
+        : (usuariosDisponibles.find(u => u.id === asignado)?.oficina_id ?? null);
+      const grupoAsignadoId = isPoolMode ? await resolveGrupoParaTicket(agentOficinaId) : null;
       const assignedTo = isCommercial ? usuario.id : (isAgent ? usuario.id : asignado);
 
       const ticketData: any = {
@@ -674,7 +689,8 @@ export function NuevoTramiteModal({
         modificado_por: usuario.id,
         agente_id: isCommercial ? comAgenteUserId : (isAgent ? usuario.id : assignedTo),
         agente_usuario_id: isCommercial ? comAgenteUserId : undefined,
-        assigned_to_user_id: responsableId
+        assigned_to_user_id: responsableId,
+        grupo_asignado_id: grupoAsignadoId ?? undefined
       };
 
       if (tipoTramite === 'correccion_poliza_registrada') {

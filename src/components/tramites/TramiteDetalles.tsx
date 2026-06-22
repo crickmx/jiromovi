@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { User, Users, AlertCircle, FileText, Calendar, Clock, Briefcase, Shield, Building2, TrendingUp } from 'lucide-react';
+import { User, Users, AlertCircle, FileText, Calendar, Clock, Briefcase, Shield, Building2, TrendingUp, UserCheck } from 'lucide-react';
 import { getEstatusColor } from '../../lib/registroActividadesTypes';
 
 interface TramiteEstatus {
@@ -24,6 +24,7 @@ interface TramiteData {
   fecha_creacion: string;
   ultima_modificacion: string;
   cerrado_en: string | null;
+  assigned_to_user_id: string | null;
   agente: Usuario | null;
   responsable: Usuario | null;
   estatus: TramiteEstatus | null;
@@ -47,6 +48,11 @@ interface Asignacion {
   ejecutivo: Usuario | null;
 }
 
+interface TeamMember {
+  id: string;
+  nombre_completo: string;
+}
+
 interface TramiteDetallesProps {
   tramite: TramiteData;
   estatusList: TramiteEstatus[];
@@ -55,6 +61,8 @@ interface TramiteDetallesProps {
   selectedPrioridad: 'Alta' | 'Media' | 'Baja';
   setSelectedPrioridad: (value: 'Alta' | 'Media' | 'Baja') => void;
   canEdit?: boolean;
+  grupoAsignadoId?: string | null;
+  onResponsableChange?: (userId: string) => void;
 }
 
 export function TramiteDetalles({
@@ -64,13 +72,28 @@ export function TramiteDetalles({
   setSelectedEstatus,
   selectedPrioridad,
   setSelectedPrioridad,
-  canEdit = false
+  canEdit = false,
+  grupoAsignadoId,
+  onResponsableChange,
 }: TramiteDetallesProps) {
   const [asignaciones, setAsignaciones] = useState<Asignacion[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [selectedResponsable, setSelectedResponsable] = useState(tramite.responsable?.id ?? '');
 
   useEffect(() => {
     loadAsignaciones();
   }, [tramite.id]);
+
+  useEffect(() => {
+    setSelectedResponsable(tramite.responsable?.id ?? '');
+  }, [tramite.responsable?.id]);
+
+  useEffect(() => {
+    if (!grupoAsignadoId) { setTeamMembers([]); return; }
+    supabase.rpc('get_grupo_miembros_ejecutivos', { p_grupo_id: grupoAsignadoId }).then(({ data }) => {
+      if (data) setTeamMembers(data as TeamMember[]);
+    });
+  }, [grupoAsignadoId]);
 
   const loadAsignaciones = async () => {
     const { data } = await supabase
@@ -105,12 +128,30 @@ export function TramiteDetalles({
 
         <div>
           <label className="block text-sm font-semibold text-neutral-700 mb-2">
-            <User className="w-4 h-4 inline mr-2" />
+            <UserCheck className="w-4 h-4 inline mr-2" />
             Responsable
           </label>
-          <div className="px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl">
-            {tramite.responsable?.nombre_completo || 'Sin responsable asignado'}
-          </div>
+          {canEdit && onResponsableChange && teamMembers.length > 0 ? (
+            <select
+              value={selectedResponsable}
+              onChange={e => {
+                setSelectedResponsable(e.target.value);
+                onResponsableChange(e.target.value);
+              }}
+              className="w-full px-4 py-3 border border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer bg-blue-50 text-blue-900"
+            >
+              <option value="">Sin responsable asignado</option>
+              {teamMembers.map(m => (
+                <option key={m.id} value={m.id}>{m.nombre_completo}</option>
+              ))}
+            </select>
+          ) : (
+            <div className={`px-4 py-3 rounded-xl border ${tramite.assigned_to_user_id ? 'bg-blue-50 border-blue-200' : 'bg-amber-50 border-amber-200'}`}>
+              {tramite.responsable?.nombre_completo || (
+                <span className="text-amber-700 font-medium">Sin responsable — pendiente de asignación</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
