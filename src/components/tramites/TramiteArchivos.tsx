@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { supabaseUrl } from '../../lib/supabase';
-import { FileText, Download, Upload, Eye, FolderDown } from 'lucide-react';
+import { FileText, Download, Upload, Eye, FolderDown, Trash2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { FilePreviewModal } from './FilePreviewModal';
 import JSZip from 'jszip';
@@ -13,6 +13,7 @@ interface Archivo {
   tipo: string | null;
   tamano: number | null;
   fecha_subida: string;
+  eliminado_at: string | null;
   usuarios: {
     nombre_completo: string;
   } | null;
@@ -24,6 +25,7 @@ interface TramiteArchivosProps {
 
 export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
   const { usuario } = useAuth();
+  const isAdmin = usuario?.rol === 'Administrador';
   const [archivos, setArchivos] = useState<Archivo[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -71,10 +73,21 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
       .from('ticket_archivos')
       .select('*, usuarios!usuario_id(nombre_completo)')
       .eq('ticket_id', tramiteId)
+      .is('eliminado_at', null)
       .order('fecha_subida', { ascending: false });
 
     if (data) setArchivos(data as Archivo[]);
     setLoading(false);
+  };
+
+  const handleDeleteArchivo = async (archivoId: string) => {
+    if (!usuario) return;
+    if (!confirm('¿Mover este archivo a la papelera?')) return;
+    await supabase.from('ticket_archivos').update({
+      eliminado_at: new Date().toISOString(),
+      eliminado_por: usuario.id,
+    }).eq('id', archivoId);
+    setArchivos(prev => prev.filter(a => a.id !== archivoId));
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -412,6 +425,15 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
                   <Download className="w-4 h-4" />
                   <span>Descargar</span>
                 </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => handleDeleteArchivo(archivo.id)}
+                    className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Eliminar archivo"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
           ))}

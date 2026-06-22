@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip } from 'lucide-react';
+import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw } from 'lucide-react';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
 import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
@@ -37,6 +37,8 @@ interface TramiteItem {
   fecha_creacion: string;
   ultima_modificacion: string;
   cerrado_en: string | null;
+  eliminado_at: string | null;
+  eliminado_por: string | null;
   agente_id: string | null;
   creado_por: string | null;
   assigned_to_user_id: string | null;
@@ -65,8 +67,9 @@ const PRIORIDADES = ['Alta', 'Media', 'Baja'] as const;
 export function Tramites() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'activos' | 'cerrados'>('activos');
+  const [activeTab, setActiveTab] = useState<'activos' | 'cerrados' | 'papelera'>('activos');
   const [tramites, setTramites] = useState<TramiteItem[]>([]);
+  const [tramitesPapelera, setTramitesPapelera] = useState<TramiteItem[]>([]);
   const [estatusList, setEstatusList] = useState<TramiteEstatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -172,7 +175,9 @@ export function Tramites() {
 
   const loadData = async () => {
     setLoading(true);
-    await Promise.all([loadEstatus(), loadTramites()]);
+    const tasks: Promise<void>[] = [loadEstatus(), loadTramites()];
+    if (isAdmin) tasks.push(loadPapelera());
+    await Promise.all(tasks);
     setLoading(false);
   };
 
@@ -201,6 +206,9 @@ export function Tramites() {
           ticket_archivos(id)
         `)
         .order('fecha_creacion', { ascending: false });
+
+      // Always exclude soft-deleted tramites from activos/cerrados
+      query = query.is('eliminado_at', null);
 
       if (activeTab === 'cerrados') {
         query = query.not('cerrado_en', 'is', null);
@@ -234,6 +242,62 @@ export function Tramites() {
     } catch (error) {
       console.error('Exception loading tramites:', error);
     }
+  };
+
+  const loadPapelera = async () => {
+    if (!isAdmin) return;
+    try {
+      const { data } = await supabase
+        .from('tickets')
+        .select(`
+          *,
+          agente:agente_id(nombre_completo, oficina_id, oficina:oficina_id(nombre)),
+          responsable:assigned_to_user_id(nombre_completo),
+          estatus:estatus_id(*),
+          ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo)),
+          ticket_archivos(id)
+        `)
+        .not('eliminado_at', 'is', null)
+        .order('eliminado_at', { ascending: false });
+
+      if (data) setTramitesPapelera(data as TramiteItem[]);
+    } catch (error) {
+      console.error('Exception loading papelera:', error);
+    }
+  };
+
+  const handleSoftDelete = async (e: React.MouseEvent, tramiteId: string) => {
+    e.stopPropagation();
+    if (!usuario) return;
+    await supabase.from('tickets').update({
+      eliminado_at: new Date().toISOString(),
+      eliminado_por: usuario.id,
+    }).eq('id', tramiteId);
+    setTramites(prev => prev.filter(t => t.id !== tramiteId));
+    loadPapelera();
+  };
+
+  const handleRestore = async (tramiteId: string) => {
+    await supabase.from('tickets').update({
+      eliminado_at: null,
+      eliminado_por: null,
+    }).eq('id', tramiteId);
+    setTramitesPapelera(prev => prev.filter(t => t.id !== tramiteId));
+    loadTramites();
+  };
+
+  const handlePermanentDelete = async (tramiteId: string) => {
+    if (!confirm('¿Eliminar definitivamente este trámite? Esta acción no se puede deshacer.')) return;
+    await supabase.from('tickets').delete().eq('id', tramiteId);
+    setTramitesPapelera(prev => prev.filter(t => t.id !== tramiteId));
+  };
+
+  const handleVaciarPapelera = async () => {
+    if (tramitesPapelera.length === 0) return;
+    if (!confirm(`¿Vaciar la papelera? Se eliminarán permanentemente ${tramitesPapelera.length} trámite(s). Esta acción no se puede deshacer.`)) return;
+    const ids = tramitesPapelera.map(t => t.id);
+    await supabase.from('tickets').delete().in('id', ids);
+    setTramitesPapelera([]);
   };
 
   const getTipoTramiteLabel = (tipo: string) => centralGetLabel(tipo);
@@ -398,13 +462,31 @@ export function Tramites() {
             <CheckCircle2 className="w-4 h-4" />
             Concluidos
           </button>
+          {isAdmin && (
+            <button
+              onClick={() => setActiveTab('papelera')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
+                activeTab === 'papelera'
+                  ? 'text-red-500 border-red-500'
+                  : 'text-neutral-500 dark:text-white/50 border-transparent hover:text-neutral-700 dark:hover:text-white/70'
+              }`}
+            >
+              <Trash2 className="w-4 h-4" />
+              Papelera
+              {tramitesPapelera.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                  {tramitesPapelera.length}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       </PageHeader>
 
       {isAgente && <AgenteDashboard />}
 
       {/* KPI Summary for non-agent users */}
-      {!isAgente && visibleTramites.length > 0 && (
+      {!isAgente && activeTab !== 'papelera' && visibleTramites.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
           {(() => {
             const activos = visibleTramites.filter(t => !t.cerrado_en);
@@ -442,8 +524,8 @@ export function Tramites() {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4">
+      {/* Filters — hidden in papelera mode */}
+      {activeTab !== 'papelera' && <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4">
         <div className="flex flex-col gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-white/30 w-4 h-4" />
@@ -535,9 +617,118 @@ export function Tramites() {
             </div>
           )}
         </div>
-      </div>
+      </div>}
 
-      {loading ? (
+      {/* Papelera tab content */}
+      {activeTab === 'papelera' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <p className="text-xs text-neutral-500 dark:text-white/40 font-medium">
+              {tramitesPapelera.length} {tramitesPapelera.length === 1 ? 'trámite' : 'trámites'} en papelera
+            </p>
+            {tramitesPapelera.length > 0 && (
+              <button
+                onClick={handleVaciarPapelera}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 rounded-lg transition-colors border border-red-200 dark:border-red-800/40"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Vaciar papelera
+              </button>
+            )}
+          </div>
+          {tramitesPapelera.length === 0 ? (
+            <EmptyState
+              icon={Trash2}
+              title="Papelera vacía"
+              description="Los trámites eliminados aparecerán aquí"
+            />
+          ) : (
+            <div className="space-y-3">
+              {tramitesPapelera.map(tramite => {
+                const area = getTipoTramiteArea(tramite.tipo_tramite);
+                const ac = AREA_CONFIG[area];
+                const tipoDb = tiposDb.get(tramite.tipo_tramite);
+                const dbColor = tipoDb?.color;
+                const fallbackBarClass = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
+                return (
+                  <div
+                    key={tramite.id}
+                    className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden flex opacity-70"
+                  >
+                    <div
+                      className={`w-1.5 shrink-0 ${!dbColor ? fallbackBarClass : ''}`}
+                      style={dbColor ? { backgroundColor: dbColor } : undefined}
+                    />
+                    <div className="flex flex-1 min-w-0 flex-col sm:flex-row sm:divide-x divide-neutral-100 dark:divide-white/8">
+                      <div className="px-4 pt-4 pb-3 sm:pb-4 flex flex-col gap-2 sm:w-[38%] sm:shrink-0">
+                        <div>
+                          <p
+                            className={`font-extrabold text-sm uppercase tracking-wide leading-tight ${!dbColor ? ac.color : ''}`}
+                            style={dbColor ? { color: dbColor } : undefined}
+                          >
+                            {tramite.agente?.nombre_completo || 'Sin asignar'}
+                          </p>
+                          <p
+                            className={`text-[11px] font-semibold mt-0.5 uppercase tracking-wide opacity-80 ${!dbColor ? ac.color : ''}`}
+                            style={dbColor ? { color: dbColor } : undefined}
+                          >
+                            {tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}
+                          </p>
+                        </div>
+                        <div className="space-y-0.5 text-xs">
+                          <p className="text-neutral-600 dark:text-white/60">
+                            <span className="text-neutral-400 dark:text-white/35">Eliminado: </span>
+                            <span className="font-medium">
+                              {new Date(tramite.eliminado_at!).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                            </span>
+                          </p>
+                          <p className="text-neutral-600 dark:text-white/60">
+                            <span className="text-neutral-400 dark:text-white/35">Creado: </span>
+                            <span className="font-medium">
+                              {new Date(tramite.fecha_creacion).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                            </span>
+                          </p>
+                        </div>
+                        <p
+                          className={`text-[11px] font-extrabold uppercase tracking-widest mt-auto ${!dbColor ? ac.color : ''}`}
+                          style={dbColor ? { color: dbColor } : undefined}
+                        >
+                          Folio: {tramite.folio}
+                        </p>
+                      </div>
+                      <div className="flex-1 px-4 pt-3 sm:pt-4 pb-4 flex flex-col justify-between gap-3 min-w-0">
+                        <p className="text-xs text-neutral-700 dark:text-white/75 leading-relaxed line-clamp-3">
+                          <span className="font-semibold text-neutral-500 dark:text-white/50">Mensaje: </span>
+                          {tramite.instrucciones}
+                        </p>
+                        <div className="flex items-center gap-2 justify-end mt-auto">
+                          <button
+                            onClick={() => handleRestore(tramite.id)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/40 dark:text-green-400 rounded-lg transition-colors border border-green-200 dark:border-green-800/40"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            Restaurar
+                          </button>
+                          <button
+                            onClick={() => handlePermanentDelete(tramite.id)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 rounded-lg transition-colors border border-red-200 dark:border-red-800/40"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Eliminar definitivamente
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Normal activos/cerrados list */}
+      {activeTab !== 'papelera' && (loading ? (
         <LoadingState text="Cargando tramites..." />
       ) : filteredTramites.length === 0 ? (
         <EmptyState
@@ -633,14 +824,25 @@ export function Tramites() {
                       )}
                     </div>
 
-                    {/* Folio + clip indicator */}
-                    <p
-                      className={`text-[11px] font-extrabold uppercase tracking-widest mt-auto flex items-center gap-1.5 ${!dbColor ? ac.color : ''}`}
-                      style={dbColor ? { color: dbColor } : undefined}
-                    >
-                      Folio: {tramite.folio}
-                      {hasArchivos && <Paperclip className="w-3 h-3 shrink-0" title={`${tramite.ticket_archivos.length} archivo(s) adjunto(s)`} />}
-                    </p>
+                    {/* Folio + clip indicator + delete */}
+                    <div className="mt-auto flex items-center justify-between gap-2">
+                      <p
+                        className={`text-[11px] font-extrabold uppercase tracking-widest flex items-center gap-1.5 ${!dbColor ? ac.color : ''}`}
+                        style={dbColor ? { color: dbColor } : undefined}
+                      >
+                        Folio: {tramite.folio}
+                        {hasArchivos && <Paperclip className="w-3 h-3 shrink-0" title={`${tramite.ticket_archivos.length} archivo(s) adjunto(s)`} />}
+                      </p>
+                      {isAdmin && (
+                        <button
+                          onClick={(e) => handleSoftDelete(e, tramite.id)}
+                          className="p-1 rounded-md text-neutral-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"
+                          title="Mover a papelera"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Right: message + responsable */}
@@ -675,7 +877,7 @@ export function Tramites() {
             );
           })}
         </div>
-      )}
+      ))}
 
       <NuevoTramiteModal
         isOpen={showNuevoModal}
