@@ -383,18 +383,18 @@ export function GestionGruposVisualizacion() {
   const loadGrupoReglas = async (grupoId: string) => {
     const { data } = await supabase
       .from('tramites_grupos_reglas')
-      .select('id, usuario_id, ejecutivo_id, usuarios!inner(id, nombre_completo, oficina_id)')
+      .select('id, usuario_id, ejecutivo_id')
       .eq('grupo_id', grupoId)
       .eq('activo', true);
     if (data) {
-      setGrupoReglas(data.map((r: Record<string, unknown>) => {
-        const u = r.usuarios as { id: string; nombre_completo?: string; oficina_id?: string | null } | null;
+      setGrupoReglas(data.map(r => {
+        const agente = agentesParaReglas.find(a => a.id === r.usuario_id);
         return {
-          id: r.id as string,
-          usuario_id: r.usuario_id as string,
-          usuario_nombre: u?.nombre_completo || (r.usuario_id as string),
-          oficina_nombre: oficinas.find(o => o.id === u?.oficina_id)?.nombre || null,
-          ejecutivo_id: (r.ejecutivo_id as string | null) ?? null,
+          id: r.id,
+          usuario_id: r.usuario_id,
+          usuario_nombre: agente?.nombre_completo || r.usuario_id,
+          oficina_nombre: agente?.oficina_id ? (oficinas.find(o => o.id === agente.oficina_id)?.nombre || null) : null,
+          ejecutivo_id: r.ejecutivo_id ?? null,
         };
       }));
     }
