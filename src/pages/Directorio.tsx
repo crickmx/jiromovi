@@ -231,20 +231,27 @@ export function Directorio() {
     text
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .replace(/\s+/g, '');
+      .toLowerCase();
 
   const filteredUsuarios = usuarios.filter((usuario) => {
-    const searchNorm = normalize(searchTerm);
-    const matchesSearch =
-      searchTerm === '' ||
-      normalize(usuario.nombre || '').includes(searchNorm) ||
-      normalize(usuario.apellidos || '').includes(searchNorm) ||
-      normalize(usuario.email_personal || '').includes(searchNorm) ||
-      normalize(usuario.email_laboral || '').includes(searchNorm) ||
-      normalize(usuario.celular_personal || '').includes(searchNorm) ||
-      normalize(usuario.celular_laboral || '').includes(searchNorm) ||
-      normalize(usuario.username || '').includes(searchNorm);
+    if (searchTerm === '') {
+      const matchesRol = filterRol === '' || usuario.rol === filterRol;
+      const matchesOficina = filterOficina === '' || usuario.oficina_id === filterOficina;
+      return matchesRol && matchesOficina;
+    }
+
+    const haystack = normalize([
+      usuario.nombre || '',
+      usuario.apellidos || '',
+      usuario.email_personal || '',
+      usuario.email_laboral || '',
+      usuario.celular_personal || '',
+      usuario.celular_laboral || '',
+      usuario.username || ''
+    ].join(' '));
+
+    const words = normalize(searchTerm).split(/\s+/).filter(Boolean);
+    const matchesSearch = words.every(word => haystack.includes(word));
 
     const matchesRol = filterRol === '' || usuario.rol === filterRol;
     const matchesOficina = filterOficina === '' || usuario.oficina_id === filterOficina;
