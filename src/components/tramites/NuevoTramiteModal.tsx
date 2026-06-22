@@ -384,12 +384,9 @@ export function NuevoTramiteModal({
     if (data) setUsuariosDisponibles(data as Usuario[]);
   };
 
-  const resolveGrupoParaTicket = async (oficina_id: string | null): Promise<string | null> => {
-    if (!oficina_id) return null;
-    const { data } = await supabase.rpc('get_grupo_para_ticket', {
-      p_oficina_id: oficina_id,
-      p_area_categoria: 'Operaciones',
-    });
+  const resolveGrupoParaTicket = async (agente_id: string | null): Promise<string | null> => {
+    if (!agente_id) return null;
+    const { data } = await supabase.rpc('get_grupo_para_ticket', { p_agente_id: agente_id });
     return (data as string | null) ?? null;
   };
 
@@ -673,11 +670,11 @@ export function NuevoTramiteModal({
       const isPoolMode = tiposDb.find(t => t.value === tipoTramite)?.assignment_mode === 'pool';
       // pool mode: ticket goes to Mesa de Control queue — no responsable until assigned
       const responsableId = isPoolMode ? null : (isAgent ? (autoResponsableId || null) : (isCommercial ? usuario.id : asignado));
-      // Auto-resolve team based on agent's office
-      const agentOficinaId = isAgent
-        ? (usuario.oficina_id ?? null)
-        : (usuariosDisponibles.find(u => u.id === asignado)?.oficina_id ?? null);
-      const grupoAsignadoId = isPoolMode ? await resolveGrupoParaTicket(agentOficinaId) : null;
+      // Resolve team based on the agent user (applies to all tramite types)
+      const agentUserId = isAgent
+        ? usuario.id
+        : (isCommercial ? comAgenteUserId : asignado) ?? null;
+      const grupoAsignadoId = await resolveGrupoParaTicket(agentUserId);
       const assignedTo = isCommercial ? usuario.id : (isAgent ? usuario.id : asignado);
 
       const ticketData: any = {

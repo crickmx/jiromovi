@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Users, UserPlus, UserMinus, Search, ShieldCheck, Briefcase, Wrench, Plus, Pencil, Trash2, ChevronRight, Building2, X, Check, TriangleAlert as AlertTriangle, Loader as Loader2, Globe, Crown, Zap, Eye, GitBranch } from 'lucide-react';
+import { Users, UserPlus, UserMinus, User, Search, ShieldCheck, Briefcase, Wrench, Plus, Pencil, Trash2, ChevronRight, Building2, X, Check, TriangleAlert as AlertTriangle, Loader as Loader2, Globe, Crown, Zap, Eye, GitBranch } from 'lucide-react';
 import { AREA_CONFIG, type AreaCategoria } from '../../lib/registroActividadesTypes';
 
 interface Grupo {
@@ -42,9 +42,17 @@ interface GrupoOficina {
 
 interface GrupoRegla {
   id: string;
-  oficina_id: string;
-  oficina_nombre: string;
-  area_categoria: string;
+  usuario_id: string;
+  usuario_nombre: string;
+  oficina_nombre: string | null;
+}
+
+interface AgentUser {
+  id: string;
+  nombre_completo: string;
+  oficina_id: string | null;
+  oficina_nombre: string | null;
+  rol: string;
 }
 
 type FormTab = 'general' | 'miembros' | 'oficinas' | 'asignacion';
@@ -103,7 +111,10 @@ export function GestionGruposVisualizacion() {
   // Form tabs (when editing)
   const [formTab, setFormTab] = useState<FormTab>('general');
   const [grupoReglas, setGrupoReglas] = useState<GrupoRegla[]>([]);
+  const [agentesParaReglas, setAgentesParaReglas] = useState<AgentUser[]>([]);
+  const [filterReglaOficinaId, setFilterReglaOficinaId] = useState('');
   const [searchReglaOficina, setSearchReglaOficina] = useState('');
+  const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
 
   // Delete confirm
   const [confirmDelete, setConfirmDelete] = useState<Grupo | null>(null);
@@ -113,7 +124,7 @@ export function GestionGruposVisualizacion() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    await Promise.all([loadGrupos(), loadUsuarios(), loadOficinas()]);
+    await Promise.all([loadGrupos(), loadUsuarios(), loadOficinas(), loadAgentesParaReglas()]);
     setLoading(false);
   }, []);
 
@@ -149,6 +160,28 @@ export function GestionGruposVisualizacion() {
   const loadOficinas = async () => {
     const { data } = await supabase.from('oficinas').select('id, nombre').eq('activa', true).order('nombre');
     if (data) setOficinas(data);
+  };
+
+  const loadAgentesParaReglas = async () => {
+    const { data } = await supabase
+      .from('usuarios')
+      .select('id, nombre_completo, nombre, apellidos, rol, oficina_id, oficinas(nombre)')
+      .eq('estado', 'activo')
+      .order('nombre_completo');
+    if (data) {
+      setAgentesParaReglas(data.map(u => {
+        const nc = u.nombre_completo ||
+          ((u as { nombre?: string }).nombre || '') + ' ' +
+          ((u as { apellidos?: string }).apellidos || '');
+        return {
+          id: u.id,
+          nombre_completo: nc.trim() || u.id,
+          rol: u.rol,
+          oficina_id: u.oficina_id ?? null,
+          oficina_nombre: (u.oficinas as { nombre: string } | null)?.nombre || null,
+        };
+      }));
+    }
   };
 
   const loadMiembros = async (grupoId: string) => {
@@ -187,6 +220,8 @@ export function GestionGruposVisualizacion() {
     setSearchMiembro('');
     setSearchOficina('');
     setSearchReglaOficina('');
+    setFilterReglaOficinaId('');
+    setSelectedAgentIds([]);
     setEditingRolMiembro(null);
     setPendingAdd(null);
     // Load all tab data in parallel
@@ -358,28 +393,33 @@ export function GestionGruposVisualizacion() {
   const loadGrupoReglas = async (grupoId: string) => {
     const { data } = await supabase
       .from('tramites_grupos_reglas')
-      .select('id, oficina_id, area_categoria, oficinas(nombre)')
+      .select('id, usuario_id, usuarios!inner(id, nombre_completo, nombre, apellidos, oficinas(nombre))')
       .eq('grupo_id', grupoId)
       .eq('activo', true);
     if (data) {
-      setGrupoReglas(data.map((r: Record<string, unknown>) => ({
-        id: r.id as string,
-        oficina_id: r.oficina_id as string,
-        oficina_nombre: (r.oficinas as { nombre: string } | null)?.nombre || '',
-        area_categoria: r.area_categoria as string,
-      })));
+      setGrupoReglas(data.map((r: Record<string, unknown>) => {
+        const u = r.usuarios as { id: string; nombre_completo?: string; nombre?: string; apellidos?: string; oficinas?: { nombre: string } | null } | null;
+        const nc = u?.nombre_completo || ((u?.nombre || '') + ' ' + (u?.apellidos || '')).trim() || (r.usuario_id as string);
+        return {
+          id: r.id as string,
+          usuario_id: r.usuario_id as string,
+          usuario_nombre: nc,
+          oficina_nombre: u?.oficinas?.nombre || null,
+        };
+      }));
     }
   };
 
-  const handleAgregarRegla = async (oficina_id: string) => {
-    if (!selectedGrupo) return;
-    const { error } = await supabase.from('tramites_grupos_reglas').insert({
+  const handleAgregarReglas = async () => {
+    if (!selectedGrupo || selectedAgentIds.length === 0) return;
+    const rows = selectedAgentIds.map(uid => ({
       grupo_id: selectedGrupo.id,
-      oficina_id,
-      area_categoria: selectedGrupo.area_categoria || 'Operaciones',
+      usuario_id: uid,
       created_by: usuario?.id,
-    });
+    }));
+    const { error } = await supabase.from('tramites_grupos_reglas').insert(rows);
     if (error) { alert('Error: ' + error.message); return; }
+    setSelectedAgentIds([]);
     setSearchReglaOficina('');
     await loadGrupoReglas(selectedGrupo.id);
   };
@@ -988,74 +1028,127 @@ export function GestionGruposVisualizacion() {
         )}
 
         {/* ── TAB: ASIGNACIÓN ── */}
-        {selectedGrupo && formTab === 'asignacion' && (
-          <div className="space-y-4">
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 text-sm text-amber-800">
-              <GitBranch className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              <span>Define qué oficinas envían sus trámites <strong>automáticamente</strong> a este equipo. Una oficina solo puede tener una regla por área.</span>
-            </div>
+        {selectedGrupo && formTab === 'asignacion' && (() => {
+          const disponibles = agentesParaReglas.filter(a =>
+            !grupoReglas.some(r => r.usuario_id === a.id) &&
+            (filterReglaOficinaId === '' || a.oficina_id === filterReglaOficinaId) &&
+            (searchReglaOficina === '' || a.nombre_completo.toLowerCase().includes(searchReglaOficina.toLowerCase()))
+          );
+          const allSelected = disponibles.length > 0 && disponibles.every(a => selectedAgentIds.includes(a.id));
+          return (
+            <div className="space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 text-sm text-amber-800">
+                <GitBranch className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <span>Define qué vendedores envían sus trámites <strong>automáticamente</strong> a este equipo. Aplica a cualquier tipo de trámite.</span>
+              </div>
 
-            <div className="border border-neutral-200 rounded-2xl overflow-hidden">
-              <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-100">
-                <h4 className="font-bold text-sm text-neutral-700">Reglas activas ({grupoReglas.length})</h4>
-              </div>
-              <div className="p-4 space-y-2 max-h-60 overflow-y-auto">
-                {grupoReglas.length === 0 ? (
-                  <p className="text-sm text-neutral-400 text-center py-6">Sin reglas configuradas. Los trámites llegarán al pool general.</p>
-                ) : (
-                  grupoReglas.map(r => (
-                    <div key={r.id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl group hover:bg-neutral-100 transition-colors">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
-                        <span className="text-sm font-medium text-neutral-800">{r.oficina_nombre}</span>
-                        <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">{r.area_categoria}</span>
-                      </div>
-                      <button onClick={() => handleRemoverRegla(r.id)} className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-all">
-                        <X className="w-4 h-4 text-red-600" />
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <div className="border border-neutral-200 rounded-2xl overflow-hidden">
-              <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-100">
-                <h4 className="font-bold text-sm text-neutral-700 flex items-center gap-2"><Plus className="w-4 h-4" /> Agregar regla</h4>
-              </div>
-              <div className="p-4 space-y-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-                  <input type="text" placeholder="Buscar oficina..." value={searchReglaOficina} onChange={e => setSearchReglaOficina(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 outline-none" />
+              {/* Vendedores asignados */}
+              <div className="border border-neutral-200 rounded-2xl overflow-hidden">
+                <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-100">
+                  <h4 className="font-bold text-sm text-neutral-700">Vendedores asignados ({grupoReglas.length})</h4>
                 </div>
-                <div className="max-h-48 overflow-y-auto space-y-1">
-                  {oficinas.filter(o =>
-                    !grupoReglas.some(r => r.oficina_id === o.id) &&
-                    o.nombre.toLowerCase().includes(searchReglaOficina.toLowerCase())
-                  ).length === 0 ? (
-                    <p className="text-sm text-neutral-400 text-center py-4">{searchReglaOficina ? 'Sin resultados' : 'Todas las oficinas ya tienen regla'}</p>
+                <div className="p-4 space-y-2 max-h-52 overflow-y-auto">
+                  {grupoReglas.length === 0 ? (
+                    <p className="text-sm text-neutral-400 text-center py-6">Sin vendedores asignados. Los trámites llegarán al pool general.</p>
                   ) : (
-                    oficinas.filter(o =>
-                      !grupoReglas.some(r => r.oficina_id === o.id) &&
-                      o.nombre.toLowerCase().includes(searchReglaOficina.toLowerCase())
-                    ).map(o => (
-                      <div key={o.id} className="flex items-center justify-between p-3 border border-neutral-100 rounded-xl hover:bg-neutral-50 transition-colors">
-                        <div className="flex items-center gap-2">
-                          <Building2 className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
-                          <span className="text-sm font-medium text-neutral-800">{o.nombre}</span>
+                    grupoReglas.map(r => (
+                      <div key={r.id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl group hover:bg-neutral-100 transition-colors">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <User className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                          <span className="text-sm font-medium text-neutral-800 truncate">{r.usuario_nombre}</span>
+                          {r.oficina_nombre && (
+                            <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-neutral-100 text-neutral-500 shrink-0">{r.oficina_nombre}</span>
+                          )}
                         </div>
-                        <button onClick={() => handleAgregarRegla(o.id)} className="p-1.5 rounded-lg hover:bg-amber-100 transition-colors flex-shrink-0">
-                          <Plus className="w-4 h-4 text-amber-600" />
+                        <button onClick={() => handleRemoverRegla(r.id)} className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-all flex-shrink-0">
+                          <X className="w-4 h-4 text-red-600" />
                         </button>
                       </div>
                     ))
                   )}
                 </div>
               </div>
+
+              {/* Agregar vendedores */}
+              <div className="border border-neutral-200 rounded-2xl overflow-hidden">
+                <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-100 flex items-center justify-between">
+                  <h4 className="font-bold text-sm text-neutral-700 flex items-center gap-2"><Plus className="w-4 h-4" /> Agregar vendedores</h4>
+                  {selectedAgentIds.length > 0 && (
+                    <button
+                      onClick={handleAgregarReglas}
+                      className="px-3 py-1 text-xs font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+                    >
+                      Agregar {selectedAgentIds.length} seleccionado{selectedAgentIds.length > 1 ? 's' : ''}
+                    </button>
+                  )}
+                </div>
+                <div className="p-4 space-y-3">
+                  {/* Filters */}
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                      <input type="text" placeholder="Buscar vendedor..." value={searchReglaOficina} onChange={e => setSearchReglaOficina(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 outline-none" />
+                    </div>
+                    <select
+                      value={filterReglaOficinaId}
+                      onChange={e => setFilterReglaOficinaId(e.target.value)}
+                      className="px-3 py-2 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 outline-none max-w-[160px]"
+                    >
+                      <option value="">Todas las oficinas</option>
+                      {oficinas.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Select all */}
+                  {disponibles.length > 0 && (
+                    <label className="flex items-center gap-2 px-2 py-1 cursor-pointer text-sm text-neutral-600 hover:text-neutral-900">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={() => {
+                          if (allSelected) {
+                            setSelectedAgentIds(prev => prev.filter(id => !disponibles.some(a => a.id === id)));
+                          } else {
+                            setSelectedAgentIds(prev => [...new Set([...prev, ...disponibles.map(a => a.id)])]);
+                          }
+                        }}
+                        className="rounded"
+                      />
+                      <span className="font-medium">Seleccionar todos ({disponibles.length})</span>
+                    </label>
+                  )}
+
+                  {/* List */}
+                  <div className="max-h-56 overflow-y-auto space-y-1">
+                    {disponibles.length === 0 ? (
+                      <p className="text-sm text-neutral-400 text-center py-4">
+                        {searchReglaOficina || filterReglaOficinaId ? 'Sin resultados' : 'Todos los usuarios ya están asignados'}
+                      </p>
+                    ) : (
+                      disponibles.map(a => (
+                        <label key={a.id} className="flex items-center gap-3 p-2.5 border border-neutral-100 rounded-xl hover:bg-neutral-50 transition-colors cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedAgentIds.includes(a.id)}
+                            onChange={() => setSelectedAgentIds(prev =>
+                              prev.includes(a.id) ? prev.filter(x => x !== a.id) : [...prev, a.id]
+                            )}
+                            className="rounded flex-shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-neutral-800 truncate">{a.nombre_completo}</p>
+                            <p className="text-[11px] text-neutral-400">{a.rol}{a.oficina_nombre ? ` · ${a.oficina_nombre}` : ''}</p>
+                          </div>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Bottom actions — only on General tab */}
         {(!selectedGrupo || formTab === 'general') && (

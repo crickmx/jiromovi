@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { User, Users, AlertCircle, FileText, Calendar, Clock, Briefcase, Shield, Building2, TrendingUp, UserCheck } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { User, Users, AlertCircle, FileText, Calendar, Clock, Briefcase, Shield, Building2, TrendingUp, UserCheck, X, UserPlus } from 'lucide-react';
 import { getEstatusColor } from '../../lib/registroActividadesTypes';
 
 interface TramiteEstatus {
@@ -45,6 +46,7 @@ interface TramiteData {
 }
 
 interface Asignacion {
+  id: string;
   ejecutivo: Usuario | null;
 }
 
@@ -61,6 +63,7 @@ interface TramiteDetallesProps {
   selectedPrioridad: 'Alta' | 'Media' | 'Baja';
   setSelectedPrioridad: (value: 'Alta' | 'Media' | 'Baja') => void;
   canEdit?: boolean;
+  canManageAssignment?: boolean;
   grupoAsignadoId?: string | null;
   onResponsableChange?: (userId: string) => void;
 }
@@ -73,12 +76,15 @@ export function TramiteDetalles({
   selectedPrioridad,
   setSelectedPrioridad,
   canEdit = false,
+  canManageAssignment = false,
   grupoAsignadoId,
   onResponsableChange,
 }: TramiteDetallesProps) {
+  const { usuario } = useAuth();
   const [asignaciones, setAsignaciones] = useState<Asignacion[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [selectedResponsable, setSelectedResponsable] = useState(tramite.responsable?.id ?? '');
+  const [addingEjecutivo, setAddingEjecutivo] = useState(false);
 
   useEffect(() => {
     loadAsignaciones();
@@ -89,19 +95,62 @@ export function TramiteDetalles({
   }, [tramite.responsable?.id]);
 
   useEffect(() => {
-    if (!grupoAsignadoId) { setTeamMembers([]); return; }
-    supabase.rpc('get_grupo_miembros_ejecutivos', { p_grupo_id: grupoAsignadoId }).then(({ data }) => {
-      if (data) setTeamMembers(data as TeamMember[]);
-    });
-  }, [grupoAsignadoId]);
+    if (!canManageAssignment) { setTeamMembers([]); return; }
+    const load = async () => {
+      if (grupoAsignadoId) {
+        const { data } = await supabase.rpc('get_grupo_miembros_ejecutivos', { p_grupo_id: grupoAsignadoId });
+        if (data) setTeamMembers(data as TeamMember[]);
+      } else {
+        // Fallback: all lider+ejecutivo from all active teams
+        const { data: grupos } = await supabase
+          .from('tramites_grupos_visualizacion')
+          .select('id')
+          .eq('activo', true);
+        if (!grupos?.length) { setTeamMembers([]); return; }
+        const { data: miembros } = await supabase
+          .from('tramites_grupos_miembros')
+          .select('usuario_id, usuarios!inner(id, nombre_completo)')
+          .in('grupo_id', grupos.map((g: { id: string }) => g.id))
+          .in('rol_en_equipo', ['lider', 'ejecutivo']);
+        if (miembros) {
+          type Row = { usuario_id: string; usuarios: { id: string; nombre_completo: string } };
+          const seen = new Set<string>();
+          const members: TeamMember[] = [];
+          for (const m of miembros as Row[]) {
+            if (!seen.has(m.usuario_id)) {
+              seen.add(m.usuario_id);
+              members.push({ id: m.usuarios.id, nombre_completo: m.usuarios.nombre_completo });
+            }
+          }
+          setTeamMembers(members);
+        }
+      }
+    };
+    load();
+  }, [grupoAsignadoId, canManageAssignment]);
 
   const loadAsignaciones = async () => {
     const { data } = await supabase
       .from('ticket_asignaciones')
-      .select('ejecutivo:ejecutivo_id(id, nombre_completo)')
+      .select('id, ejecutivo:ejecutivo_id(id, nombre_completo)')
       .eq('ticket_id', tramite.id);
-
     if (data) setAsignaciones(data as Asignacion[]);
+  };
+
+  const handleRemoverEjecutivo = async (asignacionId: string) => {
+    await supabase.from('ticket_asignaciones').delete().eq('id', asignacionId);
+    await loadAsignaciones();
+  };
+
+  const handleAgregarEjecutivo = async (userId: string) => {
+    if (!userId || !usuario) return;
+    await supabase.from('ticket_asignaciones').insert({
+      ticket_id: tramite.id,
+      ejecutivo_id: userId,
+      asignado_por: usuario.id,
+    });
+    setAddingEjecutivo(false);
+    await loadAsignaciones();
   };
 
   const getPrioridadColor = (prioridad: string) => {
@@ -131,7 +180,7 @@ export function TramiteDetalles({
             <UserCheck className="w-4 h-4 inline mr-2" />
             Responsable
           </label>
-          {canEdit && onResponsableChange && teamMembers.length > 0 ? (
+          {canManageAssignment && onResponsableChange ? (
             <select
               value={selectedResponsable}
               onChange={e => {
@@ -219,21 +268,58 @@ export function TramiteDetalles({
         </div>
       </div>
 
-      {asignaciones.length > 0 && (
+      {(asignaciones.length > 0 || canManageAssignment) && (
         <div>
-          <label className="block text-sm font-semibold text-neutral-700 mb-2">
-            <Users className="w-4 h-4 inline mr-2" />
+          <label className="block text-sm font-semibold text-neutral-700 mb-2 flex items-center gap-2">
+            <Users className="w-4 h-4" />
             Ejecutivos Asignados
           </label>
-          <div className="flex flex-wrap gap-2">
-            {asignaciones.map((asignacion, index) => (
+          <div className="flex flex-wrap gap-2 items-center">
+            {asignaciones.map(asignacion => (
               <span
-                key={index}
-                className="px-3 py-2 bg-primary-100 text-primary-700 rounded-lg border border-primary-300 font-medium"
+                key={asignacion.id}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-800 rounded-lg border border-blue-200 font-medium text-sm"
               >
                 {asignacion.ejecutivo?.nombre_completo}
+                {canManageAssignment && (
+                  <button
+                    onClick={() => handleRemoverEjecutivo(asignacion.id)}
+                    className="ml-0.5 hover:text-red-600 transition-colors"
+                    title="Quitar ejecutivo"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </span>
             ))}
+            {canManageAssignment && (
+              addingEjecutivo ? (
+                <select
+                  autoFocus
+                  defaultValue=""
+                  onChange={e => { if (e.target.value) handleAgregarEjecutivo(e.target.value); }}
+                  onBlur={() => setAddingEjecutivo(false)}
+                  className="px-3 py-1.5 text-sm border border-blue-300 rounded-lg bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
+                >
+                  <option value="" disabled>Seleccionar ejecutivo...</option>
+                  {teamMembers
+                    .filter(m => !asignaciones.some(a => a.ejecutivo?.id === m.id))
+                    .map(m => <option key={m.id} value={m.id}>{m.nombre_completo}</option>)
+                  }
+                </select>
+              ) : (
+                <button
+                  onClick={() => setAddingEjecutivo(true)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 border border-blue-200 border-dashed rounded-lg hover:bg-blue-50 transition-colors"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  Agregar
+                </button>
+              )
+            )}
+            {asignaciones.length === 0 && !addingEjecutivo && !canManageAssignment && (
+              <span className="text-sm text-neutral-400 italic">Sin ejecutivos asignados</span>
+            )}
           </div>
         </div>
       )}

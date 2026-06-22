@@ -77,6 +77,7 @@ export function TramiteDetalle() {
   const cerrarMenuRef = useRef<HTMLDivElement | null>(null);
 
   const [userArea, setUserArea] = useState<string | null>(null);
+  const [myTeamRole, setMyTeamRole] = useState<'lider' | 'ejecutivo' | 'miembro' | null>(null);
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
@@ -89,6 +90,7 @@ export function TramiteDetalle() {
   const isCommercialViewerOnly = userArea === 'Comercial' && isOperationalTicket && !isAdmin && !isOwner && !isAssigned;
 
   const canEdit = (isAdmin || isGerente || isEmpleado || isOwner || isAssigned) && !isCommercialViewerOnly;
+  const canManageAssignment = isAdmin || myTeamRole === 'lider';
   const claimedRef = useRef(false);
   const isCerrado = tramite?.cerrado_en !== null;
 
@@ -115,6 +117,17 @@ export function TramiteDetalle() {
       });
     }
   }, [usuario?.id]);
+
+  useEffect(() => {
+    if (!tramite?.grupo_asignado_id || !usuario || isAdmin) { setMyTeamRole(null); return; }
+    supabase
+      .from('tramites_grupos_miembros')
+      .select('rol_en_equipo')
+      .eq('grupo_id', tramite.grupo_asignado_id)
+      .eq('usuario_id', usuario.id)
+      .maybeSingle()
+      .then(({ data }) => setMyTeamRole((data?.rol_en_equipo as typeof myTeamRole) ?? null));
+  }, [tramite?.grupo_asignado_id, usuario?.id]);
 
   useEffect(() => {
     if (id) {
@@ -603,6 +616,7 @@ export function TramiteDetalle() {
             selectedPrioridad={selectedPrioridad}
             setSelectedPrioridad={setSelectedPrioridad}
             canEdit={canEdit && !isCerrado}
+            canManageAssignment={canManageAssignment && !isCerrado}
             grupoAsignadoId={tramite.grupo_asignado_id}
             onResponsableChange={handleResponsableChange}
           />
