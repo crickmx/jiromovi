@@ -163,7 +163,9 @@ export function GestionGruposVisualizacion() {
       .select('id, nombre_completo, rol, oficina_id')
       .order('nombre_completo');
     if (data) {
-      setAgentesParaReglas(data.map(u => ({
+      const seen = new Set<string>();
+      const unique = data.filter(u => { if (seen.has(u.id)) return false; seen.add(u.id); return true; });
+      setAgentesParaReglas(unique.map(u => ({
         id: u.id,
         nombre_completo: u.nombre_completo || u.id,
         rol: u.rol,
@@ -404,8 +406,12 @@ export function GestionGruposVisualizacion() {
       grupo_id: selectedGrupo.id,
       usuario_id: uid,
       created_by: usuario?.id,
+      activo: true,
     }));
-    const { error } = await supabase.from('tramites_grupos_reglas').insert(rows);
+    // upsert: si el vendedor ya tiene regla en otro equipo, la reasigna a este
+    const { error } = await supabase
+      .from('tramites_grupos_reglas')
+      .upsert(rows, { onConflict: 'usuario_id' });
     if (error) { alert('Error: ' + error.message); return; }
     setSelectedAgentIds([]);
     setSearchReglaOficina('');
