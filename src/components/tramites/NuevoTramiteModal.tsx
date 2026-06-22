@@ -384,10 +384,12 @@ export function NuevoTramiteModal({
     if (data) setUsuariosDisponibles(data as Usuario[]);
   };
 
-  const resolveGrupoParaTicket = async (agente_id: string | null): Promise<string | null> => {
+  const resolveGrupoParaTicket = async (agente_id: string | null): Promise<{ grupo_id: string; ejecutivo_id: string | null } | null> => {
     if (!agente_id) return null;
     const { data } = await supabase.rpc('get_grupo_para_ticket', { p_agente_id: agente_id });
-    return (data as string | null) ?? null;
+    if (!data || !Array.isArray(data) || data.length === 0) return null;
+    const row = data[0] as { grupo_id: string; ejecutivo_id: string | null };
+    return row.grupo_id ? row : null;
   };
 
   const loadLotesDisponibles = async (forUserId?: string) => {
@@ -668,13 +670,16 @@ export function NuevoTramiteModal({
 
       const isCommercial = isCommercialTicketType(tipoTramite);
       const isPoolMode = tiposDb.find(t => t.value === tipoTramite)?.assignment_mode === 'pool';
-      // pool mode: ticket goes to Mesa de Control queue — no responsable until assigned
-      const responsableId = isPoolMode ? null : (isAgent ? (autoResponsableId || null) : (isCommercial ? usuario.id : asignado));
-      // Resolve team based on the agent user (applies to all tramite types)
+      // Resolve team + optional auto-ejecutivo based on the agent user (applies to all tramite types)
       const agentUserId = isAgent
         ? usuario.id
         : (isCommercial ? comAgenteUserId : asignado) ?? null;
-      const grupoAsignadoId = await resolveGrupoParaTicket(agentUserId);
+      const grupoResult = await resolveGrupoParaTicket(agentUserId);
+      const grupoAsignadoId = grupoResult?.grupo_id ?? null;
+      // If the rule specifies an ejecutivo, auto-assign directly to them; otherwise use normal logic
+      const autoEjecutivoId = grupoResult?.ejecutivo_id ?? null;
+      const responsableId = autoEjecutivoId
+        ?? (isPoolMode ? null : (isAgent ? (autoResponsableId || null) : (isCommercial ? usuario.id : asignado)));
       const assignedTo = isCommercial ? usuario.id : (isAgent ? usuario.id : asignado);
 
       const ticketData: any = {

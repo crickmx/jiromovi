@@ -45,13 +45,13 @@ interface GrupoRegla {
   usuario_id: string;
   usuario_nombre: string;
   oficina_nombre: string | null;
+  ejecutivo_id: string | null;
 }
 
 interface AgentUser {
   id: string;
   nombre_completo: string;
   oficina_id: string | null;
-  oficina_nombre: string | null;
   rol: string;
 }
 
@@ -61,7 +61,7 @@ interface Usuario {
   id: string;
   nombre_completo: string;
   rol: string;
-  oficina_nombre: string | null;
+  oficina_id: string | null;
 }
 
 interface Oficina {
@@ -115,6 +115,7 @@ export function GestionGruposVisualizacion() {
   const [filterReglaOficinaId, setFilterReglaOficinaId] = useState('');
   const [searchReglaOficina, setSearchReglaOficina] = useState('');
   const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
+  const [savingEjecutivoReglaId, setSavingEjecutivoReglaId] = useState<string | null>(null);
 
   // Delete confirm
   const [confirmDelete, setConfirmDelete] = useState<Grupo | null>(null);
@@ -138,22 +139,16 @@ export function GestionGruposVisualizacion() {
   const loadUsuarios = async () => {
     const { data } = await supabase
       .from('usuarios')
-      .select('id, nombre_completo, nombre, apellidos, rol, oficinas(nombre)')
-      .eq('estado', 'activo')
+      .select('id, nombre_completo, rol, oficina_id')
       .in('rol', ['Empleado', 'Gerente', 'Administrador'])
       .order('nombre_completo');
     if (data) {
-      setUsuarios(data.map(u => {
-        const nc = u.nombre_completo ||
-          ((u as { nombre?: string; apellidos?: string }).nombre || '') + ' ' +
-          ((u as { nombre?: string; apellidos?: string }).apellidos || '');
-        return {
-          id: u.id,
-          nombre_completo: nc.trim() || u.id,
-          rol: u.rol,
-          oficina_nombre: (u.oficinas as { nombre: string } | null)?.nombre || null,
-        };
-      }));
+      setUsuarios(data.map(u => ({
+        id: u.id,
+        nombre_completo: u.nombre_completo || u.id,
+        rol: u.rol,
+        oficina_id: u.oficina_id ?? null,
+      })));
     }
   };
 
@@ -165,22 +160,15 @@ export function GestionGruposVisualizacion() {
   const loadAgentesParaReglas = async () => {
     const { data } = await supabase
       .from('usuarios')
-      .select('id, nombre_completo, nombre, apellidos, rol, oficina_id, oficinas(nombre)')
-      .eq('estado', 'activo')
+      .select('id, nombre_completo, rol, oficina_id')
       .order('nombre_completo');
     if (data) {
-      setAgentesParaReglas(data.map(u => {
-        const nc = u.nombre_completo ||
-          ((u as { nombre?: string }).nombre || '') + ' ' +
-          ((u as { apellidos?: string }).apellidos || '');
-        return {
-          id: u.id,
-          nombre_completo: nc.trim() || u.id,
-          rol: u.rol,
-          oficina_id: u.oficina_id ?? null,
-          oficina_nombre: (u.oficinas as { nombre: string } | null)?.nombre || null,
-        };
-      }));
+      setAgentesParaReglas(data.map(u => ({
+        id: u.id,
+        nombre_completo: u.nombre_completo || u.id,
+        rol: u.rol,
+        oficina_id: u.oficina_id ?? null,
+      })));
     }
   };
 
@@ -393,18 +381,18 @@ export function GestionGruposVisualizacion() {
   const loadGrupoReglas = async (grupoId: string) => {
     const { data } = await supabase
       .from('tramites_grupos_reglas')
-      .select('id, usuario_id, usuarios!inner(id, nombre_completo, nombre, apellidos, oficinas(nombre))')
+      .select('id, usuario_id, ejecutivo_id, usuarios!inner(id, nombre_completo, oficina_id)')
       .eq('grupo_id', grupoId)
       .eq('activo', true);
     if (data) {
       setGrupoReglas(data.map((r: Record<string, unknown>) => {
-        const u = r.usuarios as { id: string; nombre_completo?: string; nombre?: string; apellidos?: string; oficinas?: { nombre: string } | null } | null;
-        const nc = u?.nombre_completo || ((u?.nombre || '') + ' ' + (u?.apellidos || '')).trim() || (r.usuario_id as string);
+        const u = r.usuarios as { id: string; nombre_completo?: string; oficina_id?: string | null } | null;
         return {
           id: r.id as string,
           usuario_id: r.usuario_id as string,
-          usuario_nombre: nc,
-          oficina_nombre: u?.oficinas?.nombre || null,
+          usuario_nombre: u?.nombre_completo || (r.usuario_id as string),
+          oficina_nombre: oficinas.find(o => o.id === u?.oficina_id)?.nombre || null,
+          ejecutivo_id: (r.ejecutivo_id as string | null) ?? null,
         };
       }));
     }
@@ -428,6 +416,16 @@ export function GestionGruposVisualizacion() {
     if (!selectedGrupo) return;
     await supabase.from('tramites_grupos_reglas').update({ activo: false }).eq('id', reglaId);
     await loadGrupoReglas(selectedGrupo.id);
+  };
+
+  const handleCambiarEjecutivoEnRegla = async (reglaId: string, ejecutivoId: string | null) => {
+    setSavingEjecutivoReglaId(reglaId);
+    await supabase
+      .from('tramites_grupos_reglas')
+      .update({ ejecutivo_id: ejecutivoId })
+      .eq('id', reglaId);
+    setGrupoReglas(prev => prev.map(r => r.id === reglaId ? { ...r, ejecutivo_id: ejecutivoId } : r));
+    setSavingEjecutivoReglaId(null);
   };
 
   // ── OFFICES ───────────────────────────────────────────────────────────────────
@@ -916,7 +914,7 @@ export function GestionGruposVisualizacion() {
                         <div className="flex items-center justify-between p-3 hover:bg-neutral-50 transition-colors">
                           <div className="min-w-0">
                             <p className="font-medium text-neutral-900 text-sm truncate">{u.nombre_completo}</p>
-                            <p className="text-xs text-neutral-500">{u.rol}{u.oficina_nombre ? ` · ${u.oficina_nombre}` : ''}</p>
+                            <p className="text-xs text-neutral-500">{u.rol}{u.oficina_id ? ` · ${oficinas.find(o => o.id === u.oficina_id)?.nombre ?? ''}` : ''}</p>
                           </div>
                           {pendingAdd?.userId === u.id ? (
                             <button onClick={() => setPendingAdd(null)} className="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors flex-shrink-0">
@@ -1051,20 +1049,41 @@ export function GestionGruposVisualizacion() {
                   {grupoReglas.length === 0 ? (
                     <p className="text-sm text-neutral-400 text-center py-6">Sin vendedores asignados. Los trámites llegarán al pool general.</p>
                   ) : (
-                    grupoReglas.map(r => (
-                      <div key={r.id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl group hover:bg-neutral-100 transition-colors">
-                        <div className="flex items-center gap-2 min-w-0">
+                    grupoReglas.map(r => {
+                      const ejecutivosDisponibles = miembros.filter(m => m.rol_en_equipo === 'lider' || m.rol_en_equipo === 'ejecutivo');
+                      return (
+                        <div key={r.id} className="flex items-center gap-2 p-3 bg-neutral-50 rounded-xl group hover:bg-neutral-100 transition-colors">
                           <User className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
-                          <span className="text-sm font-medium text-neutral-800 truncate">{r.usuario_nombre}</span>
-                          {r.oficina_nombre && (
-                            <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-neutral-100 text-neutral-500 shrink-0">{r.oficina_nombre}</span>
-                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-sm font-medium text-neutral-800 truncate">{r.usuario_nombre}</span>
+                              {r.oficina_nombre && (
+                                <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-neutral-100 text-neutral-500 shrink-0">{r.oficina_nombre}</span>
+                              )}
+                            </div>
+                            {ejecutivosDisponibles.length > 0 && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <Zap className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                                <select
+                                  value={r.ejecutivo_id ?? ''}
+                                  disabled={savingEjecutivoReglaId === r.id}
+                                  onChange={e => handleCambiarEjecutivoEnRegla(r.id, e.target.value || null)}
+                                  className="text-[11px] text-neutral-500 bg-transparent border-none outline-none cursor-pointer hover:text-neutral-800 py-0 pr-4"
+                                >
+                                  <option value="">Pool del equipo</option>
+                                  {ejecutivosDisponibles.map(m => (
+                                    <option key={m.usuario_id} value={m.usuario_id}>{m.nombre_completo}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+                          </div>
+                          <button onClick={() => handleRemoverRegla(r.id)} className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-all flex-shrink-0">
+                            <X className="w-4 h-4 text-red-600" />
+                          </button>
                         </div>
-                        <button onClick={() => handleRemoverRegla(r.id)} className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-all flex-shrink-0">
-                          <X className="w-4 h-4 text-red-600" />
-                        </button>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -1138,7 +1157,7 @@ export function GestionGruposVisualizacion() {
                           />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-neutral-800 truncate">{a.nombre_completo}</p>
-                            <p className="text-[11px] text-neutral-400">{a.rol}{a.oficina_nombre ? ` · ${a.oficina_nombre}` : ''}</p>
+                            <p className="text-[11px] text-neutral-400">{a.rol}{a.oficina_id ? ` · ${oficinas.find(o => o.id === a.oficina_id)?.nombre ?? ''}` : ''}</p>
                           </div>
                         </label>
                       ))
@@ -1299,7 +1318,7 @@ export function GestionGruposVisualizacion() {
                           <p className="font-medium text-neutral-900 text-sm truncate">{u.nombre_completo}</p>
                           <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-500">
                             <span>{u.rol}</span>
-                            {u.oficina_nombre && <><span className="text-neutral-300">·</span><span>{u.oficina_nombre}</span></>}
+                            {u.oficina_id && oficinas.find(o => o.id === u.oficina_id) && <><span className="text-neutral-300">·</span><span>{oficinas.find(o => o.id === u.oficina_id)!.nombre}</span></>}
                           </div>
                         </div>
                         {pendingAdd?.userId === u.id ? (
