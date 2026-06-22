@@ -367,7 +367,11 @@ Deno.serve(async (req: Request) => {
         }
 
         // ── Automatic mode: process inbound through assistant if session active ──
-        if (isInbound && agentUserId && insertedMsg?.id && messageBody.trim()) {
+        // Skip pure media placeholders — they carry no extractable data for the assistant
+        const MEDIA_PLACEHOLDERS = ["[imagen]", "[documento]", "[audio]", "[video]", "[sticker]", "[voice]"];
+        const isMediaPlaceholder = MEDIA_PLACEHOLDERS.includes(messageBody.trim().toLowerCase());
+
+        if (isInbound && agentUserId && insertedMsg?.id && messageBody.trim() && !isMediaPlaceholder) {
           try {
             const { data: convMode } = await supabase
               .from("contact_center_conversation_modes")
@@ -377,6 +381,24 @@ Deno.serve(async (req: Request) => {
               .maybeSingle();
 
             if (convMode?.active_session_id) {
+              // Verify smart assistant is still enabled — if disabled, cancel the stale session
+              const { data: saCheck } = await supabase
+                .from("contact_center_smart_assistant_config")
+                .select("smart_assistant_enabled")
+                .eq("agent_user_id", agentUserId)
+                .maybeSingle();
+
+              if (saCheck?.smart_assistant_enabled === false) {
+                // User has disabled auto mode — cancel the orphaned session
+                await supabase.from("contact_center_assistant_sessions")
+                  .update({ status: "cancelled", completed_at: new Date().toISOString() })
+                  .eq("id", convMode.active_session_id);
+                await supabase.from("contact_center_conversation_modes").upsert(
+                  { agent_user_id: agentUserId, mode: "normal", active_session_id: null, assigned_assistant_id: null, updated_at: new Date().toISOString() },
+                  { onConflict: "agent_user_id" }
+                );
+                logs.push(`auto_mode_cancelled_disabled_session=${convMode.active_session_id}`);
+              } else {
               logs.push(`auto_mode_session=${convMode.active_session_id}`);
 
               const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -463,6 +485,7 @@ Deno.serve(async (req: Request) => {
                   logs.push("auto_mode_no_wa_config");
                 }
               }
+              } // end else (smart_assistant_enabled !== false)
             } else {
               // ── Smart Assistant: analyze inbound when no automatic session active ──
               // Check if smart assistant is enabled for this conversation
