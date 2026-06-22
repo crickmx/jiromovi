@@ -54,6 +54,66 @@ function SkeletonCard() {
   );
 }
 
+function FilePreviewThumbnail({ archivo }: { archivo: CentroDigitalArchivo }) {
+  const [thumbUrl, setThumbUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const isImage = archivo.tipo_mime?.startsWith('image/') ?? false;
+  const isPDF = archivo.tipo_mime?.includes('pdf') ?? false;
+
+  useEffect(() => {
+    if (!isImage && !isPDF) return;
+    let cancelled = false;
+    supabase.storage
+      .from('centro-digital-files')
+      .createSignedUrl(archivo.ruta_storage, 3600)
+      .then(({ data }) => {
+        if (!cancelled && data?.signedUrl) setThumbUrl(data.signedUrl);
+        else if (!cancelled) setFailed(true);
+      })
+      .catch(() => { if (!cancelled) setFailed(true); });
+    return () => { cancelled = true; };
+  }, [archivo.ruta_storage, isImage, isPDF]);
+
+  if (failed || (!isImage && !isPDF)) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <FileIcon mime={archivo.tipo_mime} />
+      </div>
+    );
+  }
+
+  if (!thumbUrl) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-400 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (isImage) {
+    return (
+      <img
+        src={thumbUrl}
+        alt={archivo.nombre}
+        className="w-full h-full object-cover"
+        loading="lazy"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  // PDF - show embedded first page
+  return (
+    <iframe
+      src={`${thumbUrl}#page=1&view=FitH`}
+      className="w-full h-full pointer-events-none"
+      title={archivo.nombre}
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 // ── Safe file viewer ─────────────────────────────────────────────────────────
 function SafeFileViewer({ archivo, onClose, onDownload }: {
   archivo: CentroDigitalArchivo;
@@ -763,25 +823,13 @@ export default function CentroDigital() {
               {archivosFiltrados.map(archivo => (
                 <div key={archivo.id}
                   className="bg-white rounded-xl border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200 overflow-hidden group">
-                  <div className="aspect-square bg-gray-50 flex items-center justify-center relative overflow-hidden">
-                    {archivo.tipo_mime?.startsWith('image/') ? (
-                      <img
-                        src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/centro-digital-files/${archivo.ruta_storage}`}
-                        alt={archivo.nombre} className="w-full h-full object-cover" loading="lazy"
-                        onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center p-4">
-                        <FileIcon mime={archivo.tipo_mime} />
-                      </div>
-                    )}
+                  <div className="aspect-[4/3] bg-gray-50 flex items-center justify-center relative overflow-hidden">
+                    <FilePreviewThumbnail archivo={archivo} />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
-                      {(archivo.tipo_mime?.startsWith('image/') || archivo.tipo_mime?.includes('pdf')) && (
-                        <button onClick={() => { setArchivoPrevisualizar(archivo); trackDigitalFileViewed(archivo.nombre); }}
-                          className="p-1.5 bg-white rounded-full shadow hover:bg-gray-100">
-                          <Eye className="w-3.5 h-3.5 text-gray-700" />
-                        </button>
-                      )}
+                      <button onClick={() => { setArchivoPrevisualizar(archivo); trackDigitalFileViewed(archivo.nombre); }}
+                        className="p-1.5 bg-white rounded-full shadow hover:bg-gray-100">
+                        <Eye className="w-3.5 h-3.5 text-gray-700" />
+                      </button>
                       <button onClick={() => handleDescargar(archivo)}
                         className="p-1.5 bg-white rounded-full shadow hover:bg-gray-100">
                         <Download className="w-3.5 h-3.5 text-gray-700" />
@@ -822,7 +870,9 @@ export default function CentroDigital() {
                     <tr key={archivo.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <FileIcon mime={archivo.tipo_mime} />
+                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-50 flex-shrink-0 flex items-center justify-center">
+                            <FilePreviewThumbnail archivo={archivo} />
+                          </div>
                           <span className="font-medium text-gray-900">{archivo.nombre}</span>
                         </div>
                       </td>
@@ -831,12 +881,10 @@ export default function CentroDigital() {
                       <td className="px-6 py-4 text-sm text-gray-600">{new Date(archivo.created_at).toLocaleDateString()}</td>
                       <td className="px-6 py-4">
                         <div className="flex gap-2">
-                          {(archivo.tipo_mime?.startsWith('image/') || archivo.tipo_mime?.includes('pdf')) && (
-                            <button onClick={() => { setArchivoPrevisualizar(archivo); trackDigitalFileViewed(archivo.nombre); }}
-                              className="text-gray-500 hover:text-gray-700 p-1 rounded hover:bg-gray-50">
-                              <Eye className="w-4 h-4" />
-                            </button>
-                          )}
+                          <button onClick={() => { setArchivoPrevisualizar(archivo); trackDigitalFileViewed(archivo.nombre); }}
+                            className="text-gray-500 hover:text-gray-700 p-1 rounded hover:bg-gray-50">
+                            <Eye className="w-4 h-4" />
+                          </button>
                           <button onClick={() => handleDescargar(archivo)}
                             className="text-accent hover:text-blue-700 p-1 rounded hover:bg-blue-50">
                             <Download className="w-4 h-4" />
@@ -1045,7 +1093,13 @@ export default function CentroDigital() {
                     )}
                   </div>
                   <div className="mt-3 pt-3 border-t border-gray-50 flex items-center justify-between">
-                    <span className="text-xs text-gray-400">{new Date(carpeta.created_at).toLocaleDateString()}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-gray-400">{new Date(carpeta.created_at).toLocaleDateString()}</span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full font-medium">
+                        <File className="w-3 h-3" />
+                        {carpeta.total_archivos ?? 0} archivo{(carpeta.total_archivos ?? 0) !== 1 ? 's' : ''}
+                      </span>
+                    </div>
                     <span className="text-xs text-accent font-medium group-hover:underline flex items-center gap-1">
                       Ver archivos <ChevronRight className="w-3 h-3" />
                     </span>
