@@ -5,7 +5,7 @@ import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditC
 import { PageHeader } from '@/components/ui/page-header';
 import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus, obtenerPagosPedido, registrarPago, eliminarPago } from '../lib/storeUtils';
 import type { StorePedidoCompleto, StoreEstatusPedido, FormaPagoOC, MetodoPagoOC, StorePedidoGasto, StorePedidoDetalleGasto, StorePedidoPago } from '../lib/storeTypes';
-import { TIPO_GASTO_OPTIONS, METODO_PAGO_OPCIONES } from '../lib/storeTypes';
+import { TIPO_GASTO_OPTIONS, METODO_PAGO_OPCIONES, getFormasPagoParaMetodo } from '../lib/storeTypes';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { generarFolioOC, generarPDFOrdenCompra, validarDatosPagoCompletos } from '../lib/storePdfOrdenCompra';
@@ -916,18 +916,17 @@ export default function StorePedidoDetalle() {
                     </div>
                   )}
                   <div>
-                    <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Forma de Pago *</label>
-                    <select value={formaPago} onChange={e => setFormaPago(e.target.value as FormaPagoOC)} className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg">
-                      <option value="">Seleccionar...</option>
-                      <option value="Contado">Contado</option>
-                      <option value="Mensual">Mensual</option>
-                      <option value="Trimestral">Trimestral</option>
-                      <option value="Semestral">Semestral</option>
-                    </select>
-                  </div>
-                  <div>
                     <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Metodo de Pago *</label>
-                    <select value={metodoPago} onChange={e => setMetodoPago(e.target.value as MetodoPagoOC)} className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg">
+                    <select value={metodoPago} onChange={e => {
+                      const nuevoMetodo = e.target.value as MetodoPagoOC;
+                      setMetodoPago(nuevoMetodo);
+                      const formasDisponibles = getFormasPagoParaMetodo(nuevoMetodo);
+                      if (formasDisponibles.length === 1) {
+                        setFormaPago(formasDisponibles[0]);
+                      } else if (formaPago && !formasDisponibles.includes(formaPago as FormaPagoOC)) {
+                        setFormaPago('');
+                      }
+                    }} className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg">
                       <option value="">Seleccionar...</option>
                       <option value="Cargo a Oficina">Cargo a Oficina</option>
                       <option value="Cargo a Bono de Agente">Cargo a Bono de Agente</option>
@@ -940,6 +939,23 @@ export default function StorePedidoDetalle() {
                   {metodoPago === 'Otro' && (
                     <input type="text" value={metodoPagoOtroDetalle} onChange={e => setMetodoPagoOtroDetalle(e.target.value)} placeholder="Especificar..." className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg" />
                   )}
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Forma de Pago *</label>
+                    <select
+                      value={formaPago}
+                      onChange={e => setFormaPago(e.target.value as FormaPagoOC)}
+                      disabled={!metodoPago}
+                      className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg disabled:opacity-50"
+                    >
+                      <option value="">Seleccionar...</option>
+                      {getFormasPagoParaMetodo(metodoPago).map(fp => (
+                        <option key={fp} value={fp}>{fp}</option>
+                      ))}
+                    </select>
+                    {!metodoPago && (
+                      <p className="text-[10px] text-neutral-400 dark:text-white/40 mt-0.5">Selecciona primero el metodo de pago</p>
+                    )}
+                  </div>
                   <textarea value={observacionesOC} onChange={e => setObservacionesOC(e.target.value)} placeholder="Observaciones..." className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg" rows={2} />
                 </div>
                 <div className="flex flex-col gap-2">

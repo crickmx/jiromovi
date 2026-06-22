@@ -71,7 +71,18 @@ export interface StoreEstatusPedido {
   created_at: string;
 }
 
-export type FormaPagoOC = 'Contado' | 'Mensual' | 'Trimestral' | 'Semestral';
+export type FormaPagoOC = 'Contado' | '2 Parcialidades' | '12 Meses';
+
+export function getFormasPagoParaMetodo(metodo: MetodoPagoOC | ''): FormaPagoOC[] {
+  switch (metodo) {
+    case 'Descuento de Comisiones':
+      return ['Contado', '2 Parcialidades'];
+    case 'Cargo a Nómina':
+      return ['Contado', '12 Meses'];
+    default:
+      return ['Contado'];
+  }
+}
 
 export type MetodoPagoOC =
   | 'Cargo a Oficina'
