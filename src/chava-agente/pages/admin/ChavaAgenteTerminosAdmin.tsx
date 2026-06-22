@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import type { ChavaTerms } from '../../lib/types';
 import { ChavaBrandLogo } from '../../../components/chava/ChavaBrandLogo';
-import { FileText, Plus, CircleCheck as CheckCircle, CreditCard as Edit3, Save, X } from 'lucide-react';
+import { FileText, Plus, CircleCheck as CheckCircle, Pencil as Edit3, Save, X } from 'lucide-react';
 
 export default function ChavaAgenteTerminosAdmin() {
   const [terms, setTerms] = useState<ChavaTerms[]>([]);

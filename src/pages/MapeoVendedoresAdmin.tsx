@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, User, CreditCard as Edit2, Trash2, CheckCircle2, XCircle, Search, Link2 } from 'lucide-react';
+import { Mail, User, Pencil as Edit2, Trash2, CircleCheck as CheckCircle2, Circle as XCircle, Search, Link2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';

@@ -1,4 +1,4 @@
-import { CreditCard as Edit3, User, MapPin, Shield, Clock, Paperclip } from 'lucide-react';
+import { Pencil as Edit3, User, MapPin, Shield, Clock, Paperclip } from 'lucide-react';
 import type { QuoteFormTemplate } from '../../lib/quoteFormTypes';
 import { PRIORITY_CONFIG, CLIENT_TYPE_OPTIONS, CURRENCY_OPTIONS, PAYMENT_FREQUENCY_OPTIONS } from '../../lib/quoteFormTypes';
 import { FORM_COVERAGES } from './coveragesData';

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Plus, Edit, Trash2, X, Clock } from 'lucide-react';
+import { Plus, Pencil as Edit, Trash2, X, Clock } from 'lucide-react';
 import { DIAS_SEMANA, DIAS_SEMANA_LABELS, DISPONIBILIDAD_DEFAULT, type DisponibilidadSemanal } from '../lib/espacioJiroUtils';
 import type { Database } from '../lib/database.types';
 

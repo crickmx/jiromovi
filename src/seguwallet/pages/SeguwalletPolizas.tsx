@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { FileText, Search, Calendar, Building2, Shield, X, Download, ChevronRight, ExternalLink, FileCheck, BookOpen, Award, TriangleAlert as AlertTriangle, Clock, CircleCheck as CheckCircle, Circle as XCircle, Car, Heart, Hop as Home, RefreshCw, User, DollarSign, Info, ChevronDown, ChevronUp, Folder, Plus, Upload, Trash2, CreditCard as Edit3, Check, CreditCard } from 'lucide-react';
+import { FileText, Search, Calendar, Building2, Shield, X, Download, ChevronRight, ExternalLink, FileCheck, BookOpen, Award, TriangleAlert as AlertTriangle, Clock, CircleCheck as CheckCircle, Circle as XCircle, Car, Heart, Hop as Home, RefreshCw, User, DollarSign, Info, ChevronDown, ChevronUp, Folder, Plus, Upload, Trash2, Pencil as Edit3, Check, CreditCard } from 'lucide-react';
 import { useSeguwallet } from '../lib/SeguwalletContext';
 import { useAgentBrand } from '../lib/AgentBrandContext';
 import { logDownload } from '../lib/seguwalletAuth';

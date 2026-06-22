@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Container } from '../components/ui/container';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
-import { Calendar, Download, Pin, CreditCard as Edit, Trash2, FileText, Newspaper } from 'lucide-react';
+import { Calendar, Download, Pin, Pencil as Edit, Trash2, FileText, Newspaper } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { obtenerComunicadoPorId, eliminarComunicado, verificarVisibilidad } from '../lib/comunicadosUtils';
 import type { ComunicadoPublicacion } from '../lib/comunicadosTypes';
