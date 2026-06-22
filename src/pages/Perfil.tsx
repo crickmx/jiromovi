@@ -20,6 +20,7 @@ function formatFieldName(key: string): string {
     puesto: 'Puesto',
     extension_telefonica: 'Extensión',
     fecha_nacimiento: 'Fecha de Nacimiento',
+    fecha_ingreso: 'Fecha de Ingreso',
     banco: 'Banco',
     clabe: 'CLABE',
     url_web_jiro: 'Web Jiro',
@@ -31,7 +32,8 @@ function formatFieldName(key: string): string {
 type EditableField =
   | 'nombre' | 'apellidos' | 'celular_personal' | 'email_personal'
   | 'celular_laboral' | 'email_laboral' | 'extension_telefonica'
-  | 'banco' | 'clabe' | 'url_web_jiro' | 'url_web_multicotizador';
+  | 'banco' | 'clabe' | 'url_web_jiro' | 'url_web_multicotizador'
+  | 'fecha_nacimiento' | 'puesto' | 'fecha_ingreso';
 
 type RolEditable = Record<EditableField, boolean>;
 
@@ -40,21 +42,25 @@ const EDITABLES_BY_ROL: Record<string, RolEditable> = {
     nombre: true, apellidos: true, celular_personal: true, email_personal: true,
     celular_laboral: true, email_laboral: true, extension_telefonica: true,
     banco: true, clabe: true, url_web_jiro: true, url_web_multicotizador: true,
+    fecha_nacimiento: true, puesto: true, fecha_ingreso: true,
   },
   Gerente: {
     nombre: false, apellidos: false, celular_personal: true, email_personal: true,
     celular_laboral: true, email_laboral: true, extension_telefonica: true,
     banco: true, clabe: true, url_web_jiro: true, url_web_multicotizador: true,
+    fecha_nacimiento: true, puesto: false, fecha_ingreso: false,
   },
   Agente: {
     nombre: false, apellidos: false, celular_personal: true, email_personal: true,
     celular_laboral: true, email_laboral: true, extension_telefonica: false,
     banco: true, clabe: true, url_web_jiro: false, url_web_multicotizador: false,
+    fecha_nacimiento: true, puesto: false, fecha_ingreso: false,
   },
   Empleado: {
     nombre: false, apellidos: false, celular_personal: true, email_personal: true,
     celular_laboral: true, email_laboral: true, extension_telefonica: false,
     banco: false, clabe: false, url_web_jiro: false, url_web_multicotizador: false,
+    fecha_nacimiento: true, puesto: false, fecha_ingreso: false,
   },
 };
 
@@ -62,6 +68,7 @@ const DEFAULT_EDITABLES: RolEditable = {
   nombre: false, apellidos: false, celular_personal: true, email_personal: true,
   celular_laboral: true, email_laboral: true, extension_telefonica: false,
   banco: false, clabe: false, url_web_jiro: false, url_web_multicotizador: false,
+  fecha_nacimiento: true, puesto: false, fecha_ingreso: false,
 };
 
 function getEditables(rol: string): RolEditable {
@@ -78,12 +85,12 @@ const SECTIONS: Section[] = [
   {
     title: 'Datos Personales',
     icon: User,
-    fields: ['nombre', 'apellidos', 'celular_personal', 'email_personal', 'fecha_nacimiento' as any],
+    fields: ['nombre', 'apellidos', 'celular_personal', 'email_personal', 'fecha_nacimiento'],
   },
   {
     title: 'Datos Laborales',
     icon: BadgeCheck,
-    fields: ['celular_laboral', 'email_laboral', 'extension_telefonica', 'url_web_jiro', 'url_web_multicotizador'],
+    fields: ['puesto', 'fecha_ingreso', 'celular_laboral', 'email_laboral', 'extension_telefonica', 'url_web_jiro', 'url_web_multicotizador'],
   },
   {
     title: 'Datos Bancarios',
@@ -153,6 +160,9 @@ export default function Perfil() {
     clabe: usuario?.clabe || '',
     url_web_jiro: usuario?.url_web_jiro || '',
     url_web_multicotizador: usuario?.url_web_multicotizador || '',
+    fecha_nacimiento: usuario?.fecha_nacimiento || '',
+    puesto: usuario?.puesto || '',
+    fecha_ingreso: usuario?.fecha_ingreso || '',
   });
 
   const [form, setForm] = useState<FormState>(buildForm);
@@ -414,12 +424,6 @@ export default function Perfil() {
         <div className="lg:col-span-2 space-y-4">
           {SECTIONS.map(section => {
             const SectionIcon = section.icon;
-            const visibleFields = section.fields.filter(f => {
-              // fecha_nacimiento is read-only for everyone, always show
-              if (f === 'fecha_nacimiento' as any) return !!(usuario as any).fecha_nacimiento;
-              return true;
-            });
-            if (visibleFields.length === 0) return null;
 
             return (
               <div key={section.title} className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200 dark:border-white/[0.06] p-5">
@@ -431,33 +435,23 @@ export default function Perfil() {
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-4">
-                  {visibleFields.map(field => {
-                    if (field === 'fecha_nacimiento' as any) {
-                      return (
-                        <FieldRow
-                          key={field}
-                          label={formatFieldName(field)}
-                          value={(usuario as any).fecha_nacimiento
-                            ? new Date((usuario as any).fecha_nacimiento).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
-                            : ''}
-                          editable={false}
-                          editing={editing}
-                          onChange={() => {}}
-                          icon={Calendar}
-                        />
-                      );
-                    }
-
+                  {section.fields.map(field => {
                     const isEditable = editables[field] ?? false;
+                    const isDateField = field === 'fecha_nacimiento' || field === 'fecha_ingreso';
+
                     let displayValue = form[field];
                     if ((field === 'nombre' || field === 'apellidos') && !editing) {
                       displayValue = toTitleCase(displayValue);
+                    }
+                    if (isDateField && !editing && displayValue) {
+                      displayValue = new Date(displayValue + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
                     }
 
                     const iconMap: Partial<Record<EditableField, React.ElementType>> = {
                       email_personal: Mail, email_laboral: Mail,
                       celular_personal: Phone, celular_laboral: Phone,
                       url_web_jiro: Globe, url_web_multicotizador: Globe,
+                      fecha_nacimiento: Calendar, fecha_ingreso: Calendar,
                     };
 
                     return (
@@ -468,7 +462,7 @@ export default function Perfil() {
                         editable={isEditable}
                         editing={editing}
                         onChange={v => setForm(prev => ({ ...prev, [field]: v }))}
-                        type={field.includes('email') ? 'email' : field.includes('clabe') ? 'text' : 'text'}
+                        type={isDateField ? 'date' : field.includes('email') ? 'email' : 'text'}
                         icon={iconMap[field]}
                       />
                     );
