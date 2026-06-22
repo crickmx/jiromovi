@@ -1,4 +1,4 @@
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, TriangleAlert as AlertTriangle } from 'lucide-react';
 import type { StoreProducto } from '../../lib/storeTypes';
 
 interface Props {
@@ -21,10 +21,13 @@ export function ProductoCard({ producto, onVerDetalle }: Props) {
     return `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/store-productos/${imagenUrl}`;
   };
 
+  const sinStock = producto.stock === 0;
+  const pocasExistencias = producto.stock > 0 && producto.stock <= producto.stock_umbral;
+
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+    <div className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow ${sinStock ? 'opacity-75' : ''}`}>
       <div
-        className="aspect-square w-full bg-gray-100 cursor-pointer overflow-hidden"
+        className="aspect-square w-full bg-gray-100 cursor-pointer overflow-hidden relative"
         onClick={() => onVerDetalle(producto)}
       >
         <img
@@ -36,6 +39,21 @@ export function ProductoCard({ producto, onVerDetalle }: Props) {
             target.src = PLACEHOLDER_SVG;
           }}
         />
+        {sinStock && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+            <span className="bg-red-600 text-white text-sm font-bold px-4 py-1.5 rounded-full">
+              Agotado
+            </span>
+          </div>
+        )}
+        {pocasExistencias && (
+          <div className="absolute top-2 left-2">
+            <span className="inline-flex items-center gap-1 bg-amber-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+              <AlertTriangle className="w-3 h-3" />
+              Pocas existencias
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="p-3 sm:p-4">
@@ -65,10 +83,15 @@ export function ProductoCard({ producto, onVerDetalle }: Props) {
 
           <button
             onClick={() => onVerDetalle(producto)}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-accent text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-accent-hover transition-colors font-medium text-sm sm:text-base"
+            disabled={sinStock}
+            className={`w-full sm:w-auto flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium text-sm sm:text-base transition-colors ${
+              sinStock
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-accent text-white hover:bg-accent-hover'
+            }`}
           >
             <ShoppingCart className="w-4 h-4" />
-            <span>Agregar</span>
+            <span>{sinStock ? 'Agotado' : 'Agregar'}</span>
           </button>
         </div>
       </div>

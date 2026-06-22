@@ -721,6 +721,14 @@ export async function crearPedido(
 
   if (detalleError) throw detalleError;
 
+  // Descontar stock de cada producto
+  for (const item of itemsCarrito) {
+    await supabase.rpc('decrementar_stock', {
+      p_producto_id: item.producto_id,
+      p_cantidad: item.cantidad
+    });
+  }
+
   const { error: historialError } = await supabase
     .from('store_pedidos_historial')
     .insert({

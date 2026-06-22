@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Trash2, Plus, Minus, Package } from 'lucide-react';
+import { ShoppingCart, Trash2, Plus, Minus, Package, TriangleAlert as AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   obtenerCarrito,
@@ -80,6 +80,10 @@ export default function StoreCarrito() {
 
   const itemsValidos = carrito.filter(item => item.producto);
 
+  const hayProblemasStock = itemsValidos.some(
+    item => item.producto!.stock === 0 || item.cantidad > item.producto!.stock
+  );
+
   const calcularTotal = () => {
     return itemsValidos.reduce((sum, item) => sum + ((item.producto?.precio ?? 0) * item.cantidad), 0);
   };
@@ -137,9 +141,20 @@ export default function StoreCarrito() {
                       <h3 className="text-base sm:text-lg font-semibold text-neutral-900 dark:text-white mb-1 truncate">
                         {item.producto!.titulo}
                       </h3>
-                      <p className="text-sm text-neutral-600 dark:text-white/60 mb-2 sm:mb-3">
+                      <p className="text-sm text-neutral-600 dark:text-white/60 mb-1">
                         ${item.producto!.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                       </p>
+
+                      {item.producto!.stock === 0 && (
+                        <p className="text-xs text-red-600 font-medium flex items-center gap-1 mb-2">
+                          <AlertTriangle className="w-3 h-3" /> Agotado
+                        </p>
+                      )}
+                      {item.producto!.stock > 0 && item.cantidad > item.producto!.stock && (
+                        <p className="text-xs text-amber-600 font-medium flex items-center gap-1 mb-2">
+                          <AlertTriangle className="w-3 h-3" /> Solo {item.producto!.stock} disponibles
+                        </p>
+                      )}
 
                       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                         <div className="flex items-center gap-2">
@@ -157,7 +172,8 @@ export default function StoreCarrito() {
 
                           <button
                             onClick={() => handleActualizarCantidad(item.id, item.cantidad + 1)}
-                            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center border border-neutral-300 dark:border-white/20 rounded hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors"
+                            disabled={item.cantidad >= (item.producto?.stock ?? 0)}
+                            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center border border-neutral-300 dark:border-white/20 rounded hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50"
                           >
                             <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
                           </button>
@@ -235,9 +251,16 @@ export default function StoreCarrito() {
                   </div>
                 </div>
 
+                {hayProblemasStock && (
+                  <div className="mb-4 flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3">
+                    <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                    <span className="text-sm text-red-700 dark:text-red-400">Algunos productos exceden el stock disponible</span>
+                  </div>
+                )}
+
                 <button
                   onClick={handleRealizarPedido}
-                  disabled={procesando}
+                  disabled={procesando || hayProblemasStock}
                   className="w-full bg-accent text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg hover:bg-accent-hover transition-colors font-semibold text-base sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {procesando ? 'Procesando...' : 'Realizar Pedido'}

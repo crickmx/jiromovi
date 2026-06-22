@@ -204,6 +204,7 @@ export default function StoreAdmin() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Costo</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Precio</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Margen</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Stock</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Estado</th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Acciones</th>
                     </tr>
@@ -250,6 +251,17 @@ export default function StoreAdmin() {
                           ) : (
                             <span className="text-xs text-neutral-400 dark:text-white/40">--</span>
                           )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full ${
+                            producto.stock === 0
+                              ? 'bg-red-100 text-red-800'
+                              : producto.stock <= producto.stock_umbral
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-green-100 text-green-800'
+                          }`}>
+                            {producto.stock} uds
+                          </span>
                         </td>
                         <td className="px-6 py-4">
                           <button
@@ -396,6 +408,8 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
   const [categoriaId, setCategoriaId] = useState(producto?.categoria_id || '');
   const [imagenUrl, setImagenUrl] = useState(producto?.imagen_url || '');
   const [imagenFile, setImagenFile] = useState<File | null>(null);
+  const [stock, setStock] = useState(producto?.stock?.toString() || '0');
+  const [stockUmbral, setStockUmbral] = useState(producto?.stock_umbral?.toString() || '5');
   const [activo, setActivo] = useState(producto?.activo ?? true);
   const [guardando, setGuardando] = useState(false);
 
@@ -492,6 +506,8 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
         costo_base: parseFloat(costoBase) || 0,
         categoria_id: categoriaId,
         imagen_url: finalImagenUrl,
+        stock: parseInt(stock) || 0,
+        stock_umbral: parseInt(stockUmbral) || 5,
         activo
       };
 
@@ -574,6 +590,36 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
               onChange={(e) => setCostoBase(e.target.value)}
               className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
               placeholder="0.00"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
+              Existencia (stock)
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={stock}
+              onChange={(e) => setStock(e.target.value)}
+              className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
+              placeholder="0"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
+              Umbral pocas existencias
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={stockUmbral}
+              onChange={(e) => setStockUmbral(e.target.value)}
+              className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
+              placeholder="5"
             />
           </div>
         </div>
