@@ -412,6 +412,16 @@ export function TramiteDetalle() {
     await loadTramite();
   };
 
+  const handleEquipoChange = async (grupoId: string | null) => {
+    if (!tramite || !usuario) return;
+    await supabase.from('tickets').update({
+      grupo_asignado_id: grupoId,
+      assigned_to_user_id: null,
+      modificado_por: usuario.id,
+    }).eq('id', tramite.id);
+    await loadTramite();
+  };
+
   const handleReabrir = async () => {
     if (!tramite || !usuario) return;
     if (!confirm('¿Estás seguro de reabrir este tramite?')) return;
@@ -619,6 +629,7 @@ export function TramiteDetalle() {
             canManageAssignment={canManageAssignment && !isCerrado}
             grupoAsignadoId={tramite.grupo_asignado_id}
             onResponsableChange={handleResponsableChange}
+            onEquipoChange={handleEquipoChange}
           />
         )}
         {activeTab === 'comentarios' && <TramiteComentarios tramiteId={tramite.id} />}

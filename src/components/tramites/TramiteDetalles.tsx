@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { User, Users, AlertCircle, FileText, Calendar, Clock, Briefcase, Shield, Building2, TrendingUp, UserCheck, X, UserPlus } from 'lucide-react';
+import { User, Users, AlertCircle, FileText, Calendar, Clock, Briefcase, Shield, Building2, TrendingUp, UserCheck, X, UserPlus, Wrench } from 'lucide-react';
 import { getEstatusColor } from '../../lib/registroActividadesTypes';
 
 interface TramiteEstatus {
@@ -55,6 +55,11 @@ interface TeamMember {
   nombre_completo: string;
 }
 
+interface Grupo {
+  id: string;
+  nombre: string;
+}
+
 interface TramiteDetallesProps {
   tramite: TramiteData;
   estatusList: TramiteEstatus[];
@@ -66,6 +71,7 @@ interface TramiteDetallesProps {
   canManageAssignment?: boolean;
   grupoAsignadoId?: string | null;
   onResponsableChange?: (userId: string) => void;
+  onEquipoChange?: (grupoId: string | null) => void;
 }
 
 export function TramiteDetalles({
@@ -79,12 +85,19 @@ export function TramiteDetalles({
   canManageAssignment = false,
   grupoAsignadoId,
   onResponsableChange,
+  onEquipoChange,
 }: TramiteDetallesProps) {
   const { usuario } = useAuth();
   const [asignaciones, setAsignaciones] = useState<Asignacion[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [selectedResponsable, setSelectedResponsable] = useState(tramite.responsable?.id ?? '');
   const [addingEjecutivo, setAddingEjecutivo] = useState(false);
+  const [grupos, setGrupos] = useState<Grupo[]>([]);
+  const [selectedGrupoId, setSelectedGrupoId] = useState<string>(grupoAsignadoId ?? '');
+
+  useEffect(() => {
+    setSelectedGrupoId(grupoAsignadoId ?? '');
+  }, [grupoAsignadoId]);
 
   useEffect(() => {
     loadAsignaciones();
@@ -94,23 +107,34 @@ export function TramiteDetalles({
     setSelectedResponsable(tramite.responsable?.id ?? '');
   }, [tramite.responsable?.id]);
 
+  // Load available teams
+  useEffect(() => {
+    supabase
+      .from('tramites_grupos_visualizacion')
+      .select('id, nombre')
+      .eq('activo', true)
+      .order('nombre')
+      .then(({ data }) => { if (data) setGrupos(data as Grupo[]); });
+  }, []);
+
+  // Load team members when selected group changes
   useEffect(() => {
     if (!canManageAssignment) { setTeamMembers([]); return; }
     const load = async () => {
-      if (grupoAsignadoId) {
-        const { data } = await supabase.rpc('get_grupo_miembros_ejecutivos', { p_grupo_id: grupoAsignadoId });
+      if (selectedGrupoId) {
+        const { data } = await supabase.rpc('get_grupo_miembros_ejecutivos', { p_grupo_id: selectedGrupoId });
         if (data) setTeamMembers(data as TeamMember[]);
       } else {
-        // Fallback: all lider+ejecutivo from all active teams
-        const { data: grupos } = await supabase
+        // No group selected: show all lider+ejecutivo from all active teams
+        const { data: todosGrupos } = await supabase
           .from('tramites_grupos_visualizacion')
           .select('id')
           .eq('activo', true);
-        if (!grupos?.length) { setTeamMembers([]); return; }
+        if (!todosGrupos?.length) { setTeamMembers([]); return; }
         const { data: miembros } = await supabase
           .from('tramites_grupos_miembros')
           .select('usuario_id, usuarios!inner(id, nombre_completo)')
-          .in('grupo_id', grupos.map((g: { id: string }) => g.id))
+          .in('grupo_id', todosGrupos.map((g: { id: string }) => g.id))
           .in('rol_en_equipo', ['lider', 'ejecutivo']);
         if (miembros) {
           type Row = { usuario_id: string; usuarios: { id: string; nombre_completo: string } };
@@ -127,7 +151,7 @@ export function TramiteDetalles({
       }
     };
     load();
-  }, [grupoAsignadoId, canManageAssignment]);
+  }, [selectedGrupoId, canManageAssignment]);
 
   const loadAsignaciones = async () => {
     const { data } = await supabase
@@ -164,6 +188,7 @@ export function TramiteDetalles({
 
   return (
     <div className="space-y-6">
+      {/* Fila 1: Agente | Equipo */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label className="block text-sm font-semibold text-neutral-700 mb-2">
@@ -177,8 +202,44 @@ export function TramiteDetalles({
 
         <div>
           <label className="block text-sm font-semibold text-neutral-700 mb-2">
+            <Wrench className="w-4 h-4 inline mr-2" />
+            Equipo
+          </label>
+          {canManageAssignment && onEquipoChange ? (
+            <select
+              value={selectedGrupoId}
+              onChange={e => {
+                const val = e.target.value;
+                setSelectedGrupoId(val);
+                setSelectedResponsable('');
+                onEquipoChange(val || null);
+              }}
+              className="w-full px-4 py-3 border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all cursor-pointer bg-amber-50 text-amber-900"
+            >
+              <option value="">Sin equipo asignado</option>
+              {grupos.map(g => (
+                <option key={g.id} value={g.id}>{g.nombre}</option>
+              ))}
+            </select>
+          ) : (
+            <div className={`px-4 py-3 rounded-xl border ${selectedGrupoId ? 'bg-amber-50 border-amber-200 text-amber-900 font-medium' : 'bg-neutral-50 border-neutral-200 text-neutral-500'}`}>
+              {grupos.find(g => g.id === selectedGrupoId)?.nombre || 'Sin equipo asignado'}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Fila 2: Responsable */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-sm font-semibold text-neutral-700 mb-2">
             <UserCheck className="w-4 h-4 inline mr-2" />
             Responsable
+            {canManageAssignment && selectedGrupoId && (
+              <span className="ml-2 text-xs font-normal text-neutral-400">
+                — miembros de {grupos.find(g => g.id === selectedGrupoId)?.nombre}
+              </span>
+            )}
           </label>
           {canManageAssignment && onResponsableChange ? (
             <select
