@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Search, Mail, Phone, MapPin, Briefcase, X, Users,
-  MessageSquare, PhoneCall, Building2, ChevronDown, ChevronUp
+  MessageSquare, PhoneCall, Building2, ChevronDown, ChevronUp, Copy, Check
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
@@ -52,6 +52,7 @@ export function DirectorioJiro() {
   const [selectedEmpleado, setSelectedEmpleado] = useState<Empleado | null>(null);
   const [collapsedOficinas, setCollapsedOficinas] = useState<Set<string>>(new Set());
   const [startingChat, setStartingChat] = useState(false);
+  const [copiedEmail, setCopiedEmail] = useState(false);
 
   useEffect(() => {
     if (usuario) cargarEmpleados();
@@ -116,18 +117,35 @@ export function DirectorioJiro() {
     if (!usuario || startingChat) return;
     setStartingChat(true);
     try {
-      const { error } = await supabase.rpc('get_or_create_direct_chat', {
+      const { data, error } = await supabase.rpc('get_or_create_direct_chat', {
         p_user1_id: usuario.id,
         p_user2_id: empleadoId,
       });
       if (error) throw error;
       setSelectedEmpleado(null);
-      navigate('/centro-contacto/chat');
+      navigate(`/centro-contacto/chat?open=${data}`);
     } catch (err: any) {
       console.error('Error iniciando chat:', err);
       alert('No se pudo iniciar el chat: ' + err.message);
     } finally {
       setStartingChat(false);
+    }
+  };
+
+  const copiarEmail = async (email: string) => {
+    try {
+      await navigator.clipboard.writeText(email);
+      setCopiedEmail(true);
+      setTimeout(() => setCopiedEmail(false), 2000);
+    } catch {
+      const input = document.createElement('input');
+      input.value = email;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      setCopiedEmail(true);
+      setTimeout(() => setCopiedEmail(false), 2000);
     }
   };
 
@@ -376,6 +394,16 @@ export function DirectorioJiro() {
                     <Mail className="w-5 h-5" />
                     <span>Enviar email</span>
                   </a>
+                )}
+
+                {selectedEmpleado.email_laboral && (
+                  <button
+                    onClick={() => copiarEmail(selectedEmpleado.email_laboral)}
+                    className="flex flex-col items-center gap-1.5 p-3 bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 rounded-xl hover:bg-sky-100 dark:hover:bg-sky-900/30 transition-colors text-xs font-medium"
+                  >
+                    {copiedEmail ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                    <span>{copiedEmail ? 'Copiado!' : 'Copiar email'}</span>
+                  </button>
                 )}
 
                 {(selectedEmpleado.celular_laboral || selectedEmpleado.celular_personal) && (
