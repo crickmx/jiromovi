@@ -228,16 +228,17 @@ export function Directorio() {
 
 
   const filteredUsuarios = usuarios.filter((usuario) => {
-    const searchLower = searchTerm.toLowerCase();
+    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const q = norm(searchTerm);
     const matchesSearch =
       searchTerm === '' ||
-      (usuario.nombre || '').toLowerCase().includes(searchLower) ||
-      (usuario.apellidos || '').toLowerCase().includes(searchLower) ||
-      (usuario.email_personal || '').toLowerCase().includes(searchLower) ||
-      (usuario.email_laboral || '').toLowerCase().includes(searchLower) ||
+      norm(usuario.nombre || '').includes(q) ||
+      norm(usuario.apellidos || '').includes(q) ||
+      norm(usuario.email_personal || '').includes(q) ||
+      norm(usuario.email_laboral || '').includes(q) ||
       (usuario.celular_personal || '').includes(searchTerm) ||
       (usuario.celular_laboral || '').includes(searchTerm) ||
-      (usuario.username || '').toLowerCase().includes(searchLower);
+      norm(usuario.username || '').includes(q);
 
     const matchesRol = filterRol === '' || usuario.rol === filterRol;
     const matchesOficina = filterOficina === '' || usuario.oficina_id === filterOficina;

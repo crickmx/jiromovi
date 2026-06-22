@@ -351,9 +351,10 @@ export function Tramites() {
   });
 
   const filteredTramites = visibleTramites.filter(tramite => {
-    const term = (searchTerm ?? '').toLowerCase();
+    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const term = norm(searchTerm ?? '');
     const matches = (value: string | null | undefined) =>
-      (value ?? '').toLowerCase().includes(term);
+      norm(value ?? '').includes(term);
     const matchSearch =
       matches(tramite.folio) ||
       matches(tramite.instrucciones) ||

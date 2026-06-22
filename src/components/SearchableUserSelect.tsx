@@ -31,9 +31,10 @@ export const SearchableUserSelect = memo(function SearchableUserSelect({
 
   const selectedUser = users.find(u => u.id === value);
 
+  const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   const filteredUsers = users.filter(u =>
-    u.nombre_completo.toLowerCase().includes(search.toLowerCase()) ||
-    (u.email_laboral && u.email_laboral.toLowerCase().includes(search.toLowerCase()))
+    norm(u.nombre_completo).includes(norm(search)) ||
+    (u.email_laboral && norm(u.email_laboral).includes(norm(search)))
   );
 
   useEffect(() => {

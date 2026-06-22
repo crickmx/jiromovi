@@ -44,10 +44,11 @@ export default function TabHospitales() {
     }
 
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
+      const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+      const q = norm(searchQuery);
       hospitals = hospitals.filter(h =>
-        h.nombre.toLowerCase().includes(q) ||
-        h.ciudad.toLowerCase().includes(q)
+        norm(h.nombre).includes(q) ||
+        norm(h.ciudad).includes(q)
       );
     }
 
