@@ -210,21 +210,34 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
     return (bytes / 1024 / 1024).toFixed(2) + ' MB';
   };
 
-  const getFileIcon = (tipo: string | null) => {
-    if (!tipo) return <FileText className="w-8 h-8 text-neutral-400" />;
+  const friendlyName = (nombre: string): string => {
+    const trimmed = nombre.trim();
+    if (/^\[.+\]$/.test(trimmed)) {
+      const inner = trimmed.slice(1, -1).toLowerCase();
+      const labels: Record<string, string> = {
+        documento: 'Documento', imagen: 'Imagen', audio: 'Audio',
+        video: 'Video', sticker: 'Sticker', voice: 'Audio',
+      };
+      return labels[inner] ? `${labels[inner]} de WhatsApp` : 'Archivo de WhatsApp';
+    }
+    return trimmed;
+  };
 
-    if (tipo.startsWith('image/')) {
-      return <FileText className="w-8 h-8 text-accent" />;
-    }
-    if (tipo.includes('pdf')) {
-      return <FileText className="w-8 h-8 text-red-500" />;
-    }
-    if (tipo.includes('word') || tipo.includes('document')) {
-      return <FileText className="w-8 h-8 text-accent" />;
-    }
-    if (tipo.includes('excel') || tipo.includes('spreadsheet')) {
-      return <FileText className="w-8 h-8 text-green-600" />;
-    }
+  const getFileIcon = (tipo: string | null, nombre: string) => {
+    const ext = nombre.split('.').pop()?.toLowerCase() || '';
+    const isPdf = tipo?.includes('pdf') || ext === 'pdf';
+    const isImage = tipo?.startsWith('image/') || ['jpg','jpeg','png','gif','webp','svg'].includes(ext);
+    const isWord = tipo?.includes('word') || tipo?.includes('document') || ['doc','docx'].includes(ext);
+    const isExcel = tipo?.includes('excel') || tipo?.includes('spreadsheet') || ['xls','xlsx','csv'].includes(ext);
+    const isAudio = tipo?.startsWith('audio/') || ['mp3','ogg','wav','m4a'].includes(ext);
+    const isVideo = tipo?.startsWith('video/') || ['mp4','mov','avi','webm'].includes(ext);
+
+    if (isPdf) return <FileText className="w-8 h-8 text-red-500" />;
+    if (isImage) return <FileText className="w-8 h-8 text-blue-500" />;
+    if (isWord) return <FileText className="w-8 h-8 text-accent" />;
+    if (isExcel) return <FileText className="w-8 h-8 text-green-600" />;
+    if (isAudio) return <FileText className="w-8 h-8 text-purple-500" />;
+    if (isVideo) return <FileText className="w-8 h-8 text-orange-500" />;
     return <FileText className="w-8 h-8 text-neutral-400" />;
   };
 
@@ -333,11 +346,11 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
             >
               <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0">
-                  {getFileIcon(archivo.tipo)}
+                  {getFileIcon(archivo.tipo, archivo.nombre)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-neutral-900 truncate" title={archivo.nombre}>
-                    {archivo.nombre}
+                  <p className="text-sm font-semibold text-neutral-900 truncate" title={friendlyName(archivo.nombre)}>
+                    {friendlyName(archivo.nombre)}
                   </p>
                   <p className="text-xs text-neutral-500 mt-1">
                     {formatFileSize(archivo.tamano)}
