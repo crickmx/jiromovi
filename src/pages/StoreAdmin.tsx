@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Store, Package, Plus, Pencil as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign, Tag } from 'lucide-react';
+import { Store, Package, Plus, Pencil as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign, Tag, Download, Upload, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   obtenerTodosProductos,
@@ -12,8 +12,11 @@ import {
   subirImagenProducto,
   crearCategoria,
   actualizarCategoria,
-  eliminarCategoria
+  eliminarCategoria,
+  exportarProductosExcel,
+  importarProductosExcel
 } from '../lib/storeUtils';
+import type { ResultadoCargaMasiva } from '../lib/storeUtils';
 import { supabase } from '../lib/supabase';
 import type { StoreProducto, StoreCategoria, StoreProductoCostoExtra, StoreProductoAtributo, StoreProductoAtributoOpcion } from '../lib/storeTypes';
 import { TIPO_GASTO_OPTIONS } from '../lib/storeTypes';
@@ -32,6 +35,12 @@ export default function StoreAdmin() {
   const [productoEditando, setProductoEditando] = useState<StoreProducto | null>(null);
   const [showCategoriaModal, setShowCategoriaModal] = useState(false);
   const [categoriaEditando, setCategoriaEditando] = useState<StoreCategoria | null>(null);
+
+  // Carga masiva
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importando, setImportando] = useState(false);
+  const [resultadoImport, setResultadoImport] = useState<ResultadoCargaMasiva | null>(null);
+  const [exportando, setExportando] = useState(false);
 
   const PLACEHOLDER_SVG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23f3f4f6'/%3E%3Cpath d='M80 120l20-30 20 30M110 120l15-20 15 20' stroke='%239ca3af' stroke-width='2' fill='none'/%3E%3Ccircle cx='90' cy='80' r='8' fill='%239ca3af'/%3E%3Crect x='60' y='60' width='80' height='80' rx='4' stroke='%239ca3af' stroke-width='2' fill='none'/%3E%3C/svg%3E";
 
@@ -98,6 +107,37 @@ export default function StoreAdmin() {
       await cargarDatos();
     } catch (error) {
       console.error('Error actualizando producto:', error);
+    }
+  };
+
+  const handleExportarExcel = async () => {
+    try {
+      setExportando(true);
+      await exportarProductosExcel(productos);
+    } catch (error) {
+      console.error('Error exportando:', error);
+      alert('Error al exportar productos');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const handleImportarExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setImportando(true);
+      setResultadoImport(null);
+      const resultado = await importarProductosExcel(file, categorias);
+      setResultadoImport(resultado);
+      await cargarDatos();
+    } catch (error: any) {
+      console.error('Error importando:', error);
+      alert('Error al procesar el archivo: ' + (error.message || ''));
+    } finally {
+      setImportando(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -183,7 +223,29 @@ export default function StoreAdmin() {
 
         {vistaActual === 'productos' ? (
           <div>
-            <div className="flex justify-end mb-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleExportarExcel}
+                  disabled={exportando}
+                  className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-lg hover:bg-emerald-700 transition-colors font-medium text-sm disabled:opacity-50"
+                >
+                  <Download className="w-4 h-4" />
+                  {exportando ? 'Exportando...' : 'Descargar Excel'}
+                </button>
+                <label className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm cursor-pointer">
+                  <Upload className="w-4 h-4" />
+                  {importando ? 'Importando...' : 'Cargar Excel'}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleImportarExcel}
+                    disabled={importando}
+                    className="hidden"
+                  />
+                </label>
+              </div>
               <button
                 onClick={handleCrearProducto}
                 className="flex items-center gap-2 bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium shadow-sm"
@@ -192,6 +254,38 @@ export default function StoreAdmin() {
                 Nuevo Producto
               </button>
             </div>
+
+            {resultadoImport && (
+              <div className="mb-6 p-4 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5">
+                <h4 className="text-sm font-semibold text-neutral-800 dark:text-white/80 mb-3 flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  Resultado de importacion
+                </h4>
+                <div className="flex items-center gap-6 text-sm mb-2">
+                  <span className="text-green-600 font-medium">{resultadoImport.creados} creados</span>
+                  <span className="text-blue-600 font-medium">{resultadoImport.actualizados} actualizados</span>
+                  {resultadoImport.errores.length > 0 && (
+                    <span className="text-red-600 font-medium">{resultadoImport.errores.length} errores</span>
+                  )}
+                </div>
+                {resultadoImport.errores.length > 0 && (
+                  <div className="mt-2 max-h-32 overflow-y-auto space-y-1">
+                    {resultadoImport.errores.map((err, idx) => (
+                      <div key={idx} className="flex items-start gap-2 text-xs text-red-600">
+                        <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                        <span>Fila {err.fila}: {err.mensaje}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button
+                  onClick={() => setResultadoImport(null)}
+                  className="mt-3 text-xs text-neutral-500 dark:text-white/50 hover:text-neutral-700 dark:hover:text-white/70 underline"
+                >
+                  Cerrar
+                </button>
+              </div>
+            )}
 
             <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 overflow-hidden">
               <div className="overflow-x-auto">
