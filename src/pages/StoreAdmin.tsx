@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Store, Package, Plus, Pencil as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign } from 'lucide-react';
+import { Store, Package, Plus, Pencil as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign, Tag } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   obtenerTodosProductos,
@@ -15,7 +15,7 @@ import {
   eliminarCategoria
 } from '../lib/storeUtils';
 import { supabase } from '../lib/supabase';
-import type { StoreProducto, StoreCategoria, StoreProductoCostoExtra } from '../lib/storeTypes';
+import type { StoreProducto, StoreCategoria, StoreProductoCostoExtra, StoreProductoAtributo, StoreProductoAtributoOpcion } from '../lib/storeTypes';
 import { TIPO_GASTO_OPTIONS } from '../lib/storeTypes';
 import { BaseModal } from '../components/BaseModal';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
@@ -420,8 +420,13 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
   const [newCostoDescripcion, setNewCostoDescripcion] = useState('');
   const [newCostoMonto, setNewCostoMonto] = useState('');
 
+  // Atributos
+  const [atributos, setAtributos] = useState<StoreProductoAtributo[]>([]);
+  const [newAtributoNombre, setNewAtributoNombre] = useState('');
+  const [newOpcionValues, setNewOpcionValues] = useState<Record<string, string>>({});
   useEffect(() => {
     if (producto?.id) loadCostosExtras();
+    if (producto?.id) loadAtributos();
   }, [producto?.id]);
 
   async function loadCostosExtras() {
@@ -459,6 +464,73 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
   async function removeCostoExtra(id: string) {
     await supabase.from('store_producto_costos_extras').delete().eq('id', id);
     setCostosExtras(prev => prev.filter(c => c.id !== id));
+  }
+
+  async function loadAtributos() {
+    if (!producto) return;
+    const { data } = await supabase
+      .from('store_producto_atributos')
+      .select('*, opciones:store_producto_atributo_opciones(*)')
+      .eq('producto_id', producto.id)
+      .order('orden');
+    if (data) {
+      const sorted = data.map((a: any) => ({
+        ...a,
+        opciones: (a.opciones || []).sort((x: any, y: any) => x.orden - y.orden)
+      }));
+      setAtributos(sorted as StoreProductoAtributo[]);
+    }
+  }
+
+  async function addAtributo() {
+    if (!producto?.id || !newAtributoNombre.trim()) return;
+    const { data, error } = await supabase
+      .from('store_producto_atributos')
+      .insert({
+        producto_id: producto.id,
+        nombre: newAtributoNombre.trim(),
+        orden: atributos.length
+      })
+      .select()
+      .single();
+    if (!error && data) {
+      setAtributos(prev => [...prev, { ...data, opciones: [] } as StoreProductoAtributo]);
+      setNewAtributoNombre('');
+    }
+  }
+
+  async function removeAtributo(id: string) {
+    await supabase.from('store_producto_atributos').delete().eq('id', id);
+    setAtributos(prev => prev.filter(a => a.id !== id));
+  }
+
+  async function addOpcion(atributoId: string) {
+    const valor = (newOpcionValues[atributoId] || '').trim();
+    if (!valor) return;
+    const atributo = atributos.find(a => a.id === atributoId);
+    const orden = atributo?.opciones?.length || 0;
+    const { data, error } = await supabase
+      .from('store_producto_atributo_opciones')
+      .insert({ atributo_id: atributoId, valor, orden })
+      .select()
+      .single();
+    if (!error && data) {
+      setAtributos(prev => prev.map(a =>
+        a.id === atributoId
+          ? { ...a, opciones: [...(a.opciones || []), data as StoreProductoAtributoOpcion] }
+          : a
+      ));
+      setNewOpcionValues(prev => ({ ...prev, [atributoId]: '' }));
+    }
+  }
+
+  async function removeOpcion(atributoId: string, opcionId: string) {
+    await supabase.from('store_producto_atributo_opciones').delete().eq('id', opcionId);
+    setAtributos(prev => prev.map(a =>
+      a.id === atributoId
+        ? { ...a, opciones: (a.opciones || []).filter(o => o.id !== opcionId) }
+        : a
+    ));
   }
 
   const totalCostosExtras = costosExtras.reduce((sum, c) => sum + c.monto, 0);
@@ -755,6 +827,78 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
                 <span>Ganancia/unidad:</span>
                 <span>${gananciaUnidad.toFixed(2)} ({margenPct.toFixed(1)}%)</span>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Atributos section - only for existing products */}
+        {producto && (
+          <div className="border border-neutral-200 dark:border-white/10 rounded-xl p-4 space-y-3">
+            <h4 className="text-sm font-semibold text-neutral-800 dark:text-white/80 flex items-center gap-2">
+              <Tag className="w-4 h-4" />
+              Atributos / Variantes
+            </h4>
+            <p className="text-xs text-neutral-500 dark:text-white/50">Define opciones como Talla, Color, etc. que el comprador selecciona.</p>
+
+            {atributos.length > 0 && (
+              <div className="space-y-3">
+                {atributos.map(attr => (
+                  <div key={attr.id} className="bg-neutral-50 dark:bg-white/5 rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-neutral-800 dark:text-white/80">{attr.nombre}</span>
+                      <button onClick={() => removeAtributo(attr.id)} className="text-red-400 hover:text-red-600">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(attr.opciones || []).map(opt => (
+                        <span key={opt.id} className="inline-flex items-center gap-1 bg-white dark:bg-white/10 border border-neutral-200 dark:border-white/15 rounded-full px-2.5 py-1 text-xs font-medium text-neutral-700 dark:text-white/70">
+                          {opt.valor}
+                          <button onClick={() => removeOpcion(attr.id, opt.id)} className="text-neutral-400 hover:text-red-500 ml-0.5">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newOpcionValues[attr.id] || ''}
+                        onChange={e => setNewOpcionValues(prev => ({ ...prev, [attr.id]: e.target.value }))}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addOpcion(attr.id); } }}
+                        placeholder="Nueva opcion..."
+                        className="flex-1 px-2.5 py-1.5 text-xs border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white"
+                      />
+                      <button
+                        onClick={() => addOpcion(attr.id)}
+                        disabled={!(newOpcionValues[attr.id] || '').trim()}
+                        className="px-2.5 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover disabled:opacity-40"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newAtributoNombre}
+                onChange={e => setNewAtributoNombre(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addAtributo(); } }}
+                placeholder="Nuevo atributo (ej: Talla, Color...)"
+                className="flex-1 px-3 py-2 text-sm border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white"
+              />
+              <button
+                onClick={addAtributo}
+                disabled={!newAtributoNombre.trim()}
+                className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-40 flex items-center gap-1"
+              >
+                <Plus className="w-4 h-4" />
+                Agregar
+              </button>
             </div>
           </div>
         )}

@@ -449,6 +449,15 @@ export default function StorePedidoDetalle() {
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-neutral-900 dark:text-white">{item.producto?.titulo}</h3>
                           <p className="text-sm text-neutral-600 dark:text-white/60 mt-0.5">Cantidad: {item.cantidad} x ${item.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
+                          {item.atributos_seleccionados && Object.keys(item.atributos_seleccionados).length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-1">
+                              {Object.entries(item.atributos_seleccionados).map(([key, value]) => (
+                                <span key={key} className="inline-flex items-center gap-1 bg-primary-50 border border-primary-200 rounded-full px-2 py-0.5 text-xs font-medium text-primary-800">
+                                  {key}: {value}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                           {isAdmin && (
                             <div className="flex items-center gap-2 mt-1.5">
                               <label className="text-xs text-neutral-500 dark:text-white/50">Costo unit.:</label>

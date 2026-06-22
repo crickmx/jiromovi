@@ -77,7 +77,8 @@ export async function obtenerProductos(categoriaId?: string) {
     .from('store_productos')
     .select(`
       *,
-      categoria:store_categorias(*)
+      categoria:store_categorias(*),
+      atributos:store_producto_atributos(*, opciones:store_producto_atributo_opciones(*))
     `)
     .eq('activo', true)
     .order('created_at', { ascending: false });
@@ -214,12 +215,14 @@ export async function obtenerCarrito(usuarioId: string) {
   return data as StoreCarritoItem[];
 }
 
-export async function agregarAlCarrito(usuarioId: string, productoId: string, cantidad: number) {
+export async function agregarAlCarrito(usuarioId: string, productoId: string, cantidad: number, atributosSeleccionados?: Record<string, string>) {
+  const atributos = atributosSeleccionados || {};
   const { data: existente } = await supabase
     .from('store_carrito')
     .select('*')
     .eq('usuario_id', usuarioId)
     .eq('producto_id', productoId)
+    .eq('atributos_seleccionados', JSON.stringify(atributos))
     .maybeSingle();
 
   if (existente) {
@@ -238,7 +241,8 @@ export async function agregarAlCarrito(usuarioId: string, productoId: string, ca
       .insert({
         usuario_id: usuarioId,
         producto_id: productoId,
-        cantidad
+        cantidad,
+        atributos_seleccionados: atributos
       })
       .select()
       .single();
@@ -712,7 +716,8 @@ export async function crearPedido(
     pedido_id: pedido.id,
     producto_id: item.producto_id,
     cantidad: item.cantidad,
-    precio_unitario: item.producto!.precio
+    precio_unitario: item.producto!.precio,
+    atributos_seleccionados: item.atributos_seleccionados || {}
   }));
 
   const { error: detalleError } = await supabase

@@ -20,6 +20,7 @@ export interface StoreProducto {
   created_at: string;
   categoria?: StoreCategoria;
   costos_extras?: StoreProductoCostoExtra[];
+  atributos?: StoreProductoAtributo[];
 }
 
 export interface StoreProductoCostoExtra {
@@ -32,6 +33,24 @@ export interface StoreProductoCostoExtra {
   created_at: string;
 }
 
+export interface StoreProductoAtributo {
+  id: string;
+  producto_id: string;
+  nombre: string;
+  orden: number;
+  created_at: string;
+  opciones?: StoreProductoAtributoOpcion[];
+}
+
+export interface StoreProductoAtributoOpcion {
+  id: string;
+  atributo_id: string;
+  valor: string;
+  orden: number;
+  activo: boolean;
+  created_at: string;
+}
+
 export type TipoGasto = 'proveedor' | 'envio' | 'empaque' | 'comision' | 'logistica' | 'otro';
 
 export interface StoreCarritoItem {
@@ -39,6 +58,7 @@ export interface StoreCarritoItem {
   usuario_id: string;
   producto_id: string;
   cantidad: number;
+  atributos_seleccionados?: Record<string, string>;
   created_at: string;
   producto?: StoreProducto;
 }
@@ -110,6 +130,7 @@ export interface StorePedido {
     pedido_id: string;
     cantidad: number;
     precio_unitario: number;
+    atributos_seleccionados?: Record<string, string>;
     producto?: {
       titulo?: string;
       descripcion?: string;
@@ -127,6 +148,7 @@ export interface StorePedidoDetalle {
   cantidad: number;
   precio_unitario: number;
   costo_unitario_override?: number;
+  atributos_seleccionados?: Record<string, string>;
   producto?: StoreProducto;
   gastos?: StorePedidoDetalleGasto[];
 }

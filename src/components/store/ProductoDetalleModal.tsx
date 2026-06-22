@@ -5,11 +5,12 @@ import type { StoreProducto } from '../../lib/storeTypes';
 interface Props {
   producto: StoreProducto;
   onClose: () => void;
-  onAgregar: (producto: StoreProducto, cantidad: number) => void;
+  onAgregar: (producto: StoreProducto, cantidad: number, atributos?: Record<string, string>) => void;
 }
 
 export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
   const [cantidad, setCantidad] = useState(1);
+  const [atributosSeleccionados, setAtributosSeleccionados] = useState<Record<string, string>>({});
 
   const PLACEHOLDER_SVG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23f3f4f6'/%3E%3Cpath d='M80 120l20-30 20 30M110 120l15-20 15 20' stroke='%239ca3af' stroke-width='2' fill='none'/%3E%3Ccircle cx='90' cy='80' r='8' fill='%239ca3af'/%3E%3Crect x='60' y='60' width='80' height='80' rx='4' stroke='%239ca3af' stroke-width='2' fill='none'/%3E%3C/svg%3E";
 
@@ -27,9 +28,14 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
   const pocasExistencias = producto.stock > 0 && producto.stock <= producto.stock_umbral;
   const maxCantidad = producto.stock;
 
+  const atributosConOpciones = (producto.atributos || []).filter(a => (a.opciones || []).length > 0);
+  const todosAtributosSeleccionados = atributosConOpciones.length === 0 ||
+    atributosConOpciones.every(a => atributosSeleccionados[a.nombre]);
+
   const handleAgregar = () => {
-    if (sinStock) return;
-    onAgregar(producto, cantidad);
+    if (sinStock || !todosAtributosSeleccionados) return;
+    const attrs = atributosConOpciones.length > 0 ? atributosSeleccionados : undefined;
+    onAgregar(producto, cantidad, attrs);
     onClose();
   };
 
@@ -103,6 +109,37 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                 <p className="text-gray-600 whitespace-pre-wrap">{producto.descripcion}</p>
               </div>
 
+              {/* Attribute selectors */}
+              {!sinStock && atributosConOpciones.length > 0 && (
+                <div className="mb-6 space-y-4">
+                  {atributosConOpciones.map(attr => (
+                    <div key={attr.id}>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        {attr.nombre} <span className="text-red-500">*</span>
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {(attr.opciones || []).filter(o => o.activo).map(opt => {
+                          const isSelected = atributosSeleccionados[attr.nombre] === opt.valor;
+                          return (
+                            <button
+                              key={opt.id}
+                              onClick={() => setAtributosSeleccionados(prev => ({ ...prev, [attr.nombre]: opt.valor }))}
+                              className={`px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
+                                isSelected
+                                  ? 'border-accent bg-primary-50 text-accent'
+                                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              {opt.valor}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {!sinStock && (
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -140,15 +177,15 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
               <div className="flex flex-col gap-3">
                 <button
                   onClick={handleAgregar}
-                  disabled={sinStock}
+                  disabled={sinStock || !todosAtributosSeleccionados}
                   className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-lg transition-colors ${
-                    sinStock
+                    sinStock || !todosAtributosSeleccionados
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-accent text-white hover:bg-accent-hover'
                   }`}
                 >
                   <ShoppingCart className="w-5 h-5" />
-                  {sinStock ? 'No disponible' : 'Agregar al Carrito'}
+                  {sinStock ? 'No disponible' : !todosAtributosSeleccionados ? 'Selecciona las opciones' : 'Agregar al Carrito'}
                 </button>
 
                 <button
