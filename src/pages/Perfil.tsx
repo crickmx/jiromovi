@@ -1,9 +1,17 @@
 import { useEffect, useState, useRef } from 'react';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { supabase } from '../lib/supabase';
-import { User, Phone, Mail, MapPin, Building2, Shield, Camera, Check, Loader as Loader2, Pencil, X, Globe, CreditCard, Calendar, BadgeCheck } from 'lucide-react';
+import { User, Phone, Mail, MapPin, Building2, Shield, Camera, Check, Loader as Loader2, Pencil, X, Globe, CreditCard, Calendar, BadgeCheck, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+
+interface FiscalRegime {
+  id: string;
+  name: string;
+  iva_trasladado: number;
+  iva_retenido: number;
+  isr: number;
+}
 
 function toTitleCase(s: string): string {
   return s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
@@ -21,6 +29,7 @@ function formatFieldName(key: string): string {
     extension_telefonica: 'Extensión',
     fecha_nacimiento: 'Fecha de Nacimiento',
     fecha_ingreso: 'Fecha de Ingreso',
+    regimen_fiscal_id: 'Régimen Fiscal',
     banco: 'Banco',
     clabe: 'CLABE',
     url_web_jiro: 'Web Jiro',
@@ -32,7 +41,7 @@ function formatFieldName(key: string): string {
 type EditableField =
   | 'nombre' | 'apellidos' | 'celular_personal' | 'email_personal'
   | 'celular_laboral' | 'email_laboral' | 'extension_telefonica'
-  | 'banco' | 'clabe' | 'url_web_jiro' | 'url_web_multicotizador'
+  | 'regimen_fiscal_id' | 'banco' | 'clabe' | 'url_web_jiro' | 'url_web_multicotizador'
   | 'fecha_nacimiento' | 'puesto' | 'fecha_ingreso';
 
 type RolEditable = Record<EditableField, boolean>;
@@ -41,25 +50,25 @@ const EDITABLES_BY_ROL: Record<string, RolEditable> = {
   Administrador: {
     nombre: true, apellidos: true, celular_personal: true, email_personal: true,
     celular_laboral: true, email_laboral: true, extension_telefonica: true,
-    banco: true, clabe: true, url_web_jiro: true, url_web_multicotizador: true,
+    regimen_fiscal_id: true, banco: true, clabe: true, url_web_jiro: true, url_web_multicotizador: true,
     fecha_nacimiento: true, puesto: true, fecha_ingreso: true,
   },
   Gerente: {
     nombre: false, apellidos: false, celular_personal: true, email_personal: true,
     celular_laboral: true, email_laboral: true, extension_telefonica: true,
-    banco: true, clabe: true, url_web_jiro: true, url_web_multicotizador: true,
+    regimen_fiscal_id: true, banco: true, clabe: true, url_web_jiro: true, url_web_multicotizador: true,
     fecha_nacimiento: true, puesto: false, fecha_ingreso: false,
   },
   Agente: {
     nombre: false, apellidos: false, celular_personal: true, email_personal: true,
     celular_laboral: true, email_laboral: true, extension_telefonica: false,
-    banco: true, clabe: true, url_web_jiro: false, url_web_multicotizador: false,
+    regimen_fiscal_id: true, banco: true, clabe: true, url_web_jiro: false, url_web_multicotizador: false,
     fecha_nacimiento: true, puesto: false, fecha_ingreso: false,
   },
   Empleado: {
     nombre: false, apellidos: false, celular_personal: true, email_personal: true,
     celular_laboral: true, email_laboral: true, extension_telefonica: false,
-    banco: false, clabe: false, url_web_jiro: false, url_web_multicotizador: false,
+    regimen_fiscal_id: false, banco: false, clabe: false, url_web_jiro: false, url_web_multicotizador: false,
     fecha_nacimiento: true, puesto: false, fecha_ingreso: false,
   },
 };
@@ -67,7 +76,7 @@ const EDITABLES_BY_ROL: Record<string, RolEditable> = {
 const DEFAULT_EDITABLES: RolEditable = {
   nombre: false, apellidos: false, celular_personal: true, email_personal: true,
   celular_laboral: true, email_laboral: true, extension_telefonica: false,
-  banco: false, clabe: false, url_web_jiro: false, url_web_multicotizador: false,
+  regimen_fiscal_id: false, banco: false, clabe: false, url_web_jiro: false, url_web_multicotizador: false,
   fecha_nacimiento: true, puesto: false, fecha_ingreso: false,
 };
 
@@ -95,7 +104,7 @@ const SECTIONS: Section[] = [
   {
     title: 'Datos Bancarios',
     icon: CreditCard,
-    fields: ['banco', 'clabe'],
+    fields: ['regimen_fiscal_id', 'banco', 'clabe'],
   },
 ];
 
@@ -144,7 +153,16 @@ export default function Perfil() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [regimenesFiscales, setRegimenesFiscales] = useState<FiscalRegime[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    supabase
+      .from('commission_fiscal_regimes')
+      .select('*')
+      .order('name')
+      .then(({ data }) => { if (data) setRegimenesFiscales(data); });
+  }, []);
 
   type FormState = Record<EditableField, string>;
 
@@ -156,6 +174,7 @@ export default function Perfil() {
     celular_laboral: usuario?.celular_laboral || '',
     email_laboral: usuario?.email_laboral || '',
     extension_telefonica: usuario?.extension_telefonica || '',
+    regimen_fiscal_id: usuario?.regimen_fiscal_id || '',
     banco: usuario?.banco || '',
     clabe: usuario?.clabe || '',
     url_web_jiro: usuario?.url_web_jiro || '',
@@ -439,6 +458,51 @@ export default function Perfil() {
                     const isEditable = editables[field] ?? false;
                     const isDateField = field === 'fecha_nacimiento' || field === 'fecha_ingreso';
 
+                    if (field === 'regimen_fiscal_id') {
+                      const selectedRegimen = regimenesFiscales.find(r => r.id === form.regimen_fiscal_id);
+                      return (
+                        <div key={field} className="group flex flex-col gap-1 sm:col-span-2">
+                          <label className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-white/35 flex items-center gap-1.5">
+                            {formatFieldName(field)}
+                          </label>
+                          {editing && isEditable ? (
+                            <div>
+                              <select
+                                value={form.regimen_fiscal_id}
+                                onChange={e => setForm(prev => ({ ...prev, regimen_fiscal_id: e.target.value }))}
+                                className="h-9 w-full rounded-xl border border-accent/40 bg-accent/5 dark:bg-accent/10 px-3 text-sm text-neutral-900 dark:text-white focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all"
+                              >
+                                <option value="">Seleccionar régimen</option>
+                                {regimenesFiscales.map(r => (
+                                  <option key={r.id} value={r.id}>{r.name}</option>
+                                ))}
+                              </select>
+                              {form.regimen_fiscal_id && selectedRegimen && (
+                                <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">
+                                  ISR: {(selectedRegimen.isr * 100).toFixed(2)}% | IVA Ret: {(selectedRegimen.iva_retenido * 100).toFixed(2)}%
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <div>
+                              <p className={cn(
+                                'text-sm min-h-[36px] flex items-center px-3 rounded-xl',
+                                selectedRegimen ? 'text-neutral-800 dark:text-white/85' : 'text-neutral-400 dark:text-white/25 italic',
+                                !isEditable && editing && 'bg-neutral-50 dark:bg-white/[0.02] border border-neutral-100 dark:border-white/5',
+                              )}>
+                                {selectedRegimen?.name || '—'}
+                              </p>
+                              {selectedRegimen && (
+                                <p className="text-xs text-neutral-500 dark:text-white/40 mt-1 px-3">
+                                  ISR: {(selectedRegimen.isr * 100).toFixed(2)}% | IVA Ret: {(selectedRegimen.iva_retenido * 100).toFixed(2)}%
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
                     let displayValue = form[field];
                     if ((field === 'nombre' || field === 'apellidos') && !editing) {
                       displayValue = toTitleCase(displayValue);
@@ -468,6 +532,15 @@ export default function Perfil() {
                     );
                   })}
                 </div>
+
+                {section.title === 'Datos Bancarios' && (
+                  <div className="mt-4 flex items-start gap-2 sm:gap-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl p-3 sm:p-4">
+                    <Info className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-300 leading-relaxed">
+                      <span className="font-medium">Recuerda:</span> La actualización de tus datos de Información de pago tarda de 24 a 72 horas en verse reflejada y aplicada para futuros movimientos.
+                    </p>
+                  </div>
+                )}
               </div>
             );
           })}
