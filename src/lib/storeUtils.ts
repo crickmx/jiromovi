@@ -698,6 +698,9 @@ export async function crearPedido(
 
   if (!estatusId) throw new Error('No se encontró el estatus "Pendiente"');
 
+  const { data: folioData, error: folioError } = await supabase.rpc('generar_folio_oc');
+  if (folioError) throw folioError;
+
   const { data: pedido, error: pedidoError } = await supabase
     .from('store_pedidos')
     .insert({
@@ -705,7 +708,8 @@ export async function crearPedido(
       notas_usuario: notasUsuario,
       direccion_entrega: direccionEntrega,
       estatus_id: estatusId,
-      responsable_pago_id: responsablePagoId || null
+      responsable_pago_id: responsablePagoId || null,
+      folio_oc: folioData
     })
     .select()
     .single();
