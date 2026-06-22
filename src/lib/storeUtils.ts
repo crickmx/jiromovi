@@ -8,7 +8,8 @@ import type {
   StorePedidoDetalle,
   StorePedidoNota,
   StorePedidoHistorial,
-  StorePedidoCompleto
+  StorePedidoCompleto,
+  StorePedidoPago
 } from './storeTypes';
 
 // ============================================
@@ -833,6 +834,51 @@ export async function eliminarPedido(pedidoId: string) {
     .from('store_pedidos')
     .delete()
     .eq('id', pedidoId);
+
+  if (error) throw error;
+}
+
+// ============================================
+// PAGOS DE PEDIDO
+// ============================================
+
+export async function obtenerPagosPedido(pedidoId: string) {
+  const { data, error } = await supabase
+    .from('store_pedido_pagos')
+    .select('*, registrado_por_usuario:usuarios!registrado_por(nombre)')
+    .eq('pedido_id', pedidoId)
+    .order('fecha', { ascending: false });
+
+  if (error) throw error;
+  return data as StorePedidoPago[];
+}
+
+export async function registrarPago(pago: {
+  pedido_id: string;
+  fecha: string;
+  metodo: string;
+  monto: number;
+  comentario?: string;
+}) {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  const { data, error } = await supabase
+    .from('store_pedido_pagos')
+    .insert({
+      ...pago,
+      registrado_por: userId
+    })
+    .select('*, registrado_por_usuario:usuarios!registrado_por(nombre)')
+    .single();
+
+  if (error) throw error;
+  return data as StorePedidoPago;
+}
+
+export async function eliminarPago(pagoId: string) {
+  const { error } = await supabase
+    .from('store_pedido_pagos')
+    .delete()
+    .eq('id', pagoId);
 
   if (error) throw error;
 }

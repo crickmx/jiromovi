@@ -222,11 +222,36 @@ export interface StorePedidoHistorial {
   };
 }
 
+export interface StorePedidoPago {
+  id: string;
+  pedido_id: string;
+  fecha: string;
+  metodo: string;
+  monto: number;
+  comentario?: string;
+  registrado_por?: string;
+  created_at: string;
+  registrado_por_usuario?: {
+    nombre: string;
+  };
+}
+
+export const METODO_PAGO_OPCIONES = [
+  'Transferencia',
+  'Efectivo',
+  'Tarjeta',
+  'Cheque',
+  'Descuento de Comisiones',
+  'Cargo a Nomina',
+  'Otro',
+] as const;
+
 export interface StorePedidoCompleto extends StorePedido {
   detalle: StorePedidoDetalle[];
   notas: StorePedidoNota[];
   historial: StorePedidoHistorial[];
   gastos?: StorePedidoGasto[];
+  pagos?: StorePedidoPago[];
 }
 
 export const TIPO_GASTO_OPTIONS: { value: string; label: string }[] = [
