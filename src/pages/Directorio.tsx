@@ -227,17 +227,24 @@ export function Directorio() {
   };
 
 
+  const normalize = (text: string) =>
+    text
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/\s+/g, '');
+
   const filteredUsuarios = usuarios.filter((usuario) => {
-    const searchLower = searchTerm.toLowerCase();
+    const searchNorm = normalize(searchTerm);
     const matchesSearch =
       searchTerm === '' ||
-      (usuario.nombre || '').toLowerCase().includes(searchLower) ||
-      (usuario.apellidos || '').toLowerCase().includes(searchLower) ||
-      (usuario.email_personal || '').toLowerCase().includes(searchLower) ||
-      (usuario.email_laboral || '').toLowerCase().includes(searchLower) ||
-      (usuario.celular_personal || '').includes(searchTerm) ||
-      (usuario.celular_laboral || '').includes(searchTerm) ||
-      (usuario.username || '').toLowerCase().includes(searchLower);
+      normalize(usuario.nombre || '').includes(searchNorm) ||
+      normalize(usuario.apellidos || '').includes(searchNorm) ||
+      normalize(usuario.email_personal || '').includes(searchNorm) ||
+      normalize(usuario.email_laboral || '').includes(searchNorm) ||
+      normalize(usuario.celular_personal || '').includes(searchNorm) ||
+      normalize(usuario.celular_laboral || '').includes(searchNorm) ||
+      normalize(usuario.username || '').includes(searchNorm);
 
     const matchesRol = filterRol === '' || usuario.rol === filterRol;
     const matchesOficina = filterOficina === '' || usuario.oficina_id === filterOficina;
