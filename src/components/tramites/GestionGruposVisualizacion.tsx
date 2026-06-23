@@ -702,8 +702,8 @@ export function GestionGruposVisualizacion() {
           <button onClick={() => setPanel('list')} className="p-2 rounded-xl hover:bg-neutral-100 text-neutral-500 transition-colors">
             <X className="w-4 h-4" />
           </button>
-          <div className={`p-2 rounded-lg ${formArea ? AREA_CONFIG[formArea].bg : 'bg-neutral-100'} flex-shrink-0`}>
-            <span className={formArea ? AREA_CONFIG[formArea].color : 'text-neutral-400'}>
+          <div className={`p-2 rounded-lg ${getAC(formArea).bg} flex-shrink-0`}>
+            <span className={getAC(formArea).color}>
               {formArea === 'Comercial' ? <Briefcase className="w-4 h-4" /> : <Wrench className="w-4 h-4" />}
             </span>
           </div>
