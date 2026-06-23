@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { supabase } from '../lib/supabase';
-import { User, Phone, Mail, MapPin, Building2, Shield, Camera, Check, Loader as Loader2, Pencil, X, Globe, CreditCard, Calendar, BadgeCheck, Info, ExternalLink } from 'lucide-react';
+import { User, Phone, Mail, MapPin, Building2, Shield, Camera, Check, Loader as Loader2, Pencil, X, Globe, CreditCard, Calendar, BadgeCheck, Info, ExternalLink, Lock, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 
@@ -138,6 +138,304 @@ function FieldRow({ label, value, editable, editing, onChange, type = 'text', ic
         )}>
           {value || '—'}
         </p>
+      )}
+    </div>
+  );
+}
+
+function PasswordSection() {
+  const [mode, setMode] = useState<'idle' | 'create' | 'change'>('idle');
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [hasPassword, setHasPassword] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    checkHasPassword();
+  }, []);
+
+  async function checkHasPassword() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const factors = session.user.user_metadata;
+      const hasEmailProvider = session.user.app_metadata?.providers?.includes('email') ?? false;
+      const hasPasswordSet = hasEmailProvider && !!(factors as any)?.password_set;
+      setHasPassword(hasPasswordSet || hasEmailProvider);
+    } catch {
+      setHasPassword(null);
+    }
+  }
+
+  function getStrength(pw: string): { level: number; label: string; color: string } {
+    if (pw.length === 0) return { level: 0, label: '', color: '' };
+    let score = 0;
+    if (pw.length >= 8) score++;
+    if (pw.length >= 12) score++;
+    if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
+    if (/\d/.test(pw)) score++;
+    if (/[^A-Za-z0-9]/.test(pw)) score++;
+
+    if (score <= 2) return { level: 1, label: 'Débil', color: '#ef4444' };
+    if (score <= 3) return { level: 2, label: 'Media', color: '#f59e0b' };
+    if (score <= 4) return { level: 3, label: 'Fuerte', color: '#22c55e' };
+    return { level: 4, label: 'Muy fuerte', color: '#10b981' };
+  }
+
+  async function handleCreatePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+    if (newPw.length < 8) { setMsg({ type: 'error', text: 'La contraseña debe tener al menos 8 caracteres.' }); return; }
+    if (newPw !== confirmPw) { setMsg({ type: 'error', text: 'Las contraseñas no coinciden.' }); return; }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPw });
+      if (error) {
+        setMsg({ type: 'error', text: 'No se pudo crear la contraseña. Intenta de nuevo.' });
+        return;
+      }
+      setMsg({ type: 'success', text: 'Contraseña creada exitosamente. Ahora puedes iniciar sesión con ella.' });
+      setHasPassword(true);
+      setMode('idle');
+      setNewPw('');
+      setConfirmPw('');
+    } catch {
+      setMsg({ type: 'error', text: 'Error de conexión.' });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+    if (!currentPw) { setMsg({ type: 'error', text: 'Ingresa tu contraseña actual.' }); return; }
+    if (newPw.length < 8) { setMsg({ type: 'error', text: 'La nueva contraseña debe tener al menos 8 caracteres.' }); return; }
+    if (newPw !== confirmPw) { setMsg({ type: 'error', text: 'Las contraseñas no coinciden.' }); return; }
+
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.email) { setMsg({ type: 'error', text: 'Sesión no válida.' }); return; }
+
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email: session.user.email,
+        password: currentPw,
+      });
+      if (signInErr) {
+        setMsg({ type: 'error', text: 'La contraseña actual es incorrecta.' });
+        return;
+      }
+
+      const { error } = await supabase.auth.updateUser({ password: newPw });
+      if (error) {
+        setMsg({ type: 'error', text: 'No se pudo actualizar la contraseña.' });
+        return;
+      }
+      setMsg({ type: 'success', text: 'Contraseña actualizada exitosamente.' });
+      setMode('idle');
+      setCurrentPw('');
+      setNewPw('');
+      setConfirmPw('');
+    } catch {
+      setMsg({ type: 'error', text: 'Error de conexión.' });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const strength = getStrength(newPw);
+
+  const inputCls = "w-full h-10 rounded-xl text-sm px-3 outline-none border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-900 dark:text-white/90 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all";
+
+  return (
+    <div className="rounded-2xl bg-white dark:bg-white/[0.02] border border-neutral-100 dark:border-white/[0.06] p-5 sm:p-6 space-y-4">
+      <div className="flex items-center gap-3 pb-3 border-b border-neutral-100 dark:border-white/[0.06]">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-accent/10">
+          <Lock className="w-4 h-4 text-accent" />
+        </div>
+        <h3 className="text-base font-bold text-neutral-900 dark:text-white/90">Contraseña de acceso</h3>
+      </div>
+
+      {msg && (
+        <div className={cn(
+          "px-4 py-3 rounded-xl text-sm font-medium",
+          msg.type === 'success' ? "bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 text-green-700 dark:text-green-300" : "bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-700 dark:text-red-300"
+        )}>
+          {msg.text}
+        </div>
+      )}
+
+      {mode === 'idle' && (
+        <div className="space-y-3">
+          {hasPassword ? (
+            <>
+              <p className="text-sm text-neutral-600 dark:text-white/50">
+                Tu contraseña está configurada. Puedes iniciar sesión con ella o usar Ingreso Express.
+              </p>
+              <button
+                onClick={() => { setMode('change'); setMsg(null); }}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+              >
+                <Lock className="w-4 h-4" />
+                Cambiar contraseña
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-neutral-600 dark:text-white/50">
+                Actualmente utilizas Ingreso Express. Puedes crear una contraseña para acceder más rápido.
+              </p>
+              <button
+                onClick={() => { setMode('create'); setMsg(null); }}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+              >
+                <Lock className="w-4 h-4" />
+                Crear contraseña
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {mode === 'create' && (
+        <form onSubmit={handleCreatePassword} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-neutral-500 dark:text-white/40 uppercase tracking-wide">Nueva contraseña</label>
+            <div className="relative">
+              <input
+                type={showNew ? 'text' : 'password'}
+                value={newPw}
+                onChange={e => setNewPw(e.target.value)}
+                placeholder="Mínimo 8 caracteres"
+                className={inputCls}
+                autoComplete="new-password"
+              />
+              <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400" tabIndex={-1}>
+                {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            {newPw && (
+              <div className="flex items-center gap-2 mt-1.5">
+                <div className="flex-1 h-1.5 rounded-full bg-neutral-200 dark:bg-white/10 overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-300" style={{ width: `${(strength.level / 4) * 100}%`, background: strength.color }} />
+                </div>
+                <span className="text-[11px] font-medium" style={{ color: strength.color }}>{strength.label}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-neutral-500 dark:text-white/40 uppercase tracking-wide">Confirmar contraseña</label>
+            <input
+              type="password"
+              value={confirmPw}
+              onChange={e => setConfirmPw(e.target.value)}
+              placeholder="Repite la contraseña"
+              className={inputCls}
+              autoComplete="new-password"
+            />
+          </div>
+
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-accent hover:bg-accent/90 transition-colors disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              Crear contraseña
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode('idle'); setNewPw(''); setConfirmPw(''); setMsg(null); }}
+              className="text-sm font-medium text-neutral-500 dark:text-white/40 hover:text-neutral-700 dark:hover:text-white/60 transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      )}
+
+      {mode === 'change' && (
+        <form onSubmit={handleChangePassword} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-neutral-500 dark:text-white/40 uppercase tracking-wide">Contraseña actual</label>
+            <div className="relative">
+              <input
+                type={showCurrent ? 'text' : 'password'}
+                value={currentPw}
+                onChange={e => setCurrentPw(e.target.value)}
+                placeholder="Tu contraseña actual"
+                className={inputCls}
+                autoComplete="current-password"
+              />
+              <button type="button" onClick={() => setShowCurrent(!showCurrent)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400" tabIndex={-1}>
+                {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-neutral-500 dark:text-white/40 uppercase tracking-wide">Nueva contraseña</label>
+            <div className="relative">
+              <input
+                type={showNew ? 'text' : 'password'}
+                value={newPw}
+                onChange={e => setNewPw(e.target.value)}
+                placeholder="Mínimo 8 caracteres"
+                className={inputCls}
+                autoComplete="new-password"
+              />
+              <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400" tabIndex={-1}>
+                {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            {newPw && (
+              <div className="flex items-center gap-2 mt-1.5">
+                <div className="flex-1 h-1.5 rounded-full bg-neutral-200 dark:bg-white/10 overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-300" style={{ width: `${(strength.level / 4) * 100}%`, background: strength.color }} />
+                </div>
+                <span className="text-[11px] font-medium" style={{ color: strength.color }}>{strength.label}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-neutral-500 dark:text-white/40 uppercase tracking-wide">Confirmar nueva contraseña</label>
+            <input
+              type="password"
+              value={confirmPw}
+              onChange={e => setConfirmPw(e.target.value)}
+              placeholder="Repite la nueva contraseña"
+              className={inputCls}
+              autoComplete="new-password"
+            />
+          </div>
+
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-accent hover:bg-accent/90 transition-colors disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              Actualizar contraseña
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode('idle'); setCurrentPw(''); setNewPw(''); setConfirmPw(''); setMsg(null); }}
+              className="text-sm font-medium text-neutral-500 dark:text-white/40 hover:text-neutral-700 dark:hover:text-white/60 transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
       )}
     </div>
   );
@@ -564,6 +862,9 @@ export default function Perfil() {
               </div>
             );
           })}
+
+          {/* ── Password Management Section ── */}
+          <PasswordSection />
         </div>
       </div>
     </div>
