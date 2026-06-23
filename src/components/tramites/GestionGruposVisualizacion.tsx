@@ -46,6 +46,7 @@ interface GrupoRegla {
   usuario_nombre: string;
   oficina_nombre: string | null;
   ejecutivo_id: string | null;
+  area: string | null;
 }
 
 interface AgentUser {
@@ -100,7 +101,7 @@ export function GestionGruposVisualizacion() {
   // Form state
   const [formNombre, setFormNombre] = useState('');
   const [formDescripcion, setFormDescripcion] = useState('');
-  const formArea: AreaCategoria = 'Operaciones';
+  const [formArea, setFormArea] = useState<AreaCategoria | null>(null);
   const [formActivo, setFormActivo] = useState(true);
   const [formAllOffices, setFormAllOffices] = useState(false);
   const [formSelectedOficinas, setFormSelectedOficinas] = useState<string[]>([]);
@@ -190,6 +191,7 @@ export function GestionGruposVisualizacion() {
     setSelectedGrupo(null);
     setFormNombre('');
     setFormDescripcion('');
+    setFormArea(null);
     setFormActivo(true);
     setFormAllOffices(false);
     setFormSelectedOficinas([]);
@@ -202,6 +204,7 @@ export function GestionGruposVisualizacion() {
     setSelectedGrupo(g);
     setFormNombre(g.nombre);
     setFormDescripcion(g.descripcion || '');
+    setFormArea(g.area_categoria ?? null);
     setFormActivo(g.activo);
     setFormAllOffices(g.all_offices);
     setFormOficinaSearch('');
@@ -236,7 +239,7 @@ export function GestionGruposVisualizacion() {
       area_categoria: formArea,
       activo: formActivo,
       all_offices: formAllOffices,
-      color: AREA_COLORS[formArea],
+      color: formArea ? AREA_COLORS[formArea] : '#94a3b8',
       updated_at: new Date().toISOString(),
       updated_by: usuario?.id,
     };
@@ -383,7 +386,7 @@ export function GestionGruposVisualizacion() {
   const loadGrupoReglas = async (grupoId: string) => {
     const { data } = await supabase
       .from('tramites_grupos_reglas')
-      .select('id, usuario_id, ejecutivo_id')
+      .select('id, usuario_id, ejecutivo_id, area')
       .eq('grupo_id', grupoId)
       .eq('activo', true);
     if (data) {
@@ -395,6 +398,7 @@ export function GestionGruposVisualizacion() {
           usuario_nombre: agente?.nombre_completo || r.usuario_id,
           oficina_nombre: agente?.oficina_id ? (oficinas.find(o => o.id === agente.oficina_id)?.nombre || null) : null,
           ejecutivo_id: r.ejecutivo_id ?? null,
+          area: r.area ?? null,
         };
       }));
     }
@@ -402,17 +406,23 @@ export function GestionGruposVisualizacion() {
 
   const handleAgregarReglas = async () => {
     if (!selectedGrupo || selectedAgentIds.length === 0) return;
+    // El área de la regla se hereda del área del equipo (null = comodín)
+    const grupoArea = selectedGrupo.area_categoria ?? null;
     for (const uid of selectedAgentIds) {
-      // Buscar regla comodín existente (area IS NULL) para este vendedor
-      const { data: existing } = await supabase
+      // Buscar regla existente para este vendedor + área del equipo
+      const query = supabase
         .from('tramites_grupos_reglas')
         .select('id')
         .eq('usuario_id', uid)
-        .is('area', null)
         .limit(1)
         .maybeSingle();
+      if (grupoArea) {
+        query.eq('area', grupoArea);
+      } else {
+        query.is('area', null);
+      }
+      const { data: existing } = await query;
       if (existing) {
-        // Reasignar al equipo actual
         await supabase
           .from('tramites_grupos_reglas')
           .update({ grupo_id: selectedGrupo.id, activo: true, created_by: usuario?.id })
@@ -420,7 +430,7 @@ export function GestionGruposVisualizacion() {
       } else {
         await supabase
           .from('tramites_grupos_reglas')
-          .insert({ grupo_id: selectedGrupo.id, usuario_id: uid, created_by: usuario?.id, activo: true, area: null });
+          .insert({ grupo_id: selectedGrupo.id, usuario_id: uid, created_by: usuario?.id, activo: true, area: grupoArea });
       }
     }
     setSelectedAgentIds([]);
@@ -657,12 +667,14 @@ export function GestionGruposVisualizacion() {
           <button onClick={() => setPanel('list')} className="p-2 rounded-xl hover:bg-neutral-100 text-neutral-500 transition-colors">
             <X className="w-4 h-4" />
           </button>
-          <div className={`p-2 rounded-lg ${AREA_CONFIG['Operaciones'].bg} flex-shrink-0`}>
-            <span className={AREA_CONFIG['Operaciones'].color}><Wrench className="w-4 h-4" /></span>
+          <div className={`p-2 rounded-lg ${formArea ? AREA_CONFIG[formArea].bg : 'bg-neutral-100'} flex-shrink-0`}>
+            <span className={formArea ? AREA_CONFIG[formArea].color : 'text-neutral-400'}>
+              {formArea === 'Comercial' ? <Briefcase className="w-4 h-4" /> : <Wrench className="w-4 h-4" />}
+            </span>
           </div>
           <div>
-            <h3 className="text-lg font-bold text-neutral-900">{selectedGrupo ? 'Editar equipo' : 'Nuevo equipo de Operaciones'}</h3>
-            <p className="text-sm text-neutral-500">Correcciones, registros, solicitudes y operativos.</p>
+            <h3 className="text-lg font-bold text-neutral-900">{selectedGrupo ? 'Editar equipo' : 'Nuevo equipo'}</h3>
+            <p className="text-sm text-neutral-500">{formArea ? `Área: ${formArea}` : 'Sin área asignada'}</p>
           </div>
         </div>
 
@@ -723,6 +735,33 @@ export function GestionGruposVisualizacion() {
               rows={2}
               className="w-full px-3 py-2.5 border border-neutral-300 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 focus:border-neutral-900 outline-none resize-none"
             />
+          </div>
+
+          {/* Área */}
+          <div>
+            <label className="block text-sm font-semibold text-neutral-700 mb-1.5">Área</label>
+            <div className="flex gap-2">
+              {(['Comercial', 'Operaciones'] as AreaCategoria[]).map(a => {
+                const cfg = AREA_CONFIG[a];
+                const active = formArea === a;
+                return (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() => setFormArea(active ? null : a)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${
+                      active
+                        ? `${cfg.bg} ${cfg.color} ${cfg.border} border-2`
+                        : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-300'
+                    }`}
+                  >
+                    {a === 'Comercial' ? <Briefcase className="w-3.5 h-3.5" /> : <Wrench className="w-3.5 h-3.5" />}
+                    {a}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-neutral-400 mt-1.5">Define qué tipos de trámite se auto-asignan a este equipo. Sin área = comodín para cualquier tipo.</p>
           </div>
 
           {/* All offices toggle */}
@@ -1053,7 +1092,11 @@ export function GestionGruposVisualizacion() {
             <div className="space-y-4">
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 text-sm text-amber-800">
                 <GitBranch className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <span>Define qué vendedores envían sus trámites <strong>automáticamente</strong> a este equipo. Aplica a cualquier tipo de trámite.</span>
+                <span>Define qué vendedores envían sus trámites <strong>automáticamente</strong> a este equipo.{' '}
+                {selectedGrupo?.area_categoria
+                  ? <>Aplica solo a trámites del área <strong>{selectedGrupo.area_categoria}</strong>.</>
+                  : <>Sin área asignada al equipo: aplica como comodín a cualquier tipo de trámite.</>}
+                </span>
               </div>
 
               {/* Vendedores asignados */}
