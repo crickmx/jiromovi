@@ -385,9 +385,12 @@ export function NuevoTramiteModal({
     if (data) setUsuariosDisponibles(data as Usuario[]);
   };
 
-  const resolveGrupoParaTicket = async (agente_id: string | null): Promise<{ grupo_id: string; ejecutivo_id: string | null } | null> => {
+  const resolveGrupoParaTicket = async (agente_id: string | null, tipo_tramite?: string): Promise<{ grupo_id: string; ejecutivo_id: string | null } | null> => {
     if (!agente_id) return null;
-    const { data } = await supabase.rpc('get_grupo_para_ticket', { p_agente_id: agente_id });
+    const { data } = await supabase.rpc('get_grupo_para_ticket', {
+      p_agente_id: agente_id,
+      ...(tipo_tramite ? { p_tipo_tramite: tipo_tramite } : {}),
+    });
     if (!data || !Array.isArray(data) || data.length === 0) return null;
     const row = data[0] as { grupo_id: string; ejecutivo_id: string | null };
     return row.grupo_id ? row : null;
@@ -675,7 +678,7 @@ export function NuevoTramiteModal({
       const agentUserId = isAgent
         ? usuario.id
         : (isCommercial ? comAgenteUserId : asignado) ?? null;
-      const grupoResult = await resolveGrupoParaTicket(agentUserId);
+      const grupoResult = await resolveGrupoParaTicket(agentUserId, tipoTramite);
       const grupoAsignadoId = grupoResult?.grupo_id ?? null;
       // If the rule specifies an ejecutivo, auto-assign directly to them; otherwise use normal logic
       const autoEjecutivoId = grupoResult?.ejecutivo_id ?? null;
