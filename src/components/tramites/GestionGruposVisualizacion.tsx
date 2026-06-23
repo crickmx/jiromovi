@@ -777,9 +777,9 @@ export function GestionGruposVisualizacion() {
           {/* Área */}
           <div>
             <label className="block text-sm font-semibold text-neutral-700 mb-1.5">Área</label>
-            <div className="flex gap-2">
-              {(['Comercial', 'Operaciones'] as AreaCategoria[]).map(a => {
-                const cfg = AREA_CONFIG[a];
+            <div className="flex flex-wrap gap-2">
+              {areasDisponibles.map(a => {
+                const cfg = getAC(a);
                 const active = formArea === a;
                 return (
                   <button
@@ -797,6 +797,9 @@ export function GestionGruposVisualizacion() {
                   </button>
                 );
               })}
+              {areasDisponibles.length === 0 && (
+                <p className="text-xs text-neutral-400 italic">Cargando áreas...</p>
+              )}
             </div>
             <p className="text-xs text-neutral-400 mt-1.5">Define qué tipos de trámite se auto-asignan a este equipo. Sin área = comodín para cualquier tipo.</p>
           </div>
