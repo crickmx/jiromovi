@@ -121,6 +121,8 @@ export function GestionGruposVisualizacion() {
   const [searchReglaOficina, setSearchReglaOficina] = useState('');
   const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
   const [savingEjecutivoReglaId, setSavingEjecutivoReglaId] = useState<string | null>(null);
+  const [savingRegla, setSavingRegla] = useState(false);
+  const [reglaError, setReglaError] = useState('');
 
   // Delete confirm
   const [confirmDelete, setConfirmDelete] = useState<Grupo | null>(null);
@@ -422,34 +424,44 @@ export function GestionGruposVisualizacion() {
 
   const handleAgregarReglas = async () => {
     if (!selectedGrupo || selectedAgentIds.length === 0) return;
-    // El área de la regla se hereda del área del equipo (null = comodín)
+    setSavingRegla(true);
+    setReglaError('');
     const grupoArea = selectedGrupo.area_categoria ?? null;
-    for (const uid of selectedAgentIds) {
-      // Buscar regla existente para este vendedor + área del equipo
-      let q = supabase
-        .from('tramites_grupos_reglas')
-        .select('id')
-        .eq('usuario_id', uid);
-      if (grupoArea) {
-        q = q.eq('area', grupoArea);
-      } else {
-        q = q.is('area', null);
-      }
-      const { data: existing } = await q.limit(1).maybeSingle();
-      if (existing) {
-        await supabase
+    try {
+      for (const uid of selectedAgentIds) {
+        let q = supabase
           .from('tramites_grupos_reglas')
-          .update({ grupo_id: selectedGrupo.id, activo: true, created_by: usuario?.id })
-          .eq('id', existing.id);
-      } else {
-        await supabase
-          .from('tramites_grupos_reglas')
-          .insert({ grupo_id: selectedGrupo.id, usuario_id: uid, created_by: usuario?.id, activo: true, area: grupoArea });
+          .select('id')
+          .eq('usuario_id', uid);
+        if (grupoArea) {
+          q = q.eq('area', grupoArea);
+        } else {
+          q = q.is('area', null);
+        }
+        const { data: existing, error: qErr } = await q.limit(1).maybeSingle();
+        if (qErr) throw new Error('Consulta fallida: ' + qErr.message);
+
+        if (existing) {
+          const { error } = await supabase
+            .from('tramites_grupos_reglas')
+            .update({ grupo_id: selectedGrupo.id, activo: true, created_by: usuario?.id })
+            .eq('id', existing.id);
+          if (error) throw new Error('Error al actualizar: ' + error.message);
+        } else {
+          const { error } = await supabase
+            .from('tramites_grupos_reglas')
+            .insert({ grupo_id: selectedGrupo.id, usuario_id: uid, created_by: usuario?.id, activo: true, area: grupoArea });
+          if (error) throw new Error('Error al insertar: ' + error.message);
+        }
       }
+      setSelectedAgentIds([]);
+      setSearchReglaOficina('');
+      await loadGrupoReglas(selectedGrupo.id);
+    } catch (e: unknown) {
+      setReglaError(e instanceof Error ? e.message : 'Error desconocido');
+    } finally {
+      setSavingRegla(false);
     }
-    setSelectedAgentIds([]);
-    setSearchReglaOficina('');
-    await loadGrupoReglas(selectedGrupo.id);
   };
 
   const handleRemoverRegla = async (reglaId: string) => {
@@ -1192,12 +1204,19 @@ export function GestionGruposVisualizacion() {
                   {selectedAgentIds.length > 0 && (
                     <button
                       onClick={handleAgregarReglas}
-                      className="px-3 py-1 text-xs font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+                      disabled={savingRegla}
+                      className="px-3 py-1 text-xs font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Agregar {selectedAgentIds.length} seleccionado{selectedAgentIds.length > 1 ? 's' : ''}
+                      {savingRegla ? 'Guardando…' : `Agregar ${selectedAgentIds.length} seleccionado${selectedAgentIds.length > 1 ? 's' : ''}`}
                     </button>
                   )}
                 </div>
+                {reglaError && (
+                  <div className="px-4 py-2 bg-red-50 border-b border-red-100 text-xs text-red-700 flex items-center gap-2">
+                    <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                    {reglaError}
+                  </div>
+                )}
                 <div className="p-4 space-y-3">
                   {/* Filters */}
                   <div className="flex gap-2">
