@@ -86,6 +86,7 @@ const ModuloViewer = lazy(() => import('./ModuloViewer'));
 const ExamenInterface = lazy(() => import('./ExamenInterface'));
 const CertificadoCedulaA = lazy(() => import('./CertificadoCedulaA'));
 const Manuales = lazy(() => import('./Manuales'));
+const ManualesAdmin = lazy(() => import('./ManualesAdmin'));
 const ManualViewer = lazy(() => import('./ManualViewer'));
 const SegurosEducationAnalytics = lazy(() => import('./SegurosEducationAnalytics'));
 
@@ -247,6 +248,7 @@ export default function MoviFullRoutes() {
           <Route path="/seguros-education/cedula-a/examen/:examenId" element={<ProtectedRoute><ExamenInterface /></ProtectedRoute>} />
           <Route path="/seguros-education/cedula-a/certificado" element={<ProtectedRoute><CertificadoCedulaA /></ProtectedRoute>} />
           <Route path="/manuales" element={<ProtectedRoute><Manuales /></ProtectedRoute>} />
+          <Route path="/manuales/admin" element={<ProtectedRoute requireAdmin><ManualesAdmin /></ProtectedRoute>} />
           <Route path="/manuales/:slug" element={<ProtectedRoute><ManualViewer /></ProtectedRoute>} />
           <Route path="/seguros-education/analytics" element={<ProtectedRoute><SegurosEducationAnalytics /></ProtectedRoute>} />
 
