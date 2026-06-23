@@ -1,33 +1,40 @@
 /*
   # Reglas de auto-asignación por área
 
-  Permite que un agente tenga reglas distintas según el área del trámite:
-    - 'comercial'   → renovaciones, cobranza, otros_comercial, correccion_poliza_endoso
-    - 'operaciones' → cualquier otro tipo de trámite
-    - NULL          → comodín: aplica si no existe regla específica para el área
+  Permite que un agente tenga reglas distintas según el área del trámite.
+  Las áreas actuales son 'comercial' y 'operaciones', pero la columna acepta
+  cualquier texto para facilitar agregar nuevas áreas en el futuro sin cambio
+  de esquema — solo requiere actualizar el CASE en la RPC.
+
+  Mapeo tipo_tramite → área:
+    comercial   → renovaciones, cobranza, otros_comercial, correccion_poliza_endoso
+    operaciones → cancelacion_poliza, endoso, nueva_poliza, siniestro, otros_operaciones
+
+  NULL (comodín) → aplica si no existe regla específica para el área del trámite.
 
   Cambios:
-  1. Eliminar UNIQUE(usuario_id) — un agente ahora puede tener múltiples reglas
-  2. Agregar columna area (text, nullable)
-  3. Dos índices únicos parciales para garantizar una regla por (usuario, área):
-       - una regla por usuario cuando area IS NULL
+  1. Eliminar UNIQUE(usuario_id) — un agente puede tener múltiples reglas
+  2. Agregar columna area (text libre, nullable — sin CHECK para permitir áreas futuras)
+  3. Dos índices únicos parciales:
+       - una regla comodín por usuario (area IS NULL)
        - una regla por (usuario, area) cuando area IS NOT NULL
-  4. Actualizar RPC get_grupo_para_ticket para aceptar p_tipo_tramite y resolver
-     primero la regla específica del área, con fallback a la regla comodín.
+  4. Actualizar RPC get_grupo_para_ticket(agente_id, tipo_tramite):
+       - resuelve área desde tipo_tramite con CASE explícito
+       - busca regla específica primero, fallback a comodín
 */
 
 -- ── 1. Quitar restricción única anterior ──────────────────────────────────────
 ALTER TABLE tramites_grupos_reglas
   DROP CONSTRAINT IF EXISTS tramites_grupos_reglas_usuario_id_key;
 
--- ── 2. Columna area ───────────────────────────────────────────────────────────
+-- ── 2. Columna area (sin CHECK — acepta cualquier área futura) ────────────────
 ALTER TABLE tramites_grupos_reglas
-  ADD COLUMN IF NOT EXISTS area text
-    CHECK (area IN ('comercial', 'operaciones'))
-    DEFAULT NULL;
+  ADD COLUMN IF NOT EXISTS area text DEFAULT NULL;
 
 COMMENT ON COLUMN tramites_grupos_reglas.area IS
-  'Área a la que aplica esta regla: comercial | operaciones | NULL (comodín).';
+  'Área del trámite a la que aplica esta regla. NULL = comodín (todos los tipos). '
+  'Valores actuales: comercial, operaciones. Agregar nuevos valores no requiere '
+  'cambio de esquema, solo actualizar la RPC get_grupo_para_ticket.';
 
 -- ── 3. Índices únicos parciales ───────────────────────────────────────────────
 -- Un usuario solo puede tener UN comodín (area IS NULL)
@@ -56,13 +63,19 @@ AS $$
 DECLARE
   v_area text;
 BEGIN
-  -- Determinar área a partir del tipo de trámite
+  -- Mapear tipo_tramite → área de forma explícita.
+  -- Para agregar un área nueva: añadir un WHEN con los tipos correspondientes
+  -- y correr CREATE OR REPLACE FUNCTION con el bloque actualizado.
   v_area := CASE
     WHEN p_tipo_tramite IN (
       'renovaciones', 'cobranza', 'otros_comercial', 'correccion_poliza_endoso'
     ) THEN 'comercial'
-    WHEN p_tipo_tramite IS NOT NULL THEN 'operaciones'
-    ELSE NULL
+    WHEN p_tipo_tramite IN (
+      'cancelacion_poliza', 'endoso', 'nueva_poliza', 'siniestro', 'otros_operaciones'
+    ) THEN 'operaciones'
+    -- Agregar aquí nuevas áreas:
+    -- WHEN p_tipo_tramite IN ('...') THEN 'nueva_area'
+    ELSE NULL  -- tipo desconocido → solo usará la regla comodín
   END;
 
   -- Intentar primero la regla específica del área
