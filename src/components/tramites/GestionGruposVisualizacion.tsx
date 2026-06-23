@@ -255,7 +255,7 @@ export function GestionGruposVisualizacion() {
       area_categoria: formArea,
       activo: formActivo,
       all_offices: formAllOffices,
-      color: formArea ? AREA_COLORS[formArea] : '#94a3b8',
+      color: (formArea && AREA_COLORS[formArea]) || '#94a3b8',
       updated_at: new Date().toISOString(),
       updated_by: usuario?.id,
     };
@@ -426,18 +426,16 @@ export function GestionGruposVisualizacion() {
     const grupoArea = selectedGrupo.area_categoria ?? null;
     for (const uid of selectedAgentIds) {
       // Buscar regla existente para este vendedor + área del equipo
-      const query = supabase
+      let q = supabase
         .from('tramites_grupos_reglas')
         .select('id')
-        .eq('usuario_id', uid)
-        .limit(1)
-        .maybeSingle();
+        .eq('usuario_id', uid);
       if (grupoArea) {
-        query.eq('area', grupoArea);
+        q = q.eq('area', grupoArea);
       } else {
-        query.is('area', null);
+        q = q.is('area', null);
       }
-      const { data: existing } = await query;
+      const { data: existing } = await q.limit(1).maybeSingle();
       if (existing) {
         await supabase
           .from('tramites_grupos_reglas')
