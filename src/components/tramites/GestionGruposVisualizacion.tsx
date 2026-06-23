@@ -402,17 +402,27 @@ export function GestionGruposVisualizacion() {
 
   const handleAgregarReglas = async () => {
     if (!selectedGrupo || selectedAgentIds.length === 0) return;
-    const rows = selectedAgentIds.map(uid => ({
-      grupo_id: selectedGrupo.id,
-      usuario_id: uid,
-      created_by: usuario?.id,
-      activo: true,
-    }));
-    // upsert: si el vendedor ya tiene regla en otro equipo, la reasigna a este
-    const { error } = await supabase
-      .from('tramites_grupos_reglas')
-      .upsert(rows, { onConflict: 'usuario_id' });
-    if (error) { alert('Error: ' + error.message); return; }
+    for (const uid of selectedAgentIds) {
+      // Buscar regla comodín existente (area IS NULL) para este vendedor
+      const { data: existing } = await supabase
+        .from('tramites_grupos_reglas')
+        .select('id')
+        .eq('usuario_id', uid)
+        .is('area', null)
+        .limit(1)
+        .maybeSingle();
+      if (existing) {
+        // Reasignar al equipo actual
+        await supabase
+          .from('tramites_grupos_reglas')
+          .update({ grupo_id: selectedGrupo.id, activo: true, created_by: usuario?.id })
+          .eq('id', existing.id);
+      } else {
+        await supabase
+          .from('tramites_grupos_reglas')
+          .insert({ grupo_id: selectedGrupo.id, usuario_id: uid, created_by: usuario?.id, activo: true, area: null });
+      }
+    }
     setSelectedAgentIds([]);
     setSearchReglaOficina('');
     await loadGrupoReglas(selectedGrupo.id);
