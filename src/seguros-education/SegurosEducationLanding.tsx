@@ -299,6 +299,12 @@ export default function SegurosEducationLanding() {
   const contactoRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
+    const root = document.getElementById('root');
+    root?.classList.add('public-page');
+    return () => { root?.classList.remove('public-page'); };
+  }, []);
+
+  useEffect(() => {
     async function load() {
       try {
         const [{ data: lessonsData }, { data: sessionsData }] = await Promise.all([
