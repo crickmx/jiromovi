@@ -9,7 +9,7 @@ interface Grupo {
   nombre: string;
   descripcion: string | null;
   color: string;
-  area_categoria: AreaCategoria | null;
+  area_categoria: string | null;
   activo: boolean;
   all_offices: boolean;
   created_at: string;
@@ -72,10 +72,11 @@ interface Oficina {
 
 type Panel = 'list' | 'form' | 'members' | 'offices';
 
-const AREA_COLORS: Record<AreaCategoria, string> = {
-  Comercial: '#0ea5e9',
-  Operaciones: '#f59e0b',
+const AREA_COLORS: Record<string, string> = {
+  Comercial:    '#0ea5e9',
+  Operaciones:  '#f59e0b',
 };
+const AREA_COLOR_FALLBACK = '#94a3b8';
 
 export function GestionGruposVisualizacion() {
   const { usuario } = useAuth();
@@ -98,10 +99,13 @@ export function GestionGruposVisualizacion() {
   const [grupoOficinas, setGrupoOficinas] = useState<GrupoOficina[]>([]);
   const [searchOficina, setSearchOficina] = useState('');
 
+  // Áreas disponibles cargadas dinámicamente desde ticket_tipos
+  const [areasDisponibles, setAreasDisponibles] = useState<string[]>([]);
+
   // Form state
   const [formNombre, setFormNombre] = useState('');
   const [formDescripcion, setFormDescripcion] = useState('');
-  const [formArea, setFormArea] = useState<AreaCategoria | null>(null);
+  const [formArea, setFormArea] = useState<string | null>(null);
   const [formActivo, setFormActivo] = useState(true);
   const [formAllOffices, setFormAllOffices] = useState(false);
   const [formSelectedOficinas, setFormSelectedOficinas] = useState<string[]>([]);
@@ -126,9 +130,21 @@ export function GestionGruposVisualizacion() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    await Promise.all([loadGrupos(), loadUsuarios(), loadOficinas(), loadAgentesParaReglas()]);
+    await Promise.all([loadGrupos(), loadUsuarios(), loadOficinas(), loadAgentesParaReglas(), loadAreas()]);
     setLoading(false);
   }, []);
+
+  const loadAreas = async () => {
+    const { data } = await supabase
+      .from('ticket_tipos')
+      .select('area')
+      .eq('activo', true)
+      .not('area', 'is', null);
+    if (data) {
+      const unique = [...new Set(data.map((r: { area: string }) => r.area).filter(Boolean))].sort() as string[];
+      setAreasDisponibles(unique);
+    }
+  };
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -490,10 +506,12 @@ export function GestionGruposVisualizacion() {
 
   // ── HELPERS ───────────────────────────────────────────────────────────────────
 
-  const getAC = (area: AreaCategoria | null) =>
-    area ? AREA_CONFIG[area] : { bg: 'bg-neutral-50', color: 'text-neutral-600', border: 'border-neutral-200' };
+  const getAC = (area: string | null) =>
+    area && (AREA_CONFIG as Record<string, { color: string; bg: string; border: string }>)[area]
+      ? (AREA_CONFIG as Record<string, { color: string; bg: string; border: string }>)[area]
+      : { bg: 'bg-neutral-50', color: 'text-neutral-600', border: 'border-neutral-200' };
 
-  const AreaIcon = ({ area }: { area: AreaCategoria | null }) =>
+  const AreaIcon = ({ area }: { area: string | null }) =>
     area === 'Comercial' ? <Briefcase className="w-4 h-4" /> : <Wrench className="w-4 h-4" />;
 
   const miembrosDisponibles = usuarios.filter(
@@ -528,16 +546,22 @@ export function GestionGruposVisualizacion() {
   // ── LIST PANEL ────────────────────────────────────────────────────────────────
 
   if (panel === 'list') {
-    const active = grupos.filter(g => g.activo && g.area_categoria === 'Operaciones');
+    const active = grupos.filter(g => g.activo);
+    // Agrupar por área (null al final como "Sin área")
+    const areas = [...new Set(active.map(g => g.area_categoria))].sort((a, b) => {
+      if (a === null) return 1;
+      if (b === null) return -1;
+      return a.localeCompare(b);
+    });
 
     return (
       <div className="space-y-5">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="text-lg font-bold text-neutral-900">Equipos de Operaciones</h3>
+            <h3 className="text-lg font-bold text-neutral-900">Equipos de Trabajo</h3>
             <p className="text-sm text-neutral-500 mt-0.5">
-              Equipos con acceso a trámites operativos de múltiples oficinas. Los trámites comerciales son visibles por rol y oficina automaticamente.
+              Equipos de atención a trámites organizados por área.
             </p>
           </div>
           <button
@@ -548,15 +572,24 @@ export function GestionGruposVisualizacion() {
           </button>
         </div>
 
-        {/* Active teams */}
+        {/* Active teams grouped by area */}
         {active.length === 0 ? (
           <div className="text-center py-10 bg-neutral-50 rounded-2xl border-2 border-dashed border-neutral-200">
             <Users className="w-10 h-10 mx-auto text-neutral-300 mb-2" />
             <p className="text-sm text-neutral-500">No hay equipos activos. Crea el primero.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3">
-            {active.map(g => {
+          <div className="space-y-6">
+            {areas.map(area => {
+              const gruposArea = active.filter(g => g.area_categoria === area);
+              const ac = getAC(area);
+              return (
+                <div key={area ?? '__sin_area__'}>
+                  <h4 className={`text-xs font-bold uppercase tracking-wide mb-2 ${ac.color}`}>
+                    {area ?? 'Sin área asignada'}
+                  </h4>
+                  <div className="grid grid-cols-1 gap-3">
+                    {gruposArea.map(g => {
               const ac = getAC(g.area_categoria);
               return (
                 <div key={g.id} className="border border-neutral-200 rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
@@ -613,6 +646,10 @@ export function GestionGruposVisualizacion() {
                       Sin oficinas asignadas — este equipo no verá ningún trámite.
                     </div>
                   )}
+                </div>
+              );
+                    })}
+                  </div>
                 </div>
               );
             })}
