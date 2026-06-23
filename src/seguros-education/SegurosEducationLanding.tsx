@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Play, BookOpen, Video, Users, MapPin, Award, Clock, Wifi, ChevronRight, Menu, X, GraduationCap, Building2, ArrowRight, CircleCheck as CheckCircle, Monitor, Calendar, Globe, Zap, Mail, Phone, MessageSquare, Send, Loader as Loader2, CircleAlert as AlertCircle, ChevronDown, ExternalLink } from 'lucide-react';
+import { Play, BookOpen, Video, Users, MapPin, Award, Clock, Wifi, ChevronRight, Menu, X, GraduationCap, Building2, ArrowRight, CircleCheck as CheckCircle, Monitor, Calendar, Globe, Zap, Mail, Phone, MessageSquare, Send, Loader as Loader2, CircleAlert as AlertCircle, ChevronDown, ExternalLink, Star } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { SELoginModal } from './SELoginModal';
 import { useMoviAuth } from '../contexts/MoviAuthContext';

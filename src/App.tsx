@@ -149,13 +149,15 @@ function SegurosEducationApp() {
   return (
     <HelmetProvider>
       <BrowserRouter>
-        <MoviAuthProvider>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/*" element={<SegurosEducationLanding />} />
-            </Routes>
-          </Suspense>
-        </MoviAuthProvider>
+        <ImpersonationProvider>
+          <MoviAuthProvider>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/*" element={<SegurosEducationLanding />} />
+              </Routes>
+            </Suspense>
+          </MoviAuthProvider>
+        </ImpersonationProvider>
       </BrowserRouter>
     </HelmetProvider>
   );
