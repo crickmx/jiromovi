@@ -28,7 +28,7 @@ export default function MapeoVendedoresAdmin() {
     try {
       const { data, error } = await supabase
         .from('vendor_mappings')
-        .select('*, usuarios(nombre_completo, email_laboral, email_personal, nombre_sicas)')
+        .select('*, usuarios!vendor_mappings_movi_user_id_fkey(nombre_completo, email_laboral, email_personal, nombre_sicas)')
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
