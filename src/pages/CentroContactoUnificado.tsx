@@ -88,7 +88,6 @@ export default function CentroContactoUnificado() {
   // ── Load conversations (WA only, no chat) ────────────────────────
   const loadAll = useCallback(async () => {
     if (!userId) return;
-    setLoading(true);
     try {
       // Get the configured MOVI channel UUID for filtering
       const { data: waConfig } = await supabase
@@ -333,7 +332,6 @@ export default function CentroContactoUnificado() {
           {([
             { key: 'conversations' as SubTab, icon: MessageSquare, label: 'Conversaciones' },
             { key: 'connection' as SubTab, icon: QrCode, label: 'Conexión' },
-            { key: 'templates' as SubTab, icon: Zap, label: 'Plantillas' },
           ]).map(tab => (
             <button
               key={tab.key}

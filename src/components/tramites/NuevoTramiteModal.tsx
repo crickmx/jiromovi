@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Upload, User, CircleAlert as AlertCircle, FileText, Package, DollarSign, Building2, Plus, Trash2, Calendar, Shield, Clock, CircleCheck as CheckCircle2, ChevronRight, Lock } from 'lucide-react';
+import { X, Upload, User, CircleAlert as AlertCircle, FileText, Package, DollarSign, Building2, Plus, Trash2, Calendar, Shield, Clock, CircleCheck as CheckCircle2, ChevronRight, Lock, RotateCcw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { crearNotificacion } from '../../lib/notificationHelpers';
+import { saveDraft, loadDraft, clearDraft } from '../../lib/formDraft';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseModal } from '../BaseModal';
 import {
@@ -34,6 +36,7 @@ interface Usuario {
   id: string;
   nombre_completo: string;
   rol: string;
+  oficina_id: string | null;
 }
 
 interface CommissionBatch {
@@ -79,11 +82,13 @@ interface NuevoTramiteModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  onSuccessWithId?: (ticketId: string) => void;
   estatusList: TramiteEstatus[];
   preloadedData?: {
     tipoTramite?: string;
     comisionesLoteId?: string;
     comisionesLoteLabel?: string;
+    instrucciones?: string;
   };
 }
 
@@ -91,6 +96,7 @@ export function NuevoTramiteModal({
   isOpen,
   onClose,
   onSuccess,
+  onSuccessWithId,
   estatusList,
   preloadedData
 }: NuevoTramiteModalProps) {
@@ -145,11 +151,17 @@ export function NuevoTramiteModal({
   const [ceAseguradorasRA, setCeAseguradorasRA] = useState<AseguradoraRA[]>([]);
   const [ceAgenteUsers, setCeAgenteUsers] = useState<UsuarioOficina[]>([]);
 
+  const DRAFT_KEY = 'tramite_nuevo_draft';
+  const [draftRestored, setDraftRestored] = useState(false);
+
   // Ref para rastrear si estamos inicializando con datos precargados
   const isInitializingWithPreloadedData = useRef(false);
 
+  const [tiposDb, setTiposDb] = useState<Array<{ value: string; label: string; area: string; is_custom: boolean; assignment_mode: string }>>([]);
+
   const isAgent = usuario?.rol === 'Agente';
   const canAssignOthers = !isAgent;
+  const isPoolMode = tiposDb.find(t => t.value === tipoTramite)?.assignment_mode === 'pool';
   const [canAccessRegistroAct, setCanAccessRegistroAct] = useState(false);
   const [autoResponsableId, setAutoResponsableId] = useState<string | null>(null);
 
@@ -158,10 +170,25 @@ export function NuevoTramiteModal({
       // Marcar si estamos inicializando con datos precargados
       isInitializingWithPreloadedData.current = !!preloadedData?.comisionesLoteId;
 
-      resetForm();
+      if (preloadedData) {
+        // Preloaded data (e.g. from commission batch) takes priority
+        resetForm();
+        setDraftRestored(false);
+      } else {
+        const draft = loadDraft<Record<string, unknown>>(DRAFT_KEY);
+        if (draft) {
+          restoreFromDraft(draft);
+          setDraftRestored(true);
+        } else {
+          resetForm();
+          setDraftRestored(false);
+        }
+      }
+
       loadUsuarios();
       loadLotesDisponibles();
       checkRegistroAccess();
+      loadTiposDb();
 
       // Auto-find responsable from agent's office
       if (isAgent && usuario.oficina_id) {
@@ -182,6 +209,15 @@ export function NuevoTramiteModal({
   const checkRegistroAccess = async () => {
     const access = await canAccessRegistroActividades();
     setCanAccessRegistroAct(access);
+  };
+
+  const loadTiposDb = async () => {
+    const { data } = await supabase
+      .from('ticket_tipos')
+      .select('value, label, area, is_custom, assignment_mode')
+      .eq('activo', true)
+      .order('orden');
+    if (data) setTiposDb(data as Array<{ value: string; label: string; area: string; is_custom: boolean; assignment_mode: string }>);
   };
 
   const COTIZACION_EMISION_SUBTYPE_ID = '2ef883f9-96fc-452e-92eb-ff6826be412d';
@@ -260,7 +296,7 @@ export function NuevoTramiteModal({
     }
 
     setPrioridad('Baja');
-    setDescripcion('');
+    setDescripcion(preloadedData?.instrucciones || '');
     setArchivos([]);
     setPolizaNumero('');
 
@@ -296,13 +332,68 @@ export function NuevoTramiteModal({
     setComAsunto('');
   };
 
+  const restoreFromDraft = (draft: Record<string, unknown>) => {
+    setTipoTramite((draft.tipoTramite as string) || (isAgent ? 'cotizacion_emision' : 'correccion_poliza_registrada'));
+    setAsignado((draft.asignado as string) || (isAgent ? (usuario?.id || '') : ''));
+    setPrioridad(((draft.prioridad as string) || 'Baja') as 'Alta' | 'Media' | 'Baja');
+    setDescripcion((draft.descripcion as string) || '');
+    setPolizaNumero((draft.polizaNumero as string) || '');
+    setCeAgenteUserId((draft.ceAgenteUserId as string) || '');
+    setCeInsuranceTypeId((draft.ceInsuranceTypeId as string) || '');
+    setCeSelectedInsurers((draft.ceSelectedInsurers as string[]) || []);
+    setComAgenteUserId((draft.comAgenteUserId as string) || '');
+    setComCliente((draft.comCliente as string) || '');
+    setComPoliza((draft.comPoliza as string) || '');
+    setComAseguradora((draft.comAseguradora as string) || '');
+    setComFechaVencimiento((draft.comFechaVencimiento as string) || '');
+    setComMonto((draft.comMonto as string) || '');
+    setComAsunto((draft.comAsunto as string) || '');
+    // Always reset non-serializable/time-sensitive fields
+    setArchivos([]);
+    setPolizaFiles([{ id: '1', file: null, aseguradora: '', claveAgente: '' }]);
+    setComisionesPendientes([{ id: '1', numeroPoliza: '', aseguradora: '', fechaPago: '', archivo: null }]);
+    setLoteSeleccionado('');
+    setDocumentoSeleccionado('');
+    setCeRequestDatetime(formatDateTimeForInput(new Date()));
+    setCeCompletionDatetime('');
+    setCeEstatusNombre('Iniciado');
+    setCeShowInsurerDropdown(false);
+    setCeInsurerSearchTerm('');
+    setError('');
+  };
+
+  // Auto-save draft to sessionStorage while modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+    saveDraft(DRAFT_KEY, {
+      tipoTramite, asignado, prioridad, descripcion, polizaNumero,
+      ceAgenteUserId, ceInsuranceTypeId, ceSelectedInsurers,
+      comAgenteUserId, comCliente, comPoliza, comAseguradora,
+      comFechaVencimiento, comMonto, comAsunto,
+    });
+  }, [isOpen, tipoTramite, asignado, prioridad, descripcion, polizaNumero,
+      ceAgenteUserId, ceInsuranceTypeId, ceSelectedInsurers,
+      comAgenteUserId, comCliente, comPoliza, comAseguradora,
+      comFechaVencimiento, comMonto, comAsunto]);
+
   const loadUsuarios = async () => {
     const { data } = await supabase
       .from('usuarios')
-      .select('id, nombre_completo, rol')
+      .select('id, nombre_completo, rol, oficina_id')
       .order('nombre_completo');
 
-    if (data) setUsuariosDisponibles(data);
+    if (data) setUsuariosDisponibles(data as Usuario[]);
+  };
+
+  const resolveGrupoParaTicket = async (agente_id: string | null, tipo_tramite?: string): Promise<{ grupo_id: string; ejecutivo_id: string | null } | null> => {
+    if (!agente_id) return null;
+    const { data } = await supabase.rpc('get_grupo_para_ticket', {
+      p_agente_id: agente_id,
+      ...(tipo_tramite ? { p_tipo_tramite: tipo_tramite } : {}),
+    });
+    if (!data || !Array.isArray(data) || data.length === 0) return null;
+    const row = data[0] as { grupo_id: string; ejecutivo_id: string | null };
+    return row.grupo_id ? row : null;
   };
 
   const loadLotesDisponibles = async (forUserId?: string) => {
@@ -526,7 +617,7 @@ export function NuevoTramiteModal({
   const handleSubmitCotizacionEmision = async () => {
     if (!usuario) return;
 
-    const effectiveAgenteId = isAgent ? usuario.id : ceAgenteUserId;
+    const effectiveAgenteId = isAgent ? usuario.id : (ceAgenteUserId || (preloadedData?.instrucciones ? usuario.id : ''));
     // When agent creates, auto-assign responsable from office; otherwise use current user
     const effectiveAttendingId = isAgent ? (autoResponsableId || '') : usuario.id;
 
@@ -544,15 +635,17 @@ export function NuevoTramiteModal({
       instrucciones: descripcion
     };
 
-    if (!effectiveAgenteId) { setError('El agente es obligatorio'); return; }
-    if (!ceInsuranceTypeId) { setError('El tipo de seguro es obligatorio'); return; }
-    if (ceSelectedInsurers.length === 0) { setError('Debe seleccionar al menos una aseguradora'); return; }
-    if (!ceRequestDatetime) { setError('La fecha de inicio es obligatoria'); return; }
+    if (!effectiveAgenteId && !preloadedData?.instrucciones) { setError('El agente es obligatorio'); return; }
+    if (!ceInsuranceTypeId && !preloadedData?.instrucciones) { setError('El tipo de seguro es obligatorio'); return; }
+    if (ceSelectedInsurers.length === 0 && !preloadedData?.instrucciones) { setError('Debe seleccionar al menos una aseguradora'); return; }
+    if (!ceRequestDatetime && !preloadedData?.instrucciones) { setError('La fecha de inicio es obligatoria'); return; }
 
     setLoading(true);
     setError('');
     try {
-      await createRegistroActividad({ ...formData, creado_por: usuario.id });
+      const ticket = await createRegistroActividad({ ...formData, creado_por: usuario.id });
+      clearDraft(DRAFT_KEY);
+      if (ticket?.id) onSuccessWithId?.(ticket.id);
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -580,8 +673,17 @@ export function NuevoTramiteModal({
       }
 
       const isCommercial = isCommercialTicketType(tipoTramite);
-      // For agents: use auto-resolved office responsable; for non-agents: use the selected assignee
-      const responsableId = isAgent ? (autoResponsableId || null) : (isCommercial ? usuario.id : asignado);
+      const isPoolMode = tiposDb.find(t => t.value === tipoTramite)?.assignment_mode === 'pool';
+      // Resolve team + optional auto-ejecutivo based on the agent user (applies to all tramite types)
+      const agentUserId = isAgent
+        ? usuario.id
+        : (isCommercial ? comAgenteUserId : asignado) ?? null;
+      const grupoResult = await resolveGrupoParaTicket(agentUserId, tipoTramite);
+      const grupoAsignadoId = grupoResult?.grupo_id ?? null;
+      // If the rule specifies an ejecutivo, auto-assign directly to them; otherwise use normal logic
+      const autoEjecutivoId = grupoResult?.ejecutivo_id ?? null;
+      const responsableId = autoEjecutivoId
+        ?? (isPoolMode ? null : (isAgent ? (autoResponsableId || null) : (isCommercial ? usuario.id : asignado)));
       const assignedTo = isCommercial ? usuario.id : (isAgent ? usuario.id : asignado);
 
       const ticketData: any = {
@@ -593,7 +695,8 @@ export function NuevoTramiteModal({
         modificado_por: usuario.id,
         agente_id: isCommercial ? comAgenteUserId : (isAgent ? usuario.id : assignedTo),
         agente_usuario_id: isCommercial ? comAgenteUserId : undefined,
-        assigned_to_user_id: responsableId
+        assigned_to_user_id: responsableId,
+        grupo_asignado_id: grupoAsignadoId ?? undefined
       };
 
       if (tipoTramite === 'correccion_poliza_registrada') {
@@ -637,6 +740,33 @@ export function NuevoTramiteModal({
           });
 
         if (assignError) console.error('Error creating assignment:', assignError);
+      }
+
+      // Notificar al responsable asignado o al líder del equipo
+      if (responsableId) {
+        await crearNotificacion({
+          user_id: responsableId,
+          titulo: 'Nuevo trámite asignado',
+          mensaje: `Se te asignó el trámite ${ticket.folio} (${tiposDb.find(t => t.value === tipoTramite)?.label || tipoTramite}).`,
+          modulo: 'Tramites',
+          icono: 'clipboard-list',
+          accion_url: `/tramites/${ticket.id}`,
+          accion_texto: 'Ver trámite',
+        });
+      } else if (grupoAsignadoId) {
+        const { data: miembros } = await supabase.rpc('get_grupo_miembros_ejecutivos', { p_grupo_id: grupoAsignadoId });
+        const lider = (miembros as Array<{ id: string; nombre_completo: string }>)?.[0];
+        if (lider) {
+          await crearNotificacion({
+            user_id: lider.id,
+            titulo: 'Nuevo trámite en tu equipo',
+            mensaje: `Nuevo trámite ${ticket.folio} asignado a tu equipo (${tiposDb.find(t => t.value === tipoTramite)?.label || tipoTramite}).`,
+            modulo: 'Tramites',
+            icono: 'clipboard-list',
+            accion_url: `/tramites/${ticket.id}`,
+            accion_texto: 'Ver trámite',
+          });
+        }
       }
 
       // Procesar archivos según el tipo de trámite
@@ -793,6 +923,8 @@ export function NuevoTramiteModal({
         }
       }
 
+      clearDraft(DRAFT_KEY);
+      if (ticket?.id) onSuccessWithId?.(ticket.id);
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -841,6 +973,23 @@ export function NuevoTramiteModal({
       maxWidth="4xl"
     >
       <div className="space-y-6">
+        {draftRestored && (
+          <div className="px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <RotateCcw className="w-4 h-4 text-amber-600 flex-shrink-0" />
+              <p className="text-sm text-amber-800 font-medium">Borrador restaurado</p>
+              <p className="text-xs text-amber-600 hidden sm:block">— Tu progreso anterior fue recuperado</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => { clearDraft(DRAFT_KEY); resetForm(); setDraftRestored(false); }}
+              className="text-xs text-amber-700 hover:text-amber-900 underline shrink-0"
+            >
+              Descartar
+            </button>
+          </div>
+        )}
+
         {error && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
@@ -858,27 +1007,36 @@ export function NuevoTramiteModal({
             disabled={!!preloadedData?.tipoTramite}
             className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-100 disabled:cursor-not-allowed"
           >
-            <optgroup label="Comercial">
-              {canAccessRegistroAct && (
-                <option value="cotizacion_emision">Cotización / Emisión</option>
-              )}
-              {getTipoTramitesByArea('Comercial')
-                .filter(t => t.value !== 'cotizacion_emision' && t.value !== 'formulario_cotizacion')
-                .filter(t => !isAgent || !isCommercialTicketType(t.value))
-                .map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </optgroup>
-            <optgroup label="Operaciones">
-              {getTipoTramitesByArea('Operaciones')
-                .filter(t => t.value !== 'cambio_bancario')
-                .map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </optgroup>
+            {(['Comercial', 'Operaciones', 'Mercadotecnia', 'Administración', 'Otro'] as const).map(area => {
+              const tiposForArea = tiposDb
+                .filter(t => t.area === area)
+                .filter(t => {
+                  if (t.value === 'formulario_cotizacion' || t.value === 'cambio_bancario') return false;
+                  if (t.value === 'cotizacion_emision') return !!canAccessRegistroAct;
+                  if (isAgent && isCommercialTicketType(t.value)) return false;
+                  return true;
+                });
+              if (tiposForArea.length === 0) return null;
+              return (
+                <optgroup key={area} label={area}>
+                  {tiposForArea.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </optgroup>
+              );
+            })}
           </select>
-          <p className="text-xs text-neutral-500 mt-1">
-            <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 ${AREA_CONFIG[getTipoTramiteArea(tipoTramite)].bg} ${AREA_CONFIG[getTipoTramiteArea(tipoTramite)].color}`}>
-              {getTipoTramiteArea(tipoTramite)}
-            </span>
-            {getTipoLabel(tipoTramite)}
-          </p>
+          {(() => {
+            const tipoInfo = tiposDb.find(t => t.value === tipoTramite);
+            const areaName = tipoInfo?.area || getTipoTramiteArea(tipoTramite);
+            const areaCfg = AREA_CONFIG[areaName as keyof typeof AREA_CONFIG] || AREA_CONFIG['Comercial'];
+            return (
+              <p className="text-xs text-neutral-500 mt-1">
+                <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 ${areaCfg.bg} ${areaCfg.color}`}>
+                  {areaName}
+                </span>
+                {tipoInfo?.label || getTipoLabel(tipoTramite)}
+              </p>
+            );
+          })()}
         </div>
 
         {/* ===== SECCIÓN COTIZACIÓN / EMISIÓN ===== */}
@@ -1155,18 +1313,25 @@ export function NuevoTramiteModal({
           </div>
         )}
 
+        {isPoolMode && tipoTramite !== 'cotizacion_emision' && !isCommercialTicketType(tipoTramite) && (
+          <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-sm text-amber-800">
+            <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-600" />
+            <span>Este tipo de trámite se enviará a la <strong>cola de Mesa de Control</strong>. Un ejecutivo será asignado posteriormente.</span>
+          </div>
+        )}
+
         {canAssignOthers && tipoTramite !== 'cotizacion_emision' && !isCommercialTicketType(tipoTramite) && (
           <div>
             <label className="block text-sm font-semibold text-neutral-900 mb-2">
               <User className="w-4 h-4 inline mr-2" />
-              Asignar a
+              {isPoolMode ? 'Agente del Trámite' : 'Asignar a'}
             </label>
             <select
               value={asignado}
               onChange={(e) => setAsignado(e.target.value)}
               className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
             >
-              <option value="">Selecciona un usuario</option>
+              <option value="">{isPoolMode ? 'Selecciona el agente' : 'Selecciona un usuario'}</option>
               {usuariosDisponibles.map(u => (
                 <option key={u.id} value={u.id}>
                   {u.nombre_completo} ({u.rol})
@@ -1547,7 +1712,7 @@ export function NuevoTramiteModal({
         <div className="flex justify-end gap-3 pt-4 border-t border-neutral-200">
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => { clearDraft(DRAFT_KEY); setDraftRestored(false); onClose(); }}
             disabled={loading}
             className="px-6 py-2.5 text-neutral-700 bg-white border border-neutral-300 rounded-xl hover:bg-neutral-50 transition-colors disabled:opacity-50"
           >

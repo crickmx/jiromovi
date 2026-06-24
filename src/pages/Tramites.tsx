@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getCached, setCached, invalidateCacheByPrefix } from '../lib/sessionCache';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X } from 'lucide-react';
+import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound, LayoutList, LayoutGrid } from 'lucide-react';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
 import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
@@ -37,15 +38,28 @@ interface TramiteItem {
   fecha_creacion: string;
   ultima_modificacion: string;
   cerrado_en: string | null;
+  eliminado_at: string | null;
+  eliminado_por: string | null;
+  ultima_accion_por: string | null;
   agente_id: string | null;
   creado_por: string | null;
   assigned_to_user_id: string | null;
+  grupo_asignado_id: string | null;
   agente: { nombre_completo: string; oficina_id: string | null; oficina: { nombre: string } | null } | null;
   responsable: { nombre_completo: string } | null;
   estatus: TramiteEstatus | null;
   ticket_asignaciones: Array<{
     ejecutivo: { nombre_completo: string } | null;
   }>;
+  ticket_archivos: Array<{ id: string }>;
+}
+
+interface TicketTipoDB {
+  value: string;
+  label: string;
+  area: string;
+  color: string;
+  assignment_mode: string;
 }
 
 const TRAMITE_OPTIONS_FOR_FILTER = TIPO_TRAMITE_OPTIONS.filter(
@@ -57,8 +71,9 @@ const PRIORIDADES = ['Alta', 'Media', 'Baja'] as const;
 export function Tramites() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'activos' | 'cerrados'>('activos');
+  const [activeTab, setActiveTab] = useState<'activos' | 'cerrados' | 'papelera'>('activos');
   const [tramites, setTramites] = useState<TramiteItem[]>([]);
+  const [tramitesPapelera, setTramitesPapelera] = useState<TramiteItem[]>([]);
   const [estatusList, setEstatusList] = useState<TramiteEstatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -78,6 +93,16 @@ export function Tramites() {
   const isAgente = usuario?.rol === 'Agente';
   const canManageCatalogs = isAdmin || isGerente;
 
+  // Assignment UI state
+  const [myOperacionesRole, setMyOperacionesRole] = useState<'lider' | 'ejecutivo' | 'miembro' | null>(null);
+  const [myGrupoIds, setMyGrupoIds] = useState<string[]>([]);
+  const [filterMiEquipo, setFilterMiEquipo] = useState(false);
+  const [assigningTramiteId, setAssigningTramiteId] = useState<string | null>(null);
+  const [teamEjecutivos, setTeamEjecutivos] = useState<Array<{ id: string; nombre_completo: string }>>([]);
+  const [assignTargetId, setAssignTargetId] = useState('');
+  const [viewMode, setViewMode] = useState<'kanban' | 'lista'>('kanban');
+  const [tramitesCerrados20, setTramitesCerrados20] = useState<TramiteItem[]>([]);
+
   // Estatus filtered by selected tipo_tramite
   const filteredEstatusList = (() => {
     if (selectedTipo === 'todos') return estatusList;
@@ -93,9 +118,21 @@ export function Tramites() {
   const availablePrioridades = PRIORIDADES;
 
   const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const [tiposDb, setTiposDb] = useState<Map<string, TicketTipoDB>>(new Map());
+
+  useEffect(() => {
+    supabase.from('ticket_tipos').select('value, label, area, color, assignment_mode').eq('activo', true).then(({ data }) => {
+      if (data) {
+        const map = new Map<string, TicketTipoDB>();
+        for (const t of data) map.set(t.value, t);
+        setTiposDb(map);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     loadUserArea();
+    loadMyOperacionesRole();
   }, [usuario?.id]);
 
   useEffect(() => {
@@ -111,7 +148,7 @@ export function Tramites() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'tickets' },
-        () => { loadTramites(); }
+        () => { loadTramites(true); } // bypass cache on realtime change
       )
       .subscribe();
 
@@ -151,24 +188,56 @@ export function Tramites() {
     setUserAreaLoaded(true);
   };
 
+  const loadCerrados20 = async () => {
+    if (!usuario) return;
+    const desde = new Date();
+    desde.setDate(desde.getDate() - 20);
+    try {
+      const { data } = await supabase
+        .from('tickets')
+        .select(`*, agente:agente_id(nombre_completo, oficina_id, oficina:oficina_id(nombre)), responsable:assigned_to_user_id(nombre_completo), estatus:estatus_id(*), ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo)), ticket_archivos(id)`)
+        .is('eliminado_at', null)
+        .not('cerrado_en', 'is', null)
+        .gte('cerrado_en', desde.toISOString())
+        .order('cerrado_en', { ascending: false });
+      if (data) setTramitesCerrados20(data as TramiteItem[]);
+    } catch {}
+  };
+
   const loadData = async () => {
     setLoading(true);
-    await Promise.all([loadEstatus(), loadTramites()]);
+    const tasks: Promise<void>[] = [loadEstatus(), loadTramites(), loadCerrados20()];
+    if (isAdmin) tasks.push(loadPapelera());
+    await Promise.all(tasks);
     setLoading(false);
   };
 
   const loadEstatus = async () => {
+    const ESTATUS_CACHE_KEY = 'tramites_estatus';
+    const cached = getCached<TramiteEstatus[]>(ESTATUS_CACHE_KEY);
+    if (cached) { setEstatusList(cached); return; }
+
     const { data } = await supabase
       .from('ticket_estatus')
       .select('*')
       .eq('activo', true)
       .order('orden');
 
-    if (data) setEstatusList(data);
+    if (data) {
+      setEstatusList(data);
+      setCached(ESTATUS_CACHE_KEY, data, 10 * 60 * 1000); // 10 min — estatus rarely changes
+    }
   };
 
-  const loadTramites = async () => {
+  const loadTramites = async (bypassCache = false) => {
     if (!usuario) return;
+
+    const cacheKey = `tramites_${activeTab}`;
+
+    if (!bypassCache) {
+      const cached = getCached<TramiteItem[]>(cacheKey);
+      if (cached) { setTramites(cached); return; }
+    }
 
     try {
       let query = supabase
@@ -178,9 +247,13 @@ export function Tramites() {
           agente:agente_id(nombre_completo, oficina_id, oficina:oficina_id(nombre)),
           responsable:assigned_to_user_id(nombre_completo),
           estatus:estatus_id(*),
-          ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo))
+          ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo)),
+          ticket_archivos(id)
         `)
         .order('fecha_creacion', { ascending: false });
+
+      // Always exclude soft-deleted tramites from activos/cerrados
+      query = query.is('eliminado_at', null);
 
       if (activeTab === 'cerrados') {
         query = query.not('cerrado_en', 'is', null);
@@ -208,12 +281,140 @@ export function Tramites() {
         }));
 
         setTramites(tramitesWithAsignaciones as TramiteItem[]);
+        setCached(cacheKey, tramitesWithAsignaciones as TramiteItem[], 3 * 60 * 1000); // 3 min
       } else {
         setTramites([]);
+        setCached(cacheKey, [], 3 * 60 * 1000);
       }
     } catch (error) {
       console.error('Exception loading tramites:', error);
     }
+  };
+
+  const loadPapelera = async () => {
+    if (!isAdmin) return;
+    try {
+      const { data } = await supabase
+        .from('tickets')
+        .select(`
+          *,
+          agente:agente_id(nombre_completo, oficina_id, oficina:oficina_id(nombre)),
+          responsable:assigned_to_user_id(nombre_completo),
+          estatus:estatus_id(*),
+          ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo)),
+          ticket_archivos(id)
+        `)
+        .not('eliminado_at', 'is', null)
+        .order('eliminado_at', { ascending: false });
+
+      if (data) setTramitesPapelera(data as TramiteItem[]);
+    } catch (error) {
+      console.error('Exception loading papelera:', error);
+    }
+  };
+
+  const handleSoftDelete = async (e: React.MouseEvent, tramiteId: string) => {
+    e.stopPropagation();
+    if (!usuario) return;
+    await supabase.from('tickets').update({
+      eliminado_at: new Date().toISOString(),
+      eliminado_por: usuario.id,
+    }).eq('id', tramiteId);
+    invalidateCacheByPrefix('tramites_');
+    setTramites(prev => prev.filter(t => t.id !== tramiteId));
+    loadPapelera();
+  };
+
+  const handleRestore = async (tramiteId: string) => {
+    await supabase.from('tickets').update({
+      eliminado_at: null,
+      eliminado_por: null,
+    }).eq('id', tramiteId);
+    invalidateCacheByPrefix('tramites_');
+    setTramitesPapelera(prev => prev.filter(t => t.id !== tramiteId));
+    loadTramites(true);
+  };
+
+  const handlePermanentDelete = async (tramiteId: string) => {
+    if (!confirm('¿Eliminar definitivamente este trámite? Esta acción no se puede deshacer.')) return;
+    await supabase.from('tickets').delete().eq('id', tramiteId);
+    setTramitesPapelera(prev => prev.filter(t => t.id !== tramiteId));
+  };
+
+  const handleMarkAsRead = async (e: React.MouseEvent, tramiteId: string) => {
+    e.stopPropagation();
+    if (!usuario) return;
+    await supabase.from('tickets').update({ ultima_accion_por: usuario.id }).eq('id', tramiteId);
+    setTramites(prev => prev.map(t => t.id === tramiteId ? { ...t, ultima_accion_por: usuario.id } : t));
+  };
+
+  const handleVaciarPapelera = async () => {
+    if (tramitesPapelera.length === 0) return;
+    if (!confirm(`¿Vaciar la papelera? Se eliminarán permanentemente ${tramitesPapelera.length} trámite(s). Esta acción no se puede deshacer.`)) return;
+    const ids = tramitesPapelera.map(t => t.id);
+    await supabase.from('tickets').delete().in('id', ids);
+    invalidateCacheByPrefix('tramites_');
+    setTramitesPapelera([]);
+  };
+
+  const loadMyOperacionesRole = async () => {
+    if (!usuario?.id) return;
+    const { data } = await supabase
+      .from('tramites_grupos_miembros')
+      .select('grupo_id, rol_en_equipo, grupo:grupo_id(area_categoria, activo)')
+      .eq('usuario_id', usuario.id);
+    if (data) {
+      type Row = { grupo_id: string; rol_en_equipo: string; grupo: { area_categoria: string; activo: boolean } | null };
+      const opsEntries = (data as Row[]).filter(m => m.grupo?.area_categoria === 'Operaciones' && m.grupo?.activo);
+      const opsEntry = opsEntries[0] ?? null;
+      setMyOperacionesRole(opsEntry ? (opsEntry.rol_en_equipo as 'lider' | 'ejecutivo' | 'miembro') : null);
+      setMyGrupoIds(opsEntries.map(m => m.grupo_id));
+    }
+  };
+
+  const loadTeamEjecutivos = async () => {
+    const { data: grupos } = await supabase
+      .from('tramites_grupos_visualizacion')
+      .select('id')
+      .eq('area_categoria', 'Operaciones')
+      .eq('activo', true);
+    if (!grupos || grupos.length === 0) return;
+    const grupoIds = grupos.map((g: { id: string }) => g.id);
+    const { data: miembros } = await supabase
+      .from('tramites_grupos_miembros')
+      .select('usuario_id, usuarios!inner(nombre_completo)')
+      .in('grupo_id', grupoIds)
+      .in('rol_en_equipo', ['lider', 'ejecutivo']);
+    if (miembros) {
+      type MRow = { usuario_id: string; usuarios: { nombre_completo: string } };
+      const unique = new Map<string, string>();
+      for (const m of miembros as MRow[]) {
+        if (!unique.has(m.usuario_id)) unique.set(m.usuario_id, m.usuarios.nombre_completo);
+      }
+      setTeamEjecutivos([...unique.entries()].map(([id, nombre_completo]) => ({ id, nombre_completo })));
+    }
+  };
+
+  const handleTakeTramite = async (tramiteId: string) => {
+    if (!usuario) return;
+    await supabase.from('tickets').update({ assigned_to_user_id: usuario.id }).eq('id', tramiteId);
+    await supabase.from('ticket_asignaciones').insert({
+      ticket_id: tramiteId, ejecutivo_id: usuario.id, asignado_por: usuario.id,
+    });
+    invalidateCacheByPrefix('tramites_');
+    loadTramites(true);
+  };
+
+  const handleAssignTramite = async (tramiteId: string, ejecutivoId: string) => {
+    if (!usuario || !ejecutivoId) return;
+    await supabase.from('tickets').update({ assigned_to_user_id: ejecutivoId }).eq('id', tramiteId);
+    await supabase.from('ticket_asignaciones').insert({
+      ticket_id: tramiteId, ejecutivo_id: ejecutivoId, asignado_por: usuario.id,
+    });
+    setAssigningTramiteId(null);
+    setAssignTargetId('');
+    invalidateCacheByPrefix('tramites_');
+    loadTramites(true);
   };
 
   const getTipoTramiteLabel = (tipo: string) => centralGetLabel(tipo);
@@ -267,9 +468,10 @@ export function Tramites() {
   });
 
   const filteredTramites = visibleTramites.filter(tramite => {
-    const term = (searchTerm ?? '').toLowerCase();
+    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const term = norm(searchTerm ?? '');
     const matches = (value: string | null | undefined) =>
-      (value ?? '').toLowerCase().includes(term);
+      norm(value ?? '').includes(term);
     const matchSearch =
       matches(tramite.folio) ||
       matches(tramite.instrucciones) ||
@@ -281,8 +483,11 @@ export function Tramites() {
     const matchTipo = selectedTipo === 'todos' || tramite.tipo_tramite === selectedTipo;
     const matchEstatus = selectedEstatus === 'todos' || tramite.estatus?.id === selectedEstatus;
     const matchPrioridad = selectedPrioridad === 'todas' || tramite.prioridad === selectedPrioridad;
+    const matchMiEquipo = !filterMiEquipo || (
+      tramite.grupo_asignado_id !== null && myGrupoIds.includes(tramite.grupo_asignado_id)
+    );
 
-    return matchSearch && matchTipo && matchEstatus && matchPrioridad;
+    return matchSearch && matchTipo && matchEstatus && matchPrioridad && matchMiEquipo;
   });
 
   const getPrioridadColor = (prioridad: string) => {
@@ -303,14 +508,31 @@ export function Tramites() {
     }
   };
 
-  const hasActiveFilters = selectedTipo !== 'todos' || selectedEstatus !== 'todos' || selectedPrioridad !== 'todas' || searchTerm !== '';
+  const hasActiveFilters = selectedTipo !== 'todos' || selectedEstatus !== 'todos' || selectedPrioridad !== 'todas' || searchTerm !== '' || filterMiEquipo;
 
   const clearFilters = () => {
     setSelectedTipo('todos');
     setSelectedEstatus('todos');
     setSelectedPrioridad('todas');
     setSearchTerm('');
+    setFilterMiEquipo(false);
   };
+
+  // ── Kanban helpers ────────────────────────────────────────────────────────
+  const needsAttentionFn = (t: TramiteItem) =>
+    !!t.ultima_accion_por && t.ultima_accion_por !== usuario?.id;
+
+  const kanbanAtención = filteredTramites.filter(t => needsAttentionFn(t));
+  const kanbanProceso  = filteredTramites.filter(t => !needsAttentionFn(t));
+  const kanbanCerrados = (isAdmin
+    ? tramitesCerrados20
+    : tramitesCerrados20.filter(t =>
+        t.agente_id === usuario?.id ||
+        t.assigned_to_user_id === usuario?.id ||
+        t.creado_por === usuario?.id ||
+        t.agente?.oficina_id === usuario?.oficina_id
+      )
+  );
 
   return (
     <div className="space-y-5">
@@ -347,6 +569,22 @@ export function Tramites() {
               <FileText className="w-4 h-4 mr-1.5" />
               <span className="hidden sm:inline">Formularios</span>
             </Button>
+            <div className="flex rounded-lg border border-neutral-200 dark:border-white/10 overflow-hidden">
+              <button
+                onClick={() => setViewMode('lista')}
+                className={`p-2 transition-colors ${viewMode === 'lista' ? 'bg-accent text-white' : 'bg-white dark:bg-neutral-800 text-neutral-500 dark:text-white/50 hover:bg-neutral-100 dark:hover:bg-white/8'}`}
+                title="Vista lista"
+              >
+                <LayoutList className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('kanban')}
+                className={`p-2 transition-colors ${viewMode === 'kanban' ? 'bg-accent text-white' : 'bg-white dark:bg-neutral-800 text-neutral-500 dark:text-white/50 hover:bg-neutral-100 dark:hover:bg-white/8'}`}
+                title="Vista tablero"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+            </div>
             <Button size="sm" onClick={() => setShowNuevoModal(true)}>
               <Plus className="w-4 h-4 mr-1.5" />
               Nuevo
@@ -378,13 +616,31 @@ export function Tramites() {
             <CheckCircle2 className="w-4 h-4" />
             Concluidos
           </button>
+          {isAdmin && (
+            <button
+              onClick={() => setActiveTab('papelera')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
+                activeTab === 'papelera'
+                  ? 'text-red-500 border-red-500'
+                  : 'text-neutral-500 dark:text-white/50 border-transparent hover:text-neutral-700 dark:hover:text-white/70'
+              }`}
+            >
+              <Trash2 className="w-4 h-4" />
+              Papelera
+              {tramitesPapelera.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                  {tramitesPapelera.length}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       </PageHeader>
 
       {isAgente && <AgenteDashboard />}
 
       {/* KPI Summary for non-agent users */}
-      {!isAgente && visibleTramites.length > 0 && (
+      {!isAgente && activeTab !== 'papelera' && visibleTramites.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
           {(() => {
             const activos = visibleTramites.filter(t => !t.cerrado_en);
@@ -422,8 +678,8 @@ export function Tramites() {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4">
+      {/* Filters — hidden in papelera mode */}
+      {activeTab !== 'papelera' && <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4">
         <div className="flex flex-col gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-white/30 w-4 h-4" />
@@ -492,6 +748,19 @@ export function Tramites() {
               </select>
             </div>
 
+            {myGrupoIds.length > 0 && (
+              <button
+                onClick={() => setFilterMiEquipo(f => !f)}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border transition-colors ${
+                  filterMiEquipo
+                    ? 'bg-amber-500 text-white border-amber-500 hover:bg-amber-600'
+                    : 'bg-neutral-100 dark:bg-white/8 text-neutral-600 dark:text-white/60 border-neutral-200 dark:border-white/10 hover:bg-neutral-200 dark:hover:bg-white/12'
+                }`}
+              >
+                <UsersRound className="w-3.5 h-3.5" />
+                Mi Equipo
+              </button>
+            )}
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
@@ -515,9 +784,237 @@ export function Tramites() {
             </div>
           )}
         </div>
-      </div>
+      </div>}
 
-      {loading ? (
+      {/* Papelera tab content */}
+      {activeTab === 'papelera' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <p className="text-xs text-neutral-500 dark:text-white/40 font-medium">
+              {tramitesPapelera.length} {tramitesPapelera.length === 1 ? 'trámite' : 'trámites'} en papelera
+            </p>
+            {tramitesPapelera.length > 0 && (
+              <button
+                onClick={handleVaciarPapelera}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 rounded-lg transition-colors border border-red-200 dark:border-red-800/40"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Vaciar papelera
+              </button>
+            )}
+          </div>
+          {tramitesPapelera.length === 0 ? (
+            <EmptyState
+              icon={Trash2}
+              title="Papelera vacía"
+              description="Los trámites eliminados aparecerán aquí"
+            />
+          ) : (
+            <div className="space-y-3">
+              {tramitesPapelera.map(tramite => {
+                const area = getTipoTramiteArea(tramite.tipo_tramite);
+                const ac = AREA_CONFIG[area];
+                const tipoDb = tiposDb.get(tramite.tipo_tramite);
+                const dbColor = tipoDb?.color;
+                const fallbackBarClass = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
+                return (
+                  <div
+                    key={tramite.id}
+                    className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden flex opacity-70"
+                  >
+                    <div
+                      className={`w-1.5 shrink-0 ${!dbColor ? fallbackBarClass : ''}`}
+                      style={dbColor ? { backgroundColor: dbColor } : undefined}
+                    />
+                    <div className="flex flex-1 min-w-0 flex-col sm:flex-row sm:divide-x divide-neutral-100 dark:divide-white/8">
+                      <div className="px-4 pt-4 pb-3 sm:pb-4 flex flex-col gap-2 sm:w-[38%] sm:shrink-0">
+                        <div>
+                          <p
+                            className={`font-extrabold text-sm uppercase tracking-wide leading-tight ${!dbColor ? ac.color : ''}`}
+                            style={dbColor ? { color: dbColor } : undefined}
+                          >
+                            {tramite.agente?.nombre_completo || 'Sin asignar'}
+                          </p>
+                          <p
+                            className={`text-[11px] font-semibold mt-0.5 uppercase tracking-wide opacity-80 ${!dbColor ? ac.color : ''}`}
+                            style={dbColor ? { color: dbColor } : undefined}
+                          >
+                            {tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}
+                          </p>
+                        </div>
+                        <div className="space-y-0.5 text-xs">
+                          <p className="text-neutral-600 dark:text-white/60">
+                            <span className="text-neutral-400 dark:text-white/35">Eliminado: </span>
+                            <span className="font-medium">
+                              {new Date(tramite.eliminado_at!).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                            </span>
+                          </p>
+                          <p className="text-neutral-600 dark:text-white/60">
+                            <span className="text-neutral-400 dark:text-white/35">Creado: </span>
+                            <span className="font-medium">
+                              {new Date(tramite.fecha_creacion).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                            </span>
+                          </p>
+                        </div>
+                        <p
+                          className={`text-[11px] font-extrabold uppercase tracking-widest mt-auto ${!dbColor ? ac.color : ''}`}
+                          style={dbColor ? { color: dbColor } : undefined}
+                        >
+                          Folio: {tramite.folio}
+                        </p>
+                      </div>
+                      <div className="flex-1 px-4 pt-3 sm:pt-4 pb-4 flex flex-col justify-between gap-3 min-w-0">
+                        <p className="text-xs text-neutral-700 dark:text-white/75 leading-relaxed line-clamp-3">
+                          <span className="font-semibold text-neutral-500 dark:text-white/50">Mensaje: </span>
+                          {tramite.instrucciones}
+                        </p>
+                        <div className="flex items-center gap-2 justify-end mt-auto">
+                          <button
+                            onClick={() => handleRestore(tramite.id)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/40 dark:text-green-400 rounded-lg transition-colors border border-green-200 dark:border-green-800/40"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            Restaurar
+                          </button>
+                          <button
+                            onClick={() => handlePermanentDelete(tramite.id)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 rounded-lg transition-colors border border-red-200 dark:border-red-800/40"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Eliminar definitivamente
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── KANBAN VIEW ────────────────────────────────────────────────────── */}
+      {activeTab === 'activos' && viewMode === 'kanban' && !loading && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+          {/* Columna 1: Requiere atención */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2 pb-2 border-b-2 border-orange-400">
+              <span className="relative flex h-3 w-3 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-orange-500" />
+              </span>
+              <h3 className="text-sm font-bold text-neutral-700 dark:text-white/80">Requiere atención</h3>
+              <span className="ml-auto text-xs font-bold bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded-full">{kanbanAtención.length}</span>
+            </div>
+            {kanbanAtención.length === 0 ? (
+              <p className="text-xs text-neutral-400 dark:text-white/30 text-center py-8">Sin trámites pendientes</p>
+            ) : kanbanAtención.map(tramite => {
+              const area = getTipoTramiteArea(tramite.tipo_tramite);
+              const ac = AREA_CONFIG[area];
+              const tipoDb = tiposDb.get(tramite.tipo_tramite);
+              const dbColor = tipoDb?.color;
+              const fbc = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
+              return (
+                <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex">
+                  <button onClick={(e) => handleMarkAsRead(e, tramite.id)} className="absolute -top-1.5 -right-1.5 z-10" title="Marcar como leído">
+                    <span className="relative flex h-4 w-4">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
+                      <span className="relative inline-flex h-4 w-4 rounded-full bg-orange-500 shadow-sm shadow-orange-300/60" />
+                    </span>
+                  </button>
+                  <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
+                  <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
+                    <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
+                    <p className={`text-[10px] font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
+                    {tramite.estatus && <span className="text-[10px] font-bold uppercase" style={{ color: tramite.estatus.color }}>{tramite.estatus.nombre}</span>}
+                    <div className="flex items-center justify-between mt-1">
+                      <span className={`text-[10px] font-extrabold uppercase tracking-widest ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tramite.prioridad === 'Alta' ? 'bg-red-100 text-red-600' : tramite.prioridad === 'Media' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>{tramite.prioridad}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Columna 2: En proceso */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2 pb-2 border-b-2 border-blue-400">
+              <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+              <h3 className="text-sm font-bold text-neutral-700 dark:text-white/80">En proceso</h3>
+              <span className="ml-auto text-xs font-bold bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-full">{kanbanProceso.length}</span>
+            </div>
+            {kanbanProceso.length === 0 ? (
+              <p className="text-xs text-neutral-400 dark:text-white/30 text-center py-8">Sin trámites en proceso</p>
+            ) : kanbanProceso.map(tramite => {
+              const area = getTipoTramiteArea(tramite.tipo_tramite);
+              const ac = AREA_CONFIG[area];
+              const tipoDb = tiposDb.get(tramite.tipo_tramite);
+              const dbColor = tipoDb?.color;
+              const fbc = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
+              return (
+                <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex">
+                  <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
+                  <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
+                    <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
+                    <p className={`text-[10px] font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
+                    {tramite.estatus && <span className="text-[10px] font-bold uppercase" style={{ color: tramite.estatus.color }}>{tramite.estatus.nombre}</span>}
+                    <div className="flex items-center justify-between mt-1">
+                      <span className={`text-[10px] font-extrabold uppercase tracking-widest ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tramite.prioridad === 'Alta' ? 'bg-red-100 text-red-600' : tramite.prioridad === 'Media' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>{tramite.prioridad}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Columna 3: Terminados — últimos 20 días */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2 pb-2 border-b-2 border-green-400">
+              <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
+              <h3 className="text-sm font-bold text-neutral-700 dark:text-white/80">Terminados</h3>
+              <span className="text-[10px] text-neutral-400 dark:text-white/30 hidden sm:inline">20 días</span>
+              <span className="ml-auto text-xs font-bold bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">{kanbanCerrados.length}</span>
+            </div>
+            {kanbanCerrados.length === 0 ? (
+              <p className="text-xs text-neutral-400 dark:text-white/30 text-center py-8">Sin cierres recientes</p>
+            ) : kanbanCerrados.map(tramite => {
+              const area = getTipoTramiteArea(tramite.tipo_tramite);
+              const ac = AREA_CONFIG[area];
+              const tipoDb = tiposDb.get(tramite.tipo_tramite);
+              const dbColor = tipoDb?.color;
+              const fbc = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
+              return (
+                <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex opacity-75">
+                  <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
+                  <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
+                    <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
+                    <p className={`text-[10px] font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
+                    {tramite.estatus && <span className="text-[10px] font-bold uppercase" style={{ color: tramite.estatus.color }}>{tramite.estatus.nombre}</span>}
+                    <div className="flex items-center justify-between mt-1">
+                      <span className={`text-[10px] font-extrabold uppercase tracking-widest ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
+                      <span className="text-[10px] text-neutral-400 dark:text-white/30">{new Date(tramite.cerrado_en!).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit' })}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            <button
+              onClick={() => setActiveTab('cerrados')}
+              className="mt-1 text-xs font-semibold text-neutral-500 dark:text-white/40 hover:text-neutral-700 dark:hover:text-white/70 py-2 border border-neutral-200 dark:border-white/10 rounded-xl hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors"
+            >
+              Ver más →
+            </button>
+          </div>
+
+        </div>
+      )}
+
+      {/* Normal activos/cerrados list — oculto cuando Kanban está activo en tab activos */}
+      {activeTab !== 'papelera' && !(activeTab === 'activos' && viewMode === 'kanban') && (loading ? (
         <LoadingState text="Cargando tramites..." />
       ) : filteredTramites.length === 0 ? (
         <EmptyState
@@ -537,79 +1034,221 @@ export function Tramites() {
             </p>
           </div>
 
-          {filteredTramites.map(tramite => (
-            <div
-              key={tramite.id}
-              onClick={() => navigate(`/tramites/${tramite.id}`)}
-              className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4 sm:p-5 hover:border-neutral-300 dark:hover:border-white/15 hover:shadow-sm transition-all duration-200 cursor-pointer group"
-            >
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-accent">{tramite.folio}</span>
-                  <span className="text-xs text-neutral-400 dark:text-white/30">
-                    {new Date(tramite.fecha_creacion).toLocaleDateString('es-MX', {
-                      day: 'numeric',
-                      month: 'short',
-                    })}
-                  </span>
-                </div>
+          {filteredTramites.map(tramite => {
+            const area = getTipoTramiteArea(tramite.tipo_tramite);
+            const ac = AREA_CONFIG[area];
+            const tipoDb = tiposDb.get(tramite.tipo_tramite);
+            const dbColor = tipoDb?.color;
+            const fallbackBarClass = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
+            const hasArchivos = (tramite.ticket_archivos?.length ?? 0) > 0;
+            const needsAttention = !!tramite.ultima_accion_por && tramite.ultima_accion_por !== usuario?.id;
 
-                <div className="flex items-center flex-wrap gap-1.5">
-                  {(() => {
-                    const area = getTipoTramiteArea(tramite.tipo_tramite);
-                    const ac = AREA_CONFIG[area];
-                    return (
-                      <span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold ${ac.bg} ${ac.color}`}>
-                        {getTipoTramiteLabel(tramite.tipo_tramite)}
-                      </span>
-                    );
-                  })()}
-                  {tramite.estatus && (
-                    <span
-                      className="px-2 py-0.5 rounded-md text-[11px] font-semibold"
-                      style={{
-                        backgroundColor: tramite.estatus.color + '15',
-                        color: tramite.estatus.color,
-                      }}
-                    >
-                      {tramite.estatus.nombre}
+            return (
+              <div
+                key={tramite.id}
+                onClick={() => navigate(`/tramites/${tramite.id}`)}
+                className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 hover:border-neutral-300 dark:hover:border-white/20 transition-all duration-200 cursor-pointer group flex"
+              >
+                {/* Globito animado — requiere atención */}
+                {needsAttention && (
+                  <button
+                    onClick={(e) => handleMarkAsRead(e, tramite.id)}
+                    className="absolute -top-1.5 -right-1.5 z-10"
+                    title="Marcar como leído"
+                  >
+                    <span className="relative flex h-4 w-4">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
+                      <span className="relative inline-flex h-4 w-4 rounded-full bg-orange-500 shadow-sm shadow-orange-300/60" />
                     </span>
-                  )}
-                  <span className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold ${getPrioridadColor(tramite.prioridad)}`}>
-                    {getPrioridadIcon(tramite.prioridad)}
-                    <span>{tramite.prioridad}</span>
-                  </span>
-                </div>
+                  </button>
+                )}
 
-                <p className="text-sm text-neutral-800 dark:text-white/80 font-medium line-clamp-2">
-                  {tramite.instrucciones}
-                </p>
+                {/* Colored left strip — grows slightly on hover */}
+                <div
+                  className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fallbackBarClass : ''}`}
+                  style={dbColor ? { backgroundColor: dbColor } : undefined}
+                />
 
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500 dark:text-white/40">
-                  <span>
-                    <span className="font-medium">Agente:</span> {tramite.agente?.nombre_completo || 'Sin asignar'}
-                  </span>
-                  {tramite.poliza && (
-                    <span className="flex items-center gap-1">
-                      <FileText className="w-3 h-3" />
-                      {tramite.poliza}
-                    </span>
-                  )}
-                  <span>
-                    <span className="font-medium">Responsable:</span> {tramite.responsable?.nombre_completo || 'Sin asignar'}
-                  </span>
+                {/* Card body */}
+                <div className="flex flex-1 min-w-0 flex-col sm:flex-row sm:divide-x divide-neutral-100 dark:divide-white/8">
+
+                  {/* Left: meta info */}
+                  <div className="px-4 pt-4 pb-3 sm:pb-4 flex flex-col gap-2 sm:w-[38%] sm:shrink-0">
+                    {/* Agent name + tipo */}
+                    <div>
+                      <p
+                        className={`font-extrabold text-sm uppercase tracking-wide leading-tight ${!dbColor ? ac.color : ''}`}
+                        style={dbColor ? { color: dbColor } : undefined}
+                      >
+                        {tramite.agente?.nombre_completo || 'Sin asignar'}
+                      </p>
+                      <p
+                        className={`text-[11px] font-semibold mt-0.5 uppercase tracking-wide opacity-80 ${!dbColor ? ac.color : ''}`}
+                        style={dbColor ? { color: dbColor } : undefined}
+                      >
+                        {tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}
+                      </p>
+                    </div>
+
+                    {/* Status / priority / dates */}
+                    <div className="space-y-0.5 text-xs">
+                      {tramite.estatus && (
+                        <p className="text-neutral-600 dark:text-white/60">
+                          <span className="text-neutral-400 dark:text-white/35">Estatus: </span>
+                          <span className="font-bold uppercase" style={{ color: tramite.estatus.color }}>
+                            {tramite.estatus.nombre}
+                          </span>
+                        </p>
+                      )}
+                      {!isAgente && (
+                        <p className="text-neutral-600 dark:text-white/60">
+                          <span className="text-neutral-400 dark:text-white/35">Prioridad: </span>
+                          <span className={`font-bold uppercase ${tramite.prioridad === 'Alta' ? 'text-red-600' : tramite.prioridad === 'Media' ? 'text-amber-600' : 'text-green-600'}`}>
+                            {tramite.prioridad}
+                          </span>
+                        </p>
+                      )}
+                      <p className="text-neutral-600 dark:text-white/60">
+                        <span className="text-neutral-400 dark:text-white/35">Fecha creación: </span>
+                        <span className="font-medium">
+                          {new Date(tramite.fecha_creacion).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </span>
+                      </p>
+                      {tramite.cerrado_en && (
+                        <p className="text-neutral-600 dark:text-white/60">
+                          <span className="text-neutral-400 dark:text-white/35">Fecha finalización: </span>
+                          <span className="font-bold">
+                            {new Date(tramite.cerrado_en).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                          </span>
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Folio + clip indicator + delete */}
+                    <div className="mt-auto flex items-center justify-between gap-2">
+                      <p
+                        className={`text-[11px] font-extrabold uppercase tracking-widest flex items-center gap-1.5 ${!dbColor ? ac.color : ''}`}
+                        style={dbColor ? { color: dbColor } : undefined}
+                      >
+                        Folio: {tramite.folio}
+                        {hasArchivos && <Paperclip className="w-3 h-3 shrink-0" title={`${tramite.ticket_archivos.length} archivo(s) adjunto(s)`} />}
+                      </p>
+                      {isAdmin && (
+                        <button
+                          onClick={(e) => handleSoftDelete(e, tramite.id)}
+                          className="p-1 rounded-md text-neutral-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"
+                          title="Mover a papelera"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right: message + responsable */}
+                  <div className="flex-1 px-4 pt-3 sm:pt-4 pb-4 flex flex-col justify-between gap-3 min-w-0">
+                    <p className="text-xs text-neutral-700 dark:text-white/75 leading-relaxed line-clamp-4 sm:line-clamp-5">
+                      <span className="font-semibold text-neutral-500 dark:text-white/50">Mensaje: </span>
+                      {tramite.instrucciones}
+                    </p>
+                    <div className="flex items-end justify-between gap-2 mt-auto flex-wrap">
+                      <div className="flex items-center gap-2">
+                        {tramite.poliza && (
+                          <span className="flex items-center gap-1 text-[11px] text-neutral-400 dark:text-white/35">
+                            <FileText className="w-3 h-3" />
+                            {tramite.poliza}
+                          </span>
+                        )}
+                        {hasArchivos && (
+                          <span className="flex items-center gap-1 text-[11px] text-neutral-400 dark:text-white/35">
+                            <Paperclip className="w-3 h-3" />
+                            {tramite.ticket_archivos.length}
+                          </span>
+                        )}
+                      </div>
+                      {(() => {
+                        const isPool = tiposDb.get(tramite.tipo_tramite)?.assignment_mode === 'pool';
+                        const isUnassigned = tramite.assigned_to_user_id === null;
+                        const canTake = myOperacionesRole === 'ejecutivo' || myOperacionesRole === 'miembro' || myOperacionesRole === 'lider';
+                        const canAssign = myOperacionesRole === 'lider' || isAdmin;
+                        if (isPool && isUnassigned && activeTab === 'activos') {
+                          return (
+                            <div className="flex items-center gap-1.5 flex-wrap justify-end" onClick={e => e.stopPropagation()}>
+                              <span className="text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/40">
+                                Sin Asignar
+                              </span>
+                              {canTake && !canAssign && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); void handleTakeTramite(tramite.id); }}
+                                  className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 transition-colors"
+                                >
+                                  <UserCheck className="w-3 h-3" />
+                                  Tomar
+                                </button>
+                              )}
+                              {canAssign && (
+                                assigningTramiteId === tramite.id ? (
+                                  <div className="flex items-center gap-1">
+                                    <select
+                                      value={assignTargetId}
+                                      onChange={e => setAssignTargetId(e.target.value)}
+                                      onClick={e => e.stopPropagation()}
+                                      className="text-xs border border-neutral-200 dark:border-white/15 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none max-w-[150px] bg-white dark:bg-neutral-800 dark:text-white"
+                                    >
+                                      <option value="">Ejecutivo...</option>
+                                      {teamEjecutivos.map(u => (
+                                        <option key={u.id} value={u.id}>{u.nombre_completo}</option>
+                                      ))}
+                                    </select>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); void handleAssignTramite(tramite.id, assignTargetId); }}
+                                      disabled={!assignTargetId}
+                                      className="p-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition-colors"
+                                    >
+                                      <Check className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setAssigningTramiteId(null); setAssignTargetId(''); }}
+                                      className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/8 transition-colors text-neutral-400"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setAssigningTramiteId(tramite.id); setAssignTargetId(''); void loadTeamEjecutivos(); }}
+                                    className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-lg bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-white/8 dark:text-white/70 border border-neutral-200 dark:border-white/10 transition-colors"
+                                  >
+                                    <UserPlus className="w-3 h-3" />
+                                    Asignar
+                                  </button>
+                                )
+                              )}
+                            </div>
+                          );
+                        }
+                        return (
+                          <p className="text-[11px] font-extrabold uppercase tracking-wide text-neutral-400 dark:text-white/35 text-right shrink-0">
+                            Responsable: {tramite.responsable?.nombre_completo || 'Sin asignar'}
+                          </p>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
-      )}
+      ))}
 
       <NuevoTramiteModal
         isOpen={showNuevoModal}
         onClose={() => setShowNuevoModal(false)}
         onSuccess={() => {
           setShowNuevoModal(false);
+          invalidateCacheByPrefix('tramites_');
           loadData();
         }}
         estatusList={estatusList}

@@ -11,6 +11,32 @@ interface FilePreviewModalProps {
   fileSize: number | null;
 }
 
+// Detect mime type from file extension when the stored type is missing
+function inferTypeFromName(nombre: string, url: string): string | null {
+  const ext = (nombre.split('.').pop() || url.split('?')[0].split('.').pop() || '').toLowerCase();
+  const map: Record<string, string> = {
+    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',
+    webp: 'image/webp', svg: 'image/svg+xml',
+    pdf: 'application/pdf',
+    mp4: 'video/mp4', mov: 'video/quicktime', avi: 'video/x-msvideo', webm: 'video/webm',
+    mp3: 'audio/mpeg', ogg: 'audio/ogg', wav: 'audio/wav', m4a: 'audio/mp4',
+    txt: 'text/plain', csv: 'text/csv', json: 'application/json', xml: 'application/xml',
+  };
+  return map[ext] || null;
+}
+
+// True if the URL belongs to Supabase Storage (can generate signed URLs)
+function isSupabaseStorageUrl(url: string): boolean {
+  return url.includes('/storage/v1/object/public/ticket-archivos/');
+}
+
+// Friendly display name — strip WhatsApp placeholder brackets
+function displayName(nombre: string): string {
+  const trimmed = nombre.trim();
+  if (/^\[.+\]$/.test(trimmed)) return 'Archivo de WhatsApp';
+  return trimmed;
+}
+
 export function FilePreviewModal({
   isOpen,
   onClose,
@@ -25,42 +51,45 @@ export function FilePreviewModal({
   const [error, setError] = useState(false);
   const [signedUrl, setSignedUrl] = useState<string>('');
 
+  // Resolve effective file type: use stored type, fallback to extension inference
+  const effectiveType = fileType || inferTypeFromName(fileName, fileUrl);
+  const friendlyName = displayName(fileName);
+
   useEffect(() => {
     if (isOpen) {
       setZoom(100);
       setRotation(0);
       setLoading(true);
       setError(false);
-      generateSignedUrl();
+      resolveUrl();
     }
   }, [isOpen, fileUrl]);
 
-  const generateSignedUrl = async () => {
+  const resolveUrl = async () => {
+    // Non-Supabase URLs (e.g. Wazzup CDN): use directly, no signed URL needed
+    if (!isSupabaseStorageUrl(fileUrl)) {
+      setSignedUrl(fileUrl);
+      return;
+    }
+
     try {
-      // Extraer el path del archivo de la URL pública
       const urlObj = new URL(fileUrl);
       const pathParts = urlObj.pathname.split('/storage/v1/object/public/ticket-archivos/');
 
       if (pathParts.length > 1) {
-        const filePath = pathParts[1];
-
-        // Generar URL firmada válida por 1 hora
+        const filePath = decodeURIComponent(pathParts[1]);
         const { data, error: signError } = await supabase.storage
           .from('ticket-archivos')
           .createSignedUrl(filePath, 3600);
 
-        if (signError) {
-          console.error('Error generating signed URL:', signError);
-          setSignedUrl(fileUrl); // Fallback a URL pública
-        } else if (data) {
+        if (!signError && data) {
           setSignedUrl(data.signedUrl);
+          return;
         }
-      } else {
-        setSignedUrl(fileUrl); // Fallback si no puede parsear
       }
-    } catch (err) {
-      console.error('Error parsing URL:', err);
-      setSignedUrl(fileUrl); // Fallback en caso de error
+      setSignedUrl(fileUrl); // fallback to public URL
+    } catch {
+      setSignedUrl(fileUrl);
     }
   };
 
@@ -113,7 +142,6 @@ export function FilePreviewModal({
   };
 
   const renderContent = () => {
-    // Mostrar loading mientras se genera la URL firmada
     if (!signedUrl) {
       return (
         <div className="flex-1 flex items-center justify-center bg-neutral-50 rounded-xl">
@@ -131,15 +159,15 @@ export function FilePreviewModal({
           <div className="text-center space-y-4">
             <AlertCircle className="w-16 h-16 text-neutral-400 mx-auto" />
             <div>
-              <p className="text-lg font-semibold text-neutral-900">Error al cargar el archivo</p>
-              <p className="text-sm text-neutral-500 mt-1">No se pudo mostrar la vista previa</p>
+              <p className="text-lg font-semibold text-neutral-900">No se pudo cargar el archivo</p>
+              <p className="text-sm text-neutral-500 mt-1">La URL puede haber expirado o el archivo no está disponible</p>
             </div>
             <button
               onClick={handleDownload}
               className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-all font-semibold inline-flex items-center space-x-2"
             >
               <Download className="w-4 h-4" />
-              <span>Descargar archivo</span>
+              <span>Intentar descargar</span>
             </button>
           </div>
         </div>
@@ -147,72 +175,71 @@ export function FilePreviewModal({
     }
 
     // Imágenes
-    if (fileType?.startsWith('image/')) {
+    if (effectiveType?.startsWith('image/')) {
       return (
         <div className="flex-1 flex items-center justify-center bg-neutral-50 rounded-xl overflow-hidden p-4">
-          <div
-            style={{
-              transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
-              transition: 'transform 0.2s ease-in-out'
-            }}
-          >
+          <div style={{ transform: `scale(${zoom / 100}) rotate(${rotation}deg)`, transition: 'transform 0.2s ease-in-out' }}>
             <img
               src={signedUrl}
-              alt={fileName}
+              alt={friendlyName}
               className="max-w-full max-h-[70vh] object-contain"
               onLoad={() => setLoading(false)}
-              onError={() => {
-                setLoading(false);
-                setError(true);
-              }}
+              onError={() => { setLoading(false); setError(true); }}
             />
           </div>
         </div>
       );
     }
 
-    // PDFs
-    if (fileType?.includes('pdf')) {
+    // PDFs — use <object> for better cross-browser inline rendering
+    if (effectiveType?.includes('pdf')) {
       return (
-        <div className="flex-1 bg-neutral-50 rounded-xl overflow-hidden">
-          <iframe
-            src={`${signedUrl}#view=FitH`}
-            className="w-full h-full min-h-[70vh]"
-            title={fileName}
+        <div className="flex-1 bg-neutral-50 rounded-xl overflow-hidden flex flex-col">
+          <object
+            data={signedUrl}
+            type="application/pdf"
+            className="w-full flex-1 min-h-[70vh]"
             onLoad={() => setLoading(false)}
-            onError={() => {
-              setLoading(false);
-              setError(true);
-            }}
-          />
+          >
+            {/* Fallback when browser can't render PDF inline */}
+            <div className="flex-1 flex items-center justify-center bg-neutral-50 rounded-xl min-h-[70vh]">
+              <div className="text-center space-y-4">
+                <FileText className="w-16 h-16 text-red-400 mx-auto" />
+                <div>
+                  <p className="text-lg font-semibold text-neutral-900">{friendlyName}</p>
+                  <p className="text-sm text-neutral-500 mt-1">Tu navegador no puede mostrar el PDF directamente</p>
+                </div>
+                <button
+                  onClick={() => { setLoading(false); window.open(signedUrl, '_blank'); }}
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-all font-semibold inline-flex items-center space-x-2"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Abrir en nueva pestaña</span>
+                </button>
+              </div>
+            </div>
+          </object>
         </div>
       );
     }
 
-    // Documentos de texto
-    if (
-      fileType?.includes('text/') ||
-      fileType?.includes('json') ||
-      fileType?.includes('xml')
-    ) {
+    // Texto / JSON / XML
+    if (effectiveType?.includes('text/') || effectiveType?.includes('json') || effectiveType?.includes('xml')) {
       return (
         <div className="flex-1 bg-neutral-50 rounded-xl overflow-hidden">
           <iframe
             src={signedUrl}
             className="w-full h-full min-h-[70vh]"
-            title={fileName}
+            title={friendlyName}
             onLoad={() => setLoading(false)}
-            onError={() => {
-              setLoading(false);
-              setError(true);
-            }}
+            onError={() => { setLoading(false); setError(true); }}
           />
         </div>
       );
     }
 
     // Videos
-    if (fileType?.startsWith('video/')) {
+    if (effectiveType?.startsWith('video/')) {
       return (
         <div className="flex-1 flex items-center justify-center bg-neutral-50 rounded-xl p-4">
           <video
@@ -220,10 +247,7 @@ export function FilePreviewModal({
             controls
             className="max-w-full max-h-[70vh]"
             onLoadedData={() => setLoading(false)}
-            onError={() => {
-              setLoading(false);
-              setError(true);
-            }}
+            onError={() => { setLoading(false); setError(true); }}
           >
             Tu navegador no soporta el elemento de video.
           </video>
@@ -232,13 +256,13 @@ export function FilePreviewModal({
     }
 
     // Audio
-    if (fileType?.startsWith('audio/')) {
+    if (effectiveType?.startsWith('audio/')) {
       return (
         <div className="flex-1 flex items-center justify-center bg-neutral-50 rounded-xl">
           <div className="text-center space-y-6">
             <FileText className="w-16 h-16 text-neutral-400 mx-auto" />
             <div>
-              <p className="text-lg font-semibold text-neutral-900">{fileName}</p>
+              <p className="text-lg font-semibold text-neutral-900">{friendlyName}</p>
               <p className="text-sm text-neutral-500 mt-1">{formatFileSize(fileSize)}</p>
             </div>
             <audio
@@ -246,10 +270,7 @@ export function FilePreviewModal({
               controls
               className="w-full max-w-md"
               onLoadedData={() => setLoading(false)}
-              onError={() => {
-                setLoading(false);
-                setError(true);
-              }}
+              onError={() => { setLoading(false); setError(true); }}
             >
               Tu navegador no soporta el elemento de audio.
             </audio>
@@ -258,21 +279,18 @@ export function FilePreviewModal({
       );
     }
 
-    // Otros tipos de archivo - mostrar solo información y botón de descarga
+    // Tipo no previewable — mostrar info y botón de descarga (sin spinner)
+    // Note: setLoading(false) called via useEffect below for this case
     return (
       <div className="flex-1 flex items-center justify-center bg-neutral-50 rounded-xl">
         <div className="text-center space-y-4">
           <FileText className="w-16 h-16 text-neutral-400 mx-auto" />
           <div>
-            <p className="text-lg font-semibold text-neutral-900">{fileName}</p>
-            <p className="text-sm text-neutral-500 mt-1">{formatFileSize(fileSize)}</p>
-            <p className="text-sm text-neutral-500 mt-1">
-              {fileType || 'Tipo de archivo desconocido'}
-            </p>
+            <p className="text-lg font-semibold text-neutral-900">{friendlyName}</p>
+            {fileSize && <p className="text-sm text-neutral-500 mt-1">{formatFileSize(fileSize)}</p>}
+            {effectiveType && <p className="text-xs text-neutral-400 mt-1 font-mono">{effectiveType}</p>}
           </div>
-          <p className="text-sm text-neutral-600">
-            Vista previa no disponible para este tipo de archivo
-          </p>
+          <p className="text-sm text-neutral-600">Vista previa no disponible para este tipo de archivo</p>
           <button
             onClick={handleDownload}
             className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-all font-semibold inline-flex items-center space-x-2"
@@ -285,7 +303,16 @@ export function FilePreviewModal({
     );
   };
 
-  const showControls = fileType?.startsWith('image/') && !error;
+  // For non-previewable types, dismiss the loading spinner as soon as we have a URL
+  useEffect(() => {
+    if (!signedUrl) return;
+    const previewable = effectiveType?.startsWith('image/') || effectiveType?.includes('pdf') ||
+      effectiveType?.startsWith('video/') || effectiveType?.startsWith('audio/') ||
+      effectiveType?.includes('text/') || effectiveType?.includes('json') || effectiveType?.includes('xml');
+    if (!previewable) setLoading(false);
+  }, [signedUrl, effectiveType]);
+
+  const showControls = effectiveType?.startsWith('image/') && !error;
 
   return (
     <div
@@ -299,10 +326,13 @@ export function FilePreviewModal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200">
           <div className="flex-1 min-w-0 mr-4">
-            <h2 className="text-lg font-bold text-neutral-900 truncate" title={fileName}>
-              {fileName}
+            <h2 className="text-lg font-bold text-neutral-900 truncate" title={friendlyName}>
+              {friendlyName}
             </h2>
-            <p className="text-sm text-neutral-500">{formatFileSize(fileSize)}</p>
+            <p className="text-sm text-neutral-500">
+              {formatFileSize(fileSize)}
+              {effectiveType && <span className="ml-2 text-neutral-400 text-xs font-mono">{effectiveType}</span>}
+            </p>
           </div>
 
           <div className="flex items-center space-x-2">

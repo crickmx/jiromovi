@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { getDisplayName } from '../lib/utils';
 import SmartAssistantPanel, { type SmartAssistantState, type SmartSuggestion } from '../components/SmartAssistantPanel';
+import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -203,7 +204,9 @@ export default function CentroContacto() {
   const [selectedMessageIds, setSelectedMessageIds] = useState<Set<string>>(new Set());
 
   // Task modals
-  const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
+  const [showNuevoTramiteModal, setShowNuevoTramiteModal] = useState(false);
+  const [prefilledInstrucciones, setPrefilledInstrucciones] = useState('');
+  const [estatusList, setEstatusList] = useState<Array<{id: string; nombre: string}>>([]);
   const [showAddToTaskModal, setShowAddToTaskModal] = useState(false);
 
   // Assign modal
@@ -251,7 +254,6 @@ export default function CentroContacto() {
   // Load conversations
   const loadConversations = useCallback(async () => {
     if (!usuario) return;
-    setLoading(true);
     try {
       const { data, error } = await supabase.rpc('get_contact_center_summary', {
         p_user_id: usuario.id,
@@ -421,6 +423,12 @@ export default function CentroContacto() {
   }, []);
 
   useEffect(() => {
+    supabase.from('ticket_estatus').select('id, nombre').order('nombre').then(({ data }) => {
+      if (data) setEstatusList(data);
+    });
+  }, []);
+
+  useEffect(() => {
     if (selectedAgent) {
       loadMessages(
         selectedAgent.agent_user_id || '',
@@ -439,7 +447,7 @@ export default function CentroContacto() {
         action: 'get_session_state',
         agent_user_id: agentUserId,
       });
-      if (result.mode === 'automatic' && result.active_session) {
+      if (false && result.mode === 'automatic' && result.active_session) {
         setConversationMode('automatic');
         const s = result.active_session;
         const rawData: Array<Record<string, unknown>> = s.contact_center_assistant_session_data || [];
@@ -998,6 +1006,37 @@ export default function CentroContacto() {
     setSelectedMessageIds(new Set());
   };
 
+  const openNuevoTramiteModal = () => {
+    if (!selectedAgent) return;
+    const selected = messages.filter(m => selectedMessageIds.has(m.id));
+    const canal = (selected[0]?.channel || selectedAgent.last_message_channel || 'whatsapp').toLowerCase();
+    const canalLabel = canal === 'email' ? 'Email' : 'WhatsApp';
+    const header = `Información agregada desde Centro de Contacto:\nAgente: ${selectedAgent.agent_name}\nCanal: ${canalLabel}\nFecha de captura: ${new Date().toLocaleString('es-MX')}\n\nMensajes seleccionados:\n`;
+    const msgs = selected.map((m, i) =>
+      `${i + 1}. [${new Date(m.created_at).toLocaleString('es-MX')}] ${m.direction === 'inbound' ? selectedAgent.agent_name : (m.sender_name || 'Asesor')}:\n${m.body}`
+    ).join('\n\n');
+    setPrefilledInstrucciones(header + msgs);
+    setShowNuevoTramiteModal(true);
+  };
+
+  const handleTicketCreated = async (ticketId: string) => {
+    if (!selectedAgent) return;
+    const selected = messages.filter(m => selectedMessageIds.has(m.id));
+    const allAtts = selected.flatMap(m => m.attachments || []);
+    const realAttIds = allAtts.filter(a => !a.id.includes('_synth_') && !a.id.includes('_meta') && !a.id.includes('_rt_')).map(a => a.id);
+    const directAtts = allAtts
+      .filter(a => (a.id.includes('_synth_') || a.id.includes('_meta') || a.id.includes('_rt_')) && a.file_url)
+      .map(a => ({ file_name: a.file_name, file_url: a.file_url!, file_type: a.file_type, mime_type: a.mime_type }));
+    await callApi('add-contact-messages-to-task', {
+      agentUserId: selectedAgent.agent_user_id,
+      ticketId,
+      messageIds: selected.map(m => m.id),
+      attachmentIds: realAttIds,
+      directAttachments: directAtts,
+    });
+    cancelSelection();
+  };
+
   const formatTime = (dateStr: string) => {
     const d = new Date(dateStr);
     const now = new Date();
@@ -1072,7 +1111,7 @@ export default function CentroContacto() {
                 <select value={filterType} onChange={e => setFilterType(e.target.value)} className="text-xs rounded-md border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 py-1.5 px-2">
                   <option value="">Todo tipo</option>
                   <option value="manual">Manual</option>
-                  <option value="automatic">Automatico</option>
+                  {isAdmin && <option value="automatic">Automatico</option>}
                 </select>
                 {canFilterOffice && (
                   <select value={filterOffice} onChange={e => setFilterOffice(e.target.value)} className="text-xs rounded-md border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 py-1.5 px-2 col-span-2">
@@ -1171,8 +1210,8 @@ export default function CentroContacto() {
                 </div>
                 <div className="flex items-center gap-2">
                   {/* Mode toggle badge */}
-                  {/* Smart Assistant toggle — only for registered (non-external) agents */}
-                  {!selectedAgent.is_external && selectedAgent.agent_user_id && (
+                  {/* Smart Assistant (IA) — Admin only */}
+                  {isAdmin && !selectedAgent.is_external && selectedAgent.agent_user_id && (
                     <button
                       onClick={handleToggleSmartAssistant}
                       disabled={smartAssistantLoading}
@@ -1190,7 +1229,8 @@ export default function CentroContacto() {
                       )}
                     </button>
                   )}
-                  {conversationMode === 'automatic' && activeSession ? (
+                  {/* Auto mode — Admin only */}
+                  {isAdmin && (conversationMode === 'automatic' && activeSession ? (
                     <div className="flex items-center gap-1.5">
                       <span className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                         <Bot className="w-3 h-3" />
@@ -1221,7 +1261,7 @@ export default function CentroContacto() {
                     >
                       <Bot className="w-3 h-3" /> Auto
                     </button>
-                  )}
+                  ))}
                   {isUnassigned && (isAdmin || isGerente) && (
                     <button onClick={() => setShowAssignModal(true)} className="flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400">
                       <UserPlus className="w-3 h-3" /> Asignar
@@ -1258,7 +1298,7 @@ export default function CentroContacto() {
                     {selectedMessageIds.size} {selectedMessageIds.size === 1 ? 'mensaje seleccionado' : 'mensajes seleccionados'}
                   </span>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => setShowCreateTaskModal(true)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium bg-teal-600 text-white hover:bg-teal-700 transition-colors">
+                    <button onClick={openNuevoTramiteModal} className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium bg-teal-600 text-white hover:bg-teal-700 transition-colors">
                       <Plus className="w-3 h-3" /> Crear tramite
                     </button>
                     <button onClick={() => setShowAddToTaskModal(true)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium bg-white dark:bg-neutral-800 text-teal-700 dark:text-teal-400 border border-teal-300 dark:border-teal-700 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-colors">
@@ -1271,8 +1311,8 @@ export default function CentroContacto() {
                 </div>
               )}
 
-              {/* Automatic mode panel */}
-              {conversationMode === 'automatic' && activeSession && (
+              {/* Automatic mode panel — Admin only */}
+              {isAdmin && conversationMode === 'automatic' && activeSession && (
                 <div className={`border-b ${
                   activeSession.current_stage === 'completion'
                     ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20'
@@ -1458,8 +1498,8 @@ export default function CentroContacto() {
                 </div>
               )}
 
-              {/* Smart Assistant Panel */}
-              {smartAssistantState && conversationMode !== 'automatic' && (
+              {/* Smart Assistant Panel — Admin only */}
+              {isAdmin && smartAssistantState && conversationMode !== 'automatic' && (
                 smartAssistantState.smart_assistant_status === 'awaiting_confirmation' ||
                 smartAssistantState.smart_assistant_status === 'paused'
               ) && (
@@ -1522,13 +1562,6 @@ export default function CentroContacto() {
                     <Mail className="w-3.5 h-3.5" /> Correo
                   </button>
                   <div className="ml-auto flex items-center gap-1">
-                    <button
-                      onClick={() => { setShowPlantillasModal(true); setShowEmojiPicker(false); }}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors border border-neutral-200 dark:border-neutral-700"
-                      title="Plantillas de mensaje"
-                    >
-                      <BookTemplate className="w-3.5 h-3.5" /> Plantillas
-                    </button>
                     <button
                       onClick={() => { setShowFormulariosModal(true); setShowEmojiPicker(false); }}
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors border border-neutral-200 dark:border-neutral-700"
@@ -1624,15 +1657,14 @@ export default function CentroContacto() {
       </div>
 
       {/* Create Task Modal */}
-      {showCreateTaskModal && selectedAgent && (
-        <CreateTaskModal
-          agentUserId={selectedAgent.agent_user_id}
-          agentName={selectedAgent.agent_name}
-          selectedMessages={messages.filter(m => selectedMessageIds.has(m.id))}
-          onClose={() => setShowCreateTaskModal(false)}
-          onSuccess={() => { setShowCreateTaskModal(false); cancelSelection(); }}
-        />
-      )}
+      <NuevoTramiteModal
+        isOpen={showNuevoTramiteModal}
+        onClose={() => setShowNuevoTramiteModal(false)}
+        onSuccess={() => { setShowNuevoTramiteModal(false); cancelSelection(); }}
+        onSuccessWithId={(ticketId) => { handleTicketCreated(ticketId); setShowNuevoTramiteModal(false); }}
+        estatusList={estatusList}
+        preloadedData={{ instrucciones: prefilledInstrucciones }}
+      />
 
       {/* Add to Task Modal */}
       {showAddToTaskModal && selectedAgent && (
@@ -1640,6 +1672,7 @@ export default function CentroContacto() {
           agentUserId={selectedAgent.agent_user_id}
           agentName={selectedAgent.agent_name}
           selectedMessages={messages.filter(m => selectedMessageIds.has(m.id))}
+          canal={messages.find(m => selectedMessageIds.has(m.id))?.channel || selectedAgent.last_message_channel || 'whatsapp'}
           onClose={() => setShowAddToTaskModal(false)}
           onSuccess={() => { setShowAddToTaskModal(false); cancelSelection(); }}
         />
@@ -1679,7 +1712,7 @@ export default function CentroContacto() {
       )}
 
       {/* Start Auto Mode Modal */}
-      {showStartAutoModal && selectedAgent && (
+      {isAdmin && showStartAutoModal && selectedAgent && (
         <StartAutoModeModal
           agentName={selectedAgent.agent_name}
           officeId={selectedAgent.agent_office_id}
@@ -1970,250 +2003,170 @@ function AttachmentPreviewModal({ attachment, onClose }: { attachment: Attachmen
 }
 
 // ============================================================
-// Create Task Modal
-// ============================================================
-
-function CreateTaskModal({ agentUserId, agentName, selectedMessages, onClose, onSuccess }: {
-  agentUserId: string; agentName: string; selectedMessages: Message[];
-  onClose: () => void; onSuccess: () => void;
-}) {
-  const { usuario } = useAuth();
-  const [instrucciones, setInstrucciones] = useState(() => {
-    const header = `Informacion agregada desde Centro de Contacto:\nAgente: ${agentName}\nCanal: WhatsApp\nFecha de captura: ${new Date().toLocaleString('es-MX')}\n\nMensajes seleccionados:\n`;
-    const msgs = selectedMessages.map((m, i) =>
-      `${i + 1}. [${new Date(m.created_at).toLocaleString('es-MX')}] ${m.direction === 'inbound' ? agentName : (m.sender_name || 'Usuario')}:\n${m.body}`
-    ).join('\n\n');
-    return header + msgs;
-  });
-  const [tipoTramite, setTipoTramite] = useState('cotizacion_emision');
-  const [prioridad, setPrioridad] = useState('Media');
-  const [saving, setSaving] = useState(false);
-
-  const isAgent = usuario?.rol === 'Agente';
-  const COMMERCIAL_TYPES = ['renovaciones', 'cobranza', 'otros_comercial'];
-  const isCommercialType = COMMERCIAL_TYPES.includes(tipoTramite);
-
-  const tipoOptions = [
-    { value: 'cotizacion_emision', label: 'Cotizacion / Emision' },
-    { value: 'renovaciones', label: 'Renovaciones' },
-    { value: 'cobranza', label: 'Cobranza' },
-    { value: 'otros_comercial', label: 'Otros (Comercial)' },
-  ].filter(t => !isAgent || !COMMERCIAL_TYPES.includes(t.value));
-
-  const handleSave = async () => {
-    if (!instrucciones.trim()) return;
-    setSaving(true);
-    const allAtts = selectedMessages.flatMap(m => m.attachments || []);
-    const realAttIds = allAtts.filter(a => !a.id.includes('_synth_') && !a.id.includes('_meta') && !a.id.includes('_rt_')).map(a => a.id);
-    const directAtts = allAtts.filter(a => (a.id.includes('_synth_') || a.id.includes('_meta') || a.id.includes('_rt_')) && a.file_url)
-      .map(a => ({ file_name: a.file_name, file_url: a.file_url!, file_type: a.file_type, mime_type: a.mime_type }));
-
-    const result = await callApi('create-task-from-contact-messages', {
-      agentUserId,
-      messageIds: selectedMessages.map(m => m.id),
-      attachmentIds: realAttIds,
-      directAttachments: directAtts,
-      task: {
-        instrucciones: instrucciones.trim(),
-        tipo_tramite: tipoTramite,
-        prioridad,
-        is_commercial: isCommercialType,
-      },
-    });
-    setSaving(false);
-    if (result.success) {
-      alert(`Tramite ${result.folio || ''} creado correctamente con los mensajes seleccionados.`);
-      onSuccess();
-    } else {
-      alert(result.error || 'Error al crear el tramite');
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 dark:border-neutral-700">
-          <div className="flex items-center gap-2">
-            <ListTodo className="w-5 h-5 text-teal-600" />
-            <h2 className="text-base font-semibold text-neutral-900 dark:text-white">Crear tramite desde mensajes</h2>
-          </div>
-          <button onClick={onClose} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800"><X className="w-5 h-5 text-neutral-400" /></button>
-        </div>
-        <div className="p-5 space-y-4">
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">{selectedMessages.length} mensaje(s) de {agentName}</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Tipo de tramite</label>
-              <select value={tipoTramite} onChange={e => setTipoTramite(e.target.value)} className="mt-1 w-full text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 py-2 px-3">
-                {tipoOptions.map(t => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Prioridad</label>
-              <select value={prioridad} onChange={e => setPrioridad(e.target.value)} className="mt-1 w-full text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 py-2 px-3">
-                <option>Alta</option><option>Media</option><option>Baja</option>
-              </select>
-            </div>
-          </div>
-          {isCommercialType && (
-            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800">
-              <AlertCircle className="w-4 h-4 text-sky-600 flex-shrink-0" />
-              <p className="text-xs text-sky-700 dark:text-sky-300">
-                Este tramite se te asignara automaticamente y se vinculara al agente <span className="font-medium">{agentName}</span>.
-              </p>
-            </div>
-          )}
-          <div>
-            <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Instrucciones</label>
-            <textarea value={instrucciones} onChange={e => setInstrucciones(e.target.value)} rows={8} className="mt-1 w-full text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 py-2 px-3 resize-none" />
-          </div>
-        </div>
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-neutral-200 dark:border-neutral-700">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800">Cancelar</button>
-          <button onClick={handleSave} disabled={saving || !instrucciones.trim()} className="px-4 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 font-medium">
-            {saving ? 'Creando...' : 'Crear tramite'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
 // Add to Task Modal
 // ============================================================
 
-function AddToTaskModal({ agentUserId, agentName, selectedMessages, onClose, onSuccess }: {
+function AddToTaskModal({ agentUserId, agentName, selectedMessages, canal, onClose, onSuccess }: {
   agentUserId: string; agentName: string; selectedMessages: Message[];
+  canal: string;
   onClose: () => void; onSuccess: () => void;
 }) {
   const { usuario } = useAuth();
-  const [tramites, setTramites] = useState<TramiteOption[]>([]);
-  const [loadingTramites, setLoadingTramites] = useState(true);
-  const [searchTramite, setSearchTramite] = useState('');
-  const [selectedTramiteId, setSelectedTramiteId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const isAdmin = usuario?.rol === 'Administrador';
+  const isEmpleado = ['Empleado', 'Ejecutivo', 'Gerente'].includes(usuario?.rol || '');
+
+  const [openTickets, setOpenTickets] = useState<TramiteOption[]>([]);
+  const [ticketSearch, setTicketSearch] = useState('');
+  const [ticketLoading, setTicketLoading] = useState(true);
+  const [addingToTicket, setAddingToTicket] = useState<string | null>(null);
+  const [addTicketError, setAddTicketError] = useState('');
+  const [addTicketSuccess, setAddTicketSuccess] = useState('');
+
+  const canalLabel = canal.toLowerCase() === 'email' ? 'Email' : 'WhatsApp';
 
   useEffect(() => {
     (async () => {
-      if (!usuario) return;
-      setLoadingTramites(true);
-      const result = await callApi('get-agent-open-tickets', { agentUserId });
-      if (result.success && result.tickets) {
-        setTramites((result.tickets as Record<string, unknown>[]).map((t) => ({
-          id: t.id as string,
-          folio: (t.folio as string) || '',
-          instrucciones: (t.instrucciones as string) || '',
-          prioridad: (t.prioridad as string) || 'Media',
-          tipo_tramite: (t.tipo_tramite as string) || '',
-          estatus_nombre: (t.estatus_nombre as string) || '',
-          agente_nombre: agentName,
-          fecha_creacion: t.fecha_creacion as string,
-        })));
-      }
-      setLoadingTramites(false);
-    })();
-  }, [usuario, agentUserId, agentName]);
+      let query = supabase
+        .from('tickets')
+        .select(`id, folio, instrucciones, tipo_tramite, fecha_creacion, prioridad,
+          agente:agente_id(id, nombre_completo),
+          estatus:estatus_id(nombre)`)
+        .is('cerrado_en', null)
+        .is('eliminado_at', null)
+        .order('fecha_creacion', { ascending: false })
+        .limit(200);
 
-  const filteredTramites = tramites.filter(t =>
-    !searchTramite ||
-    t.folio.toLowerCase().includes(searchTramite.toLowerCase()) ||
-    t.instrucciones.toLowerCase().includes(searchTramite.toLowerCase()) ||
-    (t.agente_nombre || '').toLowerCase().includes(searchTramite.toLowerCase())
+      if (!isAdmin && !isEmpleado) {
+        query = (query as any).eq('agente_id', agentUserId);
+      }
+
+      const { data } = await query;
+      setOpenTickets(((data || []) as any[]).map(t => ({
+        id: t.id,
+        folio: t.folio || '',
+        instrucciones: t.instrucciones || '',
+        prioridad: t.prioridad || 'Media',
+        tipo_tramite: t.tipo_tramite || '',
+        estatus_nombre: (t.estatus as any)?.nombre || '',
+        agente_nombre: (t.agente as any)?.nombre_completo || agentName,
+        fecha_creacion: t.fecha_creacion,
+      })));
+      setTicketLoading(false);
+    })();
+  }, [agentUserId, agentName, isAdmin, isEmpleado]);
+
+  const filteredTickets = openTickets.filter(t =>
+    !ticketSearch ||
+    t.folio.toLowerCase().includes(ticketSearch.toLowerCase()) ||
+    t.instrucciones.toLowerCase().includes(ticketSearch.toLowerCase())
   );
 
-  const handleAdd = async () => {
-    if (!selectedTramiteId) return;
-    setSaving(true);
-    const commentText = `Informacion agregada desde Centro de Contacto:\nAgente: ${agentName}\nCanal: WhatsApp\nAgregado por: ${getDisplayName(usuario) || 'Usuario'}\nFecha: ${new Date().toLocaleString('es-MX')}\n\nMensajes seleccionados:\n` +
+  const handleAdd = async (ticketId: string) => {
+    setAddingToTicket(ticketId);
+    setAddTicketError('');
+    const commentText = `Información desde Centro de Contacto:\nAgente: ${agentName}\nCanal: ${canalLabel}\nAgregado por: ${getDisplayName(usuario) || 'Usuario'}\nFecha: ${new Date().toLocaleString('es-MX')}\n\nMensajes seleccionados:\n` +
       selectedMessages.map((m, i) =>
-        `${i + 1}. [${new Date(m.created_at).toLocaleString('es-MX')}] ${m.direction === 'inbound' ? agentName : (m.sender_name || 'Usuario')}:\n${m.body}`
+        `${i + 1}. [${new Date(m.created_at).toLocaleString('es-MX')}] ${m.direction === 'inbound' ? agentName : (m.sender_name || 'Asesor')}:\n${m.body}`
       ).join('\n\n');
-
     const allAtts = selectedMessages.flatMap(m => m.attachments || []);
     const realAttIds = allAtts.filter(a => !a.id.includes('_synth_') && !a.id.includes('_meta') && !a.id.includes('_rt_')).map(a => a.id);
-    const directAtts = allAtts.filter(a => (a.id.includes('_synth_') || a.id.includes('_meta') || a.id.includes('_rt_')) && a.file_url)
+    const directAtts = allAtts
+      .filter(a => (a.id.includes('_synth_') || a.id.includes('_meta') || a.id.includes('_rt_')) && a.file_url)
       .map(a => ({ file_name: a.file_name, file_url: a.file_url!, file_type: a.file_type, mime_type: a.mime_type }));
-
     const result = await callApi('add-contact-messages-to-task', {
       agentUserId,
-      ticketId: selectedTramiteId,
+      ticketId,
       messageIds: selectedMessages.map(m => m.id),
       attachmentIds: realAttIds,
       directAttachments: directAtts,
       commentText,
     });
-    setSaving(false);
-    if (result.success) {
-      alert('Mensajes agregados correctamente al tramite.');
-      onSuccess();
-    } else {
-      alert(result.error || 'Error al agregar mensajes');
+    setAddingToTicket(null);
+    if (result?.success === false) {
+      setAddTicketError(result.error || 'Error al agregar mensajes al trámite');
+      return;
     }
-  };
-
-  const estatusColor = (estatus: string) => {
-    if (estatus === 'Iniciado') return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
-    if (estatus === 'En proceso') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
-    return 'bg-neutral-100 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300';
+    setAddTicketSuccess('Mensajes vinculados al trámite correctamente');
+    setTimeout(() => onSuccess(), 1800);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 dark:border-neutral-700">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-lg mx-4 bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-700 overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 dark:border-neutral-800">
           <div className="flex items-center gap-2">
-            <Link2 className="w-5 h-5 text-teal-600" />
-            <h2 className="text-base font-semibold text-neutral-900 dark:text-white">Agregar a tramite existente</h2>
+            <Link2 className="w-4 h-4 text-teal-600" />
+            <h3 className="text-sm font-bold text-neutral-800 dark:text-white">Agregar a trámite existente</h3>
           </div>
-          <button onClick={onClose} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800"><X className="w-5 h-5 text-neutral-400" /></button>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400"><X className="w-4 h-4" /></button>
         </div>
-        <div className="p-5 space-y-4">
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">{selectedMessages.length} mensaje(s) de {agentName}</p>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-            <input
-              type="text"
-              value={searchTramite}
-              onChange={e => setSearchTramite(e.target.value)}
-              placeholder="Buscar por folio, instrucciones o agente..."
-              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800"
-            />
-          </div>
-          <div className="max-h-60 overflow-y-auto space-y-1 border border-neutral-200 dark:border-neutral-700 rounded-lg p-2">
-            {loadingTramites ? (
-              <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-teal-500" /></div>
-            ) : filteredTramites.length === 0 ? (
-              <p className="text-sm text-neutral-400 text-center py-4">No se encontraron tramites abiertos</p>
-            ) : (
-              filteredTramites.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setSelectedTramiteId(t.id)}
-                  className={`w-full text-left p-2.5 rounded-lg transition-colors ${selectedTramiteId === t.id ? 'bg-teal-50 dark:bg-teal-900/20 border border-teal-300 dark:border-teal-700' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 border border-transparent'}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-semibold text-teal-700 dark:text-teal-400">{t.folio}</span>
-                    {t.agente_nombre && <span className="text-[10px] text-neutral-500 dark:text-neutral-400">- {t.agente_nombre}</span>}
-                  </div>
-                  <p className="text-sm text-neutral-800 dark:text-neutral-200 line-clamp-2 mt-0.5">{t.instrucciones}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${estatusColor(t.estatus_nombre)}`}>{t.estatus_nombre}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${t.prioridad === 'Alta' ? 'bg-red-100 text-red-700' : t.prioridad === 'Media' ? 'bg-amber-100 text-amber-700' : 'bg-neutral-100 text-neutral-700'}`}>{t.prioridad}</span>
-                    <span className="text-[10px] text-neutral-400">{new Date(t.fecha_creacion).toLocaleDateString('es-MX')}</span>
-                  </div>
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-neutral-200 dark:border-neutral-700">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800">Cancelar</button>
-          <button onClick={handleAdd} disabled={saving || !selectedTramiteId} className="px-4 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 font-medium">
-            {saving ? 'Agregando...' : 'Agregar a tramite'}
-          </button>
+        <div className="p-5 max-h-[70vh] overflow-y-auto">
+          {addTicketSuccess ? (
+            <div className="flex flex-col items-center py-8 gap-3">
+              <Check className="w-8 h-8 text-green-500" />
+              <p className="text-sm font-semibold text-green-700 dark:text-green-400 text-center">{addTicketSuccess}</p>
+              <p className="text-xs text-neutral-400">Cerrando...</p>
+            </div>
+          ) : (
+            <>
+              <p className="text-xs text-neutral-500 mb-3">{selectedMessages.length} mensaje(s) de {canalLabel} para vincular</p>
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+                <input
+                  value={ticketSearch}
+                  onChange={e => setTicketSearch(e.target.value)}
+                  placeholder="Buscar por folio o descripción..."
+                  className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-accent/40"
+                />
+              </div>
+              {addTicketError && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 mb-3">
+                  <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-red-600 dark:text-red-400">{addTicketError}</p>
+                </div>
+              )}
+              {ticketLoading ? (
+                <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-neutral-300" /></div>
+              ) : filteredTickets.length === 0 ? (
+                <div className="text-center py-8">
+                  <ClipboardList className="w-8 h-8 text-neutral-200 dark:text-neutral-700 mx-auto mb-2" />
+                  <p className="text-xs text-neutral-400">Sin trámites abiertos</p>
+                </div>
+              ) : (
+                <div className="space-y-2" style={{ maxHeight: '22rem', overflowY: 'auto' }}>
+                  {filteredTickets.map(t => (
+                    <div key={t.id} className="rounded-xl border border-neutral-100 dark:border-neutral-700 overflow-hidden hover:border-accent/40 hover:shadow-sm transition-all">
+                      <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5 bg-neutral-50 dark:bg-neutral-800/60">
+                        <span className="text-xs font-bold text-neutral-800 dark:text-white tracking-wide">{t.folio}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 text-neutral-500 font-medium">{t.estatus_nombre}</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent font-semibold">{t.tipo_tramite.replace(/_/g, ' ')}</span>
+                        </div>
+                      </div>
+                      <div className="px-3 pb-2 pt-1">
+                        {t.agente_nombre && (
+                          <span className="flex items-center gap-1 text-[10px] text-neutral-500 dark:text-white/40 mb-1">
+                            <User className="w-3 h-3" /> {t.agente_nombre}
+                          </span>
+                        )}
+                        <p className="text-xs text-neutral-500 dark:text-white/50 line-clamp-2 leading-relaxed mb-2">{t.instrucciones}</p>
+                        <button
+                          onClick={() => handleAdd(t.id)}
+                          disabled={!!addingToTicket}
+                          className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-accent hover:bg-accent/90 text-white text-xs font-semibold transition-all disabled:opacity-60"
+                        >
+                          {addingToTicket === t.id
+                            ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Agregando...</>
+                            : <><Plus className="w-3.5 h-3.5" /> Agregar a este trámite</>
+                          }
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>

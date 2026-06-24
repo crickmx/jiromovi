@@ -67,13 +67,16 @@ export default function MapeoVendedores() {
     }
   };
 
-  const mapeosFiltrados = mapeos.filter(
-    (m) =>
-      m.source_value.toLowerCase().includes(busqueda.toLowerCase()) ||
-      m.usuarios?.nombre_completo.toLowerCase().includes(busqueda.toLowerCase()) ||
-      m.usuarios?.email_laboral?.toLowerCase().includes(busqueda.toLowerCase()) ||
-      m.usuarios?.email_personal?.toLowerCase().includes(busqueda.toLowerCase())
-  );
+  const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const mapeosFiltrados = mapeos.filter((m) => {
+    const q = norm(busqueda);
+    return (
+      norm(m.source_value).includes(q) ||
+      norm(m.usuarios?.nombre_completo ?? '').includes(q) ||
+      norm(m.usuarios?.email_laboral ?? '').includes(q) ||
+      norm(m.usuarios?.email_personal ?? '').includes(q)
+    );
+  });
 
   const handleMarkUnsaved = (id: string) => {
     setCambiosSinGuardar(prev => new Set(prev).add(id));

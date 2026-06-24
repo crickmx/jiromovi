@@ -168,7 +168,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
               className="sidebar-rail-chava-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90"
               title="Chava IA"
             >
-              <ChavaOrbIcon size="sm" />
+              <ChavaOrbIcon size="sm" sidebarVariant />
             </button>
           ) : (
             <Tooltip>
@@ -177,7 +177,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                   onClick={() => handleNav('/chava')}
                   className="sidebar-rail-chava-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90"
                 >
-                  <ChavaOrbIcon size="sm" />
+                  <ChavaOrbIcon size="sm" sidebarVariant />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={10} className={TOOLTIP_CLS}>

@@ -50,10 +50,12 @@ export default function Manuales() {
 
   const categories = [...new Set(manuals.map(m => m.category))];
 
+  const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   const filteredManuals = manuals.filter(m => {
+    const q = norm(busqueda);
     const matchSearch = !busqueda ||
-      m.title.toLowerCase().includes(busqueda.toLowerCase()) ||
-      m.description.toLowerCase().includes(busqueda.toLowerCase());
+      norm(m.title).includes(q) ||
+      norm(m.description).includes(q);
     const matchCategory = categoriaFiltro === 'all' || m.category === categoriaFiltro;
     return matchSearch && matchCategory;
   });

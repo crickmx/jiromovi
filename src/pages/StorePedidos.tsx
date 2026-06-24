@@ -56,11 +56,12 @@ export default function StorePedidos() {
     }
 
     if (busqueda) {
-      const busquedaLower = busqueda.toLowerCase();
+      const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+      const q = norm(busqueda);
       resultado = resultado.filter(p =>
-        p.id.toLowerCase().includes(busquedaLower) ||
-        p.folio_oc?.toLowerCase().includes(busquedaLower) ||
-        p.usuario?.nombre?.toLowerCase().includes(busquedaLower)
+        norm(p.id).includes(q) ||
+        norm(p.folio_oc ?? '').includes(q) ||
+        norm(p.usuario?.nombre ?? '').includes(q)
       );
     }
 

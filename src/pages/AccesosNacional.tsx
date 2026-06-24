@@ -147,13 +147,14 @@ export function AccesosNacional() {
     let filtered = [...accesos];
 
     if (searchTerm) {
-      const term = searchTerm.toLowerCase();
+      const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+      const q = norm(searchTerm);
       filtered = filtered.filter(
         (acceso) =>
-          acceso.aseguradora.toLowerCase().includes(term) ||
-          acceso.usuario_1.toLowerCase().includes(term) ||
-          (acceso.usuario_2 && acceso.usuario_2.toLowerCase().includes(term)) ||
-          (acceso.clave_agente && acceso.clave_agente.toLowerCase().includes(term))
+          norm(acceso.aseguradora).includes(q) ||
+          norm(acceso.usuario_1).includes(q) ||
+          (acceso.usuario_2 && norm(acceso.usuario_2).includes(q)) ||
+          (acceso.clave_agente && norm(acceso.clave_agente).includes(q))
       );
     }
 

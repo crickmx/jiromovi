@@ -149,15 +149,16 @@ export function DirectorioJiro() {
     }
   };
 
-  const term = searchTerm.toLowerCase().trim();
+  const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const term = norm(searchTerm.trim());
   const filtrados = term
     ? empleados.filter(
         (e) =>
-          e.nombre_completo.toLowerCase().includes(term) ||
-          e.nombre.toLowerCase().includes(term) ||
-          e.apellidos.toLowerCase().includes(term) ||
-          e.puesto.toLowerCase().includes(term) ||
-          e.oficina.toLowerCase().includes(term)
+          norm(e.nombre_completo).includes(term) ||
+          norm(e.nombre).includes(term) ||
+          norm(e.apellidos).includes(term) ||
+          norm(e.puesto).includes(term) ||
+          norm(e.oficina).includes(term)
       )
     : empleados;
 

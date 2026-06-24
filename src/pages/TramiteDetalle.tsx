@@ -9,6 +9,7 @@ import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
 import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
 import { TramiteHistorial } from '../components/tramites/TramiteHistorial';
 import { ComisionesPendientes } from '../components/tramites/ComisionesPendientes';
+import { crearNotificacion } from '../lib/notificationHelpers';
 
 interface TramiteEstatus {
   id: string;
@@ -33,6 +34,7 @@ interface TramiteData {
   cerrado_en: string | null;
   creado_por: string;
   assigned_to_user_id: string | null;
+  grupo_asignado_id: string | null;
   estatus_id: string;
   agente: Usuario | null;
   responsable: Usuario | null;
@@ -76,6 +78,7 @@ export function TramiteDetalle() {
   const cerrarMenuRef = useRef<HTMLDivElement | null>(null);
 
   const [userArea, setUserArea] = useState<string | null>(null);
+  const [myTeamRole, setMyTeamRole] = useState<'lider' | 'ejecutivo' | 'miembro' | null>(null);
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
@@ -88,6 +91,7 @@ export function TramiteDetalle() {
   const isCommercialViewerOnly = userArea === 'Comercial' && isOperationalTicket && !isAdmin && !isOwner && !isAssigned;
 
   const canEdit = (isAdmin || isGerente || isEmpleado || isOwner || isAssigned) && !isCommercialViewerOnly;
+  const canManageAssignment = isAdmin || myTeamRole === 'lider';
   const claimedRef = useRef(false);
   const isCerrado = tramite?.cerrado_en !== null;
 
@@ -114,6 +118,17 @@ export function TramiteDetalle() {
       });
     }
   }, [usuario?.id]);
+
+  useEffect(() => {
+    if (!tramite?.grupo_asignado_id || !usuario || isAdmin) { setMyTeamRole(null); return; }
+    supabase
+      .from('tramites_grupos_miembros')
+      .select('rol_en_equipo')
+      .eq('grupo_id', tramite.grupo_asignado_id)
+      .eq('usuario_id', usuario.id)
+      .maybeSingle()
+      .then(({ data }) => setMyTeamRole((data?.rol_en_equipo as typeof myTeamRole) ?? null));
+  }, [tramite?.grupo_asignado_id, usuario?.id]);
 
   useEffect(() => {
     if (id) {
@@ -302,7 +317,13 @@ export function TramiteDetalle() {
   };
 
   const handleSave = async () => {
-    if (!tramite || !usuario || !isDirty) return;
+    if (!tramite || !usuario) return;
+
+    // Si no hay cambios, solo regresar
+    if (!isDirty) {
+      navigate('/tramites');
+      return;
+    }
 
     setSaving(true);
 
@@ -321,7 +342,7 @@ export function TramiteDetalle() {
 
       if (error) throw error;
 
-      await loadTramite();
+      navigate('/tramites');
     } catch (err: any) {
       console.error('Error updating tramite:', err);
       alert('Error al actualizar el tramite');
@@ -382,6 +403,54 @@ export function TramiteDetalle() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleResponsableChange = async (userId: string) => {
+    if (!tramite || !usuario) return;
+    await supabase.from('tickets').update({
+      assigned_to_user_id: userId || null,
+      modificado_por: usuario.id,
+    }).eq('id', tramite.id);
+    if (userId) {
+      await supabase.from('ticket_asignaciones').insert({
+        ticket_id: tramite.id, ejecutivo_id: userId, asignado_por: usuario.id,
+      });
+      await crearNotificacion({
+        user_id: userId,
+        titulo: 'Trámite asignado',
+        mensaje: `Se te asignó como responsable del trámite ${tramite.folio}.`,
+        modulo: 'Tramites',
+        icono: 'clipboard-list',
+        accion_url: `/tramites/${tramite.id}`,
+        accion_texto: 'Ver trámite',
+      });
+    }
+    await loadTramite();
+  };
+
+  const handleEquipoChange = async (grupoId: string | null) => {
+    if (!tramite || !usuario) return;
+    await supabase.from('tickets').update({
+      grupo_asignado_id: grupoId,
+      assigned_to_user_id: null,
+      modificado_por: usuario.id,
+    }).eq('id', tramite.id);
+    if (grupoId) {
+      const { data: miembros } = await supabase.rpc('get_grupo_miembros_ejecutivos', { p_grupo_id: grupoId });
+      const lider = (miembros as Array<{ id: string; nombre_completo: string }>)?.[0];
+      if (lider) {
+        await crearNotificacion({
+          user_id: lider.id,
+          titulo: 'Trámite asignado a tu equipo',
+          mensaje: `El trámite ${tramite.folio} fue asignado a tu equipo.`,
+          modulo: 'Tramites',
+          icono: 'clipboard-list',
+          accion_url: `/tramites/${tramite.id}`,
+          accion_texto: 'Ver trámite',
+        });
+      }
+    }
+    await loadTramite();
   };
 
   const handleReabrir = async () => {
@@ -588,6 +657,10 @@ export function TramiteDetalle() {
             selectedPrioridad={selectedPrioridad}
             setSelectedPrioridad={setSelectedPrioridad}
             canEdit={canEdit && !isCerrado}
+            canManageAssignment={canManageAssignment && !isCerrado}
+            grupoAsignadoId={tramite.grupo_asignado_id}
+            onResponsableChange={handleResponsableChange}
+            onEquipoChange={handleEquipoChange}
           />
         )}
         {activeTab === 'comentarios' && <TramiteComentarios tramiteId={tramite.id} />}

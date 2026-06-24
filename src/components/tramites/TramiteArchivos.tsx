@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { supabaseUrl } from '../../lib/supabase';
-import { FileText, Download, Upload, Eye, FolderDown } from 'lucide-react';
+import { FileText, Download, Upload, Eye, FolderDown, Trash2, Music, Video, FileSpreadsheet, FileType2, File } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { FilePreviewModal } from './FilePreviewModal';
 import JSZip from 'jszip';
@@ -13,6 +13,7 @@ interface Archivo {
   tipo: string | null;
   tamano: number | null;
   fecha_subida: string;
+  eliminado_at: string | null;
   usuarios: {
     nombre_completo: string;
   } | null;
@@ -24,6 +25,7 @@ interface TramiteArchivosProps {
 
 export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
   const { usuario } = useAuth();
+  const isAdmin = usuario?.rol === 'Administrador';
   const [archivos, setArchivos] = useState<Archivo[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -71,10 +73,21 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
       .from('ticket_archivos')
       .select('*, usuarios!usuario_id(nombre_completo)')
       .eq('ticket_id', tramiteId)
+      .is('eliminado_at', null)
       .order('fecha_subida', { ascending: false });
 
     if (data) setArchivos(data as Archivo[]);
     setLoading(false);
+  };
+
+  const handleDeleteArchivo = async (archivoId: string) => {
+    if (!usuario) return;
+    if (!confirm('¿Mover este archivo a la papelera?')) return;
+    await supabase.from('ticket_archivos').update({
+      eliminado_at: new Date().toISOString(),
+      eliminado_por: usuario.id,
+    }).eq('id', archivoId);
+    setArchivos(prev => prev.filter(a => a.id !== archivoId));
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -210,22 +223,104 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
     return (bytes / 1024 / 1024).toFixed(2) + ' MB';
   };
 
-  const getFileIcon = (tipo: string | null) => {
-    if (!tipo) return <FileText className="w-8 h-8 text-neutral-400" />;
+  const friendlyName = (nombre: string): string => {
+    const trimmed = nombre.trim();
+    if (/^\[.+\]$/.test(trimmed)) {
+      const inner = trimmed.slice(1, -1).toLowerCase();
+      const labels: Record<string, string> = {
+        documento: 'Documento', imagen: 'Imagen', audio: 'Audio',
+        video: 'Video', sticker: 'Sticker', voice: 'Audio',
+      };
+      return labels[inner] ? `${labels[inner]} de WhatsApp` : 'Archivo de WhatsApp';
+    }
+    return trimmed;
+  };
 
-    if (tipo.startsWith('image/')) {
-      return <FileText className="w-8 h-8 text-accent" />;
+  const getEffectiveType = (tipo: string | null, nombre: string): string => {
+    if (tipo && tipo !== 'application/octet-stream') return tipo;
+    const ext = nombre.split('.').pop()?.toLowerCase() || '';
+    const map: Record<string, string> = {
+      jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',
+      webp: 'image/webp', svg: 'image/svg+xml',
+      pdf: 'application/pdf',
+      mp4: 'video/mp4', mov: 'video/quicktime', avi: 'video/x-msvideo', webm: 'video/webm',
+      mp3: 'audio/mpeg', ogg: 'audio/ogg', wav: 'audio/wav', m4a: 'audio/mp4',
+      doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      csv: 'text/csv',
+    };
+    return map[ext] || tipo || 'application/octet-stream';
+  };
+
+  const FileThumbnail = ({ archivo }: { archivo: Archivo }) => {
+    const [imgError, setImgError] = useState(false);
+    const effectiveType = getEffectiveType(archivo.tipo, archivo.nombre);
+    const ext = archivo.nombre.split('.').pop()?.toUpperCase() || '';
+    const isImage = effectiveType.startsWith('image/');
+    const isPdf = effectiveType.includes('pdf');
+    const isAudio = effectiveType.startsWith('audio/');
+    const isVideo = effectiveType.startsWith('video/');
+    const isWord = effectiveType.includes('word') || effectiveType.includes('wordprocessingml');
+    const isExcel = effectiveType.includes('excel') || effectiveType.includes('spreadsheetml') || effectiveType === 'text/csv';
+
+    if (isImage && archivo.url && !imgError) {
+      return (
+        <img
+          src={archivo.url}
+          alt={friendlyName(archivo.nombre)}
+          className="w-full h-full object-cover"
+          onError={() => setImgError(true)}
+        />
+      );
     }
-    if (tipo.includes('pdf')) {
-      return <FileText className="w-8 h-8 text-red-500" />;
-    }
-    if (tipo.includes('word') || tipo.includes('document')) {
-      return <FileText className="w-8 h-8 text-accent" />;
-    }
-    if (tipo.includes('excel') || tipo.includes('spreadsheet')) {
-      return <FileText className="w-8 h-8 text-green-600" />;
-    }
-    return <FileText className="w-8 h-8 text-neutral-400" />;
+    if (isPdf) return (
+      <div className="flex flex-col items-center gap-1.5">
+        <div className="w-12 h-12 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+          <FileType2 className="w-7 h-7 text-red-500" />
+        </div>
+        <span className="text-[11px] font-bold text-red-500 tracking-widest">PDF</span>
+      </div>
+    );
+    if (isAudio) return (
+      <div className="flex flex-col items-center gap-1.5">
+        <div className="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+          <Music className="w-7 h-7 text-purple-500" />
+        </div>
+        <span className="text-[11px] font-bold text-purple-500 tracking-widest">{ext || 'AUDIO'}</span>
+      </div>
+    );
+    if (isVideo) return (
+      <div className="flex flex-col items-center gap-1.5">
+        <div className="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+          <Video className="w-7 h-7 text-orange-500" />
+        </div>
+        <span className="text-[11px] font-bold text-orange-500 tracking-widest">{ext || 'VIDEO'}</span>
+      </div>
+    );
+    if (isWord) return (
+      <div className="flex flex-col items-center gap-1.5">
+        <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+          <FileText className="w-7 h-7 text-blue-600" />
+        </div>
+        <span className="text-[11px] font-bold text-blue-600 tracking-widest">{ext || 'DOC'}</span>
+      </div>
+    );
+    if (isExcel) return (
+      <div className="flex flex-col items-center gap-1.5">
+        <div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+          <FileSpreadsheet className="w-7 h-7 text-green-600" />
+        </div>
+        <span className="text-[11px] font-bold text-green-600 tracking-widest">{ext || 'XLS'}</span>
+      </div>
+    );
+    return (
+      <div className="flex flex-col items-center gap-1.5">
+        <div className="w-12 h-12 rounded-xl bg-neutral-100 dark:bg-neutral-700 flex items-center justify-center">
+          <File className="w-7 h-7 text-neutral-400" />
+        </div>
+        {ext && <span className="text-[11px] font-bold text-neutral-400 tracking-widest">{ext}</span>}
+      </div>
+    );
   };
 
   const handleDownloadAll = async () => {
@@ -325,63 +420,64 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
           <p className="text-sm mt-2">Sube el primer archivo para comenzar</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {archivos.map((archivo) => (
             <div
               key={archivo.id}
-              className="border border-neutral-200 rounded-xl p-4 hover:shadow-medium transition-all"
+              className="border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden hover:shadow-md hover:border-neutral-300 dark:hover:border-neutral-600 transition-all flex flex-col bg-white dark:bg-neutral-800/50"
             >
-              <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0">
-                  {getFileIcon(archivo.tipo)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-neutral-900 truncate" title={archivo.nombre}>
-                    {archivo.nombre}
-                  </p>
-                  <p className="text-xs text-neutral-500 mt-1">
-                    {formatFileSize(archivo.tamano)}
-                  </p>
-                  <p className="text-xs text-neutral-500 mt-1">
-                    {new Date(archivo.fecha_subida).toLocaleDateString('es-MX', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric'
-                    })}
-                  </p>
-                  {archivo.usuarios && (
-                    <p className="text-xs text-neutral-500 mt-1">
-                      por {archivo.usuarios.nombre_completo}
-                    </p>
-                  )}
+              {/* Thumbnail */}
+              <div
+                className="relative h-36 bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center overflow-hidden cursor-pointer"
+                onClick={() => setPreviewFile(archivo)}
+              >
+                <FileThumbnail archivo={archivo} />
+                {/* Hover overlay */}
+                <div className="absolute inset-0 bg-black/0 hover:bg-black/15 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
+                  <div className="bg-white/90 dark:bg-neutral-900/90 rounded-full p-2">
+                    <Eye className="w-5 h-5 text-neutral-700 dark:text-white" />
+                  </div>
                 </div>
               </div>
-              <div className="mt-3 flex items-center space-x-2">
+
+              {/* Info */}
+              <div className="px-3 pt-2.5 pb-2 flex-1">
+                <p
+                  className="text-sm font-semibold text-neutral-900 dark:text-white truncate leading-tight"
+                  title={friendlyName(archivo.nombre)}
+                >
+                  {friendlyName(archivo.nombre)}
+                </p>
+                <p className="text-xs text-neutral-400 dark:text-white/40 mt-1">
+                  {formatFileSize(archivo.tamano)} · {new Date(archivo.fecha_subida).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </p>
+                {archivo.usuarios && (
+                  <p className="text-[11px] text-neutral-400 dark:text-white/30 mt-0.5 truncate">
+                    {archivo.usuarios.nombre_completo}
+                  </p>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="px-3 pb-3 flex items-center gap-1.5">
                 <button
                   onClick={() => setPreviewFile(archivo)}
-                  className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-all font-semibold text-sm"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg transition-all font-semibold text-xs"
                 >
-                  <Eye className="w-4 h-4" />
-                  <span>Ver</span>
+                  <Eye className="w-3.5 h-3.5" />
+                  Ver
                 </button>
                 <button
                   onClick={async () => {
                     try {
                       const urlObj = new URL(archivo.url);
                       const pathParts = urlObj.pathname.split('/storage/v1/object/public/ticket-archivos/');
-
                       let downloadUrl = archivo.url;
                       if (pathParts.length > 1) {
                         const filePath = pathParts[1];
-                        const { data } = await supabase.storage
-                          .from('ticket-archivos')
-                          .createSignedUrl(filePath, 3600);
-
-                        if (data) {
-                          downloadUrl = data.signedUrl;
-                        }
+                        const { data } = await supabase.storage.from('ticket-archivos').createSignedUrl(filePath, 3600);
+                        if (data) downloadUrl = data.signedUrl;
                       }
-
                       const link = document.createElement('a');
                       link.href = downloadUrl;
                       link.download = archivo.nombre;
@@ -389,16 +485,24 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
                       document.body.appendChild(link);
                       link.click();
                       document.body.removeChild(link);
-                    } catch (err) {
-                      console.error('Error downloading file:', err);
+                    } catch {
                       window.open(archivo.url, '_blank');
                     }
                   }}
-                  className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 bg-primary-100 hover:bg-primary-200 text-primary-700 rounded-lg transition-all font-semibold text-sm"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-white/80 rounded-lg transition-all font-semibold text-xs"
                 >
-                  <Download className="w-4 h-4" />
-                  <span>Descargar</span>
+                  <Download className="w-3.5 h-3.5" />
+                  Bajar
                 </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => handleDeleteArchivo(archivo.id)}
+                    className="p-1.5 text-neutral-300 dark:text-white/20 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    title="Eliminar archivo"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </div>
           ))}

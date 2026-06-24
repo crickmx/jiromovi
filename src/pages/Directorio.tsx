@@ -234,24 +234,17 @@ export function Directorio() {
       .toLowerCase();
 
   const filteredUsuarios = usuarios.filter((usuario) => {
-    if (searchTerm === '') {
-      const matchesRol = filterRol === '' || usuario.rol === filterRol;
-      const matchesOficina = filterOficina === '' || usuario.oficina_id === filterOficina;
-      return matchesRol && matchesOficina;
-    }
-
-    const haystack = normalize([
-      usuario.nombre || '',
-      usuario.apellidos || '',
-      usuario.email_personal || '',
-      usuario.email_laboral || '',
-      usuario.celular_personal || '',
-      usuario.celular_laboral || '',
-      usuario.username || ''
-    ].join(' '));
-
-    const words = normalize(searchTerm).split(/\s+/).filter(Boolean);
-    const matchesSearch = words.every(word => haystack.includes(word));
+    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const q = norm(searchTerm);
+    const matchesSearch =
+      searchTerm === '' ||
+      norm(usuario.nombre || '').includes(q) ||
+      norm(usuario.apellidos || '').includes(q) ||
+      norm(usuario.email_personal || '').includes(q) ||
+      norm(usuario.email_laboral || '').includes(q) ||
+      (usuario.celular_personal || '').includes(searchTerm) ||
+      (usuario.celular_laboral || '').includes(searchTerm) ||
+      norm(usuario.username || '').includes(q);
 
     const matchesRol = filterRol === '' || usuario.rol === filterRol;
     const matchesOficina = filterOficina === '' || usuario.oficina_id === filterOficina;

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Users, UserPlus, UserMinus, Search, ShieldCheck, Briefcase, Wrench, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, Building2, X, Check, TriangleAlert as AlertTriangle, Loader as Loader2, Globe } from 'lucide-react';
+import { Users, UserPlus, UserMinus, User, Search, ShieldCheck, Briefcase, Wrench, Plus, Pencil, Trash2, ChevronRight, Building2, X, Check, TriangleAlert as AlertTriangle, Loader as Loader2, Globe, Crown, Zap, Eye, GitBranch } from 'lucide-react';
 import { AREA_CONFIG, type AreaCategoria } from '../../lib/registroActividadesTypes';
 
 interface Grupo {
@@ -9,7 +9,7 @@ interface Grupo {
   nombre: string;
   descripcion: string | null;
   color: string;
-  area_categoria: AreaCategoria | null;
+  area_categoria: string | null;
   activo: boolean;
   all_offices: boolean;
   created_at: string;
@@ -25,7 +25,14 @@ interface Miembro {
   oficina_nombre: string | null;
   rol: string;
   oficina_id: string | null;
+  rol_en_equipo: 'lider' | 'ejecutivo' | 'miembro';
 }
+
+const ROL_CONFIG = {
+  lider:     { label: 'Líder',     bg: 'bg-amber-100',   text: 'text-amber-800',  icon: Crown },
+  ejecutivo: { label: 'Ejecutivo', bg: 'bg-blue-100',    text: 'text-blue-700',   icon: Zap   },
+  miembro:   { label: 'Miembro',   bg: 'bg-neutral-100', text: 'text-neutral-600', icon: Eye  },
+} as const;
 
 interface GrupoOficina {
   id: string;
@@ -33,11 +40,29 @@ interface GrupoOficina {
   oficina_nombre: string;
 }
 
+interface GrupoRegla {
+  id: string;
+  usuario_id: string;
+  usuario_nombre: string;
+  oficina_nombre: string | null;
+  ejecutivo_id: string | null;
+  area: string | null;
+}
+
+interface AgentUser {
+  id: string;
+  nombre_completo: string;
+  oficina_id: string | null;
+  rol: string;
+}
+
+type FormTab = 'general' | 'miembros' | 'oficinas' | 'asignacion';
+
 interface Usuario {
   id: string;
   nombre_completo: string;
   rol: string;
-  oficina_nombre: string | null;
+  oficina_id: string | null;
 }
 
 interface Oficina {
@@ -47,10 +72,11 @@ interface Oficina {
 
 type Panel = 'list' | 'form' | 'members' | 'offices';
 
-const AREA_COLORS: Record<AreaCategoria, string> = {
-  Comercial: '#0ea5e9',
-  Operaciones: '#f59e0b',
+const AREA_COLORS: Record<string, string> = {
+  Comercial:    '#0ea5e9',
+  Operaciones:  '#f59e0b',
 };
+const AREA_COLOR_FALLBACK = '#94a3b8';
 
 export function GestionGruposVisualizacion() {
   const { usuario } = useAuth();
@@ -66,21 +92,37 @@ export function GestionGruposVisualizacion() {
   // Members panel
   const [miembros, setMiembros] = useState<Miembro[]>([]);
   const [searchMiembro, setSearchMiembro] = useState('');
+  const [pendingAdd, setPendingAdd] = useState<{ userId: string; rol: 'lider' | 'ejecutivo' | 'miembro' } | null>(null);
+  const [editingRolMiembro, setEditingRolMiembro] = useState<string | null>(null);
 
   // Offices panel
   const [grupoOficinas, setGrupoOficinas] = useState<GrupoOficina[]>([]);
   const [searchOficina, setSearchOficina] = useState('');
 
+  // Áreas disponibles cargadas dinámicamente desde ticket_tipos
+  const [areasDisponibles, setAreasDisponibles] = useState<string[]>([]);
+
   // Form state
   const [formNombre, setFormNombre] = useState('');
   const [formDescripcion, setFormDescripcion] = useState('');
-  const formArea: AreaCategoria = 'Operaciones';
+  const [formArea, setFormArea] = useState<string | null>(null);
   const [formActivo, setFormActivo] = useState(true);
   const [formAllOffices, setFormAllOffices] = useState(false);
   const [formSelectedOficinas, setFormSelectedOficinas] = useState<string[]>([]);
   const [formOficinaSearch, setFormOficinaSearch] = useState('');
   const [formSaving, setFormSaving] = useState(false);
   const [formError, setFormError] = useState('');
+
+  // Form tabs (when editing)
+  const [formTab, setFormTab] = useState<FormTab>('general');
+  const [grupoReglas, setGrupoReglas] = useState<GrupoRegla[]>([]);
+  const [agentesParaReglas, setAgentesParaReglas] = useState<AgentUser[]>([]);
+  const [filterReglaOficinaId, setFilterReglaOficinaId] = useState('');
+  const [searchReglaOficina, setSearchReglaOficina] = useState('');
+  const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
+  const [savingEjecutivoReglaId, setSavingEjecutivoReglaId] = useState<string | null>(null);
+  const [savingRegla, setSavingRegla] = useState(false);
+  const [reglaError, setReglaError] = useState('');
 
   // Delete confirm
   const [confirmDelete, setConfirmDelete] = useState<Grupo | null>(null);
@@ -90,9 +132,21 @@ export function GestionGruposVisualizacion() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    await Promise.all([loadGrupos(), loadUsuarios(), loadOficinas()]);
+    await Promise.all([loadGrupos(), loadUsuarios(), loadOficinas(), loadAgentesParaReglas(), loadAreas()]);
     setLoading(false);
   }, []);
+
+  const loadAreas = async () => {
+    const { data } = await supabase
+      .from('ticket_tipos')
+      .select('area')
+      .eq('activo', true)
+      .not('area', 'is', null);
+    if (data) {
+      const unique = [...new Set(data.map((r: { area: string }) => r.area).filter(Boolean))].sort() as string[];
+      setAreasDisponibles(unique);
+    }
+  };
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -104,16 +158,15 @@ export function GestionGruposVisualizacion() {
   const loadUsuarios = async () => {
     const { data } = await supabase
       .from('usuarios')
-      .select('id, nombre_completo, rol, oficinas(nombre)')
-      .eq('estado', 'activo')
+      .select('id, nombre_completo, rol, oficina_id')
       .in('rol', ['Empleado', 'Gerente', 'Administrador'])
       .order('nombre_completo');
     if (data) {
       setUsuarios(data.map(u => ({
         id: u.id,
-        nombre_completo: u.nombre_completo || '',
+        nombre_completo: u.nombre_completo || u.id,
         rol: u.rol,
-        oficina_nombre: (u.oficinas as { nombre: string } | null)?.nombre || null,
+        oficina_id: u.oficina_id ?? null,
       })));
     }
   };
@@ -121,6 +174,23 @@ export function GestionGruposVisualizacion() {
   const loadOficinas = async () => {
     const { data } = await supabase.from('oficinas').select('id, nombre').eq('activa', true).order('nombre');
     if (data) setOficinas(data);
+  };
+
+  const loadAgentesParaReglas = async () => {
+    const { data } = await supabase
+      .from('usuarios')
+      .select('id, nombre_completo, rol, oficina_id')
+      .order('nombre_completo');
+    if (data) {
+      const seen = new Set<string>();
+      const unique = data.filter(u => { if (seen.has(u.id)) return false; seen.add(u.id); return true; });
+      setAgentesParaReglas(unique.map(u => ({
+        id: u.id,
+        nombre_completo: u.nombre_completo || u.id,
+        rol: u.rol,
+        oficina_id: u.oficina_id ?? null,
+      })));
+    }
   };
 
   const loadMiembros = async (grupoId: string) => {
@@ -139,6 +209,7 @@ export function GestionGruposVisualizacion() {
     setSelectedGrupo(null);
     setFormNombre('');
     setFormDescripcion('');
+    setFormArea(null);
     setFormActivo(true);
     setFormAllOffices(false);
     setFormSelectedOficinas([]);
@@ -151,13 +222,27 @@ export function GestionGruposVisualizacion() {
     setSelectedGrupo(g);
     setFormNombre(g.nombre);
     setFormDescripcion(g.descripcion || '');
+    setFormArea(g.area_categoria ?? null);
     setFormActivo(g.activo);
     setFormAllOffices(g.all_offices);
     setFormOficinaSearch('');
     setFormError('');
-    // Load current offices for this group
-    const { data } = await supabase.rpc('get_grupo_oficinas', { p_grupo_id: g.id });
-    setFormSelectedOficinas(data ? (data as GrupoOficina[]).map(o => o.oficina_id) : []);
+    setFormTab('general');
+    setSearchMiembro('');
+    setSearchOficina('');
+    setSearchReglaOficina('');
+    setFilterReglaOficinaId('');
+    setSelectedAgentIds([]);
+    setEditingRolMiembro(null);
+    setPendingAdd(null);
+    // Load all tab data in parallel
+    const [oficinasRes] = await Promise.all([
+      supabase.rpc('get_grupo_oficinas', { p_grupo_id: g.id }),
+      loadMiembros(g.id),
+      loadGrupoOficinas(g.id),
+      loadGrupoReglas(g.id),
+    ]);
+    setFormSelectedOficinas(oficinasRes.data ? (oficinasRes.data as GrupoOficina[]).map(o => o.oficina_id) : []);
     setPanel('form');
   };
 
@@ -172,7 +257,7 @@ export function GestionGruposVisualizacion() {
       area_categoria: formArea,
       activo: formActivo,
       all_offices: formAllOffices,
-      color: AREA_COLORS[formArea],
+      color: (formArea && AREA_COLORS[formArea]) || '#94a3b8',
       updated_at: new Date().toISOString(),
       updated_by: usuario?.id,
     };
@@ -273,18 +358,30 @@ export function GestionGruposVisualizacion() {
     setPanel('members');
   };
 
-  const handleAgregarMiembro = async (usuarioId: string) => {
+  const handleAgregarMiembro = async (usuarioId: string, rol: 'lider' | 'ejecutivo' | 'miembro' = 'ejecutivo') => {
     if (!selectedGrupo) return;
     const { error } = await supabase
       .from('tramites_grupos_miembros')
-      .insert({ grupo_id: selectedGrupo.id, usuario_id: usuarioId });
+      .insert({ grupo_id: selectedGrupo.id, usuario_id: usuarioId, rol_en_equipo: rol });
     if (error && error.code !== '23505') { alert('Error: ' + error.message); return; }
     await supabase.from('ticket_team_audit_logs').insert({
       team_id: selectedGrupo.id, action: 'member_added',
-      new_value: { usuario_id: usuarioId }, performed_by: usuario?.id,
+      new_value: { usuario_id: usuarioId, rol_en_equipo: rol }, performed_by: usuario?.id,
     });
     await loadMiembros(selectedGrupo.id);
     await loadGrupos();
+  };
+
+  const handleChangeRolMiembro = async (usuarioId: string, nuevoRol: 'lider' | 'ejecutivo' | 'miembro') => {
+    if (!selectedGrupo) return;
+    const { error } = await supabase
+      .from('tramites_grupos_miembros')
+      .update({ rol_en_equipo: nuevoRol })
+      .eq('grupo_id', selectedGrupo.id)
+      .eq('usuario_id', usuarioId);
+    if (error) { alert('Error: ' + error.message); return; }
+    setEditingRolMiembro(null);
+    await loadMiembros(selectedGrupo.id);
   };
 
   const handleRemoverMiembro = async (usuarioId: string) => {
@@ -300,6 +397,87 @@ export function GestionGruposVisualizacion() {
     });
     await loadMiembros(selectedGrupo.id);
     await loadGrupos();
+  };
+
+  // ── REGLAS ────────────────────────────────────────────────────────────────────
+
+  const loadGrupoReglas = async (grupoId: string) => {
+    const { data } = await supabase
+      .from('tramites_grupos_reglas')
+      .select('id, usuario_id, ejecutivo_id, area')
+      .eq('grupo_id', grupoId)
+      .eq('activo', true);
+    if (data) {
+      setGrupoReglas(data.map(r => {
+        const agente = agentesParaReglas.find(a => a.id === r.usuario_id);
+        return {
+          id: r.id,
+          usuario_id: r.usuario_id,
+          usuario_nombre: agente?.nombre_completo || r.usuario_id,
+          oficina_nombre: agente?.oficina_id ? (oficinas.find(o => o.id === agente.oficina_id)?.nombre || null) : null,
+          ejecutivo_id: r.ejecutivo_id ?? null,
+          area: r.area ?? null,
+        };
+      }));
+    }
+  };
+
+  const handleAgregarReglas = async () => {
+    if (!selectedGrupo || selectedAgentIds.length === 0) return;
+    setSavingRegla(true);
+    setReglaError('');
+    const grupoArea = selectedGrupo.area_categoria ?? null;
+    try {
+      for (const uid of selectedAgentIds) {
+        let q = supabase
+          .from('tramites_grupos_reglas')
+          .select('id')
+          .eq('usuario_id', uid);
+        if (grupoArea) {
+          q = q.eq('area', grupoArea);
+        } else {
+          q = q.is('area', null);
+        }
+        const { data: existing, error: qErr } = await q.limit(1).maybeSingle();
+        if (qErr) throw new Error('Consulta fallida: ' + qErr.message);
+
+        if (existing) {
+          const { error } = await supabase
+            .from('tramites_grupos_reglas')
+            .update({ grupo_id: selectedGrupo.id, activo: true, created_by: usuario?.id })
+            .eq('id', existing.id);
+          if (error) throw new Error('Error al actualizar: ' + error.message);
+        } else {
+          const { error } = await supabase
+            .from('tramites_grupos_reglas')
+            .insert({ grupo_id: selectedGrupo.id, usuario_id: uid, created_by: usuario?.id, activo: true, area: grupoArea });
+          if (error) throw new Error('Error al insertar: ' + error.message);
+        }
+      }
+      setSelectedAgentIds([]);
+      setSearchReglaOficina('');
+      await loadGrupoReglas(selectedGrupo.id);
+    } catch (e: unknown) {
+      setReglaError(e instanceof Error ? e.message : 'Error desconocido');
+    } finally {
+      setSavingRegla(false);
+    }
+  };
+
+  const handleRemoverRegla = async (reglaId: string) => {
+    if (!selectedGrupo) return;
+    await supabase.from('tramites_grupos_reglas').update({ activo: false }).eq('id', reglaId);
+    await loadGrupoReglas(selectedGrupo.id);
+  };
+
+  const handleCambiarEjecutivoEnRegla = async (reglaId: string, ejecutivoId: string | null) => {
+    setSavingEjecutivoReglaId(reglaId);
+    await supabase
+      .from('tramites_grupos_reglas')
+      .update({ ejecutivo_id: ejecutivoId })
+      .eq('id', reglaId);
+    setGrupoReglas(prev => prev.map(r => r.id === reglaId ? { ...r, ejecutivo_id: ejecutivoId } : r));
+    setSavingEjecutivoReglaId(null);
   };
 
   // ── OFFICES ───────────────────────────────────────────────────────────────────
@@ -338,10 +516,12 @@ export function GestionGruposVisualizacion() {
 
   // ── HELPERS ───────────────────────────────────────────────────────────────────
 
-  const getAC = (area: AreaCategoria | null) =>
-    area ? AREA_CONFIG[area] : { bg: 'bg-neutral-50', color: 'text-neutral-600', border: 'border-neutral-200' };
+  const getAC = (area: string | null) =>
+    area && (AREA_CONFIG as Record<string, { color: string; bg: string; border: string }>)[area]
+      ? (AREA_CONFIG as Record<string, { color: string; bg: string; border: string }>)[area]
+      : { bg: 'bg-neutral-50', color: 'text-neutral-600', border: 'border-neutral-200' };
 
-  const AreaIcon = ({ area }: { area: AreaCategoria | null }) =>
+  const AreaIcon = ({ area }: { area: string | null }) =>
     area === 'Comercial' ? <Briefcase className="w-4 h-4" /> : <Wrench className="w-4 h-4" />;
 
   const miembrosDisponibles = usuarios.filter(
@@ -376,16 +556,22 @@ export function GestionGruposVisualizacion() {
   // ── LIST PANEL ────────────────────────────────────────────────────────────────
 
   if (panel === 'list') {
-    const active = grupos.filter(g => g.activo && g.area_categoria === 'Operaciones');
+    const active = grupos.filter(g => g.activo);
+    // Agrupar por área (null al final como "Sin área")
+    const areas = [...new Set(active.map(g => g.area_categoria))].sort((a, b) => {
+      if (a === null) return 1;
+      if (b === null) return -1;
+      return a.localeCompare(b);
+    });
 
     return (
       <div className="space-y-5">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="text-lg font-bold text-neutral-900">Equipos de Operaciones</h3>
+            <h3 className="text-lg font-bold text-neutral-900">Equipos de Trabajo</h3>
             <p className="text-sm text-neutral-500 mt-0.5">
-              Equipos con acceso a trámites operativos de múltiples oficinas. Los trámites comerciales son visibles por rol y oficina automaticamente.
+              Equipos de atención a trámites organizados por área.
             </p>
           </div>
           <button
@@ -396,15 +582,24 @@ export function GestionGruposVisualizacion() {
           </button>
         </div>
 
-        {/* Active teams */}
+        {/* Active teams grouped by area */}
         {active.length === 0 ? (
           <div className="text-center py-10 bg-neutral-50 rounded-2xl border-2 border-dashed border-neutral-200">
             <Users className="w-10 h-10 mx-auto text-neutral-300 mb-2" />
             <p className="text-sm text-neutral-500">No hay equipos activos. Crea el primero.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3">
-            {active.map(g => {
+          <div className="space-y-6">
+            {areas.map(area => {
+              const gruposArea = active.filter(g => g.area_categoria === area);
+              const ac = getAC(area);
+              return (
+                <div key={area ?? '__sin_area__'}>
+                  <h4 className={`text-xs font-bold uppercase tracking-wide mb-2 ${ac.color}`}>
+                    {area ?? 'Sin área asignada'}
+                  </h4>
+                  <div className="grid grid-cols-1 gap-3">
+                    {gruposArea.map(g => {
               const ac = getAC(g.area_categoria);
               return (
                 <div key={g.id} className="border border-neutral-200 rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
@@ -463,6 +658,10 @@ export function GestionGruposVisualizacion() {
                   )}
                 </div>
               );
+                    })}
+                  </div>
+                </div>
+              );
             })}
           </div>
         )}
@@ -515,15 +714,53 @@ export function GestionGruposVisualizacion() {
           <button onClick={() => setPanel('list')} className="p-2 rounded-xl hover:bg-neutral-100 text-neutral-500 transition-colors">
             <X className="w-4 h-4" />
           </button>
-          <div className={`p-2 rounded-lg ${AREA_CONFIG['Operaciones'].bg} flex-shrink-0`}>
-            <span className={AREA_CONFIG['Operaciones'].color}><Wrench className="w-4 h-4" /></span>
+          <div className={`p-2 rounded-lg ${getAC(formArea).bg} flex-shrink-0`}>
+            <span className={getAC(formArea).color}>
+              {formArea === 'Comercial' ? <Briefcase className="w-4 h-4" /> : <Wrench className="w-4 h-4" />}
+            </span>
           </div>
           <div>
-            <h3 className="text-lg font-bold text-neutral-900">{selectedGrupo ? 'Editar equipo' : 'Nuevo equipo de Operaciones'}</h3>
-            <p className="text-sm text-neutral-500">Correcciones, registros, solicitudes y operativos.</p>
+            <h3 className="text-lg font-bold text-neutral-900">{selectedGrupo ? 'Editar equipo' : 'Nuevo equipo'}</h3>
+            <p className="text-sm text-neutral-500">{formArea ? `Área: ${formArea}` : 'Sin área asignada'}</p>
           </div>
         </div>
 
+        {/* Tab bar — only shown when editing an existing group */}
+        {selectedGrupo && (
+          <div className="flex gap-1 border-b border-neutral-200">
+            {([
+              { key: 'general',    label: 'General',    icon: Wrench },
+              { key: 'miembros',   label: 'Miembros',   icon: Users },
+              { key: 'oficinas',   label: 'Oficinas',   icon: Building2 },
+              { key: 'asignacion', label: 'Asignación', icon: GitBranch },
+            ] as const).map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => setFormTab(key)}
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-all border-b-2 -mb-px ${
+                  formTab === key
+                    ? 'text-neutral-900 border-amber-500'
+                    : 'text-neutral-500 border-transparent hover:text-neutral-700'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {label}
+                {key === 'miembros' && miembros.length > 0 && (
+                  <span className="text-[11px] bg-neutral-200 text-neutral-600 px-1.5 py-0.5 rounded-full font-semibold">{miembros.length}</span>
+                )}
+                {key === 'oficinas' && grupoOficinas.length > 0 && !selectedGrupo.all_offices && (
+                  <span className="text-[11px] bg-neutral-200 text-neutral-600 px-1.5 py-0.5 rounded-full font-semibold">{grupoOficinas.length}</span>
+                )}
+                {key === 'asignacion' && grupoReglas.length > 0 && (
+                  <span className="text-[11px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold">{grupoReglas.length}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* ── TAB: GENERAL ── */}
+        {(!selectedGrupo || formTab === 'general') && (
         <div className="space-y-4 bg-white rounded-2xl border border-neutral-200 p-5">
           <div>
             <label className="block text-sm font-semibold text-neutral-700 mb-1.5">Nombre del equipo *</label>
@@ -545,6 +782,36 @@ export function GestionGruposVisualizacion() {
               rows={2}
               className="w-full px-3 py-2.5 border border-neutral-300 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 focus:border-neutral-900 outline-none resize-none"
             />
+          </div>
+
+          {/* Área */}
+          <div>
+            <label className="block text-sm font-semibold text-neutral-700 mb-1.5">Área</label>
+            <div className="flex flex-wrap gap-2">
+              {areasDisponibles.map(a => {
+                const cfg = getAC(a);
+                const active = formArea === a;
+                return (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() => setFormArea(active ? null : a)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${
+                      active
+                        ? `${cfg.bg} ${cfg.color} ${cfg.border} border-2`
+                        : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-300'
+                    }`}
+                  >
+                    {a === 'Comercial' ? <Briefcase className="w-3.5 h-3.5" /> : <Wrench className="w-3.5 h-3.5" />}
+                    {a}
+                  </button>
+                );
+              })}
+              {areasDisponibles.length === 0 && (
+                <p className="text-xs text-neutral-400 italic">Cargando áreas...</p>
+              )}
+            </div>
+            <p className="text-xs text-neutral-400 mt-1.5">Define qué tipos de trámite se auto-asignan a este equipo. Sin área = comodín para cualquier tipo.</p>
           </div>
 
           {/* All offices toggle */}
@@ -673,6 +940,353 @@ export function GestionGruposVisualizacion() {
           {formError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{formError}</p>}
         </div>
 
+        )} {/* end General tab */}
+
+        {/* ── TAB: MIEMBROS ── */}
+        {selectedGrupo && formTab === 'miembros' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="border-2 border-amber-200 rounded-2xl overflow-hidden">
+              <div className="px-4 py-3 bg-amber-50">
+                <h4 className="font-bold text-sm text-amber-700 flex items-center gap-2">
+                  <Users className="w-4 h-4" /> Miembros actuales ({miembros.length})
+                </h4>
+              </div>
+              <div className="p-4 space-y-2 max-h-80 overflow-y-auto">
+                {miembros.length === 0 ? (
+                  <p className="text-sm text-neutral-400 text-center py-6">No hay miembros asignados</p>
+                ) : (
+                  miembros.map(m => {
+                    const rc = ROL_CONFIG[m.rol_en_equipo] ?? ROL_CONFIG.miembro;
+                    const RolIcon = rc.icon;
+                    return (
+                      <div key={m.usuario_id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl group hover:bg-neutral-100 transition-colors">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-medium text-neutral-900 text-sm truncate">{m.nombre_completo}</p>
+                            <div className="relative">
+                              <button
+                                onClick={() => setEditingRolMiembro(editingRolMiembro === m.usuario_id ? null : m.usuario_id)}
+                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-semibold ${rc.bg} ${rc.text} hover:opacity-75 transition-opacity flex-shrink-0`}
+                              >
+                                <RolIcon className="w-2.5 h-2.5" />{rc.label}
+                              </button>
+                              {editingRolMiembro === m.usuario_id && (
+                                <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-neutral-200 rounded-xl shadow-lg p-1 space-y-0.5 min-w-[130px]">
+                                  {(['lider', 'ejecutivo', 'miembro'] as const).map(rol => {
+                                    const rci = ROL_CONFIG[rol]; const RCI = rci.icon;
+                                    return (
+                                      <button key={rol} onClick={() => handleChangeRolMiembro(m.usuario_id, rol)}
+                                        className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${m.rol_en_equipo === rol ? `${rci.bg} ${rci.text}` : 'text-neutral-700 hover:bg-neutral-50'}`}>
+                                        <RCI className="w-3 h-3" />{rci.label}
+                                        {m.rol_en_equipo === rol && <Check className="w-3 h-3 ml-auto" />}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-500">
+                            <span>{m.rol}</span>
+                            {m.oficina_nombre && <><span className="text-neutral-300">·</span><span>{m.oficina_nombre}</span></>}
+                          </div>
+                        </div>
+                        <button onClick={() => handleRemoverMiembro(m.usuario_id)} className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-all ml-2 flex-shrink-0">
+                          <UserMinus className="w-4 h-4 text-red-600" />
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+            <div className="border border-neutral-200 rounded-2xl overflow-hidden">
+              <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-100">
+                <h4 className="font-bold text-sm text-neutral-700 flex items-center gap-2"><UserPlus className="w-4 h-4" /> Agregar miembros</h4>
+              </div>
+              <div className="p-4 space-y-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                  <input type="text" placeholder="Buscar por nombre..." value={searchMiembro} onChange={e => setSearchMiembro(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 outline-none" />
+                </div>
+                <div className="max-h-64 overflow-y-auto space-y-1">
+                  {miembrosDisponibles.length === 0 ? (
+                    <p className="text-sm text-neutral-400 text-center py-4">{searchMiembro ? 'Sin resultados' : 'Todos ya están asignados'}</p>
+                  ) : (
+                    miembrosDisponibles.map(u => (
+                      <div key={u.id} className="border border-neutral-100 rounded-xl overflow-hidden">
+                        <div className="flex items-center justify-between p-3 hover:bg-neutral-50 transition-colors">
+                          <div className="min-w-0">
+                            <p className="font-medium text-neutral-900 text-sm truncate">{u.nombre_completo}</p>
+                            <p className="text-xs text-neutral-500">{u.rol}{u.oficina_id ? ` · ${oficinas.find(o => o.id === u.oficina_id)?.nombre ?? ''}` : ''}</p>
+                          </div>
+                          {pendingAdd?.userId === u.id ? (
+                            <button onClick={() => setPendingAdd(null)} className="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors flex-shrink-0">
+                              <X className="w-3.5 h-3.5 text-neutral-400" />
+                            </button>
+                          ) : (
+                            <button onClick={() => setPendingAdd({ userId: u.id, rol: 'ejecutivo' })} className="p-1.5 rounded-lg hover:bg-green-100 transition-colors flex-shrink-0">
+                              <UserPlus className="w-4 h-4 text-green-600" />
+                            </button>
+                          )}
+                        </div>
+                        {pendingAdd?.userId === u.id && (
+                          <div className="px-3 pb-3 bg-neutral-50 border-t border-neutral-100">
+                            <p className="text-[11px] text-neutral-500 font-medium mb-2 mt-2">Rol en el equipo:</p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {(['lider', 'ejecutivo', 'miembro'] as const).map(rol => {
+                                const rci = ROL_CONFIG[rol]; const RCI = rci.icon;
+                                return (
+                                  <button key={rol} onClick={() => { void handleAgregarMiembro(u.id, rol); setPendingAdd(null); }}
+                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border-2 transition-colors ${pendingAdd.rol === rol ? `${rci.bg} ${rci.text} border-current` : 'border-neutral-200 text-neutral-500 hover:border-neutral-400'}`}
+                                    onMouseEnter={() => setPendingAdd(prev => prev ? { ...prev, rol } : prev)}>
+                                    <RCI className="w-3 h-3" />{rci.label}
+                                  </button>
+                                );
+                              })}
+                              <button onClick={() => { void handleAgregarMiembro(u.id, pendingAdd.rol); setPendingAdd(null); }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors ml-auto">
+                                <Check className="w-3 h-3" /> Agregar
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── TAB: OFICINAS ── */}
+        {selectedGrupo && formTab === 'oficinas' && (
+          <div className="space-y-3">
+            {selectedGrupo.all_offices ? (
+              <div className="bg-teal-50 border border-teal-200 rounded-xl p-3 flex items-center gap-2 text-sm text-teal-800">
+                <Globe className="w-4 h-4 flex-shrink-0" />
+                Este equipo tiene acceso a <strong>todas las oficinas</strong>. Edita la pestaña General para cambiar esto.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="border-2 border-amber-200 rounded-2xl overflow-hidden">
+                  <div className="px-4 py-3 bg-amber-50">
+                    <h4 className="font-bold text-sm text-amber-700 flex items-center gap-2"><Building2 className="w-4 h-4" /> Asignadas ({grupoOficinas.length})</h4>
+                  </div>
+                  <div className="p-4 space-y-2 max-h-80 overflow-y-auto">
+                    {grupoOficinas.length === 0 ? (
+                      <div className="text-center py-6">
+                        <AlertTriangle className="w-8 h-8 mx-auto text-amber-400 mb-2" />
+                        <p className="text-sm text-neutral-400">Sin oficinas asignadas</p>
+                      </div>
+                    ) : (
+                      grupoOficinas.map(go => (
+                        <div key={go.id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl group hover:bg-neutral-100 transition-colors">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                            <span className="text-sm font-medium text-neutral-800">{go.oficina_nombre}</span>
+                          </div>
+                          <button onClick={() => handleRemoverOficina(go.id, go.oficina_id)} className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-all">
+                            <X className="w-4 h-4 text-red-600" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+                <div className="border border-neutral-200 rounded-2xl overflow-hidden">
+                  <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-100">
+                    <h4 className="font-bold text-sm text-neutral-700 flex items-center gap-2"><Plus className="w-4 h-4" /> Agregar oficinas</h4>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                      <input type="text" placeholder="Buscar oficina..." value={searchOficina} onChange={e => setSearchOficina(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 outline-none" />
+                    </div>
+                    <div className="max-h-64 overflow-y-auto space-y-1">
+                      {oficinasDisponibles.length === 0 ? (
+                        <p className="text-sm text-neutral-400 text-center py-4">{searchOficina ? 'Sin resultados' : 'Todas ya están asignadas'}</p>
+                      ) : (
+                        oficinasDisponibles.map(o => (
+                          <div key={o.id} className="flex items-center justify-between p-3 border border-neutral-100 rounded-xl hover:bg-neutral-50 transition-colors">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                              <span className="text-sm font-medium text-neutral-800">{o.nombre}</span>
+                            </div>
+                            <button onClick={() => handleAgregarOficina(o.id)} className="p-1.5 rounded-lg hover:bg-teal-100 transition-colors flex-shrink-0">
+                              <Plus className="w-4 h-4 text-teal-600" />
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── TAB: ASIGNACIÓN ── */}
+        {selectedGrupo && formTab === 'asignacion' && (() => {
+          const disponibles = agentesParaReglas.filter(a =>
+            !grupoReglas.some(r => r.usuario_id === a.id) &&
+            (filterReglaOficinaId === '' || a.oficina_id === filterReglaOficinaId) &&
+            (searchReglaOficina === '' || a.nombre_completo.toLowerCase().includes(searchReglaOficina.toLowerCase()))
+          );
+          const allSelected = disponibles.length > 0 && disponibles.every(a => selectedAgentIds.includes(a.id));
+          return (
+            <div className="space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 text-sm text-amber-800">
+                <GitBranch className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <span>Define qué vendedores envían sus trámites <strong>automáticamente</strong> a este equipo.{' '}
+                {selectedGrupo?.area_categoria
+                  ? <>Aplica solo a trámites del área <strong>{selectedGrupo.area_categoria}</strong>.</>
+                  : <>Sin área asignada al equipo: aplica como comodín a cualquier tipo de trámite.</>}
+                </span>
+              </div>
+
+              {/* Vendedores asignados */}
+              <div className="border border-neutral-200 rounded-2xl overflow-hidden">
+                <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-100">
+                  <h4 className="font-bold text-sm text-neutral-700">Vendedores asignados ({grupoReglas.length})</h4>
+                </div>
+                <div className="p-4 space-y-2 max-h-52 overflow-y-auto">
+                  {grupoReglas.length === 0 ? (
+                    <p className="text-sm text-neutral-400 text-center py-6">Sin vendedores asignados. Los trámites llegarán al pool general.</p>
+                  ) : (
+                    grupoReglas.map(r => {
+                      const ejecutivosDisponibles = miembros.filter(m => m.rol_en_equipo === 'lider' || m.rol_en_equipo === 'ejecutivo');
+                      return (
+                        <div key={r.id} className="flex items-center gap-2 p-3 bg-neutral-50 rounded-xl group hover:bg-neutral-100 transition-colors">
+                          <User className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-sm font-medium text-neutral-800 truncate">{r.usuario_nombre}</span>
+                              {r.oficina_nombre && (
+                                <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-neutral-100 text-neutral-500 shrink-0">{r.oficina_nombre}</span>
+                              )}
+                            </div>
+                            {ejecutivosDisponibles.length > 0 && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <Zap className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                                <select
+                                  value={r.ejecutivo_id ?? ''}
+                                  disabled={savingEjecutivoReglaId === r.id}
+                                  onChange={e => handleCambiarEjecutivoEnRegla(r.id, e.target.value || null)}
+                                  className="text-[11px] text-neutral-500 bg-transparent border-none outline-none cursor-pointer hover:text-neutral-800 py-0 pr-4"
+                                >
+                                  <option value="">Pool del equipo</option>
+                                  {ejecutivosDisponibles.map(m => (
+                                    <option key={m.usuario_id} value={m.usuario_id}>{m.nombre_completo}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+                          </div>
+                          <button onClick={() => handleRemoverRegla(r.id)} className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-all flex-shrink-0">
+                            <X className="w-4 h-4 text-red-600" />
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Agregar vendedores */}
+              <div className="border border-neutral-200 rounded-2xl overflow-hidden">
+                <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-100 flex items-center justify-between">
+                  <h4 className="font-bold text-sm text-neutral-700 flex items-center gap-2"><Plus className="w-4 h-4" /> Agregar vendedores</h4>
+                  {selectedAgentIds.length > 0 && (
+                    <button
+                      onClick={handleAgregarReglas}
+                      disabled={savingRegla}
+                      className="px-3 py-1 text-xs font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {savingRegla ? 'Guardando…' : `Agregar ${selectedAgentIds.length} seleccionado${selectedAgentIds.length > 1 ? 's' : ''}`}
+                    </button>
+                  )}
+                </div>
+                {reglaError && (
+                  <div className="px-4 py-2 bg-red-50 border-b border-red-100 text-xs text-red-700 flex items-center gap-2">
+                    <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                    {reglaError}
+                  </div>
+                )}
+                <div className="p-4 space-y-3">
+                  {/* Filters */}
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                      <input type="text" placeholder="Buscar vendedor..." value={searchReglaOficina} onChange={e => setSearchReglaOficina(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 outline-none" />
+                    </div>
+                    <select
+                      value={filterReglaOficinaId}
+                      onChange={e => setFilterReglaOficinaId(e.target.value)}
+                      className="px-3 py-2 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 outline-none max-w-[160px]"
+                    >
+                      <option value="">Todas las oficinas</option>
+                      {oficinas.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Select all */}
+                  {disponibles.length > 0 && (
+                    <label className="flex items-center gap-2 px-2 py-1 cursor-pointer text-sm text-neutral-600 hover:text-neutral-900">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={() => {
+                          if (allSelected) {
+                            setSelectedAgentIds(prev => prev.filter(id => !disponibles.some(a => a.id === id)));
+                          } else {
+                            setSelectedAgentIds(prev => [...new Set([...prev, ...disponibles.map(a => a.id)])]);
+                          }
+                        }}
+                        className="rounded"
+                      />
+                      <span className="font-medium">Seleccionar todos ({disponibles.length})</span>
+                    </label>
+                  )}
+
+                  {/* List */}
+                  <div className="max-h-56 overflow-y-auto space-y-1">
+                    {disponibles.length === 0 ? (
+                      <p className="text-sm text-neutral-400 text-center py-4">
+                        {searchReglaOficina || filterReglaOficinaId ? 'Sin resultados' : 'Todos los usuarios ya están asignados'}
+                      </p>
+                    ) : (
+                      disponibles.map(a => (
+                        <label key={a.id} className="flex items-center gap-3 p-2.5 border border-neutral-100 rounded-xl hover:bg-neutral-50 transition-colors cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedAgentIds.includes(a.id)}
+                            onChange={() => setSelectedAgentIds(prev =>
+                              prev.includes(a.id) ? prev.filter(x => x !== a.id) : [...prev, a.id]
+                            )}
+                            className="rounded flex-shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-neutral-800 truncate">{a.nombre_completo}</p>
+                            <p className="text-[11px] text-neutral-400">{a.rol}{a.oficina_id ? ` · ${oficinas.find(o => o.id === a.oficina_id)?.nombre ?? ''}` : ''}</p>
+                          </div>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Bottom actions — only on General tab */}
+        {(!selectedGrupo || formTab === 'general') && (
         <div className="flex gap-3 justify-end">
           <button onClick={() => setPanel('list')} className="px-5 py-2.5 text-sm rounded-xl border border-neutral-200 hover:bg-neutral-50 font-medium">Cancelar</button>
           <button
@@ -685,6 +1299,14 @@ export function GestionGruposVisualizacion() {
             {selectedGrupo ? 'Guardar cambios' : 'Crear equipo'}
           </button>
         </div>
+        )}
+
+        {/* Back button for non-General tabs */}
+        {selectedGrupo && formTab !== 'general' && (
+          <div className="flex justify-end">
+            <button onClick={() => setPanel('list')} className="px-5 py-2.5 text-sm rounded-xl border border-neutral-200 hover:bg-neutral-50 font-medium">Cerrar</button>
+          </div>
+        )}
       </div>
     );
   }
@@ -724,24 +1346,59 @@ export function GestionGruposVisualizacion() {
               {miembros.length === 0 ? (
                 <p className="text-sm text-neutral-400 text-center py-6">No hay miembros asignados</p>
               ) : (
-                miembros.map(m => (
-                  <div key={m.usuario_id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl group hover:bg-neutral-100 transition-colors">
-                    <div className="min-w-0">
-                      <p className="font-medium text-neutral-900 text-sm truncate">{m.nombre_completo}</p>
-                      <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-500">
-                        <span>{m.rol}</span>
-                        {m.oficina_nombre && <><span className="text-neutral-300">·</span><span>{m.oficina_nombre}</span></>}
+                miembros.map(m => {
+                  const rc = ROL_CONFIG[m.rol_en_equipo] ?? ROL_CONFIG.miembro;
+                  const RolIcon = rc.icon;
+                  return (
+                    <div key={m.usuario_id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl group hover:bg-neutral-100 transition-colors">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium text-neutral-900 text-sm truncate">{m.nombre_completo}</p>
+                          <div className="relative">
+                            <button
+                              onClick={() => setEditingRolMiembro(editingRolMiembro === m.usuario_id ? null : m.usuario_id)}
+                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-semibold ${rc.bg} ${rc.text} hover:opacity-75 transition-opacity flex-shrink-0`}
+                              title="Cambiar rol en equipo"
+                            >
+                              <RolIcon className="w-2.5 h-2.5" />
+                              {rc.label}
+                            </button>
+                            {editingRolMiembro === m.usuario_id && (
+                              <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-neutral-200 rounded-xl shadow-lg p-1 space-y-0.5 min-w-[130px]">
+                                {(['lider', 'ejecutivo', 'miembro'] as const).map(rol => {
+                                  const rci = ROL_CONFIG[rol];
+                                  const RCI = rci.icon;
+                                  return (
+                                    <button
+                                      key={rol}
+                                      onClick={() => handleChangeRolMiembro(m.usuario_id, rol)}
+                                      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${m.rol_en_equipo === rol ? `${rci.bg} ${rci.text}` : 'text-neutral-700 hover:bg-neutral-50'}`}
+                                    >
+                                      <RCI className="w-3 h-3" />
+                                      {rci.label}
+                                      {m.rol_en_equipo === rol && <Check className="w-3 h-3 ml-auto" />}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-500">
+                          <span>{m.rol}</span>
+                          {m.oficina_nombre && <><span className="text-neutral-300">·</span><span>{m.oficina_nombre}</span></>}
+                        </div>
                       </div>
+                      <button
+                        onClick={() => handleRemoverMiembro(m.usuario_id)}
+                        className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-all ml-2 flex-shrink-0"
+                        title="Remover del equipo"
+                      >
+                        <UserMinus className="w-4 h-4 text-red-600" />
+                      </button>
                     </div>
-                    <button
-                      onClick={() => handleRemoverMiembro(m.usuario_id)}
-                      className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-all"
-                      title="Remover del equipo"
-                    >
-                      <UserMinus className="w-4 h-4 text-red-600" />
-                    </button>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
@@ -771,21 +1428,61 @@ export function GestionGruposVisualizacion() {
                   </p>
                 ) : (
                   miembrosDisponibles.map(u => (
-                    <div key={u.id} className="flex items-center justify-between p-3 border border-neutral-100 rounded-xl hover:bg-neutral-50 transition-colors">
-                      <div className="min-w-0">
-                        <p className="font-medium text-neutral-900 text-sm truncate">{u.nombre_completo}</p>
-                        <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-500">
-                          <span>{u.rol}</span>
-                          {u.oficina_nombre && <><span className="text-neutral-300">·</span><span>{u.oficina_nombre}</span></>}
+                    <div key={u.id} className="border border-neutral-100 rounded-xl overflow-hidden">
+                      <div className="flex items-center justify-between p-3 hover:bg-neutral-50 transition-colors">
+                        <div className="min-w-0">
+                          <p className="font-medium text-neutral-900 text-sm truncate">{u.nombre_completo}</p>
+                          <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-500">
+                            <span>{u.rol}</span>
+                            {u.oficina_id && oficinas.find(o => o.id === u.oficina_id) && <><span className="text-neutral-300">·</span><span>{oficinas.find(o => o.id === u.oficina_id)!.nombre}</span></>}
+                          </div>
                         </div>
+                        {pendingAdd?.userId === u.id ? (
+                          <button
+                            onClick={() => setPendingAdd(null)}
+                            className="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors flex-shrink-0"
+                          >
+                            <X className="w-3.5 h-3.5 text-neutral-400" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setPendingAdd({ userId: u.id, rol: 'ejecutivo' })}
+                            className="p-1.5 rounded-lg hover:bg-green-100 transition-colors flex-shrink-0"
+                            title="Agregar al equipo"
+                          >
+                            <UserPlus className="w-4 h-4 text-green-600" />
+                          </button>
+                        )}
                       </div>
-                      <button
-                        onClick={() => handleAgregarMiembro(u.id)}
-                        className="p-1.5 rounded-lg hover:bg-green-100 transition-colors flex-shrink-0"
-                        title="Agregar al equipo"
-                      >
-                        <UserPlus className="w-4 h-4 text-green-600" />
-                      </button>
+                      {pendingAdd?.userId === u.id && (
+                        <div className="px-3 pb-3 bg-neutral-50 border-t border-neutral-100">
+                          <p className="text-[11px] text-neutral-500 font-medium mb-2 mt-2">Rol en el equipo:</p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {(['lider', 'ejecutivo', 'miembro'] as const).map(rol => {
+                              const rci = ROL_CONFIG[rol];
+                              const RCI = rci.icon;
+                              return (
+                                <button
+                                  key={rol}
+                                  onClick={() => { void handleAgregarMiembro(u.id, rol); setPendingAdd(null); }}
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border-2 transition-colors ${pendingAdd.rol === rol ? `${rci.bg} ${rci.text} border-current` : 'border-neutral-200 text-neutral-500 hover:border-neutral-400'}`}
+                                  onMouseEnter={() => setPendingAdd(prev => prev ? { ...prev, rol } : prev)}
+                                >
+                                  <RCI className="w-3 h-3" />
+                                  {rci.label}
+                                </button>
+                              );
+                            })}
+                            <button
+                              onClick={() => { void handleAgregarMiembro(u.id, pendingAdd.rol); setPendingAdd(null); }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors ml-auto"
+                            >
+                              <Check className="w-3 h-3" />
+                              Agregar
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))
                 )}

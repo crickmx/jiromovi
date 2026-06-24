@@ -5,7 +5,7 @@ const STORAGE_KEY = "movi-theme-mode";
 export function getStoredThemeMode(): ThemeMode {
   const v = localStorage.getItem(STORAGE_KEY);
   if (v === "light" || v === "dark" || v === "system") return v;
-  return "system";
+  return "light";
 }
 
 export function storeThemeMode(mode: ThemeMode) {
