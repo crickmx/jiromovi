@@ -317,7 +317,13 @@ export function TramiteDetalle() {
   };
 
   const handleSave = async () => {
-    if (!tramite || !usuario || !isDirty) return;
+    if (!tramite || !usuario) return;
+
+    // Si no hay cambios, solo regresar
+    if (!isDirty) {
+      navigate('/tramites');
+      return;
+    }
 
     setSaving(true);
 
@@ -336,7 +342,7 @@ export function TramiteDetalle() {
 
       if (error) throw error;
 
-      await loadTramite();
+      navigate('/tramites');
     } catch (err: any) {
       console.error('Error updating tramite:', err);
       alert('Error al actualizar el tramite');
