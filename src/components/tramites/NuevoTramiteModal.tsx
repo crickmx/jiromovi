@@ -158,11 +158,11 @@ export function NuevoTramiteModal({
   const isInitializingWithPreloadedData = useRef(false);
   const insurerDropdownRef = useRef<HTMLDivElement>(null);
 
-  const [tiposDb, setTiposDb] = useState<Array<{ value: string; label: string; area: string; is_custom: boolean; assignment_mode: string }>>([]);
+  const [tiposDb, setTiposDb] = useState<Array<{ value: string; label: string; area: string; is_custom: boolean }>>([]);
 
   const isAgent = usuario?.rol === 'Agente';
   const canAssignOthers = !isAgent;
-  const isPoolMode = tiposDb.find(t => t.value === tipoTramite)?.assignment_mode === 'pool';
+  const isPoolMode = false;
   const [canAccessRegistroAct, setCanAccessRegistroAct] = useState(false);
   const [autoResponsableId, setAutoResponsableId] = useState<string | null>(null);
 
@@ -226,10 +226,10 @@ export function NuevoTramiteModal({
   const loadTiposDb = async () => {
     const { data } = await supabase
       .from('ticket_tipos')
-      .select('value, label, area, is_custom, assignment_mode')
+      .select('value, label, area, is_custom')
       .eq('activo', true)
       .order('orden');
-    if (data) setTiposDb(data as Array<{ value: string; label: string; area: string; is_custom: boolean; assignment_mode: string }>);
+    if (data) setTiposDb(data as Array<{ value: string; label: string; area: string; is_custom: boolean }>);
   };
 
   const COTIZACION_EMISION_SUBTYPE_ID = '2ef883f9-96fc-452e-92eb-ff6826be412d';
@@ -709,7 +709,7 @@ export function NuevoTramiteModal({
       }
 
       const isCommercial = isCommercialTicketType(tipoTramite);
-      const isPoolMode = tiposDb.find(t => t.value === tipoTramite)?.assignment_mode === 'pool';
+      const isPoolMode = false;
       // Resolve team + optional auto-ejecutivo based on the agent user (applies to all tramite types)
       const agentUserId = isAgent
         ? usuario.id
