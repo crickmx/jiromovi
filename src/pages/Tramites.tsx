@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCached, setCached, invalidateCacheByPrefix } from '../lib/sessionCache';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound, LayoutList, LayoutGrid } from 'lucide-react';
+import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound, LayoutList, LayoutGrid, ChevronDown, ArrowUpDown } from 'lucide-react';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
 import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
@@ -68,6 +68,93 @@ const TRAMITE_OPTIONS_FOR_FILTER = TIPO_TRAMITE_OPTIONS.filter(
 
 const PRIORIDADES = ['Alta', 'Media', 'Baja'] as const;
 
+// ── Multi-select dropdown component ─────────────────────────────────────────
+function MultiSelectDropdown({
+  label,
+  options,
+  selected,
+  onChange,
+}: {
+  label: string;
+  options: Array<{ value: string; label: string }>;
+  selected: string[];
+  onChange: (vals: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const toggle = (val: string) =>
+    onChange(selected.includes(val) ? selected.filter(v => v !== val) : [...selected, val]);
+
+  const only = (val: string) => { onChange([val]); setOpen(false); };
+
+  const buttonLabel =
+    selected.length === 0 ? label
+    : selected.length === 1 ? (options.find(o => o.value === selected[0])?.label ?? `1 ${label}`)
+    : `${label} (${selected.length})`;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-all whitespace-nowrap ${
+          selected.length > 0
+            ? 'bg-accent/10 text-accent border-accent/30'
+            : 'bg-white dark:bg-white/5 text-neutral-600 dark:text-white/60 border-neutral-200 dark:border-white/10 hover:bg-neutral-50 dark:hover:bg-white/8'
+        }`}
+      >
+        {buttonLabel}
+        <ChevronDown className={`w-3 h-3 transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-50 min-w-[200px] bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-white/10 shadow-xl overflow-hidden">
+          {selected.length > 0 && (
+            <button
+              onClick={() => { onChange([]); setOpen(false); }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-neutral-500 dark:text-white/40 hover:bg-neutral-50 dark:hover:bg-white/5 border-b border-neutral-100 dark:border-white/8 transition-colors"
+            >
+              <X className="w-3 h-3" />
+              Limpiar selección
+            </button>
+          )}
+          <div className="max-h-56 overflow-y-auto">
+            {options.map(opt => {
+              const isSel = selected.includes(opt.value);
+              return (
+                <div key={opt.value} className="flex items-center justify-between px-3 py-1.5 hover:bg-neutral-50 dark:hover:bg-white/5 group">
+                  <button onClick={() => toggle(opt.value)} className="flex items-center gap-2.5 flex-1 min-w-0 text-left">
+                    <span className={`w-3.5 h-3.5 rounded flex items-center justify-center flex-shrink-0 border transition-all ${
+                      isSel ? 'bg-accent border-accent' : 'border-neutral-300 dark:border-white/20'
+                    }`}>
+                      {isSel && <Check className="w-2.5 h-2.5 text-white" />}
+                    </span>
+                    <span className="text-xs text-neutral-700 dark:text-white/80 truncate">{opt.label}</span>
+                  </button>
+                  <button
+                    onClick={() => only(opt.value)}
+                    className="opacity-0 group-hover:opacity-100 text-[10px] font-semibold text-accent px-1.5 py-0.5 rounded transition-all ml-2 shrink-0 hover:bg-accent/10"
+                  >
+                    Sólo
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Tramites() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
@@ -77,9 +164,18 @@ export function Tramites() {
   const [estatusList, setEstatusList] = useState<TramiteEstatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTipo, setSelectedTipo] = useState<string>('todos');
-  const [selectedEstatus, setSelectedEstatus] = useState<string>('todos');
-  const [selectedPrioridad, setSelectedPrioridad] = useState<string>('todas');
+  const [selectedTipos, setSelectedTipos] = useState<string[]>([]);
+  const [selectedEstatuses, setSelectedEstatuses] = useState<string[]>([]);
+  const [selectedPrioridades, setSelectedPrioridades] = useState<string[]>([]);
+  const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
+  const [selectedOficinas, setSelectedOficinas] = useState<string[]>([]);
+  const [selectedAgentes, setSelectedAgentes] = useState<string[]>([]);
+  const [selectedEquipos, setSelectedEquipos] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<'fecha_creacion' | 'requiere_atencion' | 'prioridad' | 'ultima_modificacion'>('fecha_creacion');
+  const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
+  const [sortOpen, setSortOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
+  const [grupos, setGrupos] = useState<Array<{ id: string; nombre: string }>>([]);
   const [showNuevoModal, setShowNuevoModal] = useState(false);
   const [showCatalogosModal, setShowCatalogosModal] = useState(false);
   const [showGruposModal, setShowGruposModal] = useState(false);
@@ -96,26 +192,23 @@ export function Tramites() {
   // Assignment UI state
   const [myOperacionesRole, setMyOperacionesRole] = useState<'lider' | 'ejecutivo' | 'miembro' | null>(null);
   const [myGrupoIds, setMyGrupoIds] = useState<string[]>([]);
-  const [filterMiEquipo, setFilterMiEquipo] = useState(false);
   const [assigningTramiteId, setAssigningTramiteId] = useState<string | null>(null);
   const [teamEjecutivos, setTeamEjecutivos] = useState<Array<{ id: string; nombre_completo: string }>>([]);
   const [assignTargetId, setAssignTargetId] = useState('');
   const [viewMode, setViewMode] = useState<'kanban' | 'lista'>('kanban');
   const [tramitesCerrados20, setTramitesCerrados20] = useState<TramiteItem[]>([]);
 
-  // Estatus filtered by selected tipo_tramite
-  const filteredEstatusList = (() => {
-    if (selectedTipo === 'todos') return estatusList;
-    const tipoOpt = TIPO_TRAMITE_OPTIONS.find(t => t.value === selectedTipo);
-    if (!tipoOpt) return estatusList;
+  // Estatus filtered by selected tipos (cascade)
+  const filteredEstatusList = useMemo(() => {
+    if (selectedTipos.length === 0) return estatusList;
+    const aplicables = selectedTipos
+      .map(v => TIPO_TRAMITE_OPTIONS.find(t => t.value === v)?.tipoAplicable)
+      .filter((x): x is string => Boolean(x));
+    if (aplicables.length === 0) return estatusList;
     return estatusList.filter(e =>
-      e.tipo_aplicable === null || e.tipo_aplicable.includes(tipoOpt.tipoAplicable)
+      e.tipo_aplicable === null || aplicables.some(ta => e.tipo_aplicable!.includes(ta))
     );
-  })();
-
-  // All 3 prioridades always available
-  // We keep all 3 always, just show them filtered to what makes sense
-  const availablePrioridades = PRIORIDADES;
+  }, [selectedTipos, estatusList]);
 
   const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const [tiposDb, setTiposDb] = useState<Map<string, TicketTipoDB>>(new Map());
@@ -127,6 +220,9 @@ export function Tramites() {
         for (const t of data) map.set(t.value, t);
         setTiposDb(map);
       }
+    });
+    supabase.from('tramites_grupos_visualizacion').select('id, nombre').eq('activo', true).order('nombre').then(({ data }) => {
+      if (data) setGrupos(data as Array<{ id: string; nombre: string }>);
     });
   }, []);
 
@@ -158,11 +254,14 @@ export function Tramites() {
     };
   }, [userAreaLoaded, activeTab]);
 
-  // Reset estatus/prioridad when tipo changes
+  // Close sort dropdown on outside click
   useEffect(() => {
-    setSelectedEstatus('todos');
-    setSelectedPrioridad('todas');
-  }, [selectedTipo]);
+    const handleClick = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   const loadUserArea = async () => {
     if (!usuario?.id) return;
@@ -467,28 +566,73 @@ export function Tramites() {
     return isDirectlyInvolved;
   });
 
-  const filteredTramites = visibleTramites.filter(tramite => {
+  // ── Kanban helpers ────────────────────────────────────────────────────────
+  const needsAttentionFn = (t: TramiteItem) =>
+    !!t.ultima_accion_por && t.ultima_accion_por !== usuario?.id;
+
+  const filteredTramites = useMemo(() => {
     const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const term = norm(searchTerm ?? '');
-    const matches = (value: string | null | undefined) =>
-      norm(value ?? '').includes(term);
-    const matchSearch =
-      matches(tramite.folio) ||
-      matches(tramite.instrucciones) ||
-      matches(tramite.poliza) ||
-      matches(tramite.agente?.nombre_completo) ||
-      matches(tramite.responsable?.nombre_completo) ||
-      matches(getTipoTramiteLabel(tramite.tipo_tramite));
 
-    const matchTipo = selectedTipo === 'todos' || tramite.tipo_tramite === selectedTipo;
-    const matchEstatus = selectedEstatus === 'todos' || tramite.estatus?.id === selectedEstatus;
-    const matchPrioridad = selectedPrioridad === 'todas' || tramite.prioridad === selectedPrioridad;
-    const matchMiEquipo = !filterMiEquipo || (
-      tramite.grupo_asignado_id !== null && myGrupoIds.includes(tramite.grupo_asignado_id)
-    );
+    let result = visibleTramites.filter(tramite => {
+      const matches = (v: string | null | undefined) => norm(v ?? '').includes(term);
+      const matchSearch = !term || (
+        matches(tramite.folio) ||
+        matches(tramite.instrucciones) ||
+        matches(tramite.poliza) ||
+        matches(tramite.agente?.nombre_completo) ||
+        matches(tramite.responsable?.nombre_completo) ||
+        matches(getTipoTramiteLabel(tramite.tipo_tramite))
+      );
+      const matchAreas     = selectedAreas.length === 0 || selectedAreas.includes(getTipoTramiteArea(tramite.tipo_tramite));
+      const matchTipos     = selectedTipos.length === 0 || selectedTipos.includes(tramite.tipo_tramite);
+      const matchEstatuses = selectedEstatuses.length === 0 || (tramite.estatus != null && selectedEstatuses.includes(tramite.estatus.id));
+      const matchPrioridades = selectedPrioridades.length === 0 || selectedPrioridades.includes(tramite.prioridad);
+      const matchOficinas  = selectedOficinas.length === 0 || (tramite.agente?.oficina_id != null && selectedOficinas.includes(tramite.agente.oficina_id));
+      const matchAgentes   = selectedAgentes.length === 0 || (tramite.agente_id != null && selectedAgentes.includes(tramite.agente_id));
+      const matchEquipos   = selectedEquipos.length === 0 || (tramite.grupo_asignado_id != null && selectedEquipos.includes(tramite.grupo_asignado_id));
+      return matchSearch && matchAreas && matchTipos && matchEstatuses && matchPrioridades && matchOficinas && matchAgentes && matchEquipos;
+    });
 
-    return matchSearch && matchTipo && matchEstatus && matchPrioridad && matchMiEquipo;
-  });
+    result = [...result].sort((a, b) => {
+      let comp = 0;
+      if (sortBy === 'fecha_creacion') {
+        comp = new Date(a.fecha_creacion).getTime() - new Date(b.fecha_creacion).getTime();
+      } else if (sortBy === 'requiere_atencion') {
+        comp = (needsAttentionFn(b) ? 1 : 0) - (needsAttentionFn(a) ? 1 : 0);
+      } else if (sortBy === 'prioridad') {
+        const ord: Record<string, number> = { Alta: 0, Media: 1, Baja: 2 };
+        comp = (ord[a.prioridad] ?? 1) - (ord[b.prioridad] ?? 1);
+      } else if (sortBy === 'ultima_modificacion') {
+        comp = new Date(a.ultima_modificacion).getTime() - new Date(b.ultima_modificacion).getTime();
+      }
+      return sortDir === 'asc' ? comp : -comp;
+    });
+
+    return result;
+  }, [visibleTramites, searchTerm, selectedAreas, selectedTipos, selectedEstatuses, selectedPrioridades, selectedOficinas, selectedAgentes, selectedEquipos, sortBy, sortDir]);
+
+  // Derive available options for dropdowns from visibleTramites
+  const oficinaOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const t of visibleTramites) {
+      if (t.agente?.oficina_id && t.agente?.oficina?.nombre) map.set(t.agente.oficina_id, t.agente.oficina.nombre);
+    }
+    return [...map.entries()].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [visibleTramites]);
+
+  const agenteOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const t of visibleTramites) {
+      if (t.agente_id && t.agente?.nombre_completo) map.set(t.agente_id, t.agente.nombre_completo);
+    }
+    return [...map.entries()].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [visibleTramites]);
+
+  const grupoOptions = useMemo(() => {
+    if (isAdmin) return grupos.map(g => ({ value: g.id, label: g.nombre }));
+    return grupos.filter(g => myGrupoIds.includes(g.id)).map(g => ({ value: g.id, label: g.nombre }));
+  }, [grupos, isAdmin, myGrupoIds]);
 
   const getPrioridadColor = (prioridad: string) => {
     switch (prioridad) {
@@ -508,19 +652,18 @@ export function Tramites() {
     }
   };
 
-  const hasActiveFilters = selectedTipo !== 'todos' || selectedEstatus !== 'todos' || selectedPrioridad !== 'todas' || searchTerm !== '' || filterMiEquipo;
+  const hasActiveFilters = searchTerm !== '' || selectedAreas.length > 0 || selectedTipos.length > 0 || selectedEstatuses.length > 0 || selectedPrioridades.length > 0 || selectedOficinas.length > 0 || selectedAgentes.length > 0 || selectedEquipos.length > 0;
 
   const clearFilters = () => {
-    setSelectedTipo('todos');
-    setSelectedEstatus('todos');
-    setSelectedPrioridad('todas');
     setSearchTerm('');
-    setFilterMiEquipo(false);
+    setSelectedAreas([]);
+    setSelectedTipos([]);
+    setSelectedEstatuses([]);
+    setSelectedPrioridades([]);
+    setSelectedOficinas([]);
+    setSelectedAgentes([]);
+    setSelectedEquipos([]);
   };
-
-  // ── Kanban helpers ────────────────────────────────────────────────────────
-  const needsAttentionFn = (t: TramiteItem) =>
-    !!t.ultima_accion_por && t.ultima_accion_por !== usuario?.id;
 
   const kanbanAtención = filteredTramites.filter(t => needsAttentionFn(t));
   const kanbanProceso  = filteredTramites.filter(t => !needsAttentionFn(t));
@@ -662,9 +805,9 @@ export function Tramites() {
               return (
                 <button
                   key={kpi.value}
-                  onClick={() => setSelectedTipo(kpi.value)}
+                  onClick={() => setSelectedTipos(prev => prev.includes(kpi.value) ? prev.filter(v => v !== kpi.value) : [...prev, kpi.value])}
                   className={`rounded-xl border p-3 text-left transition-all duration-200 ${
-                    selectedTipo === kpi.value
+                    selectedTipos.includes(kpi.value)
                       ? `${ac.bg} ${ac.border} ring-2 ring-offset-1 ring-current ${ac.color}`
                       : 'bg-white dark:bg-neutral-800/50 border-neutral-200 dark:border-white/8 hover:border-neutral-300 dark:hover:border-white/15 hover:shadow-sm'
                   }`}
@@ -679,112 +822,175 @@ export function Tramites() {
       )}
 
       {/* Filters — hidden in papelera mode */}
-      {activeTab !== 'papelera' && <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4">
-        <div className="flex flex-col gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-white/30 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Buscar por folio, descripcion, poliza o agente..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all placeholder:text-neutral-400 dark:placeholder:text-white/30 text-neutral-900 dark:text-white"
-            />
-          </div>
-
-          <div className="flex flex-wrap gap-2.5 items-end">
-            <div className="flex flex-col gap-1 min-w-[180px] flex-1">
-              <label className="text-[11px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider px-0.5">
-                Tipo
-              </label>
-              <select
-                value={selectedTipo}
-                onChange={(e) => setSelectedTipo(e.target.value)}
-                className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/80"
-              >
-                <option value="todos">Todos los tipos</option>
-                <optgroup label="Comercial">
-                  {getTipoTramitesByArea('Comercial').filter(t => TRAMITE_OPTIONS_FOR_FILTER.some(f => f.value === t.value)).map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </optgroup>
-                <optgroup label="Operaciones">
-                  {getTipoTramitesByArea('Operaciones').filter(t => TRAMITE_OPTIONS_FOR_FILTER.some(f => f.value === t.value)).map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </optgroup>
-              </select>
+      {activeTab !== 'papelera' && (
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-3.5">
+          <div className="flex flex-col gap-3">
+            {/* Search row */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-white/30 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Buscar por folio, descripción, póliza o agente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all placeholder:text-neutral-400 dark:placeholder:text-white/30 text-neutral-900 dark:text-white"
+              />
             </div>
 
-            <div className="flex flex-col gap-1 min-w-[160px] flex-1">
-              <label className="text-[11px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider px-0.5">
-                Estatus
-              </label>
-              <select
-                value={selectedEstatus}
-                onChange={(e) => setSelectedEstatus(e.target.value)}
-                className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/80"
-              >
-                <option value="todos">Todos</option>
-                {filteredEstatusList.map(estatus => (
-                  <option key={estatus.id} value={estatus.id}>{estatus.nombre}</option>
-                ))}
-              </select>
+            {/* Filter chips row */}
+            <div className="flex flex-wrap gap-2 items-center">
+              <MultiSelectDropdown
+                label="Área"
+                options={[{ value: 'Comercial', label: 'Comercial' }, { value: 'Operaciones', label: 'Operaciones' }]}
+                selected={selectedAreas}
+                onChange={setSelectedAreas}
+              />
+              <MultiSelectDropdown
+                label="Tipo"
+                options={TRAMITE_OPTIONS_FOR_FILTER.map(o => ({ value: o.value, label: o.label }))}
+                selected={selectedTipos}
+                onChange={setSelectedTipos}
+              />
+              <MultiSelectDropdown
+                label="Estatus"
+                options={filteredEstatusList.map(e => ({ value: e.id, label: e.nombre }))}
+                selected={selectedEstatuses}
+                onChange={setSelectedEstatuses}
+              />
+              <MultiSelectDropdown
+                label="Prioridad"
+                options={PRIORIDADES.map(p => ({ value: p, label: p }))}
+                selected={selectedPrioridades}
+                onChange={setSelectedPrioridades}
+              />
+              {oficinaOptions.length > 0 && (
+                <MultiSelectDropdown
+                  label="Oficina"
+                  options={oficinaOptions}
+                  selected={selectedOficinas}
+                  onChange={setSelectedOficinas}
+                />
+              )}
+              {agenteOptions.length > 0 && (
+                <MultiSelectDropdown
+                  label="Agente"
+                  options={agenteOptions}
+                  selected={selectedAgentes}
+                  onChange={setSelectedAgentes}
+                />
+              )}
+              {grupoOptions.length > 0 && (
+                <MultiSelectDropdown
+                  label="Equipo"
+                  options={grupoOptions}
+                  selected={selectedEquipos}
+                  onChange={setSelectedEquipos}
+                />
+              )}
+
+              {/* Sort button */}
+              <div ref={sortRef} className="relative ml-auto">
+                <button
+                  onClick={() => setSortOpen(o => !o)}
+                  className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-all whitespace-nowrap ${
+                    sortBy !== 'fecha_creacion' || sortDir !== 'desc'
+                      ? 'bg-accent/10 text-accent border-accent/30'
+                      : 'bg-white dark:bg-white/5 text-neutral-600 dark:text-white/60 border-neutral-200 dark:border-white/10 hover:bg-neutral-50 dark:hover:bg-white/8'
+                  }`}
+                >
+                  <ArrowUpDown className="w-3.5 h-3.5" />
+                  Ordenar
+                </button>
+                {sortOpen && (
+                  <div className="absolute top-full right-0 mt-1 z-50 min-w-[220px] bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-white/10 shadow-xl overflow-hidden">
+                    {([
+                      { value: 'fecha_creacion', label: 'Fecha de creación' },
+                      { value: 'requiere_atencion', label: 'Requieren atención primero' },
+                      { value: 'prioridad', label: 'Prioridad (Alta → Baja)' },
+                      { value: 'ultima_modificacion', label: 'Última modificación' },
+                    ] as const).map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => {
+                          if (sortBy === opt.value) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+                          else { setSortBy(opt.value); setSortDir('desc'); }
+                          setSortOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-4 py-2.5 text-xs transition-colors hover:bg-neutral-50 dark:hover:bg-white/5 ${
+                          sortBy === opt.value ? 'text-accent font-semibold' : 'text-neutral-700 dark:text-white/70'
+                        }`}
+                      >
+                        {opt.label}
+                        {sortBy === opt.value && (
+                          <span className="text-[10px] font-bold ml-2">{sortDir === 'asc' ? '↑ Asc' : '↓ Desc'}</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-neutral-500 dark:text-white/40 hover:text-neutral-700 dark:hover:text-white/70 transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                  Limpiar
+                </button>
+              )}
             </div>
 
-            <div className="flex flex-col gap-1 min-w-[140px]">
-              <label className="text-[11px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider px-0.5">
-                Prioridad
-              </label>
-              <select
-                value={selectedPrioridad}
-                onChange={(e) => setSelectedPrioridad(e.target.value)}
-                className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/80"
-              >
-                <option value="todas">Todas</option>
-                {availablePrioridades.map(p => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            </div>
-
-            {myGrupoIds.length > 0 && (
-              <button
-                onClick={() => setFilterMiEquipo(f => !f)}
-                className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border transition-colors ${
-                  filterMiEquipo
-                    ? 'bg-amber-500 text-white border-amber-500 hover:bg-amber-600'
-                    : 'bg-neutral-100 dark:bg-white/8 text-neutral-600 dark:text-white/60 border-neutral-200 dark:border-white/10 hover:bg-neutral-200 dark:hover:bg-white/12'
-                }`}
-              >
-                <UsersRound className="w-3.5 h-3.5" />
-                Mi Equipo
-              </button>
-            )}
+            {/* Active filter chips display */}
             {hasActiveFilters && (
-              <button
-                onClick={clearFilters}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-neutral-600 dark:text-white/60 bg-neutral-100 dark:bg-white/8 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/12 transition-colors"
-              >
-                <X className="w-3 h-3" />
-                Limpiar
-              </button>
+              <div className="flex flex-wrap gap-1.5 pt-2 border-t border-neutral-100 dark:border-white/5">
+                {selectedAreas.map(v => (
+                  <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400">
+                    {v} <button onClick={() => setSelectedAreas(prev => prev.filter(x => x !== v))}><X className="w-2.5 h-2.5" /></button>
+                  </span>
+                ))}
+                {selectedTipos.map(v => (
+                  <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-accent/10 text-accent">
+                    {TRAMITE_OPTIONS_FOR_FILTER.find(o => o.value === v)?.label ?? v}
+                    <button onClick={() => setSelectedTipos(prev => prev.filter(x => x !== v))}><X className="w-2.5 h-2.5" /></button>
+                  </span>
+                ))}
+                {selectedEstatuses.map(v => {
+                  const e = estatusList.find(s => s.id === v);
+                  return (
+                    <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold text-white" style={{ backgroundColor: e?.color ?? '#888' }}>
+                      {e?.nombre ?? v} <button onClick={() => setSelectedEstatuses(prev => prev.filter(x => x !== v))}><X className="w-2.5 h-2.5" /></button>
+                    </span>
+                  );
+                })}
+                {selectedPrioridades.map(v => (
+                  <span key={v} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${v === 'Alta' ? 'bg-red-100 text-red-700' : v === 'Media' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                    {v} <button onClick={() => setSelectedPrioridades(prev => prev.filter(x => x !== v))}><X className="w-2.5 h-2.5" /></button>
+                  </span>
+                ))}
+                {selectedOficinas.map(v => (
+                  <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                    {oficinaOptions.find(o => o.value === v)?.label ?? v}
+                    <button onClick={() => setSelectedOficinas(prev => prev.filter(x => x !== v))}><X className="w-2.5 h-2.5" /></button>
+                  </span>
+                ))}
+                {selectedAgentes.map(v => (
+                  <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400">
+                    {agenteOptions.find(o => o.value === v)?.label ?? v}
+                    <button onClick={() => setSelectedAgentes(prev => prev.filter(x => x !== v))}><X className="w-2.5 h-2.5" /></button>
+                  </span>
+                ))}
+                {selectedEquipos.map(v => (
+                  <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                    {grupoOptions.find(o => o.value === v)?.label ?? v}
+                    <button onClick={() => setSelectedEquipos(prev => prev.filter(x => x !== v))}><X className="w-2.5 h-2.5" /></button>
+                  </span>
+                ))}
+              </div>
             )}
           </div>
-
-          {selectedTipo !== 'todos' && (
-            <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-white/40 pt-2 border-t border-neutral-100 dark:border-white/5">
-              <span className="font-medium">Filtro:</span>
-              <span className={`px-2 py-0.5 rounded-full font-semibold ${AREA_CONFIG[getTipoTramiteArea(selectedTipo)].bg} ${AREA_CONFIG[getTipoTramiteArea(selectedTipo)].color}`}>
-                {getTipoTramiteLabel(selectedTipo)}
-              </span>
-              <span className="text-neutral-400 dark:text-white/30">
-                {filteredEstatusList.length} estatus
-              </span>
-            </div>
-          )}
         </div>
-      </div>}
+      )}
 
       {/* Papelera tab content */}
       {activeTab === 'papelera' && (
