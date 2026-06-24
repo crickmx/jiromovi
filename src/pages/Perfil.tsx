@@ -145,10 +145,8 @@ function FieldRow({ label, value, editable, editing, onChange, type = 'text', ic
 
 function PasswordSection() {
   const [mode, setMode] = useState<'idle' | 'create' | 'change'>('idle');
-  const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
-  const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -214,24 +212,11 @@ function PasswordSection() {
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
     setMsg(null);
-    if (!currentPw) { setMsg({ type: 'error', text: 'Ingresa tu contraseña actual.' }); return; }
     if (newPw.length < 8) { setMsg({ type: 'error', text: 'La nueva contraseña debe tener al menos 8 caracteres.' }); return; }
     if (newPw !== confirmPw) { setMsg({ type: 'error', text: 'Las contraseñas no coinciden.' }); return; }
 
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user?.email) { setMsg({ type: 'error', text: 'Sesión no válida.' }); return; }
-
-      const { error: signInErr } = await supabase.auth.signInWithPassword({
-        email: session.user.email,
-        password: currentPw,
-      });
-      if (signInErr) {
-        setMsg({ type: 'error', text: 'La contraseña actual es incorrecta.' });
-        return;
-      }
-
       const { error } = await supabase.auth.updateUser({ password: newPw });
       if (error) {
         setMsg({ type: 'error', text: 'No se pudo actualizar la contraseña.' });
@@ -239,7 +224,6 @@ function PasswordSection() {
       }
       setMsg({ type: 'success', text: 'Contraseña actualizada exitosamente.' });
       setMode('idle');
-      setCurrentPw('');
       setNewPw('');
       setConfirmPw('');
     } catch {
@@ -365,23 +349,6 @@ function PasswordSection() {
       {mode === 'change' && (
         <form onSubmit={handleChangePassword} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-neutral-500 dark:text-white/40 uppercase tracking-wide">Contraseña actual</label>
-            <div className="relative">
-              <input
-                type={showCurrent ? 'text' : 'password'}
-                value={currentPw}
-                onChange={e => setCurrentPw(e.target.value)}
-                placeholder="Tu contraseña actual"
-                className={inputCls}
-                autoComplete="current-password"
-              />
-              <button type="button" onClick={() => setShowCurrent(!showCurrent)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400" tabIndex={-1}>
-                {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
             <label className="text-xs font-semibold text-neutral-500 dark:text-white/40 uppercase tracking-wide">Nueva contraseña</label>
             <div className="relative">
               <input
@@ -429,7 +396,7 @@ function PasswordSection() {
             </button>
             <button
               type="button"
-              onClick={() => { setMode('idle'); setCurrentPw(''); setNewPw(''); setConfirmPw(''); setMsg(null); }}
+              onClick={() => { setMode('idle'); setNewPw(''); setConfirmPw(''); setMsg(null); }}
               className="text-sm font-medium text-neutral-500 dark:text-white/40 hover:text-neutral-700 dark:hover:text-white/60 transition-colors"
             >
               Cancelar
