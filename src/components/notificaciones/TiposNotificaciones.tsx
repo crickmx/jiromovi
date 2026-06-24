@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Mail, Power, MessageCircle, AlertCircle, CreditCard as Edit, Bell, ChevronDown, ChevronUp, Users, Check, X, Search, ShieldCheck, Briefcase, BookOpen, FileText, ShoppingBag, Building2, UserCheck, RefreshCw, Info, Layers, Wallet, Smartphone, Monitor } from 'lucide-react';
+import { Mail, Power, MessageCircle, CircleAlert as AlertCircle, Pencil as Edit, Bell, ChevronDown, ChevronUp, Users, Check, X, Search, ShieldCheck, Briefcase, BookOpen, FileText, ShoppingBag, Building2, UserCheck, RefreshCw, Info, Layers, Wallet, Smartphone, Monitor } from 'lucide-react';
 import { EditarPlantillaModal } from './EditarPlantillaModal';
 
 interface TipoNotificacion {

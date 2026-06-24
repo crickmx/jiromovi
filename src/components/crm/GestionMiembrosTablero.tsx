@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Crown, Shield, CreditCard as Edit, Eye, Trash2, CircleAlert as AlertCircle } from 'lucide-react';
+import { Users, Crown, Shield, Pencil as Edit, Eye, Trash2, CircleAlert as AlertCircle } from 'lucide-react';
 import {
   obtenerMiembrosTablero,
   actualizarRolMiembro,

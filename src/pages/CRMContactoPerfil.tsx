@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CreditCard as Edit, Phone, Mail, Calendar, Tag, Plus, Trash2, CheckCircle, User, FolderOpen, MapPin } from 'lucide-react';
+import { Pencil as Edit, Phone, Mail, Calendar, Tag, Plus, Trash2, CircleCheck as CheckCircle, User, FolderOpen, MapPin } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { supabase } from '../lib/supabase';
 import SeguwalletExpedienteModal from '../components/contactos/SeguwalletExpedienteModal';

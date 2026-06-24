@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, CreditCard as Edit2, Trash2, FolderOpen } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil as Edit2, Trash2, FolderOpen } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { PageHeader } from '@/components/ui/page-header';

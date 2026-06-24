@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Phone, Settings, Users, Building2, RefreshCw, Activity, Plus, Trash2, CreditCard as Edit2, Check, X, Wifi, WifiOff, Download, ArrowUpDown, Search, CircleAlert as AlertCircle, CircleCheck as CheckCircle2, Clock, Loader as Loader2, Stethoscope } from 'lucide-react';
+import { Phone, Settings, Users, Building2, RefreshCw, Activity, Plus, Trash2, Pencil as Edit2, Check, X, Wifi, WifiOff, Download, ArrowUpDown, Search, CircleAlert as AlertCircle, CircleCheck as CheckCircle2, Clock, Loader as Loader2, Stethoscope } from 'lucide-react';
 import * as telefoniaService from '../lib/telefoniaService';
 import type {
   TelefoniaConfig, TelefoniaOficinaConfig, TelefoniaExtension,

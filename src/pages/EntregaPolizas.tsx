@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Upload, FileText, Download, Loader as Loader2, CircleCheck as CheckCircle2, CircleAlert as AlertCircle, X, Send, Search, Clock, CloudUpload as UploadCloud, ShieldAlert, Ban, Zap, CreditCard as Edit3, Eye, RefreshCw } from 'lucide-react';
+import { Upload, FileText, Download, Loader as Loader2, CircleCheck as CheckCircle2, CircleAlert as AlertCircle, X, Send, Search, Clock, CloudUpload as UploadCloud, ShieldAlert, Ban, Zap, Pencil as Edit3, Eye, RefreshCw } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';

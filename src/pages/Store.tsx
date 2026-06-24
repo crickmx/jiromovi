@@ -63,12 +63,12 @@ export default function Store() {
     }
   };
 
-  const handleAgregarAlCarrito = async (producto: StoreProducto, cantidad: number = 1) => {
+  const handleAgregarAlCarrito = async (producto: StoreProducto, cantidad: number = 1, atributos?: Record<string, string>) => {
     if (!usuario?.id) return;
 
     try {
       trackStorePurchaseStarted(producto.titulo);
-      await agregarAlCarrito(usuario.id, producto.id, cantidad);
+      await agregarAlCarrito(usuario.id, producto.id, cantidad, atributos);
       setCantidadCarrito(prev => prev + cantidad);
       showToast(`${producto.titulo} agregado al carrito`);
     } catch (error) {
@@ -181,7 +181,6 @@ export default function Store() {
               <ProductoCard
                 key={producto.id}
                 producto={producto}
-                onAgregar={handleAgregarAlCarrito}
                 onVerDetalle={(p) => {
                   setProductoSeleccionado(p);
                   trackStoreProductViewed(p.titulo, p.id);

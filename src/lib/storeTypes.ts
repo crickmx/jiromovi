@@ -15,9 +15,12 @@ export interface StoreProducto {
   costo_base: number;
   imagen_url: string;
   activo: boolean;
+  stock: number;
+  stock_umbral: number;
   created_at: string;
   categoria?: StoreCategoria;
   costos_extras?: StoreProductoCostoExtra[];
+  atributos?: StoreProductoAtributo[];
 }
 
 export interface StoreProductoCostoExtra {
@@ -30,6 +33,24 @@ export interface StoreProductoCostoExtra {
   created_at: string;
 }
 
+export interface StoreProductoAtributo {
+  id: string;
+  producto_id: string;
+  nombre: string;
+  orden: number;
+  created_at: string;
+  opciones?: StoreProductoAtributoOpcion[];
+}
+
+export interface StoreProductoAtributoOpcion {
+  id: string;
+  atributo_id: string;
+  valor: string;
+  orden: number;
+  activo: boolean;
+  created_at: string;
+}
+
 export type TipoGasto = 'proveedor' | 'envio' | 'empaque' | 'comision' | 'logistica' | 'otro';
 
 export interface StoreCarritoItem {
@@ -37,6 +58,7 @@ export interface StoreCarritoItem {
   usuario_id: string;
   producto_id: string;
   cantidad: number;
+  atributos_seleccionados?: Record<string, string>;
   created_at: string;
   producto?: StoreProducto;
 }
@@ -49,7 +71,18 @@ export interface StoreEstatusPedido {
   created_at: string;
 }
 
-export type FormaPagoOC = 'Contado' | 'Mensual' | 'Trimestral' | 'Semestral';
+export type FormaPagoOC = 'Contado' | '2 Parcialidades' | '12 Meses';
+
+export function getFormasPagoParaMetodo(metodo: MetodoPagoOC | ''): FormaPagoOC[] {
+  switch (metodo) {
+    case 'Descuento de Comisiones':
+      return ['Contado', '2 Parcialidades'];
+    case 'Cargo a Nómina':
+      return ['Contado', '12 Meses'];
+    default:
+      return ['Contado'];
+  }
+}
 
 export type MetodoPagoOC =
   | 'Cargo a Oficina'
@@ -108,6 +141,7 @@ export interface StorePedido {
     pedido_id: string;
     cantidad: number;
     precio_unitario: number;
+    atributos_seleccionados?: Record<string, string>;
     producto?: {
       titulo?: string;
       descripcion?: string;
@@ -125,6 +159,7 @@ export interface StorePedidoDetalle {
   cantidad: number;
   precio_unitario: number;
   costo_unitario_override?: number;
+  atributos_seleccionados?: Record<string, string>;
   producto?: StoreProducto;
   gastos?: StorePedidoDetalleGasto[];
 }
@@ -198,11 +233,36 @@ export interface StorePedidoHistorial {
   };
 }
 
+export interface StorePedidoPago {
+  id: string;
+  pedido_id: string;
+  fecha: string;
+  metodo: string;
+  monto: number;
+  comentario?: string;
+  registrado_por?: string;
+  created_at: string;
+  registrado_por_usuario?: {
+    nombre: string;
+  };
+}
+
+export const METODO_PAGO_OPCIONES = [
+  'Transferencia',
+  'Efectivo',
+  'Tarjeta',
+  'Cheque',
+  'Descuento de Comisiones',
+  'Cargo a Nomina',
+  'Otro',
+] as const;
+
 export interface StorePedidoCompleto extends StorePedido {
   detalle: StorePedidoDetalle[];
   notas: StorePedidoNota[];
   historial: StorePedidoHistorial[];
   gastos?: StorePedidoGasto[];
+  pagos?: StorePedidoPago[];
 }
 
 export const TIPO_GASTO_OPTIONS: { value: string; label: string }[] = [

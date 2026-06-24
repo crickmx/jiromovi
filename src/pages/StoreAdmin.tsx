@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Store, Package, Plus, CreditCard as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign } from 'lucide-react';
+import { Store, Package, Plus, Pencil as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign, Tag, Download, Upload, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   obtenerTodosProductos,
@@ -12,10 +12,13 @@ import {
   subirImagenProducto,
   crearCategoria,
   actualizarCategoria,
-  eliminarCategoria
+  eliminarCategoria,
+  exportarProductosExcel,
+  importarProductosExcel
 } from '../lib/storeUtils';
+import type { ResultadoCargaMasiva } from '../lib/storeUtils';
 import { supabase } from '../lib/supabase';
-import type { StoreProducto, StoreCategoria, StoreProductoCostoExtra } from '../lib/storeTypes';
+import type { StoreProducto, StoreCategoria, StoreProductoCostoExtra, StoreProductoAtributo, StoreProductoAtributoOpcion } from '../lib/storeTypes';
 import { TIPO_GASTO_OPTIONS } from '../lib/storeTypes';
 import { BaseModal } from '../components/BaseModal';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
@@ -32,6 +35,12 @@ export default function StoreAdmin() {
   const [productoEditando, setProductoEditando] = useState<StoreProducto | null>(null);
   const [showCategoriaModal, setShowCategoriaModal] = useState(false);
   const [categoriaEditando, setCategoriaEditando] = useState<StoreCategoria | null>(null);
+
+  // Carga masiva
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importando, setImportando] = useState(false);
+  const [resultadoImport, setResultadoImport] = useState<ResultadoCargaMasiva | null>(null);
+  const [exportando, setExportando] = useState(false);
 
   const PLACEHOLDER_SVG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23f3f4f6'/%3E%3Cpath d='M80 120l20-30 20 30M110 120l15-20 15 20' stroke='%239ca3af' stroke-width='2' fill='none'/%3E%3Ccircle cx='90' cy='80' r='8' fill='%239ca3af'/%3E%3Crect x='60' y='60' width='80' height='80' rx='4' stroke='%239ca3af' stroke-width='2' fill='none'/%3E%3C/svg%3E";
 
@@ -98,6 +107,37 @@ export default function StoreAdmin() {
       await cargarDatos();
     } catch (error) {
       console.error('Error actualizando producto:', error);
+    }
+  };
+
+  const handleExportarExcel = async () => {
+    try {
+      setExportando(true);
+      await exportarProductosExcel(productos);
+    } catch (error) {
+      console.error('Error exportando:', error);
+      alert('Error al exportar productos');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const handleImportarExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setImportando(true);
+      setResultadoImport(null);
+      const resultado = await importarProductosExcel(file, categorias);
+      setResultadoImport(resultado);
+      await cargarDatos();
+    } catch (error: any) {
+      console.error('Error importando:', error);
+      alert('Error al procesar el archivo: ' + (error.message || ''));
+    } finally {
+      setImportando(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -183,7 +223,29 @@ export default function StoreAdmin() {
 
         {vistaActual === 'productos' ? (
           <div>
-            <div className="flex justify-end mb-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleExportarExcel}
+                  disabled={exportando}
+                  className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-lg hover:bg-emerald-700 transition-colors font-medium text-sm disabled:opacity-50"
+                >
+                  <Download className="w-4 h-4" />
+                  {exportando ? 'Exportando...' : 'Descargar Excel'}
+                </button>
+                <label className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm cursor-pointer">
+                  <Upload className="w-4 h-4" />
+                  {importando ? 'Importando...' : 'Cargar Excel'}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleImportarExcel}
+                    disabled={importando}
+                    className="hidden"
+                  />
+                </label>
+              </div>
               <button
                 onClick={handleCrearProducto}
                 className="flex items-center gap-2 bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium shadow-sm"
@@ -192,6 +254,38 @@ export default function StoreAdmin() {
                 Nuevo Producto
               </button>
             </div>
+
+            {resultadoImport && (
+              <div className="mb-6 p-4 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5">
+                <h4 className="text-sm font-semibold text-neutral-800 dark:text-white/80 mb-3 flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  Resultado de importacion
+                </h4>
+                <div className="flex items-center gap-6 text-sm mb-2">
+                  <span className="text-green-600 font-medium">{resultadoImport.creados} creados</span>
+                  <span className="text-blue-600 font-medium">{resultadoImport.actualizados} actualizados</span>
+                  {resultadoImport.errores.length > 0 && (
+                    <span className="text-red-600 font-medium">{resultadoImport.errores.length} errores</span>
+                  )}
+                </div>
+                {resultadoImport.errores.length > 0 && (
+                  <div className="mt-2 max-h-32 overflow-y-auto space-y-1">
+                    {resultadoImport.errores.map((err, idx) => (
+                      <div key={idx} className="flex items-start gap-2 text-xs text-red-600">
+                        <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                        <span>Fila {err.fila}: {err.mensaje}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button
+                  onClick={() => setResultadoImport(null)}
+                  className="mt-3 text-xs text-neutral-500 dark:text-white/50 hover:text-neutral-700 dark:hover:text-white/70 underline"
+                >
+                  Cerrar
+                </button>
+              </div>
+            )}
 
             <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 overflow-hidden">
               <div className="overflow-x-auto">
@@ -204,6 +298,7 @@ export default function StoreAdmin() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Costo</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Precio</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Margen</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Stock</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Estado</th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Acciones</th>
                     </tr>
@@ -250,6 +345,17 @@ export default function StoreAdmin() {
                           ) : (
                             <span className="text-xs text-neutral-400 dark:text-white/40">--</span>
                           )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full ${
+                            producto.stock === 0
+                              ? 'bg-red-100 text-red-800'
+                              : producto.stock <= producto.stock_umbral
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-green-100 text-green-800'
+                          }`}>
+                            {producto.stock} uds
+                          </span>
                         </td>
                         <td className="px-6 py-4">
                           <button
@@ -396,6 +502,8 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
   const [categoriaId, setCategoriaId] = useState(producto?.categoria_id || '');
   const [imagenUrl, setImagenUrl] = useState(producto?.imagen_url || '');
   const [imagenFile, setImagenFile] = useState<File | null>(null);
+  const [stock, setStock] = useState(producto?.stock?.toString() || '0');
+  const [stockUmbral, setStockUmbral] = useState(producto?.stock_umbral?.toString() || '5');
   const [activo, setActivo] = useState(producto?.activo ?? true);
   const [guardando, setGuardando] = useState(false);
 
@@ -406,8 +514,13 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
   const [newCostoDescripcion, setNewCostoDescripcion] = useState('');
   const [newCostoMonto, setNewCostoMonto] = useState('');
 
+  // Atributos
+  const [atributos, setAtributos] = useState<StoreProductoAtributo[]>([]);
+  const [newAtributoNombre, setNewAtributoNombre] = useState('');
+  const [newOpcionValues, setNewOpcionValues] = useState<Record<string, string>>({});
   useEffect(() => {
     if (producto?.id) loadCostosExtras();
+    if (producto?.id) loadAtributos();
   }, [producto?.id]);
 
   async function loadCostosExtras() {
@@ -445,6 +558,73 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
   async function removeCostoExtra(id: string) {
     await supabase.from('store_producto_costos_extras').delete().eq('id', id);
     setCostosExtras(prev => prev.filter(c => c.id !== id));
+  }
+
+  async function loadAtributos() {
+    if (!producto) return;
+    const { data } = await supabase
+      .from('store_producto_atributos')
+      .select('*, opciones:store_producto_atributo_opciones(*)')
+      .eq('producto_id', producto.id)
+      .order('orden');
+    if (data) {
+      const sorted = data.map((a: any) => ({
+        ...a,
+        opciones: (a.opciones || []).sort((x: any, y: any) => x.orden - y.orden)
+      }));
+      setAtributos(sorted as StoreProductoAtributo[]);
+    }
+  }
+
+  async function addAtributo() {
+    if (!producto?.id || !newAtributoNombre.trim()) return;
+    const { data, error } = await supabase
+      .from('store_producto_atributos')
+      .insert({
+        producto_id: producto.id,
+        nombre: newAtributoNombre.trim(),
+        orden: atributos.length
+      })
+      .select()
+      .single();
+    if (!error && data) {
+      setAtributos(prev => [...prev, { ...data, opciones: [] } as StoreProductoAtributo]);
+      setNewAtributoNombre('');
+    }
+  }
+
+  async function removeAtributo(id: string) {
+    await supabase.from('store_producto_atributos').delete().eq('id', id);
+    setAtributos(prev => prev.filter(a => a.id !== id));
+  }
+
+  async function addOpcion(atributoId: string) {
+    const valor = (newOpcionValues[atributoId] || '').trim();
+    if (!valor) return;
+    const atributo = atributos.find(a => a.id === atributoId);
+    const orden = atributo?.opciones?.length || 0;
+    const { data, error } = await supabase
+      .from('store_producto_atributo_opciones')
+      .insert({ atributo_id: atributoId, valor, orden })
+      .select()
+      .single();
+    if (!error && data) {
+      setAtributos(prev => prev.map(a =>
+        a.id === atributoId
+          ? { ...a, opciones: [...(a.opciones || []), data as StoreProductoAtributoOpcion] }
+          : a
+      ));
+      setNewOpcionValues(prev => ({ ...prev, [atributoId]: '' }));
+    }
+  }
+
+  async function removeOpcion(atributoId: string, opcionId: string) {
+    await supabase.from('store_producto_atributo_opciones').delete().eq('id', opcionId);
+    setAtributos(prev => prev.map(a =>
+      a.id === atributoId
+        ? { ...a, opciones: (a.opciones || []).filter(o => o.id !== opcionId) }
+        : a
+    ));
   }
 
   const totalCostosExtras = costosExtras.reduce((sum, c) => sum + c.monto, 0);
@@ -492,6 +672,8 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
         costo_base: parseFloat(costoBase) || 0,
         categoria_id: categoriaId,
         imagen_url: finalImagenUrl,
+        stock: parseInt(stock) || 0,
+        stock_umbral: parseInt(stockUmbral) || 5,
         activo
       };
 
@@ -574,6 +756,36 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
               onChange={(e) => setCostoBase(e.target.value)}
               className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
               placeholder="0.00"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
+              Existencia (stock)
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={stock}
+              onChange={(e) => setStock(e.target.value)}
+              className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
+              placeholder="0"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
+              Umbral pocas existencias
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={stockUmbral}
+              onChange={(e) => setStockUmbral(e.target.value)}
+              className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
+              placeholder="5"
             />
           </div>
         </div>
@@ -709,6 +921,78 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
                 <span>Ganancia/unidad:</span>
                 <span>${gananciaUnidad.toFixed(2)} ({margenPct.toFixed(1)}%)</span>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Atributos section - only for existing products */}
+        {producto && (
+          <div className="border border-neutral-200 dark:border-white/10 rounded-xl p-4 space-y-3">
+            <h4 className="text-sm font-semibold text-neutral-800 dark:text-white/80 flex items-center gap-2">
+              <Tag className="w-4 h-4" />
+              Atributos / Variantes
+            </h4>
+            <p className="text-xs text-neutral-500 dark:text-white/50">Define opciones como Talla, Color, etc. que el comprador selecciona.</p>
+
+            {atributos.length > 0 && (
+              <div className="space-y-3">
+                {atributos.map(attr => (
+                  <div key={attr.id} className="bg-neutral-50 dark:bg-white/5 rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-neutral-800 dark:text-white/80">{attr.nombre}</span>
+                      <button onClick={() => removeAtributo(attr.id)} className="text-red-400 hover:text-red-600">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(attr.opciones || []).map(opt => (
+                        <span key={opt.id} className="inline-flex items-center gap-1 bg-white dark:bg-white/10 border border-neutral-200 dark:border-white/15 rounded-full px-2.5 py-1 text-xs font-medium text-neutral-700 dark:text-white/70">
+                          {opt.valor}
+                          <button onClick={() => removeOpcion(attr.id, opt.id)} className="text-neutral-400 hover:text-red-500 ml-0.5">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newOpcionValues[attr.id] || ''}
+                        onChange={e => setNewOpcionValues(prev => ({ ...prev, [attr.id]: e.target.value }))}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addOpcion(attr.id); } }}
+                        placeholder="Nueva opcion..."
+                        className="flex-1 px-2.5 py-1.5 text-xs border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white"
+                      />
+                      <button
+                        onClick={() => addOpcion(attr.id)}
+                        disabled={!(newOpcionValues[attr.id] || '').trim()}
+                        className="px-2.5 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover disabled:opacity-40"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newAtributoNombre}
+                onChange={e => setNewAtributoNombre(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addAtributo(); } }}
+                placeholder="Nuevo atributo (ej: Talla, Color...)"
+                className="flex-1 px-3 py-2 text-sm border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white"
+              />
+              <button
+                onClick={addAtributo}
+                disabled={!newAtributoNombre.trim()}
+                className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-40 flex items-center gap-1"
+              >
+                <Plus className="w-4 h-4" />
+                Agregar
+              </button>
             </div>
           </div>
         )}

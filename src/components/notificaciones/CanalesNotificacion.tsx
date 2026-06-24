@@ -1,9 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Plus, Mail, MessageCircle, CreditCard as Edit2, Trash2, CheckCircle,
-  XCircle, Star, StarOff, Send, Eye, EyeOff, ChevronDown, ChevronUp,
-  Loader2, AlertTriangle, Code, RotateCcw, Save, Layout,
-} from 'lucide-react';
+import { Plus, Mail, MessageCircle, Pencil as Edit2, Trash2, CircleCheck as CheckCircle, Circle as XCircle, Star, StarOff, Send, Eye, EyeOff, ChevronDown, ChevronUp, Loader as Loader2, TriangleAlert as AlertTriangle, Code, RotateCcw, Save, LayoutGrid as Layout } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 // ─── Types ────────────────────────────────────────────────────────────────────

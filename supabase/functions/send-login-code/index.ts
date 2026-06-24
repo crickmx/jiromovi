@@ -121,13 +121,37 @@ Deno.serve(async (req: Request) => {
     let userName: string | null = null;
 
     if (platform === 'movi') {
-      const { data: usuario } = await supabase
-        .from('usuarios')
-        .select('id, nombre, email_laboral, celular_laboral')
-        .eq('email_laboral', identifier)
-        .eq('estado', 'activo')
-        .is('deleted_at', null)
-        .maybeSingle();
+      // Try by email first
+      let usuario: any = null;
+      const isPhone = /^\d+$/.test(identifier!.replace(/[\s\-+()]/g, '')) && identifier!.replace(/\D/g, '').length >= 10;
+
+      if (!isPhone) {
+        const { data } = await supabase
+          .from('usuarios')
+          .select('id, nombre, email_laboral, celular_laboral')
+          .eq('email_laboral', identifier)
+          .eq('estado', 'activo')
+          .is('deleted_at', null)
+          .maybeSingle();
+        usuario = data;
+      } else {
+        // Resolve by phone number
+        const digits = identifier!.replace(/\D/g, '');
+        let phone10 = digits;
+        if (digits.length === 12 && digits.startsWith('52')) phone10 = digits.slice(2);
+        else if (digits.length === 13 && digits.startsWith('521')) phone10 = digits.slice(3);
+        else if (digits.length > 10) phone10 = digits.slice(-10);
+
+        const { data } = await supabase
+          .from('usuarios')
+          .select('id, nombre, email_laboral, celular_laboral')
+          .or(`celular_laboral.ilike.%${phone10}%,celular_personal.ilike.%${phone10}%`)
+          .eq('estado', 'activo')
+          .is('deleted_at', null)
+          .limit(1)
+          .maybeSingle();
+        usuario = data;
+      }
 
       if (!usuario) {
         return new Response(JSON.stringify({ success: true }), {

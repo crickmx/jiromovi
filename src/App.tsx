@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
+import { HelmetProvider } from 'react-helmet-async';
 import './index.css';
 import { MoviAuthProvider } from './contexts/MoviAuthContext';
 import { ImpersonationProvider } from './contexts/ImpersonationContext';
@@ -30,11 +31,15 @@ const ChavaAgenteLanding = lazy(() => import('./chava-agente/pages/ChavaAgenteLa
 // ── Public advisor page (lazy, no auth) ───────────────────────────────────
 const PaginaPublicaAsesor = lazy(() => import('./pages/PaginaPublicaAsesor'));
 
+// ── Seguros Education (lazy) ──────────────────────────────────────────────
+const SegurosEducationLanding = lazy(() => import('./seguros-education/SegurosEducationLanding').then(m => ({ default: m.default || m.SegurosEducationLanding })));
+
 // ── Domain detection ──────────────────────────────────────────────────────
 const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
 const isAgenteSite    = HOST === 'agentedeseguros.website' || HOST.endsWith('.agentedeseguros.website');
 const isChavaSite     = HOST === 'agentedeseguros.ai'      || HOST.endsWith('.agentedeseguros.ai');
 const isSeguwalletSite = HOST === 'seguwallet.mx' || HOST.endsWith('.seguwallet.mx');
+const isEducationSite  = HOST === 'seguros.education' || HOST.endsWith('.seguros.education');
 // Everything else (app.movi.digital, localhost, Bolt preview, etc.) is MOVI
 
 // ── Redirect to grupojiro.com for bare agentedeseguros.website root ────────
@@ -140,6 +145,24 @@ function SeguwalletApp() {
   );
 }
 
+function SegurosEducationApp() {
+  return (
+    <HelmetProvider>
+      <BrowserRouter>
+        <ImpersonationProvider>
+          <MoviAuthProvider>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/*" element={<SegurosEducationLanding />} />
+              </Routes>
+            </Suspense>
+          </MoviAuthProvider>
+        </ImpersonationProvider>
+      </BrowserRouter>
+    </HelmetProvider>
+  );
+}
+
 function MoviApp() {
   return (
     <BrowserRouter>
@@ -225,6 +248,7 @@ function App() {
   if (isAgenteSite) return <AgenteWebsiteApp />;
   if (isChavaSite)  return <ChavaAIApp />;
   if (isSeguwalletSite) return <SeguwalletApp />;
+  if (isEducationSite)  return <SegurosEducationApp />;
   return <MoviApp />;
 }
 

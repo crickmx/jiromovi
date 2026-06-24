@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Brain, FileText, Folder, ChartBar as BarChart3, Settings, Zap, Upload, Plus, Trash2, RefreshCw, Search, Eye, Clock, CircleCheck as CheckCircle2, CircleAlert as AlertCircle, Loader as Loader2, Database, MessageSquare, TrendingUp, Users, BookOpen, ChevronRight, X, CreditCard as Edit2 } from 'lucide-react';
+import { Brain, FileText, Folder, ChartBar as BarChart3, Settings, Zap, Upload, Plus, Trash2, RefreshCw, Search, Eye, Clock, CircleCheck as CheckCircle2, CircleAlert as AlertCircle, Loader as Loader2, Database, MessageSquare, TrendingUp, Users, BookOpen, ChevronRight, X, Pencil as Edit2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { cn } from '@/lib/utils';
 import {

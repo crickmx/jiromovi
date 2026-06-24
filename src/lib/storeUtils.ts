@@ -8,7 +8,8 @@ import type {
   StorePedidoDetalle,
   StorePedidoNota,
   StorePedidoHistorial,
-  StorePedidoCompleto
+  StorePedidoCompleto,
+  StorePedidoPago
 } from './storeTypes';
 
 // ============================================
@@ -77,7 +78,8 @@ export async function obtenerProductos(categoriaId?: string) {
     .from('store_productos')
     .select(`
       *,
-      categoria:store_categorias(*)
+      categoria:store_categorias(*),
+      atributos:store_producto_atributos(*, opciones:store_producto_atributo_opciones(*))
     `)
     .eq('activo', true)
     .order('created_at', { ascending: false });
@@ -214,12 +216,14 @@ export async function obtenerCarrito(usuarioId: string) {
   return data as StoreCarritoItem[];
 }
 
-export async function agregarAlCarrito(usuarioId: string, productoId: string, cantidad: number) {
+export async function agregarAlCarrito(usuarioId: string, productoId: string, cantidad: number, atributosSeleccionados?: Record<string, string>) {
+  const atributos = atributosSeleccionados || {};
   const { data: existente } = await supabase
     .from('store_carrito')
     .select('*')
     .eq('usuario_id', usuarioId)
     .eq('producto_id', productoId)
+    .eq('atributos_seleccionados', JSON.stringify(atributos))
     .maybeSingle();
 
   if (existente) {
@@ -238,7 +242,8 @@ export async function agregarAlCarrito(usuarioId: string, productoId: string, ca
       .insert({
         usuario_id: usuarioId,
         producto_id: productoId,
-        cantidad
+        cantidad,
+        atributos_seleccionados: atributos
       })
       .select()
       .single();
@@ -694,6 +699,9 @@ export async function crearPedido(
 
   if (!estatusId) throw new Error('No se encontró el estatus "Pendiente"');
 
+  const { data: folioData, error: folioError } = await supabase.rpc('generar_folio_oc');
+  if (folioError) throw folioError;
+
   const { data: pedido, error: pedidoError } = await supabase
     .from('store_pedidos')
     .insert({
@@ -701,7 +709,8 @@ export async function crearPedido(
       notas_usuario: notasUsuario,
       direccion_entrega: direccionEntrega,
       estatus_id: estatusId,
-      responsable_pago_id: responsablePagoId || null
+      responsable_pago_id: responsablePagoId || null,
+      folio_oc: folioData
     })
     .select()
     .single();
@@ -712,7 +721,8 @@ export async function crearPedido(
     pedido_id: pedido.id,
     producto_id: item.producto_id,
     cantidad: item.cantidad,
-    precio_unitario: item.producto!.precio
+    precio_unitario: item.producto!.precio,
+    atributos_seleccionados: item.atributos_seleccionados || {}
   }));
 
   const { error: detalleError } = await supabase
@@ -720,6 +730,14 @@ export async function crearPedido(
     .insert(detalle);
 
   if (detalleError) throw detalleError;
+
+  // Descontar stock de cada producto
+  for (const item of itemsCarrito) {
+    await supabase.rpc('decrementar_stock', {
+      p_producto_id: item.producto_id,
+      p_cantidad: item.cantidad
+    });
+  }
 
   const { error: historialError } = await supabase
     .from('store_pedidos_historial')
@@ -818,4 +836,219 @@ export async function eliminarPedido(pedidoId: string) {
     .eq('id', pedidoId);
 
   if (error) throw error;
+}
+
+// ============================================
+// PAGOS DE PEDIDO
+// ============================================
+
+export async function obtenerPagosPedido(pedidoId: string) {
+  const { data, error } = await supabase
+    .from('store_pedido_pagos')
+    .select('*, registrado_por_usuario:usuarios!registrado_por(nombre)')
+    .eq('pedido_id', pedidoId)
+    .order('fecha', { ascending: false });
+
+  if (error) throw error;
+  return data as StorePedidoPago[];
+}
+
+export async function registrarPago(pago: {
+  pedido_id: string;
+  fecha: string;
+  metodo: string;
+  monto: number;
+  comentario?: string;
+}) {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  const { data, error } = await supabase
+    .from('store_pedido_pagos')
+    .insert({
+      ...pago,
+      registrado_por: userId
+    })
+    .select('*, registrado_por_usuario:usuarios!registrado_por(nombre)')
+    .single();
+
+  if (error) throw error;
+  return data as StorePedidoPago;
+}
+
+export async function eliminarPago(pagoId: string) {
+  const { error } = await supabase
+    .from('store_pedido_pagos')
+    .delete()
+    .eq('id', pagoId);
+
+  if (error) throw error;
+}
+
+// ============================================
+// CARGA MASIVA - EXCEL
+// ============================================
+
+export interface ProductoExcelRow {
+  id?: string;
+  titulo: string;
+  descripcion: string;
+  precio: number;
+  costo_base: number;
+  stock: number;
+  stock_umbral: number;
+  categoria_nombre: string;
+  activo: boolean;
+  imagen_url?: string;
+}
+
+export interface ResultadoCargaMasiva {
+  creados: number;
+  actualizados: number;
+  errores: { fila: number; mensaje: string }[];
+}
+
+export async function exportarProductosExcel(productos: StoreProducto[]): Promise<void> {
+  const XLSX = await import('xlsx');
+
+  const rows = productos.map(p => ({
+    id: p.id,
+    titulo: p.titulo,
+    descripcion: p.descripcion,
+    precio: p.precio,
+    costo_base: p.costo_base,
+    stock: p.stock,
+    stock_umbral: p.stock_umbral,
+    categoria_nombre: p.categoria?.nombre || '',
+    activo: p.activo ? 'Si' : 'No',
+    imagen_url: p.imagen_url || '',
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+
+  const colWidths = [
+    { wch: 38 }, // id
+    { wch: 30 }, // titulo
+    { wch: 40 }, // descripcion
+    { wch: 10 }, // precio
+    { wch: 12 }, // costo_base
+    { wch: 8 },  // stock
+    { wch: 14 }, // stock_umbral
+    { wch: 20 }, // categoria_nombre
+    { wch: 8 },  // activo
+    { wch: 40 }, // imagen_url
+  ];
+  ws['!cols'] = colWidths;
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Productos');
+  XLSX.writeFile(wb, `productos_store_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+export async function importarProductosExcel(
+  file: File,
+  categoriasExistentes: StoreCategoria[]
+): Promise<ResultadoCargaMasiva> {
+  const XLSX = await import('xlsx');
+  const buffer = await file.arrayBuffer();
+  const wb = XLSX.read(buffer, { type: 'array' });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json<Record<string, any>>(ws);
+
+  const resultado: ResultadoCargaMasiva = { creados: 0, actualizados: 0, errores: [] };
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const fila = i + 2; // header is row 1
+
+    const titulo = String(row.titulo || '').trim();
+    const descripcion = String(row.descripcion || '').trim();
+    const precio = parseFloat(row.precio);
+    const costoBase = parseFloat(row.costo_base) || 0;
+    const stock = parseInt(row.stock) || 0;
+    const stockUmbral = parseInt(row.stock_umbral) || 5;
+    const categoriaNombre = String(row.categoria_nombre || '').trim();
+    const activoRaw = String(row.activo || 'Si').trim().toLowerCase();
+    const activo = activoRaw === 'si' || activoRaw === 'true' || activoRaw === '1';
+    const imagenUrl = String(row.imagen_url || '').trim();
+    const id = row.id ? String(row.id).trim() : null;
+
+    if (!titulo) {
+      resultado.errores.push({ fila, mensaje: 'Titulo es requerido' });
+      continue;
+    }
+    if (isNaN(precio) || precio <= 0) {
+      resultado.errores.push({ fila, mensaje: 'Precio debe ser mayor a 0' });
+      continue;
+    }
+
+    let categoriaId: string | null = null;
+    if (categoriaNombre) {
+      const catExistente = categoriasExistentes.find(
+        c => c.nombre.toLowerCase() === categoriaNombre.toLowerCase()
+      );
+      if (catExistente) {
+        categoriaId = catExistente.id;
+      } else {
+        resultado.errores.push({ fila, mensaje: `Categoria "${categoriaNombre}" no existe` });
+        continue;
+      }
+    }
+
+    if (!categoriaId) {
+      resultado.errores.push({ fila, mensaje: 'Categoria es requerida' });
+      continue;
+    }
+
+    const datos: Record<string, any> = {
+      titulo,
+      descripcion,
+      precio,
+      costo_base: costoBase,
+      stock,
+      stock_umbral: stockUmbral,
+      categoria_id: categoriaId,
+      activo,
+    };
+    if (imagenUrl) datos.imagen_url = imagenUrl;
+
+    try {
+      if (id) {
+        const { error } = await supabase
+          .from('store_productos')
+          .update(datos)
+          .eq('id', id);
+
+        if (error) {
+          if (error.code === 'PGRST116' || error.message.includes('0 rows')) {
+            datos.imagen_url = imagenUrl || '';
+            const { error: insertError } = await supabase
+              .from('store_productos')
+              .insert(datos);
+            if (insertError) {
+              resultado.errores.push({ fila, mensaje: insertError.message });
+            } else {
+              resultado.creados++;
+            }
+          } else {
+            resultado.errores.push({ fila, mensaje: error.message });
+          }
+        } else {
+          resultado.actualizados++;
+        }
+      } else {
+        datos.imagen_url = imagenUrl || '';
+        const { error } = await supabase
+          .from('store_productos')
+          .insert(datos);
+        if (error) {
+          resultado.errores.push({ fila, mensaje: error.message });
+        } else {
+          resultado.creados++;
+        }
+      }
+    } catch (err: any) {
+      resultado.errores.push({ fila, mensaje: err.message || 'Error desconocido' });
+    }
+  }
+
+  return resultado;
 }
