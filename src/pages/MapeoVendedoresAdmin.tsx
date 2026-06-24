@@ -49,7 +49,7 @@ export default function MapeoVendedoresAdmin() {
   const [loadingFuzzy, setLoadingFuzzy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [filterSicas, setFilterSicas] = useState<'all' | 'con' | 'sin'>('all');
+  const [filterSicas, setFilterSicas] = useState<'all' | 'vinculados' | 'solo_sicas' | 'solo_mapeo' | 'sin_vincular'>('all');
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [saving, setSaving] = useState(false);
@@ -261,8 +261,10 @@ export default function MapeoVendedoresAdmin() {
 
     const matchesSicas =
       filterSicas === 'all' ||
-      (filterSicas === 'con' && u.nombre_sicas) ||
-      (filterSicas === 'sin' && !u.nombre_sicas);
+      (filterSicas === 'vinculados' && (u.nombre_sicas || u.mappings_count > 0)) ||
+      (filterSicas === 'solo_sicas' && u.nombre_sicas && u.mappings_count === 0) ||
+      (filterSicas === 'solo_mapeo' && !u.nombre_sicas && u.mappings_count > 0) ||
+      (filterSicas === 'sin_vincular' && !u.nombre_sicas && u.mappings_count === 0);
 
     return matchesSearch && matchesSicas;
   });
@@ -282,9 +284,11 @@ export default function MapeoVendedoresAdmin() {
 
   const stats = {
     total: usuarios.length,
+    vinculados: usuarios.filter(u => u.nombre_sicas || u.mappings_count > 0).length,
+    sinVincular: usuarios.filter(u => !u.nombre_sicas && u.mappings_count === 0).length,
     conSicas: usuarios.filter(u => u.nombre_sicas).length,
-    sinSicas: usuarios.filter(u => !u.nombre_sicas).length,
     conMapeos: usuarios.filter(u => u.mappings_count > 0).length,
+    soloMapeo: usuarios.filter(u => !u.nombre_sicas && u.mappings_count > 0).length,
   };
 
   const tabs: { id: TabId; label: string; icon: typeof Users; count?: number }[] = [
@@ -314,16 +318,17 @@ export default function MapeoVendedoresAdmin() {
         <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/10 p-4 rounded-xl border border-green-200 dark:border-green-800">
           <div className="flex items-center gap-1.5">
             <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-            <p className="text-xs text-green-700 dark:text-green-400 font-medium">Con SICAS</p>
+            <p className="text-xs text-green-700 dark:text-green-400 font-medium">Vinculados</p>
           </div>
-          <p className="text-2xl font-bold text-green-900 dark:text-green-300 mt-1">{stats.conSicas}</p>
+          <p className="text-2xl font-bold text-green-900 dark:text-green-300 mt-1">{stats.vinculados}</p>
+          <p className="text-[10px] text-green-600/70 dark:text-green-400/50 mt-0.5">{stats.conSicas} SICAS + {stats.soloMapeo} solo mapeo</p>
         </div>
         <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-900/10 p-4 rounded-xl border border-amber-200 dark:border-amber-800">
           <div className="flex items-center gap-1.5">
             <XCircle className="h-3.5 w-3.5 text-amber-600" />
-            <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Sin SICAS</p>
+            <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Sin Vincular</p>
           </div>
-          <p className="text-2xl font-bold text-amber-900 dark:text-amber-300 mt-1">{stats.sinSicas}</p>
+          <p className="text-2xl font-bold text-amber-900 dark:text-amber-300 mt-1">{stats.sinVincular}</p>
         </div>
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/10 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
           <div className="flex items-center gap-1.5">
@@ -451,8 +456,10 @@ function UsuariosTab({
             className="px-4 py-2.5 border border-neutral-200 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white text-sm"
           >
             <option value="all">Todos los usuarios</option>
-            <option value="con">Con SICAS asignado</option>
-            <option value="sin">Sin SICAS</option>
+            <option value="vinculados">Vinculados (SICAS o mapeo)</option>
+            <option value="sin_vincular">Sin vincular</option>
+            <option value="solo_sicas">Solo SICAS (sin mapeo)</option>
+            <option value="solo_mapeo">Solo mapeo (sin SICAS)</option>
           </select>
         </div>
       </div>
@@ -548,6 +555,11 @@ function UsuariosTab({
                               <span className="text-sm font-medium text-neutral-900 dark:text-white">{u.nombre_sicas}</span>
                               <span className="text-xs text-neutral-400 opacity-0 group-hover:opacity-100 transition">(editar)</span>
                             </span>
+                          ) : u.mappings_count > 0 ? (
+                            <span className="flex items-center gap-2 text-blue-500 hover:text-blue-700 transition">
+                              <div className="h-2 w-2 bg-blue-400 rounded-full flex-shrink-0"></div>
+                              <span className="text-sm italic">Tiene mapeo, asignar SICAS...</span>
+                            </span>
                           ) : (
                             <span className="flex items-center gap-2 text-neutral-400 hover:text-blue-600 transition">
                               <div className="h-2 w-2 bg-neutral-300 rounded-full flex-shrink-0"></div>
@@ -576,7 +588,7 @@ function UsuariosTab({
                 Mostrando {usuarios.length} de {allUsuarios.length} usuarios
               </span>
               <span className="text-xs text-neutral-400">
-                {stats.conSicas} con SICAS | {stats.conMapeos} con mapeos
+                {stats.vinculados} vinculados ({stats.conSicas} SICAS, {stats.conMapeos} mapeos)
               </span>
             </div>
           </div>
