@@ -51,7 +51,7 @@ interface TramiteItem {
   ticket_asignaciones: Array<{
     ejecutivo: { nombre_completo: string } | null;
   }>;
-  ticket_archivos: Array<{ id: string }>;
+  ticket_archivos: Array<{ id: string; nombre: string }>;
 }
 
 interface TicketTipoDB {
@@ -248,7 +248,7 @@ export function Tramites() {
           responsable:assigned_to_user_id(nombre_completo),
           estatus:estatus_id(*),
           ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo)),
-          ticket_archivos(id)
+          ticket_archivos(id, nombre)
         `)
         .order('fecha_creacion', { ascending: false });
 
@@ -302,7 +302,7 @@ export function Tramites() {
           responsable:assigned_to_user_id(nombre_completo),
           estatus:estatus_id(*),
           ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo)),
-          ticket_archivos(id)
+          ticket_archivos(id, nombre)
         `)
         .not('eliminado_at', 'is', null)
         .order('eliminado_at', { ascending: false });
@@ -916,6 +916,11 @@ export function Tramites() {
               const tipoDb = tiposDb.get(tramite.tipo_tramite);
               const dbColor = tipoDb?.color;
               const fbc = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
+              const preview = tramite.instrucciones?.trim()
+                ? tramite.instrucciones
+                : tramite.ticket_archivos.length > 0
+                  ? `Se adjuntó un archivo: ${tramite.ticket_archivos[tramite.ticket_archivos.length - 1].nombre}`
+                  : null;
               return (
                 <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex">
                   <button onClick={(e) => handleMarkAsRead(e, tramite.id)} className="absolute -top-1.5 -right-1.5 z-10" title="Marcar como leído">
@@ -929,9 +934,19 @@ export function Tramites() {
                     <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
                     <p className={`text-[10px] font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
                     {tramite.estatus && <span className="text-[10px] font-bold uppercase" style={{ color: tramite.estatus.color }}>{tramite.estatus.nombre}</span>}
-                    <div className="flex items-center justify-between mt-1">
-                      <span className={`text-[10px] font-extrabold uppercase tracking-widest ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tramite.prioridad === 'Alta' ? 'bg-red-100 text-red-600' : tramite.prioridad === 'Media' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>{tramite.prioridad}</span>
+                    {preview && (
+                      <p className="text-[10px] text-neutral-500 dark:text-white/40 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
+                    )}
+                    <div className="flex items-center justify-between mt-1 gap-1">
+                      <span className={`text-[10px] font-extrabold uppercase tracking-widest truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tramite.prioridad === 'Alta' ? 'bg-red-100 text-red-600' : tramite.prioridad === 'Media' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>{tramite.prioridad}</span>
+                        {isAdmin && (
+                          <button onClick={(e) => handleSoftDelete(e, tramite.id)} className="p-0.5 rounded text-neutral-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Mover a papelera">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -954,6 +969,11 @@ export function Tramites() {
               const tipoDb = tiposDb.get(tramite.tipo_tramite);
               const dbColor = tipoDb?.color;
               const fbc = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
+              const preview = tramite.instrucciones?.trim()
+                ? tramite.instrucciones
+                : tramite.ticket_archivos.length > 0
+                  ? `Se adjuntó un archivo: ${tramite.ticket_archivos[tramite.ticket_archivos.length - 1].nombre}`
+                  : null;
               return (
                 <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex">
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
@@ -961,9 +981,19 @@ export function Tramites() {
                     <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
                     <p className={`text-[10px] font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
                     {tramite.estatus && <span className="text-[10px] font-bold uppercase" style={{ color: tramite.estatus.color }}>{tramite.estatus.nombre}</span>}
-                    <div className="flex items-center justify-between mt-1">
-                      <span className={`text-[10px] font-extrabold uppercase tracking-widest ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tramite.prioridad === 'Alta' ? 'bg-red-100 text-red-600' : tramite.prioridad === 'Media' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>{tramite.prioridad}</span>
+                    {preview && (
+                      <p className="text-[10px] text-neutral-500 dark:text-white/40 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
+                    )}
+                    <div className="flex items-center justify-between mt-1 gap-1">
+                      <span className={`text-[10px] font-extrabold uppercase tracking-widest truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tramite.prioridad === 'Alta' ? 'bg-red-100 text-red-600' : tramite.prioridad === 'Media' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>{tramite.prioridad}</span>
+                        {isAdmin && (
+                          <button onClick={(e) => handleSoftDelete(e, tramite.id)} className="p-0.5 rounded text-neutral-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Mover a papelera">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -987,6 +1017,11 @@ export function Tramites() {
               const tipoDb = tiposDb.get(tramite.tipo_tramite);
               const dbColor = tipoDb?.color;
               const fbc = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
+              const preview = tramite.instrucciones?.trim()
+                ? tramite.instrucciones
+                : tramite.ticket_archivos.length > 0
+                  ? `Se adjuntó un archivo: ${tramite.ticket_archivos[tramite.ticket_archivos.length - 1].nombre}`
+                  : null;
               return (
                 <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex opacity-75">
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
@@ -994,9 +1029,12 @@ export function Tramites() {
                     <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
                     <p className={`text-[10px] font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
                     {tramite.estatus && <span className="text-[10px] font-bold uppercase" style={{ color: tramite.estatus.color }}>{tramite.estatus.nombre}</span>}
+                    {preview && (
+                      <p className="text-[10px] text-neutral-500 dark:text-white/40 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
+                    )}
                     <div className="flex items-center justify-between mt-1">
-                      <span className={`text-[10px] font-extrabold uppercase tracking-widest ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
-                      <span className="text-[10px] text-neutral-400 dark:text-white/30">{new Date(tramite.cerrado_en!).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit' })}</span>
+                      <span className={`text-[10px] font-extrabold uppercase tracking-widest truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
+                      <span className="text-[10px] text-neutral-400 dark:text-white/30 shrink-0">{new Date(tramite.cerrado_en!).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit' })}</span>
                     </div>
                   </div>
                 </div>
