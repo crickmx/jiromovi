@@ -26,7 +26,7 @@ interface TicketTipo {
   orden: number;
 }
 
-type CampoTipo = 'texto_corto' | 'texto_largo' | 'numerico' | 'adjunto' | 'estatus' | 'fecha' | 'booleano';
+type CampoTipo = 'texto_corto' | 'texto_largo' | 'numerico' | 'adjunto' | 'estatus' | 'fecha' | 'booleano' | 'dropdown' | 'seleccion_multiple';
 
 interface TipoCampo {
   id: string;
@@ -79,8 +79,10 @@ const CAMPO_TIPOS: { tipo: CampoTipo; label: string; icon: string; desc: string 
   { tipo: 'numerico',    label: 'Numérico',     icon: '#',  desc: 'Número entero o decimal' },
   { tipo: 'fecha',       label: 'Fecha',        icon: 'D',  desc: 'Selector de fecha' },
   { tipo: 'adjunto',     label: 'Adjunto',      icon: '@',  desc: 'Archivos con filtro de tipo' },
-  { tipo: 'estatus',     label: 'Estatus',      icon: '=',  desc: 'Lista de opciones personalizada' },
-  { tipo: 'booleano',    label: 'Casilla',      icon: 'v',  desc: 'Sí / No' },
+  { tipo: 'estatus',            label: 'Estatus',            icon: '=',  desc: 'Lista de opciones personalizada' },
+  { tipo: 'booleano',           label: 'Casilla',            icon: 'v',  desc: 'Sí / No' },
+  { tipo: 'dropdown',           label: 'Dropdown',           icon: '▾',  desc: 'Selección única de lista' },
+  { tipo: 'seleccion_multiple', label: 'Selección múltiple', icon: '☑',  desc: 'Varias opciones de lista' },
 ];
 
 const MIME_OPTIONS = [
@@ -882,7 +884,7 @@ export function GestionCatalogosRegistro() {
                       )}
 
                       {/* estatus */}
-                      {editingCampo.tipo === 'estatus' && (
+                      {(editingCampo.tipo === 'estatus' || editingCampo.tipo === 'dropdown' || editingCampo.tipo === 'seleccion_multiple') && (
                         <div>
                           <label className="block text-xs font-medium text-neutral-600 mb-1.5">Opciones</label>
                           {(editCampoConfig.opciones || []).map((opt: { label: string; slug: string }, i: number) => (

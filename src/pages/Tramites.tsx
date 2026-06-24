@@ -59,7 +59,6 @@ interface TicketTipoDB {
   label: string;
   area: string;
   color: string;
-  assignment_mode: string;
 }
 
 const TRAMITE_OPTIONS_FOR_FILTER = TIPO_TRAMITE_OPTIONS.filter(
@@ -214,7 +213,7 @@ export function Tramites() {
   const [tiposDb, setTiposDb] = useState<Map<string, TicketTipoDB>>(new Map());
 
   useEffect(() => {
-    supabase.from('ticket_tipos').select('value, label, area, color, assignment_mode').eq('activo', true).then(({ data }) => {
+    supabase.from('ticket_tipos').select('value, label, area, color').eq('activo', true).then(({ data }) => {
       if (data) {
         const map = new Map<string, TicketTipoDB>();
         for (const t of data) map.set(t.value, t);
@@ -1413,7 +1412,7 @@ export function Tramites() {
                         )}
                       </div>
                       {(() => {
-                        const isPool = tiposDb.get(tramite.tipo_tramite)?.assignment_mode === 'pool';
+                        const isPool = false;
                         const isUnassigned = tramite.assigned_to_user_id === null;
                         const canTake = myOperacionesRole === 'ejecutivo' || myOperacionesRole === 'miembro' || myOperacionesRole === 'lider';
                         const canAssign = myOperacionesRole === 'lider' || isAdmin;
