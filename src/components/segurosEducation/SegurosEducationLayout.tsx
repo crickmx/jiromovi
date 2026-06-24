@@ -6,14 +6,11 @@ export const NAV_ITEMS = [
   { label: 'Cédula A', path: '/seguros-education/cedula-a', icon: GraduationCap },
   { label: 'On Demand', path: '/seguros-education/on-demand', icon: Video },
   { label: 'Aula Virtual', path: '/seguros-education/aula-virtual', icon: Calendar },
-  { label: 'Manuales', path: '/seguros-education/manuales', icon: BookOpen },
+  { label: 'Manuales', path: '/manuales', icon: BookOpen },
   { label: 'Analytics', path: '/seguros-education/analytics', icon: BarChart3, adminOnly: true },
 ];
 
-// Also match /manuales as Manuales tab
-export const ALIAS_MAP: Record<string, string> = {
-  '/manuales': '/seguros-education/manuales',
-};
+export const ALIAS_MAP: Record<string, string> = {};
 
 interface Props {
   children: ReactNode;

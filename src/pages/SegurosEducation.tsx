@@ -69,7 +69,7 @@ const QUICK_ACCESS = [
   {
     label: 'Manuales',
     desc: 'Guías y documentación',
-    path: '/seguros-education/manuales',
+    path: '/manuales',
     icon: BookOpen,
     color: 'from-violet-500 to-purple-500',
     badge: 'Referencia',
