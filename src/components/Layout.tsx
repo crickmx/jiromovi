@@ -10,6 +10,7 @@ import { useImpersonation } from '../contexts/ImpersonationContext';
 import { resolveWorkspace } from '../lib/workspaceConfig';
 import type { UserRole } from '../lib/workspaceConfig';
 import { useModuleVisibility } from '../lib/useModuleVisibility';
+import { useTramitesAttentionCount } from '../hooks/useTramitesAttentionCount';
 
 // Routes that need full-height layout (no padding, overflow-hidden)
 const FULL_HEIGHT_PREFIXES = [
@@ -38,6 +39,10 @@ export function Layout({ children }: LayoutProps) {
 
   const isFullHeight = FULL_HEIGHT_PREFIXES.some(prefix => location.pathname.startsWith(prefix));
 
+  const tramitesAttentionCount = useTramitesAttentionCount(usuario?.id);
+  const badgeCounts = tramitesAttentionCount > 0 ? { '/tramites': tramitesAttentionCount } : {};
+  const workspaceBadges = tramitesAttentionCount > 0 ? { comercial: tramitesAttentionCount } : {};
+
   // Auto-close drawer on route change
   useEffect(() => {
     setMobileDrawerOpen(false);
@@ -62,6 +67,7 @@ export function Layout({ children }: LayoutProps) {
           onSignOut={handleSignOut}
           isModuleVisible={isModuleVisible}
           oficinaId={oficinaId}
+          workspaceBadges={workspaceBadges}
         />
       </div>
 
@@ -76,6 +82,7 @@ export function Layout({ children }: LayoutProps) {
             onToggleCollapse={() => setSecondaryCollapsed(c => !c)}
             isModuleVisible={isModuleVisible}
             oficinaId={oficinaId}
+            badgeCounts={badgeCounts}
           />
         </div>
       )}
