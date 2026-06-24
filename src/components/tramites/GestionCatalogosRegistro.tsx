@@ -1,7 +1,12 @@
-import { useState, useEffect } from 'react';
-import { Plus, Trash2, Save, Shield, Tag, Pencil, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import {
+  Plus, Trash2, Save, Shield, Tag, Pencil, X,
+  ChevronLeft, GripVertical, Settings, Users,
+} from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+
+// ── Types ─────────────────────────────────────────────────────────────────
 
 interface InsuranceType {
   id: string;
@@ -19,22 +24,46 @@ interface TicketTipo {
   activo: boolean;
   is_custom: boolean;
   orden: number;
-  assignment_mode: string;
 }
 
-const ASSIGNMENT_MODE_LABELS: Record<string, string> = {
-  direct: 'Asignación directa',
-  pool:   'Cola Mesa de Control (sin asignar)',
-  auto:   'Auto-asignar desde oficina',
-};
+type CampoTipo = 'texto_corto' | 'texto_largo' | 'numerico' | 'adjunto' | 'estatus' | 'fecha' | 'booleano';
 
-const ASSIGNMENT_MODE_DESCRIPTIONS: Record<string, string> = {
-  direct: 'El creador elige explícitamente el responsable al abrir el trámite.',
-  pool:   'El trámite queda sin responsable. Mesa de Control o los ejecutivos se autoasignan.',
-  auto:   'Se asigna automáticamente al responsable configurado en la oficina del agente.',
-};
+interface TipoCampo {
+  id: string;
+  tramite_tipo_id: string;
+  key: string;
+  label: string;
+  tipo: CampoTipo;
+  requerido: boolean;
+  ayuda: string | null;
+  display_order: number;
+  config: Record<string, any>;
+  activo: boolean;
+}
+
+interface EquipoMiembro {
+  usuario_id: string;
+  nombre_completo: string;
+}
+
+interface Equipo {
+  id: string;
+  nombre: string;
+  miembros: EquipoMiembro[];
+}
+
+interface Permiso {
+  id: string;
+  user_id: string;
+  team_id: string;
+  tramite_tipo_id: string;
+  permiso: 'crear_tramite' | 'editar_tramite';
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────
 
 const AREAS = ['Comercial', 'Operaciones', 'Mercadotecnia', 'Administración', 'Otro'] as const;
+type Area = typeof AREAS[number];
 
 const COLOR_SWATCHES = [
   '#0369a1', '#1d4ed8', '#0891b2', '#6366f1',
@@ -43,6 +72,27 @@ const COLOR_SWATCHES = [
   '#65a30d', '#16a34a', '#059669', '#374151',
   '#64748b', '#78716c',
 ];
+
+const CAMPO_TIPOS: { tipo: CampoTipo; label: string; icon: string; desc: string }[] = [
+  { tipo: 'texto_corto', label: 'Texto corto',  icon: 'Aa', desc: 'Una línea de texto' },
+  { tipo: 'texto_largo', label: 'Texto largo',  icon: '¶',  desc: 'Párrafo u observaciones' },
+  { tipo: 'numerico',    label: 'Numérico',     icon: '#',  desc: 'Número entero o decimal' },
+  { tipo: 'fecha',       label: 'Fecha',        icon: 'D',  desc: 'Selector de fecha' },
+  { tipo: 'adjunto',     label: 'Adjunto',      icon: '@',  desc: 'Archivos con filtro de tipo' },
+  { tipo: 'estatus',     label: 'Estatus',      icon: '=',  desc: 'Lista de opciones personalizada' },
+  { tipo: 'booleano',    label: 'Casilla',      icon: 'v',  desc: 'Sí / No' },
+];
+
+const MIME_OPTIONS = [
+  { label: 'PDF',  value: 'application/pdf' },
+  { label: 'PNG',  value: 'image/png' },
+  { label: 'JPG',  value: 'image/jpeg' },
+  { label: 'DOCX', value: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+  { label: 'XLSX', value: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+  { label: 'XML',  value: 'application/xml' },
+];
+
+// ── Helpers ───────────────────────────────────────────────────────────────
 
 function slugify(label: string): string {
   return label
@@ -69,7 +119,6 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
               borderColor: value === c ? '#111' : 'transparent',
               boxShadow: value === c ? '0 0 0 2px white, 0 0 0 4px #111' : undefined,
             }}
-            title={c}
           />
         ))}
       </div>
@@ -87,210 +136,400 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
   );
 }
 
+// ── Main Component ────────────────────────────────────────────────────────
+
 export function GestionCatalogosRegistro() {
   const { usuario } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Insurance types state
+  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ msg, type });
+    toastTimer.current = setTimeout(() => setToast(null), 3500);
+  };
+
+  // ── Navigation ──────────────────────────────────────────────────────────
+  const [view, setView] = useState<'list' | 'edit'>('list');
+  const [activeTipo, setActiveTipo] = useState<TicketTipo | null>(null);
+  const [activeTab, setActiveTab] = useState<'config' | 'campos' | 'permisos'>('config');
+
+  // ── Insurance types ─────────────────────────────────────────────────────
   const [insuranceTypes, setInsuranceTypes] = useState<InsuranceType[]>([]);
-  const [editingInsuranceType, setEditingInsuranceType] = useState<string | null>(null);
-  const [newInsuranceType, setNewInsuranceType] = useState({ nombre: '', descripcion: '' });
-  const [editInsuranceData, setEditInsuranceData] = useState({ nombre: '', descripcion: '' });
-  const [showNewInsuranceForm, setShowNewInsuranceForm] = useState(false);
+  const [editingInsType, setEditingInsType] = useState<string | null>(null);
+  const [newInsType, setNewInsType] = useState({ nombre: '', descripcion: '' });
+  const [editInsData, setEditInsData] = useState({ nombre: '', descripcion: '' });
+  const [showNewInsForm, setShowNewInsForm] = useState(false);
 
-  // Ticket tipos state
+  // ── Ticket tipos ────────────────────────────────────────────────────────
   const [tiposTramite, setTiposTramite] = useState<TicketTipo[]>([]);
-  const [editingTipo, setEditingTipo] = useState<string | null>(null);
   const [showNewTipoForm, setShowNewTipoForm] = useState(false);
-  const [newTipo, setNewTipo] = useState({ label: '', area: 'Comercial' as typeof AREAS[number], color: '#0369a1' });
-  const [editTipoData, setEditTipoData] = useState({ label: '', area: 'Comercial' as typeof AREAS[number], color: '#0369a1', assignment_mode: 'direct' });
+  const [newTipo, setNewTipo] = useState({ label: '', area: 'Comercial' as Area, color: '#0369a1' });
+
+  // ── Edit - Config tab ───────────────────────────────────────────────────
+  const [editConfig, setEditConfig] = useState({ label: '', area: 'Comercial' as Area, color: '#0369a1' });
+  const [savingConfig, setSavingConfig] = useState(false);
+
+  // ── Edit - Campos tab ───────────────────────────────────────────────────
+  const [campos, setCampos] = useState<TipoCampo[]>([]);
+  const [loadingCampos, setLoadingCampos] = useState(false);
+  const [showAddField, setShowAddField] = useState(false);
+  const [editingCampo, setEditingCampo] = useState<TipoCampo | null>(null);
+  const [editCampoLabel, setEditCampoLabel] = useState('');
+  const [editCampoReq, setEditCampoReq] = useState(false);
+  const [editCampoConfig, setEditCampoConfig] = useState<Record<string, any>>({});
+  const [editCampoAyuda, setEditCampoAyuda] = useState('');
+  const [savingCampo, setSavingCampo] = useState(false);
+  const dragIdx = useRef<number | null>(null);
+  const [dragging, setDragging] = useState<number | null>(null);
+
+  // ── Edit - Permisos tab ─────────────────────────────────────────────────
+  const [equiposPermisos, setEquiposPermisos] = useState<Equipo[]>([]);
+  const [permisos, setPermisos] = useState<Permiso[]>([]);
+  const [loadingPermisos, setLoadingPermisos] = useState(false);
+  const [savingPermId, setSavingPermId] = useState<string | null>(null);
 
   const isAdmin = usuario?.rol === 'Administrador';
 
+  // ── Loaders ───────────────────────────────────────────────────────────
+
   useEffect(() => {
-    loadCatalogs();
+    loadInsuranceTypes();
     loadTiposTramite();
   }, []);
 
-  const flash = (msg: string, type: 'success' | 'error' = 'success') => {
-    if (type === 'success') { setSuccess(msg); setTimeout(() => setSuccess(''), 3000); }
-    else { setError(msg); setTimeout(() => setError(''), 4000); }
-  };
+  useEffect(() => {
+    if (view !== 'edit' || !activeTipo) return;
+    if (activeTab === 'campos') loadCampos(activeTipo.id);
+    if (activeTab === 'permisos') loadPermisos(activeTipo.id);
+  }, [view, activeTab, activeTipo?.id]);
 
-  const loadCatalogs = async () => {
-    setLoading(true);
-    try {
-      const { data, error: fetchError } = await supabase
-        .from('insurance_types')
-        .select('*')
-        .order('nombre');
-      if (fetchError) throw fetchError;
-      if (data) setInsuranceTypes(data);
-    } catch (err: any) {
-      flash('Error al cargar catálogos', 'error');
-    } finally {
-      setLoading(false);
-    }
+  const loadInsuranceTypes = async () => {
+    const { data } = await supabase.from('insurance_types').select('*').order('nombre');
+    if (data) setInsuranceTypes(data);
   };
 
   const loadTiposTramite = async () => {
-    const { data, error: fetchError } = await supabase
-      .from('ticket_tipos')
-      .select('*')
-      .order('orden');
-    if (fetchError) { console.error(fetchError); return; }
+    const { data } = await supabase.from('ticket_tipos').select('*').order('orden');
     if (data) setTiposTramite(data as TicketTipo[]);
   };
 
-  // --- Insurance type handlers ---
+  const loadCampos = async (tipoId: string) => {
+    setLoadingCampos(true);
+    const { data } = await supabase
+      .from('tramite_tipo_campos')
+      .select('*')
+      .eq('tramite_tipo_id', tipoId)
+      .eq('activo', true)
+      .order('display_order');
+    if (data) setCampos(data as TipoCampo[]);
+    setLoadingCampos(false);
+  };
 
-  const handleCreateInsuranceType = async () => {
-    if (!newInsuranceType.nombre.trim()) { flash('El nombre es obligatorio', 'error'); return; }
-    setLoading(true);
-    try {
-      const { error: insertError } = await supabase
-        .from('insurance_types')
-        .insert({ nombre: newInsuranceType.nombre.trim(), descripcion: newInsuranceType.descripcion.trim() || null, activo: true });
-      if (insertError) throw insertError;
-      flash('Tipo de seguro creado exitosamente');
-      setNewInsuranceType({ nombre: '', descripcion: '' });
-      setShowNewInsuranceForm(false);
-      await loadCatalogs();
-    } catch (err: any) {
-      flash(err.message || 'Error al crear tipo de seguro', 'error');
-    } finally {
-      setLoading(false);
+  const loadPermisos = async (tipoId: string) => {
+    setLoadingPermisos(true);
+
+    const { data: equiposData } = await supabase
+      .from('tramites_grupos_visualizacion')
+      .select('id, nombre')
+      .eq('activo', true)
+      .order('nombre');
+
+    if (!equiposData) { setLoadingPermisos(false); return; }
+
+    const { data: miembrosData } = await supabase
+      .from('tramites_grupos_miembros')
+      .select('grupo_id, usuario_id, usuarios(id, nombre_completo)')
+      .in('grupo_id', equiposData.map(e => e.id));
+
+    const equiposConMiembros: Equipo[] = equiposData
+      .map(e => ({
+        id: e.id,
+        nombre: e.nombre,
+        miembros: (miembrosData || [])
+          .filter(m => m.grupo_id === e.id)
+          .map(m => {
+            const u = m.usuarios as { id: string; nombre_completo: string } | null;
+            return { usuario_id: m.usuario_id, nombre_completo: u?.nombre_completo || '' };
+          })
+          .filter(m => m.nombre_completo),
+      }))
+      .filter(e => e.miembros.length > 0);
+
+    setEquiposPermisos(equiposConMiembros);
+
+    const { data: permisosData } = await supabase
+      .from('usuario_team_permisos')
+      .select('*')
+      .eq('tramite_tipo_id', tipoId)
+      .is('revoked_at', null);
+
+    if (permisosData) setPermisos(permisosData as Permiso[]);
+    setLoadingPermisos(false);
+  };
+
+  // ── Editor navigation ──────────────────────────────────────────────────
+
+  const openEditor = (tipo: TicketTipo) => {
+    setActiveTipo(tipo);
+    setEditConfig({ label: tipo.label, area: tipo.area as Area, color: tipo.color });
+    setActiveTab('config');
+    setView('edit');
+    setCampos([]);
+    setPermisos([]);
+    setEditingCampo(null);
+    setShowAddField(false);
+  };
+
+  const closeEditor = () => {
+    setView('list');
+    setActiveTipo(null);
+  };
+
+  const switchTab = (tab: 'config' | 'campos' | 'permisos') => {
+    setActiveTab(tab);
+    setEditingCampo(null);
+    setShowAddField(false);
+  };
+
+  // ── Config tab ─────────────────────────────────────────────────────────
+
+  const handleSaveConfig = async () => {
+    if (!activeTipo || !editConfig.label.trim()) { showToast('El nombre es obligatorio', 'error'); return; }
+    setSavingConfig(true);
+    const payload: Record<string, string> = { label: editConfig.label.trim(), color: editConfig.color };
+    if (activeTipo.is_custom) payload.area = editConfig.area;
+    const { error } = await supabase.from('ticket_tipos').update(payload).eq('id', activeTipo.id);
+    if (error) { showToast('Error: ' + error.message, 'error'); }
+    else {
+      setActiveTipo({ ...activeTipo, ...payload });
+      await loadTiposTramite();
+      showToast('Tipo de trámite actualizado');
+    }
+    setSavingConfig(false);
+  };
+
+  // ── Campos tab ─────────────────────────────────────────────────────────
+
+  const handleAddCampo = async (tipo: CampoTipo) => {
+    if (!activeTipo) return;
+    const meta = CAMPO_TIPOS.find(t => t.tipo === tipo);
+    const label = (meta?.label || 'Campo') + ' ' + (campos.length + 1);
+    const key = slugify(label);
+    const defaultConfig: Record<string, any> = {};
+    if (tipo === 'texto_corto') defaultConfig.max_length = 255;
+    if (tipo === 'texto_largo') defaultConfig.max_length = 2000;
+    if (tipo === 'numerico') { defaultConfig.es_entero = false; }
+    if (tipo === 'adjunto') { defaultConfig.tipos_mime = ['application/pdf']; defaultConfig.max_archivos = 1; defaultConfig.max_mb = 10; }
+    if (tipo === 'estatus') defaultConfig.opciones = [{ label: 'Pendiente', slug: 'pendiente' }, { label: 'Completado', slug: 'completado' }];
+
+    const { data, error } = await supabase
+      .from('tramite_tipo_campos')
+      .insert({
+        tramite_tipo_id: activeTipo.id,
+        key,
+        label,
+        tipo,
+        requerido: false,
+        display_order: campos.length + 1,
+        config: defaultConfig,
+        activo: true,
+      })
+      .select()
+      .single();
+
+    if (error) { showToast('Error al agregar campo: ' + error.message, 'error'); return; }
+    if (data) {
+      const nuevo = data as TipoCampo;
+      setCampos(prev => [...prev, nuevo]);
+      setShowAddField(false);
+      startEditCampo(nuevo);
     }
   };
 
-  const handleEditInsuranceType = async (id: string) => {
-    if (!editInsuranceData.nombre.trim()) { flash('El nombre es obligatorio', 'error'); return; }
-    setLoading(true);
-    try {
-      const { error: updateError } = await supabase
-        .from('insurance_types')
-        .update({ nombre: editInsuranceData.nombre.trim(), descripcion: editInsuranceData.descripcion.trim() || null })
-        .eq('id', id);
-      if (updateError) throw updateError;
-      flash('Tipo de seguro actualizado exitosamente');
-      setEditingInsuranceType(null);
-      await loadCatalogs();
-    } catch (err: any) {
-      flash(err.message || 'Error al actualizar tipo de seguro', 'error');
-    } finally {
-      setLoading(false);
+  const startEditCampo = (campo: TipoCampo) => {
+    setEditingCampo(campo);
+    setEditCampoLabel(campo.label);
+    setEditCampoReq(campo.requerido);
+    setEditCampoConfig({ ...(campo.config || {}) });
+    setEditCampoAyuda(campo.ayuda || '');
+    setShowAddField(false);
+  };
+
+  const handleSaveCampo = async () => {
+    if (!editingCampo || !editCampoLabel.trim()) return;
+    setSavingCampo(true);
+    const { error } = await supabase
+      .from('tramite_tipo_campos')
+      .update({
+        label: editCampoLabel.trim(),
+        requerido: editCampoReq,
+        config: editCampoConfig,
+        ayuda: editCampoAyuda.trim() || null,
+      })
+      .eq('id', editingCampo.id);
+
+    if (error) { showToast('Error al guardar campo', 'error'); setSavingCampo(false); return; }
+    setCampos(prev => prev.map(c =>
+      c.id === editingCampo.id
+        ? { ...c, label: editCampoLabel.trim(), requerido: editCampoReq, config: editCampoConfig, ayuda: editCampoAyuda || null }
+        : c
+    ));
+    setEditingCampo(null);
+    showToast('Campo guardado');
+    setSavingCampo(false);
+  };
+
+  const handleDeleteCampo = async (campo: TipoCampo) => {
+    const { count } = await supabase
+      .from('tramite_respuestas')
+      .select('*', { count: 'exact', head: true })
+      .eq('campo_id', campo.id);
+
+    const hasData = (count || 0) > 0;
+    const msg = hasData
+      ? `Este campo tiene ${count} respuestas registradas. Se desactivará en trámites nuevos pero los datos históricos se conservan. ¿Continuar?`
+      : '¿Eliminar este campo? Esta acción no se puede deshacer.';
+
+    if (!confirm(msg)) return;
+
+    if (hasData) {
+      await supabase.from('tramite_tipo_campos').update({ activo: false }).eq('id', campo.id);
+    } else {
+      await supabase.from('tramite_tipo_campos').delete().eq('id', campo.id);
+    }
+    setCampos(prev => prev.filter(c => c.id !== campo.id));
+    if (editingCampo?.id === campo.id) setEditingCampo(null);
+    showToast('Campo eliminado');
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    dragIdx.current = index;
+    setDragging(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    setDragging(null);
+    if (dragIdx.current === null || dragIdx.current === dropIndex) return;
+    const reordered = [...campos];
+    const [moved] = reordered.splice(dragIdx.current, 1);
+    reordered.splice(dropIndex, 0, moved);
+    const updated = reordered.map((c, i) => ({ ...c, display_order: i + 1 }));
+    setCampos(updated);
+    dragIdx.current = null;
+    for (const c of updated) {
+      await supabase.from('tramite_tipo_campos').update({ display_order: c.display_order }).eq('id', c.id);
     }
   };
 
-  const handleToggleInsuranceType = async (id: string, currentStatus: boolean) => {
-    setLoading(true);
-    try {
-      const { error: updateError } = await supabase
-        .from('insurance_types')
-        .update({ activo: !currentStatus })
-        .eq('id', id);
-      if (updateError) throw updateError;
-      flash(`Tipo de seguro ${!currentStatus ? 'activado' : 'desactivado'} exitosamente`);
-      await loadCatalogs();
-    } catch (err: any) {
-      flash(err.message || 'Error al cambiar estado', 'error');
-    } finally {
-      setLoading(false);
+  // ── Permisos tab ───────────────────────────────────────────────────────
+
+  const hasPermiso = (userId: string, teamId: string, action: 'crear_tramite' | 'editar_tramite') =>
+    permisos.some(p => p.user_id === userId && p.team_id === teamId && p.permiso === action);
+
+  const togglePermiso = async (userId: string, teamId: string, action: 'crear_tramite' | 'editar_tramite') => {
+    if (!activeTipo) return;
+    const permKey = `${userId}-${teamId}-${action}`;
+    setSavingPermId(permKey);
+    const existing = permisos.find(p => p.user_id === userId && p.team_id === teamId && p.permiso === action);
+
+    if (existing) {
+      await supabase.from('usuario_team_permisos').update({ revoked_at: new Date().toISOString() }).eq('id', existing.id);
+      setPermisos(prev => prev.filter(p => p.id !== existing.id));
+    } else {
+      const { data } = await supabase
+        .from('usuario_team_permisos')
+        .insert({ user_id: userId, team_id: teamId, tramite_tipo_id: activeTipo.id, permiso: action, granted_by: usuario?.id })
+        .select()
+        .single();
+      if (data) setPermisos(prev => [...prev, data as Permiso]);
     }
+    setSavingPermId(null);
   };
 
-  const handleDeleteInsuranceType = async (id: string) => {
-    if (!confirm('¿Está seguro de eliminar este tipo de seguro? Esta acción no se puede deshacer.')) return;
-    setLoading(true);
-    try {
-      const { error: deleteError } = await supabase.from('insurance_types').delete().eq('id', id);
-      if (deleteError) throw deleteError;
-      flash('Tipo de seguro eliminado exitosamente');
-      await loadCatalogs();
-    } catch (err: any) {
-      flash(err.message || 'Error al eliminar tipo de seguro', 'error');
-    } finally {
-      setLoading(false);
-    }
+  // ── Insurance type handlers ────────────────────────────────────────────
+
+  const handleCreateInsType = async () => {
+    if (!newInsType.nombre.trim()) { showToast('El nombre es obligatorio', 'error'); return; }
+    const { error } = await supabase.from('insurance_types').insert({
+      nombre: newInsType.nombre.trim(), descripcion: newInsType.descripcion.trim() || null, activo: true,
+    });
+    if (error) { showToast('Error: ' + error.message, 'error'); return; }
+    showToast('Tipo de seguro creado');
+    setNewInsType({ nombre: '', descripcion: '' });
+    setShowNewInsForm(false);
+    await loadInsuranceTypes();
   };
 
-  // --- Ticket tipo handlers ---
+  const handleEditInsType = async (id: string) => {
+    if (!editInsData.nombre.trim()) { showToast('El nombre es obligatorio', 'error'); return; }
+    const { error } = await supabase.from('insurance_types').update({
+      nombre: editInsData.nombre.trim(), descripcion: editInsData.descripcion.trim() || null,
+    }).eq('id', id);
+    if (error) { showToast('Error: ' + error.message, 'error'); return; }
+    showToast('Tipo de seguro actualizado');
+    setEditingInsType(null);
+    await loadInsuranceTypes();
+  };
+
+  const handleToggleInsType = async (id: string, current: boolean) => {
+    await supabase.from('insurance_types').update({ activo: !current }).eq('id', id);
+    await loadInsuranceTypes();
+  };
+
+  const handleDeleteInsType = async (id: string) => {
+    if (!confirm('¿Eliminar este tipo de seguro?')) return;
+    await supabase.from('insurance_types').delete().eq('id', id);
+    await loadInsuranceTypes();
+  };
+
+  // ── Ticket tipo list handlers ──────────────────────────────────────────
 
   const handleCreateTipo = async () => {
-    if (!newTipo.label.trim()) { flash('El nombre es obligatorio', 'error'); return; }
+    if (!newTipo.label.trim()) { showToast('El nombre es obligatorio', 'error'); return; }
     const value = slugify(newTipo.label);
-    if (!value) { flash('El nombre no genera un identificador válido', 'error'); return; }
+    if (!value) { showToast('El nombre no genera un identificador válido', 'error'); return; }
     setLoading(true);
-    try {
-      const maxOrden = tiposTramite.reduce((m, t) => Math.max(m, t.orden), 0);
-      const { error: insertError } = await supabase
-        .from('ticket_tipos')
-        .insert({ value, label: newTipo.label.trim(), area: newTipo.area, color: newTipo.color, activo: true, is_custom: true, orden: maxOrden + 1 });
-      if (insertError) throw insertError;
-      flash('Tipo de trámite creado exitosamente');
-      setNewTipo({ label: '', area: 'Comercial', color: '#0369a1' });
-      setShowNewTipoForm(false);
-      await loadTiposTramite();
-    } catch (err: any) {
-      flash(err.message?.includes('unique') ? 'Ya existe un tipo con ese nombre' : (err.message || 'Error al crear'), 'error');
-    } finally {
-      setLoading(false);
+    const maxOrden = tiposTramite.reduce((m, t) => Math.max(m, t.orden), 0);
+    const { error } = await supabase.from('ticket_tipos').insert({
+      value, label: newTipo.label.trim(), area: newTipo.area, color: newTipo.color,
+      activo: true, is_custom: true, orden: maxOrden + 1,
+    });
+    setLoading(false);
+    if (error) {
+      showToast(error.message?.includes('unique') ? 'Ya existe un tipo con ese nombre' : ('Error: ' + error.message), 'error');
+      return;
     }
-  };
-
-  const startEditTipo = (t: TicketTipo) => {
-    setEditingTipo(t.id);
-    setEditTipoData({ label: t.label, area: t.area as typeof AREAS[number], color: t.color, assignment_mode: t.assignment_mode || 'direct' });
-  };
-
-  const handleEditTipo = async (id: string, isCustom: boolean) => {
-    if (!editTipoData.label.trim()) { flash('El nombre es obligatorio', 'error'); return; }
-    setLoading(true);
-    try {
-      const updatePayload: Record<string, string> = {
-        label: editTipoData.label.trim(),
-        color: editTipoData.color,
-        assignment_mode: editTipoData.assignment_mode,
-      };
-      if (isCustom) updatePayload.area = editTipoData.area;
-      const { error: updateError } = await supabase.from('ticket_tipos').update(updatePayload).eq('id', id);
-      if (updateError) throw updateError;
-      flash('Tipo de trámite actualizado');
-      setEditingTipo(null);
-      await loadTiposTramite();
-    } catch (err: any) {
-      flash(err.message || 'Error al actualizar', 'error');
-    } finally {
-      setLoading(false);
-    }
+    showToast('Tipo de trámite creado');
+    setNewTipo({ label: '', area: 'Comercial', color: '#0369a1' });
+    setShowNewTipoForm(false);
+    await loadTiposTramite();
   };
 
   const handleToggleTipo = async (id: string, current: boolean) => {
-    const { error: updateError } = await supabase.from('ticket_tipos').update({ activo: !current }).eq('id', id);
-    if (updateError) { flash('Error al cambiar estado', 'error'); return; }
+    await supabase.from('ticket_tipos').update({ activo: !current }).eq('id', id);
     await loadTiposTramite();
   };
 
   const handleDeleteTipo = async (id: string) => {
     if (!confirm('¿Eliminar este tipo de trámite personalizado? No se puede deshacer.')) return;
-    setLoading(true);
-    try {
-      const { error: deleteError } = await supabase.from('ticket_tipos').delete().eq('id', id);
-      if (deleteError) throw deleteError;
-      flash('Tipo de trámite eliminado');
-      await loadTiposTramite();
-    } catch (err: any) {
-      flash(err.message || 'Error al eliminar', 'error');
-    } finally {
-      setLoading(false);
-    }
+    const { error } = await supabase.from('ticket_tipos').delete().eq('id', id);
+    if (error) { showToast('Error: ' + error.message, 'error'); return; }
+    showToast('Tipo eliminado');
+    await loadTiposTramite();
   };
 
   if (!isAdmin) {
     return (
-      <div className="bg-white rounded-xl shadow-sm p-6">
+      <div className="bg-white rounded-xl p-6">
         <p className="text-neutral-600">Solo los administradores pueden gestionar catálogos.</p>
       </div>
     );
@@ -301,18 +540,501 @@ export function GestionCatalogosRegistro() {
     items: tiposTramite.filter(t => t.area === area),
   })).filter(g => g.items.length > 0);
 
+  // ── Toast ──────────────────────────────────────────────────────────────
+  const ToastEl = toast ? (
+    <div className={`fixed bottom-6 right-6 px-4 py-3 rounded-xl text-sm font-medium shadow-lg z-50 ${
+      toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+    }`}>
+      {toast.msg}
+    </div>
+  ) : null;
+
+  // ── Edit panel ─────────────────────────────────────────────────────────
+  if (view === 'edit' && activeTipo) {
+    return (
+      <div className="flex flex-col" style={{ minHeight: 480 }}>
+        {ToastEl}
+
+        {/* Header */}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-neutral-200 bg-neutral-50 shrink-0">
+          <button onClick={closeEditor} className="p-1.5 hover:bg-neutral-200 rounded-lg transition-colors">
+            <ChevronLeft className="w-5 h-5 text-neutral-600" />
+          </button>
+          <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: activeTipo.color }} />
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm text-neutral-900 truncate">{activeTipo.label}</p>
+            <p className="text-[11px] text-neutral-400 font-mono">{activeTipo.value}</p>
+          </div>
+          {!activeTipo.is_custom && (
+            <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500">
+              Integrado
+            </span>
+          )}
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-neutral-200 bg-white shrink-0">
+          {[
+            { id: 'config',   label: 'Configuración' },
+            { id: 'campos',   label: 'Campos del formulario' },
+            { id: 'permisos', label: 'Permisos' },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => switchTab(tab.id as any)}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === tab.id
+                  ? 'text-blue-600 border-blue-600'
+                  : 'text-neutral-500 border-transparent hover:text-neutral-700'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab: Configuración */}
+        {activeTab === 'config' && (
+          <div className="p-5 space-y-5 overflow-auto">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Nombre *</label>
+              <input
+                type="text"
+                value={editConfig.label}
+                onChange={(e) => setEditConfig({ ...editConfig, label: e.target.value })}
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+              />
+            </div>
+            {activeTipo.is_custom && (
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">Área</label>
+                <select
+                  value={editConfig.area}
+                  onChange={(e) => setEditConfig({ ...editConfig, area: e.target.value as Area })}
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                >
+                  {AREAS.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">Color</label>
+              <ColorPicker value={editConfig.color} onChange={(c) => setEditConfig({ ...editConfig, color: c })} />
+            </div>
+            <button
+              onClick={handleSaveConfig}
+              disabled={savingConfig}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              {savingConfig ? 'Guardando...' : 'Guardar cambios'}
+            </button>
+          </div>
+        )}
+
+        {/* Tab: Campos */}
+        {activeTab === 'campos' && (
+          <div className="flex flex-1 overflow-hidden min-h-0">
+            {/* Canvas */}
+            <div className="flex-1 p-4 overflow-auto">
+              {loadingCampos ? (
+                <div className="space-y-2">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="h-12 bg-neutral-100 rounded-xl animate-pulse" />
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs text-neutral-400 uppercase tracking-wider mb-3">
+                    {campos.length} campo{campos.length !== 1 ? 's' : ''} · arrastra para reordenar
+                  </p>
+
+                  {campos.length === 0 && (
+                    <div className="text-center py-10 text-neutral-400">
+                      <p className="text-sm">Sin campos definidos.</p>
+                      <p className="text-xs mt-1">Los usuarios verán un formulario vacío al crear este trámite.</p>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    {campos.map((campo, idx) => (
+                      <div
+                        key={campo.id}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, idx)}
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop(e, idx)}
+                        onDragEnd={() => setDragging(null)}
+                        className={`flex items-center gap-2 border rounded-xl p-2.5 bg-white transition-opacity ${
+                          dragging === idx ? 'opacity-30' : 'opacity-100'
+                        } ${editingCampo?.id === campo.id ? 'border-blue-400 ring-1 ring-blue-200' : 'border-neutral-200'}`}
+                      >
+                        <div className="cursor-grab p-1 text-neutral-300 hover:text-neutral-500">
+                          <GripVertical className="w-4 h-4" />
+                        </div>
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 bg-blue-50 text-blue-600 font-mono">
+                          {CAMPO_TIPOS.find(t => t.tipo === campo.tipo)?.icon ?? '?'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-neutral-800 truncate">{campo.label}</p>
+                          <p className="text-[10px] text-neutral-400 font-mono">{campo.key}</p>
+                        </div>
+                        {campo.requerido && (
+                          <span className="text-[10px] text-red-500 font-mono shrink-0">req</span>
+                        )}
+                        <button
+                          onClick={() => editingCampo?.id === campo.id ? setEditingCampo(null) : startEditCampo(campo)}
+                          className="p-1.5 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-400 hover:text-neutral-700"
+                        >
+                          <Settings className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCampo(campo)}
+                          className="p-1.5 hover:bg-red-50 rounded-lg transition-colors text-neutral-300 hover:text-red-500"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => { setShowAddField(!showAddField); setEditingCampo(null); }}
+                    className="mt-3 w-full flex items-center justify-center gap-2 border-2 border-dashed border-neutral-300 rounded-xl py-2.5 text-sm text-neutral-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Agregar campo
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Right panel */}
+            {(showAddField || editingCampo) && (
+              <div className="w-64 border-l border-neutral-200 bg-neutral-50 p-4 overflow-auto shrink-0">
+                {/* Type picker */}
+                {showAddField && !editingCampo && (
+                  <>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Tipo de campo</p>
+                      <button onClick={() => setShowAddField(false)} className="p-1 hover:bg-neutral-200 rounded">
+                        <X className="w-3.5 h-3.5 text-neutral-500" />
+                      </button>
+                    </div>
+                    <div className="space-y-1.5">
+                      {CAMPO_TIPOS.map(({ tipo, label, icon, desc }) => (
+                        <button
+                          key={tipo}
+                          onClick={() => handleAddCampo(tipo)}
+                          className="w-full flex items-center gap-2.5 p-2.5 bg-white border border-neutral-200 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors text-left"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-sm font-bold text-blue-600 shrink-0 font-mono">
+                            {icon}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-neutral-800">{label}</p>
+                            <p className="text-[10px] text-neutral-400 leading-tight">{desc}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {/* Campo config */}
+                {editingCampo && (
+                  <>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Configurar campo</p>
+                      <button onClick={() => setEditingCampo(null)} className="p-1 hover:bg-neutral-200 rounded">
+                        <X className="w-3.5 h-3.5 text-neutral-500" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">Etiqueta *</label>
+                        <input
+                          type="text"
+                          value={editCampoLabel}
+                          onChange={(e) => setEditCampoLabel(e.target.value)}
+                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">Texto de ayuda</label>
+                        <input
+                          type="text"
+                          value={editCampoAyuda}
+                          onChange={(e) => setEditCampoAyuda(e.target.value)}
+                          placeholder="Ej: incluye prefijo 52"
+                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={editCampoReq}
+                          onChange={(e) => setEditCampoReq(e.target.checked)}
+                          className="rounded"
+                        />
+                        <span className="text-sm text-neutral-700">Campo requerido</span>
+                      </label>
+
+                      {/* texto_corto / texto_largo */}
+                      {(editingCampo.tipo === 'texto_corto' || editingCampo.tipo === 'texto_largo') && (
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-600 mb-1">Longitud máxima</label>
+                          <input
+                            type="number"
+                            value={editCampoConfig.max_length ?? (editingCampo.tipo === 'texto_corto' ? 255 : 2000)}
+                            onChange={(e) => setEditCampoConfig({ ...editCampoConfig, max_length: Number(e.target.value) })}
+                            className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                          />
+                        </div>
+                      )}
+
+                      {/* numerico */}
+                      {editingCampo.tipo === 'numerico' && (
+                        <>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-xs font-medium text-neutral-600 mb-1">Mínimo</label>
+                              <input
+                                type="number"
+                                value={editCampoConfig.min ?? ''}
+                                onChange={(e) => setEditCampoConfig({ ...editCampoConfig, min: e.target.value !== '' ? Number(e.target.value) : undefined })}
+                                className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-neutral-600 mb-1">Máximo</label>
+                              <input
+                                type="number"
+                                value={editCampoConfig.max ?? ''}
+                                onChange={(e) => setEditCampoConfig({ ...editCampoConfig, max: e.target.value !== '' ? Number(e.target.value) : undefined })}
+                                className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                              />
+                            </div>
+                          </div>
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={editCampoConfig.es_entero || false}
+                              onChange={(e) => setEditCampoConfig({ ...editCampoConfig, es_entero: e.target.checked })}
+                              className="rounded"
+                            />
+                            <span className="text-sm text-neutral-700">Solo enteros</span>
+                          </label>
+                        </>
+                      )}
+
+                      {/* adjunto */}
+                      {editingCampo.tipo === 'adjunto' && (
+                        <>
+                          <div>
+                            <label className="block text-xs font-medium text-neutral-600 mb-1.5">Tipos de archivo</label>
+                            <div className="space-y-1">
+                              {MIME_OPTIONS.map(opt => (
+                                <label key={opt.value} className="flex items-center gap-2 cursor-pointer select-none">
+                                  <input
+                                    type="checkbox"
+                                    checked={(editCampoConfig.tipos_mime || []).includes(opt.value)}
+                                    onChange={(e) => {
+                                      const current: string[] = editCampoConfig.tipos_mime || [];
+                                      setEditCampoConfig({
+                                        ...editCampoConfig,
+                                        tipos_mime: e.target.checked
+                                          ? [...current, opt.value]
+                                          : current.filter(m => m !== opt.value),
+                                      });
+                                    }}
+                                    className="rounded"
+                                  />
+                                  <span className="text-sm text-neutral-700">{opt.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-xs font-medium text-neutral-600 mb-1">Máx. archivos</label>
+                              <input
+                                type="number" min="1"
+                                value={editCampoConfig.max_archivos || 1}
+                                onChange={(e) => setEditCampoConfig({ ...editCampoConfig, max_archivos: Number(e.target.value) })}
+                                className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-neutral-600 mb-1">Máx. MB</label>
+                              <input
+                                type="number" min="1"
+                                value={editCampoConfig.max_mb || 10}
+                                onChange={(e) => setEditCampoConfig({ ...editCampoConfig, max_mb: Number(e.target.value) })}
+                                className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                              />
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {/* estatus */}
+                      {editingCampo.tipo === 'estatus' && (
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-600 mb-1.5">Opciones</label>
+                          {(editCampoConfig.opciones || []).map((opt: { label: string; slug: string }, i: number) => (
+                            <div key={i} className="flex gap-1 mb-1">
+                              <input
+                                type="text"
+                                value={opt.label}
+                                onChange={(e) => {
+                                  const opts = [...(editCampoConfig.opciones || [])];
+                                  opts[i] = { label: e.target.value, slug: slugify(e.target.value) || opts[i].slug };
+                                  setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+                                }}
+                                className="flex-1 px-2 py-1 text-xs border border-neutral-300 rounded-lg focus:ring-1 focus:ring-blue-400 focus:outline-none"
+                              />
+                              <button
+                                onClick={() => {
+                                  const opts = (editCampoConfig.opciones || []).filter((_: any, j: number) => j !== i);
+                                  setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+                                }}
+                                className="p-1 hover:bg-red-50 rounded text-neutral-400 hover:text-red-500"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            onClick={() => {
+                              const opts = [...(editCampoConfig.opciones || []), { label: 'Nueva opción', slug: 'nueva_opcion' }];
+                              setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+                            }}
+                            className="mt-1 w-full text-xs py-1 border border-dashed border-neutral-300 rounded-lg hover:border-blue-400 hover:text-blue-600 text-neutral-500 transition-colors"
+                          >
+                            + Agregar opción
+                          </button>
+                        </div>
+                      )}
+
+                      {/* fecha */}
+                      {editingCampo.tipo === 'fecha' && (
+                        <div className="space-y-2">
+                          <div>
+                            <label className="block text-xs font-medium text-neutral-600 mb-1">Fecha mínima</label>
+                            <input
+                              type="date"
+                              value={editCampoConfig.min_fecha || ''}
+                              onChange={(e) => setEditCampoConfig({ ...editCampoConfig, min_fecha: e.target.value })}
+                              className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-neutral-600 mb-1">Fecha máxima</label>
+                            <input
+                              type="date"
+                              value={editCampoConfig.max_fecha || ''}
+                              onChange={(e) => setEditCampoConfig({ ...editCampoConfig, max_fecha: e.target.value })}
+                              className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      <button
+                        onClick={handleSaveCampo}
+                        disabled={savingCampo || !editCampoLabel.trim()}
+                        className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm disabled:opacity-50"
+                      >
+                        <Save className="w-4 h-4" />
+                        {savingCampo ? 'Guardando...' : 'Guardar campo'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab: Permisos */}
+        {activeTab === 'permisos' && (
+          <div className="p-4 overflow-auto">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-xs text-blue-700">
+              Define quién puede <strong>crear</strong> o <strong>editar</strong> este tipo de trámite dentro de cada equipo.
+              Los cambios se aplican de inmediato.
+            </div>
+
+            {loadingPermisos ? (
+              <div className="space-y-3">
+                {[...Array(2)].map((_, i) => <div key={i} className="h-24 bg-neutral-100 rounded-xl animate-pulse" />)}
+              </div>
+            ) : equiposPermisos.length === 0 ? (
+              <div className="text-center py-10 text-neutral-400">
+                <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">No hay equipos con miembros asignados.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {equiposPermisos.map(equipo => (
+                  <div key={equipo.id} className="border border-neutral-200 rounded-xl overflow-hidden">
+                    <div className="bg-neutral-50 px-4 py-2.5 border-b border-neutral-200">
+                      <p className="text-xs font-bold text-neutral-700 uppercase tracking-wider">{equipo.nombre}</p>
+                    </div>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr>
+                          <th className="text-left px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">Usuario</th>
+                          <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">Crear</th>
+                          <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">Editar</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {equipo.miembros.map(miembro => (
+                          <tr key={miembro.usuario_id} className="border-t border-neutral-100 hover:bg-neutral-50">
+                            <td className="px-4 py-2.5">
+                              <p className="text-sm font-medium text-neutral-800">{miembro.nombre_completo}</p>
+                            </td>
+                            {(['crear_tramite', 'editar_tramite'] as const).map(action => {
+                              const active = hasPermiso(miembro.usuario_id, equipo.id, action);
+                              const saving = savingPermId === `${miembro.usuario_id}-${equipo.id}-${action}`;
+                              return (
+                                <td key={action} className="text-center px-4 py-2.5">
+                                  <button
+                                    onClick={() => togglePermiso(miembro.usuario_id, equipo.id, action)}
+                                    disabled={saving}
+                                    className={`w-6 h-6 rounded-md border-2 transition-colors mx-auto flex items-center justify-center text-xs ${
+                                      active
+                                        ? 'bg-blue-600 border-blue-600 text-white'
+                                        : 'border-neutral-300 bg-white hover:border-blue-400'
+                                    } ${saving ? 'opacity-40' : ''}`}
+                                  >
+                                    {active && '✓'}
+                                  </button>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── List view ──────────────────────────────────────────────────────────
   return (
     <div className="space-y-10 p-6">
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-700 text-sm">{error}</p>
-        </div>
-      )}
-      {success && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <p className="text-green-700 text-sm">{success}</p>
-        </div>
-      )}
+      {ToastEl}
 
       {/* ── Tipos de Seguro ── */}
       <section>
@@ -322,7 +1044,7 @@ export function GestionCatalogosRegistro() {
             <h2 className="text-xl font-bold text-neutral-900">Tipos de Seguro</h2>
           </div>
           <button
-            onClick={() => setShowNewInsuranceForm(!showNewInsuranceForm)}
+            onClick={() => setShowNewInsForm(!showNewInsForm)}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
           >
             <Plus className="w-4 h-4" />
@@ -330,14 +1052,14 @@ export function GestionCatalogosRegistro() {
           </button>
         </div>
 
-        {showNewInsuranceForm && (
+        {showNewInsForm && (
           <div className="bg-neutral-50 rounded-lg p-4 mb-4 space-y-3 border border-neutral-200">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Nombre *</label>
               <input
                 type="text"
-                value={newInsuranceType.nombre}
-                onChange={(e) => setNewInsuranceType({ ...newInsuranceType, nombre: e.target.value })}
+                value={newInsType.nombre}
+                onChange={(e) => setNewInsType({ ...newInsType, nombre: e.target.value })}
                 placeholder="Ej: Auto"
                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
               />
@@ -346,23 +1068,22 @@ export function GestionCatalogosRegistro() {
               <label className="block text-sm font-medium text-neutral-700 mb-1">Descripción</label>
               <input
                 type="text"
-                value={newInsuranceType.descripcion}
-                onChange={(e) => setNewInsuranceType({ ...newInsuranceType, descripcion: e.target.value })}
+                value={newInsType.descripcion}
+                onChange={(e) => setNewInsType({ ...newInsType, descripcion: e.target.value })}
                 placeholder="Descripción opcional"
                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
               />
             </div>
             <div className="flex gap-2">
               <button
-                onClick={handleCreateInsuranceType}
-                disabled={loading}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 disabled:opacity-50 text-sm"
+                onClick={handleCreateInsType}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
               >
                 <Save className="w-4 h-4" />
                 Guardar
               </button>
               <button
-                onClick={() => { setShowNewInsuranceForm(false); setNewInsuranceType({ nombre: '', descripcion: '' }); }}
+                onClick={() => { setShowNewInsForm(false); setNewInsType({ nombre: '', descripcion: '' }); }}
                 className="px-4 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors text-sm"
               >
                 Cancelar
@@ -374,87 +1095,61 @@ export function GestionCatalogosRegistro() {
         <div className="space-y-2">
           {insuranceTypes.length === 0 ? (
             <p className="text-neutral-500 text-center py-8">No hay tipos de seguro registrados</p>
-          ) : (
-            insuranceTypes.map((type) => (
-              <div
-                key={type.id}
-                className={`border ${type.activo ? 'border-neutral-200' : 'border-red-200 bg-red-50'} rounded-lg p-4`}
-              >
-                {editingInsuranceType === type.id ? (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">Nombre *</label>
-                      <input
-                        type="text"
-                        value={editInsuranceData.nombre}
-                        onChange={(e) => setEditInsuranceData({ ...editInsuranceData, nombre: e.target.value })}
-                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">Descripción</label>
-                      <input
-                        type="text"
-                        value={editInsuranceData.descripcion}
-                        onChange={(e) => setEditInsuranceData({ ...editInsuranceData, descripcion: e.target.value })}
-                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditInsuranceType(type.id)}
-                        disabled={loading}
-                        className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm flex items-center gap-2 disabled:opacity-50"
-                      >
-                        <Save className="w-4 h-4" />
-                        Guardar
-                      </button>
-                      <button
-                        onClick={() => setEditingInsuranceType(null)}
-                        className="px-3 py-1.5 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors text-sm"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
+          ) : insuranceTypes.map(type => (
+            <div key={type.id} className={`border rounded-lg p-4 ${type.activo ? 'border-neutral-200' : 'border-red-200 bg-red-50'}`}>
+              {editingInsType === type.id ? (
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={editInsData.nombre}
+                    onChange={(e) => setEditInsData({ ...editInsData, nombre: e.target.value })}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
+                  />
+                  <input
+                    type="text"
+                    value={editInsData.descripcion}
+                    onChange={(e) => setEditInsData({ ...editInsData, descripcion: e.target.value })}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={() => handleEditInsType(type.id)} className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm flex items-center gap-2">
+                      <Save className="w-4 h-4" />Guardar
+                    </button>
+                    <button onClick={() => setEditingInsType(null)} className="px-3 py-1.5 bg-neutral-200 text-neutral-700 rounded-lg text-sm">
+                      Cancelar
+                    </button>
                   </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-neutral-900">
-                        {type.nombre}
-                        {!type.activo && (
-                          <span className="ml-2 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">Inactivo</span>
-                        )}
-                      </h3>
-                      {type.descripcion && <p className="text-sm text-neutral-600 mt-1">{type.descripcion}</p>}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => { setEditingInsuranceType(type.id); setEditInsuranceData({ nombre: type.nombre, descripcion: type.descripcion || '' }); }}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Editar"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleToggleInsuranceType(type.id, type.activo)}
-                        className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${type.activo ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
-                      >
-                        {type.activo ? 'Desactivar' : 'Activar'}
-                      </button>
-                      <button
-                        onClick={() => handleDeleteInsuranceType(type.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Eliminar"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-neutral-900">
+                      {type.nombre}
+                      {!type.activo && <span className="ml-2 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">Inactivo</span>}
+                    </h3>
+                    {type.descripcion && <p className="text-sm text-neutral-600 mt-0.5">{type.descripcion}</p>}
                   </div>
-                )}
-              </div>
-            ))
-          )}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => { setEditingInsType(type.id); setEditInsData({ nombre: type.nombre, descripcion: type.descripcion || '' }); }}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleToggleInsType(type.id, type.activo)}
+                      className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${type.activo ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
+                    >
+                      {type.activo ? 'Desactivar' : 'Activar'}
+                    </button>
+                    <button onClick={() => handleDeleteInsType(type.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </section>
 
@@ -465,7 +1160,7 @@ export function GestionCatalogosRegistro() {
             <Tag className="w-6 h-6 text-blue-600" />
             <div>
               <h2 className="text-xl font-bold text-neutral-900">Tipos de Trámite</h2>
-              <p className="text-xs text-neutral-500 mt-0.5">Los tipos integrados solo permiten cambiar nombre y color</p>
+              <p className="text-xs text-neutral-500 mt-0.5">Haz clic en editar para configurar campos y permisos</p>
             </div>
           </div>
           <button
@@ -477,7 +1172,6 @@ export function GestionCatalogosRegistro() {
           </button>
         </div>
 
-        {/* Create form */}
         {showNewTipoForm && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-6 space-y-4">
             <h3 className="font-semibold text-blue-800 text-sm">Nuevo tipo de trámite</h3>
@@ -499,7 +1193,7 @@ export function GestionCatalogosRegistro() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">Área</label>
                 <select
                   value={newTipo.area}
-                  onChange={(e) => setNewTipo({ ...newTipo, area: e.target.value as typeof AREAS[number] })}
+                  onChange={(e) => setNewTipo({ ...newTipo, area: e.target.value as Area })}
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
                 >
                   {AREAS.map(a => <option key={a} value={a}>{a}</option>)}
@@ -510,7 +1204,7 @@ export function GestionCatalogosRegistro() {
               <label className="block text-sm font-medium text-neutral-700 mb-2">Color</label>
               <ColorPicker value={newTipo.color} onChange={(c) => setNewTipo({ ...newTipo, color: c })} />
             </div>
-            <div className="flex gap-2 pt-1">
+            <div className="flex gap-2">
               <button
                 onClick={handleCreateTipo}
                 disabled={loading}
@@ -529,7 +1223,6 @@ export function GestionCatalogosRegistro() {
           </div>
         )}
 
-        {/* List grouped by area */}
         {tiposTramite.length === 0 ? (
           <p className="text-neutral-500 text-center py-8">No hay tipos de trámite registrados</p>
         ) : (
@@ -538,135 +1231,54 @@ export function GestionCatalogosRegistro() {
               <div key={area}>
                 <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-400 mb-2 px-1">{area}</h3>
                 <div className="space-y-2">
-                  {items.map((tipo) => (
+                  {items.map(tipo => (
                     <div
                       key={tipo.id}
-                      className={`border rounded-xl overflow-hidden ${!tipo.activo ? 'opacity-60' : ''}`}
+                      className={`flex items-center gap-3 p-3 bg-white border rounded-xl ${!tipo.activo ? 'opacity-60' : ''}`}
                       style={{ borderColor: tipo.color + '55' }}
                     >
-                      {editingTipo === tipo.id ? (
-                        <div className="p-4 space-y-4 bg-white">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-sm font-medium text-neutral-700 mb-1">Nombre *</label>
-                              <input
-                                type="text"
-                                value={editTipoData.label}
-                                onChange={(e) => setEditTipoData({ ...editTipoData, label: e.target.value })}
-                                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                              />
-                            </div>
-                            {tipo.is_custom && (
-                              <div>
-                                <label className="block text-sm font-medium text-neutral-700 mb-1">Área</label>
-                                <select
-                                  value={editTipoData.area}
-                                  onChange={(e) => setEditTipoData({ ...editTipoData, area: e.target.value as typeof AREAS[number] })}
-                                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                                >
-                                  {AREAS.map(a => <option key={a} value={a}>{a}</option>)}
-                                </select>
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-neutral-700 mb-2">Color</label>
-                            <ColorPicker value={editTipoData.color} onChange={(c) => setEditTipoData({ ...editTipoData, color: c })} />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-neutral-700 mb-1.5">Modo de asignación</label>
-                            <div className="space-y-2">
-                              {(['direct', 'pool', 'auto'] as const).map(mode => (
-                                <label key={mode} className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${editTipoData.assignment_mode === mode ? 'bg-blue-50 border-blue-300' : 'border-neutral-200 hover:bg-neutral-50'}`}>
-                                  <input
-                                    type="radio"
-                                    name="assignment_mode"
-                                    value={mode}
-                                    checked={editTipoData.assignment_mode === mode}
-                                    onChange={() => setEditTipoData({ ...editTipoData, assignment_mode: mode })}
-                                    className="mt-0.5 shrink-0"
-                                  />
-                                  <div>
-                                    <p className="text-sm font-semibold text-neutral-800">{ASSIGNMENT_MODE_LABELS[mode]}</p>
-                                    <p className="text-xs text-neutral-500 mt-0.5">{ASSIGNMENT_MODE_DESCRIPTIONS[mode]}</p>
-                                  </div>
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleEditTipo(tipo.id, tipo.is_custom)}
-                              disabled={loading}
-                              className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center gap-2 disabled:opacity-50"
-                            >
-                              <Save className="w-4 h-4" />
-                              Guardar
-                            </button>
-                            <button
-                              onClick={() => setEditingTipo(null)}
-                              className="px-3 py-1.5 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors text-sm flex items-center gap-1.5"
-                            >
-                              <X className="w-4 h-4" />
-                              Cancelar
-                            </button>
-                          </div>
+                      <div className="w-3 h-10 rounded-full shrink-0" style={{ backgroundColor: tipo.color }} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-sm text-neutral-900 truncate">{tipo.label}</span>
+                          {!tipo.is_custom && (
+                            <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500">
+                              Integrado
+                            </span>
+                          )}
+                          {!tipo.activo && (
+                            <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-red-100 text-red-600">
+                              Inactivo
+                            </span>
+                          )}
                         </div>
-                      ) : (
-                        <div className="flex items-center gap-3 p-3 bg-white">
-                          {/* Color strip */}
-                          <div className="w-3 h-10 rounded-full shrink-0" style={{ backgroundColor: tipo.color }} />
-                          {/* Info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold text-sm text-neutral-900 truncate">{tipo.label}</span>
-                              {!tipo.is_custom && (
-                                <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500">
-                                  Integrado
-                                </span>
-                              )}
-                              {!tipo.activo && (
-                                <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-red-100 text-red-600">
-                                  Inactivo
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-[11px] text-neutral-400 font-mono mt-0.5">{tipo.value}</p>
-                            {tipo.assignment_mode && tipo.assignment_mode !== 'direct' && (
-                              <span className={`inline-block mt-1 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${tipo.assignment_mode === 'pool' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
-                                {ASSIGNMENT_MODE_LABELS[tipo.assignment_mode] || tipo.assignment_mode}
-                              </span>
-                            )}
-                          </div>
-                          {/* Actions */}
-                          <div className="flex items-center gap-1 shrink-0">
+                        <p className="text-[11px] text-neutral-400 font-mono mt-0.5">{tipo.value}</p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => openEditor(tipo)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Editar tipo"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        {tipo.is_custom && (
+                          <>
                             <button
-                              onClick={() => startEditTipo(tipo)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                              title="Editar"
+                              onClick={() => handleToggleTipo(tipo.id, tipo.activo)}
+                              className={`px-2.5 py-1 text-xs rounded-lg transition-colors ${tipo.activo ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
                             >
-                              <Pencil className="w-4 h-4" />
+                              {tipo.activo ? 'Desactivar' : 'Activar'}
                             </button>
-                            {tipo.is_custom && (
-                              <>
-                                <button
-                                  onClick={() => handleToggleTipo(tipo.id, tipo.activo)}
-                                  className={`px-2.5 py-1 text-xs rounded-lg transition-colors ${tipo.activo ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
-                                >
-                                  {tipo.activo ? 'Desactivar' : 'Activar'}
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteTipo(tipo.id)}
-                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                  title="Eliminar"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      )}
+                            <button
+                              onClick={() => handleDeleteTipo(tipo.id)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
