@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getCached, setCached, invalidateCacheByPrefix } from '../lib/sessionCache';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound } from 'lucide-react';
+import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound, LayoutList, LayoutGrid } from 'lucide-react';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
 import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
@@ -100,6 +100,8 @@ export function Tramites() {
   const [assigningTramiteId, setAssigningTramiteId] = useState<string | null>(null);
   const [teamEjecutivos, setTeamEjecutivos] = useState<Array<{ id: string; nombre_completo: string }>>([]);
   const [assignTargetId, setAssignTargetId] = useState('');
+  const [viewMode, setViewMode] = useState<'kanban' | 'lista'>('kanban');
+  const [tramitesCerrados20, setTramitesCerrados20] = useState<TramiteItem[]>([]);
 
   // Estatus filtered by selected tipo_tramite
   const filteredEstatusList = (() => {
@@ -186,9 +188,25 @@ export function Tramites() {
     setUserAreaLoaded(true);
   };
 
+  const loadCerrados20 = async () => {
+    if (!usuario) return;
+    const desde = new Date();
+    desde.setDate(desde.getDate() - 20);
+    try {
+      const { data } = await supabase
+        .from('tickets')
+        .select(`*, agente:agente_id(nombre_completo, oficina_id, oficina:oficina_id(nombre)), responsable:assigned_to_user_id(nombre_completo), estatus:estatus_id(*), ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo)), ticket_archivos(id)`)
+        .is('eliminado_at', null)
+        .not('cerrado_en', 'is', null)
+        .gte('cerrado_en', desde.toISOString())
+        .order('cerrado_en', { ascending: false });
+      if (data) setTramitesCerrados20(data as TramiteItem[]);
+    } catch {}
+  };
+
   const loadData = async () => {
     setLoading(true);
-    const tasks: Promise<void>[] = [loadEstatus(), loadTramites()];
+    const tasks: Promise<void>[] = [loadEstatus(), loadTramites(), loadCerrados20()];
     if (isAdmin) tasks.push(loadPapelera());
     await Promise.all(tasks);
     setLoading(false);
@@ -500,6 +518,22 @@ export function Tramites() {
     setFilterMiEquipo(false);
   };
 
+  // ── Kanban helpers ────────────────────────────────────────────────────────
+  const needsAttentionFn = (t: TramiteItem) =>
+    !!t.ultima_accion_por && t.ultima_accion_por !== usuario?.id;
+
+  const kanbanAtención = filteredTramites.filter(t => needsAttentionFn(t));
+  const kanbanProceso  = filteredTramites.filter(t => !needsAttentionFn(t));
+  const kanbanCerrados = (isAdmin
+    ? tramitesCerrados20
+    : tramitesCerrados20.filter(t =>
+        t.agente_id === usuario?.id ||
+        t.assigned_to_user_id === usuario?.id ||
+        t.creado_por === usuario?.id ||
+        t.agente?.oficina_id === usuario?.oficina_id
+      )
+  );
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -535,6 +569,22 @@ export function Tramites() {
               <FileText className="w-4 h-4 mr-1.5" />
               <span className="hidden sm:inline">Formularios</span>
             </Button>
+            <div className="flex rounded-lg border border-neutral-200 dark:border-white/10 overflow-hidden">
+              <button
+                onClick={() => setViewMode('lista')}
+                className={`p-2 transition-colors ${viewMode === 'lista' ? 'bg-accent text-white' : 'bg-white dark:bg-neutral-800 text-neutral-500 dark:text-white/50 hover:bg-neutral-100 dark:hover:bg-white/8'}`}
+                title="Vista lista"
+              >
+                <LayoutList className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('kanban')}
+                className={`p-2 transition-colors ${viewMode === 'kanban' ? 'bg-accent text-white' : 'bg-white dark:bg-neutral-800 text-neutral-500 dark:text-white/50 hover:bg-neutral-100 dark:hover:bg-white/8'}`}
+                title="Vista tablero"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+            </div>
             <Button size="sm" onClick={() => setShowNuevoModal(true)}>
               <Plus className="w-4 h-4 mr-1.5" />
               Nuevo
@@ -844,8 +894,127 @@ export function Tramites() {
         </div>
       )}
 
-      {/* Normal activos/cerrados list */}
-      {activeTab !== 'papelera' && (loading ? (
+      {/* ── KANBAN VIEW ────────────────────────────────────────────────────── */}
+      {activeTab === 'activos' && viewMode === 'kanban' && !loading && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+          {/* Columna 1: Requiere atención */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2 pb-2 border-b-2 border-orange-400">
+              <span className="relative flex h-3 w-3 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-orange-500" />
+              </span>
+              <h3 className="text-sm font-bold text-neutral-700 dark:text-white/80">Requiere atención</h3>
+              <span className="ml-auto text-xs font-bold bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded-full">{kanbanAtención.length}</span>
+            </div>
+            {kanbanAtención.length === 0 ? (
+              <p className="text-xs text-neutral-400 dark:text-white/30 text-center py-8">Sin trámites pendientes</p>
+            ) : kanbanAtención.map(tramite => {
+              const area = getTipoTramiteArea(tramite.tipo_tramite);
+              const ac = AREA_CONFIG[area];
+              const tipoDb = tiposDb.get(tramite.tipo_tramite);
+              const dbColor = tipoDb?.color;
+              const fbc = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
+              return (
+                <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex">
+                  <button onClick={(e) => handleMarkAsRead(e, tramite.id)} className="absolute -top-1.5 -right-1.5 z-10" title="Marcar como leído">
+                    <span className="relative flex h-4 w-4">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
+                      <span className="relative inline-flex h-4 w-4 rounded-full bg-orange-500 shadow-sm shadow-orange-300/60" />
+                    </span>
+                  </button>
+                  <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
+                  <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
+                    <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
+                    <p className={`text-[10px] font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
+                    {tramite.estatus && <span className="text-[10px] font-bold uppercase" style={{ color: tramite.estatus.color }}>{tramite.estatus.nombre}</span>}
+                    <div className="flex items-center justify-between mt-1">
+                      <span className={`text-[10px] font-extrabold uppercase tracking-widest ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tramite.prioridad === 'Alta' ? 'bg-red-100 text-red-600' : tramite.prioridad === 'Media' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>{tramite.prioridad}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Columna 2: En proceso */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2 pb-2 border-b-2 border-blue-400">
+              <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+              <h3 className="text-sm font-bold text-neutral-700 dark:text-white/80">En proceso</h3>
+              <span className="ml-auto text-xs font-bold bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-full">{kanbanProceso.length}</span>
+            </div>
+            {kanbanProceso.length === 0 ? (
+              <p className="text-xs text-neutral-400 dark:text-white/30 text-center py-8">Sin trámites en proceso</p>
+            ) : kanbanProceso.map(tramite => {
+              const area = getTipoTramiteArea(tramite.tipo_tramite);
+              const ac = AREA_CONFIG[area];
+              const tipoDb = tiposDb.get(tramite.tipo_tramite);
+              const dbColor = tipoDb?.color;
+              const fbc = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
+              return (
+                <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex">
+                  <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
+                  <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
+                    <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
+                    <p className={`text-[10px] font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
+                    {tramite.estatus && <span className="text-[10px] font-bold uppercase" style={{ color: tramite.estatus.color }}>{tramite.estatus.nombre}</span>}
+                    <div className="flex items-center justify-between mt-1">
+                      <span className={`text-[10px] font-extrabold uppercase tracking-widest ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tramite.prioridad === 'Alta' ? 'bg-red-100 text-red-600' : tramite.prioridad === 'Media' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>{tramite.prioridad}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Columna 3: Terminados — últimos 20 días */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2 pb-2 border-b-2 border-green-400">
+              <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
+              <h3 className="text-sm font-bold text-neutral-700 dark:text-white/80">Terminados</h3>
+              <span className="text-[10px] text-neutral-400 dark:text-white/30 hidden sm:inline">20 días</span>
+              <span className="ml-auto text-xs font-bold bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">{kanbanCerrados.length}</span>
+            </div>
+            {kanbanCerrados.length === 0 ? (
+              <p className="text-xs text-neutral-400 dark:text-white/30 text-center py-8">Sin cierres recientes</p>
+            ) : kanbanCerrados.map(tramite => {
+              const area = getTipoTramiteArea(tramite.tipo_tramite);
+              const ac = AREA_CONFIG[area];
+              const tipoDb = tiposDb.get(tramite.tipo_tramite);
+              const dbColor = tipoDb?.color;
+              const fbc = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
+              return (
+                <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex opacity-75">
+                  <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
+                  <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
+                    <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
+                    <p className={`text-[10px] font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
+                    {tramite.estatus && <span className="text-[10px] font-bold uppercase" style={{ color: tramite.estatus.color }}>{tramite.estatus.nombre}</span>}
+                    <div className="flex items-center justify-between mt-1">
+                      <span className={`text-[10px] font-extrabold uppercase tracking-widest ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
+                      <span className="text-[10px] text-neutral-400 dark:text-white/30">{new Date(tramite.cerrado_en!).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit' })}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            <button
+              onClick={() => setActiveTab('cerrados')}
+              className="mt-1 text-xs font-semibold text-neutral-500 dark:text-white/40 hover:text-neutral-700 dark:hover:text-white/70 py-2 border border-neutral-200 dark:border-white/10 rounded-xl hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors"
+            >
+              Ver más →
+            </button>
+          </div>
+
+        </div>
+      )}
+
+      {/* Normal activos/cerrados list — oculto cuando Kanban está activo en tab activos */}
+      {activeTab !== 'papelera' && !(activeTab === 'activos' && viewMode === 'kanban') && (loading ? (
         <LoadingState text="Cargando tramites..." />
       ) : filteredTramites.length === 0 ? (
         <EmptyState
