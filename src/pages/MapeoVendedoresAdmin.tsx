@@ -1,8 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { Mail, User, Trash2, CircleCheck as CheckCircle2, Circle as XCircle, Search, Link2, Users, Save, X } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
-import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import type { VendorMapping } from '../lib/vendorMappingTypes';
 
@@ -18,8 +16,6 @@ interface MoviUser {
 }
 
 export default function MapeoVendedoresAdmin() {
-  const { usuario } = useAuth();
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'usuarios' | 'mappings'>('usuarios');
 
   // Mappings state
@@ -32,6 +28,7 @@ export default function MapeoVendedoresAdmin() {
   // Usuarios state
   const [usuarios, setUsuarios] = useState<MoviUser[]>([]);
   const [loadingUsuarios, setLoadingUsuarios] = useState(true);
+  const [usuariosError, setUsuariosError] = useState<string | null>(null);
   const [userSearch, setUserSearch] = useState('');
   const [filterSicas, setFilterSicas] = useState<'all' | 'con' | 'sin'>('all');
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -39,13 +36,9 @@ export default function MapeoVendedoresAdmin() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (usuario?.rol !== 'Administrador') {
-      navigate('/');
-      return;
-    }
     loadMappings();
     loadUsuarios();
-  }, [usuario, navigate]);
+  }, []);
 
   const loadMappings = async () => {
     setLoadingMappings(true);
@@ -66,17 +59,19 @@ export default function MapeoVendedoresAdmin() {
 
   const loadUsuarios = async () => {
     setLoadingUsuarios(true);
+    setUsuariosError(null);
     try {
       const { data, error } = await supabase
         .from('usuarios')
-        .select('id, nombre_completo, email_laboral, email_personal, nombre_sicas, rol, oficina_id, oficinas(nombre)')
-        .is('deleted_at', null)
+        .select('id, nombre_completo, email_laboral, email_personal, nombre_sicas, rol, oficina_id, oficinas!usuarios_oficina_id_fkey(nombre)')
+        .eq('is_deleted', false)
         .order('nombre_completo', { ascending: true });
 
       if (error) throw error;
       setUsuarios(data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al cargar usuarios:', error);
+      setUsuariosError(error?.message || 'Error desconocido al cargar usuarios');
     } finally {
       setLoadingUsuarios(false);
     }
@@ -241,6 +236,7 @@ export default function MapeoVendedoresAdmin() {
         <UsuariosTab
           usuarios={filteredUsuarios}
           loading={loadingUsuarios}
+          error={usuariosError}
           userSearch={userSearch}
           setUserSearch={setUserSearch}
           filterSicas={filterSicas}
@@ -253,6 +249,7 @@ export default function MapeoVendedoresAdmin() {
           cancelEdit={cancelEdit}
           handleSaveSicas={handleSaveSicas}
           stats={userStats}
+          onRetry={loadUsuarios}
         />
       ) : (
         <MappingsTab
@@ -274,11 +271,12 @@ export default function MapeoVendedoresAdmin() {
 }
 
 function UsuariosTab({
-  usuarios, loading, userSearch, setUserSearch, filterSicas, setFilterSicas,
-  editingUserId, editValue, setEditValue, saving, startEdit, cancelEdit, handleSaveSicas, stats,
+  usuarios, loading, error, userSearch, setUserSearch, filterSicas, setFilterSicas,
+  editingUserId, editValue, setEditValue, saving, startEdit, cancelEdit, handleSaveSicas, stats, onRetry,
 }: {
   usuarios: MoviUser[];
   loading: boolean;
+  error: string | null;
   userSearch: string;
   setUserSearch: (v: string) => void;
   filterSicas: 'all' | 'con' | 'sin';
@@ -291,6 +289,7 @@ function UsuariosTab({
   cancelEdit: () => void;
   handleSaveSicas: (id: string) => void;
   stats: { total: number; conSicas: number; sinSicas: number };
+  onRetry: () => void;
 }) {
   return (
     <>
@@ -348,6 +347,15 @@ function UsuariosTab({
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
+          </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <XCircle className="h-16 w-16 text-red-300 mx-auto mb-4" />
+            <p className="text-red-600 text-lg font-medium mb-2">Error al cargar usuarios</p>
+            <p className="text-neutral-500 text-sm mb-4">{error}</p>
+            <button onClick={onRetry} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">
+              Reintentar
+            </button>
           </div>
         ) : usuarios.length === 0 ? (
           <div className="text-center py-12">
