@@ -63,12 +63,29 @@ export default function MapeoVendedoresAdmin() {
     try {
       const { data, error } = await supabase
         .from('usuarios')
-        .select('id, nombre_completo, email_laboral, email_personal, nombre_sicas, rol, oficina_id, oficinas!usuarios_oficina_id_fkey(nombre)')
+        .select('id, nombre_completo, email_laboral, email_personal, nombre_sicas, rol, oficina_id')
         .eq('is_deleted', false)
         .order('nombre_completo', { ascending: true });
 
       if (error) throw error;
-      setUsuarios(data || []);
+
+      // Fetch oficinas names separately to avoid RLS join issues
+      const oficinaIds = [...new Set((data || []).map(u => u.oficina_id).filter(Boolean))];
+      let oficinasMap: Record<string, string> = {};
+      if (oficinaIds.length > 0) {
+        const { data: oficinas } = await supabase
+          .from('oficinas')
+          .select('id, nombre')
+          .in('id', oficinaIds);
+        if (oficinas) {
+          oficinasMap = Object.fromEntries(oficinas.map(o => [o.id, o.nombre]));
+        }
+      }
+
+      setUsuarios((data || []).map(u => ({
+        ...u,
+        oficinas: u.oficina_id && oficinasMap[u.oficina_id] ? { nombre: oficinasMap[u.oficina_id] } : null,
+      })));
     } catch (error: any) {
       console.error('Error al cargar usuarios:', error);
       setUsuariosError(error?.message || 'Error desconocido al cargar usuarios');
