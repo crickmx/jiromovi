@@ -6,6 +6,8 @@ import type { VendorMapping } from '../lib/vendorMappingTypes';
 
 interface MoviUser {
   id: string;
+  nombre: string;
+  apellidos: string;
   nombre_completo: string;
   email_laboral: string | null;
   email_personal: string | null;
@@ -48,10 +50,15 @@ export default function MapeoVendedoresAdmin() {
         .select('*, usuarios!vendor_mappings_movi_user_id_fkey(nombre_completo, email_laboral, email_personal, nombre_sicas)')
         .order('updated_at', { ascending: false });
 
-      if (error) throw error;
-      setMappings(data || []);
+      if (error) {
+        console.error('Error al cargar mapeos:', error);
+        setMappings([]);
+      } else {
+        setMappings(data || []);
+      }
     } catch (error) {
       console.error('Error al cargar mapeos:', error);
+      setMappings([]);
     } finally {
       setLoadingMappings(false);
     }
@@ -63,27 +70,39 @@ export default function MapeoVendedoresAdmin() {
     try {
       const { data, error } = await supabase
         .from('usuarios')
-        .select('id, nombre_completo, email_laboral, email_personal, nombre_sicas, rol, oficina_id')
-        .eq('is_deleted', false)
-        .order('nombre_completo', { ascending: true });
+        .select('id, nombre, apellidos, email_laboral, email_personal, nombre_sicas, rol, oficina_id')
+        .eq('estado', 'activo')
+        .order('nombre', { ascending: true })
+        .limit(2000);
 
       if (error) throw error;
 
-      // Fetch oficinas names separately to avoid RLS join issues
-      const oficinaIds = [...new Set((data || []).map(u => u.oficina_id).filter(Boolean))];
-      let oficinasMap: Record<string, string> = {};
-      if (oficinaIds.length > 0) {
-        const { data: oficinas } = await supabase
-          .from('oficinas')
-          .select('id, nombre')
-          .in('id', oficinaIds);
-        if (oficinas) {
-          oficinasMap = Object.fromEntries(oficinas.map(o => [o.id, o.nombre]));
-        }
+      if (!data || data.length === 0) {
+        setUsuarios([]);
+        setLoadingUsuarios(false);
+        return;
       }
 
-      setUsuarios((data || []).map(u => ({
+      // Try to fetch oficinas separately - don't fail if this part errors
+      let oficinasMap: Record<string, string> = {};
+      try {
+        const oficinaIds = [...new Set(data.map(u => u.oficina_id).filter(Boolean))] as string[];
+        if (oficinaIds.length > 0) {
+          const { data: oficinas } = await supabase
+            .from('oficinas')
+            .select('id, nombre')
+            .in('id', oficinaIds);
+          if (oficinas) {
+            oficinasMap = Object.fromEntries(oficinas.map(o => [o.id, o.nombre]));
+          }
+        }
+      } catch (e) {
+        // Non-critical: continue without oficina names
+      }
+
+      setUsuarios(data.map(u => ({
         ...u,
+        nombre_completo: `${u.nombre} ${u.apellidos}`.trim(),
         oficinas: u.oficina_id && oficinasMap[u.oficina_id] ? { nombre: oficinasMap[u.oficina_id] } : null,
       })));
     } catch (error: any) {
@@ -181,6 +200,8 @@ export default function MapeoVendedoresAdmin() {
     const matchesSearch =
       userSearch === '' ||
       u.nombre_completo.toLowerCase().includes(userSearch.toLowerCase()) ||
+      u.nombre?.toLowerCase().includes(userSearch.toLowerCase()) ||
+      u.apellidos?.toLowerCase().includes(userSearch.toLowerCase()) ||
       u.email_laboral?.toLowerCase().includes(userSearch.toLowerCase()) ||
       u.email_personal?.toLowerCase().includes(userSearch.toLowerCase()) ||
       u.nombre_sicas?.toLowerCase().includes(userSearch.toLowerCase());
