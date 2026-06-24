@@ -708,10 +708,12 @@ export function Tramites() {
                 <span className="hidden sm:inline">Reportes</span>
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={() => navigate('/cotizar/formularios')}>
-              <FileText className="w-4 h-4 mr-1.5" />
-              <span className="hidden sm:inline">Formularios</span>
-            </Button>
+            {isAdmin && (
+              <Button variant="outline" size="sm" onClick={() => navigate('/cotizar/formularios')}>
+                <FileText className="w-4 h-4 mr-1.5" />
+                <span className="hidden sm:inline">Formularios</span>
+              </Button>
+            )}
             <div className="flex rounded-lg border border-neutral-200 dark:border-white/10 overflow-hidden">
               <button
                 onClick={() => setViewMode('lista')}

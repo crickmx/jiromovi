@@ -156,6 +156,7 @@ export function NuevoTramiteModal({
 
   // Ref para rastrear si estamos inicializando con datos precargados
   const isInitializingWithPreloadedData = useRef(false);
+  const insurerDropdownRef = useRef<HTMLDivElement>(null);
 
   const [tiposDb, setTiposDb] = useState<Array<{ value: string; label: string; area: string; is_custom: boolean; assignment_mode: string }>>([]);
 
@@ -164,6 +165,17 @@ export function NuevoTramiteModal({
   const isPoolMode = tiposDb.find(t => t.value === tipoTramite)?.assignment_mode === 'pool';
   const [canAccessRegistroAct, setCanAccessRegistroAct] = useState(false);
   const [autoResponsableId, setAutoResponsableId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!ceShowInsurerDropdown) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (insurerDropdownRef.current && !insurerDropdownRef.current.contains(e.target as Node)) {
+        setCeShowInsurerDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [ceShowInsurerDropdown]);
 
   useEffect(() => {
     if (isOpen && usuario) {
@@ -644,6 +656,30 @@ export function NuevoTramiteModal({
     setError('');
     try {
       const ticket = await createRegistroActividad({ ...formData, creado_por: usuario.id });
+      if (ticket?.id && archivos.length > 0) {
+        for (const archivo of archivos) {
+          const fileExt = archivo.name.split('.').pop();
+          const fileName = `${ticket.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const { error: uploadError } = await supabase.storage
+            .from('ticket-archivos')
+            .upload(fileName, archivo);
+          if (uploadError) throw uploadError;
+          const { data: { publicUrl } } = supabase.storage
+            .from('ticket-archivos')
+            .getPublicUrl(fileName);
+          const { error: archivoError } = await supabase
+            .from('ticket_archivos')
+            .insert({
+              ticket_id: ticket.id,
+              usuario_id: usuario.id,
+              nombre: archivo.name,
+              url: publicUrl,
+              tipo: archivo.type,
+              tamano: archivo.size
+            });
+          if (archivoError) throw archivoError;
+        }
+      }
       clearDraft(DRAFT_KEY);
       if (ticket?.id) onSuccessWithId?.(ticket.id);
       onSuccess();
@@ -1138,7 +1174,7 @@ export function NuevoTramiteModal({
             </div>
 
             {/* Aseguradoras multiselect */}
-            <div className="relative">
+            <div className="relative" ref={insurerDropdownRef}>
               <label className="block text-sm font-semibold text-neutral-900 mb-2">
                 <Building2 className="w-4 h-4 inline mr-1.5" />
                 Aseguradoras * (seleccione una o más)
@@ -1651,7 +1687,7 @@ export function NuevoTramiteModal({
           />
         </div>
 
-        {tipoTramite !== 'registro_poliza' && tipoTramite !== 'solicitud_comisiones_pendientes' && tipoTramite !== 'cotizacion_emision' && (
+        {tipoTramite !== 'registro_poliza' && tipoTramite !== 'solicitud_comisiones_pendientes' && (
           <div>
             <label className="block text-sm font-semibold text-neutral-900 mb-2">
               <Upload className="w-4 h-4 inline mr-2" />

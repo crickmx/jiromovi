@@ -76,6 +76,13 @@ export function TramiteDetalle() {
   const [saving, setSaving] = useState(false);
   const [showCerrarMenu, setShowCerrarMenu] = useState(false);
   const cerrarMenuRef = useRef<HTMLDivElement | null>(null);
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ msg, type });
+    toastTimer.current = setTimeout(() => setToast(null), 3500);
+  };
 
   const [userArea, setUserArea] = useState<string | null>(null);
   const [myTeamRole, setMyTeamRole] = useState<'lider' | 'ejecutivo' | 'miembro' | null>(null);
@@ -317,13 +324,7 @@ export function TramiteDetalle() {
   };
 
   const handleSave = async () => {
-    if (!tramite || !usuario) return;
-
-    // Si no hay cambios, solo regresar
-    if (!isDirty) {
-      navigate('/tramites');
-      return;
-    }
+    if (!tramite || !usuario || !isDirty) return;
 
     setSaving(true);
 
@@ -342,10 +343,11 @@ export function TramiteDetalle() {
 
       if (error) throw error;
 
-      navigate('/tramites');
+      await loadTramite();
+      showToast('Cambios guardados con éxito');
     } catch (err: any) {
       console.error('Error updating tramite:', err);
-      alert('Error al actualizar el tramite');
+      showToast('Error al guardar los cambios', 'error');
       await loadTramite();
     } finally {
       setSaving(false);
@@ -555,8 +557,8 @@ export function TramiteDetalle() {
                 <>
                   <button
                     onClick={handleSave}
-                    disabled={saving || !isDirty}
-                    className="flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={saving}
+                    className={`flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl transition-all font-semibold cursor-pointer disabled:opacity-50 ${!isDirty && !saving ? 'opacity-50' : ''}`}
                   >
                     <Save className="w-4 h-4" />
                     <span>{saving ? 'Guardando...' : 'Guardar'}</span>
@@ -669,6 +671,13 @@ export function TramiteDetalle() {
         {activeTab === 'comisiones' && <ComisionesPendientes tramiteId={tramite.id} />}
       </div>
 
+      {toast && (
+        <div className={`fixed bottom-6 right-6 px-4 py-3 rounded-xl text-sm font-medium shadow-lg z-50 ${
+          toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+        }`}>
+          {toast.msg}
+        </div>
+      )}
     </div>
   );
 }

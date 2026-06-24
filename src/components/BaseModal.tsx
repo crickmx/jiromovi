@@ -56,11 +56,6 @@ export function BaseModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-ios p-4 overflow-y-auto animate-fade-in"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
-      }}
     >
       <div
         className={`relative bg-white rounded-ios-2xl shadow-ios-xl ${maxWidthClasses[maxWidth]} w-full my-4 flex flex-col max-h-[90vh] animate-scale-in`}
