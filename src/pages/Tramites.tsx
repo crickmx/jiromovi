@@ -40,6 +40,7 @@ interface TramiteItem {
   cerrado_en: string | null;
   eliminado_at: string | null;
   eliminado_por: string | null;
+  ultima_accion_por: string | null;
   agente_id: string | null;
   creado_por: string | null;
   assigned_to_user_id: string | null;
@@ -320,6 +321,13 @@ export function Tramites() {
     if (!confirm('¿Eliminar definitivamente este trámite? Esta acción no se puede deshacer.')) return;
     await supabase.from('tickets').delete().eq('id', tramiteId);
     setTramitesPapelera(prev => prev.filter(t => t.id !== tramiteId));
+  };
+
+  const handleMarkAsRead = async (e: React.MouseEvent, tramiteId: string) => {
+    e.stopPropagation();
+    if (!usuario) return;
+    await supabase.from('tickets').update({ ultima_accion_por: usuario.id }).eq('id', tramiteId);
+    setTramites(prev => prev.map(t => t.id === tramiteId ? { ...t, ultima_accion_por: usuario.id } : t));
   };
 
   const handleVaciarPapelera = async () => {
@@ -861,20 +869,34 @@ export function Tramites() {
             const area = getTipoTramiteArea(tramite.tipo_tramite);
             const ac = AREA_CONFIG[area];
             const tipoDb = tiposDb.get(tramite.tipo_tramite);
-            // Use DB color if available, otherwise fall back to area config
             const dbColor = tipoDb?.color;
             const fallbackBarClass = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
             const hasArchivos = (tramite.ticket_archivos?.length ?? 0) > 0;
+            const needsAttention = !!tramite.ultima_accion_por && tramite.ultima_accion_por !== usuario?.id;
 
             return (
               <div
                 key={tramite.id}
                 onClick={() => navigate(`/tramites/${tramite.id}`)}
-                className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden hover:shadow-md hover:border-neutral-300 dark:hover:border-white/15 transition-all duration-200 cursor-pointer group flex"
+                className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 hover:border-neutral-300 dark:hover:border-white/20 transition-all duration-200 cursor-pointer group flex"
               >
-                {/* Colored left strip */}
+                {/* Globito animado — requiere atención */}
+                {needsAttention && (
+                  <button
+                    onClick={(e) => handleMarkAsRead(e, tramite.id)}
+                    className="absolute -top-1.5 -right-1.5 z-10"
+                    title="Marcar como leído"
+                  >
+                    <span className="relative flex h-4 w-4">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
+                      <span className="relative inline-flex h-4 w-4 rounded-full bg-orange-500 shadow-sm shadow-orange-300/60" />
+                    </span>
+                  </button>
+                )}
+
+                {/* Colored left strip — grows slightly on hover */}
                 <div
-                  className={`w-1.5 shrink-0 ${!dbColor ? fallbackBarClass : ''}`}
+                  className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fallbackBarClass : ''}`}
                   style={dbColor ? { backgroundColor: dbColor } : undefined}
                 />
 
