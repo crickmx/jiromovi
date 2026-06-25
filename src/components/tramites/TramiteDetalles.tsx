@@ -61,6 +61,18 @@ interface Grupo {
   nombre: string;
 }
 
+interface EstatusOpcion {
+  label: string;
+  slug: string;
+  clasificacion?: string | null;
+}
+
+interface EstatusCampoDinamico {
+  id: string;
+  label: string;
+  config: { opciones?: EstatusOpcion[] };
+}
+
 interface TramiteDetallesProps {
   tramite: TramiteData;
   estatusList: TramiteEstatus[];
@@ -74,6 +86,9 @@ interface TramiteDetallesProps {
   grupoAsignadoId?: string | null;
   onResponsableChange?: (userId: string) => void;
   onEquipoChange?: (grupoId: string | null) => void;
+  estatusCampoDinamico?: EstatusCampoDinamico | null;
+  selectedEstatusSlug?: string;
+  onEstatusSlugChange?: (slug: string) => void;
 }
 
 export function TramiteDetalles({
@@ -89,6 +104,9 @@ export function TramiteDetalles({
   grupoAsignadoId,
   onResponsableChange,
   onEquipoChange,
+  estatusCampoDinamico,
+  selectedEstatusSlug,
+  onEstatusSlugChange,
 }: TramiteDetallesProps) {
   const { usuario } = useAuth();
   const [asignaciones, setAsignaciones] = useState<Asignacion[]>([]);
@@ -298,29 +316,57 @@ export function TramiteDetalles({
 
         <div>
           <label className="block text-sm font-semibold text-neutral-700 mb-2">
-            Estatus
+            {estatusCampoDinamico ? estatusCampoDinamico.label : 'Estatus'}
           </label>
-          {canEdit ? (
-            <select
-              value={selectedEstatus}
-              onChange={(e) => setSelectedEstatus(e.target.value)}
-              className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all cursor-pointer"
-            >
-              {estatusList.map(estatus => (
-                <option key={estatus.id} value={estatus.id}>{estatus.nombre}</option>
-              ))}
-            </select>
+          {estatusCampoDinamico ? (
+            // FormBuilder estatus: show custom options
+            canEdit ? (
+              <select
+                value={selectedEstatusSlug || ''}
+                onChange={(e) => onEstatusSlugChange?.(e.target.value)}
+                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all cursor-pointer"
+              >
+                <option value="">Seleccionar...</option>
+                {(estatusCampoDinamico.config.opciones || []).map(opt => (
+                  <option key={opt.slug} value={opt.slug}>{opt.label}</option>
+                ))}
+              </select>
+            ) : (() => {
+              const opcion = (estatusCampoDinamico.config.opciones || []).find(o => o.slug === selectedEstatusSlug);
+              const color = opcion?.clasificacion === 'inicio' ? '#3B82F6' : opcion?.clasificacion === 'terminacion' ? '#059669' : '#6B7280';
+              return (
+                <div
+                  className="px-4 py-3 rounded-xl border font-semibold"
+                  style={{ backgroundColor: color + '20', color, borderColor: color }}
+                >
+                  {opcion?.label ?? selectedEstatusSlug ?? '—'}
+                </div>
+              );
+            })()
           ) : (
-            <div
-              className="px-4 py-3 rounded-xl border font-semibold"
-              style={{
-                backgroundColor: tramite.estatus?.color + '20',
-                color: tramite.estatus?.color,
-                borderColor: tramite.estatus?.color
-              }}
-            >
-              {tramite.estatus?.nombre}
-            </div>
+            // Fallback: old ticket_estatus dropdown
+            canEdit ? (
+              <select
+                value={selectedEstatus}
+                onChange={(e) => setSelectedEstatus(e.target.value)}
+                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all cursor-pointer"
+              >
+                {estatusList.map(estatus => (
+                  <option key={estatus.id} value={estatus.id}>{estatus.nombre}</option>
+                ))}
+              </select>
+            ) : (
+              <div
+                className="px-4 py-3 rounded-xl border font-semibold"
+                style={{
+                  backgroundColor: tramite.estatus?.color + '20',
+                  color: tramite.estatus?.color,
+                  borderColor: tramite.estatus?.color
+                }}
+              >
+                {tramite.estatus?.nombre}
+              </div>
+            )
           )}
         </div>
       </div>

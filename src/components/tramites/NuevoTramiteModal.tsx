@@ -297,8 +297,16 @@ export function NuevoTramiteModal({
       .eq('activo', true)
       .order('display_order')
       .then(({ data }) => {
-        setCamposDinamicos((data as CampoDinamico[]) || []);
-        setRespuestasDinamicas({});
+        const campos = (data as CampoDinamico[]) || [];
+        setCamposDinamicos(campos);
+        // Auto-set el primer slug con clasificacion='inicio' del campo estatus
+        const estatusCampo = campos.find(c => c.tipo === 'estatus');
+        const primeraOpcionInicio = estatusCampo?.config.opciones?.find(o => o.clasificacion === 'inicio');
+        if (estatusCampo && primeraOpcionInicio) {
+          setRespuestasDinamicas({ [estatusCampo.id]: primeraOpcionInicio.slug });
+        } else {
+          setRespuestasDinamicas({});
+        }
       });
   }, [tipoTramite, tiposDb]);
 
@@ -971,6 +979,17 @@ export function NuevoTramiteModal({
           });
         if (respuestas.length > 0) {
           await supabase.from('tramite_respuestas').insert(respuestas);
+        }
+
+        // Guardar custom_estatus_label y custom_estatus_color en el ticket
+        const estatusCampo = camposDinamicos.find(c => c.tipo === 'estatus');
+        if (estatusCampo) {
+          const slug = respuestasDinamicas[estatusCampo.id];
+          const opcion = (estatusCampo.config.opciones || []).find(o => o.slug === slug);
+          if (opcion) {
+            const color = opcion.clasificacion === 'inicio' ? '#3B82F6' : opcion.clasificacion === 'terminacion' ? '#059669' : '#6B7280';
+            await supabase.from('tickets').update({ custom_estatus_label: opcion.label, custom_estatus_color: color }).eq('id', ticket.id);
+          }
         }
 
         // Auto-cierre: si algún campo estatus tiene clasificacion 'terminacion'

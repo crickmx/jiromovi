@@ -810,12 +810,14 @@ export function GestionCatalogosRegistro() {
                         >
                           <Settings className="w-3.5 h-3.5" />
                         </button>
-                        <button
-                          onClick={() => handleDeleteCampo(campo)}
-                          className="p-1.5 hover:bg-red-50 rounded-lg transition-colors text-neutral-300 hover:text-red-500"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {campo.tipo !== 'estatus' && (
+                          <button
+                            onClick={() => handleDeleteCampo(campo)}
+                            className="p-1.5 hover:bg-red-50 rounded-lg transition-colors text-neutral-300 hover:text-red-500"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>

@@ -50,6 +50,8 @@ interface TramiteItem {
   agente: { nombre_completo: string; oficina_id: string | null; oficina: { nombre: string } | null } | null;
   responsable: { nombre_completo: string } | null;
   estatus: TramiteEstatus | null;
+  custom_estatus_label: string | null;
+  custom_estatus_color: string | null;
   ticket_asignaciones: Array<{
     ejecutivo: { nombre_completo: string } | null;
   }>;
@@ -1200,6 +1202,8 @@ export function Tramites() {
                 : tramite.ticket_archivos.length > 0
                   ? `Se adjuntó un archivo: ${tramite.ticket_archivos[tramite.ticket_archivos.length - 1].nombre}`
                   : null;
+              const estatusLabel = tramite.custom_estatus_label ?? tramite.estatus?.nombre;
+              const estatusColor = tramite.custom_estatus_color ?? tramite.estatus?.color;
               return (
                 <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex">
                   <button onClick={(e) => handleMarkAsRead(e, tramite.id)} className="absolute -top-1.5 -right-1.5 z-10" title="Marcar como leído">
@@ -1212,7 +1216,7 @@ export function Tramites() {
                   <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
                     <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
                     <p className={`text-[10px] font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
-                    {tramite.estatus && <span className="text-[10px] font-bold uppercase" style={{ color: tramite.estatus.color }}>{tramite.estatus.nombre}</span>}
+                    {estatusLabel && <span className="text-[10px] font-bold uppercase" style={{ color: estatusColor ?? undefined }}>{estatusLabel}</span>}
                     {preview && (
                       <p className="text-[10px] text-neutral-500 dark:text-white/40 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
                     )}
@@ -1253,13 +1257,15 @@ export function Tramites() {
                 : tramite.ticket_archivos.length > 0
                   ? `Se adjuntó un archivo: ${tramite.ticket_archivos[tramite.ticket_archivos.length - 1].nombre}`
                   : null;
+              const estatusLabel = tramite.custom_estatus_label ?? tramite.estatus?.nombre;
+              const estatusColor = tramite.custom_estatus_color ?? tramite.estatus?.color;
               return (
                 <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex">
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
                   <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
                     <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
                     <p className={`text-[10px] font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
-                    {tramite.estatus && <span className="text-[10px] font-bold uppercase" style={{ color: tramite.estatus.color }}>{tramite.estatus.nombre}</span>}
+                    {estatusLabel && <span className="text-[10px] font-bold uppercase" style={{ color: estatusColor ?? undefined }}>{estatusLabel}</span>}
                     {preview && (
                       <p className="text-[10px] text-neutral-500 dark:text-white/40 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
                     )}

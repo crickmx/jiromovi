@@ -36,6 +36,8 @@ interface TramiteData {
   assigned_to_user_id: string | null;
   grupo_asignado_id: string | null;
   estatus_id: string;
+  custom_estatus_label?: string | null;
+  custom_estatus_color?: string | null;
   agente: Usuario | null;
   responsable: Usuario | null;
   estatus: TramiteEstatus | null;
@@ -119,10 +121,15 @@ export function TramiteDetalle() {
   const claimedRef = useRef(false);
   const isCerrado = tramite?.cerrado_en !== null;
 
+  // Campo estatus del FormBuilder (tipo='estatus') — si existe, reemplaza el dropdown hardcodeado
+  const estatusCampoDinamico = camposDinamicos.find(c => c.tipo === 'estatus') ?? null;
+  const selectedEstatusSlug = estatusCampoDinamico ? (respuestasDinamicas[estatusCampoDinamico.id] ?? '') : '';
+
   const isDirty = !!tramite && (
     selectedEstatus !== (tramite.estatus?.id ?? tramite.estatus_id) ||
     selectedPrioridad !== tramite.prioridad ||
-    fechaPromesaEntrega !== (tramite.fecha_promesa_entrega || '')
+    fechaPromesaEntrega !== (tramite.fecha_promesa_entrega || '') ||
+    (!!estatusCampoDinamico && selectedEstatusSlug !== (respuestasOriginales.find(r => r.campo_id === estatusCampoDinamico.id)?.valor_json ?? ''))
   );
 
   useEffect(() => {
@@ -376,11 +383,24 @@ export function TramiteDetalle() {
       tramite?.tipo_tramite === 'cotizacion_emision' &&
       estatus && ESTATUS_FINALES_COTIZACION.includes(estatus.nombre);
 
+    // Compute custom estatus label/color if FormBuilder campo exists
+    let customLabel: string | null = null;
+    let customColor: string | null = null;
+    if (estatusCampoDinamico) {
+      const slug = respuestasDinamicas[estatusCampoDinamico.id];
+      const opcion = (estatusCampoDinamico.config.opciones || []).find(o => o.slug === slug);
+      if (opcion) {
+        customLabel = opcion.label;
+        customColor = opcion.clasificacion === 'inicio' ? '#3B82F6' : opcion.clasificacion === 'terminacion' ? '#059669' : '#6B7280';
+      }
+    }
+
     return {
       estatus_id: estatusId,
       prioridad: selectedPrioridad,
       modificado_por: usuario!.id,
       fecha_promesa_entrega: fechaPromesaEntrega || null,
+      ...(customLabel !== null ? { custom_estatus_label: customLabel, custom_estatus_color: customColor } : {}),
       ...(esFinalCotizacion && !tramite?.cerrado_en
         ? { cerrado_en: new Date().toISOString(), cerrado_por: usuario!.id }
         : {}),
@@ -636,19 +656,23 @@ export function TramiteDetalle() {
           backLabel="Volver a Tramites"
           badge={
             <div className="flex items-center gap-3">
-              {tramite.estatus && (
-                <span
-                  className="px-3 py-1 rounded-full text-sm font-semibold"
-                  style={{
-                    backgroundColor: tramite.estatus.color + '20',
-                    color: tramite.estatus.color,
-                    borderColor: tramite.estatus.color,
-                    borderWidth: '1px'
-                  }}
-                >
-                  {tramite.estatus.nombre}
-                </span>
-              )}
+              {(() => {
+                const label = tramite.custom_estatus_label ?? tramite.estatus?.nombre;
+                const color = tramite.custom_estatus_color ?? tramite.estatus?.color;
+                return label ? (
+                  <span
+                    className="px-3 py-1 rounded-full text-sm font-semibold"
+                    style={{
+                      backgroundColor: (color ?? '#888') + '20',
+                      color: color ?? '#888',
+                      borderColor: color ?? '#888',
+                      borderWidth: '1px'
+                    }}
+                  >
+                    {label}
+                  </span>
+                ) : null;
+              })()}
               {isCerrado && (
                 <span className="text-sm text-neutral-500 dark:text-white/50">
                   Cerrado el {new Date(tramite.cerrado_en!).toLocaleDateString('es-MX')}
@@ -770,6 +794,9 @@ export function TramiteDetalle() {
               grupoAsignadoId={tramite.grupo_asignado_id}
               onResponsableChange={handleResponsableChange}
               onEquipoChange={handleEquipoChange}
+              estatusCampoDinamico={estatusCampoDinamico}
+              selectedEstatusSlug={selectedEstatusSlug}
+              onEstatusSlugChange={(slug) => estatusCampoDinamico && setRespuestasDinamicas(prev => ({ ...prev, [estatusCampoDinamico.id]: slug }))}
             />
 
             {/* Fecha Promesa de Entrega — solo líderes, gerentes y admins */}
@@ -789,11 +816,11 @@ export function TramiteDetalle() {
               </div>
             )}
 
-            {/* Campos dinámicos del catálogo */}
-            {camposDinamicos.length > 0 && (
+            {/* Campos dinámicos del catálogo (excluye estatus — ya está en TramiteDetalles) */}
+            {camposDinamicos.filter(c => c.tipo !== 'estatus').length > 0 && (
               <div className="mt-6 pt-6 border-t border-neutral-100 space-y-4">
                 <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Campos del trámite</p>
-                {camposDinamicos.map(campo => {
+                {camposDinamicos.filter(c => c.tipo !== 'estatus').map(campo => {
                   const val = respuestasDinamicas[campo.id];
                   const set = (v: any) => setRespuestasDinamicas(prev => ({ ...prev, [campo.id]: v }));
                   const editable = canEdit && !isCerrado;
