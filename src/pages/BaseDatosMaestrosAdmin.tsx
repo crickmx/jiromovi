@@ -36,7 +36,9 @@ interface Importacion {
   usuarios?: { nombre: string }
 }
 
-type TabId = 'catalogo' | 'vendedores' | 'mapeo' | 'historial'
+interface CodigoPostal { id: string; codigo: string; colonia: string; municipio: string; estado: string }
+
+type TabId = 'catalogo' | 'vendedores' | 'mapeo' | 'historial' | 'codigos_postales'
 type ImportMode = 'adicion' | 'reemplazo'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -96,6 +98,12 @@ export default function BaseDatosMaestrosAdmin() {
   const [historial, setHistorial]     = useState<Importacion[]>([]);
   const [loadingHist, setLoadingHist] = useState(false);
 
+  // ── Códigos Postales ────────────────────────────────────────────────────────
+  const [codigosPostales, setCodigosPostales] = useState<CodigoPostal[]>([]);
+  const [cpCount, setCpCount]                 = useState(0);
+  const [loadingCP, setLoadingCP]             = useState(false);
+  const [searchCP, setSearchCP]               = useState('');
+
   // ── Inline add forms ────────────────────────────────────────────────────────
   const [addRamoNombre,     setAddRamoNombre]     = useState('');
   const [addCompaniaNombre, setAddCompaniaNombre] = useState('');
@@ -112,10 +120,11 @@ export default function BaseDatosMaestrosAdmin() {
 
   // ─── Carga inicial por tab ────────────────────────────────────────────────
   useEffect(() => {
-    if (tab === 'catalogo')   loadCatalogo();
-    if (tab === 'vendedores') loadVendedores();
-    if (tab === 'mapeo')      loadMapeo();
-    if (tab === 'historial')  loadHistorial();
+    if (tab === 'catalogo')          loadCatalogo();
+    if (tab === 'vendedores')        loadVendedores();
+    if (tab === 'mapeo')             loadMapeo();
+    if (tab === 'historial')         loadHistorial();
+    if (tab === 'codigos_postales')  loadCodigosPostales();
   }, [tab]);
 
   // ─── Loaders ─────────────────────────────────────────────────────────────────
@@ -169,6 +178,17 @@ export default function BaseDatosMaestrosAdmin() {
       .select('*, usuarios(nombre)').order('created_at', { ascending: false }).limit(50);
     setHistorial(data ?? []);
     setLoadingHist(false);
+  }
+
+  async function loadCodigosPostales() {
+    setLoadingCP(true);
+    const [{ count }, { data }] = await Promise.all([
+      supabase.from('codigos_postales').select('*', { count: 'exact', head: true }),
+      supabase.from('codigos_postales').select('*').order('codigo').limit(100),
+    ]);
+    setCpCount(count ?? 0);
+    setCodigosPostales(data ?? []);
+    setLoadingCP(false);
   }
 
   // ─── CRUD manual ─────────────────────────────────────────────────────────────
@@ -234,6 +254,10 @@ export default function BaseDatosMaestrosAdmin() {
       ['vendedor', 'email_movi'],
     ]), 'mapeo');
 
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+      ['codigo', 'colonia', 'municipio', 'estado'],
+    ]), 'codigos_postales');
+
     XLSX.writeFile(wb, 'plantilla_catalogos_maestros.xlsx');
     toast('Plantilla descargada');
   }
@@ -285,7 +309,7 @@ export default function BaseDatosMaestrosAdmin() {
       const buffer = await file.arrayBuffer();
       const wb = XLSX.read(buffer, { type: 'array' });
 
-      const pestanas: TabId[] = ['catalogo', 'vendedores', 'mapeo'];
+      const pestanas: TabId[] = ['catalogo', 'vendedores', 'mapeo', 'codigos_postales'];
       const encontradas = pestanas.filter(p => wb.SheetNames.includes(p));
 
       if (encontradas.length === 0) {
@@ -304,7 +328,7 @@ export default function BaseDatosMaestrosAdmin() {
 
         if (rows.length === 0) continue;
 
-        if (importMode === 'reemplazo') {
+        if (importMode === 'reemplazo' && pestana !== 'codigos_postales') {
           const { error } = await supabase.rpc('reemplazar_maestro_catalogo', { p_pestana: pestana });
           if (error) throw new Error(`Error al limpiar ${pestana}: ${error.message}`);
         }
@@ -327,6 +351,12 @@ export default function BaseDatosMaestrosAdmin() {
           totalOmitidas += res.omitidas;
           errores.push(...res.errores);
         }
+        if (pestana === 'codigos_postales') {
+          const res = await importarCodigosPostales(rows, importMode);
+          totalExitosas += res.exitosas;
+          totalOmitidas += res.omitidas;
+          errores.push(...res.errores);
+        }
       }
 
       // Guardar log
@@ -344,9 +374,10 @@ export default function BaseDatosMaestrosAdmin() {
       toast(`Importación completada: ${totalExitosas} filas, ${totalOmitidas} omitidas${errores.length > 0 ? `, ${errores.length} errores` : ''}`);
 
       // Recargar datos del tab actual
-      if (tab === 'catalogo')   loadCatalogo();
-      if (tab === 'vendedores') loadVendedores();
-      if (tab === 'mapeo')      loadMapeo();
+      if (tab === 'catalogo')          loadCatalogo();
+      if (tab === 'vendedores')        loadVendedores();
+      if (tab === 'mapeo')             loadMapeo();
+      if (tab === 'codigos_postales')  loadCodigosPostales();
 
     } catch (err: any) {
       toast('Error durante la importación: ' + err.message, 'err');
@@ -484,6 +515,55 @@ export default function BaseDatosMaestrosAdmin() {
     return { exitosas, omitidas, errores };
   }
 
+  async function importarCodigosPostales(rows: any[], mode: ImportMode) {
+    let exitosas = 0, omitidas = 0;
+    const errores: { fila: number; error: string }[] = [];
+
+    if (mode === 'reemplazo') {
+      const { error } = await supabase.from('codigos_postales').delete().not('id', 'is', null);
+      if (error) throw new Error('Error al limpiar códigos postales: ' + error.message);
+    }
+
+    const validRows: { codigo: string; colonia: string; municipio: string; estado: string }[] = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const codigo    = normalize(String(r.codigo ?? r.Codigo ?? r.CODIGO ?? r['Código Postal'] ?? r['codigo_postal'] ?? r.C_CP ?? ''));
+      const colonia   = normalize(String(r.colonia ?? r.Colonia ?? r.COLONIA ?? r.Asentamiento ?? r.asentamiento ?? ''));
+      const municipio = normalize(String(r.municipio ?? r.Municipio ?? r.MUNICIPIO ?? r.Delegacion ?? r.delegacion ?? r.D_mnpio ?? ''));
+      const estado    = normalize(String(r.estado ?? r.Estado ?? r.ESTADO ?? r.D_estado ?? ''));
+
+      if (!codigo || !colonia) {
+        if (errores.length < 100) errores.push({ fila: i + 2, error: 'Faltan campos (codigo, colonia)' });
+        continue;
+      }
+      if (!/^\d{5}$/.test(codigo)) {
+        if (errores.length < 100) errores.push({ fila: i + 2, error: `CP inválido: "${codigo}"` });
+        continue;
+      }
+      validRows.push({ codigo, colonia, municipio, estado });
+    }
+
+    const BATCH = 500;
+    for (let b = 0; b < validRows.length; b += BATCH) {
+      const batch = validRows.slice(b, b + BATCH);
+      const { error } = await supabase.from('codigos_postales')
+        .upsert(batch, { onConflict: 'codigo,colonia', ignoreDuplicates: mode === 'adicion' });
+      if (error) throw new Error('Error al insertar lote CP: ' + error.message);
+      exitosas += batch.length;
+    }
+    return { exitosas, omitidas, errores };
+  }
+
+  async function exportarCodigosPostales() {
+    const { data } = await supabase.from('codigos_postales').select('codigo,colonia,municipio,estado').order('codigo');
+    const rows: any[][] = [['codigo', 'colonia', 'municipio', 'estado']];
+    for (const cp of (data ?? [])) rows.push([cp.codigo, cp.colonia, cp.municipio, cp.estado]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'codigos_postales');
+    XLSX.writeFile(wb, `codigos_postales_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast('Códigos postales exportados');
+  }
+
   // ─── Render helpers ───────────────────────────────────────────────────────────
 
   function BadgeActivo({ activo }: { activo: boolean }) {
@@ -552,7 +632,7 @@ export default function BaseDatosMaestrosAdmin() {
             <>
               <FileSpreadsheet className="w-10 h-10 text-neutral-300 mx-auto mb-2"/>
               <p className="text-sm text-neutral-600 dark:text-neutral-300">Arrastra tu archivo Excel aquí o <span className="text-blue-600 font-medium">haz click para seleccionar</span></p>
-              <p className="text-xs text-neutral-400 mt-1">El archivo debe tener las pestañas: <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">catalogo</code>, <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">vendedores</code>, <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">mapeo</code></p>
+              <p className="text-xs text-neutral-400 mt-1">Pestañas válidas: <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">catalogo</code>, <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">vendedores</code>, <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">mapeo</code>, <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">codigos_postales</code></p>
             </>
           )}
         </div>
@@ -939,13 +1019,94 @@ export default function BaseDatosMaestrosAdmin() {
     );
   }
 
+  // ─── TAB: Códigos Postales ────────────────────────────────────────────────────
+
+  function TabCodigosPostales() {
+    const cpFiltrados = codigosPostales.filter(cp =>
+      cp.codigo.includes(searchCP) ||
+      cp.colonia.toLowerCase().includes(searchCP.toLowerCase()) ||
+      cp.estado.toLowerCase().includes(searchCP.toLowerCase())
+    );
+
+    return (
+      <div className="space-y-6">
+        <ImportPanel />
+
+        <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-neutral-800 dark:text-white">
+              {cpCount.toLocaleString('es-MX')} códigos postales cargados
+            </p>
+            <p className="text-xs text-neutral-500 mt-0.5">
+              Alimenta la validación del campo "Código Postal" en formularios de trámites. Formato: 5 dígitos.
+            </p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button onClick={exportarCodigosPostales}
+              className="flex items-center gap-2 text-xs px-3 py-2 bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-200 rounded-lg transition">
+              <Download className="w-3.5 h-3.5"/> Exportar CPs
+            </button>
+          </div>
+        </div>
+
+        {cpCount === 0 && (
+          <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+            <AlertTriangle className="w-4 h-4 shrink-0"/>
+            Catálogo vacío — importa un Excel con la pestaña <code className="bg-amber-100 px-1 rounded mx-1">codigos_postales</code> para activar la validación.
+          </div>
+        )}
+
+        {cpCount > 0 && (
+          <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5">
+            <SectionHeader title="Vista previa" count={cpCount} />
+            <p className="text-xs text-neutral-400 mb-3">Primeros 100 registros · Filtra por CP, colonia o estado</p>
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400"/>
+              <input type="text" placeholder="Buscar por CP, colonia, estado..."
+                value={searchCP} onChange={e => setSearchCP(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg text-sm dark:bg-neutral-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+            </div>
+            {loadingCP ? <Skeleton /> : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-neutral-50 dark:bg-neutral-700/50 border-b border-neutral-200 dark:border-neutral-700">
+                    <tr>
+                      <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">CP</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Colonia</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Municipio</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100 dark:divide-neutral-700">
+                    {cpFiltrados.map(cp => (
+                      <tr key={cp.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-700/30">
+                        <td className="px-4 py-2.5 font-mono font-medium text-neutral-800 dark:text-neutral-100">{cp.codigo}</td>
+                        <td className="px-4 py-2.5 text-neutral-700 dark:text-neutral-200">{cp.colonia}</td>
+                        <td className="px-4 py-2.5 text-neutral-500 dark:text-neutral-300">{cp.municipio}</td>
+                        <td className="px-4 py-2.5 text-neutral-500 dark:text-neutral-300">{cp.estado}</td>
+                      </tr>
+                    ))}
+                    {cpFiltrados.length === 0 && (
+                      <tr><td colSpan={4} className="px-4 py-10 text-center text-neutral-400 text-sm">Sin resultados para esa búsqueda.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // ─── Main render ──────────────────────────────────────────────────────────────
 
   const tabs: { id: TabId; label: string; icon: typeof Database }[] = [
-    { id: 'catalogo',   label: 'Catálogo',  icon: Database },
-    { id: 'vendedores', label: 'Vendedores', icon: Users },
-    { id: 'mapeo',      label: 'Mapeo MOVI ↔ Agente', icon: Link2 },
-    { id: 'historial',  label: 'Historial', icon: History },
+    { id: 'catalogo',          label: 'Catálogo',         icon: Database },
+    { id: 'vendedores',        label: 'Vendedores',        icon: Users },
+    { id: 'mapeo',             label: 'Mapeo MOVI ↔ Agente', icon: Link2 },
+    { id: 'codigos_postales',  label: 'Cód. Postales',    icon: Building2 },
+    { id: 'historial',         label: 'Historial',         icon: History },
   ];
 
   return (
@@ -961,12 +1122,13 @@ export default function BaseDatosMaestrosAdmin() {
       </div>
 
       {/* Stats rápidos */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
         {[
           { label: 'Compañías', value: companias.filter(c => c.activo).length, color: 'blue' },
           { label: 'Ramos',     value: ramos.filter(r => r.activo).length,     color: 'violet' },
           { label: 'Vendedores', value: agentes.filter(a => a.activo).length,  color: 'amber' },
           { label: 'Mapeos activos', value: mapeos.filter(m => m.activo).length, color: 'green' },
+          { label: 'Cód. Postales', value: cpCount, color: 'teal' },
         ].map(s => (
           <div key={s.label} className={`bg-${s.color}-50 border border-${s.color}-100 rounded-xl p-4`}>
             <p className={`text-xs text-${s.color}-600 font-medium`}>{s.label}</p>
@@ -992,10 +1154,11 @@ export default function BaseDatosMaestrosAdmin() {
       </div>
 
       {/* Contenido del tab activo */}
-      {tab === 'catalogo'   && <TabCatalogo />}
-      {tab === 'vendedores' && <TabVendedores />}
-      {tab === 'mapeo'      && <TabMapeo />}
-      {tab === 'historial'  && <TabHistorial />}
+      {tab === 'catalogo'          && <TabCatalogo />}
+      {tab === 'vendedores'        && <TabVendedores />}
+      {tab === 'mapeo'             && <TabMapeo />}
+      {tab === 'codigos_postales'  && <TabCodigosPostales />}
+      {tab === 'historial'         && <TabHistorial />}
     </div>
   );
 }
