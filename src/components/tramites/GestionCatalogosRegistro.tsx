@@ -6,8 +6,12 @@ import { invalidateTiposTramiteCache } from '../../hooks/useTiposTramite';
 import { InsuranceTypesList } from './catalogos/InsuranceTypesList';
 import { FormBuilderTab } from './catalogos/FormBuilderTab';
 import { PermisosPanel } from './catalogos/PermisosPanel';
+import { HistorialPanel } from './catalogos/HistorialPanel';
 import { ColorPicker } from './catalogos/ColorPicker';
 import { TicketTipo, AREAS, Area, slugify } from './catalogos/types';
+import { logHistorial } from './catalogos/logHistorial';
+
+interface TipoStats { tickets: number; campos: number }
 
 // ── Main Component ────────────────────────────────────────────────────────
 
@@ -26,10 +30,11 @@ export function GestionCatalogosRegistro() {
   // ── Navigation ──────────────────────────────────────────────────────────
   const [view, setView] = useState<'list' | 'edit'>('list');
   const [activeTipo, setActiveTipo] = useState<TicketTipo | null>(null);
-  const [activeTab, setActiveTab] = useState<'config' | 'campos' | 'permisos'>('config');
+  const [activeTab, setActiveTab] = useState<'config' | 'campos' | 'permisos' | 'historial'>('config');
 
   // ── Ticket tipos ────────────────────────────────────────────────────────
   const [tiposTramite, setTiposTramite] = useState<TicketTipo[]>([]);
+  const [tiposStats, setTiposStats] = useState<Map<string, TipoStats>>(new Map());
   const [showNewTipoForm, setShowNewTipoForm] = useState(false);
   const [newTipo, setNewTipo] = useState({ label: '', area: 'Comercial' as Area, color: '#0369a1' });
   const [searchTipo, setSearchTipo] = useState('');
@@ -44,7 +49,25 @@ export function GestionCatalogosRegistro() {
 
   const loadTiposTramite = async () => {
     const { data } = await supabase.from('ticket_tipos').select('*').order('orden');
-    if (data) setTiposTramite(data as TicketTipo[]);
+    if (!data) return;
+    const tipos = data as TicketTipo[];
+    setTiposTramite(tipos);
+    if (tipos.length === 0) return;
+
+    const [ticketRes, campoRes] = await Promise.all([
+      supabase.from('tickets').select('tipo').in('tipo', tipos.map(t => t.value)),
+      supabase.from('tramite_tipo_campos').select('tramite_tipo_id').in('tramite_tipo_id', tipos.map(t => t.id)).eq('activo', true),
+    ]);
+
+    const ticketCount = new Map<string, number>();
+    for (const r of (ticketRes.data || [])) ticketCount.set(r.tipo, (ticketCount.get(r.tipo) || 0) + 1);
+
+    const campoCount = new Map<string, number>();
+    for (const r of (campoRes.data || [])) campoCount.set(r.tramite_tipo_id, (campoCount.get(r.tramite_tipo_id) || 0) + 1);
+
+    const stats = new Map<string, TipoStats>();
+    for (const t of tipos) stats.set(t.id, { tickets: ticketCount.get(t.value) || 0, campos: campoCount.get(t.id) || 0 });
+    setTiposStats(stats);
   };
 
   // ── Derived ─────────────────────────────────────────────────────────────
@@ -81,7 +104,7 @@ export function GestionCatalogosRegistro() {
     setActiveTipo(null);
   };
 
-  const switchTab = (tab: 'config' | 'campos' | 'permisos') => {
+  const switchTab = (tab: 'config' | 'campos' | 'permisos' | 'historial') => {
     if (activeTab === 'config' && isDirty && !confirm('Tienes cambios sin guardar en Configuración. ¿Continuar sin guardar?')) return;
     setActiveTab(tab);
   };
@@ -96,6 +119,11 @@ export function GestionCatalogosRegistro() {
     const { error } = await supabase.from('ticket_tipos').update(payload).eq('id', activeTipo.id);
     if (error) { showToast('Error: ' + error.message, 'error'); }
     else {
+      const cambios: Record<string, any> = {};
+      if (editConfig.label.trim() !== activeTipo.label) { cambios.label_antes = activeTipo.label; cambios.label_despues = editConfig.label.trim(); }
+      if (editConfig.color !== activeTipo.color) { cambios.color_antes = activeTipo.color; cambios.color_despues = editConfig.color; }
+      if (activeTipo.is_custom && editConfig.area !== activeTipo.area) { cambios.area_antes = activeTipo.area; cambios.area_despues = editConfig.area; }
+      if (Object.keys(cambios).length > 0) logHistorial(activeTipo.id, 'config_actualizada', cambios, usuario?.id, usuario?.nombre_completo);
       setActiveTipo({ ...activeTipo, ...payload });
       invalidateTiposTramiteCache();
       await loadTiposTramite();
@@ -112,15 +140,16 @@ export function GestionCatalogosRegistro() {
     if (!value) { showToast('El nombre no genera un identificador válido', 'error'); return; }
     setLoading(true);
     const maxOrden = tiposTramite.reduce((m, t) => Math.max(m, t.orden), 0);
-    const { error } = await supabase.from('ticket_tipos').insert({
+    const { data: newData, error } = await supabase.from('ticket_tipos').insert({
       value, label: newTipo.label.trim(), area: newTipo.area, color: newTipo.color,
       activo: true, is_custom: true, orden: maxOrden + 1,
-    });
+    }).select().single();
     setLoading(false);
     if (error) {
       showToast(error.message?.includes('unique') ? 'Ya existe un tipo con ese nombre' : ('Error: ' + error.message), 'error');
       return;
     }
+    if (newData) logHistorial(newData.id, 'tipo_creado', { label: newTipo.label.trim(), area: newTipo.area, color: newTipo.color }, usuario?.id, usuario?.nombre_completo);
     showToast('Tipo de trámite creado');
     setNewTipo({ label: '', area: 'Comercial', color: '#0369a1' });
     setShowNewTipoForm(false);
@@ -196,9 +225,10 @@ export function GestionCatalogosRegistro() {
         {/* Tabs */}
         <div className="flex border-b border-neutral-200 bg-white shrink-0">
           {[
-            { id: 'config',   label: 'Configuración' },
-            { id: 'campos',   label: 'Campos del formulario' },
-            { id: 'permisos', label: 'Permisos' },
+            { id: 'config',    label: 'Configuración' },
+            { id: 'campos',    label: 'Campos del formulario' },
+            { id: 'permisos',  label: 'Permisos' },
+            { id: 'historial', label: 'Historial' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -264,6 +294,11 @@ export function GestionCatalogosRegistro() {
         {/* Tab: Permisos */}
         {activeTab === 'permisos' && (
           <PermisosPanel tipoId={activeTipo.id} usuarioId={usuario?.id} showToast={showToast} />
+        )}
+
+        {/* Tab: Historial */}
+        {activeTab === 'historial' && (
+          <HistorialPanel tipoId={activeTipo.id} />
         )}
       </div>
     );
@@ -391,6 +426,21 @@ export function GestionCatalogosRegistro() {
                           )}
                       </div>
                         <p className="text-[11px] text-neutral-400 font-mono mt-0.5">{tipo.value}</p>
+                        {(() => {
+                          const st = tiposStats.get(tipo.id);
+                          if (!st) return null;
+                          return (
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className="text-[10px] text-neutral-400">{st.tickets} trámite{st.tickets !== 1 ? 's' : ''}</span>
+                              {st.campos > 0 && (
+                                <>
+                                  <span className="text-[10px] text-neutral-300">·</span>
+                                  <span className="text-[10px] text-neutral-400">{st.campos} campo{st.campos !== 1 ? 's' : ''}</span>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <button

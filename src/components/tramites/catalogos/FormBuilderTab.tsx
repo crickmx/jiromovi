@@ -145,21 +145,33 @@ export function FormBuilderTab({ tipoId, showToast }: Props) {
                   <X className="w-3.5 h-3.5 text-neutral-500" />
                 </button>
               </div>
-              <div className="space-y-1.5">
-                {CAMPO_TIPOS.map(({ tipo, label, icon, desc }) => (
-                  <button
-                    key={tipo}
-                    onClick={() => handleAddCampo(tipo)}
-                    className="w-full flex items-center gap-2.5 p-2.5 bg-white border border-neutral-200 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors text-left"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-sm font-bold text-blue-600 shrink-0 font-mono">
-                      {icon}
+              <div className="space-y-3">
+                {Object.entries(
+                  CAMPO_TIPOS.reduce<Record<string, typeof CAMPO_TIPOS>>((acc, ct) => {
+                    (acc[ct.grupo] = acc[ct.grupo] || []).push(ct);
+                    return acc;
+                  }, {})
+                ).map(([grupo, tipos]) => (
+                  <div key={grupo}>
+                    <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1 px-0.5">{grupo}</p>
+                    <div className="space-y-1">
+                      {tipos.map(({ tipo, label, icon, desc }) => (
+                        <button
+                          key={tipo}
+                          onClick={() => handleAddCampo(tipo)}
+                          className="w-full flex items-center gap-2.5 p-2 bg-white border border-neutral-200 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors text-left"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-xs font-bold text-blue-600 shrink-0 font-mono">
+                            {icon}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-neutral-800">{label}</p>
+                            <p className="text-[10px] text-neutral-400 leading-tight">{desc}</p>
+                          </div>
+                        </button>
+                      ))}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-neutral-800">{label}</p>
-                      <p className="text-[10px] text-neutral-400 leading-tight">{desc}</p>
-                    </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             </>
@@ -220,35 +232,34 @@ export function FormBuilderTab({ tipoId, showToast }: Props) {
 
                 {editingCampo.tipo === 'numerico' && (
                   <>
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Formato</label>
+                      <select
+                        value={editCampoConfig.formato || (editCampoConfig.es_entero ? 'entero' : 'decimal')}
+                        onChange={(e) => setEditCampoConfig({ ...editCampoConfig, formato: e.target.value, es_entero: e.target.value === 'entero' })}
+                        className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                      >
+                        <option value="decimal">Decimal</option>
+                        <option value="entero">Entero</option>
+                        <option value="moneda">Moneda (MXN $)</option>
+                      </select>
+                    </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="block text-xs font-medium text-neutral-600 mb-1">Mínimo</label>
-                        <input
-                          type="number"
+                        <input type="number"
                           value={editCampoConfig.min ?? ''}
                           onChange={(e) => setEditCampoConfig({ ...editCampoConfig, min: e.target.value !== '' ? Number(e.target.value) : undefined })}
-                          className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg"
-                        />
+                          className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg" />
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-neutral-600 mb-1">Máximo</label>
-                        <input
-                          type="number"
+                        <input type="number"
                           value={editCampoConfig.max ?? ''}
                           onChange={(e) => setEditCampoConfig({ ...editCampoConfig, max: e.target.value !== '' ? Number(e.target.value) : undefined })}
-                          className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg"
-                        />
+                          className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg" />
                       </div>
                     </div>
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={editCampoConfig.es_entero || false}
-                        onChange={(e) => setEditCampoConfig({ ...editCampoConfig, es_entero: e.target.checked })}
-                        className="rounded"
-                      />
-                      <span className="text-sm text-neutral-700">Solo enteros</span>
-                    </label>
                   </>
                 )}
 
@@ -401,6 +412,127 @@ export function FormBuilderTab({ tipoId, showToast }: Props) {
                         onChange={(e) => setEditCampoConfig({ ...editCampoConfig, max_fecha: e.target.value })}
                         className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg" />
                     </div>
+                  </div>
+                )}
+
+                {/* ── Configuración de tipos nuevos ── */}
+
+                {editingCampo.tipo === 'rfc' && (
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-600 mb-1">Tipo de persona</label>
+                    <select
+                      value={editCampoConfig.tipo_persona || 'ambos'}
+                      onChange={(e) => setEditCampoConfig({ ...editCampoConfig, tipo_persona: e.target.value })}
+                      className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                    >
+                      <option value="ambos">Física y Moral</option>
+                      <option value="fisica">Solo Persona Física (13 chars)</option>
+                      <option value="moral">Solo Persona Moral (12 chars)</option>
+                    </select>
+                  </div>
+                )}
+
+                {editingCampo.tipo === 'telefono' && (
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-600 mb-1">Formato</label>
+                    <select
+                      value={editCampoConfig.formato || 'mx'}
+                      onChange={(e) => setEditCampoConfig({ ...editCampoConfig, formato: e.target.value })}
+                      className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                    >
+                      <option value="mx">México — 10 dígitos</option>
+                      <option value="internacional">Internacional (+52...)</option>
+                    </select>
+                  </div>
+                )}
+
+                {editingCampo.tipo === 'porcentaje' && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Mínimo</label>
+                      <input type="number"
+                        value={editCampoConfig.min ?? 0}
+                        onChange={(e) => setEditCampoConfig({ ...editCampoConfig, min: Number(e.target.value) })}
+                        className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Máximo</label>
+                      <input type="number"
+                        value={editCampoConfig.max ?? 100}
+                        onChange={(e) => setEditCampoConfig({ ...editCampoConfig, max: Number(e.target.value) })}
+                        className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg" />
+                    </div>
+                  </div>
+                )}
+
+                {editingCampo.tipo === 'ramo' && (
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={editCampoConfig.filtrar_por_aseguradora !== false}
+                      onChange={(e) => setEditCampoConfig({ ...editCampoConfig, filtrar_por_aseguradora: e.target.checked })}
+                      className="rounded"
+                    />
+                    <span className="text-sm text-neutral-700">Filtrar por aseguradora del formulario</span>
+                  </label>
+                )}
+
+                {(['aseguradora', 'codigo_postal', 'email', 'curp'] as const).some(t => t === editingCampo.tipo) && (
+                  <div className="text-xs text-neutral-500 bg-neutral-100 rounded-lg px-3 py-2 leading-relaxed">
+                    {editingCampo.tipo === 'aseguradora' && 'Lee el catálogo de aseguradoras activas automáticamente.'}
+                    {editingCampo.tipo === 'codigo_postal' && 'Valida contra el catálogo de CP en Base de Datos Maestros.'}
+                    {editingCampo.tipo === 'email' && 'Valida formato de correo electrónico mientras el usuario escribe.'}
+                    {editingCampo.tipo === 'curp' && 'Valida formato CURP (18 caracteres, patrón oficial).'}
+                  </div>
+                )}
+
+                {/* ── Visibilidad condicional ── */}
+                {editingCampo.tipo !== 'estatus' && (
+                  <div className="pt-3 border-t border-neutral-200">
+                    <label className="flex items-center gap-2 cursor-pointer select-none mb-2">
+                      <input
+                        type="checkbox"
+                        checked={editCampoConfig.condicion_activa || false}
+                        onChange={(e) => setEditCampoConfig({ ...editCampoConfig, condicion_activa: e.target.checked })}
+                        className="rounded"
+                      />
+                      <span className="text-xs font-medium text-neutral-600">Mostrar condicionalmente</span>
+                    </label>
+                    {editCampoConfig.condicion_activa && (
+                      <div className="space-y-2 pl-3 border-l-2 border-amber-300">
+                        <div>
+                          <label className="block text-[11px] text-neutral-500 mb-0.5">Si el campo...</label>
+                          <select
+                            value={editCampoConfig.campo_fuente || ''}
+                            onChange={(e) => setEditCampoConfig({ ...editCampoConfig, campo_fuente: e.target.value })}
+                            className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg"
+                          >
+                            <option value="">Selecciona campo...</option>
+                            {campos.filter(c => c.id !== editingCampo.id).map(c => (
+                              <option key={c.id} value={c.key}>{c.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <select
+                          value={editCampoConfig.condicion_operador || 'igual_a'}
+                          onChange={(e) => setEditCampoConfig({ ...editCampoConfig, condicion_operador: e.target.value })}
+                          className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg"
+                        >
+                          <option value="igual_a">es igual a</option>
+                          <option value="distinto_a">es distinto de</option>
+                          <option value="tiene_valor">tiene algún valor</option>
+                        </select>
+                        {(editCampoConfig.condicion_operador || 'igual_a') !== 'tiene_valor' && (
+                          <input
+                            type="text"
+                            value={editCampoConfig.condicion_valor || ''}
+                            onChange={(e) => setEditCampoConfig({ ...editCampoConfig, condicion_valor: e.target.value })}
+                            placeholder="valor esperado..."
+                            className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg"
+                          />
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 

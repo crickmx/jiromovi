@@ -1,10 +1,13 @@
 import { useState, useRef } from 'react';
 import { supabase } from '../../../lib/supabase';
+import { useAuth } from '../../../contexts/AuthContext';
 import { TipoCampo, CampoTipo, CAMPO_TIPOS, slugify } from './types';
+import { logHistorial } from './logHistorial';
 
 type ShowToast = (msg: string, type?: 'success' | 'error') => void;
 
 export function useFormBuilder(tipoId: string, showToast: ShowToast) {
+  const { usuario } = useAuth();
   const [campos, setCampos] = useState<TipoCampo[]>([]);
   const [loadingCampos, setLoadingCampos] = useState(false);
   const [showAddField, setShowAddField] = useState(false);
@@ -54,7 +57,11 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     const defaultConfig: Record<string, any> = {};
     if (tipo === 'texto_corto') defaultConfig.max_length = 255;
     if (tipo === 'texto_largo') defaultConfig.max_length = 2000;
-    if (tipo === 'numerico') defaultConfig.es_entero = false;
+    if (tipo === 'numerico') defaultConfig.formato = 'decimal';
+    if (tipo === 'porcentaje') { defaultConfig.min = 0; defaultConfig.max = 100; }
+    if (tipo === 'rfc') defaultConfig.tipo_persona = 'ambos';
+    if (tipo === 'telefono') defaultConfig.formato = 'mx';
+    if (tipo === 'ramo') defaultConfig.filtrar_por_aseguradora = true;
     if (tipo === 'adjunto') {
       defaultConfig.tipos_mime = ['application/pdf'];
       defaultConfig.max_archivos = 1;
@@ -64,6 +71,7 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
       { label: 'Pendiente', slug: 'pendiente', clasificacion: 'inicio' },
       { label: 'Completado', slug: 'completado', clasificacion: 'terminacion' },
     ];
+    if (tipo === 'dropdown' || tipo === 'seleccion_multiple') defaultConfig.opciones = [{ label: 'Opción 1', slug: 'opcion_1' }];
 
     const { data, error } = await supabase
       .from('tramite_tipo_campos')
@@ -77,6 +85,7 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
       setCampos(prev => [...prev, nuevo]);
       setShowAddField(false);
       startEditCampo(nuevo);
+      logHistorial(tipoId, 'campo_agregado', { campo_label: nuevo.label, campo_tipo: nuevo.tipo, campo_key: nuevo.key }, usuario?.id, usuario?.nombre_completo);
     }
   };
 
@@ -89,6 +98,12 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
       .eq('id', editingCampo.id);
 
     if (error) { showToast('Error al guardar campo', 'error'); setSavingCampo(false); return; }
+    const cambiosCampo: Record<string, any> = { campo_key: editingCampo.key };
+    if (editCampoLabel.trim() !== editingCampo.label) {
+      cambiosCampo.label_antes = editingCampo.label;
+      cambiosCampo.label_despues = editCampoLabel.trim();
+    }
+    logHistorial(tipoId, 'campo_actualizado', cambiosCampo, usuario?.id, usuario?.nombre_completo);
     setCampos(prev => prev.map(c =>
       c.id === editingCampo.id
         ? { ...c, label: editCampoLabel.trim(), requerido: editCampoReq, config: editCampoConfig, ayuda: editCampoAyuda || null }
@@ -117,6 +132,7 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     } else {
       await supabase.from('tramite_tipo_campos').delete().eq('id', campo.id);
     }
+    logHistorial(tipoId, 'campo_eliminado', { campo_label: campo.label, campo_key: campo.key, tenia_datos: hasData }, usuario?.id, usuario?.nombre_completo);
     setCampos(prev => prev.filter(c => c.id !== campo.id));
     if (editingCampo?.id === campo.id) setEditingCampo(null);
     showToast('Campo eliminado');

@@ -16,11 +16,14 @@ export interface TicketTipo {
   activo: boolean;
   is_custom: boolean;
   orden: number;
+  updated_at?: string;
 }
 
 export type CampoTipo =
   | 'texto_corto' | 'texto_largo' | 'numerico' | 'adjunto'
-  | 'estatus' | 'fecha' | 'booleano' | 'dropdown' | 'seleccion_multiple';
+  | 'estatus' | 'fecha' | 'booleano' | 'dropdown' | 'seleccion_multiple'
+  | 'aseguradora' | 'ramo' | 'rfc' | 'codigo_postal'
+  | 'telefono' | 'email' | 'curp' | 'porcentaje';
 
 export interface TipoCampo {
   id: string;
@@ -80,16 +83,30 @@ export const COLOR_SWATCHES = [
   '#64748b', '#78716c',
 ];
 
-export const CAMPO_TIPOS: { tipo: CampoTipo; label: string; icon: string; desc: string }[] = [
-  { tipo: 'texto_corto',        label: 'Texto corto',         icon: 'Aa', desc: 'Una línea de texto' },
-  { tipo: 'texto_largo',        label: 'Texto largo',         icon: '¶',  desc: 'Párrafo u observaciones' },
-  { tipo: 'numerico',           label: 'Numérico',            icon: '#',  desc: 'Número entero o decimal' },
-  { tipo: 'fecha',              label: 'Fecha',               icon: 'D',  desc: 'Selector de fecha' },
-  { tipo: 'adjunto',            label: 'Adjunto',             icon: '@',  desc: 'Archivos con filtro de tipo' },
-  { tipo: 'estatus',            label: 'Estatus',             icon: '=',  desc: 'Lista de opciones personalizada' },
-  { tipo: 'booleano',           label: 'Casilla',             icon: 'v',  desc: 'Sí / No' },
-  { tipo: 'dropdown',           label: 'Dropdown',            icon: '▾',  desc: 'Selección única de lista' },
-  { tipo: 'seleccion_multiple', label: 'Selección múltiple',  icon: '☑',  desc: 'Varias opciones de lista' },
+export const CAMPO_TIPOS: { tipo: CampoTipo; label: string; icon: string; desc: string; grupo: string }[] = [
+  // ── Texto ─────────────────────────────────────────────────────────────────
+  { tipo: 'texto_corto',        label: 'Texto corto',         icon: 'Aa',  desc: 'Una línea, hasta 250 chars',           grupo: 'Texto' },
+  { tipo: 'texto_largo',        label: 'Texto largo',         icon: '¶',   desc: 'Párrafo u observaciones',              grupo: 'Texto' },
+  { tipo: 'email',              label: 'Email',               icon: '✉',   desc: 'Validación de correo en tiempo real',  grupo: 'Texto' },
+  { tipo: 'telefono',           label: 'Teléfono',            icon: '☎',   desc: '10 dígitos, formato MX o intl.',       grupo: 'Texto' },
+  { tipo: 'rfc',                label: 'RFC',                 icon: 'RF',  desc: 'Persona física (13) o moral (12)',     grupo: 'Texto' },
+  { tipo: 'curp',               label: 'CURP',                icon: 'CU',  desc: '18 chars, formato oficial',            grupo: 'Texto' },
+  // ── Número ────────────────────────────────────────────────────────────────
+  { tipo: 'numerico',           label: 'Numérico',            icon: '#',   desc: 'Decimal, entero o moneda MXN',         grupo: 'Número' },
+  { tipo: 'porcentaje',         label: 'Porcentaje',          icon: '%',   desc: 'Valor 0–100 con símbolo %',            grupo: 'Número' },
+  { tipo: 'codigo_postal',      label: 'Código Postal',       icon: 'CP',  desc: '5 dígitos, valida vs catálogo CP',     grupo: 'Número' },
+  // ── Fecha ─────────────────────────────────────────────────────────────────
+  { tipo: 'fecha',              label: 'Fecha',               icon: 'D',   desc: 'Selector de fecha con límites',        grupo: 'Fecha' },
+  // ── Selección ─────────────────────────────────────────────────────────────
+  { tipo: 'booleano',           label: 'Casilla Sí/No',       icon: 'v',   desc: 'Binario, una sola casilla',            grupo: 'Selección' },
+  { tipo: 'dropdown',           label: 'Dropdown',            icon: '▾',   desc: 'Selección única de lista',             grupo: 'Selección' },
+  { tipo: 'seleccion_multiple', label: 'Selección múltiple',  icon: '☑',   desc: 'Varias opciones de lista',             grupo: 'Selección' },
+  { tipo: 'estatus',            label: 'Estatus',             icon: '=',   desc: 'Lista con clasificación inicio/fin',   grupo: 'Selección' },
+  // ── Catálogo ──────────────────────────────────────────────────────────────
+  { tipo: 'aseguradora',        label: 'Aseguradora',         icon: 'As',  desc: 'Catálogo activo de aseguradoras',      grupo: 'Catálogo' },
+  { tipo: 'ramo',               label: 'Ramo',                icon: 'Rm',  desc: 'Cascada desde campo aseguradora',      grupo: 'Catálogo' },
+  // ── Archivo ───────────────────────────────────────────────────────────────
+  { tipo: 'adjunto',            label: 'Adjunto',             icon: '@',   desc: 'Archivos con filtro de tipo y peso',   grupo: 'Archivo' },
 ];
 
 export const MIME_OPTIONS = [

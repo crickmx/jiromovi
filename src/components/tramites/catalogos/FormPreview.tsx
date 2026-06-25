@@ -12,6 +12,21 @@ export function FormPreview({ campos }: { campos: TipoCampo[] }) {
             {campo.requerido && <span className="text-red-500 ml-1">*</span>}
           </label>
           {campo.ayuda && <p className="text-xs text-neutral-400">{campo.ayuda}</p>}
+
+          {/* badge de campo condicional */}
+          {campo.config?.condicion_activa && campo.config?.campo_fuente && (
+            <p className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-1.5 py-0.5 inline-flex items-center gap-1">
+              <span>⚡</span>
+              <span>
+                Visible si: {campo.config.campo_fuente}{' '}
+                {campo.config.condicion_operador === 'tiene_valor'
+                  ? 'tiene valor'
+                  : `${campo.config.condicion_operador === 'distinto_a' ? '≠' : '='} "${campo.config.condicion_valor}"`}
+              </span>
+            </p>
+          )}
+
+          {/* ── renders por tipo ── */}
           {campo.tipo === 'texto_corto' && (
             <input disabled type="text" placeholder="Texto corto..."
               className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed" />
@@ -20,9 +35,48 @@ export function FormPreview({ campos }: { campos: TipoCampo[] }) {
             <textarea disabled placeholder="Texto largo..." rows={3}
               className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 resize-none cursor-not-allowed" />
           )}
-          {campo.tipo === 'numerico' && (
-            <input disabled type="number" placeholder="0"
+          {campo.tipo === 'email' && (
+            <input disabled type="email" placeholder="ejemplo@correo.com"
               className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed" />
+          )}
+          {campo.tipo === 'telefono' && (
+            <div className="flex items-center gap-2">
+              {campo.config?.formato === 'internacional' && (
+                <span className="px-3 py-2 bg-neutral-100 border border-neutral-200 rounded-lg text-sm text-neutral-400 shrink-0">+52</span>
+              )}
+              <input disabled type="tel"
+                placeholder={campo.config?.formato === 'internacional' ? '55 1234 5678' : '(55) 1234-5678'}
+                className="flex-1 px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed" />
+            </div>
+          )}
+          {campo.tipo === 'rfc' && (
+            <input disabled type="text"
+              placeholder={campo.config?.tipo_persona === 'moral' ? 'AAAA000000AAA' : 'AAAA000000AAAAA'}
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed font-mono uppercase tracking-widest" />
+          )}
+          {campo.tipo === 'curp' && (
+            <input disabled type="text" placeholder="AAAA000000AAAAAA00"
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed font-mono uppercase tracking-widest" />
+          )}
+          {campo.tipo === 'numerico' && (
+            <div className="relative">
+              {campo.config?.formato === 'moneda' && (
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm">$</span>
+              )}
+              <input disabled type="number" placeholder="0"
+                className={`w-full py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed ${campo.config?.formato === 'moneda' ? 'pl-7 pr-3' : 'px-3'}`} />
+            </div>
+          )}
+          {campo.tipo === 'porcentaje' && (
+            <div className="relative w-36">
+              <input disabled type="number" placeholder="0"
+                className="w-full px-3 py-2 pr-8 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed" />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm font-medium">%</span>
+            </div>
+          )}
+          {campo.tipo === 'codigo_postal' && (
+            <input disabled type="text" placeholder="00000"
+              className="w-28 px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed font-mono" />
           )}
           {campo.tipo === 'fecha' && (
             <input disabled type="date"
@@ -56,6 +110,20 @@ export function FormPreview({ campos }: { campos: TipoCampo[] }) {
                 </label>
               ))}
             </div>
+          )}
+          {campo.tipo === 'aseguradora' && (
+            <select disabled className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed">
+              <option>Selecciona aseguradora...</option>
+            </select>
+          )}
+          {campo.tipo === 'ramo' && (
+            <select disabled className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed">
+              <option>
+                {campo.config?.filtrar_por_aseguradora !== false
+                  ? 'Ramo (filtra por aseguradora)...'
+                  : 'Selecciona ramo...'}
+              </option>
+            </select>
           )}
         </div>
       ))}

@@ -1,6 +1,13 @@
 import { useEffect } from 'react';
 import { ChevronDown, Users } from 'lucide-react';
 import { usePermisos } from './usePermisos';
+import { Tooltip } from './Tooltip';
+
+const PERM_TOOLTIPS = {
+  puede_ver:    'Puede ver este tipo en la lista de trámites',
+  puede_crear:  'Puede abrir nuevos trámites de este tipo',
+  puede_editar: 'Puede modificar campos y estado del trámite',
+} as const;
 
 interface Props {
   tipoId: string;
@@ -33,9 +40,15 @@ export function PermisosPanel({ tipoId, usuarioId, showToast }: Props) {
           <thead className="bg-neutral-50">
             <tr>
               <th className="text-left px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">Rol</th>
-              <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">Ver</th>
-              <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">Crear</th>
-              <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">Editar</th>
+              <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">
+                <Tooltip text={PERM_TOOLTIPS.puede_ver}><span className="cursor-default underline decoration-dotted">Ver</span></Tooltip>
+              </th>
+              <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">
+                <Tooltip text={PERM_TOOLTIPS.puede_crear}><span className="cursor-default underline decoration-dotted">Crear</span></Tooltip>
+              </th>
+              <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">
+                <Tooltip text={PERM_TOOLTIPS.puede_editar}><span className="cursor-default underline decoration-dotted">Editar</span></Tooltip>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -176,8 +189,12 @@ export function PermisosPanel({ tipoId, usuarioId, showToast }: Props) {
                   <thead>
                     <tr>
                       <th className="text-left px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">Usuario</th>
-                      <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">Crear</th>
-                      <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">Editar</th>
+                      <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">
+                        <Tooltip text="Puede crear trámites de este tipo"><span className="cursor-default underline decoration-dotted">Crear</span></Tooltip>
+                      </th>
+                      <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">
+                        <Tooltip text="Puede editar trámites de este tipo"><span className="cursor-default underline decoration-dotted">Editar</span></Tooltip>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
