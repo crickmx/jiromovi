@@ -87,6 +87,18 @@ export function TramiteDetalle() {
   const [userArea, setUserArea] = useState<string | null>(null);
   const [myTeamRole, setMyTeamRole] = useState<'lider' | 'ejecutivo' | 'miembro' | null>(null);
 
+  // Campos dinámicos del catálogo
+  interface CampoDinamicoOpt { label: string; slug: string; clasificacion?: string | null }
+  interface CampoDinamico {
+    id: string; key: string; label: string; tipo: string;
+    requerido: boolean; ayuda: string | null;
+    config: { opciones?: CampoDinamicoOpt[]; max_length?: number; es_entero?: boolean; min_fecha?: string; max_fecha?: string };
+  }
+  interface RespuestaDinamica { id?: string; campo_id: string; valor_texto: string | null; valor_numerico: number | null; valor_fecha: string | null; valor_booleano: boolean | null; valor_json: any }
+  const [camposDinamicos, setCamposDinamicos] = useState<CampoDinamico[]>([]);
+  const [respuestasDinamicas, setRespuestasDinamicas] = useState<Record<string, any>>({});
+  const [respuestasOriginales, setRespuestasOriginales] = useState<RespuestaDinamica[]>([]);
+
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
   const isEmpleado = usuario?.rol === 'Empleado';
@@ -234,6 +246,50 @@ export function TramiteDetalle() {
     setSelectedPrioridad(ticketData.prioridad);
     setLoading(false);
     await loadEstatus(ticketData.tipo_tramite);
+    await loadCamposDinamicos(ticketData.tipo_tramite, ticketData.id);
+  };
+
+  const loadCamposDinamicos = async (tipoTramite: string, tramiteId: string) => {
+    // Buscar el ticket_tipo por value
+    const { data: tipoData } = await supabase
+      .from('ticket_tipos')
+      .select('id')
+      .eq('value', tipoTramite)
+      .maybeSingle();
+
+    if (!tipoData?.id) { setCamposDinamicos([]); return; }
+
+    const { data: campos } = await supabase
+      .from('tramite_tipo_campos')
+      .select('id, key, label, tipo, requerido, ayuda, config')
+      .eq('tramite_tipo_id', tipoData.id)
+      .eq('activo', true)
+      .order('display_order');
+
+    if (!campos?.length) { setCamposDinamicos([]); return; }
+    setCamposDinamicos(campos as CampoDinamico[]);
+
+    // Cargar respuestas existentes
+    const { data: respuestas } = await supabase
+      .from('tramite_respuestas')
+      .select('id, campo_id, valor_texto, valor_numerico, valor_fecha, valor_booleano, valor_json')
+      .eq('tramite_id', tramiteId)
+      .in('campo_id', campos.map(c => c.id));
+
+    if (respuestas) {
+      setRespuestasOriginales(respuestas as RespuestaDinamica[]);
+      const vals: Record<string, any> = {};
+      for (const r of respuestas) {
+        const campo = campos.find(c => c.id === r.campo_id);
+        if (!campo) continue;
+        if (['texto_corto', 'texto_largo'].includes(campo.tipo)) vals[campo.id] = r.valor_texto;
+        else if (campo.tipo === 'numerico') vals[campo.id] = r.valor_numerico;
+        else if (campo.tipo === 'fecha') vals[campo.id] = r.valor_fecha;
+        else if (campo.tipo === 'booleano') vals[campo.id] = r.valor_booleano;
+        else vals[campo.id] = r.valor_json;
+      }
+      setRespuestasDinamicas(vals);
+    }
   };
 
   useEffect(() => {
@@ -342,6 +398,47 @@ export function TramiteDetalle() {
         .eq('id', tramite.id);
 
       if (error) throw error;
+
+      // Guardar respuestas de campos dinámicos (upsert por tramite_id + campo_id)
+      if (camposDinamicos.length > 0) {
+        for (const campo of camposDinamicos) {
+          const val = respuestasDinamicas[campo.id];
+          const existing = respuestasOriginales.find(r => r.campo_id === campo.id);
+          const isEmpty = val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0);
+
+          if (isEmpty) continue;
+
+          const payload: any = {
+            tramite_id: tramite.id,
+            campo_id: campo.id,
+            valor_texto:    ['texto_corto', 'texto_largo'].includes(campo.tipo) ? String(val) : null,
+            valor_numerico: campo.tipo === 'numerico' ? Number(val) : null,
+            valor_fecha:    campo.tipo === 'fecha' ? String(val) : null,
+            valor_booleano: campo.tipo === 'booleano' ? Boolean(val) : null,
+            valor_json:     ['estatus', 'dropdown', 'seleccion_multiple'].includes(campo.tipo) ? val : null,
+          };
+
+          if (existing?.id) {
+            await supabase.from('tramite_respuestas').update(payload).eq('id', existing.id);
+          } else {
+            await supabase.from('tramite_respuestas').insert(payload);
+          }
+        }
+
+        // Auto-cierre: si un campo estatus dinámico tiene clasificacion 'terminacion'
+        const hayTerminacion = camposDinamicos.some(c => {
+          if (c.tipo !== 'estatus') return false;
+          const slug = respuestasDinamicas[c.id];
+          const opcion = (c.config.opciones || []).find(o => o.slug === slug);
+          return opcion?.clasificacion === 'terminacion';
+        });
+        if (hayTerminacion && !tramite.cerrado_en) {
+          await supabase.from('tickets').update({
+            cerrado_en: new Date().toISOString(),
+            cerrado_por: usuario.id,
+          }).eq('id', tramite.id);
+        }
+      }
 
       await loadTramite();
       showToast('Cambios guardados con éxito');
@@ -651,19 +748,92 @@ export function TramiteDetalle() {
 
       <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-6">
         {activeTab === 'detalles' && (
-          <TramiteDetalles
-            tramite={tramite}
-            estatusList={estatusList}
-            selectedEstatus={selectedEstatus}
-            setSelectedEstatus={setSelectedEstatus}
-            selectedPrioridad={selectedPrioridad}
-            setSelectedPrioridad={setSelectedPrioridad}
-            canEdit={canEdit && !isCerrado}
-            canManageAssignment={canManageAssignment && !isCerrado}
-            grupoAsignadoId={tramite.grupo_asignado_id}
-            onResponsableChange={handleResponsableChange}
-            onEquipoChange={handleEquipoChange}
-          />
+          <>
+            <TramiteDetalles
+              tramite={tramite}
+              estatusList={estatusList}
+              selectedEstatus={selectedEstatus}
+              setSelectedEstatus={setSelectedEstatus}
+              selectedPrioridad={selectedPrioridad}
+              setSelectedPrioridad={setSelectedPrioridad}
+              canEdit={canEdit && !isCerrado}
+              canManageAssignment={canManageAssignment && !isCerrado}
+              grupoAsignadoId={tramite.grupo_asignado_id}
+              onResponsableChange={handleResponsableChange}
+              onEquipoChange={handleEquipoChange}
+            />
+
+            {/* Campos dinámicos del catálogo */}
+            {camposDinamicos.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-neutral-100 space-y-4">
+                <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Campos del trámite</p>
+                {camposDinamicos.map(campo => {
+                  const val = respuestasDinamicas[campo.id];
+                  const set = (v: any) => setRespuestasDinamicas(prev => ({ ...prev, [campo.id]: v }));
+                  const editable = canEdit && !isCerrado;
+                  return (
+                    <div key={campo.id}>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">
+                        {campo.label}{campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
+                      </label>
+                      {campo.ayuda && <p className="text-xs text-neutral-500 mb-1">{campo.ayuda}</p>}
+
+                      {campo.tipo === 'texto_corto' && (
+                        <input type="text" value={val || ''} onChange={e => set(e.target.value)} disabled={!editable}
+                          maxLength={campo.config.max_length}
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500" />
+                      )}
+                      {campo.tipo === 'texto_largo' && (
+                        <textarea value={val || ''} onChange={e => set(e.target.value)} disabled={!editable}
+                          maxLength={campo.config.max_length} rows={3}
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500 resize-none" />
+                      )}
+                      {campo.tipo === 'numerico' && (
+                        <input type="number" value={val ?? ''} onChange={e => set(e.target.value === '' ? null : Number(e.target.value))} disabled={!editable}
+                          step={campo.config.es_entero ? '1' : 'any'}
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500" />
+                      )}
+                      {campo.tipo === 'fecha' && (
+                        <input type="date" value={val || ''} onChange={e => set(e.target.value)} disabled={!editable}
+                          min={campo.config.min_fecha} max={campo.config.max_fecha}
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500" />
+                      )}
+                      {campo.tipo === 'booleano' && (
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" checked={!!val} onChange={e => set(e.target.checked)} disabled={!editable} className="w-4 h-4 text-blue-600 rounded" />
+                          <span className="text-sm text-neutral-700">Sí</span>
+                        </label>
+                      )}
+                      {(campo.tipo === 'estatus' || campo.tipo === 'dropdown') && (
+                        <select value={val || ''} onChange={e => set(e.target.value)} disabled={!editable}
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-neutral-50 disabled:text-neutral-500">
+                          <option value="">Seleccionar...</option>
+                          {(campo.config.opciones || []).map((opt: CampoDinamicoOpt) => (
+                            <option key={opt.slug} value={opt.slug}>{opt.label}</option>
+                          ))}
+                        </select>
+                      )}
+                      {campo.tipo === 'seleccion_multiple' && (
+                        <div className="flex flex-wrap gap-2">
+                          {(campo.config.opciones || []).map((opt: CampoDinamicoOpt) => {
+                            const selected: string[] = Array.isArray(val) ? val : [];
+                            const isChecked = selected.includes(opt.slug);
+                            return (
+                              <button key={opt.slug} type="button" disabled={!editable}
+                                onClick={() => set(isChecked ? selected.filter(s => s !== opt.slug) : [...selected, opt.slug])}
+                                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${isChecked ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-neutral-600 border-neutral-300 hover:border-blue-400'} disabled:opacity-50 disabled:cursor-not-allowed`}>
+                                {opt.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
         {activeTab === 'comentarios' && <TramiteComentarios tramiteId={tramite.id} />}
         {activeTab === 'archivos' && <TramiteArchivos tramiteId={tramite.id} />}

@@ -158,7 +158,19 @@ export function NuevoTramiteModal({
   const isInitializingWithPreloadedData = useRef(false);
   const insurerDropdownRef = useRef<HTMLDivElement>(null);
 
-  const [tiposDb, setTiposDb] = useState<Array<{ value: string; label: string; area: string; is_custom: boolean }>>([]);
+  const [tiposDb, setTiposDb] = useState<Array<{ id: string; value: string; label: string; area: string; is_custom: boolean }>>([]);
+
+  // Campos dinámicos del catálogo para el tipo de trámite seleccionado
+  interface CampoDinamicoOption { label: string; slug: string; clasificacion?: string | null }
+  interface CampoDinamico {
+    id: string; key: string; label: string; tipo: string;
+    requerido: boolean; ayuda: string | null; display_order: number;
+    config: { opciones?: CampoDinamicoOption[]; max_length?: number; [k: string]: any };
+  }
+  const [camposDinamicos, setCamposDinamicos] = useState<CampoDinamico[]>([]);
+  const [respuestasDinamicas, setRespuestasDinamicas] = useState<Record<string, any>>({});
+  // IDs de ticket_tipos que el usuario NO puede crear (calculado al cargar)
+  const [tiposBlockedIds, setTiposBlockedIds] = useState<Set<string>>(new Set());
 
   const isAgent = usuario?.rol === 'Agente';
   const canAssignOthers = !isAgent;
@@ -226,10 +238,42 @@ export function NuevoTramiteModal({
   const loadTiposDb = async () => {
     const { data } = await supabase
       .from('ticket_tipos')
-      .select('value, label, area, is_custom')
+      .select('id, value, label, area, is_custom')
       .eq('activo', true)
       .order('orden');
-    if (data) setTiposDb(data as Array<{ value: string; label: string; area: string; is_custom: boolean }>);
+    if (!data) return;
+    setTiposDb(data as Array<{ id: string; value: string; label: string; area: string; is_custom: boolean }>);
+
+    // Admin y Gerente no tienen restricciones
+    if (!usuario || ['Administrador', 'Gerente'].includes(usuario.rol)) return;
+
+    const tipoIds = data.map(t => t.id);
+
+    // Permisos por rol
+    const { data: rolData } = await supabase
+      .from('tramite_tipo_rol_permisos')
+      .select('tramite_tipo_id, puede_crear')
+      .eq('rol', usuario.rol)
+      .in('tramite_tipo_id', tipoIds);
+
+    // Override por usuario
+    const { data: overData } = await supabase
+      .from('tramite_tipo_usuario_override')
+      .select('tramite_tipo_id, puede_crear')
+      .eq('user_id', usuario.id)
+      .in('tramite_tipo_id', tipoIds);
+
+    const blocked = new Set<string>();
+    for (const tipo of data) {
+      const override = overData?.find(o => o.tramite_tipo_id === tipo.id);
+      if (override !== undefined) {
+        if (override.puede_crear === false) blocked.add(tipo.id);
+      } else {
+        const rolPerm = rolData?.find(r => r.tramite_tipo_id === tipo.id);
+        if (rolPerm?.puede_crear === false) blocked.add(tipo.id);
+      }
+    }
+    setTiposBlockedIds(blocked);
   };
 
   const COTIZACION_EMISION_SUBTYPE_ID = '2ef883f9-96fc-452e-92eb-ff6826be412d';
@@ -240,6 +284,22 @@ export function NuevoTramiteModal({
       loadLotesDisponibles();
     }
   }, [tipoTramite, usuario]);
+
+  // Cargar campos dinámicos del catálogo cuando cambia el tipo de trámite
+  useEffect(() => {
+    const tipoInfo = tiposDb.find(t => t.value === tipoTramite);
+    if (!tipoInfo?.id) { setCamposDinamicos([]); setRespuestasDinamicas({}); return; }
+    supabase
+      .from('tramite_tipo_campos')
+      .select('id, key, label, tipo, requerido, ayuda, display_order, config')
+      .eq('tramite_tipo_id', tipoInfo.id)
+      .eq('activo', true)
+      .order('display_order')
+      .then(({ data }) => {
+        setCamposDinamicos((data as CampoDinamico[]) || []);
+        setRespuestasDinamicas({});
+      });
+  }, [tipoTramite, tiposDb]);
 
   useEffect(() => {
     if (tipoTramite === 'correccion_comisiones' && asignado) {
@@ -611,7 +671,118 @@ export function NuevoTramiteModal({
       }
     }
 
+    // Validar campos dinámicos requeridos
+    for (const campo of camposDinamicos) {
+      if (!campo.requerido) continue;
+      const val = respuestasDinamicas[campo.id];
+      const isEmpty = val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0);
+      if (isEmpty) {
+        setError(`El campo "${campo.label}" es obligatorio`);
+        return false;
+      }
+    }
+
     return true;
+  };
+
+  const renderCampoDinamico = (campo: CampoDinamico) => {
+    const val = respuestasDinamicas[campo.id];
+    const set = (v: any) => setRespuestasDinamicas(prev => ({ ...prev, [campo.id]: v }));
+
+    return (
+      <div key={campo.id}>
+        <label className="block text-sm font-medium text-neutral-700 mb-1">
+          {campo.label}{campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
+        </label>
+        {campo.ayuda && <p className="text-xs text-neutral-500 mb-1">{campo.ayuda}</p>}
+
+        {campo.tipo === 'texto_corto' && (
+          <input
+            type="text"
+            value={val || ''}
+            onChange={e => set(e.target.value)}
+            maxLength={campo.config.max_length}
+            className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        )}
+
+        {campo.tipo === 'texto_largo' && (
+          <textarea
+            value={val || ''}
+            onChange={e => set(e.target.value)}
+            maxLength={campo.config.max_length}
+            rows={3}
+            className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          />
+        )}
+
+        {campo.tipo === 'numerico' && (
+          <input
+            type="number"
+            value={val ?? ''}
+            onChange={e => set(e.target.value === '' ? null : Number(e.target.value))}
+            step={campo.config.es_entero ? '1' : 'any'}
+            className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        )}
+
+        {campo.tipo === 'fecha' && (
+          <input
+            type="date"
+            value={val || ''}
+            onChange={e => set(e.target.value)}
+            min={campo.config.min_fecha}
+            max={campo.config.max_fecha}
+            className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        )}
+
+        {campo.tipo === 'booleano' && (
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={!!val}
+              onChange={e => set(e.target.checked)}
+              className="w-4 h-4 text-blue-600 rounded"
+            />
+            <span className="text-sm text-neutral-700">Sí</span>
+          </label>
+        )}
+
+        {(campo.tipo === 'estatus' || campo.tipo === 'dropdown') && (
+          <select
+            value={val || ''}
+            onChange={e => set(e.target.value)}
+            className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          >
+            <option value="">Seleccionar...</option>
+            {(campo.config.opciones || []).map((opt: CampoDinamicoOption) => (
+              <option key={opt.slug} value={opt.slug}>{opt.label}</option>
+            ))}
+          </select>
+        )}
+
+        {campo.tipo === 'seleccion_multiple' && (
+          <div className="flex flex-wrap gap-2">
+            {(campo.config.opciones || []).map((opt: CampoDinamicoOption) => {
+              const selected: string[] = Array.isArray(val) ? val : [];
+              const isChecked = selected.includes(opt.slug);
+              return (
+                <button
+                  key={opt.slug}
+                  type="button"
+                  onClick={() => set(isChecked ? selected.filter(s => s !== opt.slug) : [...selected, opt.slug])}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${isChecked ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-neutral-600 border-neutral-300 hover:border-blue-400'}`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+      </div>
+    );
   };
 
   const buildCommercialDescription = (): string => {
@@ -764,6 +935,42 @@ export function NuevoTramiteModal({
         .single();
 
       if (ticketError) throw ticketError;
+
+      // Guardar respuestas de campos dinámicos
+      if (camposDinamicos.length > 0) {
+        const respuestas = camposDinamicos
+          .filter(c => respuestasDinamicas[c.id] !== undefined && respuestasDinamicas[c.id] !== null && respuestasDinamicas[c.id] !== '')
+          .map(c => {
+            const val = respuestasDinamicas[c.id];
+            return {
+              tramite_id: ticket.id,
+              campo_id: c.id,
+              valor_texto:   ['texto_corto', 'texto_largo'].includes(c.tipo) ? String(val) : null,
+              valor_numerico: c.tipo === 'numerico' ? Number(val) : null,
+              valor_fecha:    c.tipo === 'fecha' ? String(val) : null,
+              valor_booleano: c.tipo === 'booleano' ? Boolean(val) : null,
+              valor_json:     ['estatus', 'dropdown', 'seleccion_multiple'].includes(c.tipo) ? val : null,
+            };
+          });
+        if (respuestas.length > 0) {
+          await supabase.from('tramite_respuestas').insert(respuestas);
+        }
+
+        // Auto-cierre: si algún campo estatus tiene clasificacion 'terminacion'
+        const hayTerminacion = camposDinamicos.some(c => {
+          if (c.tipo !== 'estatus') return false;
+          const slug = respuestasDinamicas[c.id];
+          if (!slug) return false;
+          const opcion = (c.config.opciones || []).find(o => o.slug === slug);
+          return opcion?.clasificacion === 'terminacion';
+        });
+        if (hayTerminacion) {
+          await supabase.from('tickets').update({
+            cerrado_en: new Date().toISOString(),
+            cerrado_por: usuario.id,
+          }).eq('id', ticket.id);
+        }
+      }
 
       // Crear asignación en ticket_asignaciones
       if (responsableId) {
@@ -1050,6 +1257,7 @@ export function NuevoTramiteModal({
                   if (t.value === 'formulario_cotizacion' || t.value === 'cambio_bancario') return false;
                   if (t.value === 'cotizacion_emision') return !!canAccessRegistroAct;
                   if (isAgent && isCommercialTicketType(t.value)) return false;
+                  if (tiposBlockedIds.has(t.id)) return false;
                   return true;
                 });
               if (tiposForArea.length === 0) return null;
@@ -1686,6 +1894,14 @@ export function NuevoTramiteModal({
             className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent resize-none"
           />
         </div>
+
+        {/* Campos dinámicos del catálogo */}
+        {camposDinamicos.length > 0 && (
+          <div className="space-y-4 pt-2 border-t border-neutral-100">
+            <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Campos adicionales</p>
+            {camposDinamicos.map(renderCampoDinamico)}
+          </div>
+        )}
 
         {tipoTramite !== 'registro_poliza' && tipoTramite !== 'solicitud_comisiones_pendientes' && (
           <div>

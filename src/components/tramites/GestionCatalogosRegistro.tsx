@@ -192,6 +192,14 @@ export function GestionCatalogosRegistro() {
   const [loadingPermisos, setLoadingPermisos] = useState(false);
   const [savingPermId, setSavingPermId] = useState<string | null>(null);
 
+  // Visibilidad por rol y por usuario
+  const ROLES_CONFIGURABLES = ['Agente', 'Empleado', 'Gerente'];
+  interface RolPermiso { rol: string; puede_crear: boolean; puede_ver: boolean }
+  interface UsuarioOverride { user_id: string; nombre_completo: string; puede_crear: boolean | null; puede_ver: boolean | null }
+  const [rolPermisos, setRolPermisos] = useState<RolPermiso[]>([]);
+  const [usuarioOverrides, setUsuarioOverrides] = useState<UsuarioOverride[]>([]);
+  const [savingVisibilidad, setSavingVisibilidad] = useState<string | null>(null);
+
   const isAdmin = usuario?.rol === 'Administrador';
 
   // ── Loaders ───────────────────────────────────────────────────────────
@@ -268,6 +276,40 @@ export function GestionCatalogosRegistro() {
       .is('revoked_at', null);
 
     if (permisosData) setPermisos(permisosData as Permiso[]);
+
+    // Cargar permisos de visibilidad por rol
+    const { data: rolData } = await supabase
+      .from('tramite_tipo_rol_permisos')
+      .select('rol, puede_crear, puede_ver')
+      .eq('tramite_tipo_id', tipoId);
+
+    const rolMap: Record<string, RolPermiso> = {};
+    for (const r of (rolData || [])) rolMap[r.rol] = r;
+    setRolPermisos(ROLES_CONFIGURABLES.map(rol => rolMap[rol] ?? { rol, puede_crear: true, puede_ver: true }));
+
+    // Cargar overrides por usuario (todos los miembros de equipos)
+    const todosLosUsuarios: { user_id: string; nombre_completo: string }[] = [];
+    const vistosIds = new Set<string>();
+    for (const eq of equiposConMiembros) {
+      for (const m of eq.miembros) {
+        if (!vistosIds.has(m.usuario_id)) { todosLosUsuarios.push(m); vistosIds.add(m.usuario_id); }
+      }
+    }
+
+    const { data: overridesData } = await supabase
+      .from('tramite_tipo_usuario_override')
+      .select('user_id, puede_crear, puede_ver')
+      .eq('tramite_tipo_id', tipoId);
+
+    const overMap: Record<string, { puede_crear: boolean | null; puede_ver: boolean | null }> = {};
+    for (const o of (overridesData || [])) overMap[o.user_id] = o;
+
+    setUsuarioOverrides(todosLosUsuarios.map(u => ({
+      ...u,
+      puede_crear: overMap[u.user_id]?.puede_crear ?? null,
+      puede_ver: overMap[u.user_id]?.puede_ver ?? null,
+    })));
+
     setLoadingPermisos(false);
   };
 
@@ -324,7 +366,10 @@ export function GestionCatalogosRegistro() {
     if (tipo === 'texto_largo') defaultConfig.max_length = 2000;
     if (tipo === 'numerico') { defaultConfig.es_entero = false; }
     if (tipo === 'adjunto') { defaultConfig.tipos_mime = ['application/pdf']; defaultConfig.max_archivos = 1; defaultConfig.max_mb = 10; }
-    if (tipo === 'estatus') defaultConfig.opciones = [{ label: 'Pendiente', slug: 'pendiente' }, { label: 'Completado', slug: 'completado' }];
+    if (tipo === 'estatus') defaultConfig.opciones = [
+      { label: 'Pendiente', slug: 'pendiente', clasificacion: 'inicio' },
+      { label: 'Completado', slug: 'completado', clasificacion: 'terminacion' },
+    ];
 
     const { data, error } = await supabase
       .from('tramite_tipo_campos')
@@ -455,6 +500,53 @@ export function GestionCatalogosRegistro() {
       if (data) setPermisos(prev => [...prev, data as Permiso]);
     }
     setSavingPermId(null);
+  };
+
+  // ── Visibilidad: rol ──────────────────────────────────────────────────
+
+  const toggleRolVisibilidad = async (rol: string, campo: 'puede_crear' | 'puede_ver') => {
+    if (!activeTipo) return;
+    const key = `rol-${rol}-${campo}`;
+    setSavingVisibilidad(key);
+
+    const current = rolPermisos.find(r => r.rol === rol);
+    const nuevoValor = !(current?.[campo] ?? true);
+
+    const { error } = await supabase
+      .from('tramite_tipo_rol_permisos')
+      .upsert({ tramite_tipo_id: activeTipo.id, rol, [campo]: nuevoValor, updated_by: usuario?.id }, { onConflict: 'tramite_tipo_id,rol' });
+
+    if (!error) {
+      setRolPermisos(prev => prev.map(r => r.rol === rol ? { ...r, [campo]: nuevoValor } : r));
+    }
+    setSavingVisibilidad(null);
+  };
+
+  // ── Visibilidad: usuario override ─────────────────────────────────────
+
+  const toggleUsuarioOverride = async (userId: string, campo: 'puede_crear' | 'puede_ver') => {
+    if (!activeTipo) return;
+    const key = `user-${userId}-${campo}`;
+    setSavingVisibilidad(key);
+
+    const current = usuarioOverrides.find(u => u.user_id === userId);
+    // Ciclo: null → true → false → null
+    const prev = current?.[campo] ?? null;
+    const nuevoValor = prev === null ? true : prev === true ? false : null;
+
+    if (nuevoValor === null) {
+      // Eliminar override
+      await supabase.from('tramite_tipo_usuario_override')
+        .delete()
+        .eq('tramite_tipo_id', activeTipo.id)
+        .eq('user_id', userId);
+    } else {
+      await supabase.from('tramite_tipo_usuario_override')
+        .upsert({ tramite_tipo_id: activeTipo.id, user_id: userId, [campo]: nuevoValor, updated_by: usuario?.id }, { onConflict: 'tramite_tipo_id,user_id' });
+    }
+
+    setUsuarioOverrides(prev2 => prev2.map(u => u.user_id === userId ? { ...u, [campo]: nuevoValor } : u));
+    setSavingVisibilidad(null);
   };
 
   // ── Insurance type handlers ────────────────────────────────────────────
@@ -883,8 +975,72 @@ export function GestionCatalogosRegistro() {
                         </>
                       )}
 
-                      {/* estatus */}
-                      {(editingCampo.tipo === 'estatus' || editingCampo.tipo === 'dropdown' || editingCampo.tipo === 'seleccion_multiple') && (
+                      {/* estatus — con clasificación Inicio / Fin */}
+                      {editingCampo.tipo === 'estatus' && (
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-600 mb-1.5">Opciones</label>
+                          {(editCampoConfig.opciones || []).map((opt: { label: string; slug: string; clasificacion?: string | null }, i: number) => (
+                            <div key={i} className="flex gap-1 mb-1.5 items-center">
+                              <input
+                                type="text"
+                                value={opt.label}
+                                onChange={(e) => {
+                                  const opts = [...(editCampoConfig.opciones || [])];
+                                  opts[i] = { ...opts[i], label: e.target.value, slug: slugify(e.target.value) || opts[i].slug };
+                                  setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+                                }}
+                                className="flex-1 px-2 py-1 text-xs border border-neutral-300 rounded-lg focus:ring-1 focus:ring-blue-400 focus:outline-none"
+                              />
+                              {/* Clasificación */}
+                              <div className="flex rounded-lg overflow-hidden border border-neutral-200 text-[10px] font-medium shrink-0">
+                                <button
+                                  onClick={() => {
+                                    const opts = [...(editCampoConfig.opciones || [])];
+                                    opts[i] = { ...opts[i], clasificacion: opt.clasificacion === 'inicio' ? null : 'inicio' };
+                                    setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+                                  }}
+                                  className={`px-2 py-1 transition-colors ${opt.clasificacion === 'inicio' ? 'bg-green-500 text-white' : 'bg-white text-neutral-400 hover:bg-green-50 hover:text-green-600'}`}
+                                  title="Inicio de trámite"
+                                >
+                                  Inicio
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const opts = [...(editCampoConfig.opciones || [])];
+                                    opts[i] = { ...opts[i], clasificacion: opt.clasificacion === 'terminacion' ? null : 'terminacion' };
+                                    setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+                                  }}
+                                  className={`px-2 py-1 border-l border-neutral-200 transition-colors ${opt.clasificacion === 'terminacion' ? 'bg-red-500 text-white' : 'bg-white text-neutral-400 hover:bg-red-50 hover:text-red-600'}`}
+                                  title="Terminación de trámite"
+                                >
+                                  Fin
+                                </button>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  const opts = (editCampoConfig.opciones || []).filter((_: any, j: number) => j !== i);
+                                  setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+                                }}
+                                className="p-1 hover:bg-red-50 rounded text-neutral-400 hover:text-red-500"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            onClick={() => {
+                              const opts = [...(editCampoConfig.opciones || []), { label: 'Nueva opción', slug: 'nueva_opcion', clasificacion: null }];
+                              setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+                            }}
+                            className="mt-1 w-full text-xs py-1 border border-dashed border-neutral-300 rounded-lg hover:border-blue-400 hover:text-blue-600 text-neutral-500 transition-colors"
+                          >
+                            + Agregar opción
+                          </button>
+                        </div>
+                      )}
+
+                      {/* dropdown / seleccion_multiple — sin clasificación */}
+                      {(editingCampo.tipo === 'dropdown' || editingCampo.tipo === 'seleccion_multiple') && (
                         <div>
                           <label className="block text-xs font-medium text-neutral-600 mb-1.5">Opciones</label>
                           {(editCampoConfig.opciones || []).map((opt: { label: string; slug: string }, i: number) => (
@@ -964,11 +1120,104 @@ export function GestionCatalogosRegistro() {
 
         {/* Tab: Permisos */}
         {activeTab === 'permisos' && (
-          <div className="p-4 overflow-auto">
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-xs text-blue-700">
-              Define quién puede <strong>crear</strong> o <strong>editar</strong> este tipo de trámite dentro de cada equipo.
-              Los cambios se aplican de inmediato.
+          <div className="p-4 overflow-auto space-y-6">
+
+            {/* ── Visibilidad por Rol ── */}
+            <div>
+              <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3">Visibilidad por Rol</p>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3 text-xs text-amber-700">
+                Configura si un rol puede <strong>ver</strong> o <strong>crear</strong> este tipo de trámite. Administrador y Gerente siempre tienen acceso total.
+              </div>
+              <table className="w-full text-sm border border-neutral-200 rounded-xl overflow-hidden">
+                <thead className="bg-neutral-50">
+                  <tr>
+                    <th className="text-left px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">Rol</th>
+                    <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">Ver</th>
+                    <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">Crear</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rolPermisos.map(rp => (
+                    <tr key={rp.rol} className="border-t border-neutral-100 hover:bg-neutral-50">
+                      <td className="px-4 py-2.5 text-sm font-medium text-neutral-800">{rp.rol}</td>
+                      {(['puede_ver', 'puede_crear'] as const).map(campo => {
+                        const key = `rol-${rp.rol}-${campo}`;
+                        const active = rp[campo];
+                        const isSaving = savingVisibilidad === key;
+                        return (
+                          <td key={campo} className="text-center px-4 py-2.5">
+                            <button
+                              onClick={() => toggleRolVisibilidad(rp.rol, campo)}
+                              disabled={isSaving}
+                              className={`w-6 h-6 rounded-md border-2 transition-colors mx-auto flex items-center justify-center text-xs ${
+                                active ? 'bg-green-600 border-green-600 text-white' : 'border-neutral-300 bg-white hover:border-red-400 hover:bg-red-50 hover:text-red-600'
+                              } ${isSaving ? 'opacity-40' : ''}`}
+                            >
+                              {active ? '✓' : '✗'}
+                            </button>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+
+            {/* ── Overrides por Usuario ── */}
+            {usuarioOverrides.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3">Override por Usuario</p>
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-3 text-xs text-blue-700">
+                  Override manual por usuario. <strong>Gris</strong> = hereda del rol. <strong>Verde</strong> = permitido. <strong>Rojo</strong> = bloqueado. Clic para ciclar.
+                </div>
+                <table className="w-full text-sm border border-neutral-200 rounded-xl overflow-hidden">
+                  <thead className="bg-neutral-50">
+                    <tr>
+                      <th className="text-left px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">Usuario</th>
+                      <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">Ver</th>
+                      <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">Crear</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usuarioOverrides.map(uo => (
+                      <tr key={uo.user_id} className="border-t border-neutral-100 hover:bg-neutral-50">
+                        <td className="px-4 py-2.5 text-sm font-medium text-neutral-800">{uo.nombre_completo}</td>
+                        {(['puede_ver', 'puede_crear'] as const).map(campo => {
+                          const key = `user-${uo.user_id}-${campo}`;
+                          const val = uo[campo];
+                          const isSaving = savingVisibilidad === key;
+                          return (
+                            <td key={campo} className="text-center px-4 py-2.5">
+                              <button
+                                onClick={() => toggleUsuarioOverride(uo.user_id, campo)}
+                                disabled={isSaving}
+                                title={val === null ? 'Heredar del rol' : val ? 'Permitido' : 'Bloqueado'}
+                                className={`w-6 h-6 rounded-md border-2 transition-colors mx-auto flex items-center justify-center text-xs ${
+                                  val === null ? 'border-neutral-300 bg-neutral-100 text-neutral-400'
+                                  : val ? 'bg-green-600 border-green-600 text-white'
+                                  : 'bg-red-500 border-red-500 text-white'
+                                } ${isSaving ? 'opacity-40' : ''}`}
+                              >
+                                {val === null ? '—' : val ? '✓' : '✗'}
+                              </button>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* ── Permisos de creación/edición por equipo (existente) ── */}
+            <div>
+              <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3">Permisos por Equipo</p>
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-xs text-blue-700">
+                Define quién puede <strong>crear</strong> o <strong>editar</strong> este tipo de trámite dentro de cada equipo.
+                Los cambios se aplican de inmediato.
+              </div>
 
             {loadingPermisos ? (
               <div className="space-y-3">
@@ -1027,6 +1276,7 @@ export function GestionCatalogosRegistro() {
                 ))}
               </div>
             )}
+            </div>{/* fin Permisos por Equipo */}
           </div>
         )}
       </div>
