@@ -6,6 +6,12 @@ import { DEFAULT_BXPLUS_COVERAGES } from './types';
 import { calculateQuoteV2, loadTariffTables } from '../gmmCalculationEngineV2';
 import type { QuoteInput, TariffTables } from '../gmmTypes';
 
+const NIVEL_HOSPITALARIO_MAP: Record<string, string> = {
+  'Alto': 'ELITE',
+  'Medio': 'PLUS',
+  'Basico': 'ESTANDAR',
+};
+
 export function calculateBxplus(
   input: BxplusQuoteInput,
   people: QuotePerson[],
@@ -17,10 +23,12 @@ export function calculateBxplus(
 
     const coberturas = { ...DEFAULT_BXPLUS_COVERAGES, ...input.coverages };
 
+    const nivelHospitalario = NIVEL_HOSPITALARIO_MAP[input.nivel_hospitalario] || input.nivel_hospitalario;
+
     const quoteInput: QuoteInput = {
       zona: '',
       estado: input.estado,
-      nivel_hospitalario: input.nivel_hospitalario,
+      nivel_hospitalario: nivelHospitalario,
       tabulador: input.tabulador,
       suma_asegurada: input.suma_asegurada,
       deducible: input.deducible,

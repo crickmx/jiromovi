@@ -31,9 +31,29 @@ function genderToRateType(gender: GenderType): string {
 }
 
 function findRate(rates: BnpTariffData['rates'], planName: string, region: string, age: number, rateType: string): number | null {
-  const match = rates.find(r =>
+  let match = rates.find(r =>
     r.plan_name === planName && r.region === region && r.age === age && r.rate_type === rateType
   );
+  if (!match) {
+    match = rates.find(r =>
+      r.plan_name === planName && r.region === region && r.age === age
+    );
+  }
+  if (!match) {
+    match = rates.find(r =>
+      r.plan_name === 'Master' && r.region === region && r.age === age && r.rate_type === rateType
+    );
+  }
+  if (!match) {
+    match = rates.find(r =>
+      r.plan_name === 'Master' && r.region === region && r.age === age
+    );
+  }
+  if (!match) {
+    match = rates.find(r =>
+      r.plan_name === 'Master' && r.age === age
+    );
+  }
   return match ? match.rate : null;
 }
 
@@ -85,13 +105,19 @@ export function calculateBnp(
   }
 
   if (missingRates === people.length && people.length > 0) {
+    const availablePlans = [...new Set(tariffData.rates.map(r => r.plan_name))].slice(0, 5).join(', ');
+    const availableRegions = [...new Set(tariffData.rates.map(r => r.region))].join(', ');
+    const availableAges = [...new Set(tariffData.rates.map(r => r.age))].sort((a, b) => a - b);
+    const ageRange = availableAges.length > 0 ? `${availableAges[0]}-${availableAges[availableAges.length - 1]}` : 'N/A';
     return {
       product: 'BNP',
       people_results: peopleResults,
       prima_anual_total: 0,
       totals: {} as any,
       tariff_package_id: tariffData.package_id,
-      error: `No se encontraron tarifas para: ${planName} / ${mappedRegion}`,
+      error: `No se encontraron tarifas para: ${planName} / ${mappedRegion} (edades: ${people.map(p => p.age).join(', ')}). ` +
+        `Planes disponibles: [${availablePlans}], Regiones: [${availableRegions}], Edades: ${ageRange}. ` +
+        `Verifica que el archivo de tarifas BNP se haya subido correctamente.`,
     };
   }
 

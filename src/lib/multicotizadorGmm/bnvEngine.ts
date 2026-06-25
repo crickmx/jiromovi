@@ -28,9 +28,24 @@ function buildLookupKey(input: BnvQuoteInput): string {
 }
 
 function findRate(rates: BnvTariffData['rates'], lookupKey: string, region: string, age: number): number | null {
-  const match = rates.find(r =>
+  let match = rates.find(r =>
     r.lookup_key === lookupKey && r.region === region && r.age === age
   );
+  if (!match) {
+    match = rates.find(r =>
+      r.lookup_key === 'Master' && r.region === region && r.age === age
+    );
+  }
+  if (!match) {
+    match = rates.find(r =>
+      r.lookup_key === lookupKey && r.age === age
+    );
+  }
+  if (!match) {
+    match = rates.find(r =>
+      r.lookup_key === 'Master' && r.age === age
+    );
+  }
   return match ? match.rate : null;
 }
 
@@ -85,13 +100,19 @@ export function calculateBnv(
   }
 
   if (missingRates === people.length && people.length > 0) {
+    const availableKeys = [...new Set(tariffData.rates.map(r => r.lookup_key))].slice(0, 5).join(', ');
+    const availableRegions = [...new Set(tariffData.rates.map(r => r.region))].join(', ');
+    const availableAges = [...new Set(tariffData.rates.map(r => r.age))].sort((a, b) => a - b);
+    const ageRange = availableAges.length > 0 ? `${availableAges[0]}-${availableAges[availableAges.length - 1]}` : 'N/A';
     return {
       product: 'BNV',
       people_results: peopleResults,
       prima_anual_total: 0,
       totals: {} as any,
       tariff_package_id: tariffData.package_id,
-      error: `No se encontraron tarifas para la combinacion: ${lookupKey} / ${mappedRegion}`,
+      error: `No se encontraron tarifas para: ${lookupKey} / ${mappedRegion} (edades solicitadas: ${people.map(p => p.age).join(', ')}). ` +
+        `Claves disponibles: [${availableKeys}], Regiones: [${availableRegions}], Edades: ${ageRange}. ` +
+        `Verifica que el archivo de tarifas BNV se haya subido correctamente.`,
     };
   }
 
