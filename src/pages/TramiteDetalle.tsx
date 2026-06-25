@@ -112,6 +112,7 @@ export function TramiteDetalle() {
   const isCommercialViewerOnly = userArea === 'Comercial' && isOperationalTicket && !isAdmin && !isOwner && !isAssigned;
 
   const canEdit = (isAdmin || isGerente || isEmpleado || isOwner || isAssigned) && !isCommercialViewerOnly;
+  const canEditFechaPromesa = isAdmin || isGerente || myTeamRole === 'lider';
   const canManageAssignment = isAdmin || myTeamRole === 'lider';
   const claimedRef = useRef(false);
   const isCerrado = tramite?.cerrado_en !== null;
@@ -768,20 +769,22 @@ export function TramiteDetalle() {
               onEquipoChange={handleEquipoChange}
             />
 
-            {/* Fecha Promesa de Entrega — única fecha editable manualmente */}
-            <div className="mt-6 pt-6 border-t border-neutral-100">
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Fecha Promesa de Entrega
-                <span className="text-xs font-normal text-neutral-500 ml-2">Opcional</span>
-              </label>
-              <input
-                type="date"
-                value={fechaPromesaEntrega}
-                onChange={(e) => setFechaPromesaEntrega(e.target.value)}
-                disabled={!canEdit || isCerrado}
-                className="w-full sm:w-64 px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500"
-              />
-            </div>
+            {/* Fecha Promesa de Entrega — solo líderes, gerentes y admins */}
+            {canEditFechaPromesa && (
+              <div className="mt-6 pt-6 border-t border-neutral-100">
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  Fecha Promesa de Entrega
+                  <span className="text-xs font-normal text-neutral-500 ml-2">Opcional</span>
+                </label>
+                <input
+                  type="date"
+                  value={fechaPromesaEntrega}
+                  onChange={(e) => setFechaPromesaEntrega(e.target.value)}
+                  disabled={isCerrado}
+                  className="w-full sm:w-64 px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500"
+                />
+              </div>
+            )}
 
             {/* Campos dinámicos del catálogo */}
             {camposDinamicos.length > 0 && (

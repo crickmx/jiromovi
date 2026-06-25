@@ -1891,20 +1891,22 @@ export function NuevoTramiteModal({
           </div>
         )}
 
-        {/* Fecha Promesa de Entrega — única fecha editable manualmente */}
-        <div>
-          <label className="block text-sm font-semibold text-neutral-900 mb-2">
-            <Calendar className="w-4 h-4 inline mr-1.5" />
-            Fecha Promesa de Entrega
-            <span className="text-xs font-normal text-neutral-500 ml-2">Opcional</span>
-          </label>
-          <input
-            type="date"
-            value={fechaPromesaEntrega}
-            onChange={(e) => setFechaPromesaEntrega(e.target.value)}
-            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-          />
-        </div>
+        {/* Fecha Promesa de Entrega — solo líderes, gerentes y admins */}
+        {!isAgent && (
+          <div>
+            <label className="block text-sm font-semibold text-neutral-900 mb-2">
+              <Calendar className="w-4 h-4 inline mr-1.5" />
+              Fecha Promesa de Entrega
+              <span className="text-xs font-normal text-neutral-500 ml-2">Opcional</span>
+            </label>
+            <input
+              type="date"
+              value={fechaPromesaEntrega}
+              onChange={(e) => setFechaPromesaEntrega(e.target.value)}
+              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+            />
+          </div>
+        )}
 
         {tipoTramite !== 'registro_poliza' && tipoTramite !== 'solicitud_comisiones_pendientes' && (
           <div>
