@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Store, Package, Plus, Pencil as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign, Tag, Download, Upload, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle } from 'lucide-react';
+import { Store, Package, Plus, Pencil as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign, Tag, Download, Upload, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, Wrench } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   obtenerTodosProductos,
@@ -18,7 +18,7 @@ import {
 } from '../lib/storeUtils';
 import type { ResultadoCargaMasiva } from '../lib/storeUtils';
 import { supabase } from '../lib/supabase';
-import type { StoreProducto, StoreCategoria, StoreProductoCostoExtra, StoreProductoAtributo, StoreProductoAtributoOpcion } from '../lib/storeTypes';
+import type { StoreProducto, StoreCategoria, StoreProductoCostoExtra, StoreProductoAtributo, StoreProductoAtributoOpcion, TipoItem, Disponibilidad } from '../lib/storeTypes';
 import { TIPO_GASTO_OPTIONS } from '../lib/storeTypes';
 import { BaseModal } from '../components/BaseModal';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
@@ -188,7 +188,7 @@ export default function StoreAdmin() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <PageHeader
           title="Administración de MOVI Store"
-          description="Gestiona productos y categorías"
+          description="Gestiona productos, servicios y categorías"
           icon={Store}
           backTo="/store"
           backLabel="Volver a MOVI Store"
@@ -298,7 +298,7 @@ export default function StoreAdmin() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Costo</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Precio</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Margen</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Stock</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Disponibilidad</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Estado</th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Acciones</th>
                     </tr>
@@ -320,6 +320,16 @@ export default function StoreAdmin() {
                         <td className="px-6 py-4">
                           <div className="text-sm font-medium text-neutral-900 dark:text-white">{producto.titulo}</div>
                           <div className="text-sm text-neutral-500 dark:text-white/50 line-clamp-1">{producto.descripcion}</div>
+                          {producto.tipo_item === 'servicio' && (
+                            <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300">
+                              <Wrench className="w-3 h-3" /> Servicio
+                            </span>
+                          )}
+                          {producto.tipo_item === 'producto' && producto.disponibilidad === 'por_pedido' && (
+                            <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">
+                              Por pedido
+                            </span>
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           <span className="text-sm text-neutral-900 dark:text-white">{producto.categoria?.nombre}</span>
@@ -347,15 +357,21 @@ export default function StoreAdmin() {
                           )}
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full ${
-                            producto.stock === 0
-                              ? 'bg-red-100 text-red-800'
-                              : producto.stock <= producto.stock_umbral
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-green-100 text-green-800'
-                          }`}>
-                            {producto.stock} uds
-                          </span>
+                          {producto.disponibilidad === 'por_pedido' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300">
+                              Siempre disponible
+                            </span>
+                          ) : (
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full ${
+                              producto.stock === 0
+                                ? 'bg-red-100 text-red-800'
+                                : producto.stock <= producto.stock_umbral
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-green-100 text-green-800'
+                            }`}>
+                              {producto.stock} uds
+                            </span>
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           <button
@@ -502,6 +518,8 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
   const [categoriaId, setCategoriaId] = useState(producto?.categoria_id || '');
   const [imagenUrl, setImagenUrl] = useState(producto?.imagen_url || '');
   const [imagenFile, setImagenFile] = useState<File | null>(null);
+  const [tipoItem, setTipoItem] = useState<TipoItem>(producto?.tipo_item || 'producto');
+  const [disponibilidad, setDisponibilidad] = useState<Disponibilidad>(producto?.disponibilidad || 'por_existencia');
   const [stock, setStock] = useState(producto?.stock?.toString() || '0');
   const [stockUmbral, setStockUmbral] = useState(producto?.stock_umbral?.toString() || '5');
   const [activo, setActivo] = useState(producto?.activo ?? true);
@@ -672,8 +690,10 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
         costo_base: parseFloat(costoBase) || 0,
         categoria_id: categoriaId,
         imagen_url: finalImagenUrl,
-        stock: parseInt(stock) || 0,
-        stock_umbral: parseInt(stockUmbral) || 5,
+        tipo_item: tipoItem,
+        disponibilidad,
+        stock: disponibilidad === 'por_existencia' ? (parseInt(stock) || 0) : 0,
+        stock_umbral: disponibilidad === 'por_existencia' ? (parseInt(stockUmbral) || 5) : 0,
         activo
       };
 
@@ -763,32 +783,80 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
-              Existencia (stock)
+              Tipo de item *
             </label>
-            <input
-              type="number"
-              min="0"
-              value={stock}
-              onChange={(e) => setStock(e.target.value)}
+            <select
+              value={tipoItem}
+              onChange={(e) => {
+                const val = e.target.value as TipoItem;
+                setTipoItem(val);
+                if (val === 'servicio') setDisponibilidad('por_pedido');
+              }}
               className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
-              placeholder="0"
-            />
+            >
+              <option value="producto">Producto</option>
+              <option value="servicio">Servicio</option>
+            </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
-              Umbral pocas existencias
+              Disponibilidad *
             </label>
-            <input
-              type="number"
-              min="0"
-              value={stockUmbral}
-              onChange={(e) => setStockUmbral(e.target.value)}
-              className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
-              placeholder="5"
-            />
+            <select
+              value={disponibilidad}
+              onChange={(e) => setDisponibilidad(e.target.value as Disponibilidad)}
+              disabled={tipoItem === 'servicio'}
+              className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            >
+              <option value="por_existencia">Por existencia (stock)</option>
+              <option value="por_pedido">Por pedido (siempre disponible)</option>
+            </select>
           </div>
         </div>
+
+        {disponibilidad === 'por_existencia' && (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
+                Existencia (stock)
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={stock}
+                onChange={(e) => setStock(e.target.value)}
+                className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
+                placeholder="0"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
+                Umbral pocas existencias
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={stockUmbral}
+                onChange={(e) => setStockUmbral(e.target.value)}
+                className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
+                placeholder="5"
+              />
+            </div>
+          </div>
+        )}
+
+        {disponibilidad === 'por_pedido' && (
+          <div className="p-3 rounded-lg bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/20">
+            <p className="text-sm text-sky-700 dark:text-sky-300 font-medium">
+              {tipoItem === 'servicio'
+                ? 'Los servicios no manejan existencia, se entregan por pedido.'
+                : 'Este producto no maneja stock. Siempre aparecera como disponible.'
+              }
+            </p>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
