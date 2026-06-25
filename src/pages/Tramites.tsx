@@ -306,9 +306,12 @@ export function Tramites() {
         const impersonatedRol = impersonatedUser.rol || '';
         if (!['Administrador', 'Gerente'].includes(impersonatedRol)) {
           const uid = impersonatedUser.id;
-          q = q.or(
-            `agente_id.eq.${uid},creado_por.eq.${uid},assigned_to_user_id.eq.${uid},agente_usuario_id.eq.${uid},attending_user_id.eq.${uid}`
-          );
+          const { data: gruposData } = await supabase
+            .from('tramites_grupos_miembros').select('grupo_id').eq('usuario_id', uid);
+          const grupIds = (gruposData || []).map(g => g.grupo_id);
+          let orFilter = `agente_id.eq.${uid},creado_por.eq.${uid},assigned_to_user_id.eq.${uid},agente_usuario_id.eq.${uid},attending_user_id.eq.${uid}`;
+          if (grupIds.length > 0) orFilter += `,and(assigned_to_user_id.is.null,attending_user_id.is.null,grupo_asignado_id.in.(${grupIds.join(',')}))`;
+          q = q.or(orFilter);
         }
       }
 
@@ -376,15 +379,23 @@ export function Tramites() {
       }
 
       // When admin is impersonating a non-admin/gerente user, RLS still runs as the real admin
-      // (auth.uid() = admin). Apply an explicit filter to show only what the impersonated user
-      // would see according to their own visibility rules.
+      // (auth.uid() = admin). Apply an explicit filter to replicate the impersonated user's visibility.
       if (isImpersonating && impersonatedUser) {
         const impersonatedRol = impersonatedUser.rol || '';
         if (!['Administrador', 'Gerente'].includes(impersonatedRol)) {
           const uid = impersonatedUser.id;
-          query = query.or(
-            `agente_id.eq.${uid},creado_por.eq.${uid},assigned_to_user_id.eq.${uid},agente_usuario_id.eq.${uid},attending_user_id.eq.${uid}`
-          );
+          // Also include pool tramites (unassigned) for groups the user belongs to.
+          // Query inline to avoid myGrupoIds timing dependency.
+          const { data: gruposData } = await supabase
+            .from('tramites_grupos_miembros')
+            .select('grupo_id')
+            .eq('usuario_id', uid);
+          const grupIds = (gruposData || []).map(g => g.grupo_id);
+          let orFilter = `agente_id.eq.${uid},creado_por.eq.${uid},assigned_to_user_id.eq.${uid},agente_usuario_id.eq.${uid},attending_user_id.eq.${uid}`;
+          if (grupIds.length > 0) {
+            orFilter += `,and(assigned_to_user_id.is.null,attending_user_id.is.null,grupo_asignado_id.in.(${grupIds.join(',')}))`;
+          }
+          query = query.or(orFilter);
         }
       }
 
@@ -492,10 +503,11 @@ export function Tramites() {
       .eq('usuario_id', usuario.id);
     if (data) {
       type Row = { grupo_id: string; rol_en_equipo: string; grupo: { area_categoria: string; activo: boolean } | null };
-      const opsEntries = (data as Row[]).filter(m => m.grupo?.area_categoria === 'Operaciones' && m.grupo?.activo);
+      const allActive = (data as Row[]).filter(m => m.grupo?.activo);
+      const opsEntries = allActive.filter(m => m.grupo?.area_categoria === 'Operaciones');
       const opsEntry = opsEntries[0] ?? null;
       setMyOperacionesRole(opsEntry ? (opsEntry.rol_en_equipo as 'lider' | 'ejecutivo' | 'miembro') : null);
-      setMyGrupoIds(opsEntries.map(m => m.grupo_id));
+      setMyGrupoIds(allActive.map(m => m.grupo_id)); // all areas, not just Operaciones
     }
   };
 
@@ -695,15 +707,24 @@ export function Tramites() {
 
   const kanbanAtención = filteredTramites.filter(t => needsAttentionFn(t));
   const kanbanProceso  = filteredTramites.filter(t => !needsAttentionFn(t));
-  const kanbanCerrados = (isAdmin
-    ? tramitesCerrados20
-    : tramitesCerrados20.filter(t =>
-        t.agente_id === usuario?.id ||
-        t.assigned_to_user_id === usuario?.id ||
-        t.creado_por === usuario?.id ||
-        t.agente?.oficina_id === usuario?.oficina_id
-      )
-  );
+
+  // Terminados: apply the same user-facing filters as filteredTramites
+  const kanbanCerrados = useMemo(() => {
+    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const term = norm(searchTerm ?? '');
+    return tramitesCerrados20.filter(t => {
+      const matches = (v: string | null | undefined) => norm(v ?? '').includes(term);
+      const matchSearch = !term || matches(t.folio) || matches(t.instrucciones) || matches(t.poliza) || matches(t.agente?.nombre_completo) || matches(t.responsable?.nombre_completo) || matches(getTipoTramiteLabel(t.tipo_tramite));
+      const matchAreas      = selectedAreas.length === 0 || selectedAreas.includes(getTipoTramiteArea(t.tipo_tramite));
+      const matchTipos      = selectedTipos.length === 0 || selectedTipos.includes(t.tipo_tramite);
+      const matchEstatuses  = selectedEstatuses.length === 0 || (t.estatus != null && selectedEstatuses.includes(t.estatus.id));
+      const matchPrioridades = selectedPrioridades.length === 0 || selectedPrioridades.includes(t.prioridad);
+      const matchOficinas   = selectedOficinas.length === 0 || (t.agente?.oficina_id != null && selectedOficinas.includes(t.agente.oficina_id));
+      const matchAgentes    = selectedAgentes.length === 0 || (t.agente_id != null && selectedAgentes.includes(t.agente_id));
+      const matchEquipos    = selectedEquipos.length === 0 || (t.grupo_asignado_id != null && selectedEquipos.includes(t.grupo_asignado_id));
+      return matchSearch && matchAreas && matchTipos && matchEstatuses && matchPrioridades && matchOficinas && matchAgentes && matchEquipos;
+    });
+  }, [tramitesCerrados20, searchTerm, selectedAreas, selectedTipos, selectedEstatuses, selectedPrioridades, selectedOficinas, selectedAgentes, selectedEquipos]);
 
   return (
     <div className="space-y-5">
