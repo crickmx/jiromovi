@@ -43,6 +43,7 @@ interface TramiteData {
   resultado?: string | null;
   insurers?: string[];
   insurers_nombres?: string[];
+  fecha_promesa_entrega?: string | null;
 }
 
 interface Asignacion {
@@ -564,11 +565,27 @@ export function TramiteDetalles({
             )}
           </div>
 
+          {tramite.fecha_promesa_entrega && (
+            <div>
+              <div className="flex items-center space-x-2 text-neutral-600 mb-1">
+                <Calendar className="w-4 h-4" />
+                <span className="font-medium">Fecha Promesa de Entrega:</span>
+              </div>
+              <div className="text-neutral-900 ml-6">
+                {new Date(tramite.fecha_promesa_entrega + 'T00:00:00').toLocaleDateString('es-MX', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric'
+                })}
+              </div>
+            </div>
+          )}
+
           {tramite.cerrado_en && (
             <div>
               <div className="flex items-center space-x-2 text-neutral-600 mb-1">
                 <Calendar className="w-4 h-4" />
-                <span className="font-medium">Fecha de Cierre:</span>
+                <span className="font-medium">Fecha de Terminación:</span>
               </div>
               <div className="text-neutral-900 ml-6">
                 {new Date(tramite.cerrado_en).toLocaleString('es-MX', {

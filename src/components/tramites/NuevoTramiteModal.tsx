@@ -171,6 +171,7 @@ export function NuevoTramiteModal({
   const [respuestasDinamicas, setRespuestasDinamicas] = useState<Record<string, any>>({});
   // IDs de ticket_tipos que el usuario NO puede crear (calculado al cargar)
   const [tiposBlockedIds, setTiposBlockedIds] = useState<Set<string>>(new Set());
+  const [fechaPromesaEntrega, setFechaPromesaEntrega] = useState('');
 
   const isAgent = usuario?.rol === 'Agente';
   const canAssignOthers = !isAgent;
@@ -402,6 +403,7 @@ export function NuevoTramiteModal({
     setComFechaVencimiento('');
     setComMonto('');
     setComAsunto('');
+    setFechaPromesaEntrega('');
   };
 
   const restoreFromDraft = (draft: Record<string, unknown>) => {
@@ -431,6 +433,7 @@ export function NuevoTramiteModal({
     setCeEstatusNombre('Iniciado');
     setCeShowInsurerDropdown(false);
     setCeInsurerSearchTerm('');
+    setFechaPromesaEntrega((draft.fechaPromesaEntrega as string) || '');
     setError('');
   };
 
@@ -441,12 +444,12 @@ export function NuevoTramiteModal({
       tipoTramite, asignado, prioridad, descripcion, polizaNumero,
       ceAgenteUserId, ceInsuranceTypeId, ceSelectedInsurers,
       comAgenteUserId, comCliente, comPoliza, comAseguradora,
-      comFechaVencimiento, comMonto, comAsunto,
+      comFechaVencimiento, comMonto, comAsunto, fechaPromesaEntrega,
     });
   }, [isOpen, tipoTramite, asignado, prioridad, descripcion, polizaNumero,
       ceAgenteUserId, ceInsuranceTypeId, ceSelectedInsurers,
       comAgenteUserId, comCliente, comPoliza, comAseguradora,
-      comFechaVencimiento, comMonto, comAsunto]);
+      comFechaVencimiento, comMonto, comAsunto, fechaPromesaEntrega]);
 
   const loadUsuarios = async () => {
     const { data } = await supabase
@@ -811,8 +814,7 @@ export function NuevoTramiteModal({
       insurance_type_id: ceInsuranceTypeId,
       insurers: ceSelectedInsurers,
       attending_user_id: effectiveAttendingId,
-      request_datetime: formatDateTimeFromInput(ceRequestDatetime),
-      completion_datetime: (!isAgent && ceCompletionDatetime) ? formatDateTimeFromInput(ceCompletionDatetime) : undefined,
+      request_datetime: new Date().toISOString(),
       estatus_nombre: isAgent ? 'Iniciado' : ceEstatusNombre,
       prioridad: isAgent ? 'Media' : prioridad,
       instrucciones: descripcion
@@ -821,12 +823,14 @@ export function NuevoTramiteModal({
     if (!effectiveAgenteId && !preloadedData?.instrucciones) { setError('El agente es obligatorio'); return; }
     if (!ceInsuranceTypeId && !preloadedData?.instrucciones) { setError('El tipo de seguro es obligatorio'); return; }
     if (ceSelectedInsurers.length === 0 && !preloadedData?.instrucciones) { setError('Debe seleccionar al menos una aseguradora'); return; }
-    if (!ceRequestDatetime && !preloadedData?.instrucciones) { setError('La fecha de inicio es obligatoria'); return; }
 
     setLoading(true);
     setError('');
     try {
       const ticket = await createRegistroActividad({ ...formData, creado_por: usuario.id });
+      if (ticket?.id && fechaPromesaEntrega) {
+        await supabase.from('tickets').update({ fecha_promesa_entrega: fechaPromesaEntrega }).eq('id', ticket.id);
+      }
       if (ticket?.id && archivos.length > 0) {
         for (const archivo of archivos) {
           const fileExt = archivo.name.split('.').pop();
@@ -903,7 +907,8 @@ export function NuevoTramiteModal({
         agente_id: isCommercial ? comAgenteUserId : (isAgent ? usuario.id : assignedTo),
         agente_usuario_id: isCommercial ? comAgenteUserId : undefined,
         assigned_to_user_id: responsableId,
-        grupo_asignado_id: grupoAsignadoId ?? undefined
+        grupo_asignado_id: grupoAsignadoId ?? undefined,
+        fecha_promesa_entrega: fechaPromesaEntrega || null,
       };
 
       if (tipoTramite === 'correccion_poliza_registrada') {
@@ -1429,37 +1434,18 @@ export function NuevoTramiteModal({
               )}
             </div>
 
-            <div className={`grid grid-cols-1 ${!isAgent ? 'md:grid-cols-2' : ''} gap-4`}>
-              {/* Fecha de Inicio */}
+            <div>
+              {/* Fecha de Inicio — auto, solo lectura */}
               <div>
                 <label className="block text-sm font-semibold text-neutral-900 mb-2">
                   <Calendar className="w-4 h-4 inline mr-1.5" />
-                  Fecha de Inicio *
+                  Fecha de Creación
                 </label>
-                <input
-                  type="datetime-local"
-                  value={ceRequestDatetime}
-                  onChange={(e) => setCeRequestDatetime(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-                />
-              </div>
-
-              {/* Fecha de Finalización - solo para no-agentes */}
-              {!isAgent && (
-                <div>
-                  <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                    <Clock className="w-4 h-4 inline mr-1.5" />
-                    Fecha de Finalización
-                    {isEstatusFinal(ceEstatusNombre) && <span className="text-red-500 ml-1">*</span>}
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={ceCompletionDatetime}
-                    onChange={(e) => setCeCompletionDatetime(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-                  />
+                <div className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm text-neutral-600">
+                  {new Date().toLocaleString('es-MX', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  <span className="ml-2 text-xs text-neutral-400">(se registra al guardar)</span>
                 </div>
-              )}
+              </div>
             </div>
 
             {/* Prioridad dentro del bloque CE - solo para no-agentes */}
@@ -1902,6 +1888,21 @@ export function NuevoTramiteModal({
             {camposDinamicos.map(renderCampoDinamico)}
           </div>
         )}
+
+        {/* Fecha Promesa de Entrega — única fecha editable manualmente */}
+        <div>
+          <label className="block text-sm font-semibold text-neutral-900 mb-2">
+            <Calendar className="w-4 h-4 inline mr-1.5" />
+            Fecha Promesa de Entrega
+            <span className="text-xs font-normal text-neutral-500 ml-2">Opcional</span>
+          </label>
+          <input
+            type="date"
+            value={fechaPromesaEntrega}
+            onChange={(e) => setFechaPromesaEntrega(e.target.value)}
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+          />
+        </div>
 
         {tipoTramite !== 'registro_poliza' && tipoTramite !== 'solicitud_comisiones_pendientes' && (
           <div>

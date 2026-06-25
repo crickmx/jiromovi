@@ -59,6 +59,7 @@ interface TramiteData {
   insurance_type?: { id: string; nombre: string } | null;
   attending_user?: Usuario | null;
   insurers_nombres?: string[];
+  fecha_promesa_entrega?: string | null;
 }
 
 export function TramiteDetalle() {
@@ -98,6 +99,7 @@ export function TramiteDetalle() {
   const [camposDinamicos, setCamposDinamicos] = useState<CampoDinamico[]>([]);
   const [respuestasDinamicas, setRespuestasDinamicas] = useState<Record<string, any>>({});
   const [respuestasOriginales, setRespuestasOriginales] = useState<RespuestaDinamica[]>([]);
+  const [fechaPromesaEntrega, setFechaPromesaEntrega] = useState('');
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
@@ -116,7 +118,8 @@ export function TramiteDetalle() {
 
   const isDirty = !!tramite && (
     selectedEstatus !== (tramite.estatus?.id ?? tramite.estatus_id) ||
-    selectedPrioridad !== tramite.prioridad
+    selectedPrioridad !== tramite.prioridad ||
+    fechaPromesaEntrega !== (tramite.fecha_promesa_entrega || '')
   );
 
   useEffect(() => {
@@ -244,6 +247,7 @@ export function TramiteDetalle() {
     setTramite(tramiteCompleto as TramiteData);
     setSelectedEstatus(ticketData.estatus_id);
     setSelectedPrioridad(ticketData.prioridad);
+    setFechaPromesaEntrega(ticketData.fecha_promesa_entrega || '');
     setLoading(false);
     await loadEstatus(ticketData.tipo_tramite);
     await loadCamposDinamicos(ticketData.tipo_tramite, ticketData.id);
@@ -373,6 +377,7 @@ export function TramiteDetalle() {
       estatus_id: estatusId,
       prioridad: selectedPrioridad,
       modificado_por: usuario!.id,
+      fecha_promesa_entrega: fechaPromesaEntrega || null,
       ...(esFinalCotizacion && !tramite?.cerrado_en
         ? { cerrado_en: new Date().toISOString(), cerrado_por: usuario!.id }
         : {}),
@@ -762,6 +767,21 @@ export function TramiteDetalle() {
               onResponsableChange={handleResponsableChange}
               onEquipoChange={handleEquipoChange}
             />
+
+            {/* Fecha Promesa de Entrega — única fecha editable manualmente */}
+            <div className="mt-6 pt-6 border-t border-neutral-100">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Fecha Promesa de Entrega
+                <span className="text-xs font-normal text-neutral-500 ml-2">Opcional</span>
+              </label>
+              <input
+                type="date"
+                value={fechaPromesaEntrega}
+                onChange={(e) => setFechaPromesaEntrega(e.target.value)}
+                disabled={!canEdit || isCerrado}
+                className="w-full sm:w-64 px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500"
+              />
+            </div>
 
             {/* Campos dinámicos del catálogo */}
             {camposDinamicos.length > 0 && (
