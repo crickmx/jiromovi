@@ -921,7 +921,6 @@ export function NuevoTramiteModal({
         agente_usuario_id: isCommercial ? comAgenteUserId : undefined,
         assigned_to_user_id: responsableId,
         grupo_asignado_id: grupoAsignadoId ?? undefined,
-        fecha_promesa_entrega: fechaPromesaEntrega || null,
       };
 
       if (tipoTramite === 'correccion_poliza_registrada') {
@@ -1181,6 +1180,15 @@ export function NuevoTramiteModal({
 
             if (archivoError) throw archivoError;
           }
+        }
+      }
+
+      // Post-update: fecha_promesa_entrega (columna separada para evitar fallo si no existe aún)
+      if (ticket?.id && fechaPromesaEntrega && !isAgent) {
+        try {
+          await supabase.from('tickets').update({ fecha_promesa_entrega: fechaPromesaEntrega }).eq('id', ticket.id);
+        } catch {
+          // Silently ignore if column doesn't exist yet
         }
       }
 
@@ -1891,6 +1899,19 @@ export function NuevoTramiteModal({
             rows={4}
             placeholder="Describe el motivo del trámite con el mayor detalle posible... (Opcional)"
             className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent resize-none"
+          />
+        </div>
+
+        {/* Fecha de Creación — auto-filled, read-only, siempre visible */}
+        <div>
+          <label className="block text-sm font-semibold text-neutral-900 mb-2">
+            Fecha de Creación
+          </label>
+          <input
+            type="date"
+            value={new Date().toISOString().split('T')[0]}
+            readOnly
+            className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl bg-neutral-50 text-neutral-500 cursor-default"
           />
         </div>
 

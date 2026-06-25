@@ -43,6 +43,7 @@ interface TramiteItem {
   eliminado_por: string | null;
   ultima_accion_por: string | null;
   agente_id: string | null;
+  agente_usuario_id: string | null;
   creado_por: string | null;
   assigned_to_user_id: string | null;
   grupo_asignado_id: string | null;
@@ -192,6 +193,7 @@ export function Tramites() {
 
   // Assignment UI state
   const [myOperacionesRole, setMyOperacionesRole] = useState<'lider' | 'ejecutivo' | 'miembro' | null>(null);
+  const [myGrupoRoles, setMyGrupoRoles] = useState<Map<string, string>>(new Map());
   const [myGrupoIds, setMyGrupoIds] = useState<string[]>([]);
   const [assigningTramiteId, setAssigningTramiteId] = useState<string | null>(null);
   const [teamEjecutivos, setTeamEjecutivos] = useState<Array<{ id: string; nombre_completo: string }>>([]);
@@ -508,10 +510,19 @@ export function Tramites() {
       const opsEntry = opsEntries[0] ?? null;
       setMyOperacionesRole(opsEntry ? (opsEntry.rol_en_equipo as 'lider' | 'ejecutivo' | 'miembro') : null);
       setMyGrupoIds(allActive.map(m => m.grupo_id)); // all areas, not just Operaciones
+      const rolesMap = new Map<string, string>();
+      for (const m of allActive) rolesMap.set(m.grupo_id, m.rol_en_equipo);
+      setMyGrupoRoles(rolesMap);
     }
   };
 
-  const loadTeamEjecutivos = async () => {
+  const loadTeamEjecutivos = async (grupoId?: string | null) => {
+    if (grupoId) {
+      const { data } = await supabase.rpc('get_grupo_miembros_ejecutivos', { p_grupo_id: grupoId });
+      if (data) setTeamEjecutivos(data as Array<{ id: string; nombre_completo: string }>);
+      return;
+    }
+    // Fallback: todos los ejecutivos de grupos Operaciones activos
     const { data: grupos } = await supabase
       .from('tramites_grupos_visualizacion')
       .select('id')
@@ -536,7 +547,7 @@ export function Tramites() {
 
   const handleTakeTramite = async (tramiteId: string) => {
     if (!usuario) return;
-    await supabase.from('tickets').update({ assigned_to_user_id: usuario.id }).eq('id', tramiteId);
+    await supabase.from('tickets').update({ assigned_to_user_id: usuario.id, attending_user_id: usuario.id }).eq('id', tramiteId);
     await supabase.from('ticket_asignaciones').insert({
       ticket_id: tramiteId, ejecutivo_id: usuario.id, asignado_por: usuario.id,
     });
@@ -546,7 +557,7 @@ export function Tramites() {
 
   const handleAssignTramite = async (tramiteId: string, ejecutivoId: string) => {
     if (!usuario || !ejecutivoId) return;
-    await supabase.from('tickets').update({ assigned_to_user_id: ejecutivoId }).eq('id', tramiteId);
+    await supabase.from('tickets').update({ assigned_to_user_id: ejecutivoId, attending_user_id: ejecutivoId }).eq('id', tramiteId);
     await supabase.from('ticket_asignaciones').insert({
       ticket_id: tramiteId, ejecutivo_id: ejecutivoId, asignado_por: usuario.id,
     });
@@ -607,8 +618,19 @@ export function Tramites() {
   });
 
   // ── Kanban helpers ────────────────────────────────────────────────────────
-  const needsAttentionFn = (t: TramiteItem) =>
-    !!t.ultima_accion_por && t.ultima_accion_por !== usuario?.id;
+  const needsAttentionFn = (t: TramiteItem) => {
+    if (isAdmin && !isImpersonating) {
+      // Admin: solo cuando el agente fue el último en actuar (empleado necesita responder)
+      if (!t.ultima_accion_por) return false;
+      return (
+        t.ultima_accion_por === t.agente_id ||
+        (!!t.agente_usuario_id && t.ultima_accion_por === t.agente_usuario_id)
+      );
+    }
+    // Ejecutivos / agentes: sin acción aún (null) también requiere atención
+    const effectiveId = isImpersonating && impersonatedUser ? impersonatedUser.id : usuario?.id;
+    return !t.ultima_accion_por || t.ultima_accion_por !== effectiveId;
+  };
 
   const filteredTramites = useMemo(() => {
     const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -1462,62 +1484,60 @@ export function Tramites() {
                         )}
                       </div>
                       {(() => {
-                        const isPool = false;
-                        const isUnassigned = tramite.assigned_to_user_id === null;
-                        const canTake = myOperacionesRole === 'ejecutivo' || myOperacionesRole === 'miembro' || myOperacionesRole === 'lider';
-                        const canAssign = myOperacionesRole === 'lider' || isAdmin;
-                        if (isPool && isUnassigned && activeTab === 'activos') {
+                        const isPool = !tramite.assigned_to_user_id && !!tramite.grupo_asignado_id;
+                        const myRoleInGroup = tramite.grupo_asignado_id ? myGrupoRoles.get(tramite.grupo_asignado_id) : null;
+                        const canAssignOrTake = !!myRoleInGroup || isAdmin || isGerente;
+                        const isSelfOnly = !!myRoleInGroup && myRoleInGroup === 'ejecutivo' && !isAdmin && !isGerente;
+                        if (isPool && activeTab === 'activos' && canAssignOrTake) {
                           return (
                             <div className="flex items-center gap-1.5 flex-wrap justify-end" onClick={e => e.stopPropagation()}>
                               <span className="text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/40">
                                 Sin Asignar
                               </span>
-                              {canTake && !canAssign && (
+                              {assigningTramiteId === tramite.id ? (
+                                <div className="flex items-center gap-1">
+                                  <select
+                                    value={assignTargetId}
+                                    onChange={e => setAssignTargetId(e.target.value)}
+                                    onClick={e => e.stopPropagation()}
+                                    className="text-xs border border-neutral-200 dark:border-white/15 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none max-w-[150px] bg-white dark:bg-neutral-800 dark:text-white"
+                                  >
+                                    <option value="">Ejecutivo...</option>
+                                    {teamEjecutivos.map(u => (
+                                      <option key={u.id} value={u.id}>{u.nombre_completo}</option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); void handleAssignTramite(tramite.id, assignTargetId); }}
+                                    disabled={!assignTargetId}
+                                    className="p-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition-colors"
+                                  >
+                                    <Check className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setAssigningTramiteId(null); setAssignTargetId(''); }}
+                                    className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/8 transition-colors text-neutral-400"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ) : (
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); void handleTakeTramite(tramite.id); }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAssigningTramiteId(tramite.id);
+                                    setAssignTargetId('');
+                                    if (isSelfOnly && usuario) {
+                                      setTeamEjecutivos([{ id: usuario.id, nombre_completo: (usuario as any).nombre_completo || `${usuario.nombre} ${usuario.apellidos}`.trim() }]);
+                                    } else {
+                                      void loadTeamEjecutivos(tramite.grupo_asignado_id);
+                                    }
+                                  }}
                                   className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 transition-colors"
                                 >
-                                  <UserCheck className="w-3 h-3" />
-                                  Tomar
+                                  <UserPlus className="w-3 h-3" />
+                                  {isSelfOnly ? 'Tomar' : 'Asignar'}
                                 </button>
-                              )}
-                              {canAssign && (
-                                assigningTramiteId === tramite.id ? (
-                                  <div className="flex items-center gap-1">
-                                    <select
-                                      value={assignTargetId}
-                                      onChange={e => setAssignTargetId(e.target.value)}
-                                      onClick={e => e.stopPropagation()}
-                                      className="text-xs border border-neutral-200 dark:border-white/15 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none max-w-[150px] bg-white dark:bg-neutral-800 dark:text-white"
-                                    >
-                                      <option value="">Ejecutivo...</option>
-                                      {teamEjecutivos.map(u => (
-                                        <option key={u.id} value={u.id}>{u.nombre_completo}</option>
-                                      ))}
-                                    </select>
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); void handleAssignTramite(tramite.id, assignTargetId); }}
-                                      disabled={!assignTargetId}
-                                      className="p-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition-colors"
-                                    >
-                                      <Check className="w-3 h-3" />
-                                    </button>
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); setAssigningTramiteId(null); setAssignTargetId(''); }}
-                                      className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/8 transition-colors text-neutral-400"
-                                    >
-                                      <X className="w-3 h-3" />
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setAssigningTramiteId(tramite.id); setAssignTargetId(''); void loadTeamEjecutivos(); }}
-                                    className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-lg bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-white/8 dark:text-white/70 border border-neutral-200 dark:border-white/10 transition-colors"
-                                  >
-                                    <UserPlus className="w-3 h-3" />
-                                    Asignar
-                                  </button>
-                                )
                               )}
                             </div>
                           );

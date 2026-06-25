@@ -113,7 +113,9 @@ export function TramiteDetalle() {
 
   const canEdit = (isAdmin || isGerente || isEmpleado || isOwner || isAssigned) && !isCommercialViewerOnly;
   const canEditFechaPromesa = isAdmin || isGerente || myTeamRole === 'lider';
-  const canManageAssignment = isAdmin || myTeamRole === 'lider';
+  const isPoolTramite = !tramite?.assigned_to_user_id && !!tramite?.grupo_asignado_id;
+  const canManageAssignment = isAdmin || myTeamRole === 'lider' || (myTeamRole === 'ejecutivo' && isPoolTramite);
+  const canSelfAssignOnly = myTeamRole === 'ejecutivo' && !isAdmin && !isGerente;
   const claimedRef = useRef(false);
   const isCerrado = tramite?.cerrado_en !== null;
 
@@ -764,6 +766,7 @@ export function TramiteDetalle() {
               setSelectedPrioridad={setSelectedPrioridad}
               canEdit={canEdit && !isCerrado}
               canManageAssignment={canManageAssignment && !isCerrado}
+              canSelfAssignOnly={canSelfAssignOnly}
               grupoAsignadoId={tramite.grupo_asignado_id}
               onResponsableChange={handleResponsableChange}
               onEquipoChange={handleEquipoChange}

@@ -70,6 +70,7 @@ interface TramiteDetallesProps {
   setSelectedPrioridad: (value: 'Alta' | 'Media' | 'Baja') => void;
   canEdit?: boolean;
   canManageAssignment?: boolean;
+  canSelfAssignOnly?: boolean;
   grupoAsignadoId?: string | null;
   onResponsableChange?: (userId: string) => void;
   onEquipoChange?: (grupoId: string | null) => void;
@@ -84,6 +85,7 @@ export function TramiteDetalles({
   setSelectedPrioridad,
   canEdit = false,
   canManageAssignment = false,
+  canSelfAssignOnly = false,
   grupoAsignadoId,
   onResponsableChange,
   onEquipoChange,
@@ -121,6 +123,11 @@ export function TramiteDetalles({
   // Load team members when selected group changes
   useEffect(() => {
     if (!canManageAssignment) { setTeamMembers([]); return; }
+    // Ejecutivo: solo puede asignarse a sí mismo
+    if (canSelfAssignOnly && usuario) {
+      setTeamMembers([{ id: usuario.id, nombre_completo: (usuario as any).nombre_completo || `${usuario.nombre} ${usuario.apellidos}`.trim() }]);
+      return;
+    }
     const load = async () => {
       if (selectedGrupoId) {
         const { data } = await supabase.rpc('get_grupo_miembros_ejecutivos', { p_grupo_id: selectedGrupoId });

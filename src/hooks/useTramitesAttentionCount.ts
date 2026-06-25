@@ -1,26 +1,41 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useImpersonation } from '../contexts/ImpersonationContext';
+import { useAuth } from '../contexts/AuthContext';
 
 export function useTramitesAttentionCount(userId: string | null | undefined) {
   const [count, setCount] = useState(0);
   const { isImpersonating, impersonatedUser } = useImpersonation();
+  const { usuario } = useAuth();
+
+  const isAdmin = usuario?.rol === 'Administrador';
 
   useEffect(() => {
     if (!userId) { setCount(0); return; }
 
     const fetchCount = async () => {
+      // Admin (no impersonando): solo cuenta tramites donde el agente fue el último en actuar
+      // (empleado necesita responder), NO cuando el empleado ya respondió.
+      // Usa RPC porque necesita comparar dos columnas (ultima_accion_por = agente_id).
+      if (isAdmin && !isImpersonating) {
+        const { data } = await supabase.rpc('get_admin_tramites_attention_count');
+        setCount((data as number) ?? 0);
+        return;
+      }
+
+      // Determinar el ID efectivo para comparar (impersonado o real)
+      const effectiveId = isImpersonating && impersonatedUser ? impersonatedUser.id : userId;
+
       let query = supabase
         .from('tickets')
         .select('*', { count: 'exact', head: true })
         .is('eliminado_at', null)
         .is('cerrado_en', null)
-        .not('ultima_accion_por', 'is', null)
-        .neq('ultima_accion_por', userId);
+        // null (sin acción) O alguien más fue el último en actuar
+        .or(`ultima_accion_por.is.null,ultima_accion_por.neq.${effectiveId}`);
 
-      // In Vista Admin impersonation mode, the real auth session is the admin's,
-      // so RLS would count all system tickets. Restrict to only tickets the
-      // impersonated user can actually see.
+      // En Vista Admin impersonando un agente: RLS devuelve todos los tickets del sistema.
+      // Restringir solo a los tickets que el usuario impersonado puede ver.
       if (isImpersonating && impersonatedUser && !['Administrador', 'Gerente'].includes(impersonatedUser.rol || '')) {
         const uid = impersonatedUser.id;
         const { data: gruposData } = await supabase
@@ -45,7 +60,7 @@ export function useTramitesAttentionCount(userId: string | null | undefined) {
       .subscribe();
 
     return () => { channel.unsubscribe(); };
-  }, [userId, isImpersonating, impersonatedUser?.id]);
+  }, [userId, isAdmin, isImpersonating, impersonatedUser?.id]);
 
   return count;
 }
