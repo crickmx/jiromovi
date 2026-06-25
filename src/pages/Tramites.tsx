@@ -266,6 +266,7 @@ export function Tramites() {
 
   const loadUserArea = async () => {
     if (!usuario?.id) return;
+    setUserAreaLoaded(false); // Reset so the loadData effect re-fires after impersonation state settles
     if (isAdmin) {
       setUserArea(null);
       setUserScope([]);
@@ -344,7 +345,8 @@ export function Tramites() {
   const loadTramites = async (bypassCache = false) => {
     if (!usuario) return;
 
-    const cacheKey = `tramites_${activeTab}`;
+    // Include impersonation context in cache key so admin vs. impersonated views never share the same cache entry
+    const cacheKey = `tramites_${activeTab}_${isImpersonating ? (impersonatedUser?.id ?? 'imp') : 'self'}`;
 
     if (!bypassCache) {
       const cached = getCached<TramiteItem[]>(cacheKey);
