@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getCached, setCached, invalidateCacheByPrefix } from '../lib/sessionCache';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useImpersonation } from '../contexts/ImpersonationContext';
 import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound, LayoutList, LayoutGrid, ChevronDown, ArrowUpDown } from 'lucide-react';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
@@ -156,6 +157,7 @@ function MultiSelectDropdown({
 
 export function Tramites() {
   const { usuario } = useAuth();
+  const { isImpersonating, impersonatedUser } = useImpersonation();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'activos' | 'cerrados' | 'papelera'>('activos');
   const [tramites, setTramites] = useState<TramiteItem[]>([]);
@@ -291,13 +293,25 @@ export function Tramites() {
     const desde = new Date();
     desde.setDate(desde.getDate() - 20);
     try {
-      const { data } = await supabase
+      let q = supabase
         .from('tickets')
         .select(`*, agente:agente_id(nombre_completo, oficina_id, oficina:oficina_id(nombre)), responsable:assigned_to_user_id(nombre_completo), estatus:estatus_id(*), ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo)), ticket_archivos(id)`)
         .is('eliminado_at', null)
         .not('cerrado_en', 'is', null)
         .gte('cerrado_en', desde.toISOString())
         .order('cerrado_en', { ascending: false });
+
+      if (isImpersonating && impersonatedUser) {
+        const impersonatedRol = impersonatedUser.rol || '';
+        if (!['Administrador', 'Gerente'].includes(impersonatedRol)) {
+          const uid = impersonatedUser.id;
+          q = q.or(
+            `agente_id.eq.${uid},creado_por.eq.${uid},assigned_to_user_id.eq.${uid},agente_usuario_id.eq.${uid},attending_user_id.eq.${uid}`
+          );
+        }
+      }
+
+      const { data } = await q;
       if (data) setTramitesCerrados20(data as TramiteItem[]);
     } catch {}
   };
@@ -357,6 +371,19 @@ export function Tramites() {
         query = query.not('cerrado_en', 'is', null);
       } else {
         query = query.is('cerrado_en', null);
+      }
+
+      // When admin is impersonating a non-admin/gerente user, RLS still runs as the real admin
+      // (auth.uid() = admin). Apply an explicit filter to show only what the impersonated user
+      // would see according to their own visibility rules.
+      if (isImpersonating && impersonatedUser) {
+        const impersonatedRol = impersonatedUser.rol || '';
+        if (!['Administrador', 'Gerente'].includes(impersonatedRol)) {
+          const uid = impersonatedUser.id;
+          query = query.or(
+            `agente_id.eq.${uid},creado_por.eq.${uid},assigned_to_user_id.eq.${uid},agente_usuario_id.eq.${uid},attending_user_id.eq.${uid}`
+          );
+        }
       }
 
       const { data, error } = await query;
