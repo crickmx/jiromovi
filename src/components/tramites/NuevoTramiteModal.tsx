@@ -804,8 +804,14 @@ export function NuevoTramiteModal({
     if (!usuario) return;
 
     const effectiveAgenteId = isAgent ? usuario.id : (ceAgenteUserId || (preloadedData?.instrucciones ? usuario.id : ''));
-    // When agent creates, auto-assign responsable from office; otherwise use current user
-    const effectiveAttendingId = isAgent ? (autoResponsableId || '') : usuario.id;
+
+    // Resolve team assignment rules (same logic as handleSubmit for other tramite types)
+    const grupoResult = await resolveGrupoParaTicket(effectiveAgenteId || null, 'cotizacion_emision');
+    const grupoAsignadoId = grupoResult?.grupo_id ?? null;
+    // Rule with ejecutivo → direct assign; rule without ejecutivo → pool (empty); no rule → office fallback
+    const effectiveAttendingId = grupoResult !== null
+      ? (grupoResult.ejecutivo_id ?? '')
+      : (isAgent ? (autoResponsableId || '') : usuario.id);
 
     const formData = {
       tipo_tramite: 'cotizacion_emision',
@@ -828,8 +834,13 @@ export function NuevoTramiteModal({
     setError('');
     try {
       const ticket = await createRegistroActividad({ ...formData, creado_por: usuario.id });
-      if (ticket?.id && fechaPromesaEntrega) {
-        await supabase.from('tickets').update({ fecha_promesa_entrega: fechaPromesaEntrega }).eq('id', ticket.id);
+      if (ticket?.id) {
+        const postUpdates: Record<string, any> = {};
+        if (grupoAsignadoId) postUpdates.grupo_asignado_id = grupoAsignadoId;
+        if (fechaPromesaEntrega) postUpdates.fecha_promesa_entrega = fechaPromesaEntrega;
+        if (Object.keys(postUpdates).length > 0) {
+          await supabase.from('tickets').update(postUpdates).eq('id', ticket.id);
+        }
       }
       if (ticket?.id && archivos.length > 0) {
         for (const archivo of archivos) {
