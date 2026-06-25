@@ -2,16 +2,26 @@ import { TipoCampo } from './types';
 
 export function FormPreview({ campos }: { campos: TipoCampo[] }) {
   if (campos.length === 0) return null;
+  const sistemaCampos = campos.filter(c => c.is_sistema).sort((a, b) => a.display_order - b.display_order);
+  const customCampos  = campos.filter(c => !c.is_sistema).sort((a, b) => a.display_order - b.display_order);
+  const ordered = [...sistemaCampos, ...customCampos];
   return (
     <div className="space-y-4 border border-neutral-200 rounded-xl p-4 bg-white">
       <p className="text-[11px] text-neutral-400 text-center uppercase tracking-wider mb-2">Vista previa — solo lectura</p>
-      {campos.map(campo => (
+      {ordered.map(campo => (
         <div key={campo.id} className="space-y-1">
           <label className="block text-sm font-medium text-neutral-700">
             {campo.label}
             {campo.requerido && <span className="text-red-500 ml-1">*</span>}
           </label>
           {campo.ayuda && <p className="text-xs text-neutral-400">{campo.ayuda}</p>}
+
+          {/* badge sistema */}
+          {campo.is_sistema && (
+            <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-500 border border-violet-200">
+              🔒 Sistema
+            </span>
+          )}
 
           {/* badge de campo condicional */}
           {campo.config?.condicion_activa && campo.config?.campo_fuente && (
@@ -124,6 +134,44 @@ export function FormPreview({ campos }: { campos: TipoCampo[] }) {
                   : 'Selecciona ramo...'}
               </option>
             </select>
+          )}
+
+          {/* ── Renders de campos sistema ── */}
+          {campo.tipo === 'area' && (
+            <div className="w-full px-3 py-2 border border-violet-200 rounded-lg bg-violet-50 text-sm text-violet-500 flex items-center gap-2">
+              <span className="font-mono text-xs bg-violet-100 px-1.5 py-0.5 rounded">Auto</span>
+              Área asignada desde el tipo de trámite
+            </div>
+          )}
+          {campo.tipo === 'equipo' && (
+            <div className="w-full px-3 py-2 border border-violet-200 rounded-lg bg-violet-50 text-sm text-violet-500 flex items-center gap-2">
+              <span className="font-mono text-xs bg-violet-100 px-1.5 py-0.5 rounded">Auto</span>
+              Equipo auto-asignado al crear
+            </div>
+          )}
+          {campo.tipo === 'agente_vendedor' && (
+            <select disabled className="w-full px-3 py-2 border border-violet-200 rounded-lg bg-violet-50 text-sm text-violet-400 cursor-not-allowed">
+              <option>Selecciona agente / vendedor...</option>
+            </select>
+          )}
+          {campo.tipo === 'oficina_jiro' && (
+            <select disabled className="w-full px-3 py-2 border border-violet-200 rounded-lg bg-violet-50 text-sm text-violet-400 cursor-not-allowed">
+              <option>Oficina Jiro (filtrada por agente)...</option>
+            </select>
+          )}
+          {campo.tipo === 'fecha_creacion' && (
+            <div className="flex items-center gap-2">
+              <input disabled type="datetime-local"
+                className="flex-1 px-3 py-2 border border-violet-200 rounded-lg bg-violet-50 text-sm text-violet-400 cursor-not-allowed" />
+              <span className="text-[10px] text-violet-400 shrink-0">Autofill</span>
+            </div>
+          )}
+          {campo.tipo === 'fecha_finalizacion' && (
+            <div className="flex items-center gap-2">
+              <input disabled type="datetime-local"
+                className="flex-1 px-3 py-2 border border-violet-200 rounded-lg bg-violet-50 text-sm text-violet-400 cursor-not-allowed" />
+              <span className="text-[10px] text-violet-400 shrink-0">Al cerrar</span>
+            </div>
           )}
         </div>
       ))}

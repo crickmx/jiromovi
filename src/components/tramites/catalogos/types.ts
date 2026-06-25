@@ -23,7 +23,20 @@ export type CampoTipo =
   | 'texto_corto' | 'texto_largo' | 'numerico' | 'adjunto'
   | 'estatus' | 'fecha' | 'booleano' | 'dropdown' | 'seleccion_multiple'
   | 'aseguradora' | 'ramo' | 'rfc' | 'codigo_postal'
-  | 'telefono' | 'email' | 'curp' | 'porcentaje';
+  | 'telefono' | 'email' | 'curp' | 'porcentaje'
+  // ── Campos Sistema (Sección 1 fija) ────────────────────────────────────────
+  | 'area' | 'equipo' | 'agente_vendedor' | 'oficina_jiro'
+  | 'fecha_creacion' | 'fecha_finalizacion';
+
+export const SISTEMA_TIPO_META: Partial<Record<CampoTipo, { icon: string; desc: string; badge: string }>> = {
+  area:               { icon: 'AR', desc: 'Área del tipo de trámite, asignada automáticamente',     badge: 'Autofill' },
+  equipo:             { icon: 'EQ', desc: 'Equipo responsable, auto-asignado al crear el trámite',  badge: 'Autofill' },
+  estatus:            { icon: '≡',  desc: 'Estado del trámite — define inicio y terminación',       badge: 'Configurable' },
+  agente_vendedor:    { icon: 'AV', desc: 'Agente o vendedor, del catálogo maestro de vendedores',  badge: 'Catálogo' },
+  oficina_jiro:       { icon: 'OJ', desc: 'Oficina/despacho JIRO, filtrada por agente seleccionado', badge: 'Catálogo' },
+  fecha_creacion:     { icon: 'FC', desc: 'Fecha y hora de creación, auto-capturada al crear',      badge: 'Autofill' },
+  fecha_finalizacion: { icon: 'FF', desc: 'Fecha y hora de cierre, auto-capturada al terminar',     badge: 'Autofill' },
+};
 
 export interface TipoCampo {
   id: string;
@@ -36,6 +49,8 @@ export interface TipoCampo {
   display_order: number;
   config: Record<string, any>;
   activo: boolean;
+  is_sistema: boolean;
+  sistema_key: string | null;
 }
 
 export interface EquipoMiembro {

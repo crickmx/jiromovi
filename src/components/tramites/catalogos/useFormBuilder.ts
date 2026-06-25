@@ -115,6 +115,7 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
   };
 
   const handleDeleteCampo = async (campo: TipoCampo) => {
+    if (campo.is_sistema) return;
     const { count } = await supabase
       .from('tramite_respuestas')
       .select('*', { count: 'exact', head: true })
@@ -139,6 +140,7 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
   };
 
   const handleDragStart = (_e: React.DragEvent, index: number) => {
+    if (campos[index]?.is_sistema) return;
     dragIdx.current = index;
     setDragging(index);
     _e.dataTransfer.effectAllowed = 'move';
@@ -153,6 +155,7 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     e.preventDefault();
     setDragging(null);
     if (dragIdx.current === null || dragIdx.current === dropIndex) return;
+    if (campos[dragIdx.current]?.is_sistema || campos[dropIndex]?.is_sistema) return;
     const reordered = [...campos];
     const [moved] = reordered.splice(dragIdx.current, 1);
     reordered.splice(dropIndex, 0, moved);
