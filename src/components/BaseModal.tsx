@@ -9,6 +9,7 @@ interface BaseModalProps {
   footer?: ReactNode;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | '7xl';
   showCloseButton?: boolean;
+  closeOnEscape?: boolean;
 }
 
 export function BaseModal({
@@ -19,24 +20,22 @@ export function BaseModal({
   footer,
   maxWidth = '2xl',
   showCloseButton = true,
+  closeOnEscape = false,
 }: BaseModalProps) {
   useEffect(() => {
+    if (!isOpen) return;
+    document.body.style.overflow = 'hidden';
+    if (!closeOnEscape) return () => { document.body.style.overflow = 'unset'; };
+
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
+      if (e.key === 'Escape') onClose();
     };
-
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden';
-    }
-
+    document.addEventListener('keydown', handleEscape);
     return () => {
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, closeOnEscape]);
 
   if (!isOpen) return null;
 

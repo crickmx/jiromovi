@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { cargarPermisosAdicionales } from '../lib/permisosUtils';
 import { applyTheme } from '../lib/themeUtils';
@@ -37,6 +37,7 @@ const MoviAuthContext = createContext<MoviAuthCtx>({} as MoviAuthCtx);
 function MoviAuthProviderInner({ children }: { children: ReactNode }) {
   const [realUser, setRealUser] = useState<Usuario | null>(null);
   const [loading, setLoading] = useState(true);
+  const profileLoadedRef = useRef(false);
   const { isImpersonating, impersonatedUser } = useImpersonation();
 
   async function loadProfile(userId: string) {
@@ -68,6 +69,7 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
       if (u.oficina?.accent_color && !isImpersonating) applyTheme(u.oficina.accent_color);
 
       console.log('[MoviAuth] Usuario loaded:', u.nombre, u.apellidos, 'rol=', u.rol);
+      profileLoadedRef.current = true;
       setRealUser(u);
       setLoading(false);
     } catch (err: any) {
@@ -101,7 +103,9 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[MoviAuth] onAuthStateChange event=', event, 'hasSession=', !!session);
       if (event === 'SIGNED_IN' && session) {
-        setLoading(true);
+        // Only show loading spinner on a real first-login (profile not yet loaded).
+        // Tab-focus token refreshes can also fire SIGNED_IN — don't unmount the page.
+        if (!profileLoadedRef.current) setLoading(true);
         loadProfile(session.user.id);
       } else if (
         (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') &&
@@ -110,6 +114,7 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
         loadProfile(session.user.id);
       } else if (event === 'SIGNED_OUT') {
         console.log('[MoviAuth] signed out');
+        profileLoadedRef.current = false;
         setRealUser(null);
         setLoading(false);
       }
