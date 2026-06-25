@@ -69,7 +69,7 @@ interface Oficina {
 
 interface TipoPorArea {
   id: string;
-  nombre: string;
+  label: string;
 }
 
 type FormTab = 'general' | 'miembros' | 'oficinas' | 'asignacion' | 'tramites';
@@ -262,7 +262,7 @@ export function GestionGruposVisualizacion() {
     setTiposPorArea([]);
     setTeamTipoConfig({});
     try {
-      let q = supabase.from('ticket_tipos').select('id, nombre').eq('activo', true);
+      let q = supabase.from('ticket_tipos').select('id, label').eq('activo', true);
       if (area) q = q.eq('area', area);
       const { data: tipos } = await q.order('nombre');
 
@@ -1551,7 +1551,7 @@ export function GestionGruposVisualizacion() {
                             <div className="flex items-center gap-2.5 min-w-0">
                               <FileText className={`w-4 h-4 flex-shrink-0 ${habilitado ? 'text-neutral-400' : 'text-neutral-300'}`} />
                               <span className={`text-sm font-medium truncate ${habilitado ? 'text-neutral-800' : 'text-neutral-400'}`}>
-                                {tipo.nombre}
+                                {tipo.label}
                               </span>
                               {!habilitado && (
                                 <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-neutral-200 text-neutral-500 flex-shrink-0">Desactivado</span>

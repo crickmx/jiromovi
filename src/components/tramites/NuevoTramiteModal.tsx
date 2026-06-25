@@ -884,17 +884,19 @@ export function NuevoTramiteModal({
       }
 
       const isCommercial = isCommercialTicketType(tipoTramite);
-      const isPoolMode = false;
       // Resolve team + optional auto-ejecutivo based on the agent user (applies to all tramite types)
       const agentUserId = isAgent
         ? usuario.id
         : (isCommercial ? comAgenteUserId : asignado) ?? null;
       const grupoResult = await resolveGrupoParaTicket(agentUserId, tipoTramite);
       const grupoAsignadoId = grupoResult?.grupo_id ?? null;
-      // If the rule specifies an ejecutivo, auto-assign directly to them; otherwise use normal logic
+      // grupoResult found + ejecutivo_id null → pool assignment (no individual responsible)
+      // grupoResult found + ejecutivo_id set  → auto-assign to that ejecutivo
+      // grupoResult null                       → fall back to manual/auto logic
       const autoEjecutivoId = grupoResult?.ejecutivo_id ?? null;
-      const responsableId = autoEjecutivoId
-        ?? (isPoolMode ? null : (isAgent ? (autoResponsableId || null) : (isCommercial ? usuario.id : asignado)));
+      const responsableId = grupoResult !== null
+        ? autoEjecutivoId
+        : (isAgent ? (autoResponsableId || null) : (isCommercial ? usuario.id : asignado));
       const assignedTo = isCommercial ? usuario.id : (isAgent ? usuario.id : asignado);
 
       const ticketData: any = {
