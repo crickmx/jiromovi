@@ -171,6 +171,8 @@ export function NuevoTramiteModal({
   const [respuestasDinamicas, setRespuestasDinamicas] = useState<Record<string, any>>({});
   // IDs de ticket_tipos que el usuario NO puede crear (calculado al cargar)
   const [tiposBlockedIds, setTiposBlockedIds] = useState<Set<string>>(new Set());
+  // IDs de ticket_tipos donde el usuario puede crear pero NO editar
+  const [tiposReadOnlyAfterCreate, setTiposReadOnlyAfterCreate] = useState<Set<string>>(new Set());
   const [fechaPromesaEntrega, setFechaPromesaEntrega] = useState('');
 
   const isAgent = usuario?.rol === 'Agente';
@@ -253,28 +255,38 @@ export function NuevoTramiteModal({
     // Permisos por rol
     const { data: rolData } = await supabase
       .from('tramite_tipo_rol_permisos')
-      .select('tramite_tipo_id, puede_crear')
+      .select('tramite_tipo_id, puede_crear, puede_editar')
       .eq('rol', usuario.rol)
       .in('tramite_tipo_id', tipoIds);
 
     // Override por usuario
     const { data: overData } = await supabase
       .from('tramite_tipo_usuario_override')
-      .select('tramite_tipo_id, puede_crear')
+      .select('tramite_tipo_id, puede_crear, puede_editar')
       .eq('user_id', usuario.id)
       .in('tramite_tipo_id', tipoIds);
 
     const blocked = new Set<string>();
+    const readOnlyAfterCreate = new Set<string>();
     for (const tipo of data) {
       const override = overData?.find(o => o.tramite_tipo_id === tipo.id);
+      const rolPerm = rolData?.find(r => r.tramite_tipo_id === tipo.id);
+
+      // Bloquear creación
       if (override !== undefined) {
         if (override.puede_crear === false) blocked.add(tipo.id);
       } else {
-        const rolPerm = rolData?.find(r => r.tramite_tipo_id === tipo.id);
         if (rolPerm?.puede_crear === false) blocked.add(tipo.id);
+      }
+
+      // Marcar como solo-lectura después de crear (puede crear pero no editar)
+      if (!blocked.has(tipo.id)) {
+        const puedeEditar = override?.puede_editar ?? rolPerm?.puede_editar ?? true;
+        if (puedeEditar === false) readOnlyAfterCreate.add(tipo.id);
       }
     }
     setTiposBlockedIds(blocked);
+    setTiposReadOnlyAfterCreate(readOnlyAfterCreate);
   };
 
   const COTIZACION_EMISION_SUBTYPE_ID = '2ef883f9-96fc-452e-92eb-ff6826be412d';
@@ -1326,6 +1338,13 @@ export function NuevoTramiteModal({
               </p>
             );
           })()}
+          {/* Aviso: puede crear pero no editar */}
+          {tiposReadOnlyAfterCreate.has(tiposDb.find(t => t.value === tipoTramite)?.id ?? '') && (
+            <div className="mt-2 flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
+              <span className="mt-0.5 flex-shrink-0">ℹ️</span>
+              <span>Podrás crear este trámite, pero no podrás modificar sus campos una vez enviado.</span>
+            </div>
+          )}
         </div>
 
         {/* ===== SECCIÓN COTIZACIÓN / EMISIÓN ===== */}

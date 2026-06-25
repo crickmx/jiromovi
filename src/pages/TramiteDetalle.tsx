@@ -89,6 +89,7 @@ export function TramiteDetalle() {
 
   const [userArea, setUserArea] = useState<string | null>(null);
   const [myTeamRole, setMyTeamRole] = useState<'lider' | 'ejecutivo' | 'miembro' | null>(null);
+  const [canEditForType, setCanEditForType] = useState(true);
 
   // Campos dinámicos del catálogo
   interface CampoDinamicoOpt { label: string; slug: string; clasificacion?: string | null }
@@ -105,7 +106,6 @@ export function TramiteDetalle() {
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
-  const isEmpleado = usuario?.rol === 'Empleado';
   const isOwner = tramite?.creado_por === usuario?.id;
   const isAssigned = tramite?.assigned_to_user_id === usuario?.id;
 
@@ -113,7 +113,7 @@ export function TramiteDetalle() {
   const isOperationalTicket = tramite ? OPERATIONAL_TYPES.includes(tramite.tipo_tramite) : false;
   const isCommercialViewerOnly = userArea === 'Comercial' && isOperationalTicket && !isAdmin && !isOwner && !isAssigned;
 
-  const canEdit = (isAdmin || isGerente || isEmpleado || isOwner || isAssigned) && !isCommercialViewerOnly;
+  const canEdit = (isAdmin || isGerente || canEditForType) && !isCommercialViewerOnly;
   const canEditFechaPromesa = isAdmin || isGerente || myTeamRole === 'lider';
   const isPoolTramite = !tramite?.assigned_to_user_id && !!tramite?.grupo_asignado_id;
   const canManageAssignment = isAdmin || myTeamRole === 'lider' || (myTeamRole === 'ejecutivo' && isPoolTramite);
@@ -150,6 +150,43 @@ export function TramiteDetalle() {
       });
     }
   }, [usuario?.id]);
+
+  // Cargar permiso de edición para el tipo de tramite actual
+  useEffect(() => {
+    if (!tramite || !usuario || isAdmin || isGerente) { setCanEditForType(true); return; }
+    const loadEditPerm = async () => {
+      const { data: tipo } = await supabase
+        .from('ticket_tipos')
+        .select('id')
+        .eq('value', tramite.tipo_tramite)
+        .maybeSingle();
+      if (!tipo?.id) { setCanEditForType(true); return; }
+
+      // 1. Revisar override individual
+      const { data: override } = await supabase
+        .from('tramite_tipo_usuario_override')
+        .select('puede_editar')
+        .eq('tramite_tipo_id', tipo.id)
+        .eq('user_id', usuario.id)
+        .maybeSingle();
+
+      if (override?.puede_editar !== null && override?.puede_editar !== undefined) {
+        setCanEditForType(override.puede_editar);
+        return;
+      }
+
+      // 2. Revisar config por rol
+      const { data: rolPerm } = await supabase
+        .from('tramite_tipo_rol_permisos')
+        .select('puede_editar')
+        .eq('tramite_tipo_id', tipo.id)
+        .eq('rol', usuario.rol)
+        .maybeSingle();
+
+      setCanEditForType(rolPerm?.puede_editar ?? true);
+    };
+    loadEditPerm();
+  }, [tramite?.tipo_tramite, usuario?.id, isAdmin, isGerente]);
 
   useEffect(() => {
     if (!tramite?.grupo_asignado_id || !usuario || isAdmin) { setMyTeamRole(null); return; }
@@ -678,6 +715,11 @@ export function TramiteDetalle() {
                   Cerrado el {new Date(tramite.cerrado_en!).toLocaleDateString('es-MX')}
                 </span>
               )}
+              {!canEdit && !isCerrado && !isAdmin && !isGerente && (
+                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-500 border border-neutral-200 dark:bg-neutral-700 dark:text-white/50 dark:border-neutral-600">
+                  Solo lectura
+                </span>
+              )}
             </div>
           }
           actions={
@@ -740,11 +782,13 @@ export function TramiteDetalle() {
         />
 
 
-        {isCommercialViewerOnly && (
+        {!canEdit && !isCerrado && (
           <div className="mt-4 flex items-center gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
             <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
             <p className="text-sm text-amber-700">
-              Visualizacion de solo lectura. Puedes agregar comentarios pero no editar este tramite.
+              {isCommercialViewerOnly
+                ? 'Visualización de solo lectura. Puedes agregar comentarios pero no editar este trámite.'
+                : 'No tienes permiso para editar este tipo de trámite. Puedes consultar, comentar y adjuntar archivos.'}
             </p>
           </div>
         )}

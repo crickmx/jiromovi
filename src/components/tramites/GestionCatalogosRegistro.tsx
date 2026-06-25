@@ -194,8 +194,8 @@ export function GestionCatalogosRegistro() {
 
   // Visibilidad por rol y por usuario
   const ROLES_CONFIGURABLES = ['Agente', 'Empleado', 'Gerente'];
-  interface RolPermiso { rol: string; puede_crear: boolean; puede_ver: boolean }
-  interface UsuarioOverride { user_id: string; nombre_completo: string; puede_crear: boolean | null; puede_ver: boolean | null }
+  interface RolPermiso { rol: string; puede_crear: boolean; puede_ver: boolean; puede_editar: boolean }
+  interface UsuarioOverride { user_id: string; nombre_completo: string; puede_crear: boolean | null; puede_ver: boolean | null; puede_editar: boolean | null }
   const [rolPermisos, setRolPermisos] = useState<RolPermiso[]>([]);
   const [usuarioOverrides, setUsuarioOverrides] = useState<UsuarioOverride[]>([]);
   const [savingVisibilidad, setSavingVisibilidad] = useState<string | null>(null);
@@ -281,12 +281,12 @@ export function GestionCatalogosRegistro() {
     // Cargar permisos de visibilidad por rol
     const { data: rolData } = await supabase
       .from('tramite_tipo_rol_permisos')
-      .select('rol, puede_crear, puede_ver')
+      .select('rol, puede_crear, puede_ver, puede_editar')
       .eq('tramite_tipo_id', tipoId);
 
     const rolMap: Record<string, RolPermiso> = {};
     for (const r of (rolData || [])) rolMap[r.rol] = r;
-    setRolPermisos(ROLES_CONFIGURABLES.map(rol => rolMap[rol] ?? { rol, puede_crear: true, puede_ver: true }));
+    setRolPermisos(ROLES_CONFIGURABLES.map(rol => rolMap[rol] ?? { rol, puede_crear: true, puede_ver: true, puede_editar: true }));
 
     // Cargar overrides por usuario (todos los miembros de equipos)
     const todosLosUsuarios: { user_id: string; nombre_completo: string }[] = [];
@@ -299,16 +299,17 @@ export function GestionCatalogosRegistro() {
 
     const { data: overridesData } = await supabase
       .from('tramite_tipo_usuario_override')
-      .select('user_id, puede_crear, puede_ver')
+      .select('user_id, puede_crear, puede_ver, puede_editar')
       .eq('tramite_tipo_id', tipoId);
 
-    const overMap: Record<string, { puede_crear: boolean | null; puede_ver: boolean | null }> = {};
+    const overMap: Record<string, { puede_crear: boolean | null; puede_ver: boolean | null; puede_editar: boolean | null }> = {};
     for (const o of (overridesData || [])) overMap[o.user_id] = o;
 
     setUsuarioOverrides(todosLosUsuarios.map(u => ({
       ...u,
       puede_crear: overMap[u.user_id]?.puede_crear ?? null,
       puede_ver: overMap[u.user_id]?.puede_ver ?? null,
+      puede_editar: overMap[u.user_id]?.puede_editar ?? null,
     })));
 
     setLoadingPermisos(false);
@@ -505,7 +506,7 @@ export function GestionCatalogosRegistro() {
 
   // ── Visibilidad: rol ──────────────────────────────────────────────────
 
-  const toggleRolVisibilidad = async (rol: string, campo: 'puede_crear' | 'puede_ver') => {
+  const toggleRolVisibilidad = async (rol: string, campo: 'puede_crear' | 'puede_ver' | 'puede_editar') => {
     if (!activeTipo) return;
     const key = `rol-${rol}-${campo}`;
     setSavingVisibilidad(key);
@@ -525,7 +526,7 @@ export function GestionCatalogosRegistro() {
 
   // ── Visibilidad: usuario override ─────────────────────────────────────
 
-  const toggleUsuarioOverride = async (userId: string, campo: 'puede_crear' | 'puede_ver') => {
+  const toggleUsuarioOverride = async (userId: string, campo: 'puede_crear' | 'puede_ver' | 'puede_editar') => {
     if (!activeTipo) return;
     const key = `user-${userId}-${campo}`;
     setSavingVisibilidad(key);
@@ -558,7 +559,7 @@ export function GestionCatalogosRegistro() {
     });
   };
 
-  const toggleEquipoOverride = async (equipo: Equipo, campo: 'puede_ver' | 'puede_crear') => {
+  const toggleEquipoOverride = async (equipo: Equipo, campo: 'puede_ver' | 'puede_crear' | 'puede_editar') => {
     if (!activeTipo) return;
     const currentVals = equipo.miembros.map(m => usuarioOverrides.find(u => u.user_id === m.usuario_id)?.[campo] ?? null);
     const allTrue = currentVals.every(v => v === true);
@@ -1156,7 +1157,7 @@ export function GestionCatalogosRegistro() {
             <div>
               <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3">Visibilidad por Rol</p>
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3 text-xs text-amber-700">
-                Configura si un rol puede <strong>ver</strong> o <strong>crear</strong> este tipo de trámite. Administrador y Gerente siempre tienen acceso total.
+                <strong>Ver</strong> = acceso al trámite. <strong>Crear</strong> = puede abrir nuevos trámites. <strong>Editar</strong> = puede modificar estatus y campos. Administrador y Gerente siempre tienen acceso total.
               </div>
               <table className="w-full text-sm border border-neutral-200 rounded-xl overflow-hidden">
                 <thead className="bg-neutral-50">
@@ -1164,13 +1165,14 @@ export function GestionCatalogosRegistro() {
                     <th className="text-left px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">Rol</th>
                     <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">Ver</th>
                     <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">Crear</th>
+                    <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">Editar</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rolPermisos.map(rp => (
                     <tr key={rp.rol} className="border-t border-neutral-100 hover:bg-neutral-50">
                       <td className="px-4 py-2.5 text-sm font-medium text-neutral-800">{rp.rol}</td>
-                      {(['puede_ver', 'puede_crear'] as const).map(campo => {
+                      {(['puede_ver', 'puede_crear', 'puede_editar'] as const).map(campo => {
                         const key = `rol-${rp.rol}-${campo}`;
                         const active = rp[campo];
                         const isSaving = savingVisibilidad === key;
@@ -1179,6 +1181,7 @@ export function GestionCatalogosRegistro() {
                             <button
                               onClick={() => toggleRolVisibilidad(rp.rol, campo)}
                               disabled={isSaving}
+                              title={campo === 'puede_ver' ? 'Acceso al trámite' : campo === 'puede_crear' ? 'Puede abrir nuevos trámites' : 'Puede modificar estatus y campos'}
                               className={`w-6 h-6 rounded-md border-2 transition-colors mx-auto flex items-center justify-center text-xs ${
                                 active ? 'bg-green-600 border-green-600 text-white' : 'border-neutral-300 bg-white hover:border-red-400 hover:bg-red-50 hover:text-red-600'
                               } ${isSaving ? 'opacity-40' : ''}`}
@@ -1199,14 +1202,14 @@ export function GestionCatalogosRegistro() {
               <div>
                 <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3">Override por Usuario</p>
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-3 text-xs text-blue-700">
-                  <strong>Gris</strong> = hereda del rol. <strong>Verde</strong> = permitido. <strong>Rojo</strong> = bloqueado. El botón del equipo aplica a todos sus miembros.
+                  <strong>Gris</strong> = hereda del rol. <strong>Verde</strong> = permitido. <strong>Rojo</strong> = bloqueado. El botón del equipo aplica a todos sus miembros a la vez.
                 </div>
                 <div className="space-y-2">
                   {equiposPermisos.map(equipo => {
                     const expanded = !equiposColapsados.has(equipo.id);
                     const miembrosUO = equipo.miembros.map(m =>
                       usuarioOverrides.find(u => u.user_id === m.usuario_id)
-                      ?? { user_id: m.usuario_id, nombre_completo: m.nombre_completo, puede_ver: null as boolean | null, puede_crear: null as boolean | null }
+                      ?? { user_id: m.usuario_id, nombre_completo: m.nombre_completo, puede_ver: null as boolean | null, puede_crear: null as boolean | null, puede_editar: null as boolean | null }
                     );
                     return (
                       <div key={equipo.id} className="border border-neutral-200 rounded-xl overflow-hidden">
@@ -1219,16 +1222,17 @@ export function GestionCatalogosRegistro() {
                           </button>
                           {/* Bulk toggles por columna */}
                           <div className="flex items-center gap-3 flex-shrink-0">
-                            {(['puede_ver', 'puede_crear'] as const).map(campo => {
+                            {(['puede_ver', 'puede_crear', 'puede_editar'] as const).map(campo => {
                               const vals = miembrosUO.map(m => m[campo]);
                               const allTrue = vals.every(v => v === true);
                               const allNull = vals.every(v => v === null);
+                              const label = campo === 'puede_ver' ? 'Ver' : campo === 'puede_crear' ? 'Crear' : 'Editar';
                               return (
                                 <div key={campo} className="flex items-center gap-1">
-                                  <span className="text-[10px] text-neutral-400">{campo === 'puede_ver' ? 'Ver' : 'Crear'}</span>
+                                  <span className="text-[10px] text-neutral-400">{label}</span>
                                   <button
                                     onClick={() => toggleEquipoOverride(equipo, campo)}
-                                    title={allTrue ? 'Quitar permiso a todos' : 'Dar permiso a todos'}
+                                    title={allTrue ? `Quitar ${label.toLowerCase()} a todos` : `Dar ${label.toLowerCase()} a todos`}
                                     className={`w-6 h-6 rounded-md border-2 transition-colors flex items-center justify-center text-xs ${
                                       allTrue ? 'bg-green-600 border-green-600 text-white'
                                       : allNull ? 'border-neutral-300 bg-neutral-100 text-neutral-400'
@@ -1249,7 +1253,7 @@ export function GestionCatalogosRegistro() {
                               {miembrosUO.map(uo => (
                                 <tr key={uo.user_id} className="border-t border-neutral-100 hover:bg-neutral-50">
                                   <td className="px-4 py-2 pl-8 text-sm text-neutral-700">{uo.nombre_completo}</td>
-                                  {(['puede_ver', 'puede_crear'] as const).map(campo => {
+                                  {(['puede_ver', 'puede_crear', 'puede_editar'] as const).map(campo => {
                                     const key = `user-${uo.user_id}-${campo}`;
                                     const val = uo[campo];
                                     const isSaving = savingVisibilidad === key;
