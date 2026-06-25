@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Plus, Trash2, Save, Shield, Tag, Pencil, X,
   ChevronLeft, ChevronDown, GripVertical, Settings, Users,
+  Search, Eye,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -139,6 +140,71 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
   );
 }
 
+// ── Form Preview ──────────────────────────────────────────────────────────
+
+function FormPreview({ campos }: { campos: TipoCampo[] }) {
+  if (campos.length === 0) return null;
+  return (
+    <div className="space-y-4 border border-neutral-200 rounded-xl p-4 bg-white">
+      <p className="text-[11px] text-neutral-400 text-center uppercase tracking-wider mb-2">Vista previa — solo lectura</p>
+      {campos.map(campo => (
+        <div key={campo.id} className="space-y-1">
+          <label className="block text-sm font-medium text-neutral-700">
+            {campo.label}
+            {campo.requerido && <span className="text-red-500 ml-1">*</span>}
+          </label>
+          {campo.ayuda && <p className="text-xs text-neutral-400">{campo.ayuda}</p>}
+          {(campo.tipo === 'texto_corto') && (
+            <input disabled type="text" placeholder="Texto corto..."
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed" />
+          )}
+          {campo.tipo === 'texto_largo' && (
+            <textarea disabled placeholder="Texto largo..." rows={3}
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 resize-none cursor-not-allowed" />
+          )}
+          {campo.tipo === 'numerico' && (
+            <input disabled type="number" placeholder="0"
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed" />
+          )}
+          {campo.tipo === 'fecha' && (
+            <input disabled type="date"
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed" />
+          )}
+          {campo.tipo === 'booleano' && (
+            <label className="flex items-center gap-2 cursor-not-allowed opacity-60">
+              <input type="checkbox" disabled className="rounded" />
+              <span className="text-sm text-neutral-500">{campo.label}</span>
+            </label>
+          )}
+          {campo.tipo === 'adjunto' && (
+            <div className="w-full py-5 border-2 border-dashed border-neutral-200 rounded-lg bg-neutral-50 text-center text-xs text-neutral-400">
+              Arrastra archivos o haz clic para adjuntar
+            </div>
+          )}
+          {(campo.tipo === 'estatus' || campo.tipo === 'dropdown') && (
+            <select disabled className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed">
+              <option>Selecciona una opción...</option>
+              {(campo.config?.opciones || []).map((opt: { label: string; slug: string }) => (
+                <option key={opt.slug}>{opt.label}</option>
+              ))}
+            </select>
+          )}
+          {campo.tipo === 'seleccion_multiple' && (
+            <div className="space-y-1.5 opacity-60">
+              {(campo.config?.opciones || []).map((opt: { label: string; slug: string }) => (
+                <label key={opt.slug} className="flex items-center gap-2 cursor-not-allowed">
+                  <input type="checkbox" disabled className="rounded" />
+                  <span className="text-sm text-neutral-500">{opt.label}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────
 
 export function GestionCatalogosRegistro() {
@@ -201,6 +267,13 @@ export function GestionCatalogosRegistro() {
   const [usuarioOverrides, setUsuarioOverrides] = useState<UsuarioOverride[]>([]);
   const [savingVisibilidad, setSavingVisibilidad] = useState<string | null>(null);
   const [equiposColapsados, setEquiposColapsados] = useState<Set<string>>(new Set());
+
+  // ── Search ──────────────────────────────────────────────────────────────
+  const [searchIns, setSearchIns] = useState('');
+  const [searchTipo, setSearchTipo] = useState('');
+
+  // ── Form preview ────────────────────────────────────────────────────────
+  const [showPreview, setShowPreview] = useState(false);
 
   const isAdmin = usuario?.rol === 'Administrador';
 
@@ -327,6 +400,7 @@ export function GestionCatalogosRegistro() {
     setPermisos([]);
     setEditingCampo(null);
     setShowAddField(false);
+    setShowPreview(false);
   };
 
   const closeEditor = () => {
@@ -335,9 +409,17 @@ export function GestionCatalogosRegistro() {
   };
 
   const switchTab = (tab: 'config' | 'campos' | 'permisos') => {
+    if (activeTab === 'config' && activeTipo && (
+      editConfig.label !== activeTipo.label ||
+      editConfig.color !== activeTipo.color ||
+      (activeTipo.is_custom && editConfig.area !== activeTipo.area)
+    )) {
+      if (!confirm('Tienes cambios sin guardar en Configuración. ¿Continuar sin guardar?')) return;
+    }
     setActiveTab(tab);
     setEditingCampo(null);
     setShowAddField(false);
+    setShowPreview(false);
   };
 
   // ── Config tab ─────────────────────────────────────────────────────────
@@ -647,7 +729,17 @@ export function GestionCatalogosRegistro() {
   };
 
   const handleDeleteTipo = async (id: string) => {
-    if (!confirm('¿Eliminar este tipo de trámite personalizado? No se puede deshacer.')) return;
+    const tipo = tiposTramite.find(t => t.id === id);
+    if (!tipo) return;
+    const { count } = await supabase
+      .from('tickets')
+      .select('*', { count: 'exact', head: true })
+      .eq('tipo', tipo.value);
+    const n = count || 0;
+    const msg = n > 0
+      ? `Este tipo tiene ${n} trámite${n !== 1 ? 's' : ''} registrado${n !== 1 ? 's' : ''}. Al eliminarlo esos trámites quedarán sin tipo asignado. ¿Continuar?`
+      : '¿Eliminar este tipo de trámite personalizado? No se puede deshacer.';
+    if (!confirm(msg)) return;
     const { error } = await supabase.from('ticket_tipos').delete().eq('id', id);
     if (error) { showToast('Error: ' + error.message, 'error'); return; }
     showToast('Tipo eliminado');
@@ -663,9 +755,29 @@ export function GestionCatalogosRegistro() {
     );
   }
 
+  const isDirty = activeTipo !== null && (
+    editConfig.label !== activeTipo.label ||
+    editConfig.color !== activeTipo.color ||
+    (activeTipo.is_custom && editConfig.area !== activeTipo.area)
+  );
+
+  const filteredInsTypes = searchIns.trim()
+    ? insuranceTypes.filter(t =>
+        t.nombre.toLowerCase().includes(searchIns.toLowerCase()) ||
+        (t.descripcion || '').toLowerCase().includes(searchIns.toLowerCase())
+      )
+    : insuranceTypes;
+
+  const filteredTipos = searchTipo.trim()
+    ? tiposTramite.filter(t =>
+        t.label.toLowerCase().includes(searchTipo.toLowerCase()) ||
+        t.value.toLowerCase().includes(searchTipo.toLowerCase())
+      )
+    : tiposTramite;
+
   const tiposGrouped = AREAS.map(area => ({
     area,
-    items: tiposTramite.filter(t => t.area === area),
+    items: filteredTipos.filter(t => t.area === area),
   })).filter(g => g.items.length > 0);
 
   // ── Toast ──────────────────────────────────────────────────────────────
@@ -710,13 +822,16 @@ export function GestionCatalogosRegistro() {
             <button
               key={tab.id}
               onClick={() => switchTab(tab.id as any)}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              className={`relative px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.id
                   ? 'text-blue-600 border-blue-600'
                   : 'text-neutral-500 border-transparent hover:text-neutral-700'
               }`}
             >
               {tab.label}
+              {tab.id === 'config' && isDirty && (
+                <span className="absolute top-2 right-1 w-1.5 h-1.5 rounded-full bg-amber-500" />
+              )}
             </button>
           ))}
         </div>
@@ -773,14 +888,43 @@ export function GestionCatalogosRegistro() {
                 </div>
               ) : (
                 <>
-                  <p className="text-xs text-neutral-400 uppercase tracking-wider mb-3">
-                    {campos.length} campo{campos.length !== 1 ? 's' : ''} · arrastra para reordenar
-                  </p>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs text-neutral-400 uppercase tracking-wider">
+                      {campos.length} campo{campos.length !== 1 ? 's' : ''}
+                      {!showPreview && campos.length > 0 && ' · arrastra para reordenar'}
+                    </p>
+                    {campos.length > 0 && (
+                      <button
+                        onClick={() => { setShowPreview(!showPreview); setEditingCampo(null); setShowAddField(false); }}
+                        className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg transition-colors ${
+                          showPreview ? 'bg-blue-100 text-blue-600' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'
+                        }`}
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        {showPreview ? 'Editar' : 'Vista previa'}
+                      </button>
+                    )}
+                  </div>
+
+                  {showPreview ? (
+                    <FormPreview campos={campos} />
+                  ) : (
+                  <>
 
                   {campos.length === 0 && (
-                    <div className="text-center py-10 text-neutral-400">
-                      <p className="text-sm">Sin campos definidos.</p>
-                      <p className="text-xs mt-1">Los usuarios verán un formulario vacío al crear este trámite.</p>
+                    <div className="text-center py-12 text-neutral-400">
+                      <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-neutral-100 flex items-center justify-center">
+                        <Plus className="w-7 h-7 text-neutral-300" />
+                      </div>
+                      <p className="text-sm font-medium text-neutral-500">Sin campos definidos</p>
+                      <p className="text-xs mt-1 mb-4">Los usuarios verán un formulario vacío al crear este trámite.</p>
+                      <button
+                        onClick={() => { setShowAddField(true); setEditingCampo(null); }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Agregar primer campo
+                      </button>
                     </div>
                   )}
 
@@ -835,6 +979,8 @@ export function GestionCatalogosRegistro() {
                     <Plus className="w-4 h-4" />
                     Agregar campo
                   </button>
+                  </>
+                  )}
                 </>
               )}
             </div>
@@ -1384,6 +1530,19 @@ export function GestionCatalogosRegistro() {
           </button>
         </div>
 
+        {insuranceTypes.length > 4 && (
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchIns}
+              onChange={(e) => setSearchIns(e.target.value)}
+              placeholder="Buscar tipo de seguro..."
+              className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-green-400 focus:outline-none"
+            />
+          </div>
+        )}
+
         {showNewInsForm && (
           <div className="bg-neutral-50 rounded-lg p-4 mb-4 space-y-3 border border-neutral-200">
             <div>
@@ -1425,9 +1584,11 @@ export function GestionCatalogosRegistro() {
         )}
 
         <div className="space-y-2">
-          {insuranceTypes.length === 0 ? (
-            <p className="text-neutral-500 text-center py-8">No hay tipos de seguro registrados</p>
-          ) : insuranceTypes.map(type => (
+          {filteredInsTypes.length === 0 ? (
+            <p className="text-neutral-500 text-center py-8">
+              {searchIns ? 'Sin resultados para esa búsqueda' : 'No hay tipos de seguro registrados'}
+            </p>
+          ) : filteredInsTypes.map(type => (
             <div key={type.id} className={`border rounded-lg p-4 ${type.activo ? 'border-neutral-200' : 'border-red-200 bg-red-50'}`}>
               {editingInsType === type.id ? (
                 <div className="space-y-3">
@@ -1504,6 +1665,19 @@ export function GestionCatalogosRegistro() {
           </button>
         </div>
 
+        {tiposTramite.length > 4 && (
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchTipo}
+              onChange={(e) => setSearchTipo(e.target.value)}
+              placeholder="Buscar tipo de trámite..."
+              className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 focus:outline-none"
+            />
+          </div>
+        )}
+
         {showNewTipoForm && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-6 space-y-4">
             <h3 className="font-semibold text-blue-800 text-sm">Nuevo tipo de trámite</h3>
@@ -1555,8 +1729,10 @@ export function GestionCatalogosRegistro() {
           </div>
         )}
 
-        {tiposTramite.length === 0 ? (
-          <p className="text-neutral-500 text-center py-8">No hay tipos de trámite registrados</p>
+        {filteredTipos.length === 0 ? (
+          <p className="text-neutral-500 text-center py-8">
+            {searchTipo ? 'Sin resultados para esa búsqueda' : 'No hay tipos de trámite registrados'}
+          </p>
         ) : (
           <div className="space-y-6">
             {tiposGrouped.map(({ area, items }) => (
