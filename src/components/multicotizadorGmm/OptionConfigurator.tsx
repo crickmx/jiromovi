@@ -29,8 +29,8 @@ const DEFAULT_BNP_INPUT: BnpQuoteInput = {
 };
 
 const DEFAULT_BXPLUS_INPUT: BxplusQuoteInput = {
-  estado: 'CIUDAD DE MEXICO', nivel_hospitalario: 'Alto', tabulador: 'A',
-  suma_asegurada: '500', deducible: '20000', coaseguro: '10%', forma_pago: 'Anual',
+  estado: 'CIUDAD DE MEXICO', nivel_hospitalario: 'Alto', tabulador: 'PALADIO-60,000',
+  suma_asegurada: '5000000', deducible: '17000', coaseguro: '0.1', forma_pago: 'Anual',
   coverages: { ...DEFAULT_BXPLUS_COVERAGES },
 };
 
@@ -241,12 +241,62 @@ function BnpParams({ input, onChange }: { input: BnpQuoteInput; onChange: (p: Pa
   );
 }
 
+const BXPLUS_ESTADOS = [
+  'CIUDAD DE MEXICO', 'ESTADO DE MEXICO', 'NUEVO LEON', 'PUEBLA', 'QUERETARO',
+  'JALISCO 1(GUADALAJARA Y ALEDAÑOS)', 'JALISCO 2 ( RESTO JALISCO)',
+  'AGUASCALIENTES', 'BAJA CALIFORNIA NORTE', 'BAJA CALIFORNIA SUR',
+  'CAMPECHE', 'CHIAPAS', 'CHIHUAHUA', 'COAHUILA', 'COLIMA', 'DURANGO',
+  'GUANAJUATO', 'GUERRERO', 'HIDALGO', 'MICHOACAN', 'MORELOS', 'NAYARIT',
+  'OAXACA', 'QUINTANA ROO', 'SAN LUIS POTOSI', 'SINALOA', 'SONORA',
+  'TABASCO', 'TAMAULIPAS', 'TLAXCALA', 'VERACRUZ', 'YUCATAN', 'ZACATECAS',
+];
+
+const BXPLUS_TABULADORES = [
+  { value: 'PLATA- 50,000', label: 'Plata ($50,000)' },
+  { value: 'PALADIO-60,000', label: 'Paladio ($60,000)' },
+  { value: 'OSMIO-80,000', label: 'Osmio ($80,000)' },
+  { value: 'IRIDIO-90,000', label: 'Iridio ($90,000)' },
+  { value: 'ORO-110,000', label: 'Oro ($110,000)' },
+  { value: 'PLATINO-120,000', label: 'Platino ($120,000)' },
+];
+
+const BXPLUS_SUMAS_ASEGURADAS = [
+  { value: '2000000', label: '$2 MDP' },
+  { value: '5000000', label: '$5 MDP' },
+  { value: '10000000', label: '$10 MDP' },
+  { value: '30000000', label: '$30 MDP' },
+  { value: '50000000', label: '$50 MDP' },
+  { value: '125000000', label: '$125 MDP' },
+];
+
+const BXPLUS_DEDUCIBLES = [
+  { value: '12000', label: '$12,000' },
+  { value: '17000', label: '$17,000' },
+  { value: '23000', label: '$23,000' },
+  { value: '29000', label: '$29,000' },
+  { value: '35000', label: '$35,000' },
+  { value: '40000', label: '$40,000' },
+  { value: '46000', label: '$46,000' },
+  { value: '52000', label: '$52,000' },
+  { value: '58000', label: '$58,000' },
+  { value: '86000', label: '$86,000' },
+  { value: '115000', label: '$115,000' },
+];
+
+const BXPLUS_COASEGUROS = [
+  { value: '0.1', label: '10%' },
+  { value: '0.15', label: '15%' },
+  { value: '0.2', label: '20%' },
+  { value: '0.25', label: '25%' },
+  { value: '0.3', label: '30%' },
+];
+
 function BxplusParams({ input, onChange }: { input: BxplusQuoteInput; onChange: (p: Partial<BxplusQuoteInput>) => void }) {
   return (
     <div className="grid grid-cols-3 gap-3">
       <Field label="Estado">
         <select value={input.estado} onChange={e => onChange({ estado: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {['CIUDAD DE MEXICO', 'ESTADO DE MEXICO', 'JALISCO', 'NUEVO LEON', 'PUEBLA', 'QUERETARO', 'GUANAJUATO', 'AGUASCALIENTES', 'BAJA CALIFORNIA NORTE', 'BAJA CALIFORNIA SUR', 'CAMPECHE', 'CHIAPAS', 'CHIHUAHUA', 'COAHUILA', 'COLIMA', 'DURANGO', 'GUERRERO', 'HIDALGO', 'MICHOACAN', 'MORELOS', 'NAYARIT', 'OAXACA', 'QUINTANA ROO', 'SAN LUIS POTOSI', 'SINALOA', 'SONORA', 'TABASCO', 'TAMAULIPAS', 'TLAXCALA', 'VERACRUZ', 'YUCATAN', 'ZACATECAS'].map(v => <option key={v} value={v}>{v}</option>)}
+          {BXPLUS_ESTADOS.map(v => <option key={v} value={v}>{v}</option>)}
         </select>
       </Field>
       <Field label="Nivel Hospitalario">
@@ -256,22 +306,22 @@ function BxplusParams({ input, onChange }: { input: BxplusQuoteInput; onChange: 
       </Field>
       <Field label="Tabulador">
         <select value={input.tabulador} onChange={e => onChange({ tabulador: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {['A', 'B', 'C'].map(v => <option key={v} value={v}>{v}</option>)}
+          {BXPLUS_TABULADORES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
       </Field>
       <Field label="Suma Asegurada">
         <select value={input.suma_asegurada} onChange={e => onChange({ suma_asegurada: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {['200', '300', '400', '500', '750', '1000'].map(v => <option key={v} value={v}>${v} MDP</option>)}
+          {BXPLUS_SUMAS_ASEGURADAS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
       </Field>
       <Field label="Deducible">
         <select value={input.deducible} onChange={e => onChange({ deducible: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {['10000', '15000', '20000', '25000', '30000', '40000', '50000'].map(v => <option key={v} value={v}>${Number(v).toLocaleString()}</option>)}
+          {BXPLUS_DEDUCIBLES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
         </select>
       </Field>
       <Field label="Coaseguro">
         <select value={input.coaseguro} onChange={e => onChange({ coaseguro: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {['0%', '10%', '20%', '30%'].map(v => <option key={v} value={v}>{v}</option>)}
+          {BXPLUS_COASEGUROS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
         </select>
       </Field>
     </div>

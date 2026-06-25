@@ -75,22 +75,33 @@ function parseExcelFile(file: ArrayBuffer, product: 'BNV' | 'BNP') {
     }
 
     const ageColIdx = headers.findIndex((h: any) => {
-      const s = String(h || '').toLowerCase();
-      return s === 'age' || s === 'edad' || s === 'edades';
+      const s = String(h || '').toLowerCase().trim();
+      return s === 'age' || s === 'edad' || s === 'edades' || s.includes('edad') || s.includes('age');
     });
 
     if (ageColIdx === -1) {
       const lookupIdx = headers.findIndex((h: any) => String(h || '').toLowerCase().includes('lookup'));
       const regionIdx = headers.findIndex((h: any) => String(h || '').toLowerCase().includes('region'));
-      const ageIdx2 = headers.findIndex((h: any) => String(h || '').toLowerCase() === 'age' || String(h || '').toLowerCase() === 'edad');
       const rateIdx = headers.findIndex((h: any) => String(h || '').toLowerCase().includes('rate') || String(h || '').toLowerCase().includes('prima') || String(h || '').toLowerCase().includes('tarifa'));
       const typeIdx = headers.findIndex((h: any) => String(h || '').toLowerCase().includes('type') || String(h || '').toLowerCase().includes('sexo') || String(h || '').toLowerCase().includes('genero'));
+
+      // Try to find age column by checking first column with numeric values 0-120
+      let inferredAgeIdx = 0;
+      if (jsonData.length > 3) {
+        for (let ci = 0; ci < headers.length; ci++) {
+          const vals = jsonData.slice(1, 10).map((r: any) => Number(r?.[ci])).filter(v => !isNaN(v));
+          if (vals.length >= 3 && vals.every(v => v >= 0 && v <= 120) && vals[1] - vals[0] === 1) {
+            inferredAgeIdx = ci;
+            break;
+          }
+        }
+      }
 
       if (rateIdx !== -1) {
         for (let i = 1; i < jsonData.length; i++) {
           const row = jsonData[i] as any[];
           if (!row) continue;
-          const age = Number(row[ageIdx2 !== -1 ? ageIdx2 : 0]);
+          const age = Number(row[inferredAgeIdx]);
           const rate = Number(row[rateIdx]);
           if (isNaN(age) || isNaN(rate) || rate <= 0) continue;
 
@@ -158,6 +169,23 @@ function parseExcelFile(file: ArrayBuffer, product: 'BNV' | 'BNP') {
 
   if (rates.length === 0) {
     throw new Error('No se pudieron extraer tarifas del archivo. Verifique el formato.');
+  }
+
+  const uniqueAges = [...new Set(rates.map(r => r.age))];
+  if (uniqueAges.length === 1 && uniqueAges[0] === 0) {
+    throw new Error(
+      'Error de formato: No se detectó la columna de edades en el archivo. ' +
+      'Asegúrese de que existe una columna con encabezado "Edad" o "Age" en la hoja de tarifas.'
+    );
+  }
+
+  const rateValues = rates.map(r => r.rate).sort((a, b) => a - b);
+  const isSequential = rateValues.length > 10 && rateValues.every((v, i) => i === 0 || v === rateValues[i - 1] + 1);
+  if (isSequential) {
+    throw new Error(
+      'Error de formato: Los valores de tarifas parecen ser números secuenciales, no primas reales. ' +
+      'Verifique que el archivo contiene las tarifas correctas y no índices de fila.'
+    );
   }
 
   return {

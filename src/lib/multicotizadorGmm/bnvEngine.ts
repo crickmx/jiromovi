@@ -64,6 +64,30 @@ export function calculateBnv(
   people: QuotePerson[],
   tariffData: BnvTariffData
 ): BnvCalculationResult {
+  if (!tariffData.rates || tariffData.rates.length === 0) {
+    return {
+      product: 'BNV',
+      people_results: [],
+      prima_anual_total: 0,
+      totals: {} as any,
+      tariff_package_id: tariffData.package_id,
+      error: 'No hay tarifas cargadas para BNV. Por favor sube el archivo de tarifas desde el panel de administración.',
+    };
+  }
+
+  const uniqueAges = [...new Set(tariffData.rates.map(r => r.age))];
+  const allAgeZero = uniqueAges.length === 1 && uniqueAges[0] === 0;
+  if (allAgeZero) {
+    return {
+      product: 'BNV',
+      people_results: [],
+      prima_anual_total: 0,
+      totals: {} as any,
+      tariff_package_id: tariffData.package_id,
+      error: 'Las tarifas BNV cargadas son inválidas (todas las edades son 0). El archivo Excel no fue procesado correctamente. Por favor vuelve a subir el archivo de tarifas BNV desde el panel de administración.',
+    };
+  }
+
   const lookupKey = buildLookupKey(input);
   const mappedRegion = REGION_MAP[input.region_zone];
   const discount = getClientDiscount(tariffData.client_types, input.client_type);

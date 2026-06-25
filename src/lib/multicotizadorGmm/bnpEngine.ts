@@ -67,6 +67,30 @@ export function calculateBnp(
   people: QuotePerson[],
   tariffData: BnpTariffData
 ): BnpCalculationResult {
+  if (!tariffData.rates || tariffData.rates.length === 0) {
+    return {
+      product: 'BNP',
+      people_results: [],
+      prima_anual_total: 0,
+      totals: {} as any,
+      tariff_package_id: tariffData.package_id,
+      error: 'No hay tarifas cargadas para BNP. Por favor sube el archivo de tarifas desde el panel de administración.',
+    };
+  }
+
+  const uniqueAges = [...new Set(tariffData.rates.map(r => r.age))];
+  const allAgeZero = uniqueAges.length === 1 && uniqueAges[0] === 0;
+  if (allAgeZero) {
+    return {
+      product: 'BNP',
+      people_results: [],
+      prima_anual_total: 0,
+      totals: {} as any,
+      tariff_package_id: tariffData.package_id,
+      error: 'Las tarifas BNP cargadas son inválidas (todas las edades son 0). El archivo Excel no fue procesado correctamente. Por favor vuelve a subir el archivo de tarifas BNP desde el panel de administración.',
+    };
+  }
+
   const planName = buildPlanName(input);
   const mappedRegion = REGION_MAP[input.region_zone];
   const discount = getClientDiscount(tariffData.client_types, input.client_type);
