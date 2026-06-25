@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Plus, Trash2, Save, Shield, Tag, Pencil, X,
-  ChevronLeft, GripVertical, Settings, Users,
+  ChevronLeft, ChevronDown, GripVertical, Settings, Users,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -199,6 +199,7 @@ export function GestionCatalogosRegistro() {
   const [rolPermisos, setRolPermisos] = useState<RolPermiso[]>([]);
   const [usuarioOverrides, setUsuarioOverrides] = useState<UsuarioOverride[]>([]);
   const [savingVisibilidad, setSavingVisibilidad] = useState<string | null>(null);
+  const [equiposColapsados, setEquiposColapsados] = useState<Set<string>>(new Set());
 
   const isAdmin = usuario?.rol === 'Administrador';
 
@@ -547,6 +548,33 @@ export function GestionCatalogosRegistro() {
 
     setUsuarioOverrides(prev2 => prev2.map(u => u.user_id === userId ? { ...u, [campo]: nuevoValor } : u));
     setSavingVisibilidad(null);
+  };
+
+  const toggleEquipoColapsado = (equipoId: string) => {
+    setEquiposColapsados(prev => {
+      const next = new Set(prev);
+      if (next.has(equipoId)) next.delete(equipoId); else next.add(equipoId);
+      return next;
+    });
+  };
+
+  const toggleEquipoOverride = async (equipo: Equipo, campo: 'puede_ver' | 'puede_crear') => {
+    if (!activeTipo) return;
+    const currentVals = equipo.miembros.map(m => usuarioOverrides.find(u => u.user_id === m.usuario_id)?.[campo] ?? null);
+    const allTrue = currentVals.every(v => v === true);
+    const nuevoValor = allTrue ? null : true;
+    for (const m of equipo.miembros) {
+      if (nuevoValor === null) {
+        await supabase.from('tramite_tipo_usuario_override').delete()
+          .eq('tramite_tipo_id', activeTipo.id).eq('user_id', m.usuario_id);
+      } else {
+        await supabase.from('tramite_tipo_usuario_override')
+          .upsert({ tramite_tipo_id: activeTipo.id, user_id: m.usuario_id, [campo]: nuevoValor, updated_by: usuario?.id }, { onConflict: 'tramite_tipo_id,user_id' });
+      }
+    }
+    setUsuarioOverrides(prev => prev.map(u =>
+      equipo.miembros.some(m => m.usuario_id === u.user_id) ? { ...u, [campo]: nuevoValor } : u
+    ));
   };
 
   // ── Insurance type handlers ────────────────────────────────────────────
@@ -1164,50 +1192,91 @@ export function GestionCatalogosRegistro() {
               </table>
             </div>
 
-            {/* ── Overrides por Usuario ── */}
-            {usuarioOverrides.length > 0 && (
+            {/* ── Overrides por Usuario (agrupados por equipo) ── */}
+            {equiposPermisos.length > 0 && (
               <div>
                 <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3">Override por Usuario</p>
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-3 text-xs text-blue-700">
-                  Override manual por usuario. <strong>Gris</strong> = hereda del rol. <strong>Verde</strong> = permitido. <strong>Rojo</strong> = bloqueado. Clic para ciclar.
+                  <strong>Gris</strong> = hereda del rol. <strong>Verde</strong> = permitido. <strong>Rojo</strong> = bloqueado. El botón del equipo aplica a todos sus miembros.
                 </div>
-                <table className="w-full text-sm border border-neutral-200 rounded-xl overflow-hidden">
-                  <thead className="bg-neutral-50">
-                    <tr>
-                      <th className="text-left px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">Usuario</th>
-                      <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">Ver</th>
-                      <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">Crear</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {usuarioOverrides.map(uo => (
-                      <tr key={uo.user_id} className="border-t border-neutral-100 hover:bg-neutral-50">
-                        <td className="px-4 py-2.5 text-sm font-medium text-neutral-800">{uo.nombre_completo}</td>
-                        {(['puede_ver', 'puede_crear'] as const).map(campo => {
-                          const key = `user-${uo.user_id}-${campo}`;
-                          const val = uo[campo];
-                          const isSaving = savingVisibilidad === key;
-                          return (
-                            <td key={campo} className="text-center px-4 py-2.5">
-                              <button
-                                onClick={() => toggleUsuarioOverride(uo.user_id, campo)}
-                                disabled={isSaving}
-                                title={val === null ? 'Heredar del rol' : val ? 'Permitido' : 'Bloqueado'}
-                                className={`w-6 h-6 rounded-md border-2 transition-colors mx-auto flex items-center justify-center text-xs ${
-                                  val === null ? 'border-neutral-300 bg-neutral-100 text-neutral-400'
-                                  : val ? 'bg-green-600 border-green-600 text-white'
-                                  : 'bg-red-500 border-red-500 text-white'
-                                } ${isSaving ? 'opacity-40' : ''}`}
-                              >
-                                {val === null ? '—' : val ? '✓' : '✗'}
-                              </button>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="space-y-2">
+                  {equiposPermisos.map(equipo => {
+                    const expanded = !equiposColapsados.has(equipo.id);
+                    const miembrosUO = equipo.miembros.map(m =>
+                      usuarioOverrides.find(u => u.user_id === m.usuario_id)
+                      ?? { user_id: m.usuario_id, nombre_completo: m.nombre_completo, puede_ver: null as boolean | null, puede_crear: null as boolean | null }
+                    );
+                    return (
+                      <div key={equipo.id} className="border border-neutral-200 rounded-xl overflow-hidden">
+                        {/* Cabecera del equipo con bulk toggles */}
+                        <div className="bg-neutral-50 px-3 py-2.5 flex items-center gap-2 border-b border-neutral-200">
+                          <button onClick={() => toggleEquipoColapsado(equipo.id)} className="flex items-center gap-2 flex-1 text-left min-w-0">
+                            <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 flex-shrink-0 transition-transform ${expanded ? '' : '-rotate-90'}`} />
+                            <span className="text-xs font-bold text-neutral-700 uppercase tracking-wider truncate">{equipo.nombre}</span>
+                            <span className="text-xs text-neutral-400 flex-shrink-0">({equipo.miembros.length})</span>
+                          </button>
+                          {/* Bulk toggles por columna */}
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            {(['puede_ver', 'puede_crear'] as const).map(campo => {
+                              const vals = miembrosUO.map(m => m[campo]);
+                              const allTrue = vals.every(v => v === true);
+                              const allNull = vals.every(v => v === null);
+                              return (
+                                <div key={campo} className="flex items-center gap-1">
+                                  <span className="text-[10px] text-neutral-400">{campo === 'puede_ver' ? 'Ver' : 'Crear'}</span>
+                                  <button
+                                    onClick={() => toggleEquipoOverride(equipo, campo)}
+                                    title={allTrue ? 'Quitar permiso a todos' : 'Dar permiso a todos'}
+                                    className={`w-6 h-6 rounded-md border-2 transition-colors flex items-center justify-center text-xs ${
+                                      allTrue ? 'bg-green-600 border-green-600 text-white'
+                                      : allNull ? 'border-neutral-300 bg-neutral-100 text-neutral-400'
+                                      : 'border-yellow-400 bg-yellow-50 text-yellow-600'
+                                    }`}
+                                  >
+                                    {allTrue ? '✓' : allNull ? '—' : '~'}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        {/* Filas individuales */}
+                        {expanded && (
+                          <table className="w-full text-sm">
+                            <tbody>
+                              {miembrosUO.map(uo => (
+                                <tr key={uo.user_id} className="border-t border-neutral-100 hover:bg-neutral-50">
+                                  <td className="px-4 py-2 pl-8 text-sm text-neutral-700">{uo.nombre_completo}</td>
+                                  {(['puede_ver', 'puede_crear'] as const).map(campo => {
+                                    const key = `user-${uo.user_id}-${campo}`;
+                                    const val = uo[campo];
+                                    const isSaving = savingVisibilidad === key;
+                                    return (
+                                      <td key={campo} className="text-center px-4 py-2 w-20">
+                                        <button
+                                          onClick={() => toggleUsuarioOverride(uo.user_id, campo)}
+                                          disabled={isSaving}
+                                          title={val === null ? 'Heredar del rol' : val ? 'Permitido' : 'Bloqueado'}
+                                          className={`w-6 h-6 rounded-md border-2 transition-colors mx-auto flex items-center justify-center text-xs ${
+                                            val === null ? 'border-neutral-300 bg-neutral-100 text-neutral-400'
+                                            : val ? 'bg-green-600 border-green-600 text-white'
+                                            : 'bg-red-500 border-red-500 text-white'
+                                          } ${isSaving ? 'opacity-40' : ''}`}
+                                        >
+                                          {val === null ? '—' : val ? '✓' : '✗'}
+                                        </button>
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 

@@ -264,7 +264,7 @@ export function GestionGruposVisualizacion() {
     try {
       let q = supabase.from('ticket_tipos').select('id, label').eq('activo', true);
       if (area) q = q.eq('area', area);
-      const { data: tipos } = await q.order('nombre');
+      const { data: tipos } = await q.order('label');
 
       const { data: config } = await supabase
         .from('tramite_team_tipo_config')
