@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCached, setCached, invalidateCacheByPrefix } from '../lib/sessionCache';
+import { useTiposTramite } from '../hooks/useTiposTramite';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useImpersonation } from '../contexts/ImpersonationContext';
@@ -216,16 +217,9 @@ export function Tramites() {
   }, [selectedTipos, estatusList]);
 
   const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const [tiposDb, setTiposDb] = useState<Map<string, TicketTipoDB>>(new Map());
+  const { tiposMap: tiposDb } = useTiposTramite();
 
   useEffect(() => {
-    supabase.from('ticket_tipos').select('value, label, area, color').eq('activo', true).then(({ data }) => {
-      if (data) {
-        const map = new Map<string, TicketTipoDB>();
-        for (const t of data) map.set(t.value, t);
-        setTiposDb(map);
-      }
-    });
     supabase.from('tramites_grupos_visualizacion').select('id, nombre').eq('activo', true).order('nombre').then(({ data }) => {
       if (data) setGrupos(data as Array<{ id: string; nombre: string }>);
     });

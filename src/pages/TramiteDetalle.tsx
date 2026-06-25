@@ -372,39 +372,26 @@ export function TramiteDetalle() {
     }
   }, [tramite?.id, tramite?.assigned_to_user_id]);
 
-  const TIPO_TRAMITE_CATEGORIA: Record<string, string> = {
-    cotizacion_emision: 'cotizacion_emision',
-    correccion_poliza_registrada: 'general',
-    correccion_comisiones: 'general',
-    registro_poliza: 'general',
-    lead_registro_movi: 'general',
-    solicitud_comisiones_pendientes: 'solicitud_comisiones',
-    cambio_bancario: 'cambio_bancario',
-    cancelacion_poliza: 'general',
-    renovaciones: 'general',
-    cobranza: 'general',
-    otros_comercial: 'general',
-    formulario_cotizacion: 'cotizacion_emision',
-  };
-
   const loadEstatus = async (tipoTramite?: string) => {
-    const { data } = await supabase
-      .from('ticket_estatus')
-      .select('*')
-      .eq('activo', true)
-      .order('orden');
+    const [estatusResult, tipoResult] = await Promise.all([
+      supabase.from('ticket_estatus').select('*').eq('activo', true).order('orden'),
+      tipoTramite
+        ? supabase.from('ticket_tipos').select('categoria').eq('value', tipoTramite).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
 
-    if (data) {
-      const categoria = tipoTramite ? (TIPO_TRAMITE_CATEGORIA[tipoTramite] ?? tipoTramite) : null;
+    if (estatusResult.data) {
+      // categoria viene de la BD; para tipos custom sin categoria explícita usa 'general' (default en BD)
+      const categoria = (tipoResult.data as any)?.categoria ?? tipoTramite ?? null;
+
       let filtered = categoria
-        ? data.filter((e: any) =>
+        ? estatusResult.data.filter((e: any) =>
             !e.tipo_aplicable || e.tipo_aplicable.includes(categoria)
           )
-        : data;
+        : estatusResult.data;
 
-      // Para cotizacion_emision, "Cerrado" no es seleccionable manualmente
-      // el cierre ocurre al elegir Emitido (Ganado) o No Emitido (Perdido)
-      if (tipoTramite === 'cotizacion_emision') {
+      // cotizacion_emision no permite cerrar manualmente (se cierra al elegir Emitido/No Emitido)
+      if (categoria === 'cotizacion_emision') {
         filtered = filtered.filter((e: any) => e.nombre !== 'Cerrado');
       }
 

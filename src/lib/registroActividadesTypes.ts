@@ -2,7 +2,7 @@
  * Tipos TypeScript para el módulo de Registro de Actividades
  */
 
-export type AreaCategoria = 'Comercial' | 'Operaciones';
+export type AreaCategoria = 'Comercial' | 'Operaciones' | 'Mercadotecnia' | 'Administración' | 'Otro';
 
 export interface TipoTramiteConfig {
   value: string;
@@ -45,8 +45,11 @@ export function getTipoTramitesByArea(area: AreaCategoria): TipoTramiteConfig[] 
 }
 
 export const AREA_CONFIG: Record<AreaCategoria, { color: string; bg: string; border: string }> = {
-  Comercial:    { color: 'text-sky-700',     bg: 'bg-sky-50',     border: 'border-sky-200' },
-  Operaciones:  { color: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-200' },
+  Comercial:      { color: 'text-sky-700',     bg: 'bg-sky-50',     border: 'border-sky-200' },
+  Operaciones:    { color: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-200' },
+  Mercadotecnia:  { color: 'text-violet-700',  bg: 'bg-violet-50',  border: 'border-violet-200' },
+  Administración: { color: 'text-teal-700',    bg: 'bg-teal-50',    border: 'border-teal-200' },
+  Otro:           { color: 'text-slate-600',   bg: 'bg-slate-50',   border: 'border-slate-200' },
 };
 
 export interface TramiteActivityType {

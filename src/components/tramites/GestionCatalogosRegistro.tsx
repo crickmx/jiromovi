@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { invalidateTiposTramiteCache } from '../../hooks/useTiposTramite';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -350,6 +351,7 @@ export function GestionCatalogosRegistro() {
     if (error) { showToast('Error: ' + error.message, 'error'); }
     else {
       setActiveTipo({ ...activeTipo, ...payload });
+      invalidateTiposTramiteCache();
       await loadTiposTramite();
       showToast('Tipo de trámite actualizado');
     }
@@ -634,11 +636,13 @@ export function GestionCatalogosRegistro() {
     showToast('Tipo de trámite creado');
     setNewTipo({ label: '', area: 'Comercial', color: '#0369a1' });
     setShowNewTipoForm(false);
+    invalidateTiposTramiteCache();
     await loadTiposTramite();
   };
 
   const handleToggleTipo = async (id: string, current: boolean) => {
     await supabase.from('ticket_tipos').update({ activo: !current }).eq('id', id);
+    invalidateTiposTramiteCache();
     await loadTiposTramite();
   };
 
@@ -647,6 +651,7 @@ export function GestionCatalogosRegistro() {
     const { error } = await supabase.from('ticket_tipos').delete().eq('id', id);
     if (error) { showToast('Error: ' + error.message, 'error'); return; }
     showToast('Tipo eliminado');
+    invalidateTiposTramiteCache();
     await loadTiposTramite();
   };
 

@@ -562,13 +562,24 @@ export function NuevoTramiteModal({
   };
 
   const loadAseguradoras = async () => {
-    const { data } = await supabase
-      .from('cat_aseguradoras')
+    // Preferir maestro_companias (importadas por admin vía /admin/base-datos).
+    // Fallback a cat_aseguradoras mientras no haya datos importados.
+    const { data: maestro } = await supabase
+      .from('maestro_companias')
       .select('nombre')
       .eq('activo', true)
       .order('nombre');
 
-    if (data) setAseguradoras(data);
+    if (maestro?.length) {
+      setAseguradoras(maestro);
+    } else {
+      const { data } = await supabase
+        .from('cat_aseguradoras')
+        .select('nombre')
+        .eq('activo', true)
+        .order('nombre');
+      if (data) setAseguradoras(data);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
