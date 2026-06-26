@@ -571,44 +571,52 @@ export default function MulticotizadorGMM() {
                   <tr className="border-b border-neutral-100 dark:border-white/[0.06]">
                     <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Folio</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Cliente</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Asegurados</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Fecha</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Estatus</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Aseguradoras</th>
                     <th className="text-right px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {savedQuotes.map(q => (
-                    <tr key={q.id} className="border-b border-neutral-50 dark:border-white/[0.03] hover:bg-neutral-50 dark:hover:bg-white/[0.02]">
-                      <td className="px-5 py-3 font-mono text-xs text-teal-600 dark:text-teal-400">{q.folio}</td>
-                      <td className="px-5 py-3 text-neutral-900 dark:text-white">{q.client_name}</td>
-                      <td className="px-5 py-3 text-neutral-500">{q.people_json?.length || 0}</td>
-                      <td className="px-5 py-3 text-neutral-500">{new Date(q.created_at).toLocaleDateString('es-MX')}</td>
-                      <td className="px-5 py-3">
-                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300">{q.status}</span>
-                      </td>
-                      <td className="px-5 py-3">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleEditQuote(q)}
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/[0.05] transition-colors"
-                            title="Editar"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                            Editar
-                          </button>
-                          <button
-                            onClick={() => handleDownloadSavedPdf(q)}
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/[0.05] transition-colors"
-                            title="Descargar PDF"
-                          >
-                            <FileDown className="w-3.5 h-3.5" />
-                            PDF
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {savedQuotes.map(q => {
+                    const products = [...new Set((q.options_json || []).map((o: any) => o.product_id))];
+                    const productLabels: Record<string, string> = { BXPLUS: 'BX+', BNV: 'BNV', BNP: 'BNP' };
+                    return (
+                      <tr key={q.id} className="border-b border-neutral-50 dark:border-white/[0.03] hover:bg-neutral-50 dark:hover:bg-white/[0.02] transition-colors">
+                        <td className="px-5 py-3.5 font-mono text-xs text-teal-600 dark:text-teal-400 font-medium">{q.folio}</td>
+                        <td className="px-5 py-3.5 text-neutral-900 dark:text-white font-medium">{q.client_name}</td>
+                        <td className="px-5 py-3.5 text-neutral-500 dark:text-neutral-400">{new Date(q.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {products.map(pid => (
+                              <span key={pid} className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-neutral-100 dark:bg-white/[0.06] text-neutral-600 dark:text-neutral-300">
+                                {productLabels[pid as string] || pid}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => handleEditQuote(q)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/[0.05] transition-colors"
+                              title="Editar cotizacion"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => handleDownloadSavedPdf(q)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors"
+                              title="Descargar PDF"
+                            >
+                              <FileDown className="w-3.5 h-3.5" />
+                              Descargar
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
