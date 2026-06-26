@@ -199,13 +199,13 @@ export const BXPLUS_COVERAGE_LABELS: Record<keyof BxplusCoverages, string> = {
 
 export const DEFAULT_BXPLUS_COVERAGES: BxplusCoverages = {
   reconocimiento_antiguedad: false,
-  medicamentos_fuera: false,
+  medicamentos_fuera: true,
   complicaciones_no_amparadas: false,
   padecimientos_preexistentes: false,
-  eliminacion_deducible_accidente: false,
-  multiregion: false,
-  vip: false,
-  emergencia_medica_extranjero: false,
+  eliminacion_deducible_accidente: true,
+  multiregion: true,
+  vip: true,
+  emergencia_medica_extranjero: true,
   enfermedades_graves_extranjero: false,
   cobertura_internacional: false,
   ampliacion_servicios: false,
