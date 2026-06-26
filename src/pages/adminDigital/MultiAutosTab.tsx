@@ -3,7 +3,7 @@ import { Plus, List, Search, Trash2, Eye, Shield, Loader as Loader2 } from 'luci
 import type { Cliente, FleetVehicleConfig, FleetQuoteResult, FormaPago, Cotizacion } from './multiAutosTypes';
 import { MultiAutosQuoteForm } from './MultiAutosQuoteForm';
 import { MultiAutosFleetDashboard } from './MultiAutosFleetDashboard';
-import { calculateAllInsurers, INSURERS_CONFIG } from './multiAutosInsurers';
+import { callQuoteWebService, loadInsurersConfig, INSURERS_CONFIG } from './multiAutosInsurers';
 
 const STORAGE_KEY = 'movi_multi_autos_quotes_v2';
 
@@ -74,6 +74,7 @@ export function MultiAutosTab() {
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) setQuotes(JSON.parse(stored));
+    loadInsurersConfig();
   }, []);
 
   const saveQuotes = (updated: Cotizacion[]) => {
@@ -93,75 +94,63 @@ export function MultiAutosTab() {
     // Initialize loading steps
     const steps: LoadingStep[] = INSURERS_CONFIG.map((c) => ({
       insurer: c.nombre,
-      status: 'pending' as const,
+      status: 'loading' as const,
     }));
     setLoadingSteps(steps);
 
-    // Simulate staggered API calls
-    const fleetResults: FleetQuoteResult[] = [];
-
-    for (let i = 0; i < steps.length; i++) {
-      await new Promise((r) => setTimeout(r, 300 + Math.random() * 400));
-      steps[i].status = 'loading';
-      setLoadingSteps([...steps]);
-      await new Promise((r) => setTimeout(r, 400 + Math.random() * 800));
-      steps[i].status = Math.random() > 0.05 ? 'done' : 'error';
-      setLoadingSteps([...steps]);
-    }
-
-    // Calculate results for each vehicle
-    for (const vc of vehiculos) {
-      const { resultados, breakdowns } = calculateAllInsurers(
-        vc.vehiculo, vc.paquete, formaPago,
-        cliente.edad, cliente.genero, cliente.codigoPostal, vc.coberturas
+    try {
+      // Call the real WS edge function
+      const { results: fleetResults, discountRate } = await callQuoteWebService(
+        vehiculos, formaPago, cliente.edad, cliente.genero, cliente.codigoPostal
       );
-      fleetResults.push({ vehiculo: vc.vehiculo, resultados, breakdowns });
-    }
 
-    // Volume discount
-    let discountRate = 0;
-    if (vehiculos.length >= 4) discountRate = 0.10;
-    else if (vehiculos.length >= 2) discountRate = 0.05;
-    setCurrentDiscount(discountRate);
-
-    // Apply discount to totals if fleet
-    if (discountRate > 0) {
+      // Update loading steps based on actual results
       for (const fr of fleetResults) {
         for (const r of fr.resultados) {
-          if (r.disponible) {
-            r.primaTotal = Math.round(r.primaTotal * (1 - discountRate));
-            r.primaPorPago = Math.round(r.primaPorPago * (1 - discountRate));
+          const stepIdx = steps.findIndex((s) => s.insurer === r.aseguradora);
+          if (stepIdx >= 0) {
+            steps[stepIdx].status = r.disponible ? 'done' : 'error';
           }
         }
       }
-    }
+      setLoadingSteps([...steps]);
 
-    setCurrentResults(fleetResults);
+      setCurrentDiscount(discountRate);
+      setCurrentResults(fleetResults);
 
-    // Build totals per insurer
-    const totalFlota: Record<string, number> = {};
-    for (const fr of fleetResults) {
-      for (const r of fr.resultados) {
-        if (r.disponible) {
-          totalFlota[r.aseguradora] = (totalFlota[r.aseguradora] || 0) + r.primaTotal;
+      // Build totals per insurer
+      const totalFlota: Record<string, number> = {};
+      for (const fr of fleetResults) {
+        for (const r of fr.resultados) {
+          if (r.disponible) {
+            totalFlota[r.aseguradora] = (totalFlota[r.aseguradora] || 0) + r.primaTotal;
+          }
         }
       }
+
+      // Save quote
+      const newQuote: Cotizacion = {
+        id: `q_${Date.now()}`,
+        folio: generateFolio(),
+        fecha: new Date().toISOString(),
+        cliente,
+        vehiculos,
+        formaPago,
+        status: 'Pendiente',
+        resultadosFlota: fleetResults,
+        descuentoVolumen: discountRate,
+        totalFlota,
+      };
+      saveQuotes([newQuote, ...quotes]);
+    } catch (err) {
+      // Mark all as error on complete failure
+      for (let i = 0; i < steps.length; i++) {
+        steps[i].status = 'error';
+      }
+      setLoadingSteps([...steps]);
+      console.error('Error cotizando via WS:', err);
     }
 
-    // Save quote
-    const newQuote: Cotizacion = {
-      id: `q_${Date.now()}`,
-      folio: generateFolio(),
-      fecha: new Date().toISOString(),
-      cliente,
-      vehiculos,
-      formaPago,
-      status: 'Pendiente',
-      resultadosFlota: fleetResults,
-      descuentoVolumen: discountRate,
-      totalFlota,
-    };
-    saveQuotes([newQuote, ...quotes]);
     setIsCalculating(false);
   };
 

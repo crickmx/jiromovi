@@ -66,7 +66,7 @@ export interface FleetVehicleConfig {
 export interface FleetQuoteResult {
   vehiculo: Vehiculo;
   resultados: ResultadoAseguradora[];
-  breakdowns: Record<string, import('./multiAutosInsurers').QuoteBreakdown>;
+  breakdowns: Record<string, { primaNeta: number; derechoPoliza: number; subtotal: number; iva: number; primaTotal: number; recargoFraccionamiento: number; primaTotalConRecargo: number; primaPorPago: number; primerPago: number; pagosSubsecuentes: number }>;
 }
 
 export interface Cotizacion {

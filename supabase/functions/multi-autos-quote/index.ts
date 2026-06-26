@@ -9,16 +9,6 @@ const corsHeaders = {
 
 const IVA_RATE = 0.16;
 
-const PAYMENT_SURCHARGES: Record<string, Record<string, number>> = {
-  Qualitas: { Anual: 0, Semestral: 0.05, Trimestral: 0.08, Mensual: 0.12 },
-  GNP: { Anual: 0, Semestral: 0.04, Trimestral: 0.07, Mensual: 0.10 },
-  "ANA Seguros": { Anual: 0, Semestral: 0.06, Trimestral: 0.09, Mensual: 0.13 },
-  "HDI Seguros": { Anual: 0, Semestral: 0.05, Trimestral: 0.08, Mensual: 0.11 },
-  Zurich: { Anual: 0, Semestral: 0.04, Trimestral: 0.07, Mensual: 0.10 },
-  Chubb: { Anual: 0, Semestral: 0.05, Trimestral: 0.09, Mensual: 0.14 },
-  Potosi: { Anual: 0, Semestral: 0.06, Trimestral: 0.10, Mensual: 0.15 },
-};
-
 interface InsurerRow {
   nombre: string;
   derecho_poliza: number;
@@ -27,6 +17,7 @@ interface InsurerRow {
   endpoint_url: string | null;
   configuracion: Record<string, string>;
   disponible: boolean;
+  color: string;
 }
 
 interface VehicleRequest {
@@ -52,7 +43,7 @@ interface QuoteRequest {
   codigoPostal: string;
 }
 
-// --- SOAP builders for each insurer ---
+// --- SOAP envelope builders ---
 
 function buildQualitasSoap(config: Record<string, string>, vehicle: VehicleRequest, _edad: number, cp: string): string {
   const ns = config.soap_action_ns || "http://tempuri.org/WSQBC/QBCDE/";
@@ -160,7 +151,7 @@ function buildChubbSoap(config: Record<string, string>, vehicle: VehicleRequest,
 </soap:Envelope>`;
 }
 
-// --- Parsers ---
+// --- Response parsers ---
 
 function extractPrimaNeta(xml: string): number | null {
   const patterns = [
@@ -169,6 +160,7 @@ function extractPrimaNeta(xml: string): number | null {
     /<(?:\w+:)?prima_neta[^>]*>([^<]+)/i,
     /<(?:\w+:)?MontoTotal[^>]*>([^<]+)/i,
     /<(?:\w+:)?TotalPrima[^>]*>([^<]+)/i,
+    /<(?:\w+:)?ImportePrimaNeta[^>]*>([^<]+)/i,
   ];
   for (const pattern of patterns) {
     const match = xml.match(pattern);
@@ -185,6 +177,7 @@ function extractDerechoPoliza(xml: string): number | null {
     /<(?:\w+:)?DerechoPoliza[^>]*>([^<]+)/i,
     /<(?:\w+:)?derecho_poliza[^>]*>([^<]+)/i,
     /<(?:\w+:)?GastosExpedicion[^>]*>([^<]+)/i,
+    /<(?:\w+:)?DerechoDePoliza[^>]*>([^<]+)/i,
   ];
   for (const pattern of patterns) {
     const match = xml.match(pattern);
@@ -196,275 +189,251 @@ function extractDerechoPoliza(xml: string): number | null {
   return null;
 }
 
-// --- Real API callers ---
-
-async function callSoapInsurer(
-  endpoint: string,
-  soapBody: string,
-  soapAction: string
-): Promise<string> {
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "text/xml; charset=utf-8",
-      "SOAPAction": soapAction,
-    },
-    body: soapBody,
-  });
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`SOAP ${response.status}: ${errText.substring(0, 300)}`);
+function extractIva(xml: string): number | null {
+  const patterns = [
+    /<(?:\w+:)?IVA[^>]*>([^<]+)/i,
+    /<(?:\w+:)?Iva[^>]*>([^<]+)/i,
+    /<(?:\w+:)?ImporteIVA[^>]*>([^<]+)/i,
+  ];
+  for (const pattern of patterns) {
+    const match = xml.match(pattern);
+    if (match) {
+      const val = parseFloat(match[1]);
+      if (!isNaN(val) && val > 0) return val;
+    }
   }
-  return await response.text();
+  return null;
 }
 
-async function callGnpRest(
-  config: Record<string, string>,
-  vehicle: VehicleRequest,
-  edad: number,
-  cp: string
-): Promise<{ primaNeta: number; derechoPoliza: number }> {
-  const endpoint = config.api_url;
-  const payload = {
-    usuario: config.usuario,
-    unidadOperable: config.unidad_operable,
-    intermediario: config.intermediario,
-    oficina: config.oficina,
-    vehiculo: {
-      marca: vehicle.marca,
-      anio: vehicle.anio,
-      modelo: vehicle.modelo,
-      version: vehicle.version,
-      valorVehiculo: vehicle.valorReferencia,
-    },
-    conductor: { edad, codigoPostal: cp },
-    paquete: vehicle.paquete,
-  };
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!response.ok) {
-    throw new Error(`GNP REST ${response.status}: ${(await response.text()).substring(0, 300)}`);
+function extractPrimaTotal(xml: string): number | null {
+  const patterns = [
+    /<(?:\w+:)?PrimaTotal[^>]*>([^<]+)/i,
+    /<(?:\w+:)?ImporteTotal[^>]*>([^<]+)/i,
+    /<(?:\w+:)?TotalAPagar[^>]*>([^<]+)/i,
+    /<(?:\w+:)?prima_total[^>]*>([^<]+)/i,
+  ];
+  for (const pattern of patterns) {
+    const match = xml.match(pattern);
+    if (match) {
+      const val = parseFloat(match[1]);
+      if (!isNaN(val) && val > 0) return val;
+    }
   }
-  const data = await response.json();
-  return {
-    primaNeta: data.primaNeta || data.prima_neta || data.resultado?.primaNeta || 0,
-    derechoPoliza: data.derechoPoliza || data.derecho_poliza || 720,
-  };
+  return null;
 }
 
-async function callPotosiRest(
-  config: Record<string, string>,
-  vehicle: VehicleRequest,
-  edad: number,
-  cp: string
-): Promise<{ primaNeta: number; derechoPoliza: number }> {
-  const endpoint = config.api_url;
-  const payload = {
-    usuario: config.usuario,
-    vehiculo: {
-      marca: vehicle.marca,
-      anio: vehicle.anio,
-      modelo: vehicle.modelo,
-      version: vehicle.version,
-      valorVehiculo: vehicle.valorReferencia,
-    },
-    conductor: { edad, codigoPostal: cp },
-    paquete: vehicle.paquete,
-  };
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!response.ok) {
-    throw new Error(`Potosi REST ${response.status}: ${(await response.text()).substring(0, 300)}`);
+// --- API callers ---
+
+async function callSoapInsurer(endpoint: string, soapBody: string, soapAction: string): Promise<string> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/xml; charset=utf-8",
+        "SOAPAction": soapAction,
+      },
+      body: soapBody,
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errText.substring(0, 200)}`);
+    }
+    return await response.text();
+  } finally {
+    clearTimeout(timeout);
   }
-  const data = await response.json();
-  return {
-    primaNeta: data.primaNeta || data.prima_neta || 0,
-    derechoPoliza: data.derechoPoliza || data.derecho_poliza || 850,
-  };
 }
 
-// --- Fallback local calculation ---
-
-const PACKAGE_RATES: Record<string, number> = {
-  Amplia: 0.0245,
-  Limitada: 0.0155,
-  RC: 0.0072,
-};
-
-function getDriverFactor(edad: number, genero: string): number {
-  let factor = 1.0;
-  if (edad < 25) factor = 1.18;
-  else if (edad < 30) factor = 1.05;
-  else if (edad > 60) factor = 1.03;
-  else if (edad > 45) factor = 0.95;
-  if (genero === "Femenino") factor *= 0.97;
-  return factor;
+async function callRestInsurer(endpoint: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errText.substring(0, 200)}`);
+    }
+    return await response.json();
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
-function getVehicleAgeFactor(anio: number): number {
-  const age = new Date().getFullYear() - anio;
-  if (age <= 0) return 1.0;
-  if (age <= 2) return 1.0 + age * 0.01;
-  if (age <= 5) return 1.02 + (age - 2) * 0.015;
-  return 1.065 + (age - 5) * 0.02;
-}
-
-function getZoneRiskFactor(cp: string): number {
-  const prefix = parseInt(cp.slice(0, 2)) || 0;
-  if (prefix >= 1 && prefix <= 16) return 1.12;
-  if (prefix >= 44 && prefix <= 45) return 1.08;
-  if (prefix >= 64 && prefix <= 67) return 1.06;
-  return 1.0;
-}
-
-function calculateFallback(
-  insurer: InsurerRow,
-  vehicle: VehicleRequest,
-  edad: number,
-  genero: string,
-  codigoPostal: string
-): { primaNeta: number; derechoPoliza: number } {
-  const valor = vehicle.valorReferencia;
-  const packageRate = PACKAGE_RATES[vehicle.paquete] || 0.0245;
-  const driverFactor = getDriverFactor(edad, genero);
-  const vehicleAgeFactor = getVehicleAgeFactor(vehicle.anio);
-  const zoneFactor = getZoneRiskFactor(codigoPostal);
-
-  let primaNeta = valor * packageRate * insurer.factor_base * driverFactor * vehicleAgeFactor * zoneFactor;
-
-  if (vehicle.coberturas?.gastosMedicos) primaNeta += 850;
-  if (vehicle.coberturas?.asistenciaVial) primaNeta += 520;
-  if (vehicle.coberturas?.autoSustituto) primaNeta += 1350;
-  if (vehicle.coberturas?.defensa_legal) primaNeta += 680;
-
-  return { primaNeta: Math.round(primaNeta), derechoPoliza: Number(insurer.derecho_poliza) };
-}
-
-// --- Main quote engine ---
+// --- Quote for each insurer (WS only, no fallback) ---
 
 async function quoteInsurer(
   insurer: InsurerRow,
   vehicle: VehicleRequest,
   formaPago: string,
   edad: number,
-  genero: string,
+  _genero: string,
   codigoPostal: string
-) {
+): Promise<{
+  aseguradora: string;
+  color: string;
+  primaNeta: number | null;
+  derechoPoliza: number | null;
+  iva: number | null;
+  primaTotal: number | null;
+  disponible: boolean;
+  modo: string;
+  error: string | null;
+  tiempoRespuesta: number;
+}> {
   const config = insurer.configuracion || {};
-  const endpoint = insurer.endpoint_url || config.api_url || config.wsdl_url || "";
-  let primaNeta = 0;
-  let derechoPoliza = Number(insurer.derecho_poliza);
-  let modo = "simulado";
+  const endpoint = insurer.endpoint_url || config.api_url || "";
+  const startTime = Date.now();
 
-  if (endpoint) {
-    try {
-      if (insurer.nombre === "Qualitas") {
-        const soapBody = buildQualitasSoap(config, vehicle, edad, codigoPostal);
-        const soapNs = config.soap_action_ns || "http://tempuri.org/WSQBC/QBCDE/";
-        const xml = await callSoapInsurer(endpoint, soapBody, `${soapNs}obtenerNuevaEmision`);
-        const extractedPrima = extractPrimaNeta(xml);
-        const extractedDerecho = extractDerechoPoliza(xml);
-        if (extractedPrima) {
-          primaNeta = extractedPrima;
-          if (extractedDerecho) derechoPoliza = extractedDerecho;
-          modo = "web_service";
-        }
-      } else if (insurer.nombre === "GNP") {
-        const result = await callGnpRest(config, vehicle, edad, codigoPostal);
-        if (result.primaNeta > 0) {
-          primaNeta = result.primaNeta;
-          derechoPoliza = result.derechoPoliza;
-          modo = "web_service";
-        }
-      } else if (insurer.nombre === "ANA Seguros") {
-        const soapBody = buildAnaSoap(config, vehicle, edad, codigoPostal);
-        const xml = await callSoapInsurer(endpoint, soapBody, "http://anaseguros.com.mx/ws/CotizaSencilla");
-        const extractedPrima = extractPrimaNeta(xml);
-        const extractedDerecho = extractDerechoPoliza(xml);
-        if (extractedPrima) {
-          primaNeta = extractedPrima;
-          if (extractedDerecho) derechoPoliza = extractedDerecho;
-          modo = "web_service";
-        }
-      } else if (insurer.nombre === "HDI Seguros") {
-        const soapBody = buildHdiSoap(config, vehicle, edad, codigoPostal);
-        const xml = await callSoapInsurer(endpoint, soapBody, "http://hdi.com.mx/autos/ws/CotizarAuto");
-        const extractedPrima = extractPrimaNeta(xml);
-        const extractedDerecho = extractDerechoPoliza(xml);
-        if (extractedPrima) {
-          primaNeta = extractedPrima;
-          if (extractedDerecho) derechoPoliza = extractedDerecho;
-          modo = "web_service";
-        }
-      } else if (insurer.nombre === "Zurich") {
-        const soapBody = buildZurichSoap(config, vehicle, edad, codigoPostal);
-        const xml = await callSoapInsurer(endpoint, soapBody, "http://zurich.com.mx/ws/autos/CotizarAuto");
-        const extractedPrima = extractPrimaNeta(xml);
-        const extractedDerecho = extractDerechoPoliza(xml);
-        if (extractedPrima) {
-          primaNeta = extractedPrima;
-          if (extractedDerecho) derechoPoliza = extractedDerecho;
-          modo = "web_service";
-        }
-      } else if (insurer.nombre === "Chubb") {
-        const soapBody = buildChubbSoap(config, vehicle, edad, codigoPostal);
-        const xml = await callSoapInsurer(endpoint, soapBody, "http://chubb.com.mx/ws/autos/CotizarVehiculo");
-        const extractedPrima = extractPrimaNeta(xml);
-        const extractedDerecho = extractDerechoPoliza(xml);
-        if (extractedPrima) {
-          primaNeta = extractedPrima;
-          if (extractedDerecho) derechoPoliza = extractedDerecho;
-          modo = "web_service";
-        }
-      } else if (insurer.nombre === "Potosi") {
-        const result = await callPotosiRest(config, vehicle, edad, codigoPostal);
-        if (result.primaNeta > 0) {
-          primaNeta = result.primaNeta;
-          derechoPoliza = result.derechoPoliza;
-          modo = "web_service";
-        }
-      }
-    } catch (wsErr) {
-      console.error(`[${insurer.nombre}] WS error, using fallback:`, (wsErr as Error).message);
-      modo = "fallback";
+  if (!endpoint) {
+    return {
+      aseguradora: insurer.nombre,
+      color: insurer.color || "#666",
+      primaNeta: null,
+      derechoPoliza: null,
+      iva: null,
+      primaTotal: null,
+      disponible: false,
+      modo: "sin_endpoint",
+      error: "Endpoint no configurado",
+      tiempoRespuesta: 0,
+    };
+  }
+
+  try {
+    let primaNeta: number | null = null;
+    let derechoPoliza: number | null = null;
+    let iva: number | null = null;
+    let primaTotal: number | null = null;
+
+    if (insurer.nombre === "Qualitas") {
+      const soapBody = buildQualitasSoap(config, vehicle, edad, codigoPostal);
+      const soapNs = config.soap_action_ns || "http://tempuri.org/WSQBC/QBCDE/";
+      const xml = await callSoapInsurer(endpoint, soapBody, `${soapNs}obtenerNuevaEmision`);
+      primaNeta = extractPrimaNeta(xml);
+      derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
+      iva = extractIva(xml);
+      primaTotal = extractPrimaTotal(xml);
+    } else if (insurer.nombre === "GNP") {
+      const payload = {
+        usuario: config.usuario,
+        unidadOperable: config.unidad_operable,
+        intermediario: config.intermediario,
+        oficina: config.oficina,
+        vehiculo: { marca: vehicle.marca, anio: vehicle.anio, modelo: vehicle.modelo, version: vehicle.version, valorVehiculo: vehicle.valorReferencia },
+        conductor: { edad, codigoPostal },
+        paquete: vehicle.paquete,
+        formaPago,
+      };
+      const data = await callRestInsurer(endpoint, payload);
+      primaNeta = (data.primaNeta || data.prima_neta || (data as Record<string, Record<string, number>>).resultado?.primaNeta || null) as number | null;
+      derechoPoliza = (data.derechoPoliza || data.derecho_poliza || Number(insurer.derecho_poliza)) as number;
+      primaTotal = (data.primaTotal || data.prima_total || (data as Record<string, Record<string, number>>).resultado?.primaTotal || null) as number | null;
+    } else if (insurer.nombre === "ANA Seguros") {
+      const soapBody = buildAnaSoap(config, vehicle, edad, codigoPostal);
+      const xml = await callSoapInsurer(endpoint, soapBody, "http://anaseguros.com.mx/ws/CotizaSencilla");
+      primaNeta = extractPrimaNeta(xml);
+      derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
+      iva = extractIva(xml);
+      primaTotal = extractPrimaTotal(xml);
+    } else if (insurer.nombre === "HDI Seguros") {
+      const soapBody = buildHdiSoap(config, vehicle, edad, codigoPostal);
+      const xml = await callSoapInsurer(endpoint, soapBody, "http://hdi.com.mx/autos/ws/CotizarAuto");
+      primaNeta = extractPrimaNeta(xml);
+      derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
+      iva = extractIva(xml);
+      primaTotal = extractPrimaTotal(xml);
+    } else if (insurer.nombre === "Zurich") {
+      const soapBody = buildZurichSoap(config, vehicle, edad, codigoPostal);
+      const xml = await callSoapInsurer(endpoint, soapBody, "http://zurich.com.mx/ws/autos/CotizarAuto");
+      primaNeta = extractPrimaNeta(xml);
+      derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
+      iva = extractIva(xml);
+      primaTotal = extractPrimaTotal(xml);
+    } else if (insurer.nombre === "Chubb") {
+      const soapBody = buildChubbSoap(config, vehicle, edad, codigoPostal);
+      const xml = await callSoapInsurer(endpoint, soapBody, "http://chubb.com.mx/ws/autos/CotizarVehiculo");
+      primaNeta = extractPrimaNeta(xml);
+      derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
+      iva = extractIva(xml);
+      primaTotal = extractPrimaTotal(xml);
+    } else if (insurer.nombre === "Potosi") {
+      const payload = {
+        usuario: config.usuario,
+        vehiculo: { marca: vehicle.marca, anio: vehicle.anio, modelo: vehicle.modelo, version: vehicle.version, valorVehiculo: vehicle.valorReferencia },
+        conductor: { edad, codigoPostal },
+        paquete: vehicle.paquete,
+        formaPago,
+      };
+      const data = await callRestInsurer(endpoint, payload);
+      primaNeta = (data.primaNeta || data.prima_neta || null) as number | null;
+      derechoPoliza = (data.derechoPoliza || data.derecho_poliza || Number(insurer.derecho_poliza)) as number;
+      primaTotal = (data.primaTotal || data.prima_total || null) as number | null;
     }
+
+    // If we got primaNeta but no primaTotal, calculate it (standard MX formula)
+    if (primaNeta && !primaTotal) {
+      const dp = derechoPoliza || Number(insurer.derecho_poliza);
+      const subtotal = primaNeta + dp;
+      const calculatedIva = Math.round(subtotal * IVA_RATE * 100) / 100;
+      primaTotal = Math.round((subtotal + calculatedIva) * 100) / 100;
+      iva = calculatedIva;
+      derechoPoliza = dp;
+    }
+
+    const elapsed = Date.now() - startTime;
+
+    if (!primaNeta || primaNeta <= 0) {
+      return {
+        aseguradora: insurer.nombre,
+        color: insurer.color || "#666",
+        primaNeta: null,
+        derechoPoliza: null,
+        iva: null,
+        primaTotal: null,
+        disponible: false,
+        modo: "ws_sin_respuesta",
+        error: "El web service no devolvio datos de cotizacion",
+        tiempoRespuesta: elapsed,
+      };
+    }
+
+    return {
+      aseguradora: insurer.nombre,
+      color: insurer.color || "#666",
+      primaNeta,
+      derechoPoliza: derechoPoliza || Number(insurer.derecho_poliza),
+      iva: iva || Math.round((primaNeta + (derechoPoliza || 0)) * IVA_RATE * 100) / 100,
+      primaTotal,
+      disponible: true,
+      modo: "web_service",
+      error: null,
+      tiempoRespuesta: elapsed,
+    };
+  } catch (err) {
+    const elapsed = Date.now() - startTime;
+    const errorMsg = (err as Error).message;
+    const isTimeout = errorMsg.includes("abort") || errorMsg.includes("timeout");
+    return {
+      aseguradora: insurer.nombre,
+      color: insurer.color || "#666",
+      primaNeta: null,
+      derechoPoliza: null,
+      iva: null,
+      primaTotal: null,
+      disponible: false,
+      modo: isTimeout ? "timeout" : "error_ws",
+      error: isTimeout ? "Tiempo de espera agotado (15s)" : errorMsg.substring(0, 200),
+      tiempoRespuesta: elapsed,
+    };
   }
-
-  // Fallback calculation if WS did not return a valid prima
-  if (primaNeta <= 0) {
-    const fallback = calculateFallback(insurer, vehicle, edad, genero, codigoPostal);
-    primaNeta = fallback.primaNeta;
-    derechoPoliza = fallback.derechoPoliza;
-    if (modo !== "fallback") modo = "simulado";
-  }
-
-  const subtotal = primaNeta + derechoPoliza;
-  const iva = Math.round(subtotal * IVA_RATE * 100) / 100;
-  const primaTotal = Math.round((subtotal + iva) * 100) / 100;
-
-  const surchargeRate = PAYMENT_SURCHARGES[insurer.nombre]?.[formaPago] ?? 0;
-  const recargoFraccionamiento = Math.round(primaNeta * surchargeRate * 100) / 100;
-  const primaTotalConRecargo = Math.round((primaTotal + recargoFraccionamiento + recargoFraccionamiento * IVA_RATE) * 100) / 100;
-
-  return {
-    aseguradora: insurer.nombre,
-    primaNeta,
-    derechoPoliza,
-    subtotal,
-    iva,
-    primaTotal,
-    recargoFraccionamiento,
-    primaTotalConRecargo,
-    disponible: insurer.disponible,
-    tipoApi: insurer.tipo_api,
-    modo,
-  };
 }
 
 Deno.serve(async (req: Request) => {
@@ -489,7 +458,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: insurers, error: dbError } = await supabase
       .from("multi_autos_aseguradoras")
-      .select("nombre, derecho_poliza, factor_base, tipo_api, endpoint_url, configuracion, disponible")
+      .select("nombre, derecho_poliza, factor_base, tipo_api, endpoint_url, configuracion, disponible, color")
       .eq("disponible", true);
 
     if (dbError || !insurers?.length) {
@@ -499,6 +468,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // Call all insurer WS in parallel for each vehicle
     const results = await Promise.all(
       vehiculos.map(async (vehicle, vIdx) => {
         const vehicleResults = await Promise.all(
@@ -510,6 +480,7 @@ Deno.serve(async (req: Request) => {
       })
     );
 
+    // Volume discount
     const vehicleCount = vehiculos.length;
     let discountRate = 0;
     if (vehicleCount >= 4) discountRate = 0.10;
@@ -520,6 +491,7 @@ Deno.serve(async (req: Request) => {
         success: true,
         vehicleCount,
         discountRate,
+        formaPago,
         results,
         timestamp: new Date().toISOString(),
       }),
