@@ -317,9 +317,15 @@ export const PAYMENT_FACTORS: Record<FormaPago, { factor: number; num_recibos: n
 export const IVA_RATE = 0.16;
 
 export const PRODUCT_LABELS: Record<ProductId, string> = {
-  BXPLUS: 'BX+',
+  BXPLUS: 'BX+ Unikuz',
   BNV: 'Bupa Nacional Vital',
   BNP: 'Bupa Nacional Plus',
+};
+
+export const PRODUCT_LOGOS: Record<ProductId, string> = {
+  BXPLUS: '/logo-bx.png',
+  BNV: '/logo-bupa.png',
+  BNP: '/logo-bupa.png',
 };
 
 export const PRODUCT_COLORS: Record<ProductId, string> = {

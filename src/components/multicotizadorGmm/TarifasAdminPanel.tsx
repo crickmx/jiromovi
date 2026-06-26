@@ -21,7 +21,7 @@ interface TariffPackage {
 }
 
 const UPLOADABLE_PRODUCTS: { id: UploadableProduct; label: string }[] = [
-  { id: 'BXPLUS', label: 'BX+' },
+  { id: 'BXPLUS', label: 'BX+ Unikuz' },
   { id: 'BNV', label: 'Bupa Nacional Vital' },
   { id: 'BNP', label: 'Bupa Nacional Plus' },
 ];
@@ -414,7 +414,7 @@ export function TarifasAdminPanel() {
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'Error uploading file');
 
-    setUploadSuccess('Tarifa BX+ cargada exitosamente');
+    setUploadSuccess('Tarifa BX+ Unikuz cargada exitosamente');
     setSelectedFile(null);
     setVersionName('');
     loadPackages();

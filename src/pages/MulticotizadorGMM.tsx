@@ -243,7 +243,7 @@ export default function MulticotizadorGMM() {
             .eq('tariff_package_id', pkg.id);
           productTariffs.BXPLUS = { pkg, tables };
         } else {
-          productTariffs.BXPLUS = { error: 'No hay tarifa BX+ activa.' };
+          productTariffs.BXPLUS = { error: 'No hay tarifa BX+ Unikuz activa.' };
         }
       }
 
@@ -388,7 +388,7 @@ export default function MulticotizadorGMM() {
         </div>
         <div>
           <h1 className="text-xl font-bold text-neutral-900 dark:text-white tracking-tight">Multicotizador GMM</h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">Compara BX+, Bupa Nacional Vital y Bupa Nacional Plus</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">Compara BX+ Unikuz, Bupa Nacional Vital y Bupa Nacional Plus</p>
         </div>
       </div>
 
@@ -579,7 +579,7 @@ export default function MulticotizadorGMM() {
                 <tbody>
                   {savedQuotes.map(q => {
                     const products = [...new Set((q.options_json || []).map((o: any) => o.product_id))];
-                    const productLabels: Record<string, string> = { BXPLUS: 'BX+', BNV: 'BNV', BNP: 'BNP' };
+                    const productLabels: Record<string, string> = { BXPLUS: 'BX+ Unikuz', BNV: 'BNV', BNP: 'BNP' };
                     return (
                       <tr key={q.id} className="border-b border-neutral-50 dark:border-white/[0.03] hover:bg-neutral-50 dark:hover:bg-white/[0.02] transition-colors">
                         <td className="px-5 py-3.5 font-mono text-xs text-teal-600 dark:text-teal-400 font-medium">{q.folio}</td>

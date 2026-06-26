@@ -111,7 +111,7 @@ function getOptionPlanInfo(opt: OptionResult, optionDef?: MultiGmmOption): Recor
     const bx = input as BxplusQuoteInput;
     const nivelDisplay = NIVEL_DISPLAY_MAP[bx.nivel_hospitalario] || bx.nivel_hospitalario || '-';
     return {
-      producto: 'BX+',
+      producto: 'BX+ Unikuz',
       estado: bx.estado || '-',
       nivel: nivelDisplay,
       tabulador: bx.tabulador || '-',

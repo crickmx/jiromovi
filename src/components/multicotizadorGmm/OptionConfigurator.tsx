@@ -4,7 +4,7 @@ import type {
   ProductId, MultiGmmOption,
   BnvQuoteInput, BnpQuoteInput, BxplusQuoteInput, BxplusCoverages,
 } from '../../lib/multicotizadorGmm/types';
-import { PRODUCT_LABELS, PRODUCT_COLORS, BXPLUS_COVERAGE_LABELS, DEFAULT_BXPLUS_COVERAGES } from '../../lib/multicotizadorGmm/types';
+import { PRODUCT_LABELS, PRODUCT_COLORS, PRODUCT_LOGOS, BXPLUS_COVERAGE_LABELS, DEFAULT_BXPLUS_COVERAGES } from '../../lib/multicotizadorGmm/types';
 import { COVERAGE_HELP_TEXTS } from '../../lib/gmmCoverageHelp';
 
 interface OptionConfiguratorProps {
@@ -72,7 +72,8 @@ export function OptionConfigurator({ option, onUpdate, onRemove, onDuplicate, ca
           onClick={e => e.stopPropagation()}
           className="text-sm font-semibold text-neutral-900 dark:text-white bg-transparent border-none focus:outline-none focus:ring-0 w-32"
         />
-        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: `${color}15`, color }}>
+        <span className="flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: `${color}15`, color }}>
+          <img src={PRODUCT_LOGOS[option.product_id]} alt="" className="w-3.5 h-3.5 object-contain" />
           {PRODUCT_LABELS[option.product_id]}
         </span>
         <div className="ml-auto flex items-center gap-1.5">
@@ -99,12 +100,13 @@ export function OptionConfigurator({ option, onUpdate, onRemove, onDuplicate, ca
                 <button
                   key={pid}
                   onClick={() => handleProductChange(pid)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
                     option.product_id === pid
                       ? 'border-teal-300 dark:border-teal-600 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300'
                       : 'border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-neutral-300'
                   }`}
                 >
+                  <img src={PRODUCT_LOGOS[pid]} alt="" className="w-4 h-4 object-contain" />
                   {PRODUCT_LABELS[pid]}
                 </button>
               ))}
