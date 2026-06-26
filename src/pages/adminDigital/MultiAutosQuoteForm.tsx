@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { User, Car, ChevronRight, ChevronLeft, Plus, X, Truck } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { User, Car, ChevronRight, ChevronLeft, Plus, X, Truck, Loader2 } from 'lucide-react';
 import type { Cliente, Vehiculo, PaqueteCobertura, FormaPago, CoberturasPersonalizadasCliente, FleetVehicleConfig } from './multiAutosTypes';
-import { getAvailableBrands, getModelsForBrand, getVersionsForModel } from './multiAutosCatalog';
+import { fetchMarcas, fetchAniosForMarca, fetchModelosForMarcaAnio, fetchVersiones } from './multiAutosCatalog';
 
 interface QuoteFormProps {
   onCalculate: (
@@ -25,22 +25,45 @@ const DEFAULT_COBERTURAS: CoberturasPersonalizadasCliente = {
 interface VehicleFormState {
   id: string;
   brand: string;
+  anio: string;
   model: string;
   vehicle: Vehiculo | null;
   paquete: PaqueteCobertura;
   coberturas: CoberturasPersonalizadasCliente;
 }
 
-function VehicleSelector({ state, onChange, onRemove, index, canRemove }: {
+function VehicleSelector({ state, onChange, onRemove, index, canRemove, allMarcas }: {
   state: VehicleFormState;
   onChange: (s: VehicleFormState) => void;
   onRemove: () => void;
   index: number;
   canRemove: boolean;
+  allMarcas: string[];
 }) {
-  const brands = getAvailableBrands();
-  const models = state.brand ? getModelsForBrand(state.brand) : [];
-  const versions = state.brand && state.model ? getVersionsForModel(state.brand, state.model) : [];
+  const [anios, setAnios] = useState<number[]>([]);
+  const [modelos, setModelos] = useState<string[]>([]);
+  const [versiones, setVersiones] = useState<Vehiculo[]>([]);
+  const [loadingAnios, setLoadingAnios] = useState(false);
+  const [loadingModelos, setLoadingModelos] = useState(false);
+  const [loadingVersiones, setLoadingVersiones] = useState(false);
+
+  useEffect(() => {
+    if (!state.brand) { setAnios([]); return; }
+    setLoadingAnios(true);
+    fetchAniosForMarca(state.brand).then((a) => { setAnios(a); setLoadingAnios(false); });
+  }, [state.brand]);
+
+  useEffect(() => {
+    if (!state.brand || !state.anio) { setModelos([]); return; }
+    setLoadingModelos(true);
+    fetchModelosForMarcaAnio(state.brand, parseInt(state.anio)).then((m) => { setModelos(m); setLoadingModelos(false); });
+  }, [state.brand, state.anio]);
+
+  useEffect(() => {
+    if (!state.brand || !state.anio || !state.model) { setVersiones([]); return; }
+    setLoadingVersiones(true);
+    fetchVersiones(state.brand, parseInt(state.anio), state.model).then((v) => { setVersiones(v); setLoadingVersiones(false); });
+  }, [state.brand, state.anio, state.model]);
 
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-3 relative">
@@ -60,33 +83,56 @@ function VehicleSelector({ state, onChange, onRemove, index, canRemove }: {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <select
-          value={state.brand}
-          onChange={(e) => onChange({ ...state, brand: e.target.value, model: '', vehicle: null })}
-          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        >
-          <option value="">Marca</option>
-          {brands.map((b) => <option key={b} value={b}>{b}</option>)}
-        </select>
-        <select
-          value={state.model}
-          onChange={(e) => onChange({ ...state, model: e.target.value, vehicle: null })}
-          disabled={!state.brand}
-          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-        >
-          <option value="">Modelo</option>
-          {models.map((m) => <option key={m} value={m}>{m}</option>)}
-        </select>
-        <select
-          value={state.vehicle?.id || ''}
-          onChange={(e) => onChange({ ...state, vehicle: versions.find((v) => v.id === e.target.value) || null })}
-          disabled={!state.model}
-          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-        >
-          <option value="">Version</option>
-          {versions.map((v) => <option key={v.id} value={v.id}>{v.version} - ${v.valorReferencia.toLocaleString()}</option>)}
-        </select>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="relative">
+          <select
+            value={state.brand}
+            onChange={(e) => onChange({ ...state, brand: e.target.value, anio: '', model: '', vehicle: null })}
+            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">Marca</option>
+            {allMarcas.map((b) => <option key={b} value={b}>{b}</option>)}
+          </select>
+        </div>
+
+        <div className="relative">
+          <select
+            value={state.anio}
+            onChange={(e) => onChange({ ...state, anio: e.target.value, model: '', vehicle: null })}
+            disabled={!state.brand || loadingAnios}
+            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+          >
+            <option value="">{loadingAnios ? 'Cargando...' : 'Anio'}</option>
+            {anios.map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+          {loadingAnios && <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin absolute right-8 top-1/2 -translate-y-1/2" />}
+        </div>
+
+        <div className="relative">
+          <select
+            value={state.model}
+            onChange={(e) => onChange({ ...state, model: e.target.value, vehicle: null })}
+            disabled={!state.anio || loadingModelos}
+            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+          >
+            <option value="">{loadingModelos ? 'Cargando...' : 'Modelo'}</option>
+            {modelos.map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
+          {loadingModelos && <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin absolute right-8 top-1/2 -translate-y-1/2" />}
+        </div>
+
+        <div className="relative">
+          <select
+            value={state.vehicle?.id || ''}
+            onChange={(e) => onChange({ ...state, vehicle: versiones.find((v) => v.id === e.target.value) || null })}
+            disabled={!state.model || loadingVersiones}
+            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+          >
+            <option value="">{loadingVersiones ? 'Cargando...' : 'Version'}</option>
+            {versiones.map((v) => <option key={v.id} value={v.id}>{v.version} - ${v.valorReferencia.toLocaleString()}</option>)}
+          </select>
+          {loadingVersiones && <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin absolute right-8 top-1/2 -translate-y-1/2" />}
+        </div>
       </div>
 
       <div className="flex items-center gap-2">
@@ -117,9 +163,16 @@ export function MultiAutosQuoteForm({ onCalculate, isCalculating }: QuoteFormPro
   });
   const [formaPago, setFormaPago] = useState<FormaPago>('Anual');
   const [vehicles, setVehicles] = useState<VehicleFormState[]>([
-    { id: 'v_1', brand: '', model: '', vehicle: null, paquete: 'Amplia', coberturas: DEFAULT_COBERTURAS },
+    { id: 'v_1', brand: '', anio: '', model: '', vehicle: null, paquete: 'Amplia', coberturas: DEFAULT_COBERTURAS },
   ]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [marcas, setMarcas] = useState<string[]>([]);
+  const [loadingMarcas, setLoadingMarcas] = useState(false);
+
+  useEffect(() => {
+    setLoadingMarcas(true);
+    fetchMarcas().then((m) => { setMarcas(m); setLoadingMarcas(false); });
+  }, []);
 
   const validateStep1 = (): boolean => {
     const e: Record<string, string> = {};
@@ -138,7 +191,7 @@ export function MultiAutosQuoteForm({ onCalculate, isCalculating }: QuoteFormPro
   const addVehicle = () => {
     setVehicles([...vehicles, {
       id: `v_${Date.now()}`,
-      brand: '', model: '', vehicle: null,
+      brand: '', anio: '', model: '', vehicle: null,
       paquete: 'Amplia', coberturas: DEFAULT_COBERTURAS,
     }]);
   };
@@ -147,9 +200,9 @@ export function MultiAutosQuoteForm({ onCalculate, isCalculating }: QuoteFormPro
     setVehicles(vehicles.filter((v) => v.id !== id));
   };
 
-  const updateVehicle = (id: string, state: VehicleFormState) => {
-    setVehicles(vehicles.map((v) => v.id === id ? state : v));
-  };
+  const updateVehicle = useCallback((id: string, state: VehicleFormState) => {
+    setVehicles((prev) => prev.map((v) => v.id === id ? state : v));
+  }, []);
 
   const handleCalculate = () => {
     const configured = vehicles.filter((v) => v.vehicle !== null);
@@ -285,24 +338,38 @@ export function MultiAutosQuoteForm({ onCalculate, isCalculating }: QuoteFormPro
         ) : (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Flota de Vehiculos</h3>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Flota de Vehiculos</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1.5">
+                  <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  Catalogo Qualitas Web Service - {marcas.length} marcas disponibles
+                </p>
+              </div>
               <button onClick={() => setStep(1)} className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium">
                 <ChevronLeft className="w-4 h-4" /> Volver
               </button>
             </div>
 
-            <div className="space-y-3">
-              {vehicles.map((v, i) => (
-                <VehicleSelector
-                  key={v.id}
-                  state={v}
-                  onChange={(s) => updateVehicle(v.id, s)}
-                  onRemove={() => removeVehicle(v.id)}
-                  index={i}
-                  canRemove={vehicles.length > 1}
-                />
-              ))}
-            </div>
+            {loadingMarcas ? (
+              <div className="flex items-center justify-center py-8 gap-3 text-gray-500 dark:text-gray-400">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span className="text-sm">Cargando catalogo Qualitas...</span>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {vehicles.map((v, i) => (
+                  <VehicleSelector
+                    key={v.id}
+                    state={v}
+                    onChange={(s) => updateVehicle(v.id, s)}
+                    onRemove={() => removeVehicle(v.id)}
+                    index={i}
+                    canRemove={vehicles.length > 1}
+                    allMarcas={marcas}
+                  />
+                ))}
+              </div>
+            )}
 
             <button
               onClick={addVehicle}
