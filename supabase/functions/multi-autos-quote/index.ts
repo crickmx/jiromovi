@@ -58,70 +58,71 @@ function buildWsSecurityHeader(username: string, password: string): string {
 }
 
 function buildQualitasSoap(config: Record<string, string>, vehicle: VehicleRequest, _edad: number, cp: string): string {
-  const ns = config.soap_action_ns || "http://tempuri.org/WSQBC/QBCDE/";
+  const xmlContent = `<COTIZACION><NEGOCIO>${config.no_negocio}</NEGOCIO><AGENTE>${config.agente}</AGENTE><TARIFA>${config.tarifa}</TARIFA><MARCA>${vehicle.marca}</MARCA><ANIO>${vehicle.anio}</ANIO><MODELO>${vehicle.modelo}</MODELO><VERSION>${vehicle.version}</VERSION><VALOR_VEHICULO>${vehicle.valorReferencia}</VALOR_VEHICULO><CODIGO_POSTAL>${cp}</CODIGO_POSTAL><PAQUETE>${vehicle.paquete === "Amplia" ? "1" : vehicle.paquete === "Limitada" ? "2" : "3"}</PAQUETE><BONIFICACION_TECNICA>${config.bonificacion_tecnica || "40"}</BONIFICACION_TECNICA></COTIZACION>`;
   return `<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tns="${ns}">
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tns="http://qualitas.com.mx/">
   <soap:Body>
     <tns:obtenerNuevaEmision>
-      <tns:pv_strNoNegocio>${config.no_negocio}</tns:pv_strNoNegocio>
-      <tns:pv_strNoAgente>${config.agente}</tns:pv_strNoAgente>
-      <tns:pv_strTarifa>${config.tarifa}</tns:pv_strTarifa>
-      <tns:pv_strMarca>${vehicle.marca}</tns:pv_strMarca>
-      <tns:pv_strAnio>${vehicle.anio}</tns:pv_strAnio>
-      <tns:pv_strModelo>${vehicle.modelo}</tns:pv_strModelo>
-      <tns:pv_strVersion>${vehicle.version}</tns:pv_strVersion>
-      <tns:pv_strValorVehiculo>${vehicle.valorReferencia}</tns:pv_strValorVehiculo>
-      <tns:pv_strCodigoPostal>${cp}</tns:pv_strCodigoPostal>
-      <tns:pv_strBonificacionTecnica>${config.bonificacion_tecnica || "40"}</tns:pv_strBonificacionTecnica>
-      <tns:pv_strPaquete>${vehicle.paquete === "Amplia" ? "1" : vehicle.paquete === "Limitada" ? "2" : "3"}</tns:pv_strPaquete>
+      <tns:xmlEmision><![CDATA[${xmlContent}]]></tns:xmlEmision>
     </tns:obtenerNuevaEmision>
   </soap:Body>
 </soap:Envelope>`;
 }
 
 function buildAnaSoap(config: Record<string, string>, vehicle: VehicleRequest, edad: number, cp: string): string {
-  const wsSecHeader = config.password
-    ? buildWsSecurityHeader(config.usuario, config.password)
-    : "";
+  const cotizacionXml = `<Cotizacion><NegocioRef>${config.negocio_ref}</NegocioRef><Marca>${vehicle.marca}</Marca><Anio>${vehicle.anio}</Anio><Modelo>${vehicle.modelo}</Modelo><Version>${vehicle.version}</Version><ValorVehiculo>${vehicle.valorReferencia}</ValorVehiculo><CodigoPostal>${cp}</CodigoPostal><EdadConductor>${edad}</EdadConductor><Paquete>${vehicle.paquete}</Paquete></Cotizacion>`;
   return `<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ana="http://anaseguros.com.mx/ws/">
-  ${wsSecHeader}
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tns="http://tempuri.org/">
   <soap:Body>
-    <ana:CotizaSencilla>
-      <ana:usuario>${config.usuario}</ana:usuario>
-      <ana:negocioRef>${config.negocio_ref}</ana:negocioRef>
-      <ana:marca>${vehicle.marca}</ana:marca>
-      <ana:anio>${vehicle.anio}</ana:anio>
-      <ana:modelo>${vehicle.modelo}</ana:modelo>
-      <ana:version>${vehicle.version}</ana:version>
-      <ana:valorVehiculo>${vehicle.valorReferencia}</ana:valorVehiculo>
-      <ana:codigoPostal>${cp}</ana:codigoPostal>
-      <ana:edadConductor>${edad}</ana:edadConductor>
-      <ana:paquete>${vehicle.paquete}</ana:paquete>
-    </ana:CotizaSencilla>
+    <tns:Transaccion>
+      <tns:XML>${cotizacionXml}</tns:XML>
+      <tns:Tipo>Cotizacion</tns:Tipo>
+      <tns:Usuario>${config.usuario}</tns:Usuario>
+      <tns:Clave>${config.password || config.clave || ""}</tns:Clave>
+    </tns:Transaccion>
   </soap:Body>
 </soap:Envelope>`;
 }
 
 function buildHdiSoap(config: Record<string, string>, vehicle: VehicleRequest, edad: number, cp: string): string {
-  const wsSecHeader = buildWsSecurityHeader(config.usuario, config.password);
   return `<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:hdi="http://hdi.com.mx/autos/ws/">
-  ${wsSecHeader}
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tns="http://hdi.com.mx/asmx/">
+  <soap:Header>
+    <tns:AuthenticateHeader>
+      <tns:siteID>${config.usuario}</tns:siteID>
+      <tns:sitePwd>${config.password}</tns:sitePwd>
+    </tns:AuthenticateHeader>
+  </soap:Header>
   <soap:Body>
-    <hdi:CotizarAuto>
-      <hdi:usuario>${config.usuario}</hdi:usuario>
-      <hdi:password>${config.password}</hdi:password>
-      <hdi:oficina>${config.oficina}</hdi:oficina>
-      <hdi:marca>${vehicle.marca}</hdi:marca>
-      <hdi:anio>${vehicle.anio}</hdi:anio>
-      <hdi:modelo>${vehicle.modelo}</hdi:modelo>
-      <hdi:version>${vehicle.version}</hdi:version>
-      <hdi:valorVehiculo>${vehicle.valorReferencia}</hdi:valorVehiculo>
-      <hdi:codigoPostal>${cp}</hdi:codigoPostal>
-      <hdi:edadConductor>${edad}</hdi:edadConductor>
-      <hdi:paquete>${vehicle.paquete}</hdi:paquete>
-    </hdi:CotizarAuto>
+    <tns:savequote>
+      <tns:request>
+        <tns:datosCotizacion>
+          <tns:CaracteristicasVehiculo>
+            <tns:idVehiculo>${vehicle.version}</tns:idVehiculo>
+            <tns:idMarca>0</tns:idMarca>
+            <tns:idModelo>${vehicle.anio}</tns:idModelo>
+            <tns:idTipo>${vehicle.modelo}</tns:idTipo>
+            <tns:idVersion>${vehicle.version}</tns:idVersion>
+            <tns:idTransmision>0</tns:idTransmision>
+            <tns:idUso>1</tns:idUso>
+            <tns:tipoVehiculo>1</tns:tipoVehiculo>
+            <tns:pasajeros>5</tns:pasajeros>
+            <tns:idZonaCirculacion>0</tns:idZonaCirculacion>
+            <tns:idTonelaje>0</tns:idTonelaje>
+            <tns:idServicio>0</tns:idServicio>
+            <tns:idRiesgoCarga>0</tns:idRiesgoCarga>
+          </tns:CaracteristicasVehiculo>
+          <tns:Cliente>
+            <tns:Edad>${edad}</tns:Edad>
+            <tns:CodigoPostal>${cp}</tns:CodigoPostal>
+          </tns:Cliente>
+          <tns:PaqueteCoberturas>
+            <tns:Clave>${vehicle.paquete === "Amplia" ? 1 : vehicle.paquete === "Limitada" ? 2 : 3}</tns:Clave>
+          </tns:PaqueteCoberturas>
+        </tns:datosCotizacion>
+        <tns:usuario>${config.usuario}</tns:usuario>
+      </tns:request>
+    </tns:savequote>
   </soap:Body>
 </soap:Envelope>`;
 }
@@ -178,6 +179,32 @@ function buildChubbSoap(config: Record<string, string>, vehicle: VehicleRequest,
 }
 
 // --- Response parsers ---
+
+function extractSoapFault(xml: string): string | null {
+  const faultMatch = xml.match(/<(?:\w+:)?faultstring[^>]*>([^<]+)/i);
+  if (faultMatch) return faultMatch[1];
+  const detailMatch = xml.match(/<(?:\w+:)?detail[^>]*>([^<]+)/i);
+  if (detailMatch) return detailMatch[1];
+  const descMatch = xml.match(/<(?:\w+:)?descripcion[^>]*>([^<]+)/i);
+  if (descMatch) return descMatch[1];
+  return null;
+}
+
+function extractResultString(xml: string): string {
+  const patterns = [
+    /<(?:\w+:)?obtenerNuevaEmisionResult[^>]*>([\s\S]*?)<\/(?:\w+:)?obtenerNuevaEmisionResult>/i,
+    /<(?:\w+:)?TransaccionResult[^>]*>([\s\S]*?)<\/(?:\w+:)?TransaccionResult>/i,
+  ];
+  for (const p of patterns) {
+    const m = xml.match(p);
+    if (m && m[1]) {
+      let result = m[1].trim();
+      result = result.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").replace(/&quot;/g, '"');
+      return result;
+    }
+  }
+  return xml;
+}
 
 function extractPrimaNeta(xml: string): number | null {
   const patterns = [
@@ -270,11 +297,11 @@ async function callSoapInsurer(
       body: soapBody,
       signal: controller.signal,
     });
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errText.substring(0, 300)}`);
+    const text = await response.text();
+    if (!response.ok && !text.includes("soap:Envelope") && !text.includes("Envelope")) {
+      throw new Error(`HTTP ${response.status}: ${text.substring(0, 300)}`);
     }
-    return await response.text();
+    return text;
   } finally {
     clearTimeout(timeout);
   }
@@ -328,6 +355,7 @@ async function quoteInsurer(
   modo: string;
   error: string | null;
   tiempoRespuesta: number;
+  debug?: string;
 }> {
   const config = insurer.configuracion || {};
   const endpoint = insurer.endpoint_url || config.api_url || "";
@@ -340,15 +368,17 @@ async function quoteInsurer(
       let derechoPoliza: number | null = null;
       let iva: number | null = null;
       let primaTotal: number | null = null;
+      let rawResponse = "";
 
       if (insurer.nombre === "Qualitas") {
         const soapBody = buildQualitasSoap(config, vehicle, edad, codigoPostal);
-        const soapNs = config.soap_action_ns || "http://tempuri.org/WSQBC/QBCDE/";
-        const xml = await callSoapInsurer(endpoint, soapBody, `${soapNs}obtenerNuevaEmision`);
-        primaNeta = extractPrimaNeta(xml);
-        derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
-        iva = extractIva(xml);
-        primaTotal = extractPrimaTotal(xml);
+        const xml = await callSoapInsurer(endpoint, soapBody, "http://qualitas.com.mx/obtenerNuevaEmision");
+        rawResponse = xml.substring(0, 500);
+        const innerXml = extractResultString(xml);
+        primaNeta = extractPrimaNeta(innerXml);
+        derechoPoliza = extractDerechoPoliza(innerXml) || Number(insurer.derecho_poliza);
+        iva = extractIva(innerXml);
+        primaTotal = extractPrimaTotal(innerXml);
       } else if (insurer.nombre === "GNP") {
         const gnpPassword = config.password || Deno.env.get("GNP_PASSWORD") || "";
         const payload = {
@@ -367,20 +397,27 @@ async function quoteInsurer(
           authHeaders["Authorization"] = `Basic ${btoa(`${config.usuario}:${gnpPassword}`)}`;
         }
         const data = await callRestInsurer(endpoint, payload, authHeaders);
+        rawResponse = JSON.stringify(data).substring(0, 500);
         primaNeta = (data.primaNeta || data.prima_neta || (data as Record<string, Record<string, number>>).resultado?.primaNeta || null) as number | null;
         derechoPoliza = (data.derechoPoliza || data.derecho_poliza || Number(insurer.derecho_poliza)) as number;
         primaTotal = (data.primaTotal || data.prima_total || (data as Record<string, Record<string, number>>).resultado?.primaTotal || null) as number | null;
       } else if (insurer.nombre === "ANA Seguros") {
         const soapBody = buildAnaSoap(config, vehicle, edad, codigoPostal);
-        const xml = await callSoapInsurer(endpoint, soapBody, "http://anaseguros.com.mx/ws/CotizaSencilla");
-        primaNeta = extractPrimaNeta(xml);
-        derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
-        iva = extractIva(xml);
-        primaTotal = extractPrimaTotal(xml);
+        const xml = await callSoapInsurer(endpoint, soapBody, "http://tempuri.org/Transaccion");
+        rawResponse = xml.substring(0, 500);
+        const innerXml = extractResultString(xml);
+        primaNeta = extractPrimaNeta(innerXml);
+        derechoPoliza = extractDerechoPoliza(innerXml) || Number(insurer.derecho_poliza);
+        iva = extractIva(innerXml);
+        primaTotal = extractPrimaTotal(innerXml);
       } else if (insurer.nombre === "HDI Seguros") {
         const soapBody = buildHdiSoap(config, vehicle, edad, codigoPostal);
-        const httpAuth = { "Authorization": `Basic ${btoa(`${config.usuario}:${config.password}`)}` };
-        const xml = await callSoapInsurer(endpoint, soapBody, "http://hdi.com.mx/autos/ws/CotizarAuto", httpAuth);
+        const xml = await callSoapInsurer(endpoint, soapBody, "http://hdi.com.mx/asmx/savequote");
+        rawResponse = xml.substring(0, 500);
+        const hdiError = xml.match(/<descripcion>([^<]+)/i);
+        if (hdiError && hdiError[1].startsWith("ERROR")) {
+          throw new Error(`HDI: ${hdiError[1].substring(0, 150)}`);
+        }
         primaNeta = extractPrimaNeta(xml);
         derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
         iva = extractIva(xml);
@@ -389,6 +426,7 @@ async function quoteInsurer(
         const soapBody = buildZurichSoap(config, vehicle, edad, codigoPostal);
         const httpAuth = config.password ? { "Authorization": `Basic ${btoa(`${config.usuario}:${config.password}`)}` } : {};
         const xml = await callSoapInsurer(endpoint, soapBody, "http://zurich.com.mx/ws/autos/CotizarAuto", httpAuth);
+        rawResponse = xml.substring(0, 500);
         primaNeta = extractPrimaNeta(xml);
         derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
         iva = extractIva(xml);
@@ -397,6 +435,7 @@ async function quoteInsurer(
         const soapBody = buildChubbSoap(config, vehicle, edad, codigoPostal);
         const httpAuth = config.password ? { "Authorization": `Basic ${btoa(`${config.agente}:${config.password}`)}` } : {};
         const xml = await callSoapInsurer(endpoint, soapBody, "http://chubb.com.mx/ws/autos/CotizarVehiculo", httpAuth);
+        rawResponse = xml.substring(0, 500);
         primaNeta = extractPrimaNeta(xml);
         derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
         iva = extractIva(xml);
@@ -415,6 +454,7 @@ async function quoteInsurer(
           authHeaders["Authorization"] = `Bearer ${bearerToken}`;
         }
         const data = await callRestInsurer(endpoint, payload, authHeaders);
+        rawResponse = JSON.stringify(data).substring(0, 500);
         primaNeta = (data.primaNeta || data.prima_neta || null) as number | null;
         derechoPoliza = (data.derechoPoliza || data.derecho_poliza || Number(insurer.derecho_poliza)) as number;
         primaTotal = (data.primaTotal || data.prima_total || null) as number | null;
@@ -441,9 +481,11 @@ async function quoteInsurer(
           modo: "web_service",
           error: null,
           tiempoRespuesta: Date.now() - startTime,
+          debug: rawResponse,
         };
       }
 
+      const soapFault = extractSoapFault(rawResponse);
       return {
         aseguradora: insurer.nombre,
         color: insurer.color || "#666",
@@ -453,8 +495,9 @@ async function quoteInsurer(
         primaTotal: null,
         disponible: false,
         modo: "web_service",
-        error: "Sin datos de prima en respuesta del web service",
+        error: soapFault ? `SOAP Fault: ${soapFault}` : `Sin datos de prima. Respuesta: ${rawResponse.substring(0, 200)}`,
         tiempoRespuesta: Date.now() - startTime,
+        debug: rawResponse,
       };
     } catch (err) {
       return {
@@ -466,8 +509,9 @@ async function quoteInsurer(
         primaTotal: null,
         disponible: false,
         modo: "web_service",
-        error: (err as Error).message || "Error de conexión",
+        error: `${(err as Error).message}. Endpoint: ${endpoint}`,
         tiempoRespuesta: Date.now() - startTime,
+        debug: `Error: ${(err as Error).message}`,
       };
     }
   }
@@ -483,6 +527,7 @@ async function quoteInsurer(
     modo: "web_service",
     error: "Endpoint no configurado",
     tiempoRespuesta: Date.now() - startTime,
+    debug: "No endpoint URL found",
   };
 }
 

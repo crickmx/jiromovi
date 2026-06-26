@@ -63,7 +63,7 @@ export function MultiAutosFleetDashboard({ results, formaPago, discountRate, onC
   const [expandedInsurer, setExpandedInsurer] = useState<string | null>(null);
 
   // Aggregate totals per insurer across all vehicles
-  const insurerTotals: Record<string, { total: number; available: number; totalVehicles: number; breakdowns: { vehiculo: Vehiculo; breakdown: QuoteBreakdown }[] }> = {};
+  const insurerTotals: Record<string, { total: number; available: number; totalVehicles: number; breakdowns: { vehiculo: Vehiculo; breakdown: QuoteBreakdown }[]; error?: string }> = {};
 
   for (const vResult of results) {
     for (const r of vResult.resultados) {
@@ -78,6 +78,8 @@ export function MultiAutosFleetDashboard({ results, formaPago, discountRate, onC
         if (bd) {
           insurerTotals[r.aseguradora].breakdowns.push({ vehiculo: vResult.vehiculo, breakdown: bd });
         }
+      } else if (r.error) {
+        insurerTotals[r.aseguradora].error = r.error;
       }
     }
   }
@@ -228,9 +230,12 @@ export function MultiAutosFleetDashboard({ results, formaPago, discountRate, onC
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
             <X className="w-4 h-4 text-red-500" /> No disponibles
           </p>
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(insurerTotals).filter(([_, d]) => d.available === 0).map(([name]) => (
-              <span key={name} className="text-xs px-2.5 py-1 bg-gray-200 dark:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-400">{name}</span>
+          <div className="space-y-1.5">
+            {Object.entries(insurerTotals).filter(([_, d]) => d.available === 0).map(([name, d]) => (
+              <div key={name} className="flex flex-col">
+                <span className="text-xs px-2.5 py-1 bg-gray-200 dark:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-400 inline-block w-fit">{name}</span>
+                {d.error && <span className="text-[10px] text-red-500 dark:text-red-400 mt-0.5 ml-2 break-all">{d.error}</span>}
+              </div>
             ))}
           </div>
         </div>
