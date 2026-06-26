@@ -2,98 +2,159 @@ import type {
   BnvQuoteInput, BnvCalculationResult, BnvPersonResult, BnvPaymentBreakdown,
   QuotePerson, FormaPago,
 } from './types';
-import { calculateQuoteV2, loadTariffTables } from '../gmmCalculationEngineV2';
-import type { QuoteInput, TariffTables } from '../gmmTypes';
+import { PAYMENT_FACTORS, IVA_RATE } from './types';
 
-const ZONA_TO_ESTADO: Record<string, string> = {
-  'Zona 1': 'CIUDAD DE MEXICO',
-  'Zona 2': 'AGUASCALIENTES',
+export interface BnvRateRecord {
+  plan_name: string;
+  region: string;
+  age: number;
+  rate: number;
+  rate_type: string;
+}
+
+export interface BnvPackageConfig {
+  id: string;
+  derecho_poliza: number;
+  asistencia_extranjero: number;
+}
+
+const REGION_MAP: Record<string, string> = {
+  'Zona 1': 'Mexico Region 1',
+  'Zona 2': 'Mexico Region 2',
 };
 
-const DEFAULT_TABULADOR = 'PALADIO-60,000';
+function findBestRate(
+  rates: BnvRateRecord[],
+  age: number,
+  region: string,
+  input: BnvQuoteInput
+): number {
+  // Build candidate plan patterns to match against stored plan_name
+  // The plan_name in the DB comes from Excel column headers
+  // We try to match based on SA, deducible, coaseguro values
+  const sa = input.suma_asegurada;
+  const ded = input.deducible;
+  const coas = input.coaseguro;
 
-function findNearestInTable(table: any[], value: number): number {
-  if (!table || table.length === 0) return value;
-  const numericEntries = table
-    .map(r => Number(r.col_0))
-    .filter(n => !isNaN(n) && n > 0);
-  if (numericEntries.length === 0) return value;
-  return numericEntries.reduce((prev, curr) =>
-    Math.abs(curr - value) < Math.abs(prev - value) ? curr : prev
-  );
+  // Filter rates for this age and region
+  const ageRates = rates.filter(r => r.age === age && r.region === region);
+  if (ageRates.length === 0) {
+    // Try without region filter
+    const anyRegionRates = rates.filter(r => r.age === age);
+    if (anyRegionRates.length === 0) {
+      // Find nearest age
+      const allAges = [...new Set(rates.map(r => r.age))].sort((a, b) => a - b);
+      const nearestAge = allAges.reduce((prev, curr) =>
+        Math.abs(curr - age) < Math.abs(prev - age) ? curr : prev, allAges[0]);
+      return findBestRate(rates, nearestAge, region, input);
+    }
+    return findBestPlanMatch(anyRegionRates, sa, ded, coas);
+  }
+
+  return findBestPlanMatch(ageRates, sa, ded, coas);
+}
+
+function findBestPlanMatch(ageRates: BnvRateRecord[], sa: number, ded: number, coas: number): number {
+  // Try exact plan name match patterns
+  const patterns = [
+    `S${sa}D${ded}C${coas}`,
+    `S${sa}D${ded}`,
+    `${sa}MDP_${ded}K_${coas}`,
+  ];
+
+  for (const pat of patterns) {
+    const match = ageRates.find(r => r.plan_name.toUpperCase().includes(pat.toUpperCase()));
+    if (match) return match.rate;
+  }
+
+  // Try matching with numeric extraction from plan_name
+  for (const r of ageRates) {
+    const planName = r.plan_name;
+    const saMatch = planName.match(/S(\d+)/i) || planName.match(/(\d+)\s*(?:MDP|M)/i);
+    const dedMatch = planName.match(/D(\d+)/i) || planName.match(/(?:ded|DED)[\s_-]*(\d+)/i);
+    const coasMatch = planName.match(/C(\d+)/i) || planName.match(/(?:coas|COAS)[\s_-]*(\d+)/i);
+
+    const planSa = saMatch ? Number(saMatch[1]) : null;
+    const planDed = dedMatch ? Number(dedMatch[1]) : null;
+    const planCoas = coasMatch ? Number(coasMatch[1]) : null;
+
+    if (planSa === sa && planDed === ded && (planCoas === null || planCoas === coas)) {
+      return r.rate;
+    }
+  }
+
+  // If only one plan exists, use it (single-plan files)
+  const uniquePlans = [...new Set(ageRates.map(r => r.plan_name))];
+  if (uniquePlans.length === 1) {
+    return ageRates[0].rate;
+  }
+
+  // Fallback: use the first matching rate for this age (best effort)
+  if (ageRates.length > 0) {
+    return ageRates[0].rate;
+  }
+
+  return 0;
 }
 
 export function calculateBnv(
   input: BnvQuoteInput,
   people: QuotePerson[],
-  tariffTablesRaw: any[],
-  packageId: string
+  rates: BnvRateRecord[],
+  packageConfig: BnvPackageConfig
 ): BnvCalculationResult {
   try {
-    const tables: TariffTables = loadTariffTables(tariffTablesRaw);
+    if (!rates || rates.length === 0) {
+      return {
+        product: 'BNV',
+        people_results: [],
+        prima_anual_total: 0,
+        totals: {} as any,
+        tariff_package_id: packageConfig.id,
+        error: 'No hay tarifas cargadas para BNV. Sube un archivo de cotizador en Tarifas.',
+      };
+    }
 
-    const estado = ZONA_TO_ESTADO[input.region_zone] || 'CIUDAD DE MEXICO';
-    const sumaAseguradaPesos = input.suma_asegurada * 1000000;
-    const deduciblePesos = input.deducible * 1000;
-    const coaseguroDecimal = input.coaseguro / 100;
+    const region = REGION_MAP[input.region_zone] || 'Mexico Region 1';
 
-    const saSnapped = findNearestInTable(tables.factor_suma_asegurada, sumaAseguradaPesos);
-    const dedSnapped = findNearestInTable(tables.factor_deducible, deduciblePesos);
-    const coasSnapped = findNearestInTable(tables.factor_coaseguro, coaseguroDecimal);
+    const peopleResults: BnvPersonResult[] = people.map(p => {
+      const annualRate = findBestRate(rates, p.age, region, input);
+      return {
+        person_id: p.id,
+        person_name: p.name,
+        relation: p.relation,
+        age: p.age,
+        lookup_key: `${region}|SA${input.suma_asegurada}|D${input.deducible}|C${input.coaseguro}`,
+        base_rate: annualRate,
+        discounted_rate: annualRate,
+      };
+    });
 
-    const quoteInput: QuoteInput = {
-      zona: '',
-      estado,
-      nivel_hospitalario: 'ELITE',
-      tabulador: DEFAULT_TABULADOR,
-      suma_asegurada: String(saSnapped),
-      deducible: String(dedSnapped),
-      coaseguro: String(coasSnapped),
-      tope_coaseguro_seleccionado: input.tope_coaseguro || undefined,
-      formas_pago: ['ANUAL', 'SEMESTRAL', 'TRIMESTRAL', 'MENSUAL'],
-      insureds: people.map(p => ({
-        nombre: p.name,
-        sexo: p.gender === 'Masculino' ? 'Hombre' : 'Mujer',
-        edad: p.age,
-      })),
-      coberturas: {},
-    };
-
-    const result = calculateQuoteV2(quoteInput, tables);
-
-    const peopleResults: BnvPersonResult[] = result.insureds.map((ins, i) => ({
-      person_id: people[i]?.id || `p${i}`,
-      person_name: ins.nombre,
-      relation: people[i]?.relation || 'Titular',
-      age: ins.edad,
-      lookup_key: `${estado}|SA${input.suma_asegurada}|D${input.deducible}|C${input.coaseguro}`,
-      base_rate: ins.prima_base,
-      discounted_rate: ins.prima_total,
-    }));
-
-    const primaAnualTotal = result.prima_neta_total;
+    const primaAnualTotal = peopleResults.reduce((sum, p) => sum + p.discounted_rate, 0);
 
     const totals: Record<FormaPago, BnvPaymentBreakdown> = {} as any;
-    const paymentMap: Record<string, FormaPago> = {
-      ANUAL: 'Anual',
-      SEMESTRAL: 'Semestral',
-      TRIMESTRAL: 'Trimestral',
-      MENSUAL: 'Mensual',
-    };
+    const formasPago: FormaPago[] = ['Anual', 'Semestral', 'Trimestral', 'Mensual'];
 
-    for (const pp of result.payment_plans) {
-      const fp = paymentMap[pp.forma_pago] || pp.forma_pago as FormaPago;
+    for (const fp of formasPago) {
+      const { factor, num_recibos } = PAYMENT_FACTORS[fp];
+      const primaNeta = primaAnualTotal * factor;
+      const asistencia = input.asistencia_extranjero ? packageConfig.asistencia_extranjero : 0;
+      const subtotal = primaNeta + asistencia + packageConfig.derecho_poliza;
+      const iva = subtotal * IVA_RATE;
+      const total = subtotal + iva;
+      const primerPago = total / num_recibos;
+
       totals[fp] = {
         forma_pago: fp,
-        prima_neta: primaAnualTotal,
-        asistencia_extranjero: 0,
-        derecho_poliza: pp.gastos_expedicion,
-        subtotal: pp.subtotal,
-        iva: pp.iva,
-        total: pp.total,
-        primer_pago: pp.primer_recibo,
-        pagos_subsecuentes: pp.recibos_subsecuentes,
-        num_recibos: pp.num_recibos,
+        prima_neta: primaNeta,
+        asistencia_extranjero: asistencia,
+        derecho_poliza: packageConfig.derecho_poliza,
+        subtotal,
+        iva,
+        total,
+        primer_pago: primerPago,
+        pagos_subsecuentes: num_recibos > 1 ? primerPago : 0,
+        num_recibos,
       };
     }
 
@@ -102,7 +163,7 @@ export function calculateBnv(
       people_results: peopleResults,
       prima_anual_total: primaAnualTotal,
       totals,
-      tariff_package_id: packageId,
+      tariff_package_id: packageConfig.id,
     };
   } catch (err: any) {
     return {
@@ -110,7 +171,7 @@ export function calculateBnv(
       people_results: [],
       prima_anual_total: 0,
       totals: {} as any,
-      tariff_package_id: packageId,
+      tariff_package_id: packageConfig.id,
       error: err.message || 'Error al calcular BNV',
     };
   }

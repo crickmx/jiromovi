@@ -189,88 +189,44 @@ export default function MulticotizadorGMM() {
       if (needsBnv) {
         const { data: pkg } = await supabase
           .from('multicotizador_gmm_packages')
-          .select('id')
+          .select('id, derecho_poliza, asistencia_extranjero')
           .eq('product', 'BNV')
           .eq('status', 'active')
           .single();
         if (pkg) {
-          const { data: tables } = await supabase
-            .from('tariff_tables')
-            .select('table_key, data_json')
-            .eq('tariff_package_id', pkg.id);
-          if (tables && tables.length > 0) {
-            productTariffs.BNV = { pkg, tables };
+          const { data: rates } = await supabase
+            .from('multicotizador_gmm_rates')
+            .select('plan_name, region, age, rate, rate_type')
+            .eq('package_id', pkg.id);
+          if (rates && rates.length > 0) {
+            productTariffs.BNV = { pkg, rates };
           } else {
-            // Fallback: use BX+ tariff tables (same GNP/Bupa format)
-            const { data: bxPkg } = await supabase.from('tariff_packages').select('id').eq('status', 'active').single();
-            if (bxPkg) {
-              const { data: bxTables } = await supabase.from('tariff_tables').select('table_key, data_json').eq('tariff_package_id', bxPkg.id);
-              if (bxTables && bxTables.length > 0) {
-                productTariffs.BNV = { pkg: bxPkg, tables: bxTables };
-              } else {
-                productTariffs.BNV = { error: 'La tarifa BNV activa no tiene tablas de factores. Sube un nuevo archivo de cotizador en la pestana Tarifas.' };
-              }
-            } else {
-              productTariffs.BNV = { error: 'No hay tablas de factores disponibles. Sube un archivo de cotizador.' };
-            }
+            productTariffs.BNV = { error: 'La tarifa BNV activa no tiene datos. Sube un nuevo archivo de cotizador en la pestana Tarifas.' };
           }
         } else {
-          // No BNV package, fallback to BX+ tables
-          const { data: bxPkg } = await supabase.from('tariff_packages').select('id').eq('status', 'active').single();
-          if (bxPkg) {
-            const { data: bxTables } = await supabase.from('tariff_tables').select('table_key, data_json').eq('tariff_package_id', bxPkg.id);
-            if (bxTables && bxTables.length > 0) {
-              productTariffs.BNV = { pkg: bxPkg, tables: bxTables };
-            } else {
-              productTariffs.BNV = { error: 'No hay tarifa BNV activa. Sube una tarifa en la pestana Tarifas.' };
-            }
-          } else {
-            productTariffs.BNV = { error: 'No hay tarifa BNV activa. Sube una tarifa en la pestana Tarifas.' };
-          }
+          productTariffs.BNV = { error: 'No hay tarifa BNV activa. Sube una tarifa en la pestana Tarifas.' };
         }
       }
 
       if (needsBnp) {
         const { data: pkg } = await supabase
           .from('multicotizador_gmm_packages')
-          .select('id')
+          .select('id, derecho_poliza, asistencia_extranjero, costo_catastrofica_extranjero')
           .eq('product', 'BNP')
           .eq('status', 'active')
           .single();
         if (pkg) {
-          const { data: tables } = await supabase
-            .from('tariff_tables')
-            .select('table_key, data_json')
-            .eq('tariff_package_id', pkg.id);
-          if (tables && tables.length > 0) {
-            productTariffs.BNP = { pkg, tables };
+          const { data: rates } = await supabase
+            .from('multicotizador_gmm_rates')
+            .select('plan_name, region, age, rate, rate_type')
+            .eq('package_id', pkg.id);
+          if (rates && rates.length > 0) {
+            productTariffs.BNP = { pkg, rates };
           } else {
-            // Fallback: use BX+ tariff tables
-            const { data: bxPkg } = await supabase.from('tariff_packages').select('id').eq('status', 'active').single();
-            if (bxPkg) {
-              const { data: bxTables } = await supabase.from('tariff_tables').select('table_key, data_json').eq('tariff_package_id', bxPkg.id);
-              if (bxTables && bxTables.length > 0) {
-                productTariffs.BNP = { pkg: bxPkg, tables: bxTables };
-              } else {
-                productTariffs.BNP = { error: 'La tarifa BNP activa no tiene tablas de factores. Sube un nuevo archivo de cotizador en la pestana Tarifas.' };
-              }
-            } else {
-              productTariffs.BNP = { error: 'No hay tablas de factores disponibles. Sube un archivo de cotizador.' };
-            }
+            productTariffs.BNP = { error: 'La tarifa BNP activa no tiene datos. Sube un nuevo archivo de cotizador en la pestana Tarifas.' };
           }
         } else {
-          // No BNP package, fallback to BX+ tables
-          const { data: bxPkg } = await supabase.from('tariff_packages').select('id').eq('status', 'active').single();
-          if (bxPkg) {
-            const { data: bxTables } = await supabase.from('tariff_tables').select('table_key, data_json').eq('tariff_package_id', bxPkg.id);
-            if (bxTables && bxTables.length > 0) {
-              productTariffs.BNP = { pkg: bxPkg, tables: bxTables };
-            } else {
-              productTariffs.BNP = { error: 'No hay tarifa BNP activa. Sube una tarifa en la pestana Tarifas.' };
-            }
-          } else {
-            productTariffs.BNP = { error: 'No hay tarifa BNP activa. Sube una tarifa en la pestana Tarifas.' };
-          }
+          productTariffs.BNP = { error: 'No hay tarifa BNP activa. Sube una tarifa en la pestana Tarifas.' };
         }
       }
 
@@ -312,12 +268,21 @@ export default function MulticotizadorGMM() {
         }
 
         if (opt.product_id === 'BNV') {
-          const { pkg, tables } = tariff;
-          const result = calculateBnv(opt.input as BnvQuoteInput, people, tables, pkg.id);
+          const { pkg, rates } = tariff;
+          const result = calculateBnv(opt.input as BnvQuoteInput, people, rates, {
+            id: pkg.id,
+            derecho_poliza: pkg.derecho_poliza || 0,
+            asistencia_extranjero: pkg.asistencia_extranjero || 0,
+          });
           optionResults.push({ option_id: opt.id, option_label: opt.label, product_id: 'BNV', result });
         } else if (opt.product_id === 'BNP') {
-          const { pkg, tables } = tariff;
-          const result = calculateBnp(opt.input as BnpQuoteInput, people, tables, pkg.id);
+          const { pkg, rates } = tariff;
+          const result = calculateBnp(opt.input as BnpQuoteInput, people, rates, {
+            id: pkg.id,
+            derecho_poliza: pkg.derecho_poliza || 0,
+            asistencia_extranjero: pkg.asistencia_extranjero || 0,
+            costo_catastrofica_extranjero: pkg.costo_catastrofica_extranjero || 0,
+          });
           optionResults.push({ option_id: opt.id, option_label: opt.label, product_id: 'BNP', result });
         } else if (opt.product_id === 'BXPLUS') {
           const { pkg, tables } = tariff;
