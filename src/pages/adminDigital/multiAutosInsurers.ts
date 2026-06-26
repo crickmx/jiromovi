@@ -32,7 +32,7 @@ export interface QuoteBreakdown {
   pagosSubsecuentes: number;
 }
 
-export let INSURERS_CONFIG: InsurerConfig[] = [];
+let INSURERS_CONFIG: InsurerConfig[] = [];
 
 export async function loadInsurersConfig(): Promise<InsurerConfig[]> {
   const { data } = await supabase
