@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Heart, Calculator, History, Settings, Plus, Trash2, Users, FileDown, Save, Loader, CircleAlert as AlertCircle } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Heart, Calculator, History, Settings, Plus, Trash2, Users, FileDown, Loader, CircleAlert as AlertCircle, Check } from 'lucide-react';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { supabase } from '../lib/supabase';
 import { calculateBnv, calculateBxplus, calculateBnp } from '../lib/multicotizadorGmm';
@@ -12,6 +12,7 @@ import { TarifasAdminPanel } from '../components/multicotizadorGmm/TarifasAdminP
 import { ComparisonResults } from '../components/multicotizadorGmm/ComparisonResults';
 import { OptionConfigurator } from '../components/multicotizadorGmm/OptionConfigurator';
 import { generateMultiGmmPdf } from '../lib/multicotizadorGmm/pdfGenerator';
+import { getEffectiveUserLogo } from '../lib/logoUtils';
 
 const TABS = [
   { id: 'cotizador', label: 'Cotizador', icon: Calculator },
@@ -64,8 +65,10 @@ export default function MulticotizadorGMM() {
   const [calculating, setCalculating] = useState(false);
   const [results, setResults] = useState<OptionResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
   const [savedQuotes, setSavedQuotes] = useState<SavedMultiGmmQuote[]>([]);
+  const [lastSavedFolio, setLastSavedFolio] = useState<string | null>(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const savedResultsRef = useRef<string | null>(null);
 
   const loadSavedQuotes = useCallback(async () => {
     const { data } = await supabase
@@ -79,6 +82,40 @@ export default function MulticotizadorGMM() {
   useEffect(() => {
     if (activeTab === 'historial') loadSavedQuotes();
   }, [activeTab, loadSavedQuotes]);
+
+  const autoSaveQuote = useCallback(async (optionResults: OptionResult[]) => {
+    if (!usuario?.id) return;
+
+    const resultsKey = JSON.stringify(optionResults);
+    if (savedResultsRef.current === resultsKey) return;
+
+    setAutoSaveStatus('saving');
+    try {
+      const { data, error: saveError } = await supabase
+        .from('multicotizador_gmm_quotes')
+        .insert({
+          created_by: usuario.id,
+          client_name: clientName.trim() || 'Sin nombre',
+          people_json: people,
+          options_json: options,
+          results_json: optionResults,
+          selected_formas_pago: ['Anual', 'Semestral', 'Trimestral', 'Mensual'],
+          status: 'calculated',
+        })
+        .select('folio')
+        .single();
+
+      if (saveError) throw saveError;
+
+      savedResultsRef.current = resultsKey;
+      if (data?.folio) setLastSavedFolio(data.folio);
+      setAutoSaveStatus('saved');
+      setTimeout(() => setAutoSaveStatus('idle'), 3000);
+    } catch {
+      setAutoSaveStatus('error');
+      setTimeout(() => setAutoSaveStatus('idle'), 4000);
+    }
+  }, [usuario?.id, clientName, people, options]);
 
   const addPerson = () => setPeople(prev => [...prev, { ...DEFAULT_PERSON(), relation: prev.length === 0 ? 'Titular' : 'Dependiente' }]);
   const removePerson = (id: string) => setPeople(prev => prev.filter(p => p.id !== id));
@@ -137,11 +174,12 @@ export default function MulticotizadorGMM() {
     setCalculating(true);
     setError(null);
     setResults(null);
+    setLastSavedFolio(null);
+    savedResultsRef.current = null;
 
     try {
       const optionResults: OptionResult[] = [];
 
-      // Preload tariff data per product to avoid redundant fetches
       const productTariffs: Record<string, any> = {};
 
       const needsBnv = options.some(o => o.product_id === 'BNV');
@@ -201,7 +239,6 @@ export default function MulticotizadorGMM() {
         }
       }
 
-      // Calculate each option
       for (const opt of options) {
         const tariff = productTariffs[opt.product_id];
 
@@ -253,6 +290,12 @@ export default function MulticotizadorGMM() {
       }
 
       setResults(optionResults);
+
+      // Auto-save after successful calculation
+      const hasValidResults = optionResults.some(r => !r.result.error);
+      if (hasValidResults) {
+        autoSaveQuote(optionResults);
+      }
     } catch (err: any) {
       setError(err.message || 'Error al calcular');
     } finally {
@@ -260,30 +303,24 @@ export default function MulticotizadorGMM() {
     }
   };
 
-  const handleSave = async () => {
-    if (!results || !clientName.trim()) return;
-    setSaving(true);
-    try {
-      await supabase.from('multicotizador_gmm_quotes').insert({
-        client_name: clientName,
-        people_json: people,
-        options_json: options,
-        results_json: results,
-        selected_formas_pago: ['Anual', 'Semestral', 'Trimestral', 'Mensual'],
-        status: 'calculated',
-      });
-      setError(null);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleDownloadPdf = async () => {
     if (!results) return;
     try {
-      const blob = await generateMultiGmmPdf(results, people, clientName, usuario);
+      let logoUrl: string | undefined;
+      if (usuario?.id) {
+        const url = await getEffectiveUserLogo(usuario.id);
+        if (url && url !== '/logojiro.png') logoUrl = url;
+      }
+
+      const blob = await generateMultiGmmPdf(
+        results,
+        people,
+        clientName,
+        usuario,
+        options,
+        logoUrl,
+        lastSavedFolio || undefined
+      );
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -438,7 +475,7 @@ export default function MulticotizadorGMM() {
           )}
 
           {/* Actions */}
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={handleCalculate}
               disabled={calculating}
@@ -448,16 +485,25 @@ export default function MulticotizadorGMM() {
               {calculating ? 'Calculando...' : 'Calcular Cotizacion'}
             </button>
             {results && (
-              <>
-                <button onClick={handleSave} disabled={saving || !clientName.trim()} className="flex items-center gap-2 px-5 py-3 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50">
-                  {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  Guardar
-                </button>
-                <button onClick={handleDownloadPdf} className="flex items-center gap-2 px-5 py-3 rounded-xl border border-neutral-200 dark:border-white/10 text-neutral-700 dark:text-neutral-300 font-medium text-sm hover:bg-neutral-50 dark:hover:bg-white/[0.03] transition-colors">
-                  <FileDown className="w-4 h-4" />
-                  Descargar PDF
-                </button>
-              </>
+              <button onClick={handleDownloadPdf} className="flex items-center gap-2 px-5 py-3 rounded-xl border border-neutral-200 dark:border-white/10 text-neutral-700 dark:text-neutral-300 font-medium text-sm hover:bg-neutral-50 dark:hover:bg-white/[0.03] transition-colors">
+                <FileDown className="w-4 h-4" />
+                Descargar PDF
+              </button>
+            )}
+            {autoSaveStatus === 'saving' && (
+              <span className="flex items-center gap-1.5 text-xs text-neutral-400">
+                <Loader className="w-3 h-3 animate-spin" /> Guardando...
+              </span>
+            )}
+            {autoSaveStatus === 'saved' && (
+              <span className="flex items-center gap-1.5 text-xs text-teal-600 dark:text-teal-400">
+                <Check className="w-3 h-3" /> Guardado {lastSavedFolio && `(${lastSavedFolio})`}
+              </span>
+            )}
+            {autoSaveStatus === 'error' && (
+              <span className="flex items-center gap-1.5 text-xs text-red-500">
+                <AlertCircle className="w-3 h-3" /> Error al guardar
+              </span>
             )}
           </div>
 
