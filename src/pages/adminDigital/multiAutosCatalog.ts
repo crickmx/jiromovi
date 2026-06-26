@@ -31,33 +31,21 @@ function rowToVehiculo(row: CatalogVehicleRow): Vehiculo {
 }
 
 export async function fetchMarcas(): Promise<string[]> {
-  const { data, error } = await supabase
-    .from('multi_autos_catalogo_vehiculos')
-    .select('marca')
-    .order('marca');
+  const { data, error } = await supabase.rpc('get_catalog_marcas');
   if (error || !data) return [];
-  return [...new Set(data.map((r) => r.marca))].sort();
+  return (data as { marca: string }[]).map((r) => r.marca);
 }
 
 export async function fetchAniosForMarca(marca: string): Promise<number[]> {
-  const { data, error } = await supabase
-    .from('multi_autos_catalogo_vehiculos')
-    .select('anio')
-    .eq('marca', marca)
-    .order('anio', { ascending: false });
+  const { data, error } = await supabase.rpc('get_catalog_anios', { p_marca: marca });
   if (error || !data) return [];
-  return [...new Set(data.map((r) => r.anio))].sort((a, b) => b - a);
+  return (data as { anio: number }[]).map((r) => r.anio);
 }
 
 export async function fetchModelosForMarcaAnio(marca: string, anio: number): Promise<string[]> {
-  const { data, error } = await supabase
-    .from('multi_autos_catalogo_vehiculos')
-    .select('modelo')
-    .eq('marca', marca)
-    .eq('anio', anio)
-    .order('modelo');
+  const { data, error } = await supabase.rpc('get_catalog_modelos', { p_marca: marca, p_anio: anio });
   if (error || !data) return [];
-  return [...new Set(data.map((r) => r.modelo))].sort();
+  return (data as { modelo: string }[]).map((r) => r.modelo);
 }
 
 export async function fetchVersiones(marca: string, anio: number, modelo: string): Promise<Vehiculo[]> {
@@ -67,7 +55,8 @@ export async function fetchVersiones(marca: string, anio: number, modelo: string
     .eq('marca', marca)
     .eq('anio', anio)
     .eq('modelo', modelo)
-    .order('version');
+    .order('version')
+    .limit(500);
   if (error || !data) return [];
   return data.map((row) => rowToVehiculo(row as CatalogVehicleRow));
 }
