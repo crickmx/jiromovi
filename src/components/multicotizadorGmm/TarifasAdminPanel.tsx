@@ -5,9 +5,11 @@ import * as XLSX from 'xlsx';
 import { PRODUCT_LABELS, PRODUCT_COLORS } from '../../lib/multicotizadorGmm/types';
 import { EXCEL_RANGES } from '../../lib/gmmTypes';
 
+type UploadableProduct = 'BNV' | 'BNP' | 'BXPLUS';
+
 interface TariffPackage {
   id: string;
-  product: 'BNV' | 'BNP';
+  product: UploadableProduct;
   version_name: string;
   source_filename: string | null;
   status: 'draft' | 'active' | 'archived' | 'failed';
@@ -16,9 +18,11 @@ interface TariffPackage {
   deducibles: number[];
   coaseguros: number[];
   created_at: string;
+  source_table: 'multicotizador_gmm_packages' | 'tariff_packages';
 }
 
-const UPLOADABLE_PRODUCTS: { id: 'BNV' | 'BNP'; label: string }[] = [
+const UPLOADABLE_PRODUCTS: { id: UploadableProduct; label: string }[] = [
+  { id: 'BXPLUS', label: 'BX+' },
   { id: 'BNV', label: 'Bupa Nacional Vital' },
   { id: 'BNP', label: 'Bupa Nacional Plus' },
 ];
@@ -125,7 +129,7 @@ export function TarifasAdminPanel() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
-  const [uploadProduct, setUploadProduct] = useState<'BNV' | 'BNP'>('BNV');
+  const [uploadProduct, setUploadProduct] = useState<UploadableProduct>('BXPLUS');
   const [versionName, setVersionName] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -134,11 +138,42 @@ export function TarifasAdminPanel() {
 
   const loadPackages = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('multicotizador_gmm_packages')
-      .select('id, product, version_name, source_filename, status, rates_count, sumas_aseguradas, deducibles, coaseguros, created_at')
-      .order('created_at', { ascending: false });
-    if (data) setPackages(data as TariffPackage[]);
+    const [{ data: multiPkgs }, { data: bxPkgs }] = await Promise.all([
+      supabase
+        .from('multicotizador_gmm_packages')
+        .select('id, product, version_name, source_filename, status, rates_count, sumas_aseguradas, deducibles, coaseguros, created_at')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('tariff_packages')
+        .select('id, name, source_filename, status, rates_count, created_at')
+        .order('created_at', { ascending: false }),
+    ]);
+
+    const combined: TariffPackage[] = [];
+    if (multiPkgs) {
+      for (const p of multiPkgs) {
+        combined.push({ ...p, source_table: 'multicotizador_gmm_packages' } as TariffPackage);
+      }
+    }
+    if (bxPkgs) {
+      for (const p of bxPkgs) {
+        combined.push({
+          id: p.id,
+          product: 'BXPLUS' as UploadableProduct,
+          version_name: p.name || 'Sin nombre',
+          source_filename: p.source_filename,
+          status: p.status,
+          rates_count: p.rates_count || 0,
+          sumas_aseguradas: [],
+          deducibles: [],
+          coaseguros: [],
+          created_at: p.created_at,
+          source_table: 'tariff_packages',
+        });
+      }
+    }
+    combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    setPackages(combined);
     setLoading(false);
   }, []);
 
@@ -155,70 +190,11 @@ export function TarifasAdminPanel() {
     setUploadProgress('Leyendo archivo...');
 
     try {
-      const arrayBuffer = await selectedFile.arrayBuffer();
-
-      setUploadProgress('Extrayendo tablas de factores del Excel...');
-      const parsed = parseExcelFactorTables(arrayBuffer);
-
-      if (parsed.errors.length > 0) {
-        setUploadError('Advertencias al procesar: ' + parsed.errors.slice(0, 3).join('; '));
+      if (uploadProduct === 'BXPLUS') {
+        await handleUploadBxplus();
+      } else {
+        await handleUploadBupa();
       }
-
-      setUploadProgress('Creando paquete de tarifas...');
-      const { data: pkg, error: pkgError } = await supabase
-        .from('multicotizador_gmm_packages')
-        .insert({
-          product: uploadProduct,
-          version_name: versionName.trim(),
-          source_filename: selectedFile.name,
-          status: 'draft',
-          derecho_poliza: 0,
-          asistencia_extranjero: 0,
-          costo_catastrofica_extranjero: 0,
-          sumas_aseguradas: [],
-          deducibles: [],
-          coaseguros: [],
-          topes_coaseguro: [],
-          client_types: [],
-          internal_factors: {},
-          rates_count: parsed.tables.length,
-          created_by: (await supabase.auth.getUser()).data.user?.id || null,
-        })
-        .select('id')
-        .single();
-
-      if (pkgError) {
-        setUploadError('Error creando paquete: ' + pkgError.message);
-        return;
-      }
-
-      setUploadProgress('Insertando tablas de factores...');
-      const tablesToInsert = parsed.tables.map(t => ({
-        tariff_package_id: pkg.id,
-        table_key: t.table_key,
-        data_json: t.data_json,
-        row_count: t.row_count,
-      }));
-
-      const batchSize = 10;
-      for (let i = 0; i < tablesToInsert.length; i += batchSize) {
-        const batch = tablesToInsert.slice(i, i + batchSize);
-        const { error: tableError } = await supabase
-          .from('tariff_tables')
-          .insert(batch);
-        if (tableError) {
-          await supabase.from('multicotizador_gmm_packages')
-            .update({ status: 'failed', validation_errors: { message: tableError.message } })
-            .eq('id', pkg.id);
-          setUploadError('Error insertando tablas: ' + tableError.message);
-          return;
-        }
-      }
-
-      setUploadSuccess(`Tarifa cargada: ${parsed.tables.length} tablas de factores extraidas correctamente`);
-      setSelectedFile(null);
-      setVersionName('');
-      loadPackages();
     } catch (err: any) {
       setUploadError(err.message || 'Error procesando archivo');
     } finally {
@@ -227,14 +203,111 @@ export function TarifasAdminPanel() {
     }
   };
 
-  const handleActivate = async (pkgId: string) => {
-    setActivating(pkgId);
+  const handleUploadBxplus = async () => {
+    setUploadProgress('Subiendo archivo al servidor...');
+    const formData = new FormData();
+    formData.append('file', selectedFile!);
+    formData.append('name', versionName.trim());
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmm-upload-tariff`,
+      {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${session?.access_token}` },
+        body: formData,
+      }
+    );
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Error uploading file');
+
+    setUploadSuccess('Tarifa BX+ cargada exitosamente');
+    setSelectedFile(null);
+    setVersionName('');
+    loadPackages();
+  };
+
+  const handleUploadBupa = async () => {
+    const arrayBuffer = await selectedFile!.arrayBuffer();
+
+    setUploadProgress('Extrayendo tablas de factores del Excel...');
+    const parsed = parseExcelFactorTables(arrayBuffer);
+
+    if (parsed.errors.length > 0) {
+      setUploadError('Advertencias al procesar: ' + parsed.errors.slice(0, 3).join('; '));
+    }
+
+    setUploadProgress('Creando paquete de tarifas...');
+    const { data: pkg, error: pkgError } = await supabase
+      .from('multicotizador_gmm_packages')
+      .insert({
+        product: uploadProduct,
+        version_name: versionName.trim(),
+        source_filename: selectedFile!.name,
+        status: 'draft',
+        derecho_poliza: 0,
+        asistencia_extranjero: 0,
+        costo_catastrofica_extranjero: 0,
+        sumas_aseguradas: [],
+        deducibles: [],
+        coaseguros: [],
+        topes_coaseguro: [],
+        client_types: [],
+        internal_factors: {},
+        rates_count: parsed.tables.length,
+        created_by: (await supabase.auth.getUser()).data.user?.id || null,
+      })
+      .select('id')
+      .single();
+
+    if (pkgError) throw new Error('Error creando paquete: ' + pkgError.message);
+
+    setUploadProgress('Insertando tablas de factores...');
+    const tablesToInsert = parsed.tables.map(t => ({
+      tariff_package_id: pkg.id,
+      table_key: t.table_key,
+      data_json: t.data_json,
+      row_count: t.row_count,
+    }));
+
+    const batchSize = 10;
+    for (let i = 0; i < tablesToInsert.length; i += batchSize) {
+      const batch = tablesToInsert.slice(i, i + batchSize);
+      const { error: tableError } = await supabase
+        .from('tariff_tables')
+        .insert(batch);
+      if (tableError) {
+        await supabase.from('multicotizador_gmm_packages')
+          .update({ status: 'failed', validation_errors: { message: tableError.message } })
+          .eq('id', pkg.id);
+        throw new Error('Error insertando tablas: ' + tableError.message);
+      }
+    }
+
+    setUploadSuccess(`Tarifa cargada: ${parsed.tables.length} tablas de factores extraidas correctamente`);
+    setSelectedFile(null);
+    setVersionName('');
+    loadPackages();
+  };
+
+  const handleActivate = async (pkg: TariffPackage) => {
+    setActivating(pkg.id);
     try {
-      const { error } = await supabase.rpc('activate_multicotizador_tariff', { p_package_id: pkgId });
-      if (error) {
-        setUploadError('Error activando tarifa: ' + error.message);
+      if (pkg.source_table === 'tariff_packages') {
+        const { error } = await supabase.rpc('activate_tariff_package', { p_package_id: pkg.id });
+        if (error) {
+          setUploadError('Error activando tarifa: ' + error.message);
+        } else {
+          loadPackages();
+        }
       } else {
-        loadPackages();
+        const { error } = await supabase.rpc('activate_multicotizador_tariff', { p_package_id: pkg.id });
+        if (error) {
+          setUploadError('Error activando tarifa: ' + error.message);
+        } else {
+          loadPackages();
+        }
       }
     } catch (err: any) {
       setUploadError(err.message);
@@ -243,11 +316,12 @@ export function TarifasAdminPanel() {
     }
   };
 
-  const handleArchive = async (pkgId: string) => {
+  const handleArchive = async (pkg: TariffPackage) => {
+    const table = pkg.source_table === 'tariff_packages' ? 'tariff_packages' : 'multicotizador_gmm_packages';
     await supabase
-      .from('multicotizador_gmm_packages')
+      .from(table)
       .update({ status: 'archived' })
-      .eq('id', pkgId);
+      .eq('id', pkg.id);
     loadPackages();
   };
 
@@ -276,7 +350,7 @@ export function TarifasAdminPanel() {
           <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Subir Nueva Tarifa</h3>
         </div>
         <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
-          Sube un archivo Excel (.xlsm, .xlsx) con las tarifas de Bupa Nacional Vital o Bupa Nacional Plus. El archivo se procesa directamente en tu navegador.
+          Sube un archivo Excel (.xlsm, .xlsx) con las tarifas. BX+ se procesa en el servidor; BNV/BNP se procesan en el navegador.
         </p>
 
         <div className="grid sm:grid-cols-2 gap-4 mb-4">
@@ -389,7 +463,7 @@ export function TarifasAdminPanel() {
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {pkg.status === 'draft' && (
                     <button
-                      onClick={() => handleActivate(pkg.id)}
+                      onClick={() => handleActivate(pkg)}
                       disabled={activating === pkg.id}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 text-xs font-medium hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors disabled:opacity-50"
                     >
@@ -399,7 +473,7 @@ export function TarifasAdminPanel() {
                   )}
                   {(pkg.status === 'draft' || pkg.status === 'active') && (
                     <button
-                      onClick={() => handleArchive(pkg.id)}
+                      onClick={() => handleArchive(pkg)}
                       className="p-1.5 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                       title="Archivar"
                     >
@@ -411,19 +485,6 @@ export function TarifasAdminPanel() {
             ))}
           </div>
         )}
-      </div>
-
-      {/* BX+ Note */}
-      <div className="bg-sky-50/50 dark:bg-sky-900/10 rounded-2xl border border-sky-200/50 dark:border-sky-800/20 p-5">
-        <div className="flex items-start gap-3">
-          <div className="w-2.5 h-2.5 rounded-full mt-1 flex-shrink-0" style={{ backgroundColor: PRODUCT_COLORS.BXPLUS }} />
-          <div>
-            <h4 className="text-sm font-semibold text-neutral-900 dark:text-white mb-1">Tarifas BX+</h4>
-            <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
-              Las tarifas de BX+ se administran desde el modulo GMM BX+ existente. El multicotizador utiliza automaticamente la tarifa activa de ese modulo.
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   );

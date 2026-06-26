@@ -48,7 +48,6 @@ const CentroNotificaciones = lazy(() => import('./CentroNotificaciones'));
 
 // Cotizar
 const CotizarHub = lazy(() => import('./CotizarHub'));
-const GMMCotizador = lazy(() => import('./GMMCotizador'));
 const FormulariosCotizacion = lazy(() => import('./FormulariosCotizacion'));
 const PublicQuoteForm = lazy(() => import('./PublicQuoteForm'));
 const QuoteFormWizard = lazy(() => import('./QuoteFormWizard'));
@@ -202,7 +201,7 @@ export default function MoviFullRoutes() {
 
           {/* Cotizar */}
           <Route path="/cotizar" element={<ProtectedRoute><CotizarHub /></ProtectedRoute>} />
-          <Route path="/cotizar/gmm-bx" element={<ProtectedRoute><GMMCotizador /></ProtectedRoute>} />
+          <Route path="/cotizar/gmm-bx" element={<Navigate to="/cotizar/multicotizador-gmm" replace />} />
           <Route path="/cotizar/formularios" element={<ProtectedRoute><FormulariosCotizacion /></ProtectedRoute>} />
           <Route path="/cotizar/formularios/:slug/wizard" element={<ProtectedRoute><QuoteFormWizard /></ProtectedRoute>} />
           <Route path="/cotizar/a-la-medida" element={<ProtectedRoute><AlaMedida /></ProtectedRoute>} />

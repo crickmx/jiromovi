@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Heart, Calculator, History, Settings, Plus, Trash2, Users, FileDown, Loader, CircleAlert as AlertCircle, Check } from 'lucide-react';
+import { Heart, Calculator, History, Settings, Plus, Trash2, Users, FileDown, Loader, CircleAlert as AlertCircle, Check, Pencil } from 'lucide-react';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { supabase } from '../lib/supabase';
 import { calculateBnv, calculateBxplus, calculateBnp } from '../lib/multicotizadorGmm';
@@ -369,6 +369,49 @@ export default function MulticotizadorGMM() {
     }
   };
 
+  const handleEditQuote = (quote: SavedMultiGmmQuote) => {
+    setClientName(quote.client_name || '');
+    setPeople(quote.people_json || [DEFAULT_PERSON()]);
+    setOptions(quote.options_json || [createDefaultOption(1)]);
+    setResults(quote.results_json || null);
+    setLastSavedFolio(quote.folio);
+    savedResultsRef.current = quote.results_json ? JSON.stringify(quote.results_json) : null;
+    setExpandedOptions(new Set(quote.options_json?.length ? [quote.options_json[0].id] : []));
+    setActiveTab('cotizador');
+  };
+
+  const handleDownloadSavedPdf = async (quote: SavedMultiGmmQuote) => {
+    if (!quote.results_json || quote.results_json.length === 0) {
+      setError('Esta cotizacion no tiene resultados para descargar');
+      return;
+    }
+    try {
+      let logoUrl: string | undefined;
+      if (usuario?.id) {
+        const url = await getEffectiveUserLogo(usuario.id);
+        if (url && url !== '/logojiro.png') logoUrl = url;
+      }
+
+      const blob = await generateMultiGmmPdf(
+        quote.results_json,
+        quote.people_json || [],
+        quote.client_name || '',
+        usuario,
+        quote.options_json || [],
+        logoUrl,
+        quote.folio
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `multicotizador-gmm-${quote.client_name || quote.folio}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setError('Error generando PDF: ' + err.message);
+    }
+  };
+
   const visibleTabs = TABS.filter(t => t.id !== 'tarifas' || isAdmin);
 
   return (
@@ -563,8 +606,10 @@ export default function MulticotizadorGMM() {
                   <tr className="border-b border-neutral-100 dark:border-white/[0.06]">
                     <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Folio</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Cliente</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Asegurados</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Fecha</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Estatus</th>
+                    <th className="text-right px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -572,9 +617,30 @@ export default function MulticotizadorGMM() {
                     <tr key={q.id} className="border-b border-neutral-50 dark:border-white/[0.03] hover:bg-neutral-50 dark:hover:bg-white/[0.02]">
                       <td className="px-5 py-3 font-mono text-xs text-teal-600 dark:text-teal-400">{q.folio}</td>
                       <td className="px-5 py-3 text-neutral-900 dark:text-white">{q.client_name}</td>
+                      <td className="px-5 py-3 text-neutral-500">{q.people_json?.length || 0}</td>
                       <td className="px-5 py-3 text-neutral-500">{new Date(q.created_at).toLocaleDateString('es-MX')}</td>
                       <td className="px-5 py-3">
                         <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300">{q.status}</span>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleEditQuote(q)}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/[0.05] transition-colors"
+                            title="Editar"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleDownloadSavedPdf(q)}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/[0.05] transition-colors"
+                            title="Descargar PDF"
+                          >
+                            <FileDown className="w-3.5 h-3.5" />
+                            PDF
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

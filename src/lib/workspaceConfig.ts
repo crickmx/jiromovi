@@ -92,7 +92,6 @@ const WORKSPACE_COTIZAR: WorkspaceDefinition = {
   visibleTo: ALL_ROLES,
   items: [
     { path: '/cotizar', label: 'Inicio', icon: LayoutDashboard, visibleTo: ALL_ROLES },
-    { path: '/cotizar/gmm-bx', label: 'GMM BX+', icon: Activity, visibleTo: ADMIN_ONLY },
     { path: '/cotizar/formularios', label: 'Formularios', icon: FormInput, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/cotizar/a-la-medida', label: 'A la Medida', icon: Compass, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/cotizar/multicotizador', label: 'Multicotizador', icon: Car, visibleTo: ALL_ROLES },
