@@ -31,8 +31,21 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function resolveSheetName(workbook: XLSX.WorkBook, targetName: string): string | null {
+  if (workbook.Sheets[targetName]) return targetName;
+  const targetLower = targetName.toLowerCase().trim();
+  for (const name of workbook.SheetNames) {
+    if (name.toLowerCase().trim() === targetLower) return name;
+  }
+  for (const name of workbook.SheetNames) {
+    if (name.toLowerCase().trim().startsWith(targetLower)) return name;
+  }
+  return null;
+}
+
 function parseRange(workbook: XLSX.WorkBook, sheetName: string, rangeStr: string, type: string) {
-  const sheet = workbook.Sheets[sheetName];
+  const resolvedName = resolveSheetName(workbook, sheetName);
+  const sheet = resolvedName ? workbook.Sheets[resolvedName] : null;
   if (!sheet) return null;
 
   if (type === 'value') {
@@ -81,8 +94,13 @@ function parseExcelFactorTables(file: ArrayBuffer): ParsedTariffTables {
 
   const requiredSheets = ['Tarifa'];
   for (const sheetName of requiredSheets) {
-    if (!workbook.Sheets[sheetName]) {
-      throw new Error(`Hoja "${sheetName}" no encontrada. Este archivo no tiene el formato de cotizador GNP/Bupa esperado.`);
+    const resolved = resolveSheetName(workbook, sheetName);
+    if (!resolved) {
+      const available = workbook.SheetNames.join(', ');
+      throw new Error(
+        `Hoja "${sheetName}" no encontrada. Hojas disponibles: [${available}]. ` +
+        'Verifique que el archivo sea un cotizador BX+ valido.'
+      );
     }
   }
 
@@ -358,7 +376,7 @@ export function TarifasAdminPanel() {
             <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Producto</label>
             <select
               value={uploadProduct}
-              onChange={e => setUploadProduct(e.target.value as 'BNV' | 'BNP')}
+              onChange={e => setUploadProduct(e.target.value as UploadableProduct)}
               className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white"
             >
               {UPLOADABLE_PRODUCTS.map(p => (
