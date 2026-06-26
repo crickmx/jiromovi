@@ -81,16 +81,39 @@ const COBERTURAS_ADICIONALES = [
   { key: 'xtensuz', label: 'Xtensuz' },
 ];
 
+// BNV/BNP store suma_asegurada in millions (MDP) and deducible in thousands
+function formatSumaMDP(val: number): string {
+  if (!val) return '-';
+  return formatCurrency(val * 1000000);
+}
+
+function formatDeducibleMiles(val: number): string {
+  if (!val) return '-';
+  return formatCurrency(val * 1000);
+}
+
+function formatTopeCoaseguro(val: number): string {
+  if (!val) return 'Sin tope';
+  return formatCurrency(val);
+}
+
+const NIVEL_DISPLAY_MAP: Record<string, string> = {
+  'Alto': 'Elite',
+  'Medio': 'Plus',
+  'Basico': 'Estandar',
+};
+
 function getOptionPlanInfo(opt: OptionResult, optionDef?: MultiGmmOption): Record<string, string> {
   const input = optionDef?.input;
   if (!input) return {};
 
   if (opt.product_id === 'BXPLUS') {
     const bx = input as BxplusQuoteInput;
+    const nivelDisplay = NIVEL_DISPLAY_MAP[bx.nivel_hospitalario] || bx.nivel_hospitalario || '-';
     return {
       producto: 'BX+',
       estado: bx.estado || '-',
-      nivel: bx.nivel_hospitalario || '-',
+      nivel: nivelDisplay,
       tabulador: bx.tabulador || '-',
       suma_asegurada: bx.suma_asegurada || '-',
       deducible: bx.deducible || '-',
@@ -102,19 +125,19 @@ function getOptionPlanInfo(opt: OptionResult, optionDef?: MultiGmmOption): Recor
     return {
       producto: 'Bupa Nacional Vital',
       region: bnv.region_zone || '-',
-      suma_asegurada: String(bnv.suma_asegurada || '-'),
-      deducible: String(bnv.deducible || '-'),
-      coaseguro: String(bnv.coaseguro || '-'),
-      tope_coaseguro: String(bnv.tope_coaseguro || '-'),
+      suma_asegurada: formatSumaMDP(bnv.suma_asegurada),
+      deducible: formatDeducibleMiles(bnv.deducible),
+      coaseguro: `${bnv.coaseguro || 0}%`,
+      tope_coaseguro: formatTopeCoaseguro(bnv.tope_coaseguro),
     };
   } else {
     const bnp = input as BnpQuoteInput;
     return {
       producto: 'Bupa Nacional Plus',
       region: bnp.region_zone || '-',
-      suma_asegurada: String(bnp.suma_asegurada || '-'),
-      deducible: String(bnp.deducible || '-'),
-      coaseguro: String(bnp.coaseguro || '-'),
+      suma_asegurada: formatSumaMDP(bnp.suma_asegurada),
+      deducible: formatDeducibleMiles(bnp.deducible),
+      coaseguro: `${bnp.coaseguro || 0}%`,
     };
   }
 }
@@ -565,7 +588,7 @@ export async function generateMultiGmmPdf(
       if (validOptions[i].product_id !== 'BXPLUS') {
         row.push('N/A');
       } else {
-        row.push(coverages[cob.key] === true ? '\u2713' : '\u2717');
+        row.push(coverages[cob.key] === true ? 'Si' : '-');
       }
     }
     covBody.push(row);
@@ -601,10 +624,10 @@ export async function generateMultiGmmPdf(
         const val = String(data.cell.raw);
         data.cell.styles.halign = 'center';
         data.cell.styles.fontSize = 7;
-        if (val === '\u2713') {
+        if (val === 'Si') {
           data.cell.styles.textColor = [22, 163, 74];
           data.cell.styles.fontStyle = 'bold';
-        } else if (val === '\u2717') {
+        } else if (val === '-') {
           data.cell.styles.textColor = [200, 60, 60];
         } else {
           data.cell.styles.textColor = [160, 160, 160];

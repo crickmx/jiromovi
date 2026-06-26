@@ -3,6 +3,7 @@ import { Upload, CircleCheck as CheckCircle, Circle as XCircle, Loader, Trash2, 
 import { supabase } from '../../lib/supabase';
 import * as XLSX from 'xlsx';
 import { PRODUCT_LABELS, PRODUCT_COLORS } from '../../lib/multicotizadorGmm/types';
+import { EXCEL_RANGES } from '../../lib/gmmTypes';
 
 interface TariffPackage {
   id: string;
@@ -26,169 +27,97 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-interface ParsedRate {
-  lookup_key: string;
-  plan_name: string;
-  region: string;
-  age: number;
-  rate: number;
-  rate_type: string;
+function parseRange(workbook: XLSX.WorkBook, sheetName: string, rangeStr: string, type: string) {
+  const sheet = workbook.Sheets[sheetName];
+  if (!sheet) return null;
+
+  if (type === 'value') {
+    const cell = sheet[rangeStr];
+    return cell ? cell.v : null;
+  }
+
+  if (type === 'array') {
+    const range = XLSX.utils.decode_range(rangeStr);
+    const result: any[] = [];
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      const cellAddress = XLSX.utils.encode_cell({ r: R, c: range.s.c });
+      const cell = sheet[cellAddress];
+      result.push(cell ? cell.v : null);
+    }
+    return result;
+  }
+
+  if (type === 'table') {
+    const range = XLSX.utils.decode_range(rangeStr);
+    const result: any[] = [];
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      const row: any = {};
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+        const cell = sheet[cellAddress];
+        const colName = `col_${C - range.s.c}`;
+        row[colName] = cell ? cell.v : null;
+      }
+      result.push(row);
+    }
+    return result;
+  }
+
+  return null;
 }
 
-function parseExcelFile(file: ArrayBuffer, product: 'BNV' | 'BNP') {
+interface ParsedTariffTables {
+  tables: Array<{ table_key: string; data_json: any; row_count: number | null }>;
+  errors: string[];
+}
+
+function parseExcelFactorTables(file: ArrayBuffer): ParsedTariffTables {
   const uint8 = new Uint8Array(file);
   const workbook = XLSX.read(uint8, { type: 'array', bookVBA: true });
-  const sheetNames = workbook.SheetNames;
 
-  if (sheetNames.length === 0) {
-    throw new Error('El archivo no contiene hojas');
-  }
-
-  const rates: ParsedRate[] = [];
-  const detectedSumas: Set<number> = new Set();
-  const detectedDeducibles: Set<number> = new Set();
-  const detectedCoaseguros: Set<number> = new Set();
-  let derechoPoliza = 1600;
-  let asistenciaExtranjero = 1632;
-  let costoCatastrofica = 5800;
-
-  for (const sheetName of sheetNames) {
-    const sheet = workbook.Sheets[sheetName];
-    const jsonData: any[] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
-
-    if (jsonData.length < 2) continue;
-
-    const headers = jsonData[0] as any[];
-    if (!headers) continue;
-
-    const lowerSheet = sheetName.toLowerCase();
-    if (lowerSheet.includes('config') || lowerSheet.includes('param')) {
-      for (const row of jsonData) {
-        if (!Array.isArray(row)) continue;
-        const label = String(row[0] || '').toLowerCase();
-        const val = Number(row[1]);
-        if (label.includes('derecho') && !isNaN(val)) derechoPoliza = val;
-        if (label.includes('asistencia') && !isNaN(val)) asistenciaExtranjero = val;
-        if (label.includes('catastro') && !isNaN(val)) costoCatastrofica = val;
-      }
-      continue;
-    }
-
-    const ageColIdx = headers.findIndex((h: any) => {
-      const s = String(h || '').toLowerCase().trim();
-      return s === 'age' || s === 'edad' || s === 'edades' || s.includes('edad') || s.includes('age');
-    });
-
-    if (ageColIdx === -1) {
-      const lookupIdx = headers.findIndex((h: any) => String(h || '').toLowerCase().includes('lookup'));
-      const regionIdx = headers.findIndex((h: any) => String(h || '').toLowerCase().includes('region'));
-      const rateIdx = headers.findIndex((h: any) => String(h || '').toLowerCase().includes('rate') || String(h || '').toLowerCase().includes('prima') || String(h || '').toLowerCase().includes('tarifa'));
-      const typeIdx = headers.findIndex((h: any) => String(h || '').toLowerCase().includes('type') || String(h || '').toLowerCase().includes('sexo') || String(h || '').toLowerCase().includes('genero'));
-
-      // Try to find age column by checking first column with numeric values 0-120
-      let inferredAgeIdx = 0;
-      if (jsonData.length > 3) {
-        for (let ci = 0; ci < headers.length; ci++) {
-          const vals = jsonData.slice(1, 10).map((r: any) => Number(r?.[ci])).filter(v => !isNaN(v));
-          if (vals.length >= 3 && vals.every(v => v >= 0 && v <= 120) && vals[1] - vals[0] === 1) {
-            inferredAgeIdx = ci;
-            break;
-          }
-        }
-      }
-
-      if (rateIdx !== -1) {
-        for (let i = 1; i < jsonData.length; i++) {
-          const row = jsonData[i] as any[];
-          if (!row) continue;
-          const age = Number(row[inferredAgeIdx]);
-          const rate = Number(row[rateIdx]);
-          if (isNaN(age) || isNaN(rate) || rate <= 0) continue;
-
-          const lookupKey = lookupIdx !== -1 ? String(row[lookupIdx] || '') : sheetName;
-          const region = regionIdx !== -1 ? String(row[regionIdx] || 'Mexico Region 1') : 'Mexico Region 1';
-          const rateType = typeIdx !== -1 ? (String(row[typeIdx] || '').toLowerCase().includes('fem') || String(row[typeIdx] || '').toLowerCase().includes('mujer') ? 'Female' : 'Male') : 'Unisex';
-
-          rates.push({
-            lookup_key: lookupKey,
-            plan_name: lookupKey.replace(/Mexico Region \d.*$/, '').trim() || lookupKey,
-            region,
-            age,
-            rate,
-            rate_type: product === 'BNP' ? rateType : 'Unisex',
-          });
-        }
-      }
-      continue;
-    }
-
-    for (let colIdx = 1; colIdx < headers.length; colIdx++) {
-      const colHeader = String(headers[colIdx] || '');
-      if (!colHeader) continue;
-
-      let region = 'Mexico Region 1';
-      if (sheetName.toLowerCase().includes('region 2') || sheetName.toLowerCase().includes('zona 2') || colHeader.toLowerCase().includes('region 2')) {
-        region = 'Mexico Region 2';
-      }
-
-      const saMatch = colHeader.match(/S(\d+)/i) || colHeader.match(/(\d{2,3})(?=D)/);
-      const dedMatch = colHeader.match(/D(\d+)/i);
-      const coasMatch = colHeader.match(/C(\d+)/i);
-      if (saMatch) detectedSumas.add(Number(saMatch[1]));
-      if (dedMatch) detectedDeducibles.add(Number(dedMatch[1]));
-      if (coasMatch) detectedCoaseguros.add(Number(coasMatch[1]));
-
-      let rateType = 'Unisex';
-      if (product === 'BNP') {
-        if (colHeader.toLowerCase().includes('female') || colHeader.toLowerCase().includes('mujer') || colHeader.toLowerCase().includes('fem')) {
-          rateType = 'Female';
-        } else if (colHeader.toLowerCase().includes('male') || colHeader.toLowerCase().includes('hombre') || colHeader.toLowerCase().includes('masc')) {
-          rateType = 'Male';
-        }
-      }
-
-      for (let rowIdx = 1; rowIdx < jsonData.length; rowIdx++) {
-        const row = jsonData[rowIdx] as any[];
-        if (!row) continue;
-        const age = Number(row[ageColIdx]);
-        const rate = Number(row[colIdx]);
-        if (isNaN(age) || isNaN(rate) || rate <= 0) continue;
-
-        const lookupKey = `${colHeader}${region}${age}${rateType !== 'Unisex' ? rateType : ''}`;
-        rates.push({
-          lookup_key: lookupKey,
-          plan_name: colHeader,
-          region,
-          age,
-          rate,
-          rate_type: rateType,
-        });
-      }
+  const requiredSheets = ['Tarifa'];
+  for (const sheetName of requiredSheets) {
+    if (!workbook.Sheets[sheetName]) {
+      throw new Error(`Hoja "${sheetName}" no encontrada. Este archivo no tiene el formato de cotizador GNP/Bupa esperado.`);
     }
   }
 
-  if (rates.length === 0) {
-    throw new Error('No se pudieron extraer tarifas del archivo. Verifique el formato.');
+  const tables: ParsedTariffTables['tables'] = [];
+  const errors: string[] = [];
+
+  for (const [tableKey, definition] of Object.entries(EXCEL_RANGES)) {
+    try {
+      const rawData = parseRange(workbook, definition.sheet, definition.range, definition.type);
+      const data = rawData ?? (definition.type === 'value' ? null : []);
+      tables.push({
+        table_key: tableKey,
+        data_json: data === null ? { value: null } : data,
+        row_count: Array.isArray(data) ? data.length : null,
+      });
+    } catch (error: any) {
+      errors.push(`${tableKey}: ${error.message}`);
+    }
   }
 
-  const uniqueAges = [...new Set(rates.map(r => r.age))];
-  if (uniqueAges.length === 1 && uniqueAges[0] === 0) {
+  const baseTable = tables.find(t => t.table_key === 'base_intermedia_edad_sexo');
+  if (!baseTable || !Array.isArray(baseTable.data_json) || baseTable.data_json.length < 10) {
     throw new Error(
-      'Error de formato: No se detectó la columna de edades en el archivo. ' +
-      'Asegúrese de que existe una columna con encabezado "Edad" o "Age" en la hoja de tarifas.'
+      'No se pudo extraer la tabla base de tarifas por edad/sexo. ' +
+      'Verifique que el archivo sea un cotizador GNP/Bupa valido con hoja "Tarifa".'
     );
   }
 
+  const validAges = baseTable.data_json.filter(
+    (r: any) => typeof r.col_0 === 'number' && r.col_0 >= 0 && r.col_0 <= 120 && r.col_1 > 0
+  );
+  if (validAges.length < 10) {
+    throw new Error(
+      `Solo se encontraron ${validAges.length} edades validas en la tabla base. ` +
+      'El archivo no parece contener tarifas correctas.'
+    );
+  }
 
-  return {
-    rates,
-    derechoPoliza,
-    asistenciaExtranjero,
-    costoCatastrofica,
-    sumas: Array.from(detectedSumas).sort((a, b) => a - b),
-    deducibles: Array.from(detectedDeducibles).sort((a, b) => a - b),
-    coaseguros: Array.from(detectedCoaseguros).sort((a, b) => a - b),
-  };
+  return { tables, errors };
 }
 
 export function TarifasAdminPanel() {
@@ -228,8 +157,12 @@ export function TarifasAdminPanel() {
     try {
       const arrayBuffer = await selectedFile.arrayBuffer();
 
-      setUploadProgress('Procesando Excel...');
-      const parsed = parseExcelFile(arrayBuffer, uploadProduct);
+      setUploadProgress('Extrayendo tablas de factores del Excel...');
+      const parsed = parseExcelFactorTables(arrayBuffer);
+
+      if (parsed.errors.length > 0) {
+        setUploadError('Advertencias al procesar: ' + parsed.errors.slice(0, 3).join('; '));
+      }
 
       setUploadProgress('Creando paquete de tarifas...');
       const { data: pkg, error: pkgError } = await supabase
@@ -239,16 +172,16 @@ export function TarifasAdminPanel() {
           version_name: versionName.trim(),
           source_filename: selectedFile.name,
           status: 'draft',
-          derecho_poliza: parsed.derechoPoliza,
-          asistencia_extranjero: parsed.asistenciaExtranjero,
-          costo_catastrofica_extranjero: parsed.costoCatastrofica,
-          sumas_aseguradas: parsed.sumas,
-          deducibles: parsed.deducibles,
-          coaseguros: parsed.coaseguros,
+          derecho_poliza: 0,
+          asistencia_extranjero: 0,
+          costo_catastrofica_extranjero: 0,
+          sumas_aseguradas: [],
+          deducibles: [],
+          coaseguros: [],
           topes_coaseguro: [],
           client_types: [],
           internal_factors: {},
-          rates_count: parsed.rates.length,
+          rates_count: parsed.tables.length,
           created_by: (await supabase.auth.getUser()).data.user?.id || null,
         })
         .select('id')
@@ -259,28 +192,30 @@ export function TarifasAdminPanel() {
         return;
       }
 
-      const batchSize = 500;
-      const totalBatches = Math.ceil(parsed.rates.length / batchSize);
-      for (let i = 0; i < parsed.rates.length; i += batchSize) {
-        const batchNum = Math.floor(i / batchSize) + 1;
-        setUploadProgress(`Insertando tarifas (${batchNum}/${totalBatches})...`);
-        const batch = parsed.rates.slice(i, i + batchSize).map(r => ({
-          package_id: pkg.id,
-          ...r,
-        }));
-        const { error: rateError } = await supabase
-          .from('multicotizador_gmm_rates')
+      setUploadProgress('Insertando tablas de factores...');
+      const tablesToInsert = parsed.tables.map(t => ({
+        tariff_package_id: pkg.id,
+        table_key: t.table_key,
+        data_json: t.data_json,
+        row_count: t.row_count,
+      }));
+
+      const batchSize = 10;
+      for (let i = 0; i < tablesToInsert.length; i += batchSize) {
+        const batch = tablesToInsert.slice(i, i + batchSize);
+        const { error: tableError } = await supabase
+          .from('tariff_tables')
           .insert(batch);
-        if (rateError) {
+        if (tableError) {
           await supabase.from('multicotizador_gmm_packages')
-            .update({ status: 'failed', validation_errors: { message: rateError.message } })
+            .update({ status: 'failed', validation_errors: { message: tableError.message } })
             .eq('id', pkg.id);
-          setUploadError('Error insertando tarifas: ' + rateError.message);
+          setUploadError('Error insertando tablas: ' + tableError.message);
           return;
         }
       }
 
-      setUploadSuccess(`Tarifa cargada: ${parsed.rates.length.toLocaleString()} tarifas procesadas`);
+      setUploadSuccess(`Tarifa cargada: ${parsed.tables.length} tablas de factores extraidas correctamente`);
       setSelectedFile(null);
       setVersionName('');
       loadPackages();

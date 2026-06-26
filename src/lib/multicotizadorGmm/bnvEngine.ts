@@ -1,182 +1,117 @@
 import type {
   BnvQuoteInput, BnvCalculationResult, BnvPersonResult, BnvPaymentBreakdown,
-  QuotePerson, FormaPago, RegionZone, ClientType, InternalFactor,
-  PAYMENT_FACTORS, IVA_RATE,
+  QuotePerson, FormaPago,
 } from './types';
-import { PAYMENT_FACTORS as PF, IVA_RATE as IVA } from './types';
+import { calculateQuoteV2, loadTariffTables } from '../gmmCalculationEngineV2';
+import type { QuoteInput, TariffTables } from '../gmmTypes';
 
-export interface BnvTariffData {
-  package_id: string;
-  derecho_poliza: number;
-  asistencia_extranjero: number;
-  client_types: ClientType[];
-  internal_factors: InternalFactor[];
-  rates: Array<{ lookup_key: string; region: string; age: number; rate: number }>;
-}
-
-const REGION_MAP: Record<RegionZone, string> = {
-  'Zona 1': 'Mexico Region 1',
-  'Zona 2': 'Mexico Region 2',
+const ZONA_TO_ESTADO: Record<string, string> = {
+  'Zona 1': 'CIUDAD DE MEXICO',
+  'Zona 2': 'AGUASCALIENTES',
 };
 
-function buildLookupKey(input: BnvQuoteInput): string {
-  const sa = input.suma_asegurada;
-  const ded = input.deducible;
-  const coas = input.coaseguro;
-  const tope = input.tope_coaseguro;
-  return `NVFS${sa}D${ded}C${coas}TC${tope}`;
-}
+const DEFAULT_TABULADOR = 'PALADIO-60,000';
 
-function findRate(rates: BnvTariffData['rates'], lookupKey: string, region: string, age: number): number | null {
-  let match = rates.find(r =>
-    r.lookup_key === lookupKey && r.region === region && r.age === age
+function findNearestInTable(table: any[], value: number): number {
+  if (!table || table.length === 0) return value;
+  const numericEntries = table
+    .map(r => Number(r.col_0))
+    .filter(n => !isNaN(n) && n > 0);
+  if (numericEntries.length === 0) return value;
+  return numericEntries.reduce((prev, curr) =>
+    Math.abs(curr - value) < Math.abs(prev - value) ? curr : prev
   );
-  if (!match) {
-    match = rates.find(r =>
-      r.lookup_key === 'Master' && r.region === region && r.age === age
-    );
-  }
-  if (!match) {
-    match = rates.find(r =>
-      r.lookup_key === lookupKey && r.age === age
-    );
-  }
-  if (!match) {
-    match = rates.find(r =>
-      r.lookup_key === 'Master' && r.age === age
-    );
-  }
-  return match ? match.rate : null;
-}
-
-function getClientDiscount(clientTypes: ClientType[], selectedType: string): number {
-  const ct = clientTypes.find(c => c.client_type === selectedType);
-  return ct ? ct.discount_factor : 1.0;
-}
-
-function getInternalFactor(factors: InternalFactor[], name: string): number {
-  const f = factors.find(x => x.factor_name === name);
-  return f ? f.value : 1.0;
 }
 
 export function calculateBnv(
   input: BnvQuoteInput,
   people: QuotePerson[],
-  tariffData: BnvTariffData
+  tariffTablesRaw: any[],
+  packageId: string
 ): BnvCalculationResult {
-  if (!tariffData.rates || tariffData.rates.length === 0) {
-    return {
-      product: 'BNV',
-      people_results: [],
-      prima_anual_total: 0,
-      totals: {} as any,
-      tariff_package_id: tariffData.package_id,
-      error: 'No hay tarifas cargadas para BNV. Por favor sube el archivo de tarifas desde el panel de administración.',
+  try {
+    const tables: TariffTables = loadTariffTables(tariffTablesRaw);
+
+    const estado = ZONA_TO_ESTADO[input.region_zone] || 'CIUDAD DE MEXICO';
+    const sumaAseguradaPesos = input.suma_asegurada * 1000000;
+    const deduciblePesos = input.deducible * 1000;
+    const coaseguroDecimal = input.coaseguro / 100;
+
+    const saSnapped = findNearestInTable(tables.factor_suma_asegurada, sumaAseguradaPesos);
+    const dedSnapped = findNearestInTable(tables.factor_deducible, deduciblePesos);
+    const coasSnapped = findNearestInTable(tables.factor_coaseguro, coaseguroDecimal);
+
+    const quoteInput: QuoteInput = {
+      zona: '',
+      estado,
+      nivel_hospitalario: 'ELITE',
+      tabulador: DEFAULT_TABULADOR,
+      suma_asegurada: String(saSnapped),
+      deducible: String(dedSnapped),
+      coaseguro: String(coasSnapped),
+      tope_coaseguro_seleccionado: input.tope_coaseguro || undefined,
+      formas_pago: ['ANUAL', 'SEMESTRAL', 'TRIMESTRAL', 'MENSUAL'],
+      insureds: people.map(p => ({
+        nombre: p.name,
+        sexo: p.gender === 'Masculino' ? 'Hombre' : 'Mujer',
+        edad: p.age,
+      })),
+      coberturas: {},
     };
-  }
 
-  const uniqueAges = [...new Set(tariffData.rates.map(r => r.age))];
-  const allAgeZero = uniqueAges.length === 1 && uniqueAges[0] === 0;
-  if (allAgeZero) {
-    return {
-      product: 'BNV',
-      people_results: [],
-      prima_anual_total: 0,
-      totals: {} as any,
-      tariff_package_id: tariffData.package_id,
-      error: 'Las tarifas BNV cargadas son inválidas (todas las edades son 0). El archivo Excel no fue procesado correctamente. Por favor vuelve a subir el archivo de tarifas BNV desde el panel de administración.',
+    const result = calculateQuoteV2(quoteInput, tables);
+
+    const peopleResults: BnvPersonResult[] = result.insureds.map((ins, i) => ({
+      person_id: people[i]?.id || `p${i}`,
+      person_name: ins.nombre,
+      relation: people[i]?.relation || 'Titular',
+      age: ins.edad,
+      lookup_key: `${estado}|SA${input.suma_asegurada}|D${input.deducible}|C${input.coaseguro}`,
+      base_rate: ins.prima_base,
+      discounted_rate: ins.prima_total,
+    }));
+
+    const primaAnualTotal = result.prima_neta_total;
+
+    const totals: Record<FormaPago, BnvPaymentBreakdown> = {} as any;
+    const paymentMap: Record<string, FormaPago> = {
+      ANUAL: 'Anual',
+      SEMESTRAL: 'Semestral',
+      TRIMESTRAL: 'Trimestral',
+      MENSUAL: 'Mensual',
     };
-  }
 
-  const lookupKey = buildLookupKey(input);
-  const mappedRegion = REGION_MAP[input.region_zone];
-  const discount = getClientDiscount(tariffData.client_types, input.client_type);
-
-  const peopleResults: BnvPersonResult[] = [];
-  let missingRates = 0;
-
-  for (const person of people) {
-    const baseRate = findRate(tariffData.rates, lookupKey, mappedRegion, person.age);
-    if (baseRate === null) {
-      missingRates++;
-      peopleResults.push({
-        person_id: person.id,
-        person_name: person.name,
-        relation: person.relation,
-        age: person.age,
-        lookup_key: lookupKey,
-        base_rate: 0,
-        discounted_rate: 0,
-      });
-      continue;
+    for (const pp of result.payment_plans) {
+      const fp = paymentMap[pp.forma_pago] || pp.forma_pago as FormaPago;
+      totals[fp] = {
+        forma_pago: fp,
+        prima_neta: primaAnualTotal,
+        asistencia_extranjero: 0,
+        derecho_poliza: pp.gastos_expedicion,
+        subtotal: pp.subtotal,
+        iva: pp.iva,
+        total: pp.total,
+        primer_pago: pp.primer_recibo,
+        pagos_subsecuentes: pp.recibos_subsecuentes,
+        num_recibos: pp.num_recibos,
+      };
     }
 
-    const discountedRate = Math.round(baseRate * discount * 100) / 100;
-    peopleResults.push({
-      person_id: person.id,
-      person_name: person.name,
-      relation: person.relation,
-      age: person.age,
-      lookup_key: lookupKey,
-      base_rate: baseRate,
-      discounted_rate: discountedRate,
-    });
-  }
-
-  if (missingRates === people.length && people.length > 0) {
-    const availableKeys = [...new Set(tariffData.rates.map(r => r.lookup_key))].slice(0, 5).join(', ');
-    const availableRegions = [...new Set(tariffData.rates.map(r => r.region))].join(', ');
-    const availableAges = [...new Set(tariffData.rates.map(r => r.age))].sort((a, b) => a - b);
-    const ageRange = availableAges.length > 0 ? `${availableAges[0]}-${availableAges[availableAges.length - 1]}` : 'N/A';
     return {
       product: 'BNV',
       people_results: peopleResults,
+      prima_anual_total: primaAnualTotal,
+      totals,
+      tariff_package_id: packageId,
+    };
+  } catch (err: any) {
+    return {
+      product: 'BNV',
+      people_results: [],
       prima_anual_total: 0,
       totals: {} as any,
-      tariff_package_id: tariffData.package_id,
-      error: `No se encontraron tarifas para: ${lookupKey} / ${mappedRegion} (edades solicitadas: ${people.map(p => p.age).join(', ')}). ` +
-        `Claves disponibles: [${availableKeys}], Regiones: [${availableRegions}], Edades: ${ageRange}. ` +
-        `Verifica que el archivo de tarifas BNV se haya subido correctamente.`,
+      tariff_package_id: packageId,
+      error: err.message || 'Error al calcular BNV',
     };
   }
-
-  const primaAnualTotal = peopleResults.reduce((sum, p) => sum + p.discounted_rate, 0);
-  const asistenciaBase = input.asistencia_extranjero ? tariffData.asistencia_extranjero * people.length : 0;
-
-  const totals: Record<FormaPago, BnvPaymentBreakdown> = {} as any;
-  const formasPago: FormaPago[] = ['Anual', 'Semestral', 'Trimestral', 'Mensual'];
-
-  for (const fp of formasPago) {
-    const { factor, num_recibos } = PF[fp];
-    const primaNeta = Math.round(primaAnualTotal * factor * 100) / 100;
-    const asistencia = Math.round(asistenciaBase * factor * 100) / 100;
-    const derechoPoliza = tariffData.derecho_poliza;
-    const subtotal = primaNeta + asistencia;
-    const baseIva = subtotal + derechoPoliza;
-    const iva = Math.round(baseIva * IVA * 100) / 100;
-    const total = Math.round((baseIva + iva) * 100) / 100;
-    const primerPago = Math.round((total / num_recibos) * 100) / 100;
-    const pagosSubsecuentes = num_recibos > 1 ? primerPago : 0;
-
-    totals[fp] = {
-      forma_pago: fp,
-      prima_neta: primaNeta,
-      asistencia_extranjero: asistencia,
-      derecho_poliza: derechoPoliza,
-      subtotal,
-      iva,
-      total,
-      primer_pago: primerPago,
-      pagos_subsecuentes: pagosSubsecuentes,
-      num_recibos,
-    };
-  }
-
-  return {
-    product: 'BNV',
-    people_results: peopleResults,
-    prima_anual_total: primaAnualTotal,
-    totals,
-    tariff_package_id: tariffData.package_id,
-  };
 }
