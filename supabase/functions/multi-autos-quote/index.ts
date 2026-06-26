@@ -45,6 +45,18 @@ interface QuoteRequest {
 
 // --- SOAP envelope builders ---
 
+function buildWsSecurityHeader(username: string, password: string): string {
+  return `
+  <soap:Header>
+    <wsse:Security xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+      <wsse:UsernameToken>
+        <wsse:Username>${username}</wsse:Username>
+        <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">${password}</wsse:Password>
+      </wsse:UsernameToken>
+    </wsse:Security>
+  </soap:Header>`;
+}
+
 function buildQualitasSoap(config: Record<string, string>, vehicle: VehicleRequest, _edad: number, cp: string): string {
   const ns = config.soap_action_ns || "http://tempuri.org/WSQBC/QBCDE/";
   return `<?xml version="1.0" encoding="utf-8"?>
@@ -68,8 +80,12 @@ function buildQualitasSoap(config: Record<string, string>, vehicle: VehicleReque
 }
 
 function buildAnaSoap(config: Record<string, string>, vehicle: VehicleRequest, edad: number, cp: string): string {
+  const wsSecHeader = config.password
+    ? buildWsSecurityHeader(config.usuario, config.password)
+    : "";
   return `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ana="http://anaseguros.com.mx/ws/">
+  ${wsSecHeader}
   <soap:Body>
     <ana:CotizaSencilla>
       <ana:usuario>${config.usuario}</ana:usuario>
@@ -88,8 +104,10 @@ function buildAnaSoap(config: Record<string, string>, vehicle: VehicleRequest, e
 }
 
 function buildHdiSoap(config: Record<string, string>, vehicle: VehicleRequest, edad: number, cp: string): string {
+  const wsSecHeader = buildWsSecurityHeader(config.usuario, config.password);
   return `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:hdi="http://hdi.com.mx/autos/ws/">
+  ${wsSecHeader}
   <soap:Body>
     <hdi:CotizarAuto>
       <hdi:usuario>${config.usuario}</hdi:usuario>
@@ -109,8 +127,12 @@ function buildHdiSoap(config: Record<string, string>, vehicle: VehicleRequest, e
 }
 
 function buildZurichSoap(config: Record<string, string>, vehicle: VehicleRequest, edad: number, cp: string): string {
+  const wsSecHeader = config.usuario
+    ? buildWsSecurityHeader(config.usuario, config.password || "")
+    : "";
   return `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:zur="http://zurich.com.mx/ws/autos/">
+  ${wsSecHeader}
   <soap:Body>
     <zur:CotizarAuto>
       <zur:usuario>${config.usuario}</zur:usuario>
@@ -132,8 +154,12 @@ function buildZurichSoap(config: Record<string, string>, vehicle: VehicleRequest
 }
 
 function buildChubbSoap(config: Record<string, string>, vehicle: VehicleRequest, edad: number, cp: string): string {
+  const wsSecHeader = config.usuario
+    ? buildWsSecurityHeader(config.usuario || config.agente, config.password || "")
+    : "";
   return `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:chb="http://chubb.com.mx/ws/autos/">
+  ${wsSecHeader}
   <soap:Body>
     <chb:CotizarVehiculo>
       <chb:agente>${config.agente}</chb:agente>
@@ -224,22 +250,29 @@ function extractPrimaTotal(xml: string): number | null {
 
 // --- API callers ---
 
-async function callSoapInsurer(endpoint: string, soapBody: string, soapAction: string): Promise<string> {
+async function callSoapInsurer(
+  endpoint: string,
+  soapBody: string,
+  soapAction: string,
+  extraHeaders?: Record<string, string>
+): Promise<string> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12000);
+  const timeout = setTimeout(() => controller.abort(), 15000);
   try {
+    const headers: Record<string, string> = {
+      "Content-Type": "text/xml; charset=utf-8",
+      "SOAPAction": soapAction,
+      ...extraHeaders,
+    };
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: {
-        "Content-Type": "text/xml; charset=utf-8",
-        "SOAPAction": soapAction,
-      },
+      headers,
       body: soapBody,
       signal: controller.signal,
     });
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errText.substring(0, 200)}`);
+      throw new Error(`HTTP ${response.status}: ${errText.substring(0, 300)}`);
     }
     return await response.text();
   } finally {
@@ -247,19 +280,27 @@ async function callSoapInsurer(endpoint: string, soapBody: string, soapAction: s
   }
 }
 
-async function callRestInsurer(endpoint: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+async function callRestInsurer(
+  endpoint: string,
+  payload: Record<string, unknown>,
+  extraHeaders?: Record<string, string>
+): Promise<Record<string, unknown>> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12000);
+  const timeout = setTimeout(() => controller.abort(), 15000);
   try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...extraHeaders,
+    };
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errText.substring(0, 200)}`);
+      throw new Error(`HTTP ${response.status}: ${errText.substring(0, 300)}`);
     }
     return await response.json();
   } finally {
@@ -309,8 +350,10 @@ async function quoteInsurer(
         iva = extractIva(xml);
         primaTotal = extractPrimaTotal(xml);
       } else if (insurer.nombre === "GNP") {
+        const gnpPassword = config.password || Deno.env.get("GNP_PASSWORD") || "";
         const payload = {
           usuario: config.usuario,
+          password: gnpPassword,
           unidadOperable: config.unidad_operable,
           intermediario: config.intermediario,
           oficina: config.oficina,
@@ -319,7 +362,11 @@ async function quoteInsurer(
           paquete: vehicle.paquete,
           formaPago,
         };
-        const data = await callRestInsurer(endpoint, payload);
+        const authHeaders: Record<string, string> = {};
+        if (gnpPassword) {
+          authHeaders["Authorization"] = `Basic ${btoa(`${config.usuario}:${gnpPassword}`)}`;
+        }
+        const data = await callRestInsurer(endpoint, payload, authHeaders);
         primaNeta = (data.primaNeta || data.prima_neta || (data as Record<string, Record<string, number>>).resultado?.primaNeta || null) as number | null;
         derechoPoliza = (data.derechoPoliza || data.derecho_poliza || Number(insurer.derecho_poliza)) as number;
         primaTotal = (data.primaTotal || data.prima_total || (data as Record<string, Record<string, number>>).resultado?.primaTotal || null) as number | null;
@@ -332,26 +379,30 @@ async function quoteInsurer(
         primaTotal = extractPrimaTotal(xml);
       } else if (insurer.nombre === "HDI Seguros") {
         const soapBody = buildHdiSoap(config, vehicle, edad, codigoPostal);
-        const xml = await callSoapInsurer(endpoint, soapBody, "http://hdi.com.mx/autos/ws/CotizarAuto");
+        const httpAuth = { "Authorization": `Basic ${btoa(`${config.usuario}:${config.password}`)}` };
+        const xml = await callSoapInsurer(endpoint, soapBody, "http://hdi.com.mx/autos/ws/CotizarAuto", httpAuth);
         primaNeta = extractPrimaNeta(xml);
         derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
         iva = extractIva(xml);
         primaTotal = extractPrimaTotal(xml);
       } else if (insurer.nombre === "Zurich") {
         const soapBody = buildZurichSoap(config, vehicle, edad, codigoPostal);
-        const xml = await callSoapInsurer(endpoint, soapBody, "http://zurich.com.mx/ws/autos/CotizarAuto");
+        const httpAuth = config.password ? { "Authorization": `Basic ${btoa(`${config.usuario}:${config.password}`)}` } : {};
+        const xml = await callSoapInsurer(endpoint, soapBody, "http://zurich.com.mx/ws/autos/CotizarAuto", httpAuth);
         primaNeta = extractPrimaNeta(xml);
         derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
         iva = extractIva(xml);
         primaTotal = extractPrimaTotal(xml);
       } else if (insurer.nombre === "Chubb") {
         const soapBody = buildChubbSoap(config, vehicle, edad, codigoPostal);
-        const xml = await callSoapInsurer(endpoint, soapBody, "http://chubb.com.mx/ws/autos/CotizarVehiculo");
+        const httpAuth = config.password ? { "Authorization": `Basic ${btoa(`${config.agente}:${config.password}`)}` } : {};
+        const xml = await callSoapInsurer(endpoint, soapBody, "http://chubb.com.mx/ws/autos/CotizarVehiculo", httpAuth);
         primaNeta = extractPrimaNeta(xml);
         derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
         iva = extractIva(xml);
         primaTotal = extractPrimaTotal(xml);
       } else if (insurer.nombre === "Potosi") {
+        const bearerToken = config.bearer_token || Deno.env.get("POTOSI_BEARER_TOKEN") || "";
         const payload = {
           usuario: config.usuario,
           vehiculo: { marca: vehicle.marca, anio: vehicle.anio, modelo: vehicle.modelo, version: vehicle.version, valorVehiculo: vehicle.valorReferencia },
@@ -359,7 +410,11 @@ async function quoteInsurer(
           paquete: vehicle.paquete,
           formaPago,
         };
-        const data = await callRestInsurer(endpoint, payload);
+        const authHeaders: Record<string, string> = {};
+        if (bearerToken) {
+          authHeaders["Authorization"] = `Bearer ${bearerToken}`;
+        }
+        const data = await callRestInsurer(endpoint, payload, authHeaders);
         primaNeta = (data.primaNeta || data.prima_neta || null) as number | null;
         derechoPoliza = (data.derechoPoliza || data.derecho_poliza || Number(insurer.derecho_poliza)) as number;
         primaTotal = (data.primaTotal || data.prima_total || null) as number | null;
@@ -388,6 +443,19 @@ async function quoteInsurer(
           tiempoRespuesta: Date.now() - startTime,
         };
       }
+
+      return {
+        aseguradora: insurer.nombre,
+        color: insurer.color || "#666",
+        primaNeta: null,
+        derechoPoliza: null,
+        iva: null,
+        primaTotal: null,
+        disponible: false,
+        modo: "web_service",
+        error: "Sin datos de prima en respuesta del web service",
+        tiempoRespuesta: Date.now() - startTime,
+      };
     } catch (err) {
       return {
         aseguradora: insurer.nombre,
