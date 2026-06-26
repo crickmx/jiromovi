@@ -226,7 +226,7 @@ function extractPrimaTotal(xml: string): number | null {
 
 async function callSoapInsurer(endpoint: string, soapBody: string, soapAction: string): Promise<string> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const timeout = setTimeout(() => controller.abort(), 12000);
   try {
     const response = await fetch(endpoint, {
       method: "POST",
@@ -249,7 +249,7 @@ async function callSoapInsurer(endpoint: string, soapBody: string, soapAction: s
 
 async function callRestInsurer(endpoint: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const timeout = setTimeout(() => controller.abort(), 12000);
   try {
     const response = await fetch(endpoint, {
       method: "POST",
@@ -292,105 +292,103 @@ async function quoteInsurer(
   const endpoint = insurer.endpoint_url || config.api_url || "";
   const startTime = Date.now();
 
-  if (!endpoint) {
-    return {
-      aseguradora: insurer.nombre,
-      color: insurer.color || "#666",
-      primaNeta: null,
-      derechoPoliza: null,
-      iva: null,
-      primaTotal: null,
-      disponible: false,
-      modo: "sin_endpoint",
-      error: "Endpoint no configurado",
-      tiempoRespuesta: 0,
-    };
-  }
+  // Try WS first if endpoint is configured
+  if (endpoint) {
+    try {
+      let primaNeta: number | null = null;
+      let derechoPoliza: number | null = null;
+      let iva: number | null = null;
+      let primaTotal: number | null = null;
 
-  try {
-    let primaNeta: number | null = null;
-    let derechoPoliza: number | null = null;
-    let iva: number | null = null;
-    let primaTotal: number | null = null;
+      if (insurer.nombre === "Qualitas") {
+        const soapBody = buildQualitasSoap(config, vehicle, edad, codigoPostal);
+        const soapNs = config.soap_action_ns || "http://tempuri.org/WSQBC/QBCDE/";
+        const xml = await callSoapInsurer(endpoint, soapBody, `${soapNs}obtenerNuevaEmision`);
+        primaNeta = extractPrimaNeta(xml);
+        derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
+        iva = extractIva(xml);
+        primaTotal = extractPrimaTotal(xml);
+      } else if (insurer.nombre === "GNP") {
+        const payload = {
+          usuario: config.usuario,
+          unidadOperable: config.unidad_operable,
+          intermediario: config.intermediario,
+          oficina: config.oficina,
+          vehiculo: { marca: vehicle.marca, anio: vehicle.anio, modelo: vehicle.modelo, version: vehicle.version, valorVehiculo: vehicle.valorReferencia },
+          conductor: { edad, codigoPostal },
+          paquete: vehicle.paquete,
+          formaPago,
+        };
+        const data = await callRestInsurer(endpoint, payload);
+        primaNeta = (data.primaNeta || data.prima_neta || (data as Record<string, Record<string, number>>).resultado?.primaNeta || null) as number | null;
+        derechoPoliza = (data.derechoPoliza || data.derecho_poliza || Number(insurer.derecho_poliza)) as number;
+        primaTotal = (data.primaTotal || data.prima_total || (data as Record<string, Record<string, number>>).resultado?.primaTotal || null) as number | null;
+      } else if (insurer.nombre === "ANA Seguros") {
+        const soapBody = buildAnaSoap(config, vehicle, edad, codigoPostal);
+        const xml = await callSoapInsurer(endpoint, soapBody, "http://anaseguros.com.mx/ws/CotizaSencilla");
+        primaNeta = extractPrimaNeta(xml);
+        derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
+        iva = extractIva(xml);
+        primaTotal = extractPrimaTotal(xml);
+      } else if (insurer.nombre === "HDI Seguros") {
+        const soapBody = buildHdiSoap(config, vehicle, edad, codigoPostal);
+        const xml = await callSoapInsurer(endpoint, soapBody, "http://hdi.com.mx/autos/ws/CotizarAuto");
+        primaNeta = extractPrimaNeta(xml);
+        derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
+        iva = extractIva(xml);
+        primaTotal = extractPrimaTotal(xml);
+      } else if (insurer.nombre === "Zurich") {
+        const soapBody = buildZurichSoap(config, vehicle, edad, codigoPostal);
+        const xml = await callSoapInsurer(endpoint, soapBody, "http://zurich.com.mx/ws/autos/CotizarAuto");
+        primaNeta = extractPrimaNeta(xml);
+        derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
+        iva = extractIva(xml);
+        primaTotal = extractPrimaTotal(xml);
+      } else if (insurer.nombre === "Chubb") {
+        const soapBody = buildChubbSoap(config, vehicle, edad, codigoPostal);
+        const xml = await callSoapInsurer(endpoint, soapBody, "http://chubb.com.mx/ws/autos/CotizarVehiculo");
+        primaNeta = extractPrimaNeta(xml);
+        derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
+        iva = extractIva(xml);
+        primaTotal = extractPrimaTotal(xml);
+      } else if (insurer.nombre === "Potosi") {
+        const payload = {
+          usuario: config.usuario,
+          vehiculo: { marca: vehicle.marca, anio: vehicle.anio, modelo: vehicle.modelo, version: vehicle.version, valorVehiculo: vehicle.valorReferencia },
+          conductor: { edad, codigoPostal },
+          paquete: vehicle.paquete,
+          formaPago,
+        };
+        const data = await callRestInsurer(endpoint, payload);
+        primaNeta = (data.primaNeta || data.prima_neta || null) as number | null;
+        derechoPoliza = (data.derechoPoliza || data.derecho_poliza || Number(insurer.derecho_poliza)) as number;
+        primaTotal = (data.primaTotal || data.prima_total || null) as number | null;
+      }
 
-    if (insurer.nombre === "Qualitas") {
-      const soapBody = buildQualitasSoap(config, vehicle, edad, codigoPostal);
-      const soapNs = config.soap_action_ns || "http://tempuri.org/WSQBC/QBCDE/";
-      const xml = await callSoapInsurer(endpoint, soapBody, `${soapNs}obtenerNuevaEmision`);
-      primaNeta = extractPrimaNeta(xml);
-      derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
-      iva = extractIva(xml);
-      primaTotal = extractPrimaTotal(xml);
-    } else if (insurer.nombre === "GNP") {
-      const payload = {
-        usuario: config.usuario,
-        unidadOperable: config.unidad_operable,
-        intermediario: config.intermediario,
-        oficina: config.oficina,
-        vehiculo: { marca: vehicle.marca, anio: vehicle.anio, modelo: vehicle.modelo, version: vehicle.version, valorVehiculo: vehicle.valorReferencia },
-        conductor: { edad, codigoPostal },
-        paquete: vehicle.paquete,
-        formaPago,
-      };
-      const data = await callRestInsurer(endpoint, payload);
-      primaNeta = (data.primaNeta || data.prima_neta || (data as Record<string, Record<string, number>>).resultado?.primaNeta || null) as number | null;
-      derechoPoliza = (data.derechoPoliza || data.derecho_poliza || Number(insurer.derecho_poliza)) as number;
-      primaTotal = (data.primaTotal || data.prima_total || (data as Record<string, Record<string, number>>).resultado?.primaTotal || null) as number | null;
-    } else if (insurer.nombre === "ANA Seguros") {
-      const soapBody = buildAnaSoap(config, vehicle, edad, codigoPostal);
-      const xml = await callSoapInsurer(endpoint, soapBody, "http://anaseguros.com.mx/ws/CotizaSencilla");
-      primaNeta = extractPrimaNeta(xml);
-      derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
-      iva = extractIva(xml);
-      primaTotal = extractPrimaTotal(xml);
-    } else if (insurer.nombre === "HDI Seguros") {
-      const soapBody = buildHdiSoap(config, vehicle, edad, codigoPostal);
-      const xml = await callSoapInsurer(endpoint, soapBody, "http://hdi.com.mx/autos/ws/CotizarAuto");
-      primaNeta = extractPrimaNeta(xml);
-      derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
-      iva = extractIva(xml);
-      primaTotal = extractPrimaTotal(xml);
-    } else if (insurer.nombre === "Zurich") {
-      const soapBody = buildZurichSoap(config, vehicle, edad, codigoPostal);
-      const xml = await callSoapInsurer(endpoint, soapBody, "http://zurich.com.mx/ws/autos/CotizarAuto");
-      primaNeta = extractPrimaNeta(xml);
-      derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
-      iva = extractIva(xml);
-      primaTotal = extractPrimaTotal(xml);
-    } else if (insurer.nombre === "Chubb") {
-      const soapBody = buildChubbSoap(config, vehicle, edad, codigoPostal);
-      const xml = await callSoapInsurer(endpoint, soapBody, "http://chubb.com.mx/ws/autos/CotizarVehiculo");
-      primaNeta = extractPrimaNeta(xml);
-      derechoPoliza = extractDerechoPoliza(xml) || Number(insurer.derecho_poliza);
-      iva = extractIva(xml);
-      primaTotal = extractPrimaTotal(xml);
-    } else if (insurer.nombre === "Potosi") {
-      const payload = {
-        usuario: config.usuario,
-        vehiculo: { marca: vehicle.marca, anio: vehicle.anio, modelo: vehicle.modelo, version: vehicle.version, valorVehiculo: vehicle.valorReferencia },
-        conductor: { edad, codigoPostal },
-        paquete: vehicle.paquete,
-        formaPago,
-      };
-      const data = await callRestInsurer(endpoint, payload);
-      primaNeta = (data.primaNeta || data.prima_neta || null) as number | null;
-      derechoPoliza = (data.derechoPoliza || data.derecho_poliza || Number(insurer.derecho_poliza)) as number;
-      primaTotal = (data.primaTotal || data.prima_total || null) as number | null;
-    }
+      if (primaNeta && !primaTotal) {
+        const dp = derechoPoliza || Number(insurer.derecho_poliza);
+        const subtotal = primaNeta + dp;
+        const calculatedIva = Math.round(subtotal * IVA_RATE * 100) / 100;
+        primaTotal = Math.round((subtotal + calculatedIva) * 100) / 100;
+        iva = calculatedIva;
+        derechoPoliza = dp;
+      }
 
-    // If we got primaNeta but no primaTotal, calculate it (standard MX formula)
-    if (primaNeta && !primaTotal) {
-      const dp = derechoPoliza || Number(insurer.derecho_poliza);
-      const subtotal = primaNeta + dp;
-      const calculatedIva = Math.round(subtotal * IVA_RATE * 100) / 100;
-      primaTotal = Math.round((subtotal + calculatedIva) * 100) / 100;
-      iva = calculatedIva;
-      derechoPoliza = dp;
-    }
-
-    const elapsed = Date.now() - startTime;
-
-    if (!primaNeta || primaNeta <= 0) {
+      if (primaNeta && primaNeta > 0) {
+        return {
+          aseguradora: insurer.nombre,
+          color: insurer.color || "#666",
+          primaNeta,
+          derechoPoliza: derechoPoliza || Number(insurer.derecho_poliza),
+          iva: iva || Math.round((primaNeta + (derechoPoliza || 0)) * IVA_RATE * 100) / 100,
+          primaTotal: primaTotal!,
+          disponible: true,
+          modo: "web_service",
+          error: null,
+          tiempoRespuesta: Date.now() - startTime,
+        };
+      }
+    } catch (err) {
       return {
         aseguradora: insurer.nombre,
         color: insurer.color || "#666",
@@ -399,41 +397,25 @@ async function quoteInsurer(
         iva: null,
         primaTotal: null,
         disponible: false,
-        modo: "ws_sin_respuesta",
-        error: "El web service no devolvio datos de cotizacion",
-        tiempoRespuesta: elapsed,
+        modo: "web_service",
+        error: (err as Error).message || "Error de conexión",
+        tiempoRespuesta: Date.now() - startTime,
       };
     }
-
-    return {
-      aseguradora: insurer.nombre,
-      color: insurer.color || "#666",
-      primaNeta,
-      derechoPoliza: derechoPoliza || Number(insurer.derecho_poliza),
-      iva: iva || Math.round((primaNeta + (derechoPoliza || 0)) * IVA_RATE * 100) / 100,
-      primaTotal,
-      disponible: true,
-      modo: "web_service",
-      error: null,
-      tiempoRespuesta: elapsed,
-    };
-  } catch (err) {
-    const elapsed = Date.now() - startTime;
-    const errorMsg = (err as Error).message;
-    const isTimeout = errorMsg.includes("abort") || errorMsg.includes("timeout");
-    return {
-      aseguradora: insurer.nombre,
-      color: insurer.color || "#666",
-      primaNeta: null,
-      derechoPoliza: null,
-      iva: null,
-      primaTotal: null,
-      disponible: false,
-      modo: isTimeout ? "timeout" : "error_ws",
-      error: isTimeout ? "Tiempo de espera agotado (15s)" : errorMsg.substring(0, 200),
-      tiempoRespuesta: elapsed,
-    };
   }
+
+  return {
+    aseguradora: insurer.nombre,
+    color: insurer.color || "#666",
+    primaNeta: null,
+    derechoPoliza: null,
+    iva: null,
+    primaTotal: null,
+    disponible: false,
+    modo: "web_service",
+    error: "Endpoint no configurado",
+    tiempoRespuesta: Date.now() - startTime,
+  };
 }
 
 Deno.serve(async (req: Request) => {
@@ -468,7 +450,6 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Call all insurer WS in parallel for each vehicle
     const results = await Promise.all(
       vehiculos.map(async (vehicle, vIdx) => {
         const vehicleResults = await Promise.all(
@@ -480,7 +461,6 @@ Deno.serve(async (req: Request) => {
       })
     );
 
-    // Volume discount
     const vehicleCount = vehiculos.length;
     let discountRate = 0;
     if (vehicleCount >= 4) discountRate = 0.10;
