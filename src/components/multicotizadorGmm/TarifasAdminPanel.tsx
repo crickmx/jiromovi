@@ -179,14 +179,6 @@ function parseExcelFile(file: ArrayBuffer, product: 'BNV' | 'BNP') {
     );
   }
 
-  const rateValues = rates.map(r => r.rate).sort((a, b) => a - b);
-  const isSequential = rateValues.length > 10 && rateValues.every((v, i) => i === 0 || v === rateValues[i - 1] + 1);
-  if (isSequential) {
-    throw new Error(
-      'Error de formato: Los valores de tarifas parecen ser números secuenciales, no primas reales. ' +
-      'Verifique que el archivo contiene las tarifas correctas y no índices de fila.'
-    );
-  }
 
   return {
     rates,
