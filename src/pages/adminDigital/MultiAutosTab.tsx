@@ -4,6 +4,7 @@ import type { Cliente, FleetVehicleConfig, FleetQuoteResult, FormaPago, Cotizaci
 import { MultiAutosQuoteForm } from './MultiAutosQuoteForm';
 import { MultiAutosFleetDashboard } from './MultiAutosFleetDashboard';
 import { callQuoteWebService, loadInsurersConfig, INSURERS_CONFIG } from './multiAutosInsurers';
+import { InsurerHealthPanel } from './InsurerHealthPanel';
 
 const STORAGE_KEY = 'movi_multi_autos_quotes_v2';
 
@@ -181,6 +182,9 @@ export function MultiAutosTab() {
 
   return (
     <div className="space-y-5">
+      {/* Health Status Panel */}
+      {view === 'list' && <InsurerHealthPanel />}
+
       {/* Navigation */}
       {(view === 'list' || view === 'new') && (
         <div className="flex items-center justify-between flex-wrap gap-3">

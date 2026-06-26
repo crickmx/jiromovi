@@ -975,14 +975,18 @@ async function updateInsurerStatus(
   try {
     for (const r of results) {
       const isSuccess = r.disponible;
+      const errorCategory = classifyErrorCategory(r);
       const updateData: Record<string, unknown> = {
         updated_at: new Date().toISOString(),
+        latency_ms: r.tiempoRespuesta,
+        error_category: errorCategory,
       };
       if (isSuccess) {
         updateData.last_success_at = new Date().toISOString();
         updateData.consecutive_failures = 0;
         updateData.credential_status = "valid";
         updateData.endpoint_reachable = true;
+        updateData.last_error = null;
       } else {
         updateData.last_failure_at = new Date().toISOString();
         updateData.last_error = r.error?.substring(0, 500) || "Unknown error";
@@ -1001,8 +1005,20 @@ async function updateInsurerStatus(
         .eq("insurer_name", r.aseguradora);
     }
   } catch {
-    // Non-blocking: don't fail the quote if status update fails
+    // Non-blocking
   }
+}
+
+function classifyErrorCategory(r: QuoteResult): string {
+  if (r.disponible) return "OK";
+  const err = r.error || "";
+  if (r.credentialStatus === "missing" || err.includes("no configuradas")) return "CREDENTIAL_ERROR";
+  if (r.credentialStatus === "expired" || r.credentialStatus === "invalid" || err.includes("no son validas")) return "CREDENTIAL_ERROR";
+  if (err.includes("DNS") || err.includes("alcanzable") || err.includes("ENOTFOUND")) return "DNS_UNREACHABLE";
+  if (err.includes("AMIS") || err.includes("catalogo")) return "MISSING_AMIS";
+  if (err.includes("SOAP Fault") || err.includes("faultstring")) return "SOAP_FAULT";
+  if (err.includes("abort") || err.includes("timeout") || err.includes("Timeout")) return "TIMEOUT";
+  return "UNKNOWN";
 }
 
 // ============================================================
