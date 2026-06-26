@@ -7,45 +7,106 @@ import type {
   CoberturasPersonalizadasCliente,
 } from './multiAutosTypes';
 
-interface InsurerInfo {
+export interface InsurerConfig {
   nombre: string;
   color: string;
+  derechoPoliza: number;
+  tipoApi: 'SOAP' | 'REST' | 'SOAP_REST';
+  endpointDesc: string;
+  credentialKeys: string[];
+  factorBase: number;
+  disponible: boolean;
 }
 
-export const INSURERS: InsurerInfo[] = [
-  { nombre: 'Qualitas', color: '#00A651' },
-  { nombre: 'GNP', color: '#003DA5' },
-  { nombre: 'ANA', color: '#E31837' },
-  { nombre: 'HDI', color: '#006341' },
-  { nombre: 'Zurich', color: '#003399' },
-  { nombre: 'Chubb', color: '#B8860B' },
-  { nombre: 'Potosi', color: '#8B0000' },
+export const INSURERS_CONFIG: InsurerConfig[] = [
+  {
+    nombre: 'Qualitas',
+    color: '#00A651',
+    derechoPoliza: 870.00,
+    tipoApi: 'SOAP',
+    endpointDesc: 'SOAP WS Cotizacion v2.0',
+    credentialKeys: ['QUALITAS_WS_USER', 'QUALITAS_WS_PASSWORD'],
+    factorBase: 0.98,
+    disponible: true,
+  },
+  {
+    nombre: 'GNP',
+    color: '#003DA5',
+    derechoPoliza: 720.00,
+    tipoApi: 'SOAP',
+    endpointDesc: 'SOAP XML WS Multicotizador',
+    credentialKeys: ['GNP_CLIENT_SOAP_PASS'],
+    factorBase: 1.02,
+    disponible: true,
+  },
+  {
+    nombre: 'ANA Seguros',
+    color: '#E31837',
+    derechoPoliza: 750.00,
+    tipoApi: 'SOAP',
+    endpointDesc: 'XML SOAP API Cotizacion',
+    credentialKeys: ['ANA_API_USER', 'ANA_API_PASSWORD', 'ANA_API_KEY'],
+    factorBase: 0.96,
+    disponible: true,
+  },
+  {
+    nombre: 'HDI Seguros',
+    color: '#006341',
+    derechoPoliza: 750.00,
+    tipoApi: 'SOAP_REST',
+    endpointDesc: 'JSON/SOAP Endpoint Autos',
+    credentialKeys: ['HDI_PARTNER_ID', 'HDI_API_KEY'],
+    factorBase: 1.00,
+    disponible: true,
+  },
+  {
+    nombre: 'Zurich',
+    color: '#003399',
+    derechoPoliza: 947.21,
+    tipoApi: 'REST',
+    endpointDesc: 'REST API OAuth2 Client Credentials',
+    credentialKeys: ['ZURICH_CLIENT_ID', 'ZURICH_CLIENT_SECRET'],
+    factorBase: 1.05,
+    disponible: true,
+  },
+  {
+    nombre: 'Chubb',
+    color: '#B8860B',
+    derechoPoliza: 799.00,
+    tipoApi: 'SOAP',
+    endpointDesc: 'SOAP Service Integrator',
+    credentialKeys: ['CHUBB_INTEGRATOR_ID'],
+    factorBase: 1.08,
+    disponible: true,
+  },
+  {
+    nombre: 'Potosi',
+    color: '#8B0000',
+    derechoPoliza: 850.00,
+    tipoApi: 'REST',
+    endpointDesc: 'REST API Bearer Token',
+    credentialKeys: ['POTOSI_BEARER_TOKEN'],
+    factorBase: 0.93,
+    disponible: true,
+  },
 ];
 
-const PACKAGE_FACTORS: Record<PaqueteCobertura, number> = {
-  Amplia: 0.024,
-  Limitada: 0.015,
-  RC: 0.007,
-};
+const IVA_RATE = 0.16;
 
-const INSURER_VARIATION: Record<string, number> = {
-  Qualitas: 0.98,
-  GNP: 1.02,
-  ANA: 0.96,
-  HDI: 1.0,
-  Zurich: 1.05,
-  Chubb: 1.08,
-  Potosi: 0.93,
+const PACKAGE_RATES: Record<PaqueteCobertura, number> = {
+  Amplia: 0.0245,
+  Limitada: 0.0155,
+  RC: 0.0072,
 };
 
 const PAYMENT_SURCHARGES: Record<string, Record<FormaPago, number>> = {
-  Qualitas: { Anual: 1.0, Semestral: 1.05, Trimestral: 1.08, Mensual: 1.12 },
-  GNP: { Anual: 1.0, Semestral: 1.04, Trimestral: 1.07, Mensual: 1.10 },
-  ANA: { Anual: 1.0, Semestral: 1.06, Trimestral: 1.09, Mensual: 1.13 },
-  HDI: { Anual: 1.0, Semestral: 1.05, Trimestral: 1.08, Mensual: 1.11 },
-  Zurich: { Anual: 1.0, Semestral: 1.04, Trimestral: 1.07, Mensual: 1.10 },
-  Chubb: { Anual: 1.0, Semestral: 1.05, Trimestral: 1.09, Mensual: 1.14 },
-  Potosi: { Anual: 1.0, Semestral: 1.06, Trimestral: 1.10, Mensual: 1.15 },
+  Qualitas: { Anual: 0, Semestral: 0.05, Trimestral: 0.08, Mensual: 0.12 },
+  GNP: { Anual: 0, Semestral: 0.04, Trimestral: 0.07, Mensual: 0.10 },
+  'ANA Seguros': { Anual: 0, Semestral: 0.06, Trimestral: 0.09, Mensual: 0.13 },
+  'HDI Seguros': { Anual: 0, Semestral: 0.05, Trimestral: 0.08, Mensual: 0.11 },
+  Zurich: { Anual: 0, Semestral: 0.04, Trimestral: 0.07, Mensual: 0.10 },
+  Chubb: { Anual: 0, Semestral: 0.05, Trimestral: 0.09, Mensual: 0.14 },
+  Potosi: { Anual: 0, Semestral: 0.06, Trimestral: 0.10, Mensual: 0.15 },
 };
 
 const PAYMENT_PERIODS: Record<FormaPago, number> = {
@@ -58,14 +119,29 @@ const PAYMENT_PERIODS: Record<FormaPago, number> = {
 function getDriverFactor(edad: number, genero: 'Masculino' | 'Femenino'): number {
   let factor = 1.0;
   if (edad < 25) factor = 1.18;
+  else if (edad < 30) factor = 1.05;
+  else if (edad > 60) factor = 1.03;
   else if (edad > 45) factor = 0.95;
   if (genero === 'Femenino') factor *= 0.97;
   return factor;
 }
 
 function getVehicleAgeFactor(anio: number): number {
-  const age = new Date().getFullYear() - anio;
-  return 1.0 + age * 0.015;
+  const currentYear = new Date().getFullYear();
+  const age = currentYear - anio;
+  if (age <= 0) return 1.0;
+  if (age <= 2) return 1.0 + age * 0.01;
+  if (age <= 5) return 1.02 + (age - 2) * 0.015;
+  return 1.065 + (age - 5) * 0.02;
+}
+
+function getZoneRiskFactor(codigoPostal: string): number {
+  const prefix = parseInt(codigoPostal.slice(0, 2)) || 0;
+  if (prefix >= 1 && prefix <= 16) return 1.12; // CDMX + Edomex
+  if (prefix >= 44 && prefix <= 45) return 1.08; // Guadalajara
+  if (prefix >= 64 && prefix <= 67) return 1.06; // Monterrey
+  if (prefix >= 72 && prefix <= 75) return 1.04; // Puebla
+  return 1.0;
 }
 
 export function buildCoveragesList(
@@ -82,76 +158,130 @@ export function buildCoveragesList(
       { nombre: 'Robo Total', sumaAsegurada: `$${valor.toLocaleString()}`, deducible: coberturas.deducibleRoboTotal, tipo: 'basica' }
     );
   }
-  if (paquete === 'Amplia' || paquete === 'Limitada') {
+  if (paquete === 'Limitada') {
     list.push(
       { nombre: 'Robo Total', sumaAsegurada: `$${valor.toLocaleString()}`, deducible: coberturas.deducibleRoboTotal, tipo: 'basica' }
     );
   }
   list.push(
-    { nombre: 'Responsabilidad Civil', sumaAsegurada: coberturas.sumaAseguradaRC, deducible: 'N/A', tipo: 'basica' }
+    { nombre: 'Responsabilidad Civil (Danos a Terceros)', sumaAsegurada: coberturas.sumaAseguradaRC, deducible: 'N/A', tipo: 'basica' },
+    { nombre: 'Responsabilidad Civil (Personas)', sumaAsegurada: '$1,500,000', deducible: 'N/A', tipo: 'basica' }
   );
   if (coberturas.gastosMedicos) {
-    list.push({ nombre: 'Gastos Medicos Ocupantes', sumaAsegurada: '$200,000', deducible: 'N/A', tipo: 'adicional' });
+    list.push({ nombre: 'Gastos Medicos Ocupantes', sumaAsegurada: '$200,000 por persona', deducible: 'N/A', tipo: 'adicional' });
   }
   if (coberturas.asistenciaVial) {
-    list.push({ nombre: 'Asistencia Vial', sumaAsegurada: 'Incluida', deducible: 'N/A', tipo: 'adicional' });
+    list.push({ nombre: 'Asistencia Vial y en Viajes', sumaAsegurada: 'Incluida', deducible: 'N/A', tipo: 'adicional' });
   }
   if (coberturas.autoSustituto) {
-    list.push({ nombre: 'Auto Sustituto', sumaAsegurada: '15 dias', deducible: 'N/A', tipo: 'adicional' });
+    list.push({ nombre: 'Auto Sustituto por Siniestro', sumaAsegurada: '15 dias', deducible: 'N/A', tipo: 'adicional' });
   }
   if (coberturas.defensa_legal) {
-    list.push({ nombre: 'Defensa Legal', sumaAsegurada: 'Incluida', deducible: 'N/A', tipo: 'adicional' });
+    list.push({ nombre: 'Defensa Legal y Asistencia Juridica', sumaAsegurada: 'Incluida', deducible: 'N/A', tipo: 'adicional' });
   }
   return list;
 }
 
-export function calculateSimulatedQuote(
-  insurer: string,
+export interface QuoteBreakdown {
+  primaNeta: number;
+  derechoPoliza: number;
+  subtotal: number;
+  iva: number;
+  primaTotal: number;
+  recargoFraccionamiento: number;
+  primaTotalConRecargo: number;
+  primaPorPago: number;
+  primerPago: number;
+  pagosSubsecuentes: number;
+}
+
+export function calculateInsuredQuote(
+  insurer: InsurerConfig,
   vehiculo: Vehiculo,
   paquete: PaqueteCobertura,
   formaPago: FormaPago,
   edad: number,
   genero: 'Masculino' | 'Femenino',
+  codigoPostal: string,
   coberturas: CoberturasPersonalizadasCliente
-): ResultadoAseguradora {
-  const start = Date.now();
+): { resultado: ResultadoAseguradora; breakdown: QuoteBreakdown } {
   const valor = vehiculo.valorReferencia;
-  const packageFactor = PACKAGE_FACTORS[paquete];
-  const insurerVariation = INSURER_VARIATION[insurer] ?? 1.0;
+  const packageRate = PACKAGE_RATES[paquete];
   const driverFactor = getDriverFactor(edad, genero);
   const vehicleAgeFactor = getVehicleAgeFactor(vehiculo.anio);
+  const zoneFactor = getZoneRiskFactor(codigoPostal);
+  const insurerFactor = insurer.factorBase;
 
-  let primaAnual = valor * packageFactor * insurerVariation * driverFactor * vehicleAgeFactor;
+  // Base net premium calculation
+  let primaNeta = valor * packageRate * insurerFactor * driverFactor * vehicleAgeFactor * zoneFactor;
 
-  // Add coverage add-ons cost
-  if (coberturas.gastosMedicos) primaAnual += 800;
-  if (coberturas.asistenciaVial) primaAnual += 500;
-  if (coberturas.autoSustituto) primaAnual += 1200;
-  if (coberturas.defensa_legal) primaAnual += 600;
+  // Add-ons premium
+  if (coberturas.gastosMedicos) primaNeta += 850;
+  if (coberturas.asistenciaVial) primaNeta += 520;
+  if (coberturas.autoSustituto) primaNeta += 1350;
+  if (coberturas.defensa_legal) primaNeta += 680;
 
-  // Random variation +/-5%
-  const randomFactor = 0.95 + Math.random() * 0.10;
-  primaAnual = Math.round(primaAnual * randomFactor);
+  // Slight random variation to simulate real API responses (+/- 3%)
+  const variance = 0.97 + Math.random() * 0.06;
+  primaNeta = Math.round(primaNeta * variance);
 
-  const surcharge = PAYMENT_SURCHARGES[insurer]?.[formaPago] ?? 1.0;
-  const primaTotal = Math.round(primaAnual * surcharge);
+  // Official Mexican insurance calculation
+  const derechoPoliza = insurer.derechoPoliza;
+  const subtotal = primaNeta + derechoPoliza;
+  const iva = Math.round(subtotal * IVA_RATE * 100) / 100;
+  const primaTotal = Math.round((subtotal + iva) * 100) / 100;
+
+  // Fractional payment surcharge
+  const surchargeRate = PAYMENT_SURCHARGES[insurer.nombre]?.[formaPago] ?? 0;
+  const recargoFraccionamiento = Math.round(primaNeta * surchargeRate * 100) / 100;
+  const primaTotalConRecargo = Math.round((primaTotal + recargoFraccionamiento + (recargoFraccionamiento * IVA_RATE)) * 100) / 100;
+
+  // Payment breakdown: Derecho de Poliza goes 100% in first payment
   const periods = PAYMENT_PERIODS[formaPago];
-  const primaPorPago = Math.round(primaTotal / periods);
+  let primerPago: number;
+  let pagosSubsecuentes: number;
+  let primaPorPago: number;
+
+  if (periods === 1) {
+    primerPago = primaTotalConRecargo;
+    pagosSubsecuentes = 0;
+    primaPorPago = primerPago;
+  } else {
+    const derechoPolizaConIva = derechoPoliza + (derechoPoliza * IVA_RATE);
+    const primaNetaConIvaYRecargo = primaTotalConRecargo - derechoPolizaConIva;
+    pagosSubsecuentes = Math.round((primaNetaConIvaYRecargo / periods) * 100) / 100;
+    primerPago = Math.round((pagosSubsecuentes + derechoPolizaConIva) * 100) / 100;
+    primaPorPago = pagosSubsecuentes;
+  }
 
   const coverages = buildCoveragesList(paquete, vehiculo, coberturas);
+  const tiempoRespuesta = 800 + Math.random() * 2200;
 
-  const tiempoRespuesta = 800 + Math.random() * 2000;
-
-  return {
-    aseguradora: insurer,
-    logo: '',
-    primaAnual,
+  const breakdown: QuoteBreakdown = {
+    primaNeta,
+    derechoPoliza,
+    subtotal,
+    iva,
     primaTotal,
+    recargoFraccionamiento,
+    primaTotalConRecargo,
+    primaPorPago,
+    primerPago,
+    pagosSubsecuentes,
+  };
+
+  const resultado: ResultadoAseguradora = {
+    aseguradora: insurer.nombre,
+    logo: '',
+    primaAnual: primaNeta,
+    primaTotal: primaTotalConRecargo,
     primaPorPago,
     coberturas: coverages,
     tiempoRespuesta: Math.round(tiempoRespuesta),
-    disponible: Math.random() > 0.05,
+    disponible: insurer.disponible && Math.random() > 0.04,
   };
+
+  return { resultado, breakdown };
 }
 
 export function calculateAllInsurers(
@@ -160,9 +290,57 @@ export function calculateAllInsurers(
   formaPago: FormaPago,
   edad: number,
   genero: 'Masculino' | 'Femenino',
+  codigoPostal: string,
   coberturas: CoberturasPersonalizadasCliente
-): ResultadoAseguradora[] {
-  return INSURERS.map((ins) =>
-    calculateSimulatedQuote(ins.nombre, vehiculo, paquete, formaPago, edad, genero, coberturas)
-  ).sort((a, b) => a.primaAnual - b.primaAnual);
+): { resultados: ResultadoAseguradora[]; breakdowns: Record<string, QuoteBreakdown> } {
+  const resultados: ResultadoAseguradora[] = [];
+  const breakdowns: Record<string, QuoteBreakdown> = {};
+
+  for (const insurer of INSURERS_CONFIG) {
+    const { resultado, breakdown } = calculateInsuredQuote(
+      insurer, vehiculo, paquete, formaPago, edad, genero, codigoPostal, coberturas
+    );
+    resultados.push(resultado);
+    breakdowns[insurer.nombre] = breakdown;
+  }
+
+  resultados.sort((a, b) => {
+    if (a.disponible && !b.disponible) return -1;
+    if (!a.disponible && b.disponible) return 1;
+    return a.primaTotal - b.primaTotal;
+  });
+
+  return { resultados, breakdowns };
+}
+
+// Volume discount for fleet quotes
+export function applyVolumeDiscount(
+  vehicleCount: number,
+  breakdowns: Record<string, QuoteBreakdown>
+): { discountRate: number; discountedBreakdowns: Record<string, QuoteBreakdown> } {
+  let discountRate = 0;
+  if (vehicleCount >= 4) discountRate = 0.10;
+  else if (vehicleCount >= 2) discountRate = 0.05;
+
+  if (discountRate === 0) return { discountRate, discountedBreakdowns: breakdowns };
+
+  const discountedBreakdowns: Record<string, QuoteBreakdown> = {};
+  for (const [key, bd] of Object.entries(breakdowns)) {
+    const discountedPrimaNeta = Math.round(bd.primaNeta * (1 - discountRate));
+    const subtotal = discountedPrimaNeta + bd.derechoPoliza;
+    const iva = Math.round(subtotal * IVA_RATE * 100) / 100;
+    const primaTotal = Math.round((subtotal + iva) * 100) / 100;
+    const primaTotalConRecargo = Math.round((primaTotal + bd.recargoFraccionamiento + (bd.recargoFraccionamiento * IVA_RATE)) * 100) / 100;
+
+    discountedBreakdowns[key] = {
+      ...bd,
+      primaNeta: discountedPrimaNeta,
+      subtotal,
+      iva,
+      primaTotal,
+      primaTotalConRecargo,
+    };
+  }
+
+  return { discountRate, discountedBreakdowns };
 }

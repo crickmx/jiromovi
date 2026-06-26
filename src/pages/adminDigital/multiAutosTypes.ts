@@ -57,17 +57,29 @@ export interface ResultadoAseguradora {
   error?: string;
 }
 
+export interface FleetVehicleConfig {
+  vehiculo: Vehiculo;
+  paquete: PaqueteCobertura;
+  coberturas: CoberturasPersonalizadasCliente;
+}
+
+export interface FleetQuoteResult {
+  vehiculo: Vehiculo;
+  resultados: ResultadoAseguradora[];
+  breakdowns: Record<string, import('./multiAutosInsurers').QuoteBreakdown>;
+}
+
 export interface Cotizacion {
   id: string;
   folio: string;
   fecha: string;
   cliente: Cliente;
-  vehiculo: Vehiculo;
-  paquete: PaqueteCobertura;
+  vehiculos: FleetVehicleConfig[];
   formaPago: FormaPago;
-  coberturas: CoberturasPersonalizadasCliente;
   status: EstatusCotizacion;
-  resultados: ResultadoAseguradora[];
+  resultadosFlota: FleetQuoteResult[];
+  descuentoVolumen: number;
+  totalFlota: Record<string, number>;
 }
 
 export interface ModelMetadata {
