@@ -1,11 +1,11 @@
-import { useState, useCallback } from 'react';
-import { Heart, Calculator, History, Settings, Plus, Trash2, Users, FileDown, Save, Loader, CircleAlert as AlertCircle, Copy, ChevronDown, ChevronUp } from 'lucide-react';
-import { useMoviAuth } from '../../contexts/MoviAuthContext';
+import { useState } from 'react';
+import { Trash2, Copy, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import type {
-  ProductId, QuotePerson, FormaPago, MultiGmmOption,
+  ProductId, MultiGmmOption,
   BnvQuoteInput, BnpQuoteInput, BxplusQuoteInput, BxplusCoverages,
 } from '../../lib/multicotizadorGmm/types';
 import { PRODUCT_LABELS, PRODUCT_COLORS, BXPLUS_COVERAGE_LABELS, DEFAULT_BXPLUS_COVERAGES } from '../../lib/multicotizadorGmm/types';
+import { COVERAGE_HELP_TEXTS } from '../../lib/gmmCoverageHelp';
 
 interface OptionConfiguratorProps {
   option: MultiGmmOption;
@@ -124,10 +124,13 @@ export function OptionConfigurator({ option, onUpdate, onRemove, onDuplicate, ca
                 {(Object.entries(BXPLUS_COVERAGE_LABELS) as [keyof BxplusCoverages, string][]).map(([key, label]) => {
                   const checked = (option.input as BxplusQuoteInput).coverages?.[key] ?? false;
                   return (
-                    <label key={key} className="flex items-center gap-2 cursor-pointer py-0.5">
-                      <input type="checkbox" checked={checked} onChange={() => toggleCoverage(key)} className="w-3.5 h-3.5 rounded border-neutral-300 text-sky-600 focus:ring-sky-500" />
-                      <span className="text-xs text-neutral-700 dark:text-neutral-300">{label}</span>
-                    </label>
+                    <div key={key} className="flex items-center gap-2 py-0.5">
+                      <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                        <input type="checkbox" checked={checked} onChange={() => toggleCoverage(key)} className="w-3.5 h-3.5 rounded border-neutral-300 text-sky-600 focus:ring-sky-500 flex-shrink-0" />
+                        <span className="text-xs text-neutral-700 dark:text-neutral-300 truncate">{label}</span>
+                      </label>
+                      <CoverageHelpIcon coverageKey={key} />
+                    </div>
                   );
                 })}
               </div>
@@ -333,6 +336,32 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div>
       <label className="block text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mb-1">{label}</label>
       {children}
+    </div>
+  );
+}
+
+function CoverageHelpIcon({ coverageKey }: { coverageKey: string }) {
+  const [show, setShow] = useState(false);
+  const text = COVERAGE_HELP_TEXTS[coverageKey];
+  if (!text) return null;
+
+  return (
+    <div className="relative flex-shrink-0">
+      <button
+        type="button"
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        onClick={e => { e.preventDefault(); setShow(!show); }}
+        className="p-0.5 rounded-full text-neutral-400 hover:text-sky-500 dark:text-neutral-500 dark:hover:text-sky-400 transition-colors"
+      >
+        <Info className="w-3.5 h-3.5" />
+      </button>
+      {show && (
+        <div className="absolute z-50 bottom-full right-0 mb-1.5 w-64 p-2.5 rounded-lg bg-neutral-900 dark:bg-neutral-800 text-white text-[11px] leading-relaxed shadow-lg border border-neutral-700 pointer-events-none">
+          {text}
+          <div className="absolute top-full right-3 w-2 h-2 bg-neutral-900 dark:bg-neutral-800 rotate-45 -mt-1 border-r border-b border-neutral-700" />
+        </div>
+      )}
     </div>
   );
 }
