@@ -152,6 +152,17 @@ function vlookup(
     row = table.find(r => String(r.col_0) === String(key));
   }
 
+  // Handle percentage-string keys like "10%" -> try matching as decimal 0.1
+  if (!row && typeof key === 'string' && key.includes('%')) {
+    const pctNum = parseFloat(key.replace('%', '').trim()) / 100;
+    if (!isNaN(pctNum)) {
+      row = table.find(r => {
+        const rowNum = Number(r.col_0);
+        return !isNaN(rowNum) && Math.abs(rowNum - pctNum) < 0.0001;
+      });
+    }
+  }
+
   if (!row) {
     const availableKeys = table.slice(0, 10).map(r => `"${r.col_0}"`).join(', ');
     const totalKeys = table.length;
