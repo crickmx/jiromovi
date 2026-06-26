@@ -280,5 +280,4 @@ export async function callQuoteWebService(
   return { results: fleetResults, discountRate: wsResponse.discountRate };
 }
 
-
 export { INSURERS_CONFIG }
