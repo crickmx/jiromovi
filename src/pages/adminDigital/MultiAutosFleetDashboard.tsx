@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, X, Clock, TrendingDown, ChevronDown, ChevronUp, Receipt, Shield, Percent } from 'lucide-react';
+import { Check, X, Clock, TrendingDown, ChevronDown, ChevronUp, Receipt, Shield, Percent, TriangleAlert as AlertTriangle, KeyRound, WifiOff } from 'lucide-react';
 import type { FleetQuoteResult, Vehiculo } from './multiAutosTypes';
 import { INSURERS_CONFIG, type QuoteBreakdown } from './multiAutosInsurers';
 
@@ -227,16 +227,38 @@ export function MultiAutosFleetDashboard({ results, formaPago, discountRate, onC
       {/* Unavailable insurers */}
       {Object.entries(insurerTotals).filter(([_, d]) => d.available === 0).length > 0 && (
         <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-            <X className="w-4 h-4 text-red-500" /> No disponibles
+          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-500" /> Aseguradoras no disponibles
           </p>
-          <div className="space-y-1.5">
-            {Object.entries(insurerTotals).filter(([_, d]) => d.available === 0).map(([name, d]) => (
-              <div key={name} className="flex flex-col">
-                <span className="text-xs px-2.5 py-1 bg-gray-200 dark:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-400 inline-block w-fit">{name}</span>
-                {d.error && <span className="text-[10px] text-red-500 dark:text-red-400 mt-0.5 ml-2 break-all">{d.error}</span>}
-              </div>
-            ))}
+          <div className="space-y-2.5">
+            {Object.entries(insurerTotals).filter(([_, d]) => d.available === 0).map(([name, d]) => {
+              const error = d.error || '';
+              const isDns = error.includes('DNS') || error.includes('alcanzable');
+              const isCredMissing = error.includes('no configuradas') || error.includes('Configure las variables');
+              const isCredExpired = error.includes('no son validas') || error.includes('renovacion') || error.includes('expired');
+              const isAmis = error.includes('AMIS') || error.includes('catalogo');
+
+              return (
+                <div key={name} className="flex items-start gap-3 bg-white dark:bg-gray-900/50 rounded-lg p-3 border border-gray-100 dark:border-gray-700">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: getInsurerColor(name) + '20' }}>
+                    {isDns ? <WifiOff className="w-4 h-4 text-gray-500" /> :
+                     isCredMissing || isCredExpired ? <KeyRound className="w-4 h-4 text-amber-500" /> :
+                     isAmis ? <AlertTriangle className="w-4 h-4 text-orange-500" /> :
+                     <X className="w-4 h-4 text-red-500" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">{name}</span>
+                      {isDns && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400">DNS</span>}
+                      {isCredMissing && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">SIN CREDENCIALES</span>}
+                      {isCredExpired && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">CREDENCIALES EXPIRADAS</span>}
+                      {isAmis && <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">SIN CLAVE AMIS</span>}
+                    </div>
+                    {error && <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 leading-tight break-all">{error}</p>}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

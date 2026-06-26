@@ -103,6 +103,7 @@ interface WSQuoteResult {
   modo: string;
   error: string | null;
   tiempoRespuesta: number;
+  credentialStatus?: string;
 }
 
 interface WSResponse {
@@ -110,7 +111,7 @@ interface WSResponse {
   vehicleCount: number;
   discountRate: number;
   formaPago: string;
-  results: { vehicleIndex: number; quotes: WSQuoteResult[] }[];
+  results: { vehicleIndex: number; catalogMatch: { id: string; claveAmis: string | null; descripcion: string } | null; quotes: WSQuoteResult[] }[];
   timestamp: string;
   error?: string;
 }
@@ -150,8 +151,13 @@ export async function callQuoteWebService(
       marca: vc.vehiculo.marca,
       modelo: vc.vehiculo.modelo,
       version: vc.vehiculo.version,
+      descripcionCompleta: vc.vehiculo.descripcionCompleta,
+      claveAmis: vc.vehiculo.claveAmis,
       paquete: vc.paquete,
       coberturas: {
+        deducibleDanosMateriales: vc.coberturas.deducibleDanosMateriales,
+        deducibleRoboTotal: vc.coberturas.deducibleRoboTotal,
+        sumaAseguradaRC: vc.coberturas.sumaAseguradaRC,
         gastosMedicos: vc.coberturas.gastosMedicos,
         asistenciaVial: vc.coberturas.asistenciaVial,
         autoSustituto: vc.coberturas.autoSustituto,
