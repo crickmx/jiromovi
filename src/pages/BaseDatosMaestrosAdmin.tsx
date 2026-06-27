@@ -87,6 +87,9 @@ export default function BaseDatosMaestrosAdmin() {
   const [newMapeoUserId,   setNewMapeoUserId]   = useState('');
   const [newMapeoAgenteId, setNewMapeoAgenteId] = useState('');
   const [savingMapeo, setSavingMapeo] = useState(false);
+  const [mapeoMode, setMapeoMode] = useState<'sicas' | 'movi'>('sicas');
+  const [newMapeoMOVIUserId, setNewMapeoMOVIUserId] = useState('');
+  const [savingMapeoMOVI, setSavingMapeoMOVI] = useState(false);
 
   // ── Import ──────────────────────────────────────────────────────────────────
   const [importMode, setImportMode]     = useState<ImportMode>('adicion');
@@ -161,7 +164,7 @@ export default function BaseDatosMaestrosAdmin() {
     setLoadingMapeo(true);
     const [{ data: m }, { data: u }, { data: a }] = await Promise.all([
       supabase.from('maestro_usuario_agente')
-        .select('*, usuarios(nombre, email_laboral), maestro_agentes(nombre, maestro_despachos(nombre))')
+        .select('*, usuarios(nombre, email_laboral), maestro_agentes(nombre, origen, maestro_despachos(nombre))')
         .order('created_at', { ascending: false }),
       supabase.from('usuarios').select('id, nombre, email_laboral').order('nombre'),
       supabase.from('maestro_agentes').select('*').eq('activo', true).order('nombre'),
@@ -228,6 +231,27 @@ export default function BaseDatosMaestrosAdmin() {
     setSavingMapeo(false);
     if (error) { toast('Error: ' + error.message, 'err'); return; }
     toast('Mapeo guardado'); setNewMapeoUserId(''); setNewMapeoAgenteId(''); loadMapeo();
+  }
+
+  async function addMapeoMOVI() {
+    if (!newMapeoMOVIUserId) { toast('Selecciona un usuario MOVI', 'err'); return; }
+    const user = usuariosMOVI.find(u => u.id === newMapeoMOVIUserId);
+    if (!user) return;
+    setSavingMapeoMOVI(true);
+    const { data: newAgente, error: e1 } = await supabase
+      .from('maestro_agentes')
+      .insert({ nombre: user.nombre, activo: true, origen: 'movi' })
+      .select('id')
+      .single();
+    if (e1 || !newAgente) { toast('Error al crear agente: ' + (e1?.message ?? ''), 'err'); setSavingMapeoMOVI(false); return; }
+    const { error: e2 } = await supabase
+      .from('maestro_usuario_agente')
+      .insert({ user_id: newMapeoMOVIUserId, agente_id: newAgente.id, activo: true });
+    setSavingMapeoMOVI(false);
+    if (e2) { toast('Error al crear mapeo: ' + e2.message, 'err'); return; }
+    toast('Usuario MOVI agregado al catálogo de asignables');
+    setNewMapeoMOVIUserId('');
+    loadMapeo();
   }
 
   async function deleteMapeo(id: string) {
@@ -872,36 +896,82 @@ export default function BaseDatosMaestrosAdmin() {
       <div className="space-y-6">
         <ImportPanel />
 
-        {/* Agregar mapeo manual */}
-        <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5">
-          <div className="flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-4">
-            <Link2 className="w-4 h-4 text-purple-500"/>
-            Agregar mapeo manualmente
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="text-xs text-neutral-500 mb-1 block">Usuario MOVI</label>
-              <select value={newMapeoUserId} onChange={e => setNewMapeoUserId(e.target.value)}
-                className="w-full border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm dark:bg-neutral-700 dark:text-white">
-                <option value="">Seleccionar usuario...</option>
-                {usuariosMOVI.map(u => <option key={u.id} value={u.id}>{u.nombre} — {u.email}</option>)}
-              </select>
+        {/* Agregar mapeo */}
+        <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+              <Link2 className="w-4 h-4 text-purple-500"/>
+              Agregar mapeo
             </div>
-            <div>
-              <label className="text-xs text-neutral-500 mb-1 block">Agente (vendedor DB)</label>
-              <select value={newMapeoAgenteId} onChange={e => setNewMapeoAgenteId(e.target.value)}
-                className="w-full border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm dark:bg-neutral-700 dark:text-white">
-                <option value="">Seleccionar agente...</option>
-                {agentesList.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
-              </select>
-            </div>
-            <div className="flex items-end">
-              <button onClick={addMapeo} disabled={savingMapeo || !newMapeoUserId || !newMapeoAgenteId}
-                className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition">
-                {savingMapeo ? 'Guardando...' : 'Guardar mapeo'}
+            {/* Modo selector */}
+            <div className="flex rounded-lg border border-neutral-200 dark:border-neutral-600 overflow-hidden text-xs font-medium">
+              <button
+                onClick={() => setMapeoMode('sicas')}
+                className={`px-3 py-1.5 transition-colors ${mapeoMode === 'sicas' ? 'bg-blue-600 text-white' : 'text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-700'}`}
+              >
+                Vincular con agente SICAS
+              </button>
+              <button
+                onClick={() => setMapeoMode('movi')}
+                className={`px-3 py-1.5 transition-colors ${mapeoMode === 'movi' ? 'bg-purple-600 text-white' : 'text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-700'}`}
+              >
+                Solo MOVI (sin SICAS)
               </button>
             </div>
           </div>
+
+          {mapeoMode === 'sicas' && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs text-neutral-500 mb-1 block">Usuario MOVI</label>
+                <select value={newMapeoUserId} onChange={e => setNewMapeoUserId(e.target.value)}
+                  className="w-full border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm dark:bg-neutral-700 dark:text-white">
+                  <option value="">Seleccionar usuario...</option>
+                  {usuariosMOVI.map(u => <option key={u.id} value={u.id}>{u.nombre} — {u.email}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-neutral-500 mb-1 block">Agente SICAS</label>
+                <select value={newMapeoAgenteId} onChange={e => setNewMapeoAgenteId(e.target.value)}
+                  className="w-full border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm dark:bg-neutral-700 dark:text-white">
+                  <option value="">Seleccionar agente...</option>
+                  {agentesList.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+                </select>
+              </div>
+              <div className="flex items-end">
+                <button onClick={addMapeo} disabled={savingMapeo || !newMapeoUserId || !newMapeoAgenteId}
+                  className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition">
+                  {savingMapeo ? 'Guardando...' : 'Guardar mapeo'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {mapeoMode === 'movi' && (
+            <div className="space-y-3">
+              <p className="text-xs text-neutral-500">
+                Agrega un usuario MOVI que no tiene contraparte en SICAS. Se creará un registro en el catálogo de asignables y quedará disponible en el campo <strong>Usuario Asignado</strong>.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="md:col-span-2">
+                  <label className="text-xs text-neutral-500 mb-1 block">Usuario MOVI (sin mapeo existente)</label>
+                  <select value={newMapeoMOVIUserId} onChange={e => setNewMapeoMOVIUserId(e.target.value)}
+                    className="w-full border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm dark:bg-neutral-700 dark:text-white">
+                    <option value="">Seleccionar usuario...</option>
+                    {usuariosMOVI
+                      .filter(u => !mapeos.some(m => m.user_id === u.id))
+                      .map(u => <option key={u.id} value={u.id}>{u.nombre} — {u.email}</option>)}
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <button onClick={addMapeoMOVI} disabled={savingMapeoMOVI || !newMapeoMOVIUserId}
+                    className="w-full py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition">
+                    {savingMapeoMOVI ? 'Guardando...' : 'Agregar al catálogo'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Tabla de mapeos */}
@@ -922,7 +992,8 @@ export default function BaseDatosMaestrosAdmin() {
                 <thead className="bg-neutral-50 dark:bg-neutral-700/50 border-b border-neutral-200 dark:border-neutral-700">
                   <tr>
                     <th className="px-5 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Usuario MOVI</th>
-                    <th className="px-5 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Agente (DB)</th>
+                    <th className="px-5 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Agente</th>
+                    <th className="px-5 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Origen</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Despacho</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Estado</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Acciones</th>
@@ -936,6 +1007,11 @@ export default function BaseDatosMaestrosAdmin() {
                         <p className="text-xs text-neutral-400">{(m.usuarios as any)?.email_laboral ?? ''}</p>
                       </td>
                       <td className="px-5 py-3 text-neutral-700 dark:text-neutral-200">{(m.maestro_agentes as any)?.nombre ?? '—'}</td>
+                      <td className="px-5 py-3">
+                        {(m.maestro_agentes as any)?.origen === 'movi'
+                          ? <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">MOVI</span>
+                          : <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">SICAS</span>}
+                      </td>
                       <td className="px-5 py-3 text-neutral-500 text-xs">{(m.maestro_agentes as any)?.maestro_despachos?.nombre ?? '—'}</td>
                       <td className="px-5 py-3"><BadgeActivo activo={m.activo}/></td>
                       <td className="px-5 py-3">
