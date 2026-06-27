@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { getCached, setCached, invalidateCache } from '../lib/sessionCache';
+import { setDynamicTipos, TIPO_TRAMITE_OPTIONS, type TipoTramiteConfig, type AreaCategoria } from '../lib/registroActividadesTypes';
 
 export interface TipoTramiteDB {
   id: string;
@@ -46,6 +47,18 @@ export function useTiposTramite() {
         setCached(CACHE_KEY, rows, CACHE_TTL);
         setTipos(rows);
         setLoading(false);
+
+        // Sincronizar helpers de registroActividadesTypes con datos de DB
+        const staticMap = new Map(TIPO_TRAMITE_OPTIONS.map(t => [t.value, t]));
+        const fromDb: TipoTramiteConfig[] = rows.map(r => ({
+          value: r.value,
+          label: r.label,
+          area: (r.area || 'Operaciones') as AreaCategoria,
+          tipoAplicable: staticMap.get(r.value)?.tipoAplicable ?? 'general',
+        }));
+        // Tipos estáticos que aún no están en DB (legacy sin migrar)
+        const staticOnly = TIPO_TRAMITE_OPTIONS.filter(s => !fromDb.some(d => d.value === s.value));
+        setDynamicTipos([...fromDb, ...staticOnly]);
       });
   }, []);
 

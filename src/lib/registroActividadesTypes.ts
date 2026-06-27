@@ -26,6 +26,14 @@ export const TIPO_TRAMITE_OPTIONS: TipoTramiteConfig[] = [
   { value: 'formulario_cotizacion',           label: 'Formulario de cotización',          area: 'Comercial',    tipoAplicable: 'general' },
 ];
 
+// Cache dinámico: arranca con la lista estática, useTiposTramite lo reemplaza con datos de DB.
+let _dynamicTipos: TipoTramiteConfig[] = TIPO_TRAMITE_OPTIONS;
+
+/** Llamado por useTiposTramite al cargar de DB para que los helpers reflejen tipos nuevos. */
+export function setDynamicTipos(tipos: TipoTramiteConfig[]): void {
+  _dynamicTipos = tipos;
+}
+
 export const COMMERCIAL_TICKET_TYPES = ['renovaciones', 'cobranza', 'otros_comercial', 'correccion_poliza_endoso'] as const;
 
 export function isCommercialTicketType(tipo: string): boolean {
@@ -33,15 +41,15 @@ export function isCommercialTicketType(tipo: string): boolean {
 }
 
 export function getTipoTramiteLabel(tipo: string): string {
-  return TIPO_TRAMITE_OPTIONS.find(t => t.value === tipo)?.label ?? tipo.replace(/_/g, ' ');
+  return _dynamicTipos.find(t => t.value === tipo)?.label ?? tipo.replace(/_/g, ' ');
 }
 
 export function getTipoTramiteArea(tipo: string): AreaCategoria {
-  return TIPO_TRAMITE_OPTIONS.find(t => t.value === tipo)?.area ?? 'Operaciones';
+  return _dynamicTipos.find(t => t.value === tipo)?.area ?? 'Operaciones';
 }
 
 export function getTipoTramitesByArea(area: AreaCategoria): TipoTramiteConfig[] {
-  return TIPO_TRAMITE_OPTIONS.filter(t => t.area === area);
+  return _dynamicTipos.filter(t => t.area === area);
 }
 
 export const AREA_CONFIG: Record<AreaCategoria, { color: string; bg: string; border: string }> = {

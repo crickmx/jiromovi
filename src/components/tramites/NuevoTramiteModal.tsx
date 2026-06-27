@@ -120,6 +120,13 @@ export function NuevoTramiteModal({
   const [loadingDocumentos, setLoadingDocumentos] = useState(false);
 
   const [aseguradoras, setAseguradoras] = useState<Aseguradora[]>([]);
+  const [catalogoRamos,     setCatalogoRamos]     = useState<{id: string; nombre: string}[]>([]);
+  const [catalogoCompanias, setCatalogoCompanias] = useState<{id: string; nombre: string}[]>([]);
+  const [combinaciones,     setCombinaciones]     = useState<{compania_id: string; ramo_id: string}[]>([]);
+  const [cpSearchState, setCpSearchState] = useState<Record<string, {
+    colonias: {colonia: string; municipio: string; estado: string}[];
+    loading: boolean;
+  }>>({});
   const [polizaFiles, setPolizaFiles] = useState<PolizaFile[]>([
     { id: '1', file: null, aseguradora: '', claveAgente: '' }
   ]);
@@ -165,10 +172,13 @@ export function NuevoTramiteModal({
   interface CampoDinamico {
     id: string; key: string; label: string; tipo: string;
     requerido: boolean; ayuda: string | null; display_order: number;
+    is_sistema: boolean; sistema_key: string | null;
     config: { opciones?: CampoDinamicoOption[]; max_length?: number; [k: string]: any };
   }
   const [camposDinamicos, setCamposDinamicos] = useState<CampoDinamico[]>([]);
   const [respuestasDinamicas, setRespuestasDinamicas] = useState<Record<string, any>>({});
+  const [agentesVendedor, setAgentesVendedor] = useState<{id: string; nombre: string; despacho_id: string}[]>([]);
+  const [despachos, setDespachos] = useState<{id: string; nombre: string}[]>([]);
   // IDs de ticket_tipos que el usuario NO puede crear (calculado al cargar)
   const [tiposBlockedIds, setTiposBlockedIds] = useState<Set<string>>(new Set());
   // IDs de ticket_tipos donde el usuario puede crear pero NO editar
@@ -304,7 +314,7 @@ export function NuevoTramiteModal({
     if (!tipoInfo?.id) { setCamposDinamicos([]); setRespuestasDinamicas({}); return; }
     supabase
       .from('tramite_tipo_campos')
-      .select('id, key, label, tipo, requerido, ayuda, display_order, config')
+      .select('id, key, label, tipo, requerido, ayuda, display_order, config, is_sistema, sistema_key')
       .eq('tramite_tipo_id', tipoInfo.id)
       .eq('activo', true)
       .order('display_order')
@@ -321,6 +331,32 @@ export function NuevoTramiteModal({
         }
       });
   }, [tipoTramite, tiposDb]);
+
+  // Cargar catálogos para campos sistema agente_vendedor / oficina_jiro
+  useEffect(() => {
+    if (!camposDinamicos.some(c => c.sistema_key === 'agente_vendedor')) return;
+    supabase.from('maestro_agentes').select('id, nombre, despacho_id').eq('activo', true).order('nombre')
+      .then(({ data }) => setAgentesVendedor((data || []) as {id: string; nombre: string; despacho_id: string}[]));
+    supabase.from('maestro_despachos').select('id, nombre').eq('activo', true).order('nombre')
+      .then(({ data }) => setDespachos((data || []) as {id: string; nombre: string}[]));
+  }, [camposDinamicos]);
+
+  // Cargar catálogos para campos tipo aseguradora / ramo
+  useEffect(() => {
+    const tieneAseg = camposDinamicos.some(c => c.tipo === 'aseguradora');
+    const tieneRamo = camposDinamicos.some(c => c.tipo === 'ramo');
+    if (!tieneAseg && !tieneRamo) return;
+    if (tieneAseg || tieneRamo) {
+      supabase.from('maestro_companias').select('id, nombre').eq('activo', true).order('nombre')
+        .then(({ data }) => setCatalogoCompanias((data || []) as {id: string; nombre: string}[]));
+    }
+    if (tieneRamo) {
+      supabase.from('maestro_ramos').select('id, nombre').order('nombre')
+        .then(({ data }) => setCatalogoRamos((data || []) as {id: string; nombre: string}[]));
+      supabase.from('maestro_combinaciones').select('compania_id, ramo_id')
+        .then(({ data }) => setCombinaciones((data || []) as {compania_id: string; ramo_id: string}[]));
+    }
+  }, [camposDinamicos]);
 
   useEffect(() => {
     if (tipoTramite === 'correccion_comisiones' && asignado) {
@@ -705,9 +741,11 @@ export function NuevoTramiteModal({
       }
     }
 
-    // Validar campos dinámicos requeridos
+    // Validar campos dinámicos requeridos (omitir campos sistema auto-fill)
+    const AUTO_FILL_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'oficina_jiro'];
     for (const campo of camposDinamicos) {
       if (!campo.requerido) continue;
+      if (campo.is_sistema && AUTO_FILL_KEYS.includes(campo.sistema_key || '')) continue;
       const val = respuestasDinamicas[campo.id];
       const isEmpty = val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0);
       if (isEmpty) {
@@ -796,6 +834,103 @@ export function NuevoTramiteModal({
           </select>
         )}
 
+        {campo.tipo === 'aseguradora' && (
+          <select
+            value={val || ''}
+            onChange={e => {
+              set(e.target.value);
+              // Limpiar ramo dependiente si hay campo con filtrar_por_aseguradora
+              const ramoCampo = camposDinamicos.find(c => c.tipo === 'ramo' && c.config?.filtrar_por_aseguradora);
+              if (ramoCampo) setRespuestasDinamicas(prev => ({ ...prev, [ramoCampo.id]: '' }));
+            }}
+            className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          >
+            <option value="">Selecciona aseguradora...</option>
+            {catalogoCompanias.map(c => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
+          </select>
+        )}
+
+        {campo.tipo === 'ramo' && (() => {
+          let ramosDisp = catalogoRamos;
+          if (campo.config?.filtrar_por_aseguradora) {
+            const asegCampo = camposDinamicos.find(c => c.tipo === 'aseguradora');
+            const asegNombre = asegCampo ? respuestasDinamicas[asegCampo.id] : null;
+            if (asegNombre) {
+              const compania = catalogoCompanias.find(c => c.nombre === asegNombre);
+              if (compania) {
+                const validIds = new Set(combinaciones.filter(cb => cb.compania_id === compania.id).map(cb => cb.ramo_id));
+                ramosDisp = catalogoRamos.filter(r => validIds.has(r.id));
+              } else {
+                ramosDisp = [];
+              }
+            } else {
+              ramosDisp = [];
+            }
+          }
+          const placeholder = campo.config?.filtrar_por_aseguradora && !ramosDisp.length
+            ? 'Selecciona primero una aseguradora...'
+            : 'Selecciona ramo...';
+          return (
+            <select
+              value={val || ''}
+              onChange={e => set(e.target.value)}
+              disabled={campo.config?.filtrar_por_aseguradora && ramosDisp.length === 0}
+              className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <option value="">{placeholder}</option>
+              {ramosDisp.map(r => <option key={r.id} value={r.nombre}>{r.nombre}</option>)}
+            </select>
+          );
+        })()}
+
+        {campo.tipo === 'codigo_postal' && (() => {
+          const cpState = cpSearchState[campo.id] || { colonias: [], loading: false };
+          const stored = val as { codigo?: string; colonia?: string; municipio?: string; estado?: string } | undefined;
+          return (
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={stored?.codigo || ''}
+                onChange={async e => {
+                  const cp = e.target.value.replace(/\D/g, '').slice(0, 5);
+                  set({ codigo: cp, colonia: '', municipio: '', estado: '' });
+                  if (cp.length === 5) {
+                    setCpSearchState(prev => ({ ...prev, [campo.id]: { colonias: [], loading: true } }));
+                    const { data } = await supabase
+                      .from('codigos_postales')
+                      .select('colonia, municipio, estado')
+                      .eq('codigo', cp)
+                      .order('colonia');
+                    setCpSearchState(prev => ({ ...prev, [campo.id]: { colonias: data || [], loading: false } }));
+                  } else {
+                    setCpSearchState(prev => ({ ...prev, [campo.id]: { colonias: [], loading: false } }));
+                  }
+                }}
+                placeholder="Ej: 76000"
+                maxLength={5}
+                className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {cpState.loading && <p className="text-xs text-neutral-400">Buscando colonias...</p>}
+              {cpState.colonias.length > 0 && (
+                <select
+                  value={stored?.colonia || ''}
+                  onChange={e => {
+                    const col = cpState.colonias.find(c => c.colonia === e.target.value);
+                    if (col) set({ codigo: stored?.codigo, ...col });
+                  }}
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value="">Selecciona colonia...</option>
+                  {cpState.colonias.map(c => <option key={c.colonia} value={c.colonia}>{c.colonia}</option>)}
+                </select>
+              )}
+              {stored?.municipio && (
+                <p className="text-xs text-neutral-500">{stored.municipio}, {stored.estado}</p>
+              )}
+            </div>
+          );
+        })()}
+
         {campo.tipo === 'seleccion_multiple' && (
           <div className="flex flex-wrap gap-2">
             {(campo.config.opciones || []).map((opt: CampoDinamicoOption) => {
@@ -817,6 +952,90 @@ export function NuevoTramiteModal({
 
       </div>
     );
+  };
+
+  const renderCampoSistema = (campo: CampoDinamico) => {
+    const tipoInfo = tiposDb.find(t => t.value === tipoTramite);
+    const violet = 'px-3 py-2 bg-violet-50 border border-violet-200 rounded-xl text-sm text-violet-700 flex items-center gap-2';
+    const lock = <span className="text-[10px] font-bold bg-violet-100 text-violet-500 px-1.5 py-0.5 rounded">AUTO</span>;
+
+    if (campo.sistema_key === 'area') return (
+      <div key={campo.id}>
+        <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">🔒 {campo.label}</label>
+        <div className={violet}>{lock}{tipoInfo?.area || 'Sin área'}</div>
+      </div>
+    );
+
+    if (campo.sistema_key === 'equipo') return (
+      <div key={campo.id}>
+        <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">🔒 {campo.label}</label>
+        <div className={violet}>{lock}Auto-asignado al crear</div>
+      </div>
+    );
+
+    if (campo.sistema_key === 'fecha_creacion') return (
+      <div key={campo.id}>
+        <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">🔒 {campo.label}</label>
+        <div className={violet}>{lock}{new Date().toLocaleString('es-MX')}</div>
+      </div>
+    );
+
+    if (campo.sistema_key === 'fecha_finalizacion') return (
+      <div key={campo.id}>
+        <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">🔒 {campo.label}</label>
+        <div className="px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm text-neutral-400 italic">
+          Se registrará al cerrar el trámite
+        </div>
+      </div>
+    );
+
+    if (campo.sistema_key === 'agente_vendedor') {
+      const val = respuestasDinamicas[campo.id] || '';
+      return (
+        <div key={campo.id}>
+          <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">
+            🔒 {campo.label}{campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          <select
+            value={val}
+            onChange={e => {
+              const agenteId = e.target.value;
+              const agente = agentesVendedor.find(a => a.id === agenteId);
+              const oficinaCampo = camposDinamicos.find(c => c.sistema_key === 'oficina_jiro');
+              const despacho = agente ? despachos.find(d => d.id === agente.despacho_id) : null;
+              setRespuestasDinamicas(prev => ({
+                ...prev,
+                [campo.id]: agenteId,
+                ...(oficinaCampo ? { [oficinaCampo.id]: despacho?.nombre || '' } : {}),
+              }));
+            }}
+            className="w-full px-3 py-2 border border-violet-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+          >
+            <option value="">Selecciona agente / vendedor...</option>
+            {agentesVendedor.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+          </select>
+        </div>
+      );
+    }
+
+    if (campo.sistema_key === 'oficina_jiro') {
+      const val = respuestasDinamicas[campo.id];
+      return (
+        <div key={campo.id}>
+          <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">🔒 {campo.label}</label>
+          <div className={violet}>
+            {val
+              ? <><span className="text-[10px] font-bold bg-violet-100 text-violet-500 px-1.5 py-0.5 rounded">CAT</span>{val}</>
+              : <span className="text-neutral-400 italic text-sm">Auto-completa al seleccionar agente</span>
+            }
+          </div>
+        </div>
+      );
+    }
+
+    if (campo.sistema_key === 'estatus') return renderCampoDinamico(campo);
+
+    return null;
   };
 
   const buildCommercialDescription = (): string => {
@@ -984,20 +1203,39 @@ export function NuevoTramiteModal({
 
       if (ticketError) throw ticketError;
 
-      // Guardar respuestas de campos dinámicos
+      // Guardar respuestas de campos dinámicos (sistema + custom)
       if (camposDinamicos.length > 0) {
+        // Auto-poblar campos sistema antes de guardar
+        const tipoInfoGuardado = tiposDb.find(t => t.value === tipoTramite);
+        const autoSistema: Record<string, string> = {};
+        const areaCampo = camposDinamicos.find(c => c.sistema_key === 'area');
+        if (areaCampo && tipoInfoGuardado?.area) autoSistema[areaCampo.id] = tipoInfoGuardado.area;
+        const fechaCreCampo = camposDinamicos.find(c => c.sistema_key === 'fecha_creacion');
+        if (fechaCreCampo) autoSistema[fechaCreCampo.id] = new Date().toISOString();
+        const equipoCampo = camposDinamicos.find(c => c.sistema_key === 'equipo');
+        if (equipoCampo && grupoAsignadoId) {
+          const { data: grupoData } = await supabase
+            .from('tramites_grupos_visualizacion').select('nombre').eq('id', grupoAsignadoId).single();
+          if (grupoData) autoSistema[equipoCampo.id] = grupoData.nombre;
+        }
+        const respuestasMerged = { ...autoSistema, ...respuestasDinamicas };
+
+        const TEXTO_TIPOS = ['texto_corto', 'texto_largo', 'area', 'equipo',
+          'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion',
+          'aseguradora', 'ramo'];
+
         const respuestas = camposDinamicos
-          .filter(c => respuestasDinamicas[c.id] !== undefined && respuestasDinamicas[c.id] !== null && respuestasDinamicas[c.id] !== '')
+          .filter(c => respuestasMerged[c.id] !== undefined && respuestasMerged[c.id] !== null && respuestasMerged[c.id] !== '')
           .map(c => {
-            const val = respuestasDinamicas[c.id];
+            const val = respuestasMerged[c.id];
             return {
               tramite_id: ticket.id,
               campo_id: c.id,
-              valor_texto:   ['texto_corto', 'texto_largo'].includes(c.tipo) ? String(val) : null,
+              valor_texto:    TEXTO_TIPOS.includes(c.tipo) ? String(val) : null,
               valor_numerico: c.tipo === 'numerico' ? Number(val) : null,
               valor_fecha:    c.tipo === 'fecha' ? String(val) : null,
               valor_booleano: c.tipo === 'booleano' ? Boolean(val) : null,
-              valor_json:     ['estatus', 'dropdown', 'seleccion_multiple'].includes(c.tipo) ? val : null,
+              valor_json:     ['estatus', 'dropdown', 'seleccion_multiple', 'codigo_postal'].includes(c.tipo) ? val : null,
             };
           });
         if (respuestas.length > 0) {
@@ -1964,11 +2202,27 @@ export function NuevoTramiteModal({
           />
         </div>
 
-        {/* Campos dinámicos del catálogo */}
-        {camposDinamicos.length > 0 && (
+        {/* Sección 1 — Campos sistema (fijos, siempre en orden) */}
+        {camposDinamicos.some(c => c.is_sistema) && (
+          <div className="space-y-4 pt-2 border-t border-violet-100">
+            <p className="text-xs font-semibold text-violet-500 uppercase tracking-wide flex items-center gap-1.5">
+              🔒 Información del Trámite
+            </p>
+            {camposDinamicos
+              .filter(c => c.is_sistema)
+              .sort((a, b) => a.display_order - b.display_order)
+              .map(renderCampoSistema)}
+          </div>
+        )}
+
+        {/* Sección 2 — Campos personalizados del catálogo */}
+        {camposDinamicos.some(c => !c.is_sistema) && (
           <div className="space-y-4 pt-2 border-t border-neutral-100">
             <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Campos adicionales</p>
-            {camposDinamicos.map(renderCampoDinamico)}
+            {camposDinamicos
+              .filter(c => !c.is_sistema)
+              .sort((a, b) => a.display_order - b.display_order)
+              .map(renderCampoDinamico)}
           </div>
         )}
 
