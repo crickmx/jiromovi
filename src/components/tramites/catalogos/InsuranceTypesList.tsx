@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Plus, Save, Pencil, Trash2, Shield, Search } from 'lucide-react';
+import { Plus, Save, Pencil, Trash2, Shield, Search, ChevronDown, ChevronRight } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { InsuranceType } from './types';
 
 interface Props {
   showToast: (msg: string, type?: 'success' | 'error') => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export function InsuranceTypesList({ showToast }: Props) {
+export function InsuranceTypesList({ showToast, collapsed = false, onToggleCollapse }: Props) {
   const [insuranceTypes, setInsuranceTypes] = useState<InsuranceType[]>([]);
   const [editingInsType, setEditingInsType] = useState<string | null>(null);
   const [newInsType, setNewInsType] = useState({ nombre: '', descripcion: '' });
@@ -65,11 +67,20 @@ export function InsuranceTypesList({ showToast }: Props) {
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Shield className="w-6 h-6 text-green-600" />
-          <h2 className="text-xl font-bold text-neutral-900">Tipos de Seguro</h2>
-        </div>
+      <div className="flex items-center justify-between mb-4">
+        <button
+          onClick={onToggleCollapse}
+          className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left"
+        >
+          {collapsed
+            ? <ChevronRight className="w-5 h-5 text-neutral-400 shrink-0" />
+            : <ChevronDown className="w-5 h-5 text-neutral-400 shrink-0" />}
+          <Shield className="w-6 h-6 text-green-600 shrink-0" />
+          <h2 className="text-xl font-bold text-neutral-900">
+            Tipos de Seguro
+            <span className="ml-2 text-sm font-normal text-neutral-400">({insuranceTypes.length})</span>
+          </h2>
+        </button>
         <button
           onClick={() => setShowNewInsForm(!showNewInsForm)}
           className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
@@ -79,7 +90,7 @@ export function InsuranceTypesList({ showToast }: Props) {
         </button>
       </div>
 
-      {insuranceTypes.length > 4 && (
+      {!collapsed && (
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
           <input
@@ -92,7 +103,7 @@ export function InsuranceTypesList({ showToast }: Props) {
         </div>
       )}
 
-      {showNewInsForm && (
+      {!collapsed && showNewInsForm && (
         <div className="bg-neutral-50 rounded-lg p-4 mb-4 space-y-3 border border-neutral-200">
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">Nombre *</label>
@@ -129,7 +140,7 @@ export function InsuranceTypesList({ showToast }: Props) {
         </div>
       )}
 
-      <div className="space-y-2">
+      {!collapsed && <div className="space-y-2">
         {filtered.length === 0 ? (
           <p className="text-neutral-500 text-center py-8">
             {search ? 'Sin resultados para esa búsqueda' : 'No hay tipos de seguro registrados'}
@@ -192,7 +203,7 @@ export function InsuranceTypesList({ showToast }: Props) {
             )}
           </div>
         ))}
-      </div>
+      </div>}
     </section>
   );
 }

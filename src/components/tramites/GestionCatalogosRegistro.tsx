@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, Save, Tag, Pencil, ChevronLeft, Search } from 'lucide-react';
+import { Plus, Trash2, Save, Tag, Pencil, ChevronLeft, ChevronDown, ChevronRight, Search } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { invalidateTiposTramiteCache } from '../../hooks/useTiposTramite';
@@ -38,6 +38,8 @@ export function GestionCatalogosRegistro() {
   const [showNewTipoForm, setShowNewTipoForm] = useState(false);
   const [newTipo, setNewTipo] = useState({ label: '', area: 'Comercial' as Area, color: '#0369a1' });
   const [searchTipo, setSearchTipo] = useState('');
+  const [sectionOpen, setSectionOpen] = useState({ seguros: true, tramites: true });
+  const [areaOpen, setAreaOpen] = useState<Record<string, boolean>>({});
 
   // ── Edit - Config tab ───────────────────────────────────────────────────
   const [editConfig, setEditConfig] = useState({ label: '', area: 'Comercial' as Area, color: '#0369a1' });
@@ -89,6 +91,9 @@ export function GestionCatalogosRegistro() {
     area,
     items: filteredTipos.filter(t => t.area === area),
   })).filter(g => g.items.length > 0);
+
+  const isAreaOpen = (area: string) => areaOpen[area] !== false;
+  const toggleArea = (area: string) => setAreaOpen(prev => ({ ...prev, [area]: !isAreaOpen(area) }));
 
   // ── Editor navigation ───────────────────────────────────────────────────
 
@@ -309,18 +314,33 @@ export function GestionCatalogosRegistro() {
     <div className="space-y-10 p-6">
       {ToastEl}
 
-      <InsuranceTypesList showToast={showToast} />
+      <InsuranceTypesList
+        showToast={showToast}
+        collapsed={!sectionOpen.seguros}
+        onToggleCollapse={() => setSectionOpen(s => ({ ...s, seguros: !s.seguros }))}
+      />
 
       {/* ── Tipos de Trámite ── */}
       <section>
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <Tag className="w-6 h-6 text-blue-600" />
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => setSectionOpen(s => ({ ...s, tramites: !s.tramites }))}
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left"
+          >
+            {sectionOpen.tramites
+              ? <ChevronDown className="w-5 h-5 text-neutral-400 shrink-0" />
+              : <ChevronRight className="w-5 h-5 text-neutral-400 shrink-0" />}
+            <Tag className="w-6 h-6 text-blue-600 shrink-0" />
             <div>
-              <h2 className="text-xl font-bold text-neutral-900">Tipos de Trámite</h2>
-              <p className="text-xs text-neutral-500 mt-0.5">Haz clic en editar para configurar campos y permisos</p>
+              <h2 className="text-xl font-bold text-neutral-900">
+                Tipos de Trámite
+                <span className="ml-2 text-sm font-normal text-neutral-400">({tiposTramite.length})</span>
+              </h2>
+              {sectionOpen.tramites && (
+                <p className="text-xs text-neutral-500 mt-0.5">Haz clic en editar para configurar campos y permisos</p>
+              )}
             </div>
-          </div>
+          </button>
           <button
             onClick={() => setShowNewTipoForm(!showNewTipoForm)}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm"
@@ -330,7 +350,7 @@ export function GestionCatalogosRegistro() {
           </button>
         </div>
 
-        {tiposTramite.length > 4 && (
+        {sectionOpen.tramites && (
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
             <input
@@ -343,7 +363,7 @@ export function GestionCatalogosRegistro() {
           </div>
         )}
 
-        {showNewTipoForm && (
+        {sectionOpen.tramites && showNewTipoForm && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-6 space-y-4">
             <h3 className="font-semibold text-blue-800 text-sm">Nuevo tipo de trámite</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -394,21 +414,31 @@ export function GestionCatalogosRegistro() {
           </div>
         )}
 
-        {filteredTipos.length === 0 ? (
+        {sectionOpen.tramites && (filteredTipos.length === 0 ? (
           <p className="text-neutral-500 text-center py-8">
             {searchTipo ? 'Sin resultados para esa búsqueda' : 'No hay tipos de trámite registrados'}
           </p>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {tiposGrouped.map(({ area, items }) => (
-              <div key={area}>
-                <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-400 mb-2 px-1">{area}</h3>
-                <div className="space-y-2">
+              <div key={area} className="border border-neutral-200 rounded-xl overflow-hidden">
+                <button
+                  onClick={() => toggleArea(area)}
+                  className="w-full flex items-center justify-between px-4 py-2.5 bg-neutral-50 hover:bg-neutral-100 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    {isAreaOpen(area)
+                      ? <ChevronDown className="w-4 h-4 text-neutral-400" />
+                      : <ChevronRight className="w-4 h-4 text-neutral-400" />}
+                    <span className="text-xs font-bold uppercase tracking-widest text-neutral-500">{area}</span>
+                    <span className="text-xs text-neutral-400">({items.length})</span>
+                  </div>
+                </button>
+                {isAreaOpen(area) && <div className="divide-y divide-neutral-100">
                   {items.map(tipo => (
                     <div
                       key={tipo.id}
-                      className={`flex items-center gap-3 p-3 bg-white border rounded-xl ${!tipo.activo ? 'opacity-60' : ''}`}
-                      style={{ borderColor: tipo.color + '55' }}
+                      className={`flex items-center gap-3 p-3 bg-white ${!tipo.activo ? 'opacity-60' : ''}`}
                     >
                       <div className="w-3 h-10 rounded-full shrink-0" style={{ backgroundColor: tipo.color }} />
                       <div className="flex-1 min-w-0">
@@ -473,7 +503,7 @@ export function GestionCatalogosRegistro() {
               </div>
             ))}
           </div>
-        )}
+        ))}
       </section>
     </div>
   );
