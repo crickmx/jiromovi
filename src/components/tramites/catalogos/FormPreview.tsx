@@ -151,7 +151,7 @@ export function FormPreview({ campos }: { campos: TipoCampo[] }) {
           )}
           {campo.tipo === 'agente_vendedor' && (
             <select disabled className="w-full px-3 py-2 border border-violet-200 rounded-lg bg-violet-50 text-sm text-violet-400 cursor-not-allowed">
-              <option>Selecciona agente / vendedor...</option>
+              <option>Selecciona usuario asignado...</option>
             </select>
           )}
           {campo.tipo === 'oficina_jiro' && (
