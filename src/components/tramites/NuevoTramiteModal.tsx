@@ -177,7 +177,10 @@ export function NuevoTramiteModal({
   }
   const [camposDinamicos, setCamposDinamicos] = useState<CampoDinamico[]>([]);
   const [respuestasDinamicas, setRespuestasDinamicas] = useState<Record<string, any>>({});
-  const [agentesVendedor, setAgentesVendedor] = useState<{id: string; nombre: string; despacho_id: string}[]>([]);
+  const [agentesVendedor, setAgentesVendedor] = useState<{
+    id: string; nombre: string; despacho_id: string;
+    usuario_id?: string; usuario_nombre?: string;
+  }[]>([]);
   const [despachos, setDespachos] = useState<{id: string; nombre: string}[]>([]);
   // IDs de ticket_tipos que el usuario NO puede crear (calculado al cargar)
   const [tiposBlockedIds, setTiposBlockedIds] = useState<Set<string>>(new Set());
@@ -335,8 +338,20 @@ export function NuevoTramiteModal({
   // Cargar catálogos para campos sistema agente_vendedor / oficina_jiro
   useEffect(() => {
     if (!camposDinamicos.some(c => c.sistema_key === 'agente_vendedor')) return;
-    supabase.from('maestro_agentes').select('id, nombre, despacho_id').eq('activo', true).order('nombre')
-      .then(({ data }) => setAgentesVendedor((data || []) as {id: string; nombre: string; despacho_id: string}[]));
+    supabase.from('maestro_agentes')
+      .select('id, nombre, despacho_id, maestro_usuario_agente(user_id, activo, usuarios(nombre_completo))')
+      .eq('activo', true).order('nombre')
+      .then(({ data }) => {
+        const mapped = (data || []).map((a: any) => {
+          const mapeo = (a.maestro_usuario_agente || []).find((m: any) => m.activo);
+          return {
+            id: a.id, nombre: a.nombre, despacho_id: a.despacho_id,
+            usuario_id: mapeo?.user_id ?? undefined,
+            usuario_nombre: mapeo?.usuarios?.nombre_completo ?? undefined,
+          };
+        });
+        setAgentesVendedor(mapped);
+      });
     supabase.from('maestro_despachos').select('id, nombre').eq('activo', true).order('nombre')
       .then(({ data }) => setDespachos((data || []) as {id: string; nombre: string}[]));
   }, [camposDinamicos]);
@@ -991,6 +1006,7 @@ export function NuevoTramiteModal({
 
     if (campo.sistema_key === 'agente_vendedor') {
       const val = respuestasDinamicas[campo.id] || '';
+      const selectedAgente = agentesVendedor.find(a => a.id === val);
       return (
         <div key={campo.id}>
           <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">
@@ -1008,12 +1024,22 @@ export function NuevoTramiteModal({
                 [campo.id]: agenteId,
                 ...(oficinaCampo ? { [oficinaCampo.id]: despacho?.nombre || '' } : {}),
               }));
+              if (agente?.usuario_id) setAsignado(agente.usuario_id);
             }}
             className="w-full px-3 py-2 border border-violet-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
           >
             <option value="">Selecciona usuario asignado...</option>
-            {agentesVendedor.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+            {agentesVendedor.map(a => (
+              <option key={a.id} value={a.id}>
+                {a.usuario_nombre ?? `⚠ ${a.nombre}`}
+              </option>
+            ))}
           </select>
+          {val && !selectedAgente?.usuario_id && (
+            <p className="text-xs text-amber-600 mt-1">
+              Este agente no tiene usuario MOVI vinculado — asígnalo manualmente en "Asignar a".
+            </p>
+          )}
         </div>
       );
     }

@@ -110,6 +110,10 @@ export function TramiteDetalle() {
     colonias: {colonia: string; municipio: string; estado: string}[];
     loading: boolean;
   }>>({});
+  const [agentesVendedor, setAgentesVendedor] = useState<{
+    id: string; nombre: string;
+    usuario_id?: string; usuario_nombre?: string;
+  }[]>([]);
   const [fechaPromesaEntrega, setFechaPromesaEntrega] = useState('');
 
   const isAdmin = usuario?.rol === 'Administrador';
@@ -353,6 +357,25 @@ export function TramiteDetalle() {
       setRespuestasDinamicas(vals);
     }
   };
+
+  // Cargar catálogo para campo agente_vendedor
+  useEffect(() => {
+    if (!camposDinamicos.some(c => c.sistema_key === 'agente_vendedor')) return;
+    supabase.from('maestro_agentes')
+      .select('id, nombre, maestro_usuario_agente(user_id, activo, usuarios(nombre_completo))')
+      .eq('activo', true).order('nombre')
+      .then(({ data }) => {
+        const mapped = (data || []).map((a: any) => {
+          const mapeo = (a.maestro_usuario_agente || []).find((m: any) => m.activo);
+          return {
+            id: a.id, nombre: a.nombre,
+            usuario_id: mapeo?.user_id ?? undefined,
+            usuario_nombre: mapeo?.usuarios?.nombre_completo ?? undefined,
+          };
+        });
+        setAgentesVendedor(mapped);
+      });
+  }, [camposDinamicos]);
 
   // Cargar catálogos para campos aseguradora / ramo / codigo_postal
   useEffect(() => {
@@ -917,13 +940,19 @@ export function TramiteDetalle() {
                     const val = respuestasDinamicas[campo.id];
                     const violet = 'px-3 py-2 bg-violet-50 border border-violet-200 rounded-xl text-sm text-violet-700';
                     const muted = 'px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm text-neutral-400 italic';
+                    const displayVal = campo.sistema_key === 'agente_vendedor' && val
+                      ? (() => {
+                          const ag = agentesVendedor.find(a => a.id === val);
+                          return ag?.usuario_nombre ?? ag?.nombre ?? val;
+                        })()
+                      : val;
                     return (
                       <div key={campo.id}>
                         <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">
                           {campo.label}
                         </label>
-                        {val
-                          ? <div className={violet}>{val}</div>
+                        {displayVal
+                          ? <div className={violet}>{displayVal}</div>
                           : <div className={muted}>
                               {campo.sistema_key === 'fecha_finalizacion' ? 'Al cerrar' : 'Sin registrar'}
                             </div>
