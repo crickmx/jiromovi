@@ -1862,7 +1862,7 @@ export function NuevoTramiteModal({
           <div>
             <label className="block text-sm font-semibold text-neutral-900 mb-2">
               <User className="w-4 h-4 inline mr-2" />
-              {isPoolMode ? 'Agente del Trámite' : 'Asignar a'}
+              {isPoolMode ? 'Agente del Trámite' : 'Usuario Asignado'}
             </label>
             <select
               value={asignado}
