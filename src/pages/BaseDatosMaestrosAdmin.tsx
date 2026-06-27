@@ -25,7 +25,13 @@ interface UsuarioMOVI { id: string; nombre: string; email: string }
 interface MapeoUsuario {
   id: string; user_id: string; agente_id: string; activo: boolean;
   usuarios?: { nombre: string; email_laboral: string | null }
-  maestro_agentes?: { nombre: string; maestro_despachos?: { nombre: string } }
+  maestro_agentes?: { nombre: string; origen?: string; maestro_despachos?: { nombre: string } }
+}
+interface MapeoPendiente {
+  id: string; agente_id: string; user_id_propuesto: string; ticket_id: string | null; created_at: string;
+  propuesto_por_usuario?: { nombre: string };
+  maestro_agentes?: { nombre: string };
+  usuarios?: { nombre: string; email_laboral: string | null };
 }
 
 interface Importacion {
@@ -90,6 +96,8 @@ export default function BaseDatosMaestrosAdmin() {
   const [mapeoMode, setMapeoMode] = useState<'sicas' | 'movi'>('sicas');
   const [newMapeoMOVIUserId, setNewMapeoMOVIUserId] = useState('');
   const [savingMapeoMOVI, setSavingMapeoMOVI] = useState(false);
+  const [pendientesMapeo, setPendientesMapeo] = useState<MapeoPendiente[]>([]);
+  const [loadingPendientes, setLoadingPendientes] = useState(false);
 
   // ── Import ──────────────────────────────────────────────────────────────────
   const [importMode, setImportMode]     = useState<ImportMode>('adicion');
@@ -162,17 +170,23 @@ export default function BaseDatosMaestrosAdmin() {
 
   async function loadMapeo() {
     setLoadingMapeo(true);
-    const [{ data: m }, { data: u }, { data: a }] = await Promise.all([
+    setLoadingPendientes(true);
+    const [{ data: m }, { data: u }, { data: a }, { data: p }] = await Promise.all([
       supabase.from('maestro_usuario_agente')
         .select('*, usuarios(nombre, email_laboral), maestro_agentes(nombre, origen, maestro_despachos(nombre))')
         .order('created_at', { ascending: false }),
       supabase.from('usuarios').select('id, nombre, email_laboral').order('nombre'),
       supabase.from('maestro_agentes').select('*').eq('activo', true).order('nombre'),
+      supabase.from('maestro_mapeo_pendiente')
+        .select('*, maestro_agentes(nombre), usuarios!maestro_mapeo_pendiente_user_id_propuesto_fkey(nombre, email_laboral), propuesto_por_usuario:usuarios!maestro_mapeo_pendiente_propuesto_por_fkey(nombre)')
+        .order('created_at', { ascending: false }),
     ]);
     setMapeos(m ?? []);
     setUsuariosMOVI((u ?? []).map((x: any) => ({ id: x.id, nombre: x.nombre, email: x.email_laboral ?? '' })));
     setAgentesList(a ?? []);
+    setPendientesMapeo(p ?? []);
     setLoadingMapeo(false);
+    setLoadingPendientes(false);
   }
 
   async function loadHistorial() {
@@ -259,6 +273,22 @@ export default function BaseDatosMaestrosAdmin() {
     const { error } = await supabase.from('maestro_usuario_agente').delete().eq('id', id);
     if (error) { toast('Error: ' + error.message, 'err'); return; }
     toast('Mapeo eliminado'); loadMapeo();
+  }
+
+  async function validarMapeo(pendiente: MapeoPendiente) {
+    const { error: e1 } = await supabase.from('maestro_usuario_agente')
+      .upsert({ agente_id: pendiente.agente_id, user_id: pendiente.user_id_propuesto, activo: true }, { onConflict: 'user_id' });
+    if (e1) { toast('Error al validar: ' + e1.message, 'err'); return; }
+    await supabase.from('maestro_mapeo_pendiente').delete().eq('id', pendiente.id);
+    toast('Mapeo validado y activado');
+    loadMapeo();
+  }
+
+  async function rechazarMapeo(id: string) {
+    if (!confirm('¿Rechazar esta propuesta? Se eliminará sin crear el mapeo.')) return;
+    await supabase.from('maestro_mapeo_pendiente').delete().eq('id', id);
+    toast('Propuesta rechazada');
+    loadMapeo();
   }
 
   // ─── EXPORTAR ────────────────────────────────────────────────────────────────
@@ -974,6 +1004,64 @@ export default function BaseDatosMaestrosAdmin() {
           )}
         </div>
 
+        {/* Mapeos pendientes de validación */}
+        {pendientesMapeo.length > 0 && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-700 overflow-hidden">
+            <div className="px-5 py-3 border-b border-amber-200 dark:border-amber-700 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                Propuestas pendientes de validación
+              </span>
+              <span className="ml-auto text-xs font-bold bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full">
+                {pendientesMapeo.length}
+              </span>
+            </div>
+            {loadingPendientes ? (
+              <div className="p-6 flex justify-center"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-amber-600"/></div>
+            ) : (
+              <div className="divide-y divide-amber-100 dark:divide-amber-800">
+                {pendientesMapeo.map(p => (
+                  <div key={p.id} className="px-5 py-3 flex items-center gap-4">
+                    <div className="flex-1 min-w-0 grid grid-cols-2 gap-x-6">
+                      <div>
+                        <p className="text-xs text-amber-600 font-medium uppercase tracking-wide mb-0.5">Agente SICAS</p>
+                        <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100 truncate">
+                          {(p.maestro_agentes as any)?.nombre ?? '—'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-amber-600 font-medium uppercase tracking-wide mb-0.5">Usuario MOVI propuesto</p>
+                        <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100 truncate">
+                          {(p.usuarios as any)?.nombre ?? '—'}
+                        </p>
+                        <p className="text-xs text-neutral-400 truncate">{(p.usuarios as any)?.email_laboral ?? ''}</p>
+                      </div>
+                    </div>
+                    <div className="text-xs text-neutral-400 shrink-0 text-right">
+                      <p>Por: {(p.propuesto_por_usuario as any)?.nombre ?? '—'}</p>
+                      <p>{new Date(p.created_at).toLocaleDateString('es-MX')}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => validarMapeo(p)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Validar
+                      </button>
+                      <button
+                        onClick={() => rechazarMapeo(p.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-medium rounded-lg transition"
+                      >
+                        <XCircle className="w-3.5 h-3.5" /> Rechazar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Tabla de mapeos */}
         <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
           <div className="p-4 border-b border-neutral-200 dark:border-neutral-700">
@@ -1224,6 +1312,11 @@ export default function BaseDatosMaestrosAdmin() {
               }`}>
               <Icon className="w-4 h-4"/>
               {t.label}
+              {t.id === 'mapeo' && pendientesMapeo.length > 0 && (
+                <span className="flex items-center justify-center w-4 h-4 text-[10px] font-bold bg-amber-500 text-white rounded-full">
+                  {pendientesMapeo.length}
+                </span>
+              )}
             </button>
           );
         })}

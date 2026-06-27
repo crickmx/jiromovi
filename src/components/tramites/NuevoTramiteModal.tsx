@@ -1308,6 +1308,33 @@ export function NuevoTramiteModal({
         if (assignError) console.error('Error creating assignment:', assignError);
       }
 
+      // Proponer mapeo pendiente si agente sin mapeo y usuario no es admin
+      if (usuario.rol !== 'Administrador') {
+        const agenteCampo = camposDinamicos.find(c => c.sistema_key === 'agente_vendedor');
+        if (agenteCampo) {
+          const agenteId = respuestasDinamicas[agenteCampo.id];
+          const agente = agentesVendedor.find(a => a.id === agenteId);
+          if (agenteId && agente && !agente.usuario_id && asignado) {
+            await supabase.from('maestro_mapeo_pendiente').upsert(
+              { agente_id: agenteId, user_id_propuesto: asignado, propuesto_por: usuario.id, ticket_id: ticket.id },
+              { onConflict: 'agente_id,user_id_propuesto', ignoreDuplicates: true }
+            );
+            const { data: admins } = await supabase.from('usuarios').select('id').eq('rol', 'Administrador');
+            for (const admin of (admins || [])) {
+              await crearNotificacion({
+                user_id: admin.id,
+                titulo: 'Propuesta de mapeo pendiente',
+                mensaje: `${usuario.nombre_completo} sugirió vincular al agente "${agente.nombre}" con un usuario MOVI al crear el trámite ${ticket.folio}.`,
+                modulo: 'BaseDatosMaestros',
+                icono: 'link',
+                accion_url: '/admin/base-datos',
+                accion_texto: 'Revisar mapeos',
+              });
+            }
+          }
+        }
+      }
+
       // Notificar al responsable asignado o al líder del equipo
       if (responsableId) {
         await crearNotificacion({
