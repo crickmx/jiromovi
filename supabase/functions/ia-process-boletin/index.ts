@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const CATEGORIA_ASEGURADORAS_ID = "9cf4a22e-22a4-4b88-8ca1-f90bc2cf265d";
 
-const FALLBACK_IMAGES = [
+const FALLBACK_BACKGROUNDS = [
   "https://images.pexels.com/photos/7688336/pexels-photo-7688336.jpeg?auto=compress&cs=tinysrgb&w=1200",
   "https://images.pexels.com/photos/5849577/pexels-photo-5849577.jpeg?auto=compress&cs=tinysrgb&w=1200",
   "https://images.pexels.com/photos/6863183/pexels-photo-6863183.jpeg?auto=compress&cs=tinysrgb&w=1200",
@@ -76,6 +76,12 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // Load all active insurers for matching
+    const { data: insurers } = await supabase
+      .from("seguwallet_insurers")
+      .select("id, name, logo_url, primary_color")
+      .eq("is_active", true);
+
     let query = supabase
       .from("ia_bandeja")
       .select("id, asunto, remitente, cuerpo_texto, cuerpo_html, adjuntos, fecha_correo")
@@ -116,8 +122,15 @@ Deno.serve(async (req: Request) => {
 
     for (const email of emails) {
       try {
-        const article = await generateArticle(openaiKey, email);
-        const imageUrl = await generateThumbnail(openaiKey, article.titulo, article.imagen_prompt, supabase);
+        const matchedInsurer = matchInsurer(email.remitente, email.asunto, insurers || []);
+        const article = await generateArticle(openaiKey, email, matchedInsurer?.name || "");
+
+        const imageUrl = await generateBrandedThumbnail(
+          openaiKey,
+          article,
+          matchedInsurer,
+          supabase,
+        );
 
         const { data: comunicado, error: insertErr } = await supabase
           .from("comunicados_publicaciones")
@@ -181,9 +194,10 @@ Deno.serve(async (req: Request) => {
           detalle: {
             comunicado_id: comunicado.id,
             titulo: article.titulo,
-            imagen_generada: !imageUrl.includes("pexels.com"),
+            imagen_generada: true,
             imagen_url: imageUrl,
             adjuntos_vinculados: adjuntosVinculados,
+            aseguradora: matchedInsurer?.name || "desconocida",
           },
           estado: "exito",
           comunicados_creados: 1,
@@ -237,21 +251,82 @@ Deno.serve(async (req: Request) => {
   }
 });
 
+// --- Types ---
+
 interface ArticleResult {
   titulo: string;
   resumen: string;
   contenido_html: string;
   imagen_prompt: string;
+  categoria: string;
 }
+
+interface InsurerMatch {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  primary_color: string | null;
+}
+
+// --- Insurer Matching ---
+
+function matchInsurer(
+  remitente: string,
+  asunto: string,
+  insurers: { id: string; name: string; logo_url: string | null; primary_color: string | null }[],
+): InsurerMatch | null {
+  const searchText = `${remitente} ${asunto}`.toLowerCase();
+
+  for (const insurer of insurers) {
+    const nameParts = insurer.name.toLowerCase().split(/\s+/);
+    const mainName = nameParts[0];
+    if (mainName.length >= 3 && searchText.includes(mainName)) {
+      return insurer;
+    }
+    if (searchText.includes(insurer.name.toLowerCase())) {
+      return insurer;
+    }
+  }
+
+  const commonAliases: Record<string, string> = {
+    "gnp": "GNP",
+    "qualitas": "Qualitas",
+    "quálitas": "Qualitas",
+    "hdi": "HDI",
+    "mapfre": "Mapfre",
+    "zurich": "Zurich",
+    "chubb": "Chubb",
+    "allianz": "Allianz",
+    "atlas": "Atlas",
+    "inbursa": "Inbursa",
+    "afirme": "Afirme",
+    "metlife": "Metlife",
+    "bupa": "Bupa",
+    "sura": "SURA",
+    "axa": "AXA",
+    "banorte": "Banorte",
+  };
+
+  for (const [alias, name] of Object.entries(commonAliases)) {
+    if (searchText.includes(alias)) {
+      const found = insurers.find(i => i.name.toLowerCase().includes(alias));
+      if (found) return found;
+      return { id: "", name, logo_url: null, primary_color: null };
+    }
+  }
+
+  return null;
+}
+
+// --- Article Generation ---
 
 async function generateArticle(
   apiKey: string,
   email: { asunto: string; remitente: string; cuerpo_texto: string | null; cuerpo_html: string | null },
+  insurerName: string,
 ): Promise<ArticleResult> {
   const emailContent = email.cuerpo_texto || stripHtml(email.cuerpo_html || "");
   const truncatedContent = emailContent.substring(0, 5000);
-
-  const insurerName = extractInsurerName(email.remitente, email.asunto);
 
   const prompt = `Eres un editor senior de una agencia de seguros en Mexico. Tu trabajo es transformar boletines y comunicados de aseguradoras en ARTICULOS PERIODISTICOS claros y faciles de leer para los agentes de seguros de la oficina.
 
@@ -265,15 +340,15 @@ EMAIL ORIGINAL:
 FORMATO DEL ARTICULO:
 1. TITULO: Atractivo, informativo, maximo 80 caracteres. Debe comunicar la noticia principal.
 2. RESUMEN: 1-2 oraciones que resuman lo esencial (para vista previa).
-3. CONTENIDO HTML: Articulo estructurado asi:
-   - <p> de CONTEXTO: Explica brevemente quien envia y por que (ej: "GNP Seguros ha emitido un comunicado importante para sus agentes...")
+3. CATEGORIA: Una palabra/frase corta que categorice el tema (ej: "Productos", "Siniestros", "Comisiones", "Capacitacion", "Normativa", "Tecnologia", "Cobranza", "Beneficios").
+4. CONTENIDO HTML: Articulo estructurado asi:
+   - <p> de CONTEXTO: Explica brevemente quien envia y por que
    - <h3> con los PUNTOS PRINCIPALES del comunicado, usando <ul><li> para detallar cada uno
    - Si hay FECHAS LIMITE o VIGENCIAS, destacarlas con <strong>
    - <h3> "Que significa para ti como agente" - explicar el impacto practico
    - Si hay ACCIONES REQUERIDAS, listarlas claramente
    - <p> de CIERRE con recomendacion o siguiente paso
-
-4. IMAGEN_PROMPT: Prompt en ingles para generar una imagen de portada profesional relacionada al tema del articulo.
+5. IMAGEN_PROMPT: Prompt en ingles para una ilustracion abstracta/conceptual del tema (NO texto, NO logos, solo visual temático). Ejemplo: "Abstract geometric composition representing insurance protection, shield shapes, blue gradient, modern corporate art style"
 
 ESTILO DE REDACCION:
 - Escribe como periodista, NO copies el email tal cual
@@ -290,8 +365,9 @@ Responde SOLO con JSON valido:
 {
   "titulo": "string (max 80 chars)",
   "resumen": "string (1-2 oraciones)",
+  "categoria": "string (1-2 palabras)",
   "contenido_html": "string (HTML del articulo completo)",
-  "imagen_prompt": "string (en ingles, descriptivo, para imagen landscape 1792x1024)"
+  "imagen_prompt": "string (en ingles, visual abstracto, sin texto ni logos)"
 }`;
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -326,58 +402,65 @@ Responde SOLO con JSON valido:
     titulo: parsed.titulo.substring(0, 200),
     resumen: parsed.resumen || "",
     contenido_html: parsed.contenido_html,
-    imagen_prompt: parsed.imagen_prompt || "Professional insurance newsletter cover, corporate office scene with documents and handshake, blue and white tones, modern minimalist style",
+    imagen_prompt: parsed.imagen_prompt || "Abstract professional insurance concept, geometric shapes, blue tones, modern corporate art",
+    categoria: parsed.categoria || "Seguros",
   };
 }
 
-async function generateThumbnail(
+// --- Branded Thumbnail Generation ---
+
+async function generateBrandedThumbnail(
   apiKey: string,
-  titulo: string,
-  imagePrompt: string,
+  article: ArticleResult,
+  insurer: InsurerMatch | null,
   supabase: any,
 ): Promise<string> {
   try {
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "dall-e-3",
-        prompt: `Create a professional magazine-style cover image for an insurance industry article. ${imagePrompt}. The image should be visually striking with corporate tones (deep blue, teal, white). Include abstract visual elements that represent the insurance/financial sector. NO text, NO letters, NO words, NO logos in the image. Clean, modern, editorial photography style. Wide landscape format.`,
-        n: 1,
-        size: "1792x1024",
-        quality: "standard",
-      }),
-    });
+    // Step 1: Generate background illustration with DALL-E
+    const bgImageUrl = await generateBackgroundImage(apiKey, article.imagen_prompt);
 
-    if (!response.ok) {
-      const errBody = await response.text().catch(() => "");
-      console.error("DALL-E error:", response.status, errBody.substring(0, 100));
-      return getRandomFallbackImage();
+    // Step 2: Fetch the background image as base64
+    const bgBase64 = await fetchImageAsBase64(bgImageUrl);
+
+    // Step 3: Fetch insurer logo as base64 (if available)
+    let logoBase64: string | null = null;
+    if (insurer?.logo_url) {
+      logoBase64 = await fetchImageAsBase64(insurer.logo_url).catch(() => null);
     }
 
-    const data = await response.json();
-    const imageUrl = data.data?.[0]?.url;
-    if (!imageUrl) return getRandomFallbackImage();
+    // Step 4: Create SVG composite image
+    const brandColor = insurer?.primary_color || "#1a365d";
+    const today = new Date().toLocaleDateString("es-MX", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
 
-    const imgResponse = await fetch(imageUrl);
-    if (!imgResponse.ok) return getRandomFallbackImage();
+    const svgImage = buildCompositeSVG({
+      bgBase64,
+      logoBase64,
+      title: article.titulo,
+      category: article.categoria,
+      date: today,
+      insurerName: insurer?.name || "",
+      brandColor,
+    });
 
-    const imgBuffer = await imgResponse.arrayBuffer();
-    const filename = `ia-boletin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`;
+    // Step 5: Upload SVG (rendered as image) to storage
+    const filename = `ia-boletin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.svg`;
     const storagePath = `imagenes/${filename}`;
+
+    const svgBuffer = new TextEncoder().encode(svgImage);
 
     const { error: uploadErr } = await supabase.storage
       .from("comunicados")
-      .upload(storagePath, imgBuffer, {
-        contentType: "image/png",
+      .upload(storagePath, svgBuffer, {
+        contentType: "image/svg+xml",
         upsert: false,
       });
 
     if (uploadErr) {
-      console.error("Storage upload error:", uploadErr.message);
+      console.error("SVG upload error:", uploadErr.message);
       return getRandomFallbackImage();
     }
 
@@ -388,27 +471,161 @@ async function generateThumbnail(
     return publicUrl?.publicUrl || getRandomFallbackImage();
 
   } catch (err: any) {
-    console.error("Thumbnail generation error:", err.message);
+    console.error("Branded thumbnail generation error:", err.message);
     return getRandomFallbackImage();
   }
 }
 
-function getRandomFallbackImage(): string {
-  return FALLBACK_IMAGES[Math.floor(Math.random() * FALLBACK_IMAGES.length)];
+async function generateBackgroundImage(apiKey: string, imagePrompt: string): Promise<string> {
+  try {
+    const response = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "dall-e-3",
+        prompt: `Create an abstract, artistic background illustration for a professional insurance article cover. ${imagePrompt}. Style: soft gradients, geometric shapes, modern corporate art. NO text, NO letters, NO words, NO logos, NO people faces. Clean abstract composition. Wide landscape format, soft colors suitable as a background with overlay text.`,
+        n: 1,
+        size: "1792x1024",
+        quality: "standard",
+      }),
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text().catch(() => "");
+      console.error("DALL-E background error:", response.status, errBody.substring(0, 100));
+      return getRandomFallbackImage();
+    }
+
+    const data = await response.json();
+    return data.data?.[0]?.url || getRandomFallbackImage();
+  } catch {
+    return getRandomFallbackImage();
+  }
 }
 
-function extractInsurerName(remitente: string, asunto: string): string {
-  const insurers = [
-    "GNP", "AXA", "Qualitas", "Quálitas", "HDI", "Mapfre", "Zurich",
-    "Chubb", "Allianz", "Atlas", "Inbursa", "Afirme", "Plan Seguro",
-    "Latino Seguros", "BX+", "Banorte", "Metlife", "General de Seguros",
-    "ANA Seguros", "Seguros Monterrey", "Bupa", "SURA",
-  ];
-  const searchText = `${remitente} ${asunto}`;
-  for (const ins of insurers) {
-    if (searchText.toLowerCase().includes(ins.toLowerCase())) return ins;
+async function fetchImageAsBase64(url: string): Promise<string> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
+
+  const contentType = response.headers.get("content-type") || "image/png";
+  const buffer = await response.arrayBuffer();
+  const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+  return `data:${contentType};base64,${base64}`;
+}
+
+interface CompositeSVGParams {
+  bgBase64: string;
+  logoBase64: string | null;
+  title: string;
+  category: string;
+  date: string;
+  insurerName: string;
+  brandColor: string;
+}
+
+function buildCompositeSVG(params: CompositeSVGParams): string {
+  const { bgBase64, logoBase64, title, category, date, insurerName, brandColor } = params;
+
+  const truncatedTitle = title.length > 70 ? title.substring(0, 67) + "..." : title;
+  const titleLines = wrapText(truncatedTitle, 35);
+  const escapedTitle = titleLines.map(l => escapeXml(l));
+  const escapedCategory = escapeXml(category);
+  const escapedDate = escapeXml(date);
+  const escapedInsurer = escapeXml(insurerName);
+
+  const titleY = 520;
+  const lineHeight = 52;
+
+  const logoSection = logoBase64
+    ? `<image href="${logoBase64}" x="60" y="40" width="180" height="80" preserveAspectRatio="xMinYMid meet" />`
+    : "";
+
+  const insurerBadge = insurerName
+    ? `<rect x="60" y="135" width="${Math.min(insurerName.length * 12 + 40, 300)}" height="36" rx="18" fill="${brandColor}" opacity="0.9"/>
+       <text x="80" y="159" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">${escapedInsurer}</text>`
+    : "";
+
+  const titleTspans = escapedTitle
+    .map((line, i) => `<tspan x="60" dy="${i === 0 ? 0 : lineHeight}">${line}</tspan>`)
+    .join("");
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="overlay" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${brandColor}" stop-opacity="0.3"/>
+      <stop offset="40%" stop-color="${brandColor}" stop-opacity="0.1"/>
+      <stop offset="65%" stop-color="#000000" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.85"/>
+    </linearGradient>
+    <linearGradient id="topBar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="${brandColor}" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="${brandColor}" stop-opacity="0.7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background Image -->
+  <image href="${bgBase64}" x="0" y="0" width="1200" height="630" preserveAspectRatio="xMidYMid slice"/>
+
+  <!-- Gradient Overlay -->
+  <rect width="1200" height="630" fill="url(#overlay)"/>
+
+  <!-- Top Header Bar -->
+  <rect x="0" y="0" width="1200" height="6" fill="${brandColor}"/>
+
+  <!-- Logo -->
+  ${logoSection}
+
+  <!-- Insurer Badge -->
+  ${insurerBadge}
+
+  <!-- Category Badge -->
+  <rect x="60" y="${titleY - 50}" width="${Math.min(category.length * 11 + 30, 250)}" height="32" rx="16" fill="white" opacity="0.95"/>
+  <text x="75" y="${titleY - 28}" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="${brandColor}" letter-spacing="1">${escapedCategory.toUpperCase()}</text>
+
+  <!-- Title -->
+  <text x="60" y="${titleY}" font-family="Arial, Helvetica, sans-serif" font-size="44" font-weight="bold" fill="white" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.5))">
+    ${titleTspans}
+  </text>
+
+  <!-- Date -->
+  <text x="60" y="${titleY + titleLines.length * lineHeight + 20}" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="rgba(255,255,255,0.8)">${escapedDate}</text>
+
+  <!-- Bottom accent line -->
+  <rect x="60" y="600" width="200" height="4" rx="2" fill="white" opacity="0.6"/>
+</svg>`;
+}
+
+function wrapText(text: string, maxCharsPerLine: number): string[] {
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let currentLine = "";
+
+  for (const word of words) {
+    if ((currentLine + " " + word).trim().length > maxCharsPerLine && currentLine.length > 0) {
+      lines.push(currentLine.trim());
+      currentLine = word;
+    } else {
+      currentLine = currentLine ? currentLine + " " + word : word;
+    }
   }
-  return "";
+  if (currentLine.trim()) lines.push(currentLine.trim());
+  return lines.slice(0, 3);
+}
+
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function getRandomFallbackImage(): string {
+  return FALLBACK_BACKGROUNDS[Math.floor(Math.random() * FALLBACK_BACKGROUNDS.length)];
 }
 
 function stripHtml(html: string): string {
