@@ -6,10 +6,11 @@ import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
 import { RichTextEditor } from '../components/RichTextEditor';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Save, Upload, X, Calendar, Pin, Image, Paperclip, Eye, Users, Building2, User, FileText, CircleAlert as AlertCircle, Sparkles, Loader as Loader2, CircleCheck as CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Save, Upload, X, Calendar, Pin, Image, Paperclip, Eye, Users, Building2, User, FileText, CircleAlert as AlertCircle, Sparkles, Loader as Loader2, CircleCheck as CheckCircle2, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn } from '@/lib/utils';
 import { extraerTextoDeArchivos, procesarDocumentoConIA } from '../lib/iaDocumentoUtils';
+import { generateCoverImage } from '../lib/coverImageGenerator';
 import {
   obtenerComunicadoPorId,
   crearComunicado,
@@ -22,6 +23,12 @@ import {
   establecerVisibilidad
 } from '../lib/comunicadosUtils';
 import type { ComunicadoCategoria } from '../lib/comunicadosTypes';
+
+interface AseguradoraOption {
+  id: string;
+  name: string;
+  logo_url: string;
+}
 
 export default function ComunicadoEditor() {
   const { id } = useParams<{ id: string }>();
@@ -54,6 +61,8 @@ export default function ComunicadoEditor() {
   const [iaProcesando, setIaProcesando] = useState(false);
   const [iaError, setIaError] = useState<string | null>(null);
   const [iaCompletado, setIaCompletado] = useState(false);
+  const [iaAseguradoraId, setIaAseguradoraId] = useState('');
+  const [aseguradoras, setAseguradoras] = useState<AseguradoraOption[]>([]);
 
   const esAdmin = usuario?.rol === 'Administrador';
   const esGerente = usuario?.rol === 'Gerente';
@@ -85,6 +94,14 @@ export default function ComunicadoEditor() {
         .select('id, nombre')
         .order('nombre');
       setOficinasDisponibles(oficinasData || []);
+
+      // Cargar aseguradoras con logo para imagen de portada IA
+      const { data: aseguradorasData } = await supabase
+        .from('web_page_insurers')
+        .select('id, name, logo_url')
+        .eq('is_active', true)
+        .order('display_order');
+      setAseguradoras(aseguradorasData || []);
 
       if (categoriasData.length > 0 && !categoriaId) {
         setCategoriaId(categoriasData[0].id);
@@ -194,9 +211,27 @@ export default function ComunicadoEditor() {
 
       setTitulo(resultado.titulo);
       setContenidoHtml(resultado.contenido_html);
-      if (resultado.imagen_url) {
-        setImagenPrincipalUrl(resultado.imagen_url);
+
+      // Generate composite cover image with title + insurer branding
+      const selectedAseguradora = aseguradoras.find(a => a.id === iaAseguradoraId);
+      try {
+        const coverBlob = await generateCoverImage({
+          backgroundUrl: resultado.imagen_url,
+          titulo: resultado.titulo,
+          aseguradoraNombre: selectedAseguradora?.name,
+          aseguradoraLogoUrl: selectedAseguradora?.logo_url,
+        });
+        const coverFile = new File([coverBlob], 'cover-ia.jpg', { type: 'image/jpeg' });
+        const uploadedUrl = await subirImagenComunicado(coverFile);
+        setImagenPrincipalUrl(uploadedUrl);
+        setImagenPrincipal(null);
+      } catch (coverErr) {
+        console.error('Error generating cover, using raw AI image:', coverErr);
+        if (resultado.imagen_url) {
+          setImagenPrincipalUrl(resultado.imagen_url);
+        }
       }
+
       setIaCompletado(true);
     } catch (err: any) {
       setIaError(err.message || 'Error al procesar con IA');
@@ -623,6 +658,39 @@ export default function ComunicadoEditor() {
                     rows={4}
                     disabled={iaProcesando}
                   />
+
+                  {/* Aseguradora selector for cover image */}
+                  <div className="mt-3">
+                    <label className="flex items-center gap-2 text-sm font-medium text-neutral-700 mb-1.5">
+                      <Shield className="w-4 h-4 text-primary-500" />
+                      Aseguradora (para imagen de portada)
+                    </label>
+                    <select
+                      value={iaAseguradoraId}
+                      onChange={(e) => setIaAseguradoraId(e.target.value)}
+                      disabled={iaProcesando}
+                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-300 focus:border-transparent transition-all bg-white"
+                    >
+                      <option value="">Sin aseguradora (generar sin logo)</option>
+                      {aseguradoras.map((aseg) => (
+                        <option key={aseg.id} value={aseg.id}>
+                          {aseg.name}
+                        </option>
+                      ))}
+                    </select>
+                    {iaAseguradoraId && (
+                      <div className="flex items-center gap-2 mt-2 p-2 bg-white border border-neutral-200 rounded-lg">
+                        <img
+                          src={aseguradoras.find(a => a.id === iaAseguradoraId)?.logo_url}
+                          alt=""
+                          className="h-8 w-auto object-contain"
+                        />
+                        <span className="text-xs text-neutral-500">
+                          El logo y nombre apareceran en la imagen de portada generada
+                        </span>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Error */}
                   {iaError && (

@@ -190,7 +190,7 @@ Responde UNICAMENTE con un objeto JSON valido:
 // --- Image Generation ---
 
 async function generateImage(apiKey: string, article: ArticleResult): Promise<string> {
-  const prompt = `Professional editorial magazine cover image: ${article.imagen_destacada_descripcion}. Style: clean, modern, high-quality corporate photography or abstract art. No text, no logos, no watermarks.`;
+  const prompt = `Abstract background image for an institutional insurance industry article about: ${article.imagen_destacada_descripcion}. Requirements: modern, clean, professional, abstract or blurred corporate photography. Soft gradients, geometric shapes, or bokeh effects. NO text, NO logos, NO watermarks, NO people faces, NO words. This will be used as a background layer with text overlaid on top, so keep it simple and not too busy. Color palette: deep blues, teals, or neutral tones.`;
 
   const resp = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
