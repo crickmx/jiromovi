@@ -77,6 +77,7 @@ interface BandejaItem {
   cuenta_correo_id: string | null;
   carpeta_destino: string | null;
   created_at: string;
+  comunicado_borrador_id: string | null;
   ia_robots?: { nombre: string } | null;
   cuentaEmail?: string | null;
 }
@@ -394,6 +395,8 @@ interface BoletinItem {
   resultado: Record<string, unknown> | null;
 }
 
+const BOLETIN_ROBOT_ID = '43453bfd-d655-43bc-99b3-f8c037afeabb';
+
 function BoletinesPanel() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
@@ -403,36 +406,48 @@ function BoletinesPanel() {
   const [processing, setProcessing] = useState(false);
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => { loadBoletines(); }, []);
 
   async function loadBoletines() {
     setLoading(true);
+    setLoadError(null);
     try {
+      let robotId = BOLETIN_ROBOT_ID;
+
       const { data: robot, error: robotErr } = await supabase
         .from('ia_robots')
         .select('id')
         .eq('codigo', 'comunicados_aseguradoras')
         .maybeSingle();
 
-      if (robotErr) { console.error('loadBoletines robot error:', robotErr); setLoading(false); return; }
-      if (!robot) { setLoading(false); return; }
+      if (robotErr) {
+        console.error('loadBoletines robot error:', robotErr);
+      }
+      if (robot) {
+        robotId = robot.id;
+      }
 
       const { data: allItems, error: bandejaErr } = await supabase
         .from('ia_bandeja')
         .select('id, asunto, remitente, cuerpo_texto, fecha_correo, coincidencia_pct, comunicado_borrador_id, resultado')
-        .eq('robot_id', robot.id)
+        .eq('robot_id', robotId)
         .eq('estado_procesamiento', 'completado')
         .order('fecha_correo', { ascending: false })
         .limit(50);
 
-      if (bandejaErr) { console.error('loadBoletines bandeja error:', bandejaErr); }
+      if (bandejaErr) {
+        console.error('loadBoletines bandeja error:', bandejaErr);
+        setLoadError(`Error al cargar boletines: ${bandejaErr.message}`);
+      }
 
       const items = (allItems || []) as BoletinItem[];
       setPendientes(items.filter(i => !i.comunicado_borrador_id));
       setProcesados(items.filter(i => !!i.comunicado_borrador_id));
-    } catch (err) {
+    } catch (err: any) {
       console.error('loadBoletines error:', err);
+      setLoadError(err.message || 'Error inesperado al cargar boletines');
     } finally {
       setLoading(false);
     }
@@ -523,6 +538,12 @@ function BoletinesPanel() {
           }`}>
             {result.ok ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <XCircle className="w-4 h-4 flex-shrink-0" />}
             {result.msg}
+          </div>
+        )}
+        {loadError && (
+          <div className="mt-4 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400 border border-red-200 dark:border-red-800">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            {loadError}
           </div>
         )}
       </div>
@@ -1125,6 +1146,7 @@ function RobotForm({ robot, onSave, onCancel }: { robot: Robot | null; onSave: (
 // BANDEJA IA PANEL
 // ═══════════════════════════════════════════════════════════════════
 function BandejaPanel() {
+  const navigate = useNavigate();
   const [items, setItems] = useState<BandejaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState('');
@@ -1428,14 +1450,24 @@ function BandejaPanel() {
                   <span className="text-xs text-slate-400">
                     {item.fecha_correo ? new Date(item.fecha_correo).toLocaleDateString('es-MX') : ''}
                   </span>
-                  {item.cuerpo_texto && (
-                    <button
-                      onClick={() => setPreviewItem(item)}
-                      className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                    >
-                      <Eye className="w-3 h-3" /> Ver
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {item.comunicado_borrador_id && (
+                      <button
+                        onClick={() => navigate(`/comunicados/editor/${item.comunicado_borrador_id}`)}
+                        className="flex items-center gap-1 text-xs text-teal-600 hover:text-teal-800 dark:text-teal-400 hover:underline"
+                      >
+                        <FileText className="w-3 h-3" /> Borrador
+                      </button>
+                    )}
+                    {item.cuerpo_texto && (
+                      <button
+                        onClick={() => setPreviewItem(item)}
+                        className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                      >
+                        <Eye className="w-3 h-3" /> Ver
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
