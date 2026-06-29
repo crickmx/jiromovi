@@ -9,6 +9,14 @@ const corsHeaders = {
 
 const CATEGORIA_ASEGURADORAS_ID = "9cf4a22e-22a4-4b88-8ca1-f90bc2cf265d";
 
+const FALLBACK_IMAGES = [
+  "https://images.pexels.com/photos/7688336/pexels-photo-7688336.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/5849577/pexels-photo-5849577.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/6863183/pexels-photo-6863183.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/4386431/pexels-photo-4386431.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/7821487/pexels-photo-7821487.jpeg?auto=compress&cs=tinysrgb&w=1200",
+];
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -37,7 +45,6 @@ Deno.serve(async (req: Request) => {
 
     const limit = Math.min(body.limit || 5, 10);
 
-    // Get the robot ID for comunicados_aseguradoras
     const { data: robot } = await supabase
       .from("ia_robots")
       .select("id")
@@ -50,7 +57,6 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Find an admin user to attribute as creator if not specified
     let creadoPor = body.creado_por;
     if (!creadoPor) {
       const { data: adminUser } = await supabase
@@ -70,7 +76,6 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Get classified emails that haven't been processed into comunicados yet
     let query = supabase
       .from("ia_bandeja")
       .select("id, asunto, remitente, cuerpo_texto, cuerpo_html, adjuntos, fecha_correo")
@@ -111,13 +116,9 @@ Deno.serve(async (req: Request) => {
 
     for (const email of emails) {
       try {
-        // Step 1: Generate article from email content
         const article = await generateArticle(openaiKey, email);
+        const imageUrl = await generateThumbnail(openaiKey, article.titulo, article.imagen_prompt, supabase);
 
-        // Step 2: Generate thumbnail image
-        const imageUrl = await generateThumbnail(openaiKey, article.titulo, supabase, supabaseUrl);
-
-        // Step 3: Create comunicado draft (publicado = false)
         const { data: comunicado, error: insertErr } = await supabase
           .from("comunicados_publicaciones")
           .insert({
@@ -136,28 +137,28 @@ Deno.serve(async (req: Request) => {
           throw new Error(`Error creando comunicado: ${insertErr?.message || "sin datos"}`);
         }
 
-        // Step 4: Create visibility rule (para todos)
         await supabase.from("comunicados_visibilidad").insert({
           comunicado_id: comunicado.id,
           para_todos: true,
         });
 
-        // Step 5: Handle attachments from original email
+        let adjuntosVinculados = 0;
         if (email.adjuntos && Array.isArray(email.adjuntos) && email.adjuntos.length > 0) {
           for (const adj of email.adjuntos) {
-            if (adj.url || adj.archivo_url) {
+            const archivoUrl = adj.url || adj.archivo_url || adj.storage_path;
+            if (archivoUrl) {
               await supabase.from("comunicados_adjuntos").insert({
                 comunicado_id: comunicado.id,
-                archivo_url: adj.url || adj.archivo_url,
-                nombre_archivo: adj.nombre || adj.filename || "adjunto",
-                tamanio_bytes: adj.size || adj.tamanio || 0,
-                tipo_mime: adj.mime || adj.tipo_mime || "application/octet-stream",
+                archivo_url: archivoUrl,
+                nombre_archivo: adj.nombre || adj.filename || adj.name || "adjunto",
+                tamanio_bytes: adj.size || adj.tamanio || adj.tamanio_bytes || 0,
+                tipo_mime: adj.mime || adj.tipo_mime || adj.content_type || "application/octet-stream",
               });
+              adjuntosVinculados++;
             }
           }
         }
 
-        // Step 6: Link bandeja to comunicado
         await supabase
           .from("ia_bandeja")
           .update({
@@ -173,7 +174,6 @@ Deno.serve(async (req: Request) => {
           })
           .eq("id", email.id);
 
-        // Step 7: Log to bitacora
         await supabase.from("ia_bitacora").insert({
           correo_id: email.id,
           robot_id: robot.id,
@@ -181,8 +181,9 @@ Deno.serve(async (req: Request) => {
           detalle: {
             comunicado_id: comunicado.id,
             titulo: article.titulo,
-            imagen_generada: !!imageUrl,
-            adjuntos_vinculados: email.adjuntos?.length || 0,
+            imagen_generada: !imageUrl.includes("pexels.com"),
+            imagen_url: imageUrl,
+            adjuntos_vinculados: adjuntosVinculados,
           },
           estado: "exito",
           comunicados_creados: 1,
@@ -248,40 +249,49 @@ async function generateArticle(
   email: { asunto: string; remitente: string; cuerpo_texto: string | null; cuerpo_html: string | null },
 ): Promise<ArticleResult> {
   const emailContent = email.cuerpo_texto || stripHtml(email.cuerpo_html || "");
-  const truncatedContent = emailContent.substring(0, 4000);
+  const truncatedContent = emailContent.substring(0, 5000);
 
-  const prompt = `Eres un redactor experto para una agencia de seguros en Mexico. Tu tarea es transformar un email/boletin de una aseguradora en un articulo informativo profesional para publicar como comunicado interno a los agentes de la oficina.
+  const insurerName = extractInsurerName(email.remitente, email.asunto);
+
+  const prompt = `Eres un editor senior de una agencia de seguros en Mexico. Tu trabajo es transformar boletines y comunicados de aseguradoras en ARTICULOS PERIODISTICOS claros y faciles de leer para los agentes de seguros de la oficina.
+
+IMPORTANTE: El resultado debe leerse como un ARTICULO DE BLOG/REVISTA que EXPLICA el comunicado recibido, no como una copia del email original. Los agentes deben poder entender rapidamente de que se trata y que deben hacer.
 
 EMAIL ORIGINAL:
-- De: ${email.remitente}
+- Aseguradora/Remitente: ${insurerName || email.remitente}
 - Asunto: ${email.asunto}
 - Contenido: ${truncatedContent}
 
-INSTRUCCIONES:
-1. Genera un titulo atractivo y profesional (maximo 100 caracteres)
-2. Genera un resumen ejecutivo de 1-2 oraciones
-3. Genera el articulo completo en HTML bien estructurado con:
-   - Un parrafo de introduccion/contexto
-   - Los puntos clave del comunicado usando listas (<ul>) o subtitulos (<h3>)
-   - Fechas importantes si las hay
-   - Impacto o acciones requeridas para los agentes
-   - Un parrafo de cierre
-4. Genera un prompt para crear una imagen miniatura que represente visualmente el tema (en ingles, para DALL-E)
+FORMATO DEL ARTICULO:
+1. TITULO: Atractivo, informativo, maximo 80 caracteres. Debe comunicar la noticia principal.
+2. RESUMEN: 1-2 oraciones que resuman lo esencial (para vista previa).
+3. CONTENIDO HTML: Articulo estructurado asi:
+   - <p> de CONTEXTO: Explica brevemente quien envia y por que (ej: "GNP Seguros ha emitido un comunicado importante para sus agentes...")
+   - <h3> con los PUNTOS PRINCIPALES del comunicado, usando <ul><li> para detallar cada uno
+   - Si hay FECHAS LIMITE o VIGENCIAS, destacarlas con <strong>
+   - <h3> "Que significa para ti como agente" - explicar el impacto practico
+   - Si hay ACCIONES REQUERIDAS, listarlas claramente
+   - <p> de CIERRE con recomendacion o siguiente paso
 
-REGLAS:
-- Usa un tono profesional pero accesible
-- No inventes informacion que no este en el email
-- Usa HTML semantico: <h2>, <h3>, <p>, <ul>, <li>, <strong>, <em>
-- NO uses <h1> (eso lo pone el sistema)
-- Mantener en espanol
-- El articulo debe ser util y accionable para un agente de seguros
+4. IMAGEN_PROMPT: Prompt en ingles para generar una imagen de portada profesional relacionada al tema del articulo.
 
-Responde SOLO con un JSON valido:
+ESTILO DE REDACCION:
+- Escribe como periodista, NO copies el email tal cual
+- Explica terminos tecnicos si los hay
+- Usa parrafos cortos (max 3 oraciones)
+- Tono: profesional, directo, util
+- Si el email tiene informacion confusa, sintetiza lo importante
+- NO inventes informacion que no este en el email
+
+HTML PERMITIDO: <h2>, <h3>, <p>, <ul>, <li>, <ol>, <strong>, <em>, <blockquote>
+NO usar: <h1>, <table>, <div>, <span>, <img>
+
+Responde SOLO con JSON valido:
 {
-  "titulo": "string",
+  "titulo": "string (max 80 chars)",
   "resumen": "string (1-2 oraciones)",
-  "contenido_html": "string (HTML del articulo)",
-  "imagen_prompt": "string (prompt en ingles para DALL-E, paisaje 1792x1024)"
+  "contenido_html": "string (HTML del articulo completo)",
+  "imagen_prompt": "string (en ingles, descriptivo, para imagen landscape 1792x1024)"
 }`;
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -293,8 +303,8 @@ Responde SOLO con un JSON valido:
     body: JSON.stringify({
       model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.4,
-      max_tokens: 3000,
+      temperature: 0.5,
+      max_tokens: 4000,
       response_format: { type: "json_object" },
     }),
   });
@@ -316,15 +326,15 @@ Responde SOLO con un JSON valido:
     titulo: parsed.titulo.substring(0, 200),
     resumen: parsed.resumen || "",
     contenido_html: parsed.contenido_html,
-    imagen_prompt: parsed.imagen_prompt || "Professional insurance industry newsletter header, modern corporate blue tones, abstract geometric shapes",
+    imagen_prompt: parsed.imagen_prompt || "Professional insurance newsletter cover, corporate office scene with documents and handshake, blue and white tones, modern minimalist style",
   };
 }
 
 async function generateThumbnail(
   apiKey: string,
   titulo: string,
+  imagePrompt: string,
   supabase: any,
-  supabaseUrl: string,
 ): Promise<string> {
   try {
     const response = await fetch("https://api.openai.com/v1/images/generations", {
@@ -335,7 +345,7 @@ async function generateThumbnail(
       },
       body: JSON.stringify({
         model: "dall-e-3",
-        prompt: `Professional minimalist header image for an insurance industry newsletter article titled "${titulo}". Modern corporate design with clean geometric shapes, subtle gradients in blue and teal tones. No text, no letters, no words in the image. Wide landscape format.`,
+        prompt: `Create a professional magazine-style cover image for an insurance industry article. ${imagePrompt}. The image should be visually striking with corporate tones (deep blue, teal, white). Include abstract visual elements that represent the insurance/financial sector. NO text, NO letters, NO words, NO logos in the image. Clean, modern, editorial photography style. Wide landscape format.`,
         n: 1,
         size: "1792x1024",
         quality: "standard",
@@ -343,17 +353,17 @@ async function generateThumbnail(
     });
 
     if (!response.ok) {
-      console.error("DALL-E error:", response.status);
-      return getDefaultThumbnail(supabaseUrl);
+      const errBody = await response.text().catch(() => "");
+      console.error("DALL-E error:", response.status, errBody.substring(0, 100));
+      return getRandomFallbackImage();
     }
 
     const data = await response.json();
     const imageUrl = data.data?.[0]?.url;
-    if (!imageUrl) return getDefaultThumbnail(supabaseUrl);
+    if (!imageUrl) return getRandomFallbackImage();
 
-    // Download the image and upload to Supabase storage
     const imgResponse = await fetch(imageUrl);
-    if (!imgResponse.ok) return getDefaultThumbnail(supabaseUrl);
+    if (!imgResponse.ok) return getRandomFallbackImage();
 
     const imgBuffer = await imgResponse.arrayBuffer();
     const filename = `ia-boletin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`;
@@ -368,23 +378,37 @@ async function generateThumbnail(
 
     if (uploadErr) {
       console.error("Storage upload error:", uploadErr.message);
-      return getDefaultThumbnail(supabaseUrl);
+      return getRandomFallbackImage();
     }
 
     const { data: publicUrl } = supabase.storage
       .from("comunicados")
       .getPublicUrl(storagePath);
 
-    return publicUrl?.publicUrl || getDefaultThumbnail(supabaseUrl);
+    return publicUrl?.publicUrl || getRandomFallbackImage();
 
   } catch (err: any) {
     console.error("Thumbnail generation error:", err.message);
-    return getDefaultThumbnail(supabaseUrl);
+    return getRandomFallbackImage();
   }
 }
 
-function getDefaultThumbnail(supabaseUrl: string): string {
-  return `${supabaseUrl}/storage/v1/object/public/comunicados/imagenes/default-boletin.png`;
+function getRandomFallbackImage(): string {
+  return FALLBACK_IMAGES[Math.floor(Math.random() * FALLBACK_IMAGES.length)];
+}
+
+function extractInsurerName(remitente: string, asunto: string): string {
+  const insurers = [
+    "GNP", "AXA", "Qualitas", "Quálitas", "HDI", "Mapfre", "Zurich",
+    "Chubb", "Allianz", "Atlas", "Inbursa", "Afirme", "Plan Seguro",
+    "Latino Seguros", "BX+", "Banorte", "Metlife", "General de Seguros",
+    "ANA Seguros", "Seguros Monterrey", "Bupa", "SURA",
+  ];
+  const searchText = `${remitente} ${asunto}`;
+  for (const ins of insurers) {
+    if (searchText.toLowerCase().includes(ins.toLowerCase())) return ins;
+  }
+  return "";
 }
 
 function stripHtml(html: string): string {
@@ -392,6 +416,10 @@ function stripHtml(html: string): string {
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
     .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
     .replace(/\s+/g, " ")
     .trim();
 }

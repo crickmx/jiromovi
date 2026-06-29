@@ -38,6 +38,7 @@ export default function ComunicadoEditor() {
   const [fechaPublicacion, setFechaPublicacion] = useState('');
   const [fijado, setFijado] = useState(false);
   const [adjuntos, setAdjuntos] = useState<File[]>([]);
+  const [adjuntosExistentes, setAdjuntosExistentes] = useState<{ id: string; archivo_url: string; nombre_archivo: string; tamanio_bytes: number; tipo_mime: string }[]>([]);
   const [saving, setSaving] = useState(false);
 
   // Estados de visibilidad
@@ -97,6 +98,10 @@ export default function ComunicadoEditor() {
           setCategoriaId(comunicado.categoria_id);
           setFijado(comunicado.fijado);
 
+          if (comunicado.adjuntos && comunicado.adjuntos.length > 0) {
+            setAdjuntosExistentes(comunicado.adjuntos);
+          }
+
           if (comunicado.fecha_publicacion) {
             const fecha = new Date(comunicado.fecha_publicacion);
             const fechaLocal = new Date(fecha.getTime() - fecha.getTimezoneOffset() * 60000)
@@ -125,7 +130,8 @@ export default function ComunicadoEditor() {
   const handleAdjuntos = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const nuevosAdjuntos = Array.from(e.target.files);
-      if (adjuntos.length + nuevosAdjuntos.length > 5) {
+      const totalAdjuntos = adjuntos.length + adjuntosExistentes.length + nuevosAdjuntos.length;
+      if (totalAdjuntos > 5) {
         alert('Máximo 5 adjuntos permitidos');
         return;
       }
@@ -567,6 +573,43 @@ export default function ComunicadoEditor() {
             <Label className="text-sm sm:text-base">
               Archivos Adjuntos (máximo 5)
             </Label>
+
+            {adjuntosExistentes.length > 0 && (
+              <div className="space-y-2">
+                <span className="text-xs text-neutral-500 font-medium">Archivos existentes:</span>
+                {adjuntosExistentes.map((adj) => (
+                  <div
+                    key={adj.id}
+                    className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100"
+                  >
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                      <a
+                        href={adj.archivo_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs sm:text-sm text-blue-700 truncate hover:underline"
+                      >
+                        {adj.nombre_archivo}
+                      </a>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={async () => {
+                        await eliminarAdjunto(adj.id);
+                        setAdjuntosExistentes(adjuntosExistentes.filter(a => a.id !== adj.id));
+                      }}
+                      className="text-red-600 hover:text-red-700 flex-shrink-0"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <label className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-3 border border-neutral-300 rounded-lg cursor-pointer hover:bg-neutral-50 active:bg-neutral-100 transition-colors btn-touch">
               <Paperclip className="w-4 h-4 sm:w-5 sm:h-5 text-neutral-600" />
               <span className="text-sm sm:text-base text-neutral-700 font-medium">Agregar archivos</span>
@@ -575,7 +618,7 @@ export default function ComunicadoEditor() {
                 multiple
                 onChange={handleAdjuntos}
                 className="hidden"
-                disabled={adjuntos.length >= 5}
+                disabled={adjuntos.length + adjuntosExistentes.length >= 5}
               />
             </label>
 
