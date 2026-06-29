@@ -164,9 +164,10 @@ export default function MoviFullRoutes() {
           <Route path="/store/pedido/:id" element={<ProtectedRoute><StorePedidoDetalle /></ProtectedRoute>} />
           <Route path="/store/reporte" element={<ProtectedRoute><StorePedidosReporte /></ProtectedRoute>} />
           <Route path="/comunicados" element={<ProtectedRoute><Comunicados /></ProtectedRoute>} />
-          <Route path="/comunicados/:id" element={<ProtectedRoute><ComunicadoDetalle /></ProtectedRoute>} />
+          <Route path="/comunicados/nuevo" element={<ProtectedRoute><ComunicadoEditor /></ProtectedRoute>} />
           <Route path="/comunicados/editor/:id" element={<ProtectedRoute><ComunicadoEditor /></ProtectedRoute>} />
           <Route path="/comunicados/categorias" element={<ProtectedRoute><ComunicadoCategorias /></ProtectedRoute>} />
+          <Route path="/comunicados/:id" element={<ProtectedRoute><ComunicadoDetalle /></ProtectedRoute>} />
 
           {/* Comercial */}
           <Route path="/contactos" element={<ProtectedRoute><Contactos /></ProtectedRoute>} />

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { PageHeader } from '@/components/ui/page-header';
@@ -395,6 +396,7 @@ interface BoletinItem {
 
 function BoletinesPanel() {
   const { usuario } = useAuth();
+  const navigate = useNavigate();
   const [pendientes, setPendientes] = useState<BoletinItem[]>([]);
   const [procesados, setProcesados] = useState<BoletinItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -590,12 +592,12 @@ function BoletinesPanel() {
                       Borrador
                     </span>
                     {item.comunicado_borrador_id && (
-                      <a
-                        href={`/comunicados/editar/${item.comunicado_borrador_id}`}
+                      <button
+                        onClick={() => navigate(`/comunicados/editor/${item.comunicado_borrador_id}`)}
                         className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline"
                       >
                         <ExternalLink className="w-3.5 h-3.5" /> Editar
-                      </a>
+                      </button>
                     )}
                   </div>
                 </div>
