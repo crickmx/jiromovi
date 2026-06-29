@@ -1126,14 +1126,24 @@ function BandejaPanel() {
   const [loading, setLoading] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState('');
   const [previewItem, setPreviewItem] = useState<BandejaItem | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [robots, setRobots] = useState<{ id: string; nombre: string; codigo: string | null }[]>([]);
+  const [processing, setProcessing] = useState(false);
+  const [actionResult, setActionResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  useEffect(() => { loadBandeja(); loadRobots(); }, []);
   useEffect(() => { loadBandeja(); }, [filtroEstado]);
+
+  async function loadRobots() {
+    const { data } = await supabase.from('ia_robots').select('id, nombre, codigo').eq('estado', 'activo').order('nombre');
+    setRobots(data || []);
+  }
 
   async function loadBandeja() {
     setLoading(true);
     try {
       let query = supabase.from('ia_bandeja')
-        .select('id, asunto, remitente, destinatario, cuerpo_texto, fecha_correo, estado_procesamiento, coincidencia_pct, razon_clasificacion, robot_id, cuenta_correo_id, carpeta_destino, created_at')
+        .select('id, asunto, remitente, destinatario, cuerpo_texto, fecha_correo, estado_procesamiento, coincidencia_pct, razon_clasificacion, robot_id, cuenta_correo_id, carpeta_destino, created_at, comunicado_borrador_id')
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -1142,7 +1152,6 @@ function BandejaPanel() {
       const { data: bandeja } = await query;
       const rows = bandeja || [];
 
-      // Fetch robot names
       const robotIds = [...new Set(rows.map((r: any) => r.robot_id).filter(Boolean))];
       const robotNamesMap: Record<string, string> = {};
       if (robotIds.length > 0) {
@@ -1150,7 +1159,6 @@ function BandejaPanel() {
         (rRes.data || []).forEach((r: any) => { robotNamesMap[r.id] = r.nombre; });
       }
 
-      // Fetch cuenta emails
       const cuentaIds = [...new Set(rows.map((r: any) => r.cuenta_correo_id).filter(Boolean))];
       const cuentaEmailMap: Record<string, string> = {};
       if (cuentaIds.length > 0) {
@@ -1170,6 +1178,84 @@ function BandejaPanel() {
     }
   }
 
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === items.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(items.map(i => i.id)));
+    }
+  }
+
+  async function handleAsignarRobot(robotId: string) {
+    if (selectedIds.size === 0) return;
+    setProcessing(true);
+    setActionResult(null);
+    try {
+      const { error } = await supabase.from('ia_bandeja')
+        .update({ robot_id: robotId, estado_procesamiento: 'completado' })
+        .in('id', [...selectedIds]);
+      if (error) throw error;
+      setActionResult({ type: 'success', message: `${selectedIds.size} correo(s) asignados al robot.` });
+      setSelectedIds(new Set());
+      loadBandeja();
+    } catch (err: any) {
+      setActionResult({ type: 'error', message: err.message || 'Error al asignar robot.' });
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  async function handleProcesarBoletin(robotId: string) {
+    if (selectedIds.size === 0) return;
+    setProcessing(true);
+    setActionResult(null);
+    try {
+      // First assign the robot and mark as completado
+      const { error: updateErr } = await supabase.from('ia_bandeja')
+        .update({ robot_id: robotId, estado_procesamiento: 'completado', comunicado_borrador_id: null })
+        .in('id', [...selectedIds]);
+      if (updateErr) throw updateErr;
+
+      // Invoke the edge function to process them
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+      const res = await fetch(`${supabaseUrl}/functions/v1/ia-process-boletin`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ robot_id: robotId, bandeja_ids: [...selectedIds] }),
+      });
+
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Error al procesar boletines');
+
+      const creados = result.comunicados_creados || 0;
+      const errores = (result.results || []).filter((r: any) => !r.success).length;
+      let msg = `${creados} comunicado(s) creados exitosamente.`;
+      if (errores > 0) msg += ` ${errores} con error.`;
+      setActionResult({ type: creados > 0 ? 'success' : 'error', message: msg });
+      setSelectedIds(new Set());
+      loadBandeja();
+    } catch (err: any) {
+      setActionResult({ type: 'error', message: err.message || 'Error al procesar boletines.' });
+    } finally {
+      setProcessing(false);
+    }
+  }
+
   const estadoColors: Record<string, string> = {
     pendiente: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
     procesando: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
@@ -1178,6 +1264,8 @@ function BandejaPanel() {
     no_clasificado: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
     simulado: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
   };
+
+  const boletinRobot = robots.find(r => r.nombre.toLowerCase().includes('comunicados'));
 
   return (
     <div className="space-y-4">
@@ -1201,19 +1289,115 @@ function BandejaPanel() {
         <span className="text-xs text-slate-400">{items.length} correos</span>
       </div>
 
+      {/* Action toolbar when items are selected */}
+      {selectedIds.size > 0 && (
+        <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl p-3 flex items-center gap-3 flex-wrap">
+          <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+            {selectedIds.size} seleccionado{selectedIds.size > 1 ? 's' : ''}
+          </span>
+          <div className="h-5 w-px bg-blue-200 dark:bg-blue-700" />
+
+          {/* Assign robot dropdown */}
+          <div className="flex items-center gap-2">
+            <select
+              className="rounded-lg border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium"
+              defaultValue=""
+              onChange={e => {
+                if (e.target.value) handleAsignarRobot(e.target.value);
+                e.target.value = '';
+              }}
+              disabled={processing}
+            >
+              <option value="" disabled>Asignar robot...</option>
+              {robots.map(r => (
+                <option key={r.id} value={r.id}>{r.nombre}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Process as Boletin button */}
+          {boletinRobot && (
+            <Button
+              onClick={() => handleProcesarBoletin(boletinRobot.id)}
+              disabled={processing}
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8"
+            >
+              {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Newspaper className="w-3.5 h-3.5" />}
+              Procesar como Boletin
+            </Button>
+          )}
+
+          {/* Process with selected robot */}
+          {!boletinRobot && robots.length > 0 && (
+            <select
+              className="rounded-lg border border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300"
+              defaultValue=""
+              onChange={e => {
+                if (e.target.value) handleProcesarBoletin(e.target.value);
+                e.target.value = '';
+              }}
+              disabled={processing}
+            >
+              <option value="" disabled>Procesar con robot...</option>
+              {robots.map(r => (
+                <option key={r.id} value={r.id}>{r.nombre}</option>
+              ))}
+            </select>
+          )}
+
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="ml-auto text-xs text-blue-500 hover:underline"
+          >
+            Deseleccionar
+          </button>
+        </div>
+      )}
+
+      {/* Result feedback */}
+      {actionResult && (
+        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm ${
+          actionResult.type === 'success'
+            ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+            : 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800'
+        }`}>
+          {actionResult.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+          <span>{actionResult.message}</span>
+          <button onClick={() => setActionResult(null)} className="ml-auto text-xs opacity-60 hover:opacity-100">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
       ) : items.length === 0 ? (
         <div className="text-center py-16">
           <Mail className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500">No hay correos en la bandeja IA.</p>
-          <p className="text-xs text-slate-400 mt-1">Los correos aparecerán aquí cuando se configure y active el monitoreo.</p>
+          <p className="text-xs text-slate-400 mt-1">Los correos aparecerán aqui cuando se configure y active el monitoreo.</p>
         </div>
       ) : (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
+          {/* Select all header */}
+          <div className="px-4 py-2.5 flex items-center gap-3 bg-slate-50 dark:bg-slate-800/80">
+            <input
+              type="checkbox"
+              checked={selectedIds.size === items.length && items.length > 0}
+              onChange={toggleSelectAll}
+              className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-xs text-slate-500">Seleccionar todos</span>
+          </div>
           {items.map(item => (
-            <div key={item.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-              <div className="flex items-start justify-between gap-3">
+            <div key={item.id} className={`p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${selectedIds.has(item.id) ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''}`}>
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(item.id)}
+                  onChange={() => toggleSelect(item.id)}
+                  className="w-4 h-4 mt-0.5 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500 flex-shrink-0"
+                />
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-sm text-slate-900 dark:text-white truncate">{item.asunto || '(Sin asunto)'}</p>
                   <p className="text-xs text-slate-500 mt-0.5">
@@ -1230,7 +1414,7 @@ function BandejaPanel() {
                     <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{item.razon_clasificacion}</p>
                   )}
                 </div>
-                <div className="flex flex-col items-end gap-1.5">
+                <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${estadoColors[item.estado_procesamiento] || 'bg-slate-100 text-slate-600'}`}>
                     {item.estado_procesamiento}
                   </span>
