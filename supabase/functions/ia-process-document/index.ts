@@ -1,5 +1,4 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,8 +20,6 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const openaiKey = Deno.env.get("OPENAI_API_KEY");
 
     if (!openaiKey) {
@@ -31,53 +28,21 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-
     const body = await req.json() as {
-      file_urls?: string[];
       raw_text?: string;
       titulo_sugerido?: string;
     };
 
     const rawText = body.raw_text || "";
-    const fileUrls = body.file_urls || [];
 
-    if (!rawText && fileUrls.length === 0) {
-      return new Response(JSON.stringify({ error: "Debes proporcionar texto o archivos para procesar." }), {
+    if (!rawText.trim()) {
+      return new Response(JSON.stringify({ error: "Debes proporcionar texto para procesar." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Fetch text content from file URLs (for text-based files)
-    let combinedContent = rawText;
-    const fileNames: string[] = [];
-
-    for (const url of fileUrls) {
-      try {
-        const fileName = url.split("/").pop() || "documento";
-        fileNames.push(fileName);
-
-        // Try to download and read text-based files
-        if (url.endsWith(".txt") || url.endsWith(".html") || url.endsWith(".htm")) {
-          const resp = await fetch(url);
-          if (resp.ok) {
-            const text = await resp.text();
-            combinedContent += `\n\n--- Contenido de ${fileName} ---\n${text}`;
-          }
-        }
-      } catch {
-        // Skip files we can't read
-      }
-    }
-
-    if (!combinedContent.trim()) {
-      combinedContent = `Documentos adjuntos para procesar: ${fileNames.join(", ")}. No se pudo extraer texto automaticamente.`;
-    }
-
     // Generate article with GPT-4o
-    const article = await generateArticle(openaiKey, combinedContent, fileNames, body.titulo_sugerido);
+    const article = await generateArticle(openaiKey, rawText, body.titulo_sugerido);
 
     // Generate featured image with DALL-E 3
     let imageUrl = FALLBACK_BACKGROUNDS[Math.floor(Math.random() * FALLBACK_BACKGROUNDS.length)];
@@ -126,7 +91,6 @@ interface ArticleResult {
 async function generateArticle(
   apiKey: string,
   content: string,
-  fileNames: string[],
   tituloSugerido?: string,
 ): Promise<ArticleResult> {
   const truncatedContent = content.substring(0, 14000);
@@ -167,7 +131,6 @@ EXACTITUD: NO inventar datos. Si algo no esta en el contenido original, no lo in
   const userPrompt = `CONTENIDO A TRANSFORMAR EN ARTICULO:
 
 ${tituloSugerido ? `Titulo sugerido por el usuario: ${tituloSugerido}` : ""}
-Documentos procesados: ${fileNames.length > 0 ? fileNames.join(", ") : "texto directo"}
 
 CONTENIDO:
 ${truncatedContent}

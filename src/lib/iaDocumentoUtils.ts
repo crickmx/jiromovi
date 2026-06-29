@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { extractTextFromPdf } from './pdfExtract';
 
 export interface IADocumentoResult {
   titulo: string;
@@ -8,6 +9,37 @@ export interface IADocumentoResult {
   resumen_ejecutivo?: string;
   puntos_clave?: string[];
   tiempo_lectura?: string;
+}
+
+async function extractTextFromFile(file: File): Promise<string> {
+  const name = file.name.toLowerCase();
+
+  if (name.endsWith('.pdf')) {
+    return extractTextFromPdf(file);
+  }
+
+  if (name.endsWith('.txt') || name.endsWith('.html') || name.endsWith('.htm') || name.endsWith('.md')) {
+    return file.text();
+  }
+
+  return '';
+}
+
+export async function extraerTextoDeArchivos(files: File[]): Promise<string> {
+  const texts: string[] = [];
+
+  for (const file of files) {
+    try {
+      const text = await extractTextFromFile(file);
+      if (text.trim()) {
+        texts.push(`--- ${file.name} ---\n${text}`);
+      }
+    } catch (err) {
+      console.error('Error extracting text from', file.name, err);
+    }
+  }
+
+  return texts.join('\n\n');
 }
 
 export async function subirDocumentosTemporales(files: File[]): Promise<string[]> {
@@ -39,7 +71,6 @@ export async function subirDocumentosTemporales(files: File[]): Promise<string[]
 }
 
 export async function procesarDocumentoConIA(
-  fileUrls: string[],
   rawText: string,
   tituloSugerido?: string,
 ): Promise<IADocumentoResult> {
@@ -53,7 +84,6 @@ export async function procesarDocumentoConIA(
       'Authorization': `Bearer ${anonKey}`,
     },
     body: JSON.stringify({
-      file_urls: fileUrls,
       raw_text: rawText,
       titulo_sugerido: tituloSugerido || undefined,
     }),

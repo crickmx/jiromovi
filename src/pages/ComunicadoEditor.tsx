@@ -9,7 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft, Save, Upload, X, Calendar, Pin, Image, Paperclip, Eye, Users, Building2, User, FileText, CircleAlert as AlertCircle, Sparkles, Loader as Loader2, CircleCheck as CheckCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn } from '@/lib/utils';
-import { subirDocumentosTemporales, procesarDocumentoConIA } from '../lib/iaDocumentoUtils';
+import { extraerTextoDeArchivos, procesarDocumentoConIA } from '../lib/iaDocumentoUtils';
 import {
   obtenerComunicadoPorId,
   crearComunicado,
@@ -174,12 +174,23 @@ export default function ComunicadoEditor() {
       setIaProcesando(true);
       setIaError(null);
 
-      let fileUrls: string[] = [];
+      let textoExtraido = iaTexto;
+
       if (iaDocumentos.length > 0) {
-        fileUrls = await subirDocumentosTemporales(iaDocumentos);
+        const textoArchivos = await extraerTextoDeArchivos(iaDocumentos);
+        if (textoArchivos.trim()) {
+          textoExtraido = textoExtraido
+            ? `${textoExtraido}\n\n${textoArchivos}`
+            : textoArchivos;
+        }
       }
 
-      const resultado = await procesarDocumentoConIA(fileUrls, iaTexto);
+      if (!textoExtraido.trim()) {
+        setIaError('No se pudo extraer texto de los archivos. Intenta pegando el contenido manualmente.');
+        return;
+      }
+
+      const resultado = await procesarDocumentoConIA(textoExtraido);
 
       setTitulo(resultado.titulo);
       setContenidoHtml(resultado.contenido_html);
