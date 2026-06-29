@@ -19,7 +19,6 @@ function wrapText(
   ctx: CanvasRenderingContext2D,
   text: string,
   maxWidth: number,
-  lineHeight: number,
 ): string[] {
   const words = text.split(' ');
   const lines: string[] = [];
@@ -39,6 +38,13 @@ function wrapText(
   return lines;
 }
 
+async function fetchImageAsObjectUrl(url: string): Promise<string> {
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error('Failed to fetch image');
+  const blob = await resp.blob();
+  return URL.createObjectURL(blob);
+}
+
 export async function generateCoverImage(options: CoverImageOptions): Promise<Blob> {
   const { backgroundUrl, titulo, aseguradoraNombre, aseguradoraLogoUrl } = options;
 
@@ -50,61 +56,91 @@ export async function generateCoverImage(options: CoverImageOptions): Promise<Bl
   canvas.height = HEIGHT;
   const ctx = canvas.getContext('2d')!;
 
-  // Draw background image
+  // Draw background image - try fetching as blob first to avoid CORS
+  let bgLoaded = false;
   try {
-    const bgImg = await loadImage(backgroundUrl);
-    const scale = Math.max(WIDTH / bgImg.width, HEIGHT / bgImg.height);
-    const drawW = bgImg.width * scale;
-    const drawH = bgImg.height * scale;
-    const offsetX = (WIDTH - drawW) / 2;
-    const offsetY = (HEIGHT - drawH) / 2;
-    ctx.drawImage(bgImg, offsetX, offsetY, drawW, drawH);
+    // Try loading via object URL (avoids tainted canvas from cross-origin)
+    const objectUrl = await fetchImageAsObjectUrl(backgroundUrl);
+    try {
+      const bgImg = await loadImage(objectUrl);
+      const scale = Math.max(WIDTH / bgImg.width, HEIGHT / bgImg.height);
+      const drawW = bgImg.width * scale;
+      const drawH = bgImg.height * scale;
+      const offsetX = (WIDTH - drawW) / 2;
+      const offsetY = (HEIGHT - drawH) / 2;
+      ctx.drawImage(bgImg, offsetX, offsetY, drawW, drawH);
+      bgLoaded = true;
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
   } catch {
+    // Try direct load as fallback
+    try {
+      const bgImg = await loadImage(backgroundUrl);
+      const scale = Math.max(WIDTH / bgImg.width, HEIGHT / bgImg.height);
+      const drawW = bgImg.width * scale;
+      const drawH = bgImg.height * scale;
+      const offsetX = (WIDTH - drawW) / 2;
+      const offsetY = (HEIGHT - drawH) / 2;
+      ctx.drawImage(bgImg, offsetX, offsetY, drawW, drawH);
+      bgLoaded = true;
+    } catch {
+      bgLoaded = false;
+    }
+  }
+
+  if (!bgLoaded) {
+    // Fallback gradient
     const grad = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
     grad.addColorStop(0, '#1e3a5f');
+    grad.addColorStop(0.5, '#0d2847');
     grad.addColorStop(1, '#0f2027');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
   }
 
-  // Slight darkening over entire image for consistency
+  // Slight darkening over entire image
   ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
   const padding = 48;
 
-  // --- SOLID BOTTOM BAND for title (always readable regardless of background) ---
+  // --- SOLID BOTTOM BAND for title (always readable) ---
   const bandHeight = 200;
   const bandY = HEIGHT - bandHeight;
 
-  // Solid dark band with slight transparency
   ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
   ctx.fillRect(0, bandY, WIDTH, bandHeight);
 
-  // Subtle top edge gradient to blend
+  // Blend gradient above band
   const blendGrad = ctx.createLinearGradient(0, bandY - 40, 0, bandY);
   blendGrad.addColorStop(0, 'rgba(15, 23, 42, 0)');
   blendGrad.addColorStop(1, 'rgba(15, 23, 42, 0.92)');
   ctx.fillStyle = blendGrad;
   ctx.fillRect(0, bandY - 40, WIDTH, 40);
 
-  // --- TOP BAR for logo/branding (solid, always visible) ---
+  // --- TOP BAR for logo/branding (solid) ---
   const topBarHeight = 72;
   ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
   ctx.fillRect(0, 0, WIDTH, topBarHeight);
 
-  // Top bar bottom blend
   const topBlend = ctx.createLinearGradient(0, topBarHeight, 0, topBarHeight + 20);
   topBlend.addColorStop(0, 'rgba(15, 23, 42, 0.85)');
   topBlend.addColorStop(1, 'rgba(15, 23, 42, 0)');
   ctx.fillStyle = topBlend;
   ctx.fillRect(0, topBarHeight, WIDTH, 20);
 
-  // --- Draw insurer logo (top-left, inside solid bar) ---
+  // --- Draw insurer logo (top-left) ---
   let logoRightEdge = padding;
   if (aseguradoraLogoUrl) {
     try {
-      const logoImg = await loadImage(aseguradoraLogoUrl);
+      let logoSrc = aseguradoraLogoUrl;
+      try {
+        const logoObjectUrl = await fetchImageAsObjectUrl(aseguradoraLogoUrl);
+        logoSrc = logoObjectUrl;
+      } catch { /* use direct URL */ }
+
+      const logoImg = await loadImage(logoSrc);
       const maxLogoH = 40;
       const maxLogoW = 160;
       const logoScale = Math.min(maxLogoW / logoImg.width, maxLogoH / logoImg.height);
@@ -137,28 +173,23 @@ export async function generateCoverImage(options: CoverImageOptions): Promise<Bl
 
       ctx.drawImage(logoImg, padding, logoY, logoW, logoH);
       logoRightEdge = padding + logoW + pillPadX + 16;
+
+      if (logoSrc !== aseguradoraLogoUrl) URL.revokeObjectURL(logoSrc);
     } catch {
-      // Skip logo if load fails
+      // Skip logo
     }
   }
 
-  // --- Draw aseguradora name (top bar, after logo or right-aligned) ---
+  // --- Aseguradora name (top bar) ---
   if (aseguradoraNombre) {
     ctx.font = '600 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillStyle = '#FFFFFF';
     ctx.textBaseline = 'middle';
-
-    if (aseguradoraLogoUrl) {
-      ctx.textAlign = 'left';
-      ctx.fillText(aseguradoraNombre, logoRightEdge, topBarHeight / 2);
-    } else {
-      ctx.textAlign = 'left';
-      ctx.fillText(aseguradoraNombre, padding, topBarHeight / 2);
-    }
     ctx.textAlign = 'left';
+    ctx.fillText(aseguradoraNombre, aseguradoraLogoUrl ? logoRightEdge : padding, topBarHeight / 2);
   }
 
-  // "MOVI Digital" branding (top-right)
+  // "MOVI Digital" (top-right)
   ctx.font = '500 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
   ctx.textAlign = 'right';
@@ -166,7 +197,7 @@ export async function generateCoverImage(options: CoverImageOptions): Promise<Bl
   ctx.fillText('MOVI Digital', WIDTH - padding, topBarHeight / 2);
   ctx.textAlign = 'left';
 
-  // --- Draw title (inside solid bottom band) ---
+  // --- Draw title (bottom band) ---
   const titleMaxWidth = WIDTH - padding * 2;
   const titleFontSize = titulo.length > 100 ? 34 : titulo.length > 70 ? 38 : titulo.length > 45 ? 44 : 50;
   const titleLineHeight = titleFontSize * 1.25;
@@ -175,7 +206,7 @@ export async function generateCoverImage(options: CoverImageOptions): Promise<Bl
   ctx.fillStyle = '#FFFFFF';
   ctx.textBaseline = 'top';
 
-  const lines = wrapText(ctx, titulo, titleMaxWidth, titleLineHeight);
+  const lines = wrapText(ctx, titulo, titleMaxWidth);
   const maxLines = 3;
   const displayLines = lines.slice(0, maxLines);
   if (lines.length > maxLines) {
@@ -186,25 +217,22 @@ export async function generateCoverImage(options: CoverImageOptions): Promise<Bl
   const totalTextHeight = displayLines.length * titleLineHeight;
   const titleStartY = bandY + (bandHeight - totalTextHeight) / 2;
 
-  // Accent bar before title
+  // Accent bar
   ctx.fillStyle = '#0ea5e9';
   ctx.fillRect(padding, titleStartY - 12, 50, 4);
 
-  // Draw title text with text shadow for extra readability
+  // Title with shadow
   ctx.fillStyle = '#FFFFFF';
   ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
   ctx.shadowBlur = 6;
-  ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 2;
 
   for (let i = 0; i < displayLines.length; i++) {
     ctx.fillText(displayLines[i], padding, titleStartY + i * titleLineHeight);
   }
 
-  // Reset shadow
   ctx.shadowColor = 'transparent';
   ctx.shadowBlur = 0;
-  ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 0;
 
   return new Promise((resolve, reject) => {

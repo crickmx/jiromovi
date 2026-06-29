@@ -232,6 +232,20 @@ export default function ComunicadoEditor() {
         }
       }
 
+      // Add AI documents as publication attachments
+      if (iaDocumentos.length > 0) {
+        const totalAdjuntos = adjuntos.length + adjuntosExistentes.length + iaDocumentos.length;
+        if (totalAdjuntos <= 5) {
+          setAdjuntos(prev => [...prev, ...iaDocumentos]);
+        } else {
+          // Add as many as possible up to limit
+          const espacioDisponible = 5 - adjuntos.length - adjuntosExistentes.length;
+          if (espacioDisponible > 0) {
+            setAdjuntos(prev => [...prev, ...iaDocumentos.slice(0, espacioDisponible)]);
+          }
+        }
+      }
+
       setIaCompletado(true);
     } catch (err: any) {
       setIaError(err.message || 'Error al procesar con IA');
@@ -267,7 +281,6 @@ export default function ComunicadoEditor() {
       return;
     }
 
-    // Validar visibilidad para Administradores
     // Validación para Gerentes
     if (esGerente) {
       if (!usuario?.oficina_id) {
@@ -313,7 +326,7 @@ export default function ComunicadoEditor() {
         categoria_id: categoriaId,
         fecha_publicacion: fechaPub,
         publicado: true,
-        fijado: esGerente ? false : fijado, // Gerentes no pueden fijar
+        fijado: esGerente ? false : fijado,
         creado_por: usuario!.id
       };
 
@@ -352,26 +365,17 @@ export default function ComunicadoEditor() {
 
         // Lógica especial para Gerentes
         if (esGerente) {
-          // Gerentes: crear visibilidad para roles seleccionados de SU OFICINA
-          const oficinaGerente = usuario?.oficina_id;
-
           for (const rol of rolesSeleccionados) {
             reglasVisibilidad.push({
               comunicado_id: comunicadoId,
               rol: rol,
-              oficina_id: oficinaGerente,
+              oficina_id: usuario?.oficina_id,
               usuario_id: null,
               para_todos: false
             });
           }
-
-          // Los administradores verán automáticamente todas las publicaciones
-          // (esto se maneja en las políticas RLS y función puede_ver_comunicado)
-        }
-        // Lógica para Administradores
-        else if (esAdmin) {
+        } else if (esAdmin) {
           if (tipoVisibilidad === 'todos') {
-            // Visible para todos
             reglasVisibilidad.push({
               comunicado_id: comunicadoId,
               rol: null,
@@ -412,11 +416,9 @@ export default function ComunicadoEditor() {
       // Enviar notificaciones si es nuevo comunicado
       if (!esEdicion && comunicadoId) {
         try {
-          // Obtener destinatarios según las reglas de visibilidad
           let destinatarios: string[] = [];
 
           if (esGerente) {
-            // Para gerentes: notificar a usuarios de su oficina según roles seleccionados
             const { data: usuariosOficina } = await supabase
               .from('usuarios')
               .select('id')
@@ -428,7 +430,6 @@ export default function ComunicadoEditor() {
               destinatarios = usuariosOficina.map(u => u.id);
             }
 
-            // Agregar administradores
             const { data: admins } = await supabase
               .from('usuarios')
               .select('id')
@@ -439,7 +440,6 @@ export default function ComunicadoEditor() {
               destinatarios.push(...admins.map(a => a.id));
             }
           } else if (esAdmin) {
-            // Para administradores: notificar según configuración de visibilidad
             if (tipoVisibilidad === 'todos') {
               const { data: todosUsuarios } = await supabase
                 .from('usuarios')
@@ -472,13 +472,11 @@ export default function ComunicadoEditor() {
             }
           }
 
-          // Eliminar duplicados
           destinatarios = [...new Set(destinatarios)];
 
           if (destinatarios.length > 0) {
             const linkComunicado = `/comunicados/${comunicadoId}`;
 
-            // Usar el nuevo motor centralizado de notificaciones
             const { data: result, error: notifyError } = await supabase.rpc('notify', {
               p_event_code: 'nuevo_comunicado',
               p_user_ids: destinatarios,
@@ -497,7 +495,6 @@ export default function ComunicadoEditor() {
               console.log('Notificaciones programadas:', result);
             }
 
-            // Ejecutar dispatcher inmediatamente (sin esperar respuesta)
             fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notification-dispatcher`, {
               method: 'POST',
               headers: {
@@ -508,7 +505,6 @@ export default function ComunicadoEditor() {
           }
         } catch (error) {
           console.error('Error enviando notificaciones:', error);
-          // No bloqueamos el flujo si fallan las notificaciones
         }
       }
 
@@ -601,7 +597,7 @@ export default function ComunicadoEditor() {
                   </h3>
                   <p className="text-xs text-neutral-500">
                     {iaCompletado
-                      ? 'Revisa y edita el contenido generado abajo'
+                      ? 'Revisa y edita el contenido generado abajo. Los archivos se adjuntaron automaticamente.'
                       : 'Sube archivos o pega texto para generar el comunicado automaticamente'}
                   </p>
                 </div>
@@ -917,7 +913,6 @@ export default function ComunicadoEditor() {
             </h3>
 
             <div className="space-y-4">
-              {/* Publicar ahora o programar */}
               <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -1024,7 +1019,6 @@ export default function ComunicadoEditor() {
             {/* UI completa para Administradores */}
             {esAdmin && (
               <div className="space-y-4">
-                {/* Tipo de visibilidad */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
                     ¿Quién puede ver este comunicado?
@@ -1099,11 +1093,6 @@ export default function ComunicadoEditor() {
                         </label>
                       ))}
                     </div>
-                    {rolesSeleccionados.length === 0 && (
-                      <p className="text-sm text-amber-600 mt-2">
-                        Debes seleccionar al menos un rol
-                      </p>
-                    )}
                   </div>
                 )}
 
@@ -1113,7 +1102,7 @@ export default function ComunicadoEditor() {
                     <label className="block text-sm font-medium text-gray-700 mb-3">
                       Selecciona las oficinas que pueden ver este comunicado:
                     </label>
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
                       {oficinasDisponibles.map((oficina) => (
                         <label key={oficina.id} className="flex items-center gap-2 cursor-pointer">
                           <input
@@ -1132,36 +1121,35 @@ export default function ComunicadoEditor() {
                         </label>
                       ))}
                     </div>
-                    {oficinasSeleccionadas.length === 0 && (
-                      <p className="text-sm text-amber-600 mt-2">
-                        Debes seleccionar al menos una oficina
-                      </p>
-                    )}
                   </div>
                 )}
               </div>
             )}
           </div>
 
-          {/* Botones de acción */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-6 border-t border-neutral-200">
+          {/* Botón Guardar */}
+          <div className="border-t pt-6 flex justify-end gap-3">
             <Button
-              type="button"
-              onClick={handleGuardar}
-              disabled={saving}
-              className="btn-touch flex-1 sm:flex-initial order-2 sm:order-1"
-            >
-              <Save className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-              {saving ? 'Guardando...' : esEdicion ? 'Actualizar' : 'Publicar'}
-            </Button>
-
-            <Button
-              type="button"
               variant="outline"
               onClick={() => navigate('/comunicados')}
-              className="btn-touch flex-1 sm:flex-initial order-1 sm:order-2"
             >
               Cancelar
+            </Button>
+            <Button
+              onClick={handleGuardar}
+              disabled={saving}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  {esEdicion ? 'Actualizar' : 'Publicar'}
+                </>
+              )}
             </Button>
           </div>
         </div>

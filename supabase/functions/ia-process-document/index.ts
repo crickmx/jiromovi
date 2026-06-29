@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -44,10 +45,17 @@ Deno.serve(async (req: Request) => {
     // Generate article with GPT-4o
     const article = await generateArticle(openaiKey, rawText, body.titulo_sugerido);
 
-    // Generate featured image with DALL-E 3
+    // Generate featured image with DALL-E 3 and upload to storage
     let imageUrl = FALLBACK_BACKGROUNDS[Math.floor(Math.random() * FALLBACK_BACKGROUNDS.length)];
     try {
-      imageUrl = await generateImage(openaiKey, article);
+      const dalleUrl = await generateImage(openaiKey, article);
+      // Upload DALL-E image to Supabase storage for permanent URL
+      const storedUrl = await uploadImageToStorage(dalleUrl);
+      if (storedUrl) {
+        imageUrl = storedUrl;
+      } else {
+        imageUrl = dalleUrl;
+      }
     } catch (imgErr: any) {
       console.error("Error generating image, using fallback:", imgErr.message);
     }
@@ -84,6 +92,56 @@ interface ArticleResult {
   puntos_clave: string[];
   imagen_destacada_descripcion: string;
   tiempo_lectura: string;
+}
+
+// --- Upload image to Supabase Storage ---
+
+async function uploadImageToStorage(imageUrl: string): Promise<string | null> {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error("Missing Supabase env vars for storage upload");
+      return null;
+    }
+
+    // Download the image
+    const resp = await fetch(imageUrl);
+    if (!resp.ok) {
+      console.error("Failed to download image:", resp.status);
+      return null;
+    }
+
+    const imageBlob = await resp.blob();
+    const arrayBuffer = await imageBlob.arrayBuffer();
+    const uint8 = new Uint8Array(arrayBuffer);
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    const fileName = `ia-covers/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.png`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("comunicados")
+      .upload(fileName, uint8, {
+        contentType: "image/png",
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error("Storage upload error:", uploadError.message);
+      return null;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("comunicados")
+      .getPublicUrl(fileName);
+
+    return urlData?.publicUrl || null;
+  } catch (err: any) {
+    console.error("uploadImageToStorage error:", err.message);
+    return null;
+  }
 }
 
 // --- Article Generation ---
