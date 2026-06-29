@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import { extractTextFromPdf } from './pdfExtract';
 
 export interface IADocumentoResult {
   titulo: string;
@@ -15,6 +14,7 @@ async function extractTextFromFile(file: File): Promise<string> {
   const name = file.name.toLowerCase();
 
   if (name.endsWith('.pdf')) {
+    const { extractTextFromPdf } = await import('./pdfExtract');
     return extractTextFromPdf(file);
   }
 
