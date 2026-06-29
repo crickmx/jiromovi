@@ -6,9 +6,10 @@ import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
 import { RichTextEditor } from '../components/RichTextEditor';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Save, Upload, X, Calendar, Pin, Image, Paperclip, Eye, Users, Building2, User, FileText, CircleAlert as AlertCircle } from 'lucide-react';
+import { ArrowLeft, Save, Upload, X, Calendar, Pin, Image, Paperclip, Eye, Users, Building2, User, FileText, CircleAlert as AlertCircle, Sparkles, Loader as Loader2, CircleCheck as CheckCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn } from '@/lib/utils';
+import { subirDocumentosTemporales, procesarDocumentoConIA } from '../lib/iaDocumentoUtils';
 import {
   obtenerComunicadoPorId,
   crearComunicado,
@@ -46,6 +47,13 @@ export default function ComunicadoEditor() {
   const [rolesSeleccionados, setRolesSeleccionados] = useState<string[]>([]);
   const [oficinasSeleccionadas, setOficinasSeleccionadas] = useState<string[]>([]);
   const [oficinasDisponibles, setOficinasDisponibles] = useState<any[]>([]);
+
+  // Estados de IA
+  const [iaDocumentos, setIaDocumentos] = useState<File[]>([]);
+  const [iaTexto, setIaTexto] = useState('');
+  const [iaProcesando, setIaProcesando] = useState(false);
+  const [iaError, setIaError] = useState<string | null>(null);
+  const [iaCompletado, setIaCompletado] = useState(false);
 
   const esAdmin = usuario?.rol === 'Administrador';
   const esGerente = usuario?.rol === 'Gerente';
@@ -141,6 +149,49 @@ export default function ComunicadoEditor() {
 
   const eliminarAdjuntoLocal = (index: number) => {
     setAdjuntos(adjuntos.filter((_, i) => i !== index));
+  };
+
+  const handleIaDocumentos = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const nuevos = Array.from(e.target.files);
+      setIaDocumentos([...iaDocumentos, ...nuevos]);
+      setIaError(null);
+      setIaCompletado(false);
+    }
+  };
+
+  const eliminarIaDocumento = (index: number) => {
+    setIaDocumentos(iaDocumentos.filter((_, i) => i !== index));
+  };
+
+  const handleProcesarConIA = async () => {
+    if (iaDocumentos.length === 0 && !iaTexto.trim()) {
+      setIaError('Sube al menos un archivo o pega texto para procesar.');
+      return;
+    }
+
+    try {
+      setIaProcesando(true);
+      setIaError(null);
+
+      let fileUrls: string[] = [];
+      if (iaDocumentos.length > 0) {
+        fileUrls = await subirDocumentosTemporales(iaDocumentos);
+      }
+
+      const resultado = await procesarDocumentoConIA(fileUrls, iaTexto);
+
+      setTitulo(resultado.titulo);
+      setContenidoHtml(resultado.contenido_html);
+      if (resultado.imagen_url) {
+        setImagenPrincipalUrl(resultado.imagen_url);
+      }
+      setIaCompletado(true);
+    } catch (err: any) {
+      setIaError(err.message || 'Error al procesar con IA');
+    } finally {
+      setIaProcesando(false);
+    }
   };
 
   const handleGuardar = async () => {
@@ -481,6 +532,141 @@ export default function ComunicadoEditor() {
 
         {/* Formulario */}
         <div className="bg-white rounded-xl border border-neutral-200 shadow-ios p-4 sm:p-6 md:p-8 space-y-6">
+          {/* Sección IA - Procesar documentos */}
+          {!esEdicion && (
+            <div className={cn(
+              "rounded-xl border-2 border-dashed p-4 sm:p-6 transition-colors",
+              iaCompletado ? "border-green-300 bg-green-50/50" : "border-primary-200 bg-primary-50/30"
+            )}>
+              <div className="flex items-center gap-2 mb-3">
+                <div className={cn(
+                  "w-8 h-8 rounded-lg flex items-center justify-center",
+                  iaCompletado ? "bg-green-100" : "bg-primary-100"
+                )}>
+                  {iaCompletado ? (
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  ) : (
+                    <Sparkles className="w-5 h-5 text-primary-600" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-neutral-900">
+                    {iaCompletado ? 'Contenido generado por IA' : 'Generar con IA'}
+                  </h3>
+                  <p className="text-xs text-neutral-500">
+                    {iaCompletado
+                      ? 'Revisa y edita el contenido generado abajo'
+                      : 'Sube archivos o pega texto para generar el comunicado automaticamente'}
+                  </p>
+                </div>
+              </div>
+
+              {!iaCompletado && (
+                <>
+                  {/* Upload zone */}
+                  <label className="flex flex-col items-center justify-center w-full h-32 border border-neutral-300 border-dashed rounded-lg cursor-pointer hover:border-primary-400 hover:bg-primary-50/50 transition-colors mb-3">
+                    <Upload className="w-8 h-8 text-neutral-400 mb-1" />
+                    <span className="text-sm text-neutral-600 font-medium">Subir archivos</span>
+                    <span className="text-xs text-neutral-400 mt-0.5">PDF, DOCX, TXT, imagenes</span>
+                    <input
+                      type="file"
+                      multiple
+                      accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp"
+                      onChange={handleIaDocumentos}
+                      className="hidden"
+                      disabled={iaProcesando}
+                    />
+                  </label>
+
+                  {/* File list */}
+                  {iaDocumentos.length > 0 && (
+                    <div className="space-y-2 mb-3">
+                      {iaDocumentos.map((doc, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-2 bg-white rounded-lg border border-neutral-200">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <FileText className="w-4 h-4 text-primary-500 flex-shrink-0" />
+                            <span className="text-sm text-neutral-700 truncate">{doc.name}</span>
+                            <span className="text-xs text-neutral-400 flex-shrink-0">
+                              {(doc.size / 1024).toFixed(0)} KB
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => eliminarIaDocumento(idx)}
+                            className="text-neutral-400 hover:text-red-500 p-1"
+                            disabled={iaProcesando}
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Text area */}
+                  <textarea
+                    value={iaTexto}
+                    onChange={(e) => setIaTexto(e.target.value)}
+                    placeholder="O pega aqui el contenido del comunicado, circular o boletin que deseas transformar en articulo..."
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm resize-none focus:ring-2 focus:ring-primary-300 focus:border-transparent transition-all"
+                    rows={4}
+                    disabled={iaProcesando}
+                  />
+
+                  {/* Error */}
+                  {iaError && (
+                    <div className="flex items-center gap-2 mt-2 p-2 bg-red-50 border border-red-200 rounded-lg">
+                      <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                      <span className="text-sm text-red-700">{iaError}</span>
+                    </div>
+                  )}
+
+                  {/* Process button */}
+                  <Button
+                    type="button"
+                    onClick={handleProcesarConIA}
+                    disabled={iaProcesando || (iaDocumentos.length === 0 && !iaTexto.trim())}
+                    className="mt-3 w-full sm:w-auto"
+                  >
+                    {iaProcesando ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Procesando con IA...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Procesar con IA
+                      </>
+                    )}
+                  </Button>
+
+                  {iaProcesando && (
+                    <p className="text-xs text-neutral-500 mt-2">
+                      Esto puede tomar 30-60 segundos. Se generara el titulo, contenido e imagen.
+                    </p>
+                  )}
+                </>
+              )}
+
+              {iaCompletado && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setIaCompletado(false);
+                    setIaDocumentos([]);
+                    setIaTexto('');
+                  }}
+                  className="mt-2"
+                >
+                  Procesar otro documento
+                </Button>
+              )}
+            </div>
+          )}
+
           {/* Título */}
           <div className="space-y-2">
             <Label htmlFor="titulo" className="text-sm sm:text-base">
