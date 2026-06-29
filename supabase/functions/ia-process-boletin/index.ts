@@ -326,11 +326,11 @@ async function generateArticle(
   insurerName: string,
 ): Promise<ArticleResult> {
   const emailContent = email.cuerpo_texto || stripHtml(email.cuerpo_html || "");
-  const truncatedContent = emailContent.substring(0, 5000);
+  const truncatedContent = emailContent.substring(0, 12000);
 
-  const prompt = `Eres un editor senior de una agencia de seguros en Mexico. Tu trabajo es transformar boletines y comunicados de aseguradoras en ARTICULOS PERIODISTICOS claros y faciles de leer para los agentes de seguros de la oficina.
+  const prompt = `Eres un editor senior de una agencia de seguros en Mexico. Tu trabajo es transformar boletines y comunicados de aseguradoras en ARTICULOS COMPLETOS Y DETALLADOS para los agentes de seguros de la oficina.
 
-IMPORTANTE: El resultado debe leerse como un ARTICULO DE BLOG/REVISTA que EXPLICA el comunicado recibido, no como una copia del email original. Los agentes deben poder entender rapidamente de que se trata y que deben hacer.
+REGLA PRINCIPAL: El articulo DEBE incluir TODA la informacion del email original. No resumas, no sintetices, no omitas detalles. Cada dato, fecha, porcentaje, nombre, procedimiento, condicion y excepcion del comunicado original debe quedar reflejado en el articulo. Si el email tiene 10 puntos, el articulo debe cubrir los 10 puntos con todo su detalle.
 
 EMAIL ORIGINAL:
 - Aseguradora/Remitente: ${insurerName || email.remitente}
@@ -338,35 +338,47 @@ EMAIL ORIGINAL:
 - Contenido: ${truncatedContent}
 
 FORMATO DEL ARTICULO:
-1. TITULO: Atractivo, informativo, maximo 80 caracteres. Debe comunicar la noticia principal.
-2. RESUMEN: 1-2 oraciones que resuman lo esencial (para vista previa).
+1. TITULO: Atractivo, informativo, maximo 100 caracteres. Debe comunicar la noticia principal.
+2. RESUMEN: 2-3 oraciones que resuman lo esencial (para vista previa en listados).
 3. CATEGORIA: Una palabra/frase corta que categorice el tema (ej: "Productos", "Siniestros", "Comisiones", "Capacitacion", "Normativa", "Tecnologia", "Cobranza", "Beneficios").
-4. CONTENIDO HTML: Articulo estructurado asi:
-   - <p> de CONTEXTO: Explica brevemente quien envia y por que
-   - <h3> con los PUNTOS PRINCIPALES del comunicado, usando <ul><li> para detallar cada uno
-   - Si hay FECHAS LIMITE o VIGENCIAS, destacarlas con <strong>
-   - <h3> "Que significa para ti como agente" - explicar el impacto practico
-   - Si hay ACCIONES REQUERIDAS, listarlas claramente
-   - <p> de CIERRE con recomendacion o siguiente paso
-5. IMAGEN_PROMPT: Prompt en ingles para una ilustracion abstracta/conceptual del tema (NO texto, NO logos, solo visual temático). Ejemplo: "Abstract geometric composition representing insurance protection, shield shapes, blue gradient, modern corporate art style"
+4. CONTENIDO HTML: Articulo EXTENSO y COMPLETO estructurado asi:
+   - <p> de INTRODUCCION: Explica quien envia, el contexto y la importancia del comunicado
+   - <h3> secciones tematicas con TODOS los puntos del comunicado original
+   - Dentro de cada seccion, desarrolla COMPLETAMENTE cada punto con TODOS sus detalles:
+     * Cifras exactas, porcentajes, montos
+     * Fechas de inicio, fin, vigencia, limites
+     * Nombres de productos, coberturas, planes
+     * Condiciones, requisitos, excepciones
+     * Procedimientos paso a paso si los hay
+   - Usa <ul><li> para listas de requisitos, condiciones o pasos
+   - Usa <ol><li> para procedimientos secuenciales
+   - Destaca con <strong> toda fecha limite, monto importante o dato critico
+   - Usa <blockquote> para citar textualmente frases clave del comunicado original cuando sea relevante
+   - <h3> "Impacto para el agente" - explicar que cambia en su operacion diaria
+   - <h3> "Acciones requeridas" (si aplica) - listar con claridad cada paso que el agente debe tomar
+   - <p> de CIERRE con conclusion y recomendacion
+5. IMAGEN_PROMPT: Prompt en ingles para una ilustracion abstracta/conceptual del tema (NO texto, NO logos, solo visual tematico). Ejemplo: "Abstract geometric composition representing insurance protection, shield shapes, blue gradient, modern corporate art style"
 
 ESTILO DE REDACCION:
-- Escribe como periodista, NO copies el email tal cual
-- Explica terminos tecnicos si los hay
-- Usa parrafos cortos (max 3 oraciones)
-- Tono: profesional, directo, util
-- Si el email tiene informacion confusa, sintetiza lo importante
+- Escribe de forma COMPLETA y DETALLADA - este NO es un resumen, es un articulo de referencia
+- Incluye ABSOLUTAMENTE TODOS los datos del email original (cifras, fechas, nombres, condiciones)
+- Redacta de forma clara y organizada, pero sin omitir nada
+- Si hay tablas o listas de datos en el email, reproducilas como listas HTML
+- Explica terminos tecnicos del sector seguros brevemente entre parentesis
+- Tono: profesional, informativo, exhaustivo
 - NO inventes informacion que no este en el email
+- Si algo no esta claro en el email, indicalo como "segun el comunicado..."
+- Extiendete lo necesario para cubrir TODO el contenido - no hay limite de longitud
 
 HTML PERMITIDO: <h2>, <h3>, <p>, <ul>, <li>, <ol>, <strong>, <em>, <blockquote>
 NO usar: <h1>, <table>, <div>, <span>, <img>
 
 Responde SOLO con JSON valido:
 {
-  "titulo": "string (max 80 chars)",
-  "resumen": "string (1-2 oraciones)",
+  "titulo": "string (max 100 chars)",
+  "resumen": "string (2-3 oraciones)",
   "categoria": "string (1-2 palabras)",
-  "contenido_html": "string (HTML del articulo completo)",
+  "contenido_html": "string (HTML del articulo COMPLETO Y DETALLADO - incluye TODA la informacion)",
   "imagen_prompt": "string (en ingles, visual abstracto, sin texto ni logos)"
 }`;
 
@@ -379,8 +391,8 @@ Responde SOLO con JSON valido:
     body: JSON.stringify({
       model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.5,
-      max_tokens: 4000,
+      temperature: 0.4,
+      max_tokens: 8000,
       response_format: { type: "json_object" },
     }),
   });
