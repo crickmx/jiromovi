@@ -180,7 +180,22 @@ Deno.serve(async (req: Request) => {
               tipo: "comunicado_generado",
               comunicado_id: comunicado.id,
               titulo: article.titulo,
-              resumen: article.resumen,
+              bajada: article.bajada,
+              resumen_ejecutivo: article.resumen_ejecutivo,
+              puntos_clave: article.puntos_clave,
+              faq: article.faq,
+              documentos_analizados: article.documentos_analizados,
+              palabras_clave_seo: article.palabras_clave_seo,
+              categoria: article.categoria,
+              etiquetas: article.etiquetas,
+              nivel_importancia: article.nivel_importancia,
+              fecha_comunicado: article.fecha_comunicado,
+              fecha_publicacion_sugerida: article.fecha_publicacion_sugerida,
+              meta_titulo_seo: article.meta_titulo_seo,
+              meta_descripcion_seo: article.meta_descripcion_seo,
+              extracto_listado: article.extracto_listado,
+              tiempo_lectura: article.tiempo_lectura,
+              resumen_social: article.resumen_social,
               generated_at: new Date().toISOString(),
             },
             updated_at: new Date().toISOString(),
@@ -194,10 +209,14 @@ Deno.serve(async (req: Request) => {
           detalle: {
             comunicado_id: comunicado.id,
             titulo: article.titulo,
+            categoria: article.categoria,
+            nivel_importancia: article.nivel_importancia,
+            tiempo_lectura: article.tiempo_lectura,
             imagen_generada: true,
             imagen_url: imageUrl,
             adjuntos_vinculados: adjuntosVinculados,
             aseguradora: matchedInsurer?.name || "desconocida",
+            etiquetas: article.etiquetas,
           },
           estado: "exito",
           comunicados_creados: 1,
@@ -255,10 +274,24 @@ Deno.serve(async (req: Request) => {
 
 interface ArticleResult {
   titulo: string;
-  resumen: string;
+  bajada: string;
+  resumen_ejecutivo: string;
   contenido_html: string;
-  imagen_prompt: string;
+  puntos_clave: string[];
+  faq: { pregunta: string; respuesta: string }[];
+  documentos_analizados: string[];
+  palabras_clave_seo: string[];
   categoria: string;
+  etiquetas: string[];
+  nivel_importancia: "Alta" | "Media" | "Baja";
+  fecha_comunicado: string;
+  fecha_publicacion_sugerida: string;
+  imagen_destacada_descripcion: string;
+  meta_titulo_seo: string;
+  meta_descripcion_seo: string;
+  extracto_listado: string;
+  tiempo_lectura: string;
+  resumen_social: string;
 }
 
 interface InsurerMatch {
@@ -322,64 +355,108 @@ function matchInsurer(
 
 async function generateArticle(
   apiKey: string,
-  email: { asunto: string; remitente: string; cuerpo_texto: string | null; cuerpo_html: string | null },
+  email: { asunto: string; remitente: string; cuerpo_texto: string | null; cuerpo_html: string | null; adjuntos?: any[] },
   insurerName: string,
 ): Promise<ArticleResult> {
   const emailContent = email.cuerpo_texto || stripHtml(email.cuerpo_html || "");
-  const truncatedContent = emailContent.substring(0, 12000);
+  const truncatedContent = emailContent.substring(0, 14000);
 
-  const prompt = `Eres un editor senior de una agencia de seguros en Mexico. Tu trabajo es transformar boletines y comunicados de aseguradoras en ARTICULOS COMPLETOS Y DETALLADOS para los agentes de seguros de la oficina.
+  const adjuntosInfo = (email.adjuntos && Array.isArray(email.adjuntos))
+    ? email.adjuntos.map(a => a.nombre || a.filename || a.name || "documento").join(", ")
+    : "ninguno";
 
-REGLA PRINCIPAL: El articulo DEBE incluir TODA la informacion del email original. No resumas, no sintetices, no omitas detalles. Cada dato, fecha, porcentaje, nombre, procedimiento, condicion y excepcion del comunicado original debe quedar reflejado en el articulo. Si el email tiene 10 puntos, el articulo debe cubrir los 10 puntos con todo su detalle.
+  const systemPrompt = `Eres un Editor Ejecutivo, Periodista y Redactor Institucional Senior de MOVI Digital, especializado en transformar comunicados corporativos, boletines, circulares, correos electronicos y documentos tecnicos en articulos claros, profesionales y faciles de comprender.
 
-EMAIL ORIGINAL:
-- Aseguradora/Remitente: ${insurerName || email.remitente}
-- Asunto: ${email.asunto}
-- Contenido: ${truncatedContent}
+No eres un simple resumidor. Tu objetivo es convertir informacion tecnica o institucional en contenido periodistico de alta calidad, manteniendo absoluta fidelidad a la informacion original, pero mejorando radicalmente su claridad, estructura, narrativa y experiencia de lectura.
 
-FORMATO DEL ARTICULO:
-1. TITULO: Atractivo, informativo, maximo 100 caracteres. Debe comunicar la noticia principal.
-2. RESUMEN: 2-3 oraciones que resuman lo esencial (para vista previa en listados).
-3. CATEGORIA: Una palabra/frase corta que categorice el tema (ej: "Productos", "Siniestros", "Comisiones", "Capacitacion", "Normativa", "Tecnologia", "Cobranza", "Beneficios").
-4. CONTENIDO HTML: Articulo EXTENSO y COMPLETO estructurado asi:
-   - <p> de INTRODUCCION: Explica quien envia, el contexto y la importancia del comunicado
-   - <h3> secciones tematicas con TODOS los puntos del comunicado original
-   - Dentro de cada seccion, desarrolla COMPLETAMENTE cada punto con TODOS sus detalles:
-     * Cifras exactas, porcentajes, montos
-     * Fechas de inicio, fin, vigencia, limites
-     * Nombres de productos, coberturas, planes
-     * Condiciones, requisitos, excepciones
-     * Procedimientos paso a paso si los hay
-   - Usa <ul><li> para listas de requisitos, condiciones o pasos
-   - Usa <ol><li> para procedimientos secuenciales
-   - Destaca con <strong> toda fecha limite, monto importante o dato critico
-   - Usa <blockquote> para citar textualmente frases clave del comunicado original cuando sea relevante
-   - <h3> "Impacto para el agente" - explicar que cambia en su operacion diaria
-   - <h3> "Acciones requeridas" (si aplica) - listar con claridad cada paso que el agente debe tomar
-   - <p> de CIERRE con conclusion y recomendacion
-5. IMAGEN_PROMPT: Prompt en ingles para una ilustracion abstracta/conceptual del tema (NO texto, NO logos, solo visual tematico). Ejemplo: "Abstract geometric composition representing insurance protection, shield shapes, blue gradient, modern corporate art style"
+PROCESO EDITORIAL:
+1. Analiza completamente el correo.
+2. Identifica todos los documentos adjuntos mencionados.
+3. Extrae la informacion importante.
+4. Entiende el contexto general.
+5. Relaciona la informacion entre el correo y sus anexos.
+6. Redacta un articulo profesional que explique el contenido completo de forma amigable para el lector.
 
-ESTILO DE REDACCION:
-- Escribe de forma COMPLETA y DETALLADA - este NO es un resumen, es un articulo de referencia
-- Incluye ABSOLUTAMENTE TODOS los datos del email original (cifras, fechas, nombres, condiciones)
-- Redacta de forma clara y organizada, pero sin omitir nada
-- Si hay tablas o listas de datos en el email, reproducilas como listas HTML
-- Explica terminos tecnicos del sector seguros brevemente entre parentesis
-- Tono: profesional, informativo, exhaustivo
-- NO inventes informacion que no este en el email
-- Si algo no esta claro en el email, indicalo como "segun el comunicado..."
-- Extiendete lo necesario para cubrir TODO el contenido - no hay limite de longitud
+El articulo NO debe parecer un correo reenviado. Debe parecer un articulo redactado por un editor profesional de un medio especializado del sector asegurador.
+
+COMPRENSION - Antes de escribir debes entender:
+- Cual es el tema principal
+- Que ocurrio
+- Quien participa
+- Que cambia
+- A quien afecta
+- Fechas importantes
+- Beneficios y restricciones
+- Proximos pasos
+- Vigencias y procedimientos
+- Riesgos
+
+ESTILO:
+- Profesional, claro, elegante, cercano, facil de leer, humano, objetivo
+- Evita lenguaje burocratico y frases legales innecesarias
+- Evita copiar la estructura del correo
+- No copies parrafos, comprende primero y escribe despues
+- Traduce tecnicismos a lenguaje sencillo (explicando brevemente entre parentesis)
+- Tono como un medio de comunicacion corporativo moderno
+
+ESTRUCTURA DEL ARTICULO EN contenido_html:
+- Bajada (primer parrafo introductorio que resume el articulo)
+- Desarrollo organizado en secciones con subtitulos <h3>
+- Puntos clave como bloque de bullets (que cambio, desde cuando, a quien aplica, que hacer)
+- Detalles importantes con conceptos complejos explicados
+- Informacion practica (fechas, telefonos, contactos, correos, sitios web, pasos) presentada organizadamente
+- Seccion "Impacto para el agente" explicando que cambia en su operacion diaria
+- Seccion "Acciones requeridas" (si aplica) con pasos claros
+- Referencia final: "Este articulo fue elaborado a partir del comunicado institucional recibido y los documentos adjuntos correspondientes."
 
 HTML PERMITIDO: <h2>, <h3>, <p>, <ul>, <li>, <ol>, <strong>, <em>, <blockquote>
 NO usar: <h1>, <table>, <div>, <span>, <img>
 
-Responde SOLO con JSON valido:
+LONGITUD:
+- Comunicado corto: 500-800 palabras
+- Circular: 800-1200 palabras
+- Manual/documento extenso: 1200-2500 palabras
+- Adapta segun la informacion disponible
+
+EXACTITUD - Esta estrictamente prohibido:
+- Inventar datos, fechas, beneficios, procedimientos, cifras u opiniones
+- Si algo no existe en el contenido original, no lo escribas
+
+INFORMACION DUPLICADA: Si un mismo dato aparece varias veces, consolidalo sin repetir.
+INFORMACION CONTRADICTORIA: Si detectas diferencias, indicalas claramente.`;
+
+  const userPrompt = `CORREO A TRANSFORMAR EN ARTICULO:
+
+Remitente/Aseguradora: ${insurerName || email.remitente}
+Asunto: ${email.asunto}
+Documentos adjuntos: ${adjuntosInfo}
+
+CONTENIDO DEL CORREO:
+${truncatedContent}
+
+---
+
+Responde UNICAMENTE con un objeto JSON valido con TODOS estos campos:
 {
-  "titulo": "string (max 100 chars)",
-  "resumen": "string (2-3 oraciones)",
-  "categoria": "string (1-2 palabras)",
-  "contenido_html": "string (HTML del articulo COMPLETO Y DETALLADO - incluye TODA la informacion)",
-  "imagen_prompt": "string (en ingles, visual abstracto, sin texto ni logos)"
+  "titulo": "string - Atractivo, explica el beneficio o noticia. NUNCA debe ser el asunto del correo. Max 100 caracteres.",
+  "bajada": "string - Un parrafo corto que resuma el articulo (2-3 oraciones).",
+  "resumen_ejecutivo": "string - Resumen ejecutivo de 3-5 oraciones para quien no tenga tiempo de leer el articulo completo.",
+  "contenido_html": "string - Articulo COMPLETO en HTML siguiendo la estructura editorial indicada. Incluye TODA la informacion.",
+  "puntos_clave": ["string array - Lista de 3-8 puntos clave del comunicado"],
+  "faq": [{"pregunta": "string", "respuesta": "string"}],
+  "documentos_analizados": ["string array - Nombres de documentos procesados"],
+  "palabras_clave_seo": ["string array - 5-10 palabras clave relevantes para SEO"],
+  "categoria": "string - Una de: Productos, Siniestros, Comisiones, Capacitacion, Normativa, Tecnologia, Cobranza, Beneficios, Operaciones, Comercial",
+  "etiquetas": ["string array - 3-6 etiquetas descriptivas"],
+  "nivel_importancia": "string - Alta, Media o Baja",
+  "fecha_comunicado": "string - Fecha del comunicado original si se identifica (formato YYYY-MM-DD), o vacio",
+  "fecha_publicacion_sugerida": "string - Fecha sugerida de publicacion (formato YYYY-MM-DD)",
+  "imagen_destacada_descripcion": "string - Descripcion en ingles para generar imagen con IA. Estilo: abstracto, corporativo, sin texto ni logos. Ej: Abstract geometric composition representing insurance protection, shield shapes, blue gradient, modern corporate art style",
+  "meta_titulo_seo": "string - Titulo optimizado para SEO, max 60 caracteres",
+  "meta_descripcion_seo": "string - Meta descripcion SEO, max 160 caracteres",
+  "extracto_listado": "string - Extracto corto para mostrar en listados de noticias, max 200 caracteres",
+  "tiempo_lectura": "string - Tiempo estimado de lectura (ej: '3 min')",
+  "resumen_social": "string - Resumen de max 280 caracteres para redes sociales"
 }`;
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -390,9 +467,12 @@ Responde SOLO con JSON valido:
     },
     body: JSON.stringify({
       model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
       temperature: 0.4,
-      max_tokens: 8000,
+      max_tokens: 12000,
       response_format: { type: "json_object" },
     }),
   });
@@ -411,11 +491,25 @@ Responde SOLO con JSON valido:
   }
 
   return {
-    titulo: parsed.titulo.substring(0, 200),
-    resumen: parsed.resumen || "",
+    titulo: (parsed.titulo || "").substring(0, 200),
+    bajada: parsed.bajada || "",
+    resumen_ejecutivo: parsed.resumen_ejecutivo || "",
     contenido_html: parsed.contenido_html,
-    imagen_prompt: parsed.imagen_prompt || "Abstract professional insurance concept, geometric shapes, blue tones, modern corporate art",
+    puntos_clave: Array.isArray(parsed.puntos_clave) ? parsed.puntos_clave : [],
+    faq: Array.isArray(parsed.faq) ? parsed.faq : [],
+    documentos_analizados: Array.isArray(parsed.documentos_analizados) ? parsed.documentos_analizados : [],
+    palabras_clave_seo: Array.isArray(parsed.palabras_clave_seo) ? parsed.palabras_clave_seo : [],
     categoria: parsed.categoria || "Seguros",
+    etiquetas: Array.isArray(parsed.etiquetas) ? parsed.etiquetas : [],
+    nivel_importancia: parsed.nivel_importancia || "Media",
+    fecha_comunicado: parsed.fecha_comunicado || "",
+    fecha_publicacion_sugerida: parsed.fecha_publicacion_sugerida || new Date().toISOString().split("T")[0],
+    imagen_destacada_descripcion: parsed.imagen_destacada_descripcion || "Abstract professional insurance concept, geometric shapes, blue tones, modern corporate art",
+    meta_titulo_seo: parsed.meta_titulo_seo || parsed.titulo?.substring(0, 60) || "",
+    meta_descripcion_seo: parsed.meta_descripcion_seo || parsed.bajada?.substring(0, 160) || "",
+    extracto_listado: parsed.extracto_listado || parsed.bajada?.substring(0, 200) || "",
+    tiempo_lectura: parsed.tiempo_lectura || "3 min",
+    resumen_social: parsed.resumen_social || "",
   };
 }
 
@@ -429,7 +523,7 @@ async function generateBrandedThumbnail(
 ): Promise<string> {
   try {
     // Step 1: Generate background illustration with DALL-E
-    const bgImageUrl = await generateBackgroundImage(apiKey, article.imagen_prompt);
+    const bgImageUrl = await generateBackgroundImage(apiKey, article.imagen_destacada_descripcion);
 
     // Step 2: Fetch the background image as base64
     const bgBase64 = await fetchImageAsBase64(bgImageUrl);
