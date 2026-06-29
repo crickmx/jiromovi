@@ -409,21 +409,24 @@ function BoletinesPanel() {
   async function loadBoletines() {
     setLoading(true);
     try {
-      const { data: robot } = await supabase
+      const { data: robot, error: robotErr } = await supabase
         .from('ia_robots')
         .select('id')
         .eq('codigo', 'comunicados_aseguradoras')
-        .single();
+        .maybeSingle();
 
+      if (robotErr) { console.error('loadBoletines robot error:', robotErr); setLoading(false); return; }
       if (!robot) { setLoading(false); return; }
 
-      const { data: allItems } = await supabase
+      const { data: allItems, error: bandejaErr } = await supabase
         .from('ia_bandeja')
         .select('id, asunto, remitente, cuerpo_texto, fecha_correo, coincidencia_pct, comunicado_borrador_id, resultado')
         .eq('robot_id', robot.id)
         .eq('estado_procesamiento', 'completado')
         .order('fecha_correo', { ascending: false })
         .limit(50);
+
+      if (bandejaErr) { console.error('loadBoletines bandeja error:', bandejaErr); }
 
       const items = (allItems || []) as BoletinItem[];
       setPendientes(items.filter(i => !i.comunicado_borrador_id));
@@ -1200,11 +1203,13 @@ function BandejaPanel() {
     setProcessing(true);
     setActionResult(null);
     try {
-      const { error } = await supabase.from('ia_bandeja')
+      const { error, count } = await supabase.from('ia_bandeja')
         .update({ robot_id: robotId, estado_procesamiento: 'completado' })
-        .in('id', [...selectedIds]);
+        .in('id', [...selectedIds])
+        .select('id', { count: 'exact', head: true });
       if (error) throw error;
-      setActionResult({ type: 'success', message: `${selectedIds.size} correo(s) asignados al robot.` });
+      if (count === 0) throw new Error('No se actualizaron registros. Verifica permisos.');
+      setActionResult({ type: 'success', message: `${count} correo(s) asignados al robot.` });
       setSelectedIds(new Set());
       loadBandeja();
     } catch (err: any) {
@@ -1220,10 +1225,12 @@ function BandejaPanel() {
     setActionResult(null);
     try {
       // First assign the robot and mark as completado
-      const { error: updateErr } = await supabase.from('ia_bandeja')
+      const { error: updateErr, count } = await supabase.from('ia_bandeja')
         .update({ robot_id: robotId, estado_procesamiento: 'completado', comunicado_borrador_id: null })
-        .in('id', [...selectedIds]);
+        .in('id', [...selectedIds])
+        .select('id', { count: 'exact', head: true });
       if (updateErr) throw updateErr;
+      if (count === 0) throw new Error('No se actualizaron registros. Verifica permisos.');
 
       // Invoke the edge function to process them
       const { data: session } = await supabase.auth.getSession();
