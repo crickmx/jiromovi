@@ -12,9 +12,10 @@ import {
   Settings, Eye, Copy, Pencil, ToggleLeft, ToggleRight, TestTube, Send,
   Loader as Loader2, RefreshCw, Zap, Shield, FileText, MessageSquare,
   Bell, X, ChevronDown, ChevronRight, Server, Key, Tag, FlaskConical,
+  Newspaper, ExternalLink, Sparkles,
 } from 'lucide-react';
 
-type Tab = 'dashboard' | 'robots' | 'bandeja' | 'bitacora' | 'cuentas';
+type Tab = 'dashboard' | 'robots' | 'boletines' | 'bandeja' | 'bitacora' | 'cuentas';
 
 interface CuentaCorreo {
   id: string;
@@ -115,6 +116,7 @@ export default function AutomatizacionIA() {
         {[
           { key: 'dashboard' as Tab, label: 'Dashboard', icon: Activity },
           { key: 'robots' as Tab, label: 'Robots', icon: Bot },
+          { key: 'boletines' as Tab, label: 'Boletines', icon: Newspaper },
           { key: 'bandeja' as Tab, label: 'Bandeja IA', icon: Mail },
           { key: 'bitacora' as Tab, label: 'Bitácora', icon: ScrollText },
           { key: 'cuentas' as Tab, label: 'Cuentas', icon: Settings },
@@ -136,6 +138,7 @@ export default function AutomatizacionIA() {
 
       {tab === 'dashboard' && <DashboardIA />}
       {tab === 'robots' && <RobotsPanel />}
+      {tab === 'boletines' && <BoletinesPanel />}
       {tab === 'bandeja' && <BandejaPanel />}
       {tab === 'bitacora' && <BitacoraPanel />}
       {tab === 'cuentas' && <CuentasPanel />}
@@ -372,6 +375,248 @@ function StatCard({ icon: Icon, label, value, color }: { icon: any; label: strin
       </div>
       <p className="text-2xl font-bold text-slate-900 dark:text-white">{value}</p>
       <p className="text-xs text-slate-500">{label}</p>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BOLETINES PANEL (Robot Comunicados Aseguradoras)
+// ═══════════════════════════════════════════════════════════════════
+interface BoletinItem {
+  id: string;
+  asunto: string;
+  remitente: string;
+  cuerpo_texto: string | null;
+  fecha_correo: string;
+  coincidencia_pct: number;
+  comunicado_borrador_id: string | null;
+  resultado: Record<string, unknown> | null;
+}
+
+function BoletinesPanel() {
+  const { usuario } = useAuth();
+  const [pendientes, setPendientes] = useState<BoletinItem[]>([]);
+  const [procesados, setProcesados] = useState<BoletinItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
+  const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  useEffect(() => { loadBoletines(); }, []);
+
+  async function loadBoletines() {
+    setLoading(true);
+    try {
+      const { data: robot } = await supabase
+        .from('ia_robots')
+        .select('id')
+        .eq('codigo', 'comunicados_aseguradoras')
+        .single();
+
+      if (!robot) { setLoading(false); return; }
+
+      const { data: allItems } = await supabase
+        .from('ia_bandeja')
+        .select('id, asunto, remitente, cuerpo_texto, fecha_correo, coincidencia_pct, comunicado_borrador_id, resultado')
+        .eq('robot_id', robot.id)
+        .eq('estado_procesamiento', 'completado')
+        .order('fecha_correo', { ascending: false })
+        .limit(50);
+
+      const items = (allItems || []) as BoletinItem[];
+      setPendientes(items.filter(i => !i.comunicado_borrador_id));
+      setProcesados(items.filter(i => !!i.comunicado_borrador_id));
+    } catch (err) {
+      console.error('loadBoletines error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function processBoletin(bandejaId?: string) {
+    setProcessing(true);
+    setResult(null);
+    if (bandejaId) setProcessingIds(new Set([bandejaId]));
+    else setProcessingIds(new Set(pendientes.map(p => p.id)));
+
+    try {
+      const body: Record<string, unknown> = { creado_por: usuario?.id };
+      if (bandejaId) body.bandeja_id = bandejaId;
+      else body.limit = 5;
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ia-process-boletin`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify(body),
+        }
+      );
+      const json = await res.json();
+      if (json.success) {
+        setResult({
+          ok: true,
+          msg: `${json.comunicados_creados || 0} comunicado(s) generado(s) como borrador`,
+        });
+        loadBoletines();
+      } else {
+        setResult({ ok: false, msg: json.error || json.message || 'Error al procesar' });
+      }
+    } catch {
+      setResult({ ok: false, msg: 'Error de red al ejecutar el procesamiento' });
+    } finally {
+      setProcessing(false);
+      setProcessingIds(new Set());
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 rounded-xl border border-teal-200 dark:border-teal-800 p-5">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-teal-500/20">
+              <Newspaper className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-900 dark:text-white">Robot de Boletines de Aseguradoras</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+                Identifica comunicados de aseguradoras, genera articulos y crea borradores de publicacion automaticamente
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={loadBoletines} className="gap-2">
+              <RefreshCw className="w-4 h-4" /> Actualizar
+            </Button>
+            {pendientes.length > 0 && (
+              <Button
+                onClick={() => processBoletin()}
+                disabled={processing}
+                className="gap-2 bg-teal-600 hover:bg-teal-700 text-white"
+              >
+                {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                Procesar todos ({pendientes.length})
+              </Button>
+            )}
+          </div>
+        </div>
+        {result && (
+          <div className={`mt-4 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm ${
+            result.ok ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                     : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400 border border-red-200 dark:border-red-800'
+          }`}>
+            {result.ok ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <XCircle className="w-4 h-4 flex-shrink-0" />}
+            {result.msg}
+          </div>
+        )}
+      </div>
+
+      {/* Pending bulletins */}
+      {pendientes.length > 0 && (
+        <Section title={`Boletines pendientes de procesar (${pendientes.length})`}>
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
+            {pendientes.map(item => (
+              <div key={item.id} className="p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                  <Mail className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-sm text-slate-900 dark:text-white truncate">{item.asunto || '(Sin asunto)'}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    De: {item.remitente} — {new Date(item.fecha_correo).toLocaleDateString('es-MX')}
+                    {item.coincidencia_pct > 0 && <span className="ml-2 text-teal-600">({item.coincidencia_pct}% match)</span>}
+                  </p>
+                  {item.cuerpo_texto && (
+                    <p className="text-xs text-slate-400 mt-1 line-clamp-1">{item.cuerpo_texto.substring(0, 150)}</p>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  className="gap-1.5 text-xs flex-shrink-0 border-teal-300 text-teal-700 hover:bg-teal-50 dark:border-teal-700 dark:text-teal-400"
+                  disabled={processing && processingIds.has(item.id)}
+                  onClick={() => processBoletin(item.id)}
+                >
+                  {processing && processingIds.has(item.id) ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  )}
+                  Generar comunicado
+                </Button>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Processed bulletins */}
+      <Section title={`Comunicados generados (${procesados.length})`}>
+        {procesados.length === 0 ? (
+          <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+            <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+              <FileText className="w-7 h-7 text-slate-400" />
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-400">No hay comunicados generados aun.</p>
+            <p className="text-xs text-slate-400 mt-1">Los boletines procesados aparecerán aqui con enlace al borrador.</p>
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
+            {procesados.map(item => {
+              const res = item.resultado as { titulo?: string; comunicado_id?: string; generated_at?: string } | null;
+              return (
+                <div key={item.id} className="p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm text-slate-900 dark:text-white truncate">{res?.titulo || item.asunto}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      De: {item.remitente} — Procesado: {res?.generated_at ? new Date(res.generated_at).toLocaleDateString('es-MX') : ''}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                      Borrador
+                    </span>
+                    {item.comunicado_borrador_id && (
+                      <a
+                        href={`/comunicados/editar/${item.comunicado_borrador_id}`}
+                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" /> Editar
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Section>
+
+      {/* No bulletins at all */}
+      {pendientes.length === 0 && procesados.length === 0 && (
+        <div className="text-center py-16">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+            <Newspaper className="w-8 h-8 text-slate-400" />
+          </div>
+          <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1">Sin boletines clasificados</h3>
+          <p className="text-sm text-slate-500 max-w-md mx-auto">
+            Cuando se detecten emails de aseguradoras con comunicados o circulares, aparecerán aqui para ser procesados automaticamente en borradores de publicacion.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
