@@ -7,12 +7,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+// Clean editorial photos (no text visible, topic-appropriate for insurance industry)
 const FALLBACK_BACKGROUNDS = [
-  "https://images.pexels.com/photos/7688336/pexels-photo-7688336.jpeg?auto=compress&cs=tinysrgb&w=1200",
-  "https://images.pexels.com/photos/5849577/pexels-photo-5849577.jpeg?auto=compress&cs=tinysrgb&w=1200",
-  "https://images.pexels.com/photos/6863183/pexels-photo-6863183.jpeg?auto=compress&cs=tinysrgb&w=1200",
-  "https://images.pexels.com/photos/4386431/pexels-photo-4386431.jpeg?auto=compress&cs=tinysrgb&w=1200",
-  "https://images.pexels.com/photos/7821487/pexels-photo-7821487.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/1118448/pexels-photo-1118448.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/120049/pexels-photo-120049.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/210019/pexels-photo-210019.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/1643383/pexels-photo-1643383.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/323705/pexels-photo-323705.jpeg?auto=compress&cs=tinysrgb&w=1200",
 ];
 
 Deno.serve(async (req: Request) => {
@@ -202,7 +203,7 @@ Responde UNICAMENTE con un objeto JSON valido:
   "resumen_ejecutivo": "string - Resumen ejecutivo de 3-5 oraciones.",
   "contenido_html": "string - Articulo COMPLETO en HTML con la estructura editorial indicada.",
   "puntos_clave": ["array de 3-8 puntos clave"],
-  "imagen_destacada_descripcion": "string - Description in English for DALL-E 3. Describe a SPECIFIC REAL-WORLD PHOTOGRAPHIC SCENE directly related to the article topic. Think editorial photography like Bloomberg or Forbes covers. Examples: 'A sleek silver sedan driving on a modern Mexican highway at golden hour, shallow depth of field, cinematic', 'A friendly doctor in white coat consulting with a smiling family in a bright modern clinic', 'A professional family standing in front of their new home, warm afternoon light', 'Two business executives shaking hands over a signed insurance contract at a conference table', 'Close-up of hands counting Mexican peso bills with a calculator, financial planning concept'. Be VERY specific about the scene. NO text, NO logos, NO numbers visible.",
+  "imagen_destacada_descripcion": "string - Scene description in English for an AI image generator. Describe a SPECIFIC PHOTOGRAPHIC SCENE with OBJECTS or ENVIRONMENTS only — NO people, NO papers, NO documents, NO screens with text. Focus on tangible subjects: vehicles (car on highway, car key on leather surface), architecture (modern building exterior, clean office lobby), nature (sunrise over city, open road through mountains), or symbolic objects (stethoscope on white surface, house exterior at sunset, coins and pen on wooden table). The scene must relate to the article topic. Examples for auto insurance: 'Sleek silver car driving on an open mountain highway at golden hour, dramatic sky, motion blur on wheels, no people visible'. Examples for health: 'Modern hospital corridor with warm ambient lighting, polished floors, no text or signage visible'. Examples for payments/finance: 'Close-up of a car key resting on a clean wooden surface, shallow depth of field, warm light'. CRITICAL: Do NOT describe offices, meetings, people reviewing documents, or any scene that would naturally show text. Max 200 characters.",
   "tiempo_lectura": "string - Ej: '4 min de lectura'"
 }`;
 
@@ -248,19 +249,15 @@ Responde UNICAMENTE con un objeto JSON valido:
 // --- Image Generation ---
 
 async function generateImage(apiKey: string, article: ArticleResult): Promise<string> {
-  const prompt = `Premium editorial cover photograph for a Mexican insurance industry article. Topic: ${article.imagen_destacada_descripcion}
+  const scene = article.imagen_destacada_descripcion;
+  const prompt = `Editorial cover photograph. ${scene}
 
-Visual requirements:
-- Photorealistic, high-end corporate photography style (Bloomberg, Forbes, Expansión quality)
-- The scene must be DIRECTLY related to the insurance topic: if auto insurance show a car/road/driver, if health insurance show doctor/clinic/stethoscope, if home insurance show a house/family, if payments/commissions show executives/documents/handshake, if technology show modern devices/screens
-- Composition: subject slightly right of center, leaving left side darker for text overlay
-- Lighting: cinematic, professional, slightly warm or cool tones depending on topic, well-lit with clear focal point
-- Depth of field: sharp subject with soft background blur for professional feel
-- Safe area: main subject within center 70% of frame, edges can be cropped
-- Dark gradient zone at bottom 40% of image (this area will have text overlaid)
-- Absolutely NO text, NO letters, NO numbers, NO logos, NO watermarks anywhere
-- NO visible faces (show backs, silhouettes, or cropped at shoulders)
-- Style: modern, premium, trustworthy, clean — NOT stock photo cliché`;
+Photography style: high-end commercial photography, cinematic lighting, shallow depth of field, professional color grading, sharp focus on subject with soft background blur.
+Composition: subject positioned slightly right of center, left side naturally darker for text overlay space. Main subject within center 70% of frame.
+Lighting: warm-to-neutral cinematic tones, well-lit focal point, dramatic shadows.
+Clean surfaces — absolutely zero text, zero letters, zero numbers, zero logos, zero watermarks, zero signs on any surface in the entire image.
+Wide format, landscape orientation, 16:9 ratio.
+Style: premium, modern, trustworthy. NOT stock photo aesthetic.`;
 
   const resp = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
