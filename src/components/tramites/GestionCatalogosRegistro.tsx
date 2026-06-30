@@ -434,7 +434,8 @@ export function GestionCatalogosRegistro() {
                     <span className="text-xs text-neutral-400">({items.length})</span>
                   </div>
                 </button>
-                {isAreaOpen(area) && <div className="divide-y divide-neutral-100">
+                {isAreaOpen(area) && (
+                <div className="divide-y divide-neutral-100">
                   {items.map(tipo => (
                     <div
                       key={tipo.id}
@@ -500,6 +501,7 @@ export function GestionCatalogosRegistro() {
                     </div>
                   ))}
                 </div>
+                )}
               </div>
             ))}
           </div>
