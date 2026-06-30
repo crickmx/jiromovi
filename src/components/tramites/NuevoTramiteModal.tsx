@@ -26,6 +26,7 @@ import {
   type Aseguradora as AseguradoraRA,
   type UsuarioOficina
 } from '../../lib/registroActividadesTypes';
+import { SearchableSelect } from './catalogos/SearchableSelect';
 
 interface TramiteEstatus {
   id: string;
@@ -845,16 +846,12 @@ export function NuevoTramiteModal({
         )}
 
         {(campo.tipo === 'estatus' || campo.tipo === 'dropdown') && (
-          <select
+          <SearchableSelect
             value={val || ''}
-            onChange={e => set(e.target.value)}
-            className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-          >
-            <option value="">Seleccionar...</option>
-            {(campo.config.opciones || []).map((opt: CampoDinamicoOption) => (
-              <option key={opt.slug} value={opt.slug}>{opt.label}</option>
-            ))}
-          </select>
+            onChange={set}
+            options={(campo.config.opciones || []).map((opt: CampoDinamicoOption) => ({ label: opt.label, value: opt.slug }))}
+            placeholder="Seleccionar..."
+          />
         )}
 
         {campo.tipo === 'aseguradora' && (

@@ -10,6 +10,7 @@ import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
 import { TramiteHistorial } from '../components/tramites/TramiteHistorial';
 import { ComisionesPendientes } from '../components/tramites/ComisionesPendientes';
 import { crearNotificacion } from '../lib/notificationHelpers';
+import { SearchableSelect } from '../components/tramites/catalogos/SearchableSelect';
 
 interface TramiteEstatus {
   id: string;
@@ -1032,13 +1033,13 @@ export function TramiteDetalle() {
                         </label>
                       )}
                       {(campo.tipo === 'estatus' || campo.tipo === 'dropdown') && (
-                        <select value={val || ''} onChange={e => set(e.target.value)} disabled={!editable}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-neutral-50 disabled:text-neutral-500">
-                          <option value="">Seleccionar...</option>
-                          {(campo.config.opciones || []).map((opt: CampoDinamicoOpt) => (
-                            <option key={opt.slug} value={opt.slug}>{opt.label}</option>
-                          ))}
-                        </select>
+                        <SearchableSelect
+                          value={val || ''}
+                          onChange={editable ? set : () => {}}
+                          options={(campo.config.opciones || []).map((opt: CampoDinamicoOpt) => ({ label: opt.label, value: opt.slug }))}
+                          placeholder="Seleccionar..."
+                          disabled={!editable}
+                        />
                       )}
                       {campo.tipo === 'seleccion_multiple' && (
                         <div className="flex flex-wrap gap-2">
