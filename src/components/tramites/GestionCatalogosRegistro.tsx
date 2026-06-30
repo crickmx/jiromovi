@@ -295,7 +295,7 @@ export function GestionCatalogosRegistro() {
 
         {/* Tab: Campos */}
         {activeTab === 'campos' && (
-          <FormBuilderTab tipoId={activeTipo.id} showToast={showToast} />
+          <FormBuilderTab tipoId={activeTipo.id} showToast={showToast} onGoToTriggers={() => switchTab('triggers')} />
         )}
 
         {/* Tab: Permisos */}

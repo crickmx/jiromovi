@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Plus, Save, Trash2, Settings, GripVertical, X, Eye, Lock } from 'lucide-react';
+import { Plus, Save, Trash2, Settings, GripVertical, X, Eye, Lock, Zap } from 'lucide-react';
 import { useFormBuilder } from './useFormBuilder';
 import { FormPreview } from './FormPreview';
 import { CAMPO_TIPOS, SISTEMA_TIPO_META, MIME_OPTIONS, slugify } from './types';
@@ -7,9 +7,10 @@ import { CAMPO_TIPOS, SISTEMA_TIPO_META, MIME_OPTIONS, slugify } from './types';
 interface Props {
   tipoId: string;
   showToast: (msg: string, type?: 'success' | 'error') => void;
+  onGoToTriggers?: () => void;
 }
 
-export function FormBuilderTab({ tipoId, showToast }: Props) {
+export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
   const {
     campos, loadingCampos, loadCampos,
     showAddField, setShowAddField,
@@ -383,8 +384,18 @@ export function FormBuilderTab({ tipoId, showToast }: Props) {
                 )}
 
                 {editingCampo.tipo === 'estatus' && (
-                  <div>
-                    <label className="block text-xs font-medium text-neutral-600 mb-1.5">Opciones</label>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Nombre del campo</label>
+                      <input
+                        type="text"
+                        value={editCampoLabel}
+                        onChange={(e) => setEditCampoLabel(e.target.value)}
+                        className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                    <label className="block text-xs font-medium text-neutral-600 mb-1.5">Opciones de estatus</label>
                     {(editCampoConfig.opciones || []).map((opt: { label: string; slug: string; clasificacion?: string | null }, i: number) => (
                       <div key={i} className="flex gap-1 mb-1.5 items-center">
                         <input
@@ -433,6 +444,16 @@ export function FormBuilderTab({ tipoId, showToast }: Props) {
                       }}
                       className="mt-1 w-full text-xs py-1 border border-dashed border-neutral-300 rounded-lg hover:border-blue-400 hover:text-blue-600 text-neutral-500 transition-colors"
                     >+ Agregar opción</button>
+                    </div>
+                    {onGoToTriggers && (
+                      <button
+                        onClick={onGoToTriggers}
+                        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-600 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                      >
+                        <Zap className="w-3.5 h-3.5" />
+                        Configurar triggers de estatus
+                      </button>
+                    )}
                   </div>
                 )}
 
