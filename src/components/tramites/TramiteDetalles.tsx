@@ -133,15 +133,42 @@ export function TramiteDetalles({
     setSelectedResponsable(tramite.responsable?.id ?? '');
   }, [tramite.responsable?.id]);
 
-  // Load available teams
+  // Load available teams, filtered by the area of this tramite type
   useEffect(() => {
-    supabase
-      .from('tramites_grupos_visualizacion')
-      .select('id, nombre')
-      .eq('activo', true)
-      .order('nombre')
-      .then(({ data }) => { if (data) setGrupos(data as Grupo[]); });
-  }, []);
+    const loadGrupos = async () => {
+      const { data: tipoData } = await supabase
+        .from('ticket_tipos')
+        .select('area_id')
+        .eq('value', tramite.tipo_tramite)
+        .maybeSingle();
+
+      if (tipoData?.area_id) {
+        const { data: equiposAreas } = await supabase
+          .from('tramites_equipos_areas')
+          .select('equipo_id')
+          .eq('area_id', tipoData.area_id);
+        const ids = (equiposAreas ?? []).map((e: { equipo_id: string }) => e.equipo_id);
+        if (ids.length) {
+          const { data } = await supabase
+            .from('tramites_grupos_visualizacion')
+            .select('id, nombre')
+            .in('id', ids)
+            .eq('activo', true)
+            .order('nombre');
+          if (data?.length) { setGrupos(data as Grupo[]); return; }
+        }
+      }
+
+      // Fallback: all active groups (legacy tickets or tipo without area mapping)
+      const { data: todos } = await supabase
+        .from('tramites_grupos_visualizacion')
+        .select('id, nombre')
+        .eq('activo', true)
+        .order('nombre');
+      if (todos) setGrupos(todos as Grupo[]);
+    };
+    loadGrupos();
+  }, [tramite.tipo_tramite]);
 
   // Load team members when selected group changes
   useEffect(() => {
@@ -156,16 +183,12 @@ export function TramiteDetalles({
         const { data } = await supabase.rpc('get_grupo_miembros_ejecutivos', { p_grupo_id: selectedGrupoId });
         if (data) setTeamMembers(data as TeamMember[]);
       } else {
-        // No group selected: show all lider+ejecutivo from all active teams
-        const { data: todosGrupos } = await supabase
-          .from('tramites_grupos_visualizacion')
-          .select('id')
-          .eq('activo', true);
-        if (!todosGrupos?.length) { setTeamMembers([]); return; }
+        // No group selected: show lider+ejecutivo from area-filtered groups
+        if (!grupos.length) { setTeamMembers([]); return; }
         const { data: miembros } = await supabase
           .from('tramites_grupos_miembros')
           .select('usuario_id, usuarios!inner(id, nombre_completo)')
-          .in('grupo_id', todosGrupos.map((g: { id: string }) => g.id))
+          .in('grupo_id', grupos.map((g: Grupo) => g.id))
           .in('rol_en_equipo', ['lider', 'ejecutivo']);
         if (miembros) {
           type Row = { usuario_id: string; usuarios: { id: string; nombre_completo: string } };
@@ -182,7 +205,7 @@ export function TramiteDetalles({
       }
     };
     load();
-  }, [selectedGrupoId, canManageAssignment]);
+  }, [selectedGrupoId, canManageAssignment, grupos]);
 
   // Cargar estado de mapeo SICAS para los miembros del equipo
   useEffect(() => {

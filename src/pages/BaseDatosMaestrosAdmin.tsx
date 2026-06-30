@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import {
   Database, Upload, Download, Plus, Trash2, Search, CheckCircle2,
   XCircle, History, Building2, Users, Link2, ChevronDown, ChevronRight,
-  AlertTriangle, FileSpreadsheet, RefreshCw, Edit2, Save, X,
+  AlertTriangle, FileSpreadsheet, RefreshCw, Edit2, Save, X, Tag,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { useAuth } from '../contexts/AuthContext';
@@ -44,7 +44,11 @@ interface Importacion {
 
 interface CodigoPostal { id: string; codigo: string; colonia: string; municipio: string; estado: string }
 
-type TabId = 'catalogo' | 'vendedores' | 'mapeo' | 'historial' | 'codigos_postales'
+interface Area           { id: string; nombre: string; slug: string; color_hex: string; activa: boolean }
+interface GrupoViz       { id: string; nombre: string; activo: boolean }
+interface TipoTramite    { id: string; value: string; label: string; area_id: string | null; color: string; activo: boolean; orden: number }
+
+type TabId = 'catalogo' | 'vendedores' | 'mapeo' | 'tramites' | 'historial' | 'codigos_postales'
 type ImportMode = 'adicion' | 'reemplazo'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -84,7 +88,23 @@ export default function BaseDatosMaestrosAdmin() {
   const [searchVend, setSearchVend]   = useState('');
   const [expandedDespachos, setExpandedDespachos] = useState<Set<string>>(new Set());
   const [vendGroupMode, setVendGroupMode] = useState<'despacho' | 'vendedor'>('despacho');
-  const [editingRow, setEditingRow] = useState<{ table: string; id: string; nombre: string } | null>(null);
+  const [editingRow, setEditingRow] = useState<{ table: string; id: string; nombre: string; field?: string } | null>(null);
+
+  // ── Trámites (áreas, equipos, tipos) ────────────────────────────────────────
+  const [areas, setAreas]           = useState<Area[]>([]);
+  const [gruposViz, setGruposViz]   = useState<GrupoViz[]>([]);
+  const [tiposTramite, setTiposTramite] = useState<TipoTramite[]>([]);
+  const [loadingTramites, setLoadingTramites] = useState(false);
+  const [searchTramites, setSearchTramites]   = useState('');
+  const [addAreaNombre, setAddAreaNombre]   = useState('');
+  const [addAreaColor,  setAddAreaColor]    = useState('#6366f1');
+  const [showAddArea,   setShowAddArea]     = useState(false);
+  const [addGrupoNombre, setAddGrupoNombre] = useState('');
+  const [showAddGrupo,   setShowAddGrupo]   = useState(false);
+  const [addTipoLabel,  setAddTipoLabel]    = useState('');
+  const [addTipoAreaId, setAddTipoAreaId]   = useState('');
+  const [addTipoColor,  setAddTipoColor]    = useState('#6366f1');
+  const [showAddTipo,   setShowAddTipo]     = useState(false);
 
   // ── Mapeo ───────────────────────────────────────────────────────────────────
   const [mapeos, setMapeos]           = useState<MapeoUsuario[]>([]);
@@ -136,6 +156,7 @@ export default function BaseDatosMaestrosAdmin() {
     if (tab === 'catalogo')          loadCatalogo();
     if (tab === 'vendedores')        loadVendedores();
     if (tab === 'mapeo')             loadMapeo();
+    if (tab === 'tramites')          loadTramitesData();
     if (tab === 'historial')         loadHistorial();
     if (tab === 'codigos_postales')  loadCodigosPostales();
   }, [tab]);
@@ -233,8 +254,8 @@ export default function BaseDatosMaestrosAdmin() {
     toast('Despacho agregado'); setAddDespachoNombre(''); setShowAddDespacho(false); loadVendedores();
   }
 
-  async function toggleActivo(table: string, id: string, current: boolean, reload: () => void) {
-    const { error } = await supabase.from(table).update({ activo: !current }).eq('id', id);
+  async function toggleActivo(table: string, id: string, current: boolean, reload: () => void, activeField = 'activo') {
+    const { error } = await supabase.from(table).update({ [activeField]: !current }).eq('id', id);
     if (error) { toast('Error: ' + error.message, 'err'); return; }
     reload();
   }
@@ -243,12 +264,58 @@ export default function BaseDatosMaestrosAdmin() {
     if (!editingRow) return;
     const n = normalize(editingRow.nombre);
     if (!n) { toast('El nombre no puede estar vacío', 'err'); return; }
-    const { error } = await supabase.from(editingRow.table).update({ nombre: n }).eq('id', editingRow.id);
+    const fieldName = editingRow.field ?? 'nombre';
+    const { error } = await supabase.from(editingRow.table).update({ [fieldName]: n }).eq('id', editingRow.id);
     if (error) { toast('Error: ' + error.message, 'err'); return; }
     toast('Actualizado');
     setEditingRow(null);
     const isVend = ['maestro_agentes', 'maestro_gerencias', 'maestro_despachos'].includes(editingRow.table);
-    if (isVend) loadVendedores(); else loadCatalogo();
+    const isTram = ['tramites_areas', 'tramites_grupos_visualizacion', 'ticket_tipos'].includes(editingRow.table);
+    if (isVend) loadVendedores();
+    else if (isTram) loadTramitesData();
+    else loadCatalogo();
+  }
+
+  async function loadTramitesData() {
+    setLoadingTramites(true);
+    const [{ data: a }, { data: g }, { data: t }] = await Promise.all([
+      supabase.from('tramites_areas').select('*').order('nombre'),
+      supabase.from('tramites_grupos_visualizacion').select('id, nombre, activo').order('nombre'),
+      supabase.from('ticket_tipos').select('id, value, label, area_id, color, activo, orden').order('orden'),
+    ]);
+    setAreas(a ?? []);
+    setGruposViz(g ?? []);
+    setTiposTramite(t ?? []);
+    setLoadingTramites(false);
+  }
+
+  async function addArea() {
+    const n = normalize(addAreaNombre); if (!n) return;
+    const slug = n.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    const { error } = await supabase.from('tramites_areas').insert({ nombre: n, slug, color_hex: addAreaColor });
+    if (error) { toast('Error: ' + error.message, 'err'); return; }
+    toast('Área agregada'); setAddAreaNombre(''); setShowAddArea(false); loadTramitesData();
+  }
+
+  async function addGrupoViz() {
+    const n = normalize(addGrupoNombre); if (!n) return;
+    const { error } = await supabase.from('tramites_grupos_visualizacion').insert({ nombre: n, activo: true });
+    if (error) { toast('Error: ' + error.message, 'err'); return; }
+    toast('Equipo agregado'); setAddGrupoNombre(''); setShowAddGrupo(false); loadTramitesData();
+  }
+
+  async function addTipoTramite() {
+    const n = normalize(addTipoLabel); if (!n) return;
+    const val = n.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    const { error } = await supabase.from('ticket_tipos').insert({
+      label: n, value: val,
+      area_id: addTipoAreaId || null,
+      color: addTipoColor,
+      activo: true,
+      orden: tiposTramite.length + 1,
+    });
+    if (error) { toast('Error: ' + error.message, 'err'); return; }
+    toast('Tipo de trámite agregado'); setAddTipoLabel(''); setAddTipoAreaId(''); setShowAddTipo(false); loadTramitesData();
   }
 
   async function deleteRow(table: string, id: string, reload: () => void) {
@@ -1498,14 +1565,191 @@ export default function BaseDatosMaestrosAdmin() {
     );
   }
 
+  // ─── TAB: Trámites (Áreas, Equipos, Tipos) ───────────────────────────────────
+
+  function TabTramites() {
+    const lc = searchTramites.toLowerCase();
+    const areasFilt = areas.filter(a => a.nombre.toLowerCase().includes(lc));
+    const gruposFilt = gruposViz.filter(g => g.nombre.toLowerCase().includes(lc));
+    const tiposFilt  = tiposTramite.filter(t =>
+      t.label.toLowerCase().includes(lc) ||
+      (areas.find(a => a.id === t.area_id)?.nombre ?? '').toLowerCase().includes(lc)
+    );
+
+    function RowEdit({ id, nombre, table, field }: { id: string; nombre: string; table: string; field?: string }) {
+      return editingRow?.id === id ? (
+        <div className="flex-1 flex items-center gap-2">
+          <input value={editingRow!.nombre} onChange={e => setEditingRow({ ...editingRow!, nombre: e.target.value })}
+            onKeyDown={e => { if (e.key === 'Enter') saveEditRow(); if (e.key === 'Escape') setEditingRow(null); }}
+            className="flex-1 border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1 text-sm dark:bg-neutral-700 dark:text-white" autoFocus/>
+          <button onClick={saveEditRow} className="p-1 text-green-600 hover:text-green-700"><Save className="w-3.5 h-3.5"/></button>
+          <button onClick={() => setEditingRow(null)} className="p-1 text-neutral-400"><X className="w-3.5 h-3.5"/></button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition flex-shrink-0">
+          <button onClick={() => setEditingRow({ table, id, nombre, field })}
+            className="p-1 text-neutral-400 hover:text-blue-600 rounded"><Edit2 className="w-3.5 h-3.5"/></button>
+          <button onClick={() => { if (window.confirm(`¿Eliminar "${nombre}"?`)) deleteRow(table, id, loadTramitesData); }}
+            className="p-1 text-neutral-400 hover:text-red-600 rounded"><Trash2 className="w-3.5 h-3.5"/></button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400"/>
+          <input type="text" placeholder="Buscar áreas, equipos o tipos de trámite..." value={searchTramites}
+            onChange={e => setSearchTramites(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 border border-neutral-300 dark:border-neutral-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-neutral-800 dark:text-white"/>
+        </div>
+
+        {loadingTramites ? <Skeleton/> : (
+          <>
+            {/* ─── Áreas ─────────────────────────────────────────────────── */}
+            <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5">
+              <SectionHeader title="Áreas" count={areasFilt.length} onAdd={() => setShowAddArea(v => !v)}/>
+              {showAddArea && (
+                <div className="flex gap-2 mb-3 flex-wrap">
+                  <input value={addAreaNombre} onChange={e => setAddAreaNombre(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && addArea()}
+                    placeholder="Nombre del área" className="flex-1 min-w-32 border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm dark:bg-neutral-700 dark:text-white"/>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-neutral-500">Color</span>
+                    <input type="color" value={addAreaColor} onChange={e => setAddAreaColor(e.target.value)}
+                      className="w-9 h-9 rounded border border-neutral-300 cursor-pointer p-0.5"/>
+                  </div>
+                  <button onClick={addArea} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm"><Save className="w-4 h-4"/></button>
+                  <button onClick={() => setShowAddArea(false)} className="px-3 py-2 bg-neutral-100 dark:bg-neutral-700 rounded-lg text-sm"><X className="w-4 h-4"/></button>
+                </div>
+              )}
+              <div className="space-y-1 max-h-56 overflow-y-auto">
+                {areasFilt.map(area => (
+                  <div key={area.id} className="flex items-center gap-3 px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 rounded-lg group">
+                    <span className="w-3.5 h-3.5 rounded-full flex-shrink-0 ring-1 ring-white/50" style={{ backgroundColor: area.color_hex }}/>
+                    {editingRow?.id === area.id ? (
+                      <RowEdit id={area.id} nombre={area.nombre} table="tramites_areas"/>
+                    ) : (
+                      <>
+                        <span className="flex-1 text-sm text-neutral-800 dark:text-neutral-100">{area.nombre}</span>
+                        <span className="text-xs text-neutral-400 font-mono">{area.slug}</span>
+                        <button onClick={() => toggleActivo('tramites_areas', area.id, area.activa, loadTramitesData, 'activa')}
+                          className="opacity-0 group-hover:opacity-100 transition flex-shrink-0">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full ${area.activa ? 'bg-green-100 text-green-700' : 'bg-neutral-100 text-neutral-500'}`}>
+                            {area.activa ? <><CheckCircle2 className="w-3 h-3"/>Activa</> : <><XCircle className="w-3 h-3"/>Inactiva</>}
+                          </span>
+                        </button>
+                        <RowEdit id={area.id} nombre={area.nombre} table="tramites_areas"/>
+                      </>
+                    )}
+                  </div>
+                ))}
+                {areasFilt.length === 0 && <EmptyState msg="Sin áreas registradas."/>}
+              </div>
+            </div>
+
+            {/* ─── Equipos ────────────────────────────────────────────────── */}
+            <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5">
+              <SectionHeader title="Equipos de trabajo" count={gruposFilt.length} onAdd={() => setShowAddGrupo(v => !v)}/>
+              {showAddGrupo && (
+                <div className="flex gap-2 mb-3">
+                  <input value={addGrupoNombre} onChange={e => setAddGrupoNombre(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && addGrupoViz()}
+                    placeholder="Nombre del equipo" className="flex-1 border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm dark:bg-neutral-700 dark:text-white"/>
+                  <button onClick={addGrupoViz} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm"><Save className="w-4 h-4"/></button>
+                  <button onClick={() => setShowAddGrupo(false)} className="px-3 py-2 bg-neutral-100 dark:bg-neutral-700 rounded-lg text-sm"><X className="w-4 h-4"/></button>
+                </div>
+              )}
+              <div className="space-y-1 max-h-56 overflow-y-auto">
+                {gruposFilt.map(grp => (
+                  <div key={grp.id} className="flex items-center gap-3 px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 rounded-lg group">
+                    <Users className="w-3.5 h-3.5 text-purple-400 flex-shrink-0"/>
+                    {editingRow?.id === grp.id ? (
+                      <RowEdit id={grp.id} nombre={grp.nombre} table="tramites_grupos_visualizacion"/>
+                    ) : (
+                      <>
+                        <span className="flex-1 text-sm text-neutral-800 dark:text-neutral-100">{grp.nombre}</span>
+                        <button onClick={() => toggleActivo('tramites_grupos_visualizacion', grp.id, grp.activo, loadTramitesData)}
+                          className="opacity-0 group-hover:opacity-100 transition flex-shrink-0">
+                          <BadgeActivo activo={grp.activo}/>
+                        </button>
+                        <RowEdit id={grp.id} nombre={grp.nombre} table="tramites_grupos_visualizacion"/>
+                      </>
+                    )}
+                  </div>
+                ))}
+                {gruposFilt.length === 0 && <EmptyState msg="Sin equipos de trabajo."/>}
+              </div>
+            </div>
+
+            {/* ─── Tipos de Trámite ───────────────────────────────────────── */}
+            <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5">
+              <SectionHeader title="Tipos de Trámite" count={tiposFilt.length} onAdd={() => setShowAddTipo(v => !v)}/>
+              {showAddTipo && (
+                <div className="flex gap-2 mb-3 flex-wrap">
+                  <input value={addTipoLabel} onChange={e => setAddTipoLabel(e.target.value)}
+                    placeholder="Nombre del tipo" className="flex-1 min-w-40 border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm dark:bg-neutral-700 dark:text-white"/>
+                  <select value={addTipoAreaId} onChange={e => setAddTipoAreaId(e.target.value)}
+                    className="border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm dark:bg-neutral-700 dark:text-white">
+                    <option value="">Sin área</option>
+                    {areas.filter(a => a.activa).map(a => (
+                      <option key={a.id} value={a.id}>{a.nombre}</option>
+                    ))}
+                  </select>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-neutral-500">Color</span>
+                    <input type="color" value={addTipoColor} onChange={e => setAddTipoColor(e.target.value)}
+                      className="w-9 h-9 rounded border border-neutral-300 cursor-pointer p-0.5"/>
+                  </div>
+                  <button onClick={addTipoTramite} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm"><Save className="w-4 h-4"/></button>
+                  <button onClick={() => setShowAddTipo(false)} className="px-3 py-2 bg-neutral-100 dark:bg-neutral-700 rounded-lg text-sm"><X className="w-4 h-4"/></button>
+                </div>
+              )}
+              <div className="space-y-1 max-h-72 overflow-y-auto">
+                {tiposFilt.map(tipo => {
+                  const areaData = areas.find(a => a.id === tipo.area_id);
+                  return (
+                    <div key={tipo.id} className="flex items-center gap-3 px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 rounded-lg group">
+                      <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: tipo.color || '#6366f1' }}/>
+                      {editingRow?.id === tipo.id ? (
+                        <RowEdit id={tipo.id} nombre={tipo.label} table="ticket_tipos" field="label"/>
+                      ) : (
+                        <>
+                          <span className="flex-1 text-sm text-neutral-800 dark:text-neutral-100">{tipo.label}</span>
+                          {areaData && (
+                            <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0 font-medium"
+                              style={{ backgroundColor: areaData.color_hex + '25', color: areaData.color_hex }}>
+                              {areaData.nombre}
+                            </span>
+                          )}
+                          <button onClick={() => toggleActivo('ticket_tipos', tipo.id, tipo.activo, loadTramitesData)}
+                            className="opacity-0 group-hover:opacity-100 transition flex-shrink-0">
+                            <BadgeActivo activo={tipo.activo}/>
+                          </button>
+                          <RowEdit id={tipo.id} nombre={tipo.label} table="ticket_tipos" field="label"/>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+                {tiposFilt.length === 0 && <EmptyState msg="Sin tipos de trámite."/>}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
   // ─── Main render ──────────────────────────────────────────────────────────────
 
   const tabs: { id: TabId; label: string; icon: typeof Database }[] = [
-    { id: 'catalogo',          label: 'Catálogo',         icon: Database },
-    { id: 'vendedores',        label: 'Vendedores',        icon: Users },
+    { id: 'catalogo',          label: 'Catálogo',           icon: Database },
+    { id: 'vendedores',        label: 'Vendedores',          icon: Users },
     { id: 'mapeo',             label: 'Mapeo MOVI ↔ Agente', icon: Link2 },
-    { id: 'codigos_postales',  label: 'Cód. Postales',    icon: Building2 },
-    { id: 'historial',         label: 'Historial',         icon: History },
+    { id: 'tramites',          label: 'Trámites',            icon: Tag },
+    { id: 'codigos_postales',  label: 'Cód. Postales',      icon: Building2 },
+    { id: 'historial',         label: 'Historial',           icon: History },
   ];
 
   return (
@@ -1561,6 +1805,7 @@ export default function BaseDatosMaestrosAdmin() {
       {tab === 'catalogo'          && <TabCatalogo />}
       {tab === 'vendedores'        && <TabVendedores />}
       {tab === 'mapeo'             && <TabMapeo />}
+      {tab === 'tramites'          && <TabTramites />}
       {tab === 'codigos_postales'  && <TabCodigosPostales />}
       {tab === 'historial'         && <TabHistorial />}
     </div>
