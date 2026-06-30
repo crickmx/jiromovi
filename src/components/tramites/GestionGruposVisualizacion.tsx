@@ -72,6 +72,16 @@ interface TipoPorArea {
   label: string;
 }
 
+interface AreaItem {
+  id: string;
+  nombre: string;
+  color_hex: string;
+}
+
+const toSlug = (s: string) =>
+  s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '_');
+
 type FormTab = 'general' | 'miembros' | 'oficinas' | 'asignacion' | 'tramites';
 type Panel = 'list' | 'form' | 'members' | 'offices';
 
@@ -109,12 +119,13 @@ export function GestionGruposVisualizacion() {
   const [searchOficina, setSearchOficina] = useState('');
 
   // Areas
-  const [areasDisponibles, setAreasDisponibles] = useState<string[]>([]);
+  const [areasDisponibles, setAreasDisponibles] = useState<AreaItem[]>([]);
 
   // Form state
   const [formNombre, setFormNombre] = useState('');
   const [formDescripcion, setFormDescripcion] = useState('');
   const [formArea, setFormArea] = useState<string | null>(null);
+  const [formAreaId, setFormAreaId] = useState<string | null>(null);
   const [formActivo, setFormActivo] = useState(true);
   const [formAllOffices, setFormAllOffices] = useState(false);
   const [formSelectedOficinas, setFormSelectedOficinas] = useState<string[]>([]);
@@ -189,16 +200,13 @@ export function GestionGruposVisualizacion() {
     setLoading(false);
   }, []);
 
-  // REQ-01: Load areas from ticket_tipos + existing grupos (no new table needed)
   const loadAreas = async () => {
-    const [tiposRes, gruposRes] = await Promise.all([
-      supabase.from('ticket_tipos').select('area').eq('activo', true).not('area', 'is', null),
-      supabase.from('tramites_grupos_visualizacion').select('area_categoria').not('area_categoria', 'is', null),
-    ]);
-    const fromTipos = (tiposRes.data || []).map((r: { area: string }) => r.area).filter(Boolean);
-    const fromGrupos = (gruposRes.data || []).map((r: { area_categoria: string }) => r.area_categoria).filter(Boolean);
-    const unique = [...new Set([...fromTipos, ...fromGrupos])].sort() as string[];
-    setAreasDisponibles(unique);
+    const { data } = await supabase
+      .from('tramites_areas')
+      .select('id, nombre, color_hex')
+      .eq('activa', true)
+      .order('nombre');
+    setAreasDisponibles((data || []) as AreaItem[]);
   };
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -289,6 +297,7 @@ export function GestionGruposVisualizacion() {
     setFormNombre('');
     setFormDescripcion('');
     setFormArea(null);
+    setFormAreaId(null);
     setFormActivo(true);
     setFormAllOffices(false);
     setFormSelectedOficinas([]);
@@ -305,6 +314,7 @@ export function GestionGruposVisualizacion() {
     setFormNombre(g.nombre);
     setFormDescripcion(g.descripcion || '');
     setFormArea(g.area_categoria ?? null);
+    setFormAreaId(areasDisponibles.find(a => a.nombre === g.area_categoria)?.id ?? null);
     setFormActivo(g.activo);
     setFormAllOffices(g.all_offices);
     setFormColor(g.color || '#94a3b8');
@@ -341,6 +351,7 @@ export function GestionGruposVisualizacion() {
       nombre: formNombre.trim(),
       descripcion: formDescripcion.trim() || null,
       area_categoria: formArea,
+      area_id: formAreaId ?? null,
       activo: formActivo,
       all_offices: formAllOffices,
       color: formColor,
@@ -395,14 +406,27 @@ export function GestionGruposVisualizacion() {
     showToast(selectedGrupo ? 'Equipo actualizado correctamente' : 'Equipo creado correctamente');
   };
 
-  // REQ-01: Confirm new area inline
-  const handleConfirmNewArea = () => {
+  const handleConfirmNewArea = async () => {
     const name = formNewAreaName.trim();
     if (!name) return;
-    if (!areasDisponibles.includes(name)) {
-      setAreasDisponibles(prev => [...prev, name].sort());
+    const existing = areasDisponibles.find(a => a.nombre.toLowerCase() === name.toLowerCase());
+    if (existing) {
+      setFormArea(existing.nombre);
+      setFormAreaId(existing.id);
+      setFormCreatingArea(false);
+      setFormNewAreaName('');
+      return;
     }
-    setFormArea(name);
+    const { data } = await supabase
+      .from('tramites_areas')
+      .insert({ nombre: name, slug: toSlug(name), color_hex: '#94a3b8', activa: true })
+      .select('id, nombre, color_hex')
+      .single();
+    if (data) {
+      setAreasDisponibles(prev => [...prev, data].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+      setFormArea(data.nombre);
+      setFormAreaId(data.id);
+    }
     setFormCreatingArea(false);
     setFormNewAreaName('');
   };
@@ -974,21 +998,24 @@ export function GestionGruposVisualizacion() {
                 <label className="block text-sm font-semibold text-neutral-700 mb-1.5">Área</label>
                 <div className="flex flex-wrap gap-2">
                   {areasDisponibles.map(a => {
-                    const cfg = getAC(a);
-                    const active = formArea === a;
+                    const cfg = getAC(a.nombre);
+                    const active = formAreaId === a.id;
                     return (
                       <button
-                        key={a}
+                        key={a.id}
                         type="button"
-                        onClick={() => setFormArea(active ? null : a)}
+                        onClick={() => {
+                          if (active) { setFormArea(null); setFormAreaId(null); }
+                          else { setFormArea(a.nombre); setFormAreaId(a.id); }
+                        }}
                         className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${
                           active
                             ? `${cfg.bg} ${cfg.color} ${cfg.border} border-2`
                             : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-300'
                         }`}
                       >
-                        {a === 'Comercial' ? <Briefcase className="w-3.5 h-3.5" /> : <Wrench className="w-3.5 h-3.5" />}
-                        {a}
+                        {a.nombre === 'Comercial' ? <Briefcase className="w-3.5 h-3.5" /> : <Wrench className="w-3.5 h-3.5" />}
+                        {a.nombre}
                       </button>
                     );
                   })}
