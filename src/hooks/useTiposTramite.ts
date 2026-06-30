@@ -13,9 +13,10 @@ export interface TipoTramiteDB {
   orden: number;
   categoria: string;
   activo: boolean;
+  sla_dias: number | null;
 }
 
-const CACHE_KEY = 'tipos_tramite_v1';
+const CACHE_KEY = 'tipos_tramite_v2';
 const CACHE_TTL = 10 * 60 * 1000; // 10 min
 
 /** Invalida el caché de tipos de trámite (llamar al guardar cambios en el catálogo). */
@@ -39,7 +40,7 @@ export function useTiposTramite() {
     setLoading(true);
     supabase
       .from('ticket_tipos')
-      .select('id, value, label, area, color, is_custom, orden, categoria, activo')
+      .select('id, value, label, area, color, is_custom, orden, categoria, activo, sla_dias')
       .eq('activo', true)
       .order('orden')
       .then(({ data }) => {

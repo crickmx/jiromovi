@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useImpersonation } from '../contexts/ImpersonationContext';
 import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound, LayoutList, LayoutGrid, ChevronDown, ArrowUpDown } from 'lucide-react';
+import { crearNotificacion } from '../lib/notificationHelpers';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
 import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
@@ -72,6 +73,20 @@ const TRAMITE_OPTIONS_FOR_FILTER = TIPO_TRAMITE_OPTIONS.filter(
 );
 
 const PRIORIDADES = ['Alta', 'Media', 'Baja'] as const;
+
+function getSlaInfo(fechaCreacion: string, slaDias: number | null | undefined) {
+  const daysOpen = Math.max(0, Math.floor((Date.now() - new Date(fechaCreacion).getTime()) / 86_400_000));
+  if (!slaDias) return { daysOpen, color: 'text-neutral-400 dark:text-white/30', bg: 'bg-neutral-100 dark:bg-white/5', pulsing: false };
+  const pct = daysOpen / slaDias;
+  if (pct <= 0.70) return { daysOpen, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-900/20', pulsing: false };
+  if (pct <= 0.90) return { daysOpen, color: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-50 dark:bg-yellow-900/20', pulsing: false };
+  if (pct <= 1.00) return { daysOpen, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-900/20', pulsing: false };
+  return { daysOpen, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/20', pulsing: true };
+}
+
+function fmtFecha(iso: string) {
+  return new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
 
 // ── Multi-select dropdown component ─────────────────────────────────────────
 function MultiSelectDropdown({
@@ -220,7 +235,7 @@ export function Tramites() {
   }, [selectedTipos, estatusList]);
 
   const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const { tiposMap: tiposDb } = useTiposTramite();
+  const { tiposMap: tiposDb, loading: tiposLoading } = useTiposTramite();
 
   useEffect(() => {
     supabase.from('tramites_grupos_visualizacion').select('id, nombre').eq('activo', true).order('nombre').then(({ data }) => {
@@ -255,6 +270,49 @@ export function Tramites() {
       realtimeChannelRef.current = null;
     };
   }, [userAreaLoaded, activeTab]);
+
+  // SLA overdue notifications — once per session, after tramites and tipos are loaded
+  useEffect(() => {
+    if (!isAdmin || tiposLoading || !tramites.length) return;
+    const today = new Date().toISOString().split('T')[0];
+    const now = Date.now();
+    const overdue = tramites.filter(t => {
+      if (t.cerrado_en || t.eliminado_at) return false;
+      const td = tiposDb.get(t.tipo_tramite);
+      if (!td?.sla_dias) return false;
+      const days = Math.floor((now - new Date(t.fecha_creacion).getTime()) / 86_400_000);
+      return days > td.sla_dias && !localStorage.getItem(`sla_notified_${t.id}_${today}`);
+    });
+    if (!overdue.length) return;
+
+    (async () => {
+      const { data: adminsData } = await supabase.from('usuarios').select('id').eq('rol', 'Administrador').eq('activo', true);
+      const adminIds: string[] = (adminsData ?? []).map((u: { id: string }) => u.id);
+
+      for (const ticket of overdue) {
+        const td = tiposDb.get(ticket.tipo_tramite)!;
+        const days = Math.floor((now - new Date(ticket.fecha_creacion).getTime()) / 86_400_000);
+        const recipients = new Set<string>(adminIds);
+
+        if (ticket.grupo_asignado_id) {
+          const { data: lideresData } = await supabase
+            .from('tramites_grupos_miembros')
+            .select('usuario_id')
+            .eq('grupo_id', ticket.grupo_asignado_id)
+            .eq('rol_en_equipo', 'lider');
+          (lideresData ?? []).forEach((l: { usuario_id: string }) => recipients.add(l.usuario_id));
+        }
+
+        const titulo = `Trámite vencido: ${ticket.folio}`;
+        const mensaje = `"${td.label}" lleva ${days} días abierto (SLA: ${td.sla_dias} días).`;
+        for (const uid of recipients) {
+          await crearNotificacion({ user_id: uid, titulo, mensaje, modulo: 'tramites', accion_url: `/tramites/${ticket.id}`, accion_texto: 'Ver trámite', enviar_whatsapp: false });
+        }
+        localStorage.setItem(`sla_notified_${ticket.id}_${today}`, '1');
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tramites.length, tiposLoading, isAdmin]);
 
   // Close sort dropdown on outside click
   useEffect(() => {
@@ -1194,6 +1252,7 @@ export function Tramites() {
                   : null;
               const estatusLabel = tramite.custom_estatus_label ?? tramite.estatus?.nombre;
               const estatusColor = tramite.custom_estatus_color ?? tramite.estatus?.color;
+              const sla = getSlaInfo(tramite.fecha_creacion, tipoDb?.sla_dias);
               return (
                 <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex">
                   {!tramite.cerrado_en && (
@@ -1212,7 +1271,13 @@ export function Tramites() {
                     {preview && (
                       <p className="text-[10px] text-neutral-500 dark:text-white/40 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
                     )}
-                    <div className="flex items-center justify-between mt-1 gap-1">
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[10px] text-neutral-400 dark:text-white/30">{fmtFecha(tramite.fecha_creacion)}</span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${sla.bg} ${sla.color} ${sla.pulsing ? 'animate-pulse' : ''}`}>
+                        {sla.daysOpen}d{tipoDb?.sla_dias ? ` / ${tipoDb.sla_dias}d` : ''}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-0.5 gap-1">
                       <span className={`text-[10px] font-extrabold uppercase tracking-widest truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
                       <div className="flex items-center gap-1 shrink-0">
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tramite.prioridad === 'Alta' ? 'bg-red-100 text-red-600' : tramite.prioridad === 'Media' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>{tramite.prioridad}</span>
@@ -1251,6 +1316,7 @@ export function Tramites() {
                   : null;
               const estatusLabel = tramite.custom_estatus_label ?? tramite.estatus?.nombre;
               const estatusColor = tramite.custom_estatus_color ?? tramite.estatus?.color;
+              const sla = getSlaInfo(tramite.fecha_creacion, tipoDb?.sla_dias);
               return (
                 <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex">
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
@@ -1261,7 +1327,13 @@ export function Tramites() {
                     {preview && (
                       <p className="text-[10px] text-neutral-500 dark:text-white/40 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
                     )}
-                    <div className="flex items-center justify-between mt-1 gap-1">
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[10px] text-neutral-400 dark:text-white/30">{fmtFecha(tramite.fecha_creacion)}</span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${sla.bg} ${sla.color} ${sla.pulsing ? 'animate-pulse' : ''}`}>
+                        {sla.daysOpen}d{tipoDb?.sla_dias ? ` / ${tipoDb.sla_dias}d` : ''}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-0.5 gap-1">
                       <span className={`text-[10px] font-extrabold uppercase tracking-widest truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
                       <div className="flex items-center gap-1 shrink-0">
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tramite.prioridad === 'Alta' ? 'bg-red-100 text-red-600' : tramite.prioridad === 'Media' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>{tramite.prioridad}</span>
@@ -1299,6 +1371,7 @@ export function Tramites() {
                 : tramite.ticket_archivos.length > 0
                   ? `Se adjuntó un archivo: ${tramite.ticket_archivos[tramite.ticket_archivos.length - 1].nombre}`
                   : null;
+              const totalDays = Math.max(0, Math.floor((new Date(tramite.cerrado_en!).getTime() - new Date(tramite.fecha_creacion).getTime()) / 86_400_000));
               return (
                 <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex opacity-75">
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
@@ -1309,7 +1382,11 @@ export function Tramites() {
                     {preview && (
                       <p className="text-[10px] text-neutral-500 dark:text-white/40 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
                     )}
-                    <div className="flex items-center justify-between mt-1">
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[10px] text-neutral-400 dark:text-white/30">{fmtFecha(tramite.fecha_creacion)}</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-neutral-100 dark:bg-white/5 text-neutral-400 dark:text-white/30">{totalDays}d</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-0.5">
                       <span className={`text-[10px] font-extrabold uppercase tracking-widest truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
                       <span className="text-[10px] text-neutral-400 dark:text-white/30 shrink-0">{new Date(tramite.cerrado_en!).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit' })}</span>
                     </div>

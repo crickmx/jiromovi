@@ -9,6 +9,7 @@ import {
 import { PageHeader } from '@/components/ui/page-header';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { invalidateTiposTramiteCache } from '../hooks/useTiposTramite';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -47,7 +48,7 @@ interface CodigoPostal { id: string; codigo: string; colonia: string; municipio:
 
 interface Area           { id: string; nombre: string; slug: string; color_hex: string; activa: boolean }
 interface GrupoViz       { id: string; nombre: string; activo: boolean }
-interface TipoTramite    { id: string; value: string; label: string; area_id: string | null; color: string; activo: boolean; orden: number }
+interface TipoTramite    { id: string; value: string; label: string; area_id: string | null; color: string; activo: boolean; orden: number; sla_dias: number | null }
 
 interface AdjuntoCategoria { id: string; nombre: string; descripcion: string | null; orden: number; activo: boolean }
 
@@ -99,6 +100,7 @@ export default function BaseDatosMaestrosAdmin() {
   const [gruposViz, setGruposViz]   = useState<GrupoViz[]>([]);
   const [tiposTramite, setTiposTramite] = useState<TipoTramite[]>([]);
   const [loadingTramites, setLoadingTramites] = useState(false);
+  const [editingSla, setEditingSla] = useState<{ id: string; value: string } | null>(null);
   const [searchTramites, setSearchTramites]   = useState('');
   const [addAreaNombre, setAddAreaNombre]   = useState('');
   const [addAreaColor,  setAddAreaColor]    = useState('#6366f1');
@@ -314,12 +316,25 @@ export default function BaseDatosMaestrosAdmin() {
     loadAdjuntosCats();
   }
 
+  async function saveSla(id: string) {
+    if (!editingSla || editingSla.id !== id) return;
+    const raw = editingSla.value.trim();
+    const num = raw ? parseInt(raw, 10) : null;
+    if (raw && (isNaN(num!) || num! < 1)) { toast('Ingresa un número válido de días', 'err'); setEditingSla(null); return; }
+    const { error } = await supabase.from('ticket_tipos').update({ sla_dias: num }).eq('id', id);
+    if (error) { toast('Error: ' + error.message, 'err'); return; }
+    toast(num ? `SLA: ${num} días` : 'SLA removido');
+    setEditingSla(null);
+    loadTramitesData();
+    invalidateTiposTramiteCache();
+  }
+
   async function loadTramitesData() {
     setLoadingTramites(true);
     const [{ data: a }, { data: g }, { data: t }] = await Promise.all([
       supabase.from('tramites_areas').select('*').order('nombre'),
       supabase.from('tramites_grupos_visualizacion').select('id, nombre, activo').order('nombre'),
-      supabase.from('ticket_tipos').select('id, value, label, area_id, color, activo, orden').order('orden'),
+      supabase.from('ticket_tipos').select('id, value, label, area_id, color, activo, orden, sla_dias').order('orden'),
     ]);
     setAreas(a ?? []);
     setGruposViz(g ?? []);
@@ -1791,6 +1806,23 @@ export default function BaseDatosMaestrosAdmin() {
                               style={{ backgroundColor: areaData.color_hex + '25', color: areaData.color_hex }}>
                               {areaData.nombre}
                             </span>
+                          )}
+                          {editingSla?.id === tipo.id ? (
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <input type="number" min="1" max="365" value={editingSla.value}
+                                onChange={e => setEditingSla({ ...editingSla, value: e.target.value })}
+                                onKeyDown={e => { if (e.key === 'Enter') saveSla(tipo.id); if (e.key === 'Escape') setEditingSla(null); }}
+                                onBlur={() => saveSla(tipo.id)}
+                                className="w-14 border border-blue-400 rounded px-2 py-0.5 text-xs dark:bg-neutral-700 dark:text-white"
+                                autoFocus/>
+                              <span className="text-xs text-neutral-400">días</span>
+                            </div>
+                          ) : (
+                            <button onClick={() => setEditingSla({ id: tipo.id, value: String(tipo.sla_dias ?? '') })}
+                              className="opacity-0 group-hover:opacity-100 transition flex-shrink-0 text-xs px-2 py-0.5 rounded border border-neutral-200 dark:border-neutral-600 hover:border-blue-400 text-neutral-400 hover:text-blue-600"
+                              title="Editar tiempo de respuesta promesa (SLA)">
+                              {tipo.sla_dias ? `${tipo.sla_dias}d` : '—'}
+                            </button>
                           )}
                           <button onClick={() => toggleActivo('ticket_tipos', tipo.id, tipo.activo, loadTramitesData)}
                             className="opacity-0 group-hover:opacity-100 transition flex-shrink-0">
