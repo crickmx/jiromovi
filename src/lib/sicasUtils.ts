@@ -430,6 +430,126 @@ export async function getCatalogStats(): Promise<SicasCatalogStats[]> {
   return data || [];
 }
 
+// ========================================
+// FUNCIONES: USUARIOS MOVI SIN MAPEO SICAS
+// ========================================
+
+export interface MoviUserSinMapeo {
+  id: string;
+  nombre: string;
+  apellidos: string;
+  email_personal: string;
+  nombre_completo: string;
+}
+
+export interface SicasPendingRequest {
+  id: string;
+  vend_id: string;
+  vend_nombre: string;
+  movi_user_id: string | null;
+  status: string;
+  mapped_at: string;
+  mapped_by: string | null;
+  usuario: { id: string; nombre_completo: string } | null;
+  solicitante: { id: string; nombre_completo: string } | null;
+}
+
+export async function getMoviUsersWithoutSicasMapping(): Promise<MoviUserSinMapeo[]> {
+  const [{ data: mapped1 }, { data: mapped2 }] = await Promise.all([
+    supabase.from('sicas_mapeo_vendedor_usuario').select('movi_user_id'),
+    supabase.from('sicas_vendor_user_mappings').select('movi_user_id').in('status', ['active', 'pending_review']),
+  ]);
+
+  const mappedIds = new Set([
+    ...(mapped1 || []).map((m: any) => m.movi_user_id),
+    ...(mapped2 || []).map((m: any) => m.movi_user_id).filter(Boolean),
+  ]);
+
+  const { data: users } = await supabase
+    .from('usuarios')
+    .select('id, nombre, apellidos, email_personal, nombre_completo')
+    .eq('activo', true)
+    .eq('is_deleted', false)
+    .order('nombre');
+
+  return (users || []).filter((u: any) => !mappedIds.has(u.id)) as MoviUserSinMapeo[];
+}
+
+export async function addUserToSicas(
+  moviUserId: string,
+  mappedById: string,
+  userName: string,
+  isAdmin: boolean
+): Promise<{ success: boolean; status: 'active' | 'pending_review'; error?: string }> {
+  const status: 'active' | 'pending_review' = isAdmin ? 'active' : 'pending_review';
+  const { error } = await supabase
+    .from('sicas_vendor_user_mappings')
+    .insert({
+      vend_id: `MOVI-${moviUserId}`,
+      vend_nombre: userName,
+      movi_user_id: moviUserId,
+      match_type: 'manual',
+      confidence_score: 100,
+      status,
+      mapped_by: mappedById,
+    });
+
+  if (error) return { success: false, status, error: error.message };
+  return { success: true, status };
+}
+
+export async function getPendingSicasRequests(): Promise<SicasPendingRequest[]> {
+  const { data, error } = await supabase
+    .from('sicas_vendor_user_mappings')
+    .select(`
+      id, vend_id, vend_nombre, movi_user_id, status, mapped_at, mapped_by,
+      usuario:usuarios!sicas_vendor_user_mappings_movi_user_id_fkey(id, nombre_completo),
+      solicitante:usuarios!sicas_vendor_user_mappings_mapped_by_fkey(id, nombre_completo)
+    `)
+    .eq('status', 'pending_review')
+    .order('mapped_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching pending SICAS requests:', error);
+    return [];
+  }
+  return (data || []) as unknown as SicasPendingRequest[];
+}
+
+export async function approveSicasRequest(mappingId: string, reviewedById: string): Promise<{ success: boolean; error?: string }> {
+  const { error } = await supabase
+    .from('sicas_vendor_user_mappings')
+    .update({ status: 'active', reviewed_by: reviewedById, reviewed_at: new Date().toISOString() })
+    .eq('id', mappingId)
+    .eq('status', 'pending_review');
+
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+export async function rejectSicasRequest(mappingId: string, reviewedById: string): Promise<{ success: boolean; error?: string }> {
+  const { error } = await supabase
+    .from('sicas_vendor_user_mappings')
+    .update({ status: 'rejected', reviewed_by: reviewedById, reviewed_at: new Date().toISOString() })
+    .eq('id', mappingId)
+    .eq('status', 'pending_review');
+
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+export async function getSicasMappingStatusForUsers(userIds: string[]): Promise<Set<string>> {
+  if (!userIds.length) return new Set();
+  const [{ data: m1 }, { data: m2 }] = await Promise.all([
+    supabase.from('sicas_mapeo_vendedor_usuario').select('movi_user_id').in('movi_user_id', userIds),
+    supabase.from('sicas_vendor_user_mappings').select('movi_user_id').in('movi_user_id', userIds).eq('status', 'active'),
+  ]);
+  return new Set([
+    ...(m1 || []).map((r: any) => r.movi_user_id),
+    ...(m2 || []).map((r: any) => r.movi_user_id).filter(Boolean),
+  ]);
+}
+
 export async function getSyncHistory(catalog_type_id?: number): Promise<SicasSyncHistory[]> {
   let query = supabase
     .from('sicas_sync_history')

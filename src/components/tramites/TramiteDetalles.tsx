@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { User, Users, AlertCircle, FileText, Calendar, Clock, Briefcase, Shield, Building2, TrendingUp, UserCheck, X, UserPlus, Wrench } from 'lucide-react';
+import { User, Users, AlertCircle, FileText, Calendar, Clock, Briefcase, Shield, Building2, TrendingUp, UserCheck, X, UserPlus, Wrench, Link as LinkIcon } from 'lucide-react';
+import { addUserToSicas, getSicasMappingStatusForUsers } from '../../lib/sicasUtils';
+import { crearNotificacionGlobal } from '../../lib/notificationHelpers';
 import { getEstatusColor } from '../../lib/registroActividadesTypes';
 
 interface TramiteEstatus {
@@ -115,6 +117,9 @@ export function TramiteDetalles({
   const [addingEjecutivo, setAddingEjecutivo] = useState(false);
   const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [selectedGrupoId, setSelectedGrupoId] = useState<string>(grupoAsignadoId ?? '');
+  const [sicasMappedIds, setSicasMappedIds] = useState<Set<string>>(new Set());
+  const [addingToSicas, setAddingToSicas] = useState(false);
+  const [sicasMsg, setSicasMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
   useEffect(() => {
     setSelectedGrupoId(grupoAsignadoId ?? '');
@@ -178,6 +183,44 @@ export function TramiteDetalles({
     };
     load();
   }, [selectedGrupoId, canManageAssignment]);
+
+  // Cargar estado de mapeo SICAS para los miembros del equipo
+  useEffect(() => {
+    if (!teamMembers.length) return;
+    getSicasMappingStatusForUsers(teamMembers.map(m => m.id))
+      .then(ids => setSicasMappedIds(ids));
+  }, [teamMembers]);
+
+  const handleAgregarResponsableASicas = async (userId: string, userName: string) => {
+    if (!usuario) return;
+    const isAdmin = usuario.rol === 'Administrador' || usuario.rol === 'Gerente';
+    setAddingToSicas(true);
+    setSicasMsg(null);
+    try {
+      const result = await addUserToSicas(userId, usuario.id, userName, isAdmin);
+      if (!result.success) {
+        setSicasMsg({ type: 'err', text: result.error || 'Error al agregar' });
+        return;
+      }
+      if (result.status === 'active') {
+        setSicasMsg({ type: 'ok', text: `${userName} agregado a SICAS.` });
+        setSicasMappedIds(prev => new Set([...prev, userId]));
+      } else {
+        setSicasMsg({ type: 'ok', text: 'Solicitud enviada. El admin revisará el mapeo.' });
+        await crearNotificacionGlobal(
+          'Solicitud: agregar usuario a SICAS',
+          `${(usuario as any).nombre_completo || usuario.nombre} solicita agregar a ${userName} al mapeo SICAS.`,
+          '/sicas-admin?tab=vendedores',
+          { tipo: 'rol', rol: 'Administrador' },
+          usuario.id
+        );
+      }
+    } catch (e: any) {
+      setSicasMsg({ type: 'err', text: e.message });
+    } finally {
+      setAddingToSicas(false);
+    }
+  };
 
   const loadAsignaciones = async () => {
     const { data } = await supabase
@@ -290,6 +333,34 @@ export function TramiteDetalles({
           )}
         </div>
       </div>
+
+      {/* Indicador SICAS para el responsable seleccionado */}
+      {canManageAssignment && selectedResponsable && !sicasMappedIds.has(selectedResponsable) && (() => {
+        const member = teamMembers.find(m => m.id === selectedResponsable);
+        if (!member) return null;
+        return (
+          <div className="flex items-center gap-3 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-sm">
+            <LinkIcon className="w-4 h-4 text-amber-500 shrink-0" />
+            <span className="text-amber-800 flex-1">
+              <span className="font-medium">{member.nombre_completo}</span> no tiene mapeo en SICAS.
+            </span>
+            {sicasMsg ? (
+              <span className={sicasMsg.type === 'ok' ? 'text-green-700 font-medium' : 'text-red-600 font-medium'}>
+                {sicasMsg.text}
+              </span>
+            ) : (
+              <button
+                type="button"
+                disabled={addingToSicas}
+                onClick={() => handleAgregarResponsableASicas(member.id, member.nombre_completo)}
+                className="px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium transition-colors disabled:opacity-50"
+              >
+                {addingToSicas ? 'Enviando...' : (usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente') ? 'Agregar a SICAS' : 'Solicitar acceso'}
+              </button>
+            )}
+          </div>
+        );
+      })()}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
