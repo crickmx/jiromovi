@@ -129,11 +129,11 @@ export async function generateCoverImage(options: CoverImageOptions): Promise<Bl
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
   }
 
-  // ── Bottom gradient overlay (heavy at bottom for text legibility) ────────────
-  const bottomGrad = ctx.createLinearGradient(0, HEIGHT * 0.35, 0, HEIGHT);
-  bottomGrad.addColorStop(0, 'rgba(0,0,0,0)');
-  bottomGrad.addColorStop(0.5, 'rgba(0,0,0,0.45)');
-  bottomGrad.addColorStop(1, 'rgba(0,0,0,0.88)');
+  // Full overlay for text legibility anywhere on the canvas
+  const bottomGrad = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+  bottomGrad.addColorStop(0, 'rgba(0,0,0,0.25)');
+  bottomGrad.addColorStop(0.4, 'rgba(0,0,0,0.50)');
+  bottomGrad.addColorStop(1, 'rgba(0,0,0,0.72)');
   ctx.fillStyle = bottomGrad;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
@@ -213,7 +213,8 @@ export async function generateCoverImage(options: CoverImageOptions): Promise<Bl
 
   const titleBlockH = displayLines.length * lineHeight;
 
-  const hasBadge = !!(aseguradoraNombre && aseguradoraNombre.trim());
+  // Only show center badge when there's no logo (logo top-left already identifies the insurer)
+  const hasBadge = !!(aseguradoraNombre && aseguradoraNombre.trim() && !aseguradoraLogoUrl);
   const categoryBadgeH = hasBadge ? 38 : 0;
   const categoryGap = hasBadge ? 14 : 0;
   const dateH = 24;
