@@ -202,7 +202,7 @@ Responde UNICAMENTE con un objeto JSON valido:
   "resumen_ejecutivo": "string - Resumen ejecutivo de 3-5 oraciones.",
   "contenido_html": "string - Articulo COMPLETO en HTML con la estructura editorial indicada.",
   "puntos_clave": ["array de 3-8 puntos clave"],
-  "imagen_destacada_descripcion": "string - Descripcion en ingles para generar una imagen editorial. Describe una imagen profesional, abstracta y moderna que represente el tema. NO incluir texto ni logos.",
+  "imagen_destacada_descripcion": "string - Description in English for DALL-E 3 image generation. Describe a SPECIFIC, THEMATICALLY RELEVANT scene that represents the article topic visually. Examples: 'A car driving on a modern highway at sunset, cinematic blur', 'A doctor consulting with a patient in a bright clinic', 'A family standing in front of their home smiling', 'Business professionals shaking hands over a signed document', 'A sleek modern office building facade'. Be specific about the scene, NOT abstract. NO text, NO logos, NO numbers.",
   "tiempo_lectura": "string - Ej: '4 min de lectura'"
 }`;
 
@@ -248,7 +248,7 @@ Responde UNICAMENTE con un objeto JSON valido:
 // --- Image Generation ---
 
 async function generateImage(apiKey: string, article: ArticleResult): Promise<string> {
-  const prompt = `Abstract background image for an institutional insurance industry article about: ${article.imagen_destacada_descripcion}. Requirements: modern, clean, professional, abstract or blurred corporate photography. Soft gradients, geometric shapes, or bokeh effects. NO text, NO logos, NO watermarks, NO people faces, NO words. This will be used as a background layer with text overlaid on top, so keep it simple and not too busy. Color palette: deep blues, teals, or neutral tones.`;
+  const prompt = `Editorial background photograph for a Mexican insurance industry article. The image should visually represent this specific topic: ${article.imagen_destacada_descripcion}. Visual style: professional corporate photography with a slight depth-of-field blur so overlaid text stays readable. Show thematically relevant scenes — for example if the topic is car insurance show a car on a road or highway, if health insurance show a medical consultation or stethoscope, if property insurance show a modern home or building, if payments show a handshake or signing documents, if benefits show happy professionals. Lighting: cinematic, slightly cool or neutral tones, well-lit. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermarks anywhere in the image. Do NOT show visible faces. The image will have a dark overlay applied on top for text legibility.`;
 
   const resp = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",

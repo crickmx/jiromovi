@@ -212,8 +212,24 @@ export default function ComunicadoEditor() {
       setTitulo(resultado.titulo);
       setContenidoHtml(resultado.contenido_html);
 
+      // Auto-detect insurer from title/content if not already selected
+      let resolvedAseguradoraId = iaAseguradoraId;
+      if (!resolvedAseguradoraId && aseguradoras.length > 0) {
+        const searchText = `${resultado.titulo} ${resultado.contenido_html}`.toLowerCase();
+        const matched = aseguradoras.find(a => {
+          const nameLower = a.name.toLowerCase();
+          if (searchText.includes(nameLower)) return true;
+          // Match on any significant word (>4 chars) in the insurer name
+          return nameLower.split(/\s+/).some(word => word.length > 4 && searchText.includes(word));
+        });
+        if (matched) {
+          resolvedAseguradoraId = matched.id;
+          setIaAseguradoraId(matched.id);
+        }
+      }
+
       // Generate composite cover image with title + insurer branding
-      const selectedAseguradora = aseguradoras.find(a => a.id === iaAseguradoraId);
+      const selectedAseguradora = aseguradoras.find(a => a.id === resolvedAseguradoraId);
       try {
         const coverBlob = await generateCoverImage({
           backgroundUrl: resultado.imagen_url,
