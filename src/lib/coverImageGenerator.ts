@@ -213,19 +213,21 @@ export async function generateCoverImage(options: CoverImageOptions): Promise<Bl
 
   const titleBlockH = displayLines.length * lineHeight;
 
-  // Reserve bottom area: category badge (38) + gap (12) + title + date (28) + padding (32)
-  const hasCategory = !!(categoria && categoria.trim());
-  const categoryBadgeH = hasCategory ? 38 : 0;
-  const categoryGap = hasCategory ? 14 : 0;
+  const hasBadge = !!(aseguradoraNombre && aseguradoraNombre.trim());
+  const categoryBadgeH = hasBadge ? 38 : 0;
+  const categoryGap = hasBadge ? 14 : 0;
   const dateH = 24;
-  const bottomPad = 40;
 
   const totalContentH = categoryBadgeH + categoryGap + titleBlockH + dateH + 16;
-  const contentStartY = HEIGHT - bottomPad - totalContentH;
+
+  // Vertically center in the area below the top logo bar
+  const logoBottomY = topPad + logoAreaH; // ~86px
+  const availableH = HEIGHT - logoBottomY;
+  const contentStartY = logoBottomY + (availableH - totalContentH) / 2;
 
   // ── Category badge (centered) ────────────────────────────────────────────────
-  if (hasCategory) {
-    const catText = categoria!.toUpperCase();
+  if (hasBadge) {
+    const catText = aseguradoraNombre!.toUpperCase();
     ctx.font = 'bold 13px Arial, Helvetica, sans-serif';
     const catW = ctx.measureText(catText).width + 36;
     const catH = categoryBadgeH;
