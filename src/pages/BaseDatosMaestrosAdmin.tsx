@@ -28,7 +28,8 @@ interface MapeoUsuario {
   maestro_agentes?: { nombre: string; origen?: string; maestro_despachos?: { nombre: string } }
 }
 interface MapeoPendiente {
-  id: string; agente_id: string; user_id_propuesto: string; ticket_id: string | null; created_at: string;
+  id: string; agente_id: string; user_id_propuesto: string | null; nombre_propuesto?: string | null;
+  ticket_id: string | null; created_at: string;
   propuesto_por_usuario?: { nombre: string };
   maestro_agentes?: { nombre: string };
   usuarios?: { nombre: string; email_laboral: string | null };
@@ -378,6 +379,10 @@ export default function BaseDatosMaestrosAdmin() {
   }
 
   async function validarMapeo(pendiente: MapeoPendiente) {
+    if (!pendiente.user_id_propuesto) {
+      toast('Esta propuesta requiere crear primero la cuenta MOVI "' + (pendiente.nombre_propuesto ?? '—') + '" en Usuarios antes de validar.', 'err');
+      return;
+    }
     const { error: e1 } = await supabase.from('maestro_usuario_agente')
       .upsert({ agente_id: pendiente.agente_id, user_id: pendiente.user_id_propuesto, activo: true }, { onConflict: 'user_id' });
     if (e1) { toast('Error al validar: ' + e1.message, 'err'); return; }
@@ -1347,11 +1352,22 @@ export default function BaseDatosMaestrosAdmin() {
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-amber-600 font-medium uppercase tracking-wide mb-0.5">Usuario MOVI propuesto</p>
-                        <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100 truncate">
-                          {(p.usuarios as any)?.nombre ?? '—'}
+                        <p className="text-xs text-amber-600 font-medium uppercase tracking-wide mb-0.5">
+                          {p.nombre_propuesto && !p.user_id_propuesto ? 'Cuenta MOVI a crear' : 'Usuario MOVI propuesto'}
                         </p>
-                        <p className="text-xs text-neutral-400 truncate">{(p.usuarios as any)?.email_laboral ?? ''}</p>
+                        {p.nombre_propuesto && !p.user_id_propuesto ? (
+                          <>
+                            <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100 truncate">{p.nombre_propuesto}</p>
+                            <p className="text-xs text-amber-500 font-medium">Nueva cuenta por crear</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100 truncate">
+                              {(p.usuarios as any)?.nombre ?? '—'}
+                            </p>
+                            <p className="text-xs text-neutral-400 truncate">{(p.usuarios as any)?.email_laboral ?? ''}</p>
+                          </>
+                        )}
                       </div>
                     </div>
                     <div className="text-xs text-neutral-400 shrink-0 text-right">

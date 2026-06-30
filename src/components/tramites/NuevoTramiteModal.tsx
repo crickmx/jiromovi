@@ -108,6 +108,7 @@ export function NuevoTramiteModal({
   const [tipoTramite, setTipoTramite] = useState<string>('correccion_poliza_registrada');
   const [usuariosDisponibles, setUsuariosDisponibles] = useState<Usuario[]>([]);
   const [asignado, setAsignado] = useState<string>('');
+  const [propuestoNombreMOVI, setPropuestoNombreMOVI] = useState('');
   const [prioridad, setPrioridad] = useState<'Alta' | 'Media' | 'Baja'>('Baja');
   const [descripcion, setDescripcion] = useState('');
   const [archivos, setArchivos] = useState<File[]>([]);
@@ -1152,11 +1153,20 @@ export function NuevoTramiteModal({
             placeholder="Selecciona usuario asignado..."
           />
           {val && !selectedAgente?.usuario_id && (
-            <div className="flex items-start gap-2 mt-1.5 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
-              <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-700">
-                Este agente no tiene cuenta MOVI. Puedes continuar — al crear el trámite se enviará una <strong>notificación al Admin</strong> para vincularlo.
-              </p>
+            <div className="mt-2 space-y-2">
+              <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700">
+                  Este agente no tiene cuenta MOVI vinculada. Escribe el nombre de la cuenta que el Admin debe crear o vincular.
+                </p>
+              </div>
+              <input
+                type="text"
+                value={propuestoNombreMOVI}
+                onChange={e => setPropuestoNombreMOVI(e.target.value)}
+                placeholder="Nombre completo de la cuenta MOVI a crear…"
+                className="w-full px-3 py-2 text-sm border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white placeholder-neutral-400"
+              />
             </div>
           )}
         </div>
@@ -1450,51 +1460,45 @@ export function NuevoTramiteModal({
         if (assignError) console.error('Error creating assignment:', assignError);
       }
 
-      // Proponer mapeo pendiente si agente sin mapeo y usuario no es admin
-      if (usuario.rol !== 'Administrador') {
-        const agenteCampo = camposDinamicos.find(c => c.sistema_key === 'agente_vendedor');
-        if (agenteCampo) {
-          const agenteId = respuestasDinamicas[agenteCampo.id];
-          const agente = agentesVendedor.find(a => a.id === agenteId);
-          if (agenteId && agente && !agente.usuario_id && asignado) {
-            await supabase.from('maestro_mapeo_pendiente').upsert(
-              { agente_id: agenteId, user_id_propuesto: asignado, propuesto_por: usuario.id, ticket_id: ticket.id },
-              { onConflict: 'agente_id,user_id_propuesto', ignoreDuplicates: true }
-            );
-            const { data: admins } = await supabase.from('usuarios').select('id').eq('rol', 'Administrador');
-            for (const admin of (admins || [])) {
-              await crearNotificacion({
-                user_id: admin.id,
-                titulo: 'Propuesta de mapeo pendiente',
-                mensaje: `${usuario.nombre_completo} sugirió vincular al agente "${agente.nombre}" con un usuario MOVI al crear el trámite ${ticket.folio}.`,
-                modulo: 'BaseDatosMaestros',
-                icono: 'link',
-                accion_url: '/admin/base-datos',
-                accion_texto: 'Revisar mapeos',
+      // Proponer mapeo si el agente_vendedor seleccionado no tiene usuario MOVI vinculado
+      {
+        const agCampo = camposDinamicos.find(c => c.sistema_key === 'agente_vendedor');
+        if (agCampo) {
+          const agId   = respuestasDinamicas[agCampo.id];
+          const ag     = agentesVendedor.find(a => a.id === agId);
+          if (ag && !ag.usuario_id) {
+            let notifMsg = '';
+            if (asignado) {
+              // Vincular con usuario MOVI existente
+              await supabase.from('maestro_mapeo_pendiente').upsert(
+                { agente_id: agId, user_id_propuesto: asignado, propuesto_por: usuario.id, ticket_id: ticket.id },
+                { onConflict: 'agente_id,user_id_propuesto', ignoreDuplicates: true }
+              );
+              notifMsg = `${usuario.nombre_completo} propuso vincular al agente "${ag.nombre}" con un usuario MOVI en el trámite ${ticket.folio}.`;
+            } else if (propuestoNombreMOVI.trim()) {
+              // Solicitar creación de nueva cuenta MOVI
+              await supabase.from('maestro_mapeo_pendiente').insert({
+                agente_id: agId,
+                user_id_propuesto: null,
+                nombre_propuesto: propuestoNombreMOVI.trim(),
+                propuesto_por: usuario.id,
+                ticket_id: ticket.id,
               });
+              notifMsg = `Se solicitó crear la cuenta MOVI "${propuestoNombreMOVI.trim()}" para el agente "${ag.nombre}" (trámite ${ticket.folio}).`;
+            } else {
+              notifMsg = `El agente "${ag.nombre}" no tiene cuenta MOVI vinculada (trámite ${ticket.folio}). Asígnale un usuario en Base de Datos → Vendedores.`;
             }
-          }
-        }
-      }
-
-      // Notificar a admins cuando el agente SICAS seleccionado no tiene usuario MOVI y no se propuso mapeo
-      if (!asignado) {
-        const agCampoSin = camposDinamicos.find(c => c.sistema_key === 'agente_vendedor');
-        if (agCampoSin) {
-          const agIdSin = respuestasDinamicas[agCampoSin.id];
-          const agSin = agentesVendedor.find(a => a.id === agIdSin);
-          if (agSin && !agSin.usuario_id) {
             const { data: adminsNotif } = await supabase.from('usuarios').select('id')
               .eq('rol', 'Administrador').eq('activo', true);
             for (const adm of (adminsNotif ?? [])) {
               await crearNotificacion({
                 user_id: adm.id,
-                titulo: 'Agente sin usuario MOVI en trámite nuevo',
-                mensaje: `Trámite ${ticket.folio}: el agente "${agSin.nombre}" no tiene cuenta MOVI vinculada. Crea o vincula su usuario en Base de Datos → Vendedores.`,
+                titulo: asignado ? 'Propuesta de mapeo pendiente' : 'Agente sin cuenta MOVI en trámite nuevo',
+                mensaje: notifMsg,
                 modulo: 'BaseDatosMaestros',
                 icono: 'link',
                 accion_url: '/admin/base-datos',
-                accion_texto: 'Ir a Vendedores',
+                accion_texto: 'Ir a Mapeo',
               });
             }
           }
