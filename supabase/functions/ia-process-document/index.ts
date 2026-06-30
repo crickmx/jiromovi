@@ -274,6 +274,7 @@ Visual requirements:
       n: 1,
       size: "1792x1024",
       quality: "standard",
+      style: "natural",
     }),
   });
 
