@@ -109,6 +109,8 @@ export function NuevoTramiteModal({
   const [descripcion, setDescripcion] = useState('');
   const [archivos, setArchivos] = useState<File[]>([]);
   const [adjuntosTemporales, setAdjuntosTemporales] = useState<Record<string, File[]>>({});
+  const [adjuntoCategorias, setAdjuntoCategorias] = useState<{id: string; nombre: string}[]>([]);
+  const [archivoCategoriaId, setArchivoCategoriaId] = useState('');
 
   const [polizaNumero, setPolizaNumero] = useState('');
 
@@ -226,6 +228,8 @@ export function NuevoTramiteModal({
       loadLotesDisponibles();
       checkRegistroAccess();
       loadTiposDb();
+      supabase.from('maestro_adjunto_categorias').select('id, nombre').eq('activo', true).order('orden')
+        .then(({ data }) => setAdjuntoCategorias((data || []) as {id: string; nombre: string}[]));
 
       // Auto-find responsable from agent's office
       if (isAgent && usuario.oficina_id) {
@@ -434,6 +438,7 @@ export function NuevoTramiteModal({
     setPrioridad('Baja');
     setDescripcion(preloadedData?.instrucciones || '');
     setArchivos([]);
+    setArchivoCategoriaId('');
     setPolizaNumero('');
 
     // Respetar lote precargado si existe
@@ -774,6 +779,13 @@ export function NuevoTramiteModal({
         setError(`El campo "${campo.label}" es obligatorio`);
         return false;
       }
+    }
+
+    // Validar categoría de adjuntos si hay archivos adjuntados
+    const tieneAdjuntoLegacy = tipoTramite !== 'registro_poliza' && tipoTramite !== 'solicitud_comisiones_pendientes';
+    if (tieneAdjuntoLegacy && archivos.length > 0 && !archivoCategoriaId) {
+      setError('Selecciona una categoría para los archivos adjuntos');
+      return false;
     }
 
     return true;
@@ -1223,6 +1235,7 @@ export function NuevoTramiteModal({
     if (!effectiveAgenteId && !preloadedData?.instrucciones) { setError('El agente es obligatorio'); return; }
     if (!ceRamoId && !preloadedData?.instrucciones) { setError('El ramo es obligatorio'); return; }
     if (ceSelectedInsurers.length === 0 && !preloadedData?.instrucciones) { setError('Debe seleccionar al menos una aseguradora'); return; }
+    if (archivos.length > 0 && !archivoCategoriaId) { setError('Selecciona una categoría para los archivos adjuntos'); return; }
 
     setLoading(true);
     setError('');
@@ -1256,7 +1269,8 @@ export function NuevoTramiteModal({
               nombre: archivo.name,
               url: publicUrl,
               tipo: archivo.type,
-              tamano: archivo.size
+              tamano: archivo.size,
+              categoria_id: archivoCategoriaId || null,
             });
           if (archivoError) throw archivoError;
         }
@@ -1668,7 +1682,8 @@ export function NuevoTramiteModal({
                 nombre: archivo.name,
                 url: publicUrl,
                 tipo: archivo.type,
-                tamano: archivo.size
+                tamano: archivo.size,
+                categoria_id: archivoCategoriaId || null,
               });
 
             if (archivoError) throw archivoError;
@@ -2519,6 +2534,21 @@ export function NuevoTramiteModal({
                 Documentos adjuntos: {archivos.length} / 20
               </span>
             </label>
+            <div className="mb-3">
+              <label className="block text-xs font-medium text-neutral-600 mb-1">
+                Categoría del adjunto {archivos.length > 0 && <span className="text-red-500">*</span>}
+              </label>
+              <select
+                value={archivoCategoriaId}
+                onChange={e => setArchivoCategoriaId(e.target.value)}
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Selecciona una categoría...</option>
+                {adjuntoCategorias.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+                ))}
+              </select>
+            </div>
             <div className="border-2 border-dashed border-neutral-300 rounded-xl p-6 text-center hover:border-accent transition-all">
               <input
                 type="file"

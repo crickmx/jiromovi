@@ -49,7 +49,9 @@ interface Area           { id: string; nombre: string; slug: string; color_hex: 
 interface GrupoViz       { id: string; nombre: string; activo: boolean }
 interface TipoTramite    { id: string; value: string; label: string; area_id: string | null; color: string; activo: boolean; orden: number }
 
-type TabId = 'catalogo' | 'vendedores' | 'mapeo' | 'tramites' | 'historial' | 'codigos_postales'
+interface AdjuntoCategoria { id: string; nombre: string; descripcion: string | null; orden: number; activo: boolean }
+
+type TabId = 'catalogo' | 'vendedores' | 'mapeo' | 'tramites' | 'adjuntos' | 'historial' | 'codigos_postales'
 type ImportMode = 'adicion' | 'reemplazo'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -108,6 +110,14 @@ export default function BaseDatosMaestrosAdmin() {
   const [addTipoColor,  setAddTipoColor]    = useState('#6366f1');
   const [showAddTipo,   setShowAddTipo]     = useState(false);
 
+  // ── Adjuntos ────────────────────────────────────────────────────────────────
+  const [adjCats, setAdjCats]           = useState<AdjuntoCategoria[]>([]);
+  const [loadingAdj, setLoadingAdj]     = useState(false);
+  const [searchAdj, setSearchAdj]       = useState('');
+  const [addAdjNombre, setAddAdjNombre] = useState('');
+  const [addAdjDesc, setAddAdjDesc]     = useState('');
+  const [showAddAdj, setShowAddAdj]     = useState(false);
+
   // ── Mapeo ───────────────────────────────────────────────────────────────────
   const [mapeos, setMapeos]           = useState<MapeoUsuario[]>([]);
   const [usuariosMOVI, setUsuariosMOVI] = useState<UsuarioMOVI[]>([]);
@@ -159,6 +169,7 @@ export default function BaseDatosMaestrosAdmin() {
     if (tab === 'vendedores')        loadVendedores();
     if (tab === 'mapeo')             loadMapeo();
     if (tab === 'tramites')          loadTramitesData();
+    if (tab === 'adjuntos')          loadAdjuntosCats();
     if (tab === 'historial')         loadHistorial();
     if (tab === 'codigos_postales')  loadCodigosPostales();
   }, [tab]);
@@ -273,9 +284,34 @@ export default function BaseDatosMaestrosAdmin() {
     setEditingRow(null);
     const isVend = ['maestro_agentes', 'maestro_gerencias', 'maestro_despachos'].includes(editingRow.table);
     const isTram = ['tramites_areas', 'tramites_grupos_visualizacion', 'ticket_tipos'].includes(editingRow.table);
+    const isAdj  = editingRow.table === 'maestro_adjunto_categorias';
     if (isVend) loadVendedores();
     else if (isTram) loadTramitesData();
+    else if (isAdj) loadAdjuntosCats();
     else loadCatalogo();
+  }
+
+  async function loadAdjuntosCats() {
+    setLoadingAdj(true);
+    const { data } = await supabase
+      .from('maestro_adjunto_categorias')
+      .select('id, nombre, descripcion, orden, activo')
+      .order('orden');
+    setAdjCats((data || []) as AdjuntoCategoria[]);
+    setLoadingAdj(false);
+  }
+
+  async function addAdjCat() {
+    const n = normalize(addAdjNombre);
+    if (!n) return;
+    const maxOrden = adjCats.length > 0 ? Math.max(...adjCats.map(c => c.orden)) + 1 : 1;
+    const { error } = await supabase
+      .from('maestro_adjunto_categorias')
+      .insert({ nombre: n, descripcion: addAdjDesc || null, orden: maxOrden, activo: true });
+    if (error) { toast('Error: ' + error.message, 'err'); return; }
+    toast('Categoría agregada');
+    setAddAdjNombre(''); setAddAdjDesc(''); setShowAddAdj(false);
+    loadAdjuntosCats();
   }
 
   async function loadTramitesData() {
@@ -1775,6 +1811,85 @@ export default function BaseDatosMaestrosAdmin() {
     );
   }
 
+  // ─── Tab Adjuntos ─────────────────────────────────────────────────────────────
+
+  function TabAdjuntos() {
+    const lc = searchAdj.toLowerCase();
+    const filtered = adjCats.filter(c =>
+      c.nombre.toLowerCase().includes(lc) || (c.descripcion ?? '').toLowerCase().includes(lc)
+    );
+
+    return (
+      <div className="space-y-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400"/>
+          <input type="text" placeholder="Buscar categorías de adjuntos..." value={searchAdj}
+            onChange={e => setSearchAdj(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 border border-neutral-300 dark:border-neutral-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-neutral-800 dark:text-white"/>
+        </div>
+
+        {loadingAdj ? <Skeleton/> : (
+          <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5">
+            <SectionHeader title="Categorías de adjuntos" count={filtered.length} onAdd={() => setShowAddAdj(v => !v)}/>
+
+            {showAddAdj && (
+              <div className="flex gap-2 mb-3 flex-wrap">
+                <input value={addAdjNombre} onChange={e => setAddAdjNombre(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addAdjCat()}
+                  placeholder="Nombre de la categoría *"
+                  className="flex-1 min-w-40 border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm dark:bg-neutral-700 dark:text-white"/>
+                <input value={addAdjDesc} onChange={e => setAddAdjDesc(e.target.value)}
+                  placeholder="Descripción (opcional)"
+                  className="flex-1 min-w-48 border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm dark:bg-neutral-700 dark:text-white"/>
+                <button onClick={addAdjCat} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm"><Save className="w-4 h-4"/></button>
+                <button onClick={() => setShowAddAdj(false)} className="px-3 py-2 bg-neutral-100 dark:bg-neutral-700 rounded-lg text-sm"><X className="w-4 h-4"/></button>
+              </div>
+            )}
+
+            <div className="space-y-1 max-h-[560px] overflow-y-auto">
+              {filtered.map((cat, idx) => (
+                <div key={cat.id} className="flex items-center gap-3 px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 rounded-lg group">
+                  <span className="w-5 text-center text-xs text-neutral-400 flex-shrink-0">{idx + 1}</span>
+                  <Tag className="w-3.5 h-3.5 text-blue-400 flex-shrink-0"/>
+                  {editingRow?.id === cat.id ? (
+                    <div className="flex-1 flex items-center gap-2">
+                      <input value={editingRow!.nombre}
+                        onChange={e => setEditingRow({ ...editingRow!, nombre: e.target.value })}
+                        onKeyDown={e => { if (e.key === 'Enter') saveEditRow(); if (e.key === 'Escape') setEditingRow(null); }}
+                        className="flex-1 border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1 text-sm dark:bg-neutral-700 dark:text-white" autoFocus/>
+                      <button onClick={saveEditRow} className="p-1 text-green-600 hover:text-green-700"><Save className="w-3.5 h-3.5"/></button>
+                      <button onClick={() => setEditingRow(null)} className="p-1 text-neutral-400"><X className="w-3.5 h-3.5"/></button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-neutral-800 dark:text-neutral-100">{cat.nombre}</p>
+                        {cat.descripcion && (
+                          <p className="text-xs text-neutral-400 truncate">{cat.descripcion}</p>
+                        )}
+                      </div>
+                      <button onClick={() => toggleActivo('maestro_adjunto_categorias', cat.id, cat.activo, loadAdjuntosCats)}
+                        className="opacity-0 group-hover:opacity-100 transition flex-shrink-0">
+                        <BadgeActivo activo={cat.activo}/>
+                      </button>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition flex-shrink-0">
+                        <button onClick={() => setEditingRow({ table: 'maestro_adjunto_categorias', id: cat.id, nombre: cat.nombre })}
+                          className="p-1 text-neutral-400 hover:text-blue-600 rounded"><Edit2 className="w-3.5 h-3.5"/></button>
+                        <button onClick={() => { if (window.confirm(`¿Eliminar "${cat.nombre}"?`)) deleteRow('maestro_adjunto_categorias', cat.id, loadAdjuntosCats); }}
+                          className="p-1 text-neutral-400 hover:text-red-600 rounded"><Trash2 className="w-3.5 h-3.5"/></button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+              {filtered.length === 0 && <EmptyState msg="Sin categorías registradas."/>}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // ─── Main render ──────────────────────────────────────────────────────────────
 
   const tabs: { id: TabId; label: string; icon: typeof Database }[] = [
@@ -1782,6 +1897,7 @@ export default function BaseDatosMaestrosAdmin() {
     { id: 'vendedores',        label: 'Vendedores',          icon: Users },
     { id: 'mapeo',             label: 'Mapeo MOVI ↔ Agente', icon: Link2 },
     { id: 'tramites',          label: 'Trámites',            icon: Tag },
+    { id: 'adjuntos',          label: 'Adjuntos',            icon: FileText },
     { id: 'codigos_postales',  label: 'Cód. Postales',      icon: Building2 },
     { id: 'historial',         label: 'Historial',           icon: History },
   ];
@@ -1840,6 +1956,7 @@ export default function BaseDatosMaestrosAdmin() {
       {tab === 'vendedores'        && <TabVendedores />}
       {tab === 'mapeo'             && <TabMapeo />}
       {tab === 'tramites'          && <TabTramites />}
+      {tab === 'adjuntos'          && <TabAdjuntos />}
       {tab === 'codigos_postales'  && <TabCodigosPostales />}
       {tab === 'historial'         && <TabHistorial />}
     </div>
