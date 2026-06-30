@@ -716,8 +716,14 @@ export function NuevoTramiteModal({
     }
 
     if (!isAgent && !asignado) {
-      setError('Debe seleccionar a quién asignar el trámite');
-      return false;
+      // Permitir si hay un agente SICAS seleccionado sin usuario MOVI (se notificará al admin)
+      const agCampo = camposDinamicos.find(c => c.sistema_key === 'agente_vendedor');
+      const agId    = agCampo ? respuestasDinamicas[agCampo.id] : null;
+      const agSin   = agId ? agentesVendedor.find(a => a.id === agId && !a.usuario_id) : null;
+      if (!agSin) {
+        setError('Debe seleccionar a quién asignar el trámite');
+        return false;
+      }
     }
 
     if (tipoTramite === 'correccion_comisiones') {
@@ -1144,9 +1150,12 @@ export function NuevoTramiteModal({
             placeholder="Selecciona usuario asignado..."
           />
           {val && !selectedAgente?.usuario_id && (
-            <p className="text-xs text-amber-600 mt-1">
-              Este agente no tiene usuario MOVI vinculado — asígnalo manualmente en "Asignar a".
-            </p>
+            <div className="flex items-start gap-2 mt-1.5 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+              <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-700">
+                Este agente no tiene cuenta MOVI. Puedes continuar — al crear el trámite se enviará una <strong>notificación al Admin</strong> para vincularlo.
+              </p>
+            </div>
           )}
         </div>
       );
@@ -1460,6 +1469,30 @@ export function NuevoTramiteModal({
                 icono: 'link',
                 accion_url: '/admin/base-datos',
                 accion_texto: 'Revisar mapeos',
+              });
+            }
+          }
+        }
+      }
+
+      // Notificar a admins cuando el agente SICAS seleccionado no tiene usuario MOVI y no se propuso mapeo
+      if (!asignado) {
+        const agCampoSin = camposDinamicos.find(c => c.sistema_key === 'agente_vendedor');
+        if (agCampoSin) {
+          const agIdSin = respuestasDinamicas[agCampoSin.id];
+          const agSin = agentesVendedor.find(a => a.id === agIdSin);
+          if (agSin && !agSin.usuario_id) {
+            const { data: adminsNotif } = await supabase.from('usuarios').select('id')
+              .eq('rol', 'Administrador').eq('activo', true);
+            for (const adm of (adminsNotif ?? [])) {
+              await crearNotificacion({
+                user_id: adm.id,
+                titulo: 'Agente sin usuario MOVI en trámite nuevo',
+                mensaje: `Trámite ${ticket.folio}: el agente "${agSin.nombre}" no tiene cuenta MOVI vinculada. Crea o vincula su usuario en Base de Datos → Vendedores.`,
+                modulo: 'BaseDatosMaestros',
+                icono: 'link',
+                accion_url: '/admin/base-datos',
+                accion_texto: 'Ir a Vendedores',
               });
             }
           }
