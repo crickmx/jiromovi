@@ -7,8 +7,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { BaseModal } from '../BaseModal';
 import {
   canAccessRegistroActividades,
-  getInsuranceTypes,
-  getAseguradoras as getAseguradorasRA,
   getUsersByOffice,
   getResponsableByOffice,
   createRegistroActividad,
@@ -22,8 +20,6 @@ import {
   getTipoTramiteArea,
   AREA_CONFIG,
   isCommercialTicketType,
-  type InsuranceType,
-  type Aseguradora as AseguradoraRA,
   type UsuarioOficina
 } from '../../lib/registroActividadesTypes';
 import { SearchableSelect } from './catalogos/SearchableSelect';
@@ -140,8 +136,8 @@ export function NuevoTramiteModal({
 
   // --- Estado para Cotización / Emisión ---
   const [ceAgenteUserId, setCeAgenteUserId] = useState('');
-  const [ceInsuranceTypeId, setCeInsuranceTypeId] = useState('');
-  const [ceSelectedInsurers, setCeSelectedInsurers] = useState<string[]>([]);
+  const [ceRamoId, setCeRamoId] = useState('');            // UUID de maestro_ramos
+  const [ceSelectedInsurers, setCeSelectedInsurers] = useState<string[]>([]); // nombres de maestro_companias
   const [ceRequestDatetime, setCeRequestDatetime] = useState(formatDateTimeForInput(new Date()));
   const [ceCompletionDatetime, setCeCompletionDatetime] = useState('');
   const [ceEstatusNombre, setCeEstatusNombre] = useState('Iniciado');
@@ -157,8 +153,6 @@ export function NuevoTramiteModal({
   const [comMonto, setComMonto] = useState('');
   const [comAsunto, setComAsunto] = useState('');
 
-  const [ceInsuranceTypes, setCeInsuranceTypes] = useState<InsuranceType[]>([]);
-  const [ceAseguradorasRA, setCeAseguradorasRA] = useState<AseguradoraRA[]>([]);
   const [ceAgenteUsers, setCeAgenteUsers] = useState<UsuarioOficina[]>([]);
 
   const DRAFT_KEY = 'tramite_nuevo_draft';
@@ -359,22 +353,21 @@ export function NuevoTramiteModal({
       .then(({ data }) => setDespachos((data || []) as {id: string; nombre: string}[]));
   }, [camposDinamicos]);
 
-  // Cargar catálogos para campos tipo aseguradora / ramo
+  // Cargar catálogos maestro para campos tipo aseguradora / ramo
+  // También se activa para cotizacion_emision y tipos comerciales (reemplazan campos legacy)
   useEffect(() => {
     const tieneAseg = camposDinamicos.some(c => c.tipo === 'aseguradora');
     const tieneRamo = camposDinamicos.some(c => c.tipo === 'ramo');
-    if (!tieneAseg && !tieneRamo) return;
-    if (tieneAseg || tieneRamo) {
-      supabase.from('maestro_companias').select('id, nombre').eq('activo', true).order('nombre')
-        .then(({ data }) => setCatalogoCompanias((data || []) as {id: string; nombre: string}[]));
-    }
-    if (tieneRamo) {
-      supabase.from('maestro_ramos').select('id, nombre').order('nombre')
-        .then(({ data }) => setCatalogoRamos((data || []) as {id: string; nombre: string}[]));
-      supabase.from('maestro_combinaciones').select('compania_id, ramo_id')
-        .then(({ data }) => setCombinaciones((data || []) as {compania_id: string; ramo_id: string}[]));
-    }
-  }, [camposDinamicos]);
+    const esCeOComercial = tipoTramite === 'cotizacion_emision' || isCommercialTicketType(tipoTramite);
+    if (!tieneAseg && !tieneRamo && !esCeOComercial) return;
+
+    supabase.from('maestro_companias').select('id, nombre').eq('activo', true).order('nombre')
+      .then(({ data }) => setCatalogoCompanias((data || []) as {id: string; nombre: string}[]));
+    supabase.from('maestro_ramos').select('id, nombre').order('nombre')
+      .then(({ data }) => setCatalogoRamos((data || []) as {id: string; nombre: string}[]));
+    supabase.from('maestro_combinaciones').select('compania_id, ramo_id')
+      .then(({ data }) => setCombinaciones((data || []) as {compania_id: string; ramo_id: string}[]));
+  }, [camposDinamicos, tipoTramite]);
 
   useEffect(() => {
     if (tipoTramite === 'correccion_comisiones' && asignado) {
@@ -414,13 +407,9 @@ export function NuevoTramiteModal({
   const loadCeCatalogs = async () => {
     if (!usuario) return;
     try {
-      const [insurance, insurers, agentes] = await Promise.all([
-        getInsuranceTypes(),
-        getAseguradorasRA(),
-        usuario.oficina_id ? getUsersByOffice(usuario.oficina_id) : Promise.resolve([])
-      ]);
-      setCeInsuranceTypes(insurance);
-      setCeAseguradorasRA(insurers);
+      const agentes = usuario.oficina_id
+        ? await getUsersByOffice(usuario.oficina_id)
+        : [];
       setCeAgenteUsers(agentes);
     } catch (err) {
       console.error('Error loading CE catalogs:', err);
@@ -461,7 +450,7 @@ export function NuevoTramiteModal({
 
     // Reset CE fields
     setCeAgenteUserId('');
-    setCeInsuranceTypeId('');
+    setCeRamoId('');
     setCeSelectedInsurers([]);
     setCeRequestDatetime(formatDateTimeForInput(new Date()));
     setCeCompletionDatetime('');
@@ -487,7 +476,7 @@ export function NuevoTramiteModal({
     setDescripcion((draft.descripcion as string) || '');
     setPolizaNumero((draft.polizaNumero as string) || '');
     setCeAgenteUserId((draft.ceAgenteUserId as string) || '');
-    setCeInsuranceTypeId((draft.ceInsuranceTypeId as string) || '');
+    setCeRamoId((draft.ceRamoId as string) || '');
     setCeSelectedInsurers((draft.ceSelectedInsurers as string[]) || []);
     setComAgenteUserId((draft.comAgenteUserId as string) || '');
     setComCliente((draft.comCliente as string) || '');
@@ -516,12 +505,12 @@ export function NuevoTramiteModal({
     if (!isOpen) return;
     saveDraft(DRAFT_KEY, {
       tipoTramite, asignado, prioridad, descripcion, polizaNumero,
-      ceAgenteUserId, ceInsuranceTypeId, ceSelectedInsurers,
+      ceAgenteUserId, ceRamoId, ceSelectedInsurers,
       comAgenteUserId, comCliente, comPoliza, comAseguradora,
       comFechaVencimiento, comMonto, comAsunto, fechaPromesaEntrega,
     });
   }, [isOpen, tipoTramite, asignado, prioridad, descripcion, polizaNumero,
-      ceAgenteUserId, ceInsuranceTypeId, ceSelectedInsurers,
+      ceAgenteUserId, ceRamoId, ceSelectedInsurers,
       comAgenteUserId, comCliente, comPoliza, comAseguradora,
       comFechaVencimiento, comMonto, comAsunto, fechaPromesaEntrega]);
 
@@ -1222,8 +1211,8 @@ export function NuevoTramiteModal({
       tipo_tramite: 'cotizacion_emision',
       activity_subtype_id: COTIZACION_EMISION_SUBTYPE_ID,
       agente_usuario_id: effectiveAgenteId,
-      insurance_type_id: ceInsuranceTypeId,
-      insurers: ceSelectedInsurers,
+      insurance_type_id: null,       // deprecated; se usa maestro_ramo_id ahora
+      insurers: ceSelectedInsurers,  // array de nombres de maestro_companias
       attending_user_id: effectiveAttendingId,
       request_datetime: new Date().toISOString(),
       estatus_nombre: isAgent ? 'Iniciado' : ceEstatusNombre,
@@ -1232,7 +1221,7 @@ export function NuevoTramiteModal({
     };
 
     if (!effectiveAgenteId && !preloadedData?.instrucciones) { setError('El agente es obligatorio'); return; }
-    if (!ceInsuranceTypeId && !preloadedData?.instrucciones) { setError('El tipo de seguro es obligatorio'); return; }
+    if (!ceRamoId && !preloadedData?.instrucciones) { setError('El ramo es obligatorio'); return; }
     if (ceSelectedInsurers.length === 0 && !preloadedData?.instrucciones) { setError('Debe seleccionar al menos una aseguradora'); return; }
 
     setLoading(true);
@@ -1243,6 +1232,7 @@ export function NuevoTramiteModal({
         const postUpdates: Record<string, any> = {};
         if (grupoAsignadoId) postUpdates.grupo_asignado_id = grupoAsignadoId;
         if (fechaPromesaEntrega) postUpdates.fecha_promesa_entrega = fechaPromesaEntrega;
+        if (ceRamoId) postUpdates.maestro_ramo_id = ceRamoId;
         if (Object.keys(postUpdates).length > 0) {
           await supabase.from('tickets').update(postUpdates).eq('id', ticket.id);
         }
@@ -1737,6 +1727,28 @@ export function NuevoTramiteModal({
     return null;
   }
 
+  // ── Cascada aseguradora ↔ ramo (solo para form CE) ──────────────────────────
+  // Cascada directa: aseguradoras seleccionadas → filtra ramos disponibles
+  const ceSelectedCompaniaIds = catalogoCompanias
+    .filter(c => ceSelectedInsurers.includes(c.nombre))
+    .map(c => c.id);
+  const ceRamosDisponibles = ceSelectedInsurers.length === 0
+    ? catalogoRamos
+    : catalogoRamos.filter(r => {
+        const ids = new Set(combinaciones.filter(cb => ceSelectedCompaniaIds.includes(cb.compania_id)).map(cb => cb.ramo_id));
+        return ids.has(r.id);
+      });
+
+  // Cascada inversa: ramo seleccionado → filtra aseguradoras disponibles
+  const ceCompaniasDisponibles = ceRamoId
+    ? catalogoCompanias.filter(c => {
+        const ids = new Set(combinaciones.filter(cb => cb.ramo_id === ceRamoId).map(cb => cb.compania_id));
+        return ids.has(c.id);
+      })
+    : catalogoCompanias;
+
+  const ceRamoNombre = catalogoRamos.find(r => r.id === ceRamoId)?.nombre ?? '';
+
   return (
     <BaseModal
       isOpen={isOpen}
@@ -1898,38 +1910,52 @@ export function NuevoTramiteModal({
                 </div>
               )}
 
-              {/* Tipo de Seguro */}
+              {/* Ramo (maestro_ramos, cascada inversa desde aseguradoras) */}
               <div>
                 <label className="block text-sm font-semibold text-neutral-900 mb-2">
                   <Shield className="w-4 h-4 inline mr-1.5" />
-                  Tipo de Seguro *
+                  Ramo *
                 </label>
                 <select
-                  value={ceInsuranceTypeId}
-                  onChange={(e) => setCeInsuranceTypeId(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                  value={ceRamoId}
+                  onChange={(e) => {
+                    setCeRamoId(e.target.value);
+                    // Cascada inversa: si el ramo cambia, quitar aseguradoras incompatibles
+                    if (e.target.value && ceSelectedInsurers.length > 0) {
+                      const validIds = new Set(combinaciones.filter(cb => cb.ramo_id === e.target.value).map(cb => cb.compania_id));
+                      const validNombres = new Set(catalogoCompanias.filter(c => validIds.has(c.id)).map(c => c.nombre));
+                      setCeSelectedInsurers(prev => prev.filter(n => validNombres.has(n)));
+                    }
+                  }}
+                  disabled={ceRamosDisponibles.length === 0}
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm disabled:opacity-50"
                 >
-                  <option value="">Seleccione...</option>
-                  {ceInsuranceTypes.map(type => (
-                    <option key={type.id} value={type.id}>{type.nombre}</option>
+                  <option value="">
+                    {ceRamosDisponibles.length === 0 ? 'Sin ramos para las aseguradoras seleccionadas' : 'Seleccione ramo...'}
+                  </option>
+                  {ceRamosDisponibles.map(r => (
+                    <option key={r.id} value={r.id}>{r.nombre}</option>
                   ))}
                 </select>
+                {ceRamoNombre && (
+                  <p className="text-xs text-blue-600 mt-1">Ramo: {ceRamoNombre}</p>
+                )}
               </div>
             </div>
 
-            {/* Aseguradoras multiselect */}
+            {/* Aseguradoras multiselect — lee de maestro_companias (cascada desde ramo) */}
             <div className="relative" ref={insurerDropdownRef}>
               <label className="block text-sm font-semibold text-neutral-900 mb-2">
                 <Building2 className="w-4 h-4 inline mr-1.5" />
                 Aseguradoras * (seleccione una o más)
               </label>
               <div
-                className="w-full px-4 py-2.5 text-sm border border-neutral-300 rounded-xl cursor-pointer"
+                className="w-full px-4 py-2.5 text-sm border border-neutral-300 rounded-xl cursor-pointer min-h-[42px]"
                 onClick={() => setCeShowInsurerDropdown(!ceShowInsurerDropdown)}
               >
                 {ceSelectedInsurers.length === 0
                   ? <span className="text-neutral-400">Seleccione aseguradoras...</span>
-                  : <span className="text-neutral-900">{ceAseguradorasRA.filter(a => ceSelectedInsurers.includes(a.id)).map(a => a.nombre).join(', ')}</span>
+                  : <span className="text-neutral-900">{ceSelectedInsurers.join(', ')}</span>
                 }
               </div>
               {ceShowInsurerDropdown && (
@@ -1941,25 +1967,43 @@ export function NuevoTramiteModal({
                       value={ceInsurerSearchTerm}
                       onChange={(e) => setCeInsurerSearchTerm(e.target.value)}
                       onClick={(e) => e.stopPropagation()}
-                      className="w-full px-3 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                      className="w-full px-3 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div className="p-1">
-                    {ceAseguradorasRA
-                      .filter(a => (a.nombre ?? '').toLowerCase().includes(ceInsurerSearchTerm.toLowerCase()))
-                      .map(aseg => (
-                        <label key={aseg.id} className="flex items-center gap-2 p-1.5 hover:bg-neutral-100 rounded cursor-pointer">
+                    {ceCompaniasDisponibles
+                      .filter(c => c.nombre.toLowerCase().includes(ceInsurerSearchTerm.toLowerCase()))
+                      .map(c => (
+                        <label key={c.id} className="flex items-center gap-2 p-1.5 hover:bg-neutral-100 rounded cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={ceSelectedInsurers.includes(aseg.id)}
-                            onChange={() => setCeSelectedInsurers(prev =>
-                              prev.includes(aseg.id) ? prev.filter(x => x !== aseg.id) : [...prev, aseg.id]
-                            )}
+                            checked={ceSelectedInsurers.includes(c.nombre)}
+                            onChange={() => {
+                              setCeSelectedInsurers(prev =>
+                                prev.includes(c.nombre) ? prev.filter(x => x !== c.nombre) : [...prev, c.nombre]
+                              );
+                              // Cascada directa: si cambia aseguradoras y hay un ramo incompatible, limpiar ramo
+                              if (ceRamoId) {
+                                const newSelected = ceSelectedInsurers.includes(c.nombre)
+                                  ? ceSelectedInsurers.filter(x => x !== c.nombre)
+                                  : [...ceSelectedInsurers, c.nombre];
+                                const newIds = catalogoCompanias.filter(cp => newSelected.includes(cp.nombre)).map(cp => cp.id);
+                                const validRamoIds = new Set(combinaciones.filter(cb => newIds.includes(cb.compania_id)).map(cb => cb.ramo_id));
+                                if (newSelected.length > 0 && !validRamoIds.has(ceRamoId)) {
+                                  setCeRamoId('');
+                                }
+                              }
+                            }}
                             className="w-3.5 h-3.5 rounded border-neutral-300"
                           />
-                          <span className="text-xs text-neutral-700">{aseg.nombre}</span>
+                          <span className="text-xs text-neutral-700">{c.nombre}</span>
                         </label>
                       ))}
+                    {ceCompaniasDisponibles.length === 0 && (
+                      <p className="text-xs text-neutral-400 p-2">
+                        {ceRamoId ? 'No hay aseguradoras para el ramo seleccionado' : 'Sin datos en catálogo'}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

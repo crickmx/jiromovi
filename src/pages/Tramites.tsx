@@ -305,7 +305,7 @@ export function Tramites() {
 
       if (isImpersonating && impersonatedUser) {
         const impersonatedRol = impersonatedUser.rol || '';
-        if (!['Administrador', 'Gerente'].includes(impersonatedRol)) {
+        if (!['Administrador'].includes(impersonatedRol)) {
           const uid = impersonatedUser.id;
           const { data: gruposData } = await supabase
             .from('tramites_grupos_miembros').select('grupo_id').eq('usuario_id', uid);
@@ -383,7 +383,7 @@ export function Tramites() {
       // (auth.uid() = admin). Apply an explicit filter to replicate the impersonated user's visibility.
       if (isImpersonating && impersonatedUser) {
         const impersonatedRol = impersonatedUser.rol || '';
-        if (!['Administrador', 'Gerente'].includes(impersonatedRol)) {
+        if (!['Administrador'].includes(impersonatedRol)) {
           const uid = impersonatedUser.id;
           // Also include pool tramites (unassigned) for groups the user belongs to.
           // Query inline to avoid myGrupoIds timing dependency.

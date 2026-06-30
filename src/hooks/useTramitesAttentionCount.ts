@@ -36,7 +36,7 @@ export function useTramitesAttentionCount(userId: string | null | undefined) {
 
       // En Vista Admin impersonando un agente: RLS devuelve todos los tickets del sistema.
       // Restringir solo a los tickets que el usuario impersonado puede ver.
-      if (isImpersonating && impersonatedUser && !['Administrador', 'Gerente'].includes(impersonatedUser.rol || '')) {
+      if (isImpersonating && impersonatedUser && !['Administrador'].includes(impersonatedUser.rol || '')) {
         const uid = impersonatedUser.id;
         const { data: gruposData } = await supabase
           .from('tramites_grupos_miembros')
