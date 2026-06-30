@@ -9,6 +9,7 @@ import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleC
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
 import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
+import { PanelLider } from '../components/tramites/PanelLider';
 import { AgenteDashboard } from '../components/tramites/AgenteDashboard';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -184,6 +185,7 @@ export function Tramites() {
   const [showNuevoModal, setShowNuevoModal] = useState(false);
   const [showCatalogosModal, setShowCatalogosModal] = useState(false);
   const [showGruposModal, setShowGruposModal] = useState(false);
+  const [showPanelLider, setShowPanelLider] = useState(false);
   const [userArea, setUserArea] = useState<string | null>(null);
   const [userAreaLoaded, setUserAreaLoaded] = useState(false);
   // scope: area → allowed office IDs (null = all offices for that area)
@@ -193,6 +195,7 @@ export function Tramites() {
   const isGerente = usuario?.rol === 'Gerente';
   const isAgente = usuario?.rol === 'Agente';
   const canManageCatalogs = isAdmin || isGerente;
+  const isLider = [...myGrupoRoles.values()].some(r => r === 'lider');
 
   // Assignment UI state
   const [myOperacionesRole, setMyOperacionesRole] = useState<'lider' | 'ejecutivo' | 'miembro' | null>(null);
@@ -748,6 +751,12 @@ export function Tramites() {
               <Button variant="outline" size="sm" onClick={() => setShowGruposModal(true)}>
                 <Users className="w-4 h-4 mr-1.5" />
                 <span className="hidden sm:inline">Equipos</span>
+              </Button>
+            )}
+            {isLider && !isAdmin && (
+              <Button variant="outline" size="sm" onClick={() => setShowPanelLider(true)}>
+                <Users className="w-4 h-4 mr-1.5" />
+                <span className="hidden sm:inline">Mi equipo</span>
               </Button>
             )}
             {canManageCatalogs && (
@@ -1579,6 +1588,8 @@ export function Tramites() {
           </div>
         </div>
       )}
+
+      {showPanelLider && <PanelLider onClose={() => setShowPanelLider(false)} />}
 
       {showGruposModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
