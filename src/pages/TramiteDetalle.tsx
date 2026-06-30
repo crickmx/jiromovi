@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList } from 'lucide-react';
+import { Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList, Upload, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
@@ -347,9 +347,9 @@ export function TramiteDetalle() {
         if (!campo) continue;
         const TEXTO_TIPOS = ['texto_corto', 'texto_largo', 'area', 'equipo',
           'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion',
-          'aseguradora', 'ramo'];
+          'aseguradora', 'ramo', 'email', 'telefono', 'rfc', 'curp'];
         if (TEXTO_TIPOS.includes(campo.tipo)) vals[campo.id] = r.valor_texto;
-        else if (campo.tipo === 'numerico') vals[campo.id] = r.valor_numerico;
+        else if (['numerico', 'porcentaje'].includes(campo.tipo)) vals[campo.id] = r.valor_numerico;
         else if (campo.tipo === 'fecha') vals[campo.id] = r.valor_fecha;
         else if (campo.tipo === 'booleano') vals[campo.id] = r.valor_booleano;
         else vals[campo.id] = r.valor_json;
@@ -512,11 +512,11 @@ export function TramiteDetalle() {
           const payload: any = {
             tramite_id: tramite.id,
             campo_id: campo.id,
-            valor_texto:    ['texto_corto', 'texto_largo', 'aseguradora', 'ramo'].includes(campo.tipo) ? String(val) : null,
-            valor_numerico: campo.tipo === 'numerico' ? Number(val) : null,
+            valor_texto:    ['texto_corto', 'texto_largo', 'aseguradora', 'ramo', 'email', 'telefono', 'rfc', 'curp'].includes(campo.tipo) ? String(val) : null,
+            valor_numerico: ['numerico', 'porcentaje'].includes(campo.tipo) ? Number(val) : null,
             valor_fecha:    campo.tipo === 'fecha' ? String(val) : null,
             valor_booleano: campo.tipo === 'booleano' ? Boolean(val) : null,
-            valor_json:     ['estatus', 'dropdown', 'seleccion_multiple', 'codigo_postal'].includes(campo.tipo) ? val : null,
+            valor_json:     ['estatus', 'dropdown', 'seleccion_multiple', 'codigo_postal', 'adjunto'].includes(campo.tipo) ? val : null,
           };
 
           if (existing?.id) {
@@ -983,6 +983,33 @@ export function TramiteDetalle() {
                           maxLength={campo.config.max_length}
                           className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500" />
                       )}
+                      {campo.tipo === 'email' && (
+                        <input type="email" value={val || ''} onChange={e => set(e.target.value)} disabled={!editable}
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500" />
+                      )}
+                      {campo.tipo === 'telefono' && (
+                        <input type="tel" value={val || ''} onChange={e => set(e.target.value.replace(/\D/g, '').slice(0, 10))} disabled={!editable}
+                          placeholder="10 dígitos" maxLength={10}
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500" />
+                      )}
+                      {campo.tipo === 'rfc' && (
+                        <input type="text" value={val || ''} onChange={e => set(e.target.value.toUpperCase().slice(0, 13))} disabled={!editable}
+                          placeholder="RFC" maxLength={13}
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500" />
+                      )}
+                      {campo.tipo === 'curp' && (
+                        <input type="text" value={val || ''} onChange={e => set(e.target.value.toUpperCase().slice(0, 18))} disabled={!editable}
+                          placeholder="CURP" maxLength={18}
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500" />
+                      )}
+                      {campo.tipo === 'porcentaje' && (
+                        <div className="relative">
+                          <input type="number" value={val ?? ''} onChange={e => set(e.target.value === '' ? null : Math.min(100, Math.max(0, Number(e.target.value))))} disabled={!editable}
+                            min={0} max={100} step="0.01"
+                            className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500" />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400 pointer-events-none">%</span>
+                        </div>
+                      )}
                       {campo.tipo === 'texto_largo' && (
                         <textarea value={val || ''} onChange={e => set(e.target.value)} disabled={!editable}
                           maxLength={campo.config.max_length} rows={3}
@@ -1103,6 +1130,64 @@ export function TramiteDetalle() {
                               </select>
                             )}
                             {stored?.municipio && <p className="text-xs text-neutral-500">{stored.municipio}, {stored.estado}</p>}
+                          </div>
+                        );
+                      })()}
+                      {campo.tipo === 'adjunto' && (() => {
+                        type ArchivoRef = { id: string; nombre: string; url: string; tipo: string; tamano: number };
+                        const archivos: ArchivoRef[] = Array.isArray(val) ? val : [];
+                        const maxFiles = campo.config.max_archivos || 1;
+                        const maxMb = campo.config.max_mb || 10;
+                        const accept = (campo.config.tipos_mime || []).join(',') || undefined;
+                        return (
+                          <div className="space-y-2">
+                            {archivos.map((archivo, i) => (
+                              <div key={archivo.id || i} className="flex items-center gap-2 px-3 py-2 bg-neutral-50 rounded-xl border border-neutral-200">
+                                <span className="text-sm flex-1 truncate">{archivo.nombre}</span>
+                                <span className="text-xs text-neutral-400 shrink-0">{(archivo.tamano / 1024).toFixed(0)} KB</span>
+                                <a href={archivo.url} target="_blank" rel="noopener noreferrer"
+                                  className="p-1 text-blue-500 hover:text-blue-700 transition-colors shrink-0" title="Descargar">
+                                  <Upload className="w-3.5 h-3.5 rotate-180" />
+                                </a>
+                                {editable && (
+                                  <button type="button"
+                                    onClick={() => set(archivos.filter((_, j) => j !== i))}
+                                    className="p-1 text-red-400 hover:text-red-600 transition-colors shrink-0">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            {editable && archivos.length < maxFiles && (
+                              <label className="flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-dashed border-neutral-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 transition-colors">
+                                <Upload className="w-4 h-4 text-neutral-400" />
+                                <span className="text-sm text-neutral-500">Adjuntar archivo</span>
+                                <input
+                                  type="file"
+                                  accept={accept}
+                                  className="hidden"
+                                  onChange={async e => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    if (file.size > maxMb * 1024 * 1024) {
+                                      alert(`Archivo demasiado grande. Máximo ${maxMb} MB.`);
+                                      return;
+                                    }
+                                    const ext = file.name.split('.').pop();
+                                    const fileName = `${tramite.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+                                    const { error: upErr } = await supabase.storage.from('ticket-archivos').upload(fileName, file);
+                                    if (upErr) { alert('Error al subir: ' + upErr.message); return; }
+                                    const { data: { publicUrl } } = supabase.storage.from('ticket-archivos').getPublicUrl(fileName);
+                                    const { data: archivoData } = await supabase.from('ticket_archivos').insert({
+                                      ticket_id: tramite.id, usuario_id: usuario?.id,
+                                      nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size,
+                                    }).select('id').single();
+                                    set([...archivos, { id: archivoData?.id || '', nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size }]);
+                                    e.target.value = '';
+                                  }}
+                                />
+                              </label>
+                            )}
                           </div>
                         );
                       })()}

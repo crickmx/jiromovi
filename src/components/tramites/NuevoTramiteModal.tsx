@@ -110,6 +110,7 @@ export function NuevoTramiteModal({
   const [prioridad, setPrioridad] = useState<'Alta' | 'Media' | 'Baja'>('Baja');
   const [descripcion, setDescripcion] = useState('');
   const [archivos, setArchivos] = useState<File[]>([]);
+  const [adjuntosTemporales, setAdjuntosTemporales] = useState<Record<string, File[]>>({});
 
   const [polizaNumero, setPolizaNumero] = useState('');
 
@@ -761,6 +762,13 @@ export function NuevoTramiteModal({
     for (const campo of camposDinamicos) {
       if (!campo.requerido) continue;
       if (campo.is_sistema && AUTO_FILL_KEYS.includes(campo.sistema_key || '')) continue;
+      if (campo.tipo === 'adjunto') {
+        if (!(adjuntosTemporales[campo.id]?.length > 0)) {
+          setError(`El campo "${campo.label}" es obligatorio`);
+          return false;
+        }
+        continue;
+      }
       const val = respuestasDinamicas[campo.id];
       const isEmpty = val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0);
       if (isEmpty) {
@@ -1022,6 +1030,54 @@ export function NuevoTramiteModal({
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400 pointer-events-none">%</span>
           </div>
         )}
+
+        {campo.tipo === 'adjunto' && (() => {
+          const files = adjuntosTemporales[campo.id] || [];
+          const maxFiles = campo.config.max_archivos || 1;
+          const maxMb = campo.config.max_mb || 10;
+          const accept = (campo.config.tipos_mime || []).join(',') || undefined;
+          return (
+            <div className="space-y-2">
+              {files.length < maxFiles && (
+                <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-neutral-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 transition-colors">
+                  <Upload className="w-4 h-4 text-neutral-400" />
+                  <span className="text-sm text-neutral-500">
+                    {files.length > 0 ? 'Agregar otro archivo' : 'Haz clic para adjuntar'}
+                  </span>
+                  <input
+                    type="file"
+                    accept={accept}
+                    multiple={maxFiles > 1}
+                    className="hidden"
+                    onChange={e => {
+                      const selected = Array.from(e.target.files || []);
+                      const tooBig = selected.filter(f => f.size > maxMb * 1024 * 1024);
+                      if (tooBig.length) { setError(`El archivo excede el límite de ${maxMb} MB.`); return; }
+                      const merged = [...files, ...selected].slice(0, maxFiles);
+                      setAdjuntosTemporales(prev => ({ ...prev, [campo.id]: merged }));
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+              )}
+              {files.map((f, i) => (
+                <div key={i} className="flex items-center gap-2 px-3 py-2 bg-neutral-50 rounded-xl border border-neutral-200">
+                  <FileText className="w-4 h-4 text-neutral-400 shrink-0" />
+                  <span className="text-sm flex-1 truncate">{f.name}</span>
+                  <span className="text-xs text-neutral-400 shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
+                  <button type="button"
+                    onClick={() => setAdjuntosTemporales(prev => ({ ...prev, [campo.id]: files.filter((_, j) => j !== i) }))}
+                    className="p-1 text-red-400 hover:text-red-600 transition-colors shrink-0">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+              {maxFiles > 1 && (
+                <p className="text-xs text-neutral-400">{files.length}/{maxFiles} archivos · máx {maxMb} MB c/u</p>
+              )}
+            </div>
+          );
+        })()}
 
       </div>
     );
@@ -1306,17 +1362,17 @@ export function NuevoTramiteModal({
 
         const TEXTO_TIPOS = ['texto_corto', 'texto_largo', 'area', 'equipo',
           'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion',
-          'aseguradora', 'ramo'];
+          'aseguradora', 'ramo', 'email', 'telefono', 'rfc', 'curp'];
 
         const respuestas = camposDinamicos
-          .filter(c => respuestasMerged[c.id] !== undefined && respuestasMerged[c.id] !== null && respuestasMerged[c.id] !== '')
+          .filter(c => c.tipo !== 'adjunto' && respuestasMerged[c.id] !== undefined && respuestasMerged[c.id] !== null && respuestasMerged[c.id] !== '')
           .map(c => {
             const val = respuestasMerged[c.id];
             return {
               tramite_id: ticket.id,
               campo_id: c.id,
               valor_texto:    TEXTO_TIPOS.includes(c.tipo) ? String(val) : null,
-              valor_numerico: c.tipo === 'numerico' ? Number(val) : null,
+              valor_numerico: ['numerico', 'porcentaje'].includes(c.tipo) ? Number(val) : null,
               valor_fecha:    c.tipo === 'fecha' ? String(val) : null,
               valor_booleano: c.tipo === 'booleano' ? Boolean(val) : null,
               valor_json:     ['estatus', 'dropdown', 'seleccion_multiple', 'codigo_postal'].includes(c.tipo) ? val : null,
@@ -1324,6 +1380,29 @@ export function NuevoTramiteModal({
           });
         if (respuestas.length > 0) {
           await supabase.from('tramite_respuestas').insert(respuestas);
+        }
+
+        // Subir archivos de campos adjunto dinámicos
+        for (const campo of camposDinamicos.filter(c => c.tipo === 'adjunto')) {
+          const files = adjuntosTemporales[campo.id] || [];
+          if (files.length === 0) continue;
+          const fileData: { id: string; nombre: string; url: string; tipo: string; tamano: number }[] = [];
+          for (const file of files) {
+            const ext = file.name.split('.').pop();
+            const fileName = `${ticket.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+            const { error: upErr } = await supabase.storage.from('ticket-archivos').upload(fileName, file);
+            if (upErr) throw upErr;
+            const { data: { publicUrl } } = supabase.storage.from('ticket-archivos').getPublicUrl(fileName);
+            const { data: archivoData, error: archivoErr } = await supabase.from('ticket_archivos').insert({
+              ticket_id: ticket.id, usuario_id: usuario.id,
+              nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size,
+            }).select('id').single();
+            if (archivoErr) throw archivoErr;
+            fileData.push({ id: archivoData!.id, nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size });
+          }
+          await supabase.from('tramite_respuestas').insert({
+            tramite_id: ticket.id, campo_id: campo.id, valor_json: fileData,
+          });
         }
 
         // Guardar custom_estatus_label y custom_estatus_color en el ticket
