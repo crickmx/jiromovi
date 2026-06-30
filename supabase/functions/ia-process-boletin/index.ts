@@ -451,7 +451,7 @@ Responde UNICAMENTE con un objeto JSON valido con TODOS estos campos:
   "nivel_importancia": "string - Alta, Media o Baja",
   "fecha_comunicado": "string - Fecha del comunicado original si se identifica (formato YYYY-MM-DD), o vacio",
   "fecha_publicacion_sugerida": "string - Fecha sugerida de publicacion (formato YYYY-MM-DD)",
-  "imagen_destacada_descripcion": "string - Descripcion en ingles para generar imagen con IA. Estilo: abstracto, corporativo, sin texto ni logos. Ej: Abstract geometric composition representing insurance protection, shield shapes, blue gradient, modern corporate art style",
+  "imagen_destacada_descripcion": "string - Description in English for DALL-E 3. Describe a SPECIFIC REAL-WORLD PHOTOGRAPHIC SCENE directly related to the article topic. Think editorial photography like Bloomberg or Forbes covers. Examples: 'A sleek silver sedan on a modern Mexican highway at golden hour, shallow depth of field', 'A doctor in white coat consulting with a family in a bright clinic', 'A professional couple standing in front of their new home, warm afternoon light', 'Two business executives shaking hands over a contract at a modern conference table', 'A business professional reviewing financial documents at a clean desk'. Be VERY specific about the scene — match the insurance topic exactly. NO text, NO logos, NO numbers.",
   "meta_titulo_seo": "string - Titulo optimizado para SEO, max 60 caracteres",
   "meta_descripcion_seo": "string - Meta descripcion SEO, max 160 caracteres",
   "extracto_listado": "string - Extracto corto para mostrar en listados de noticias, max 200 caracteres",
@@ -584,6 +584,19 @@ async function generateBrandedThumbnail(
 
 async function generateBackgroundImage(apiKey: string, imagePrompt: string): Promise<string> {
   try {
+    const dallePrompt = `Premium editorial cover photograph for a Mexican insurance industry article. Topic: ${imagePrompt}
+
+Visual requirements:
+- Photorealistic, high-end corporate photography style (Bloomberg, Forbes, Expansión quality)
+- Scene must be DIRECTLY related to the topic: auto insurance = car/highway/driver, health = doctor/clinic, home = house/family, payments/commissions = executives/handshake/documents, technology = modern devices
+- Composition: subject slightly right of center, left side naturally darker for text overlay
+- Lighting: cinematic, professional, well-lit with clear focal point and soft background blur
+- Safe area: main subject within center 70% of frame, edges can be cropped
+- Dark gradient naturally present at bottom 40% (text will be overlaid there)
+- Absolutely NO text, NO letters, NO numbers, NO logos, NO watermarks
+- NO visible faces (show backs, silhouettes, or cropped at shoulders)
+- Style: modern, premium, trustworthy — NOT generic stock photo`;
+
     const response = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: {
@@ -592,7 +605,7 @@ async function generateBackgroundImage(apiKey: string, imagePrompt: string): Pro
       },
       body: JSON.stringify({
         model: "dall-e-3",
-        prompt: `Create an abstract, artistic background illustration for a professional insurance article cover. ${imagePrompt}. Style: soft gradients, geometric shapes, modern corporate art. NO text, NO letters, NO words, NO logos, NO people faces. Clean abstract composition. Wide landscape format, soft colors suitable as a background with overlay text.`,
+        prompt: dallePrompt.substring(0, 4000),
         n: 1,
         size: "1792x1024",
         quality: "standard",

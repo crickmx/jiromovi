@@ -202,7 +202,7 @@ Responde UNICAMENTE con un objeto JSON valido:
   "resumen_ejecutivo": "string - Resumen ejecutivo de 3-5 oraciones.",
   "contenido_html": "string - Articulo COMPLETO en HTML con la estructura editorial indicada.",
   "puntos_clave": ["array de 3-8 puntos clave"],
-  "imagen_destacada_descripcion": "string - Description in English for DALL-E 3 image generation. Describe a SPECIFIC, THEMATICALLY RELEVANT scene that represents the article topic visually. Examples: 'A car driving on a modern highway at sunset, cinematic blur', 'A doctor consulting with a patient in a bright clinic', 'A family standing in front of their home smiling', 'Business professionals shaking hands over a signed document', 'A sleek modern office building facade'. Be specific about the scene, NOT abstract. NO text, NO logos, NO numbers.",
+  "imagen_destacada_descripcion": "string - Description in English for DALL-E 3. Describe a SPECIFIC REAL-WORLD PHOTOGRAPHIC SCENE directly related to the article topic. Think editorial photography like Bloomberg or Forbes covers. Examples: 'A sleek silver sedan driving on a modern Mexican highway at golden hour, shallow depth of field, cinematic', 'A friendly doctor in white coat consulting with a smiling family in a bright modern clinic', 'A professional family standing in front of their new home, warm afternoon light', 'Two business executives shaking hands over a signed insurance contract at a conference table', 'Close-up of hands counting Mexican peso bills with a calculator, financial planning concept'. Be VERY specific about the scene. NO text, NO logos, NO numbers visible.",
   "tiempo_lectura": "string - Ej: '4 min de lectura'"
 }`;
 
@@ -248,7 +248,19 @@ Responde UNICAMENTE con un objeto JSON valido:
 // --- Image Generation ---
 
 async function generateImage(apiKey: string, article: ArticleResult): Promise<string> {
-  const prompt = `Editorial background photograph for a Mexican insurance industry article. The image should visually represent this specific topic: ${article.imagen_destacada_descripcion}. Visual style: professional corporate photography with a slight depth-of-field blur so overlaid text stays readable. Show thematically relevant scenes — for example if the topic is car insurance show a car on a road or highway, if health insurance show a medical consultation or stethoscope, if property insurance show a modern home or building, if payments show a handshake or signing documents, if benefits show happy professionals. Lighting: cinematic, slightly cool or neutral tones, well-lit. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermarks anywhere in the image. Do NOT show visible faces. The image will have a dark overlay applied on top for text legibility.`;
+  const prompt = `Premium editorial cover photograph for a Mexican insurance industry article. Topic: ${article.imagen_destacada_descripcion}
+
+Visual requirements:
+- Photorealistic, high-end corporate photography style (Bloomberg, Forbes, Expansión quality)
+- The scene must be DIRECTLY related to the insurance topic: if auto insurance show a car/road/driver, if health insurance show doctor/clinic/stethoscope, if home insurance show a house/family, if payments/commissions show executives/documents/handshake, if technology show modern devices/screens
+- Composition: subject slightly right of center, leaving left side darker for text overlay
+- Lighting: cinematic, professional, slightly warm or cool tones depending on topic, well-lit with clear focal point
+- Depth of field: sharp subject with soft background blur for professional feel
+- Safe area: main subject within center 70% of frame, edges can be cropped
+- Dark gradient zone at bottom 40% of image (this area will have text overlaid)
+- Absolutely NO text, NO letters, NO numbers, NO logos, NO watermarks anywhere
+- NO visible faces (show backs, silhouettes, or cropped at shoulders)
+- Style: modern, premium, trustworthy, clean — NOT stock photo cliché`;
 
   const resp = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
