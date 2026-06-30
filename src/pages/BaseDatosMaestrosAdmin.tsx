@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import {
   Database, Upload, Download, Plus, Trash2, Search, CheckCircle2,
   XCircle, History, Building2, Users, Link2, ChevronDown, ChevronRight,
-  AlertTriangle, FileSpreadsheet, RefreshCw, Edit2, Save, X, Tag,
+  AlertTriangle, FileSpreadsheet, FileText, RefreshCw, Edit2, Save, X, Tag,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { useAuth } from '../contexts/AuthContext';
@@ -321,7 +321,7 @@ export default function BaseDatosMaestrosAdmin() {
     const raw = editingSla.value.trim();
     const num = raw ? parseInt(raw, 10) : null;
     if (raw && (isNaN(num!) || num! < 1)) { toast('Ingresa un número válido de días', 'err'); setEditingSla(null); return; }
-    const { error } = await supabase.from('ticket_tipos').update({ sla_dias: num }).eq('id', id);
+    const { error } = await supabase.from('ticket_tipos').update({ sla_horas: num }).eq('id', id);
     if (error) { toast('Error: ' + error.message, 'err'); return; }
     toast(num ? `SLA: ${num}h (≈${(num/8).toFixed(1)} días)` : 'SLA removido');
     setEditingSla(null);
