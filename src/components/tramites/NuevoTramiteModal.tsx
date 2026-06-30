@@ -765,10 +765,12 @@ export function NuevoTramiteModal({
     }
 
     // Validar campos dinámicos requeridos (omitir campos sistema auto-fill)
-    const AUTO_FILL_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'oficina_jiro'];
+    // agente_vendedor se omite: es opcional por diseño — puede no existir contraparte SICAS
+    const AUTO_FILL_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'oficina_jiro', 'agente_vendedor'];
     for (const campo of camposDinamicos) {
       if (!campo.requerido) continue;
       if (campo.is_sistema && AUTO_FILL_KEYS.includes(campo.sistema_key || '')) continue;
+      if (campo.sistema_key === 'agente_vendedor') continue; // nunca bloquear: SICAS puede no tener contraparte
       if (campo.tipo === 'adjunto') {
         if (!(adjuntosTemporales[campo.id]?.length > 0)) {
           setError(`El campo "${campo.label}" es obligatorio`);
