@@ -231,11 +231,13 @@ export default function ComunicadoEditor() {
       // Generate composite cover image with title + insurer branding
       const selectedAseguradora = aseguradoras.find(a => a.id === resolvedAseguradoraId);
       try {
+        const selectedCategoria = categorias.find(c => c.id === categoriaId);
         const coverBlob = await generateCoverImage({
           backgroundUrl: resultado.imagen_url,
           titulo: resultado.titulo,
           aseguradoraNombre: selectedAseguradora?.name,
           aseguradoraLogoUrl: selectedAseguradora?.logo_url,
+          categoria: selectedCategoria?.nombre,
         });
         const coverFile = new File([coverBlob], 'cover-ia.jpg', { type: 'image/jpeg' });
         const uploadedUrl = await subirImagenComunicado(coverFile);
