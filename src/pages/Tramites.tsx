@@ -74,14 +74,17 @@ const TRAMITE_OPTIONS_FOR_FILTER = TIPO_TRAMITE_OPTIONS.filter(
 
 const PRIORIDADES = ['Alta', 'Media', 'Baja'] as const;
 
-function getSlaInfo(fechaCreacion: string, slaDias: number | null | undefined) {
+function getSlaInfo(fechaCreacion: string, slaHoras: number | null | undefined) {
   const daysOpen = Math.max(0, Math.floor((Date.now() - new Date(fechaCreacion).getTime()) / 86_400_000));
-  if (!slaDias) return { daysOpen, color: 'text-neutral-400 dark:text-white/30', bg: 'bg-neutral-100 dark:bg-white/5', pulsing: false };
-  const pct = daysOpen / slaDias;
-  if (pct <= 0.70) return { daysOpen, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-900/20', pulsing: false };
-  if (pct <= 0.90) return { daysOpen, color: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-50 dark:bg-yellow-900/20', pulsing: false };
-  if (pct <= 1.00) return { daysOpen, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-900/20', pulsing: false };
-  return { daysOpen, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/20', pulsing: true };
+  const HPD = 8; // horas por día (hardcoded; configuracion_jornada no está cargada aquí)
+  if (!slaHoras) return { daysOpen, slaDias: null as number | null, color: 'text-neutral-400 dark:text-white/30', bg: 'bg-neutral-100 dark:bg-white/5', pulsing: false };
+  const horasUsadas = daysOpen * HPD;
+  const pct = horasUsadas / slaHoras;
+  const slaDias = Math.ceil(slaHoras / HPD);
+  if (pct <= 0.70) return { daysOpen, slaDias, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-900/20', pulsing: false };
+  if (pct <= 0.90) return { daysOpen, slaDias, color: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-50 dark:bg-yellow-900/20', pulsing: false };
+  if (pct <= 1.00) return { daysOpen, slaDias, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-900/20', pulsing: false };
+  return { daysOpen, slaDias, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/20', pulsing: true };
 }
 
 function fmtFecha(iso: string) {
@@ -279,9 +282,9 @@ export function Tramites() {
     const overdue = tramites.filter(t => {
       if (t.cerrado_en || t.eliminado_at) return false;
       const td = tiposDb.get(t.tipo_tramite);
-      if (!td?.sla_dias) return false;
+      if (!td?.sla_horas) return false;
       const days = Math.floor((now - new Date(t.fecha_creacion).getTime()) / 86_400_000);
-      return days > td.sla_dias && !localStorage.getItem(`sla_notified_${t.id}_${today}`);
+      return days > td.sla_horas && !localStorage.getItem(`sla_notified_${t.id}_${today}`);
     });
     if (!overdue.length) return;
 
@@ -304,7 +307,7 @@ export function Tramites() {
         }
 
         const titulo = `Trámite vencido: ${ticket.folio}`;
-        const mensaje = `"${td.label}" lleva ${days} días abierto (SLA: ${td.sla_dias} días).`;
+        const mensaje = `"${td.label}" lleva ${days} días abierto (SLA: ${td.sla_horas}h ≈ ${Math.ceil((td.sla_horas ?? 0) / 8)} días hábiles).`;
         for (const uid of recipients) {
           await crearNotificacion({ user_id: uid, titulo, mensaje, modulo: 'tramites', accion_url: `/tramites/${ticket.id}`, accion_texto: 'Ver trámite', enviar_whatsapp: false });
         }
@@ -1252,7 +1255,7 @@ export function Tramites() {
                   : null;
               const estatusLabel = tramite.custom_estatus_label ?? tramite.estatus?.nombre;
               const estatusColor = tramite.custom_estatus_color ?? tramite.estatus?.color;
-              const sla = getSlaInfo(tramite.fecha_creacion, tipoDb?.sla_dias);
+              const sla = getSlaInfo(tramite.fecha_creacion, tipoDb?.sla_horas);
               return (
                 <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex">
                   {!tramite.cerrado_en && (
@@ -1274,7 +1277,7 @@ export function Tramites() {
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span className="text-[10px] text-neutral-400 dark:text-white/30">{fmtFecha(tramite.fecha_creacion)}</span>
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${sla.bg} ${sla.color} ${sla.pulsing ? 'animate-pulse' : ''}`}>
-                        {sla.daysOpen}d{tipoDb?.sla_dias ? ` / ${tipoDb.sla_dias}d` : ''}
+                        {sla.daysOpen}d{sla.slaDias ? ` / ${sla.slaDias}d` : ''}
                       </span>
                     </div>
                     <div className="flex items-center justify-between mt-0.5 gap-1">
@@ -1316,7 +1319,7 @@ export function Tramites() {
                   : null;
               const estatusLabel = tramite.custom_estatus_label ?? tramite.estatus?.nombre;
               const estatusColor = tramite.custom_estatus_color ?? tramite.estatus?.color;
-              const sla = getSlaInfo(tramite.fecha_creacion, tipoDb?.sla_dias);
+              const sla = getSlaInfo(tramite.fecha_creacion, tipoDb?.sla_horas);
               return (
                 <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex">
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
@@ -1330,7 +1333,7 @@ export function Tramites() {
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span className="text-[10px] text-neutral-400 dark:text-white/30">{fmtFecha(tramite.fecha_creacion)}</span>
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${sla.bg} ${sla.color} ${sla.pulsing ? 'animate-pulse' : ''}`}>
-                        {sla.daysOpen}d{tipoDb?.sla_dias ? ` / ${tipoDb.sla_dias}d` : ''}
+                        {sla.daysOpen}d{sla.slaDias ? ` / ${sla.slaDias}d` : ''}
                       </span>
                     </div>
                     <div className="flex items-center justify-between mt-0.5 gap-1">

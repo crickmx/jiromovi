@@ -119,6 +119,8 @@ const TelefoniaAdmin = lazy(() => import('./TelefoniaAdmin'));
 const ModulosAdmin = lazy(() => import('./ModulosAdmin'));
 const BaseDatosMaestrosAdmin = lazy(() => import('./BaseDatosMaestrosAdmin'));
 const AdminTramites = lazy(() => import('./AdminTramites'));
+const DiasNoHabiles = lazy(() => import('./admin/DiasNoHabiles'));
+const ConfigJornada = lazy(() => import('./admin/ConfigJornada'));
 
 // Shared
 const Perfil = lazy(() => import('./Perfil'));
@@ -284,6 +286,8 @@ export default function MoviFullRoutes() {
           <Route path="/admin/modulos" element={<ProtectedRoute requireAdmin><ModulosAdmin /></ProtectedRoute>} />
           <Route path="/admin/base-datos" element={<ProtectedRoute requireAdmin><BaseDatosMaestrosAdmin /></ProtectedRoute>} />
           <Route path="/admin/tramites" element={<ProtectedRoute requireAdmin><AdminTramites /></ProtectedRoute>} />
+          <Route path="/admin/dias-no-habiles" element={<ProtectedRoute requireAdmin><DiasNoHabiles /></ProtectedRoute>} />
+          <Route path="/admin/config-jornada" element={<ProtectedRoute requireAdmin><ConfigJornada /></ProtectedRoute>} />
 
           {/* Shared profile */}
           <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />

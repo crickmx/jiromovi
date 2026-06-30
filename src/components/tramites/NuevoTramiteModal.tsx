@@ -23,6 +23,8 @@ import {
   type UsuarioOficina
 } from '../../lib/registroActividadesTypes';
 import { SearchableSelect } from './catalogos/SearchableSelect';
+import { useTiposTramite } from '../../hooks/useTiposTramite';
+import { calcularDeadline } from '../../lib/diasHabiles';
 
 interface TramiteEstatus {
   id: string;
@@ -187,6 +189,7 @@ export function NuevoTramiteModal({
   const [tiposReadOnlyAfterCreate, setTiposReadOnlyAfterCreate] = useState<Set<string>>(new Set());
   const [fechaPromesaEntrega, setFechaPromesaEntrega] = useState('');
 
+  const { tiposMap } = useTiposTramite();
   const isAgent = usuario?.rol === 'Agente';
   const canAssignOthers = !isAgent;
   const isPoolMode = false;
@@ -1691,12 +1694,22 @@ export function NuevoTramiteModal({
         }
       }
 
-      // Post-update: fecha_promesa_entrega (columna separada para evitar fallo si no existe aún)
-      if (ticket?.id && fechaPromesaEntrega && !isAgent) {
-        try {
-          await supabase.from('tickets').update({ fecha_promesa_entrega: fechaPromesaEntrega }).eq('id', ticket.id);
-        } catch {
-          // Silently ignore if column doesn't exist yet
+      // Post-update: fecha_promesa_entrega — manual o auto-calculada por SLA del tipo
+      if (ticket?.id && !isAgent) {
+        let promesa = fechaPromesaEntrega;
+        if (!promesa) {
+          const tipoDb = tiposMap.get(tipoTramite);
+          if (tipoDb?.sla_horas) {
+            try {
+              const deadline = await calcularDeadline(new Date(), tipoDb.sla_horas);
+              promesa = deadline.toISOString().split('T')[0];
+            } catch { /* ignorar si falla cálculo */ }
+          }
+        }
+        if (promesa) {
+          try {
+            await supabase.from('tickets').update({ fecha_promesa_entrega: promesa }).eq('id', ticket.id);
+          } catch { /* ignorar si columna no existe aún */ }
         }
       }
 

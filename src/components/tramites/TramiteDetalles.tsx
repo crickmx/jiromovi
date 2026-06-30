@@ -120,10 +120,32 @@ export function TramiteDetalles({
   const [sicasMappedIds, setSicasMappedIds] = useState<Set<string>>(new Set());
   const [addingToSicas, setAddingToSicas] = useState(false);
   const [sicasMsg, setSicasMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [inicioEspera, setInicioEspera] = useState<string | null>(null);
 
   useEffect(() => {
     setSelectedGrupoId(grupoAsignadoId ?? '');
   }, [grupoAsignadoId]);
+
+  // Detectar si hay una pausa activa (en_espera) y guardar su inicio
+  useEffect(() => {
+    const esEnEspera = estatusCampoDinamico
+      ? (estatusCampoDinamico.config?.opciones ?? []).find(
+          (o: { slug: string; clasificacion?: string | null }) => o.slug === selectedEstatusSlug
+        )?.clasificacion === 'en_espera'
+      : false;
+
+    if (!esEnEspera) { setInicioEspera(null); return; }
+
+    supabase
+      .from('tramite_pausas')
+      .select('inicio_pausa')
+      .eq('tramite_id', tramite.id)
+      .is('fin_pausa', null)
+      .order('inicio_pausa', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => setInicioEspera(data?.inicio_pausa ?? null));
+  }, [tramite.id, selectedEstatusSlug, estatusCampoDinamico]);
 
   useEffect(() => {
     loadAsignaciones();
@@ -679,6 +701,22 @@ export function TramiteDetalles({
                   : 'N/A'}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {inicioEspera && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 mb-4">
+          <Clock className="w-5 h-5 text-amber-500 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold">Trámite en espera</p>
+            <p className="text-xs text-amber-600">
+              En espera desde{' '}
+              {new Date(inicioEspera).toLocaleString('es-MX', {
+                day: 'numeric', month: 'long', year: 'numeric',
+                hour: '2-digit', minute: '2-digit',
+              })}
+            </p>
           </div>
         </div>
       )}

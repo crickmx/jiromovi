@@ -48,7 +48,7 @@ interface CodigoPostal { id: string; codigo: string; colonia: string; municipio:
 
 interface Area           { id: string; nombre: string; slug: string; color_hex: string; activa: boolean }
 interface GrupoViz       { id: string; nombre: string; activo: boolean }
-interface TipoTramite    { id: string; value: string; label: string; area_id: string | null; color: string; activo: boolean; orden: number; sla_dias: number | null }
+interface TipoTramite    { id: string; value: string; label: string; area_id: string | null; color: string; activo: boolean; orden: number; sla_horas: number | null }
 
 interface AdjuntoCategoria { id: string; nombre: string; descripcion: string | null; orden: number; activo: boolean }
 
@@ -323,7 +323,7 @@ export default function BaseDatosMaestrosAdmin() {
     if (raw && (isNaN(num!) || num! < 1)) { toast('Ingresa un número válido de días', 'err'); setEditingSla(null); return; }
     const { error } = await supabase.from('ticket_tipos').update({ sla_dias: num }).eq('id', id);
     if (error) { toast('Error: ' + error.message, 'err'); return; }
-    toast(num ? `SLA: ${num} días` : 'SLA removido');
+    toast(num ? `SLA: ${num}h (≈${(num/8).toFixed(1)} días)` : 'SLA removido');
     setEditingSla(null);
     loadTramitesData();
     invalidateTiposTramiteCache();
@@ -334,7 +334,7 @@ export default function BaseDatosMaestrosAdmin() {
     const [{ data: a }, { data: g }, { data: t }] = await Promise.all([
       supabase.from('tramites_areas').select('*').order('nombre'),
       supabase.from('tramites_grupos_visualizacion').select('id, nombre, activo').order('nombre'),
-      supabase.from('ticket_tipos').select('id, value, label, area_id, color, activo, orden, sla_dias').order('orden'),
+      supabase.from('ticket_tipos').select('id, value, label, area_id, color, activo, orden, sla_horas').order('orden'),
     ]);
     setAreas(a ?? []);
     setGruposViz(g ?? []);
@@ -1815,13 +1815,13 @@ export default function BaseDatosMaestrosAdmin() {
                                 onBlur={() => saveSla(tipo.id)}
                                 className="w-14 border border-blue-400 rounded px-2 py-0.5 text-xs dark:bg-neutral-700 dark:text-white"
                                 autoFocus/>
-                              <span className="text-xs text-neutral-400">días</span>
+                              <span className="text-xs text-neutral-400">h</span>
                             </div>
                           ) : (
-                            <button onClick={() => setEditingSla({ id: tipo.id, value: String(tipo.sla_dias ?? '') })}
+                            <button onClick={() => setEditingSla({ id: tipo.id, value: String(tipo.sla_horas ?? '') })}
                               className="opacity-0 group-hover:opacity-100 transition flex-shrink-0 text-xs px-2 py-0.5 rounded border border-neutral-200 dark:border-neutral-600 hover:border-blue-400 text-neutral-400 hover:text-blue-600"
                               title="Editar tiempo de respuesta promesa (SLA)">
-                              {tipo.sla_dias ? `${tipo.sla_dias}d` : '—'}
+                              {tipo.sla_horas ? `${tipo.sla_horas}h` : '—'}
                             </button>
                           )}
                           <button onClick={() => toggleActivo('ticket_tipos', tipo.id, tipo.activo, loadTramitesData)}
