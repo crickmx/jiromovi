@@ -88,6 +88,7 @@ export default function BaseDatosMaestrosAdmin() {
   const [searchVend, setSearchVend]   = useState('');
   const [expandedDespachos, setExpandedDespachos] = useState<Set<string>>(new Set());
   const [vendGroupMode, setVendGroupMode] = useState<'despacho' | 'vendedor'>('despacho');
+  const [showOnlyDups, setShowOnlyDups] = useState(false);
   const [editingRow, setEditingRow] = useState<{ table: string; id: string; nombre: string; field?: string } | null>(null);
 
   // ── Trámites (áreas, equipos, tipos) ────────────────────────────────────────
@@ -943,6 +944,7 @@ export default function BaseDatosMaestrosAdmin() {
     });
     const vendedorGroups = Array.from(vendedorMap.entries()).sort(([a], [b]) => a.localeCompare(b));
     const dupCount = vendedorGroups.filter(([, ags]) => ags.length > 1).length;
+    const displayGroups = showOnlyDups ? vendedorGroups.filter(([, ags]) => ags.length > 1) : vendedorGroups;
 
     function AgentRowDespacho({ ag, paddingClass = 'px-4' }: { ag: Agente; paddingClass?: string }) {
       const isEdit = editingRow?.id === ag.id;
@@ -1011,6 +1013,17 @@ export default function BaseDatosMaestrosAdmin() {
                   )}
                 </button>
               </div>
+              {vendGroupMode === 'vendedor' && dupCount > 0 && (
+                <button onClick={() => setShowOnlyDups(v => !v)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition ${
+                    showOnlyDups
+                      ? 'bg-amber-500 text-white'
+                      : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40'
+                  }`}>
+                  <AlertTriangle className="w-3 h-3"/>
+                  {showOnlyDups ? `Duplicados (${dupCount})` : 'Solo duplicados'}
+                </button>
+              )}
               <button onClick={() => setShowAddDespacho(v => !v)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition">
                 <Plus className="w-3.5 h-3.5"/>
@@ -1141,7 +1154,7 @@ export default function BaseDatosMaestrosAdmin() {
                       </span>
                     </div>
                   )}
-                  {vendedorGroups.map(([nombre, ags]) => {
+                  {displayGroups.map(([nombre, ags]) => {
                     const isDup = ags.length > 1;
                     return (
                       <div key={nombre} className={`border rounded-lg overflow-hidden ${isDup ? 'border-amber-300 dark:border-amber-700' : 'border-neutral-200 dark:border-neutral-600'}`}>
@@ -1203,7 +1216,9 @@ export default function BaseDatosMaestrosAdmin() {
                       </div>
                     );
                   })}
-                  {vendedorGroups.length === 0 && <EmptyState msg="Sin vendedores encontrados."/>}
+                  {displayGroups.length === 0 && (
+                    <EmptyState msg={showOnlyDups ? 'No hay vendedores con más de un despacho.' : 'Sin vendedores encontrados.'}/>
+                  )}
                 </>
               )}
 
