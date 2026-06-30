@@ -504,7 +504,7 @@ Responde UNICAMENTE con un objeto JSON valido con TODOS estos campos:
     nivel_importancia: parsed.nivel_importancia || "Media",
     fecha_comunicado: parsed.fecha_comunicado || "",
     fecha_publicacion_sugerida: parsed.fecha_publicacion_sugerida || new Date().toISOString().split("T")[0],
-    imagen_destacada_descripcion: parsed.imagen_destacada_descripcion || "Abstract professional insurance concept, geometric shapes, blue tones, modern corporate art",
+    imagen_destacada_descripcion: parsed.imagen_destacada_descripcion || "A professional insurance agent in a modern office reviewing policy documents with a client, warm professional lighting, photorealistic editorial photography",
     meta_titulo_seo: parsed.meta_titulo_seo || parsed.titulo?.substring(0, 60) || "",
     meta_descripcion_seo: parsed.meta_descripcion_seo || parsed.bajada?.substring(0, 160) || "",
     extracto_listado: parsed.extracto_listado || parsed.bajada?.substring(0, 200) || "",
