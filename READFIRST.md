@@ -1,4 +1,4 @@
-# READFIRST — Estado del proyecto JIROmovi al 2026-06-29
+# READFIRST — Estado del proyecto JIROmovi al 2026-06-30
 
 > **Leer esto antes de continuar.** Resumen para retomar desde otro equipo.
 
@@ -26,80 +26,85 @@ npm install
 
 ---
 
-## ⚠ Migración pendiente de aplicar manualmente en Supabase
+## ⚠ Migraciones pendientes de aplicar manualmente en Supabase
 
-Esta migración fue commiteada al repo pero **aún no se ha aplicado en la base de datos**. Hasta que se aplique, el botón "Hacer principal" en Base de Datos → Vendedores fallará.
+Ir a **Supabase Dashboard → SQL Editor** y ejecutar en orden:
 
-Ir a **Supabase Dashboard → SQL Editor** y ejecutar:
-
+### 1. Columna `es_primario` en agentes (necesaria para "Hacer principal")
 ```sql
 ALTER TABLE maestro_agentes ADD COLUMN IF NOT EXISTS es_primario boolean NOT NULL DEFAULT true;
 ```
+Luego resetear los valores para que aparezcan los botones:
+```sql
+UPDATE maestro_agentes SET es_primario = false;
+UPDATE maestro_agentes SET es_primario = true
+WHERE id IN (
+  SELECT DISTINCT ON (nombre) id FROM maestro_agentes ORDER BY nombre, created_at ASC
+);
+```
 
-Archivo: `supabase/migrations/20260629000002_agentes_es_primario.sql`
+### 2. Campo `nombre_propuesto` en mapeos pendientes
+```sql
+ALTER TABLE maestro_mapeo_pendiente
+  ADD COLUMN IF NOT EXISTS nombre_propuesto text,
+  ALTER COLUMN user_id_propuesto DROP NOT NULL;
+```
+
+### 3. Sistema de Triggers de Estatus — Fase 0 (schema completo)
+Ejecutar el contenido del archivo:
+`supabase/migrations/20260630000002_trigger_sistema_fase0.sql`
 
 ---
 
-## Lo que se hizo recientemente (últimas 2 sesiones)
+## Proyecto activo: Sistema de Triggers de Estatus
 
-### 1. Base de Datos → Vendedores: Vista "Por Vendedor" + duplicados
+### Qué es
+Permite que ciertos cambios de estatus en un trámite disparen automáticamente la creación de nuevos trámites (hijos) en otra área. Ej: "Póliza emitida" en Comercial → crea automáticamente un "Registro de póliza" en Operaciones con los campos mapeados.
 
-**Archivo:** `src/pages/BaseDatosMaestrosAdmin.tsx`
+### Estado actual
+- **Fase 0 ✅ COMPLETA** — Schema de BD (migraciones commiteadas, pendiente aplicar en Supabase)
+- **Fase 1 🔲 PENDIENTE** — UI en FormBuilder para configurar triggers + mapeos
+- **Fase 2 🔲 PENDIENTE** — Modal de pre-aviso al usuario antes de cambiar estatus
+- **Fase 3 🔲 PENDIENTE** — Motor de ejecución en TramiteDetalles
+- **Fase 4 🔲 PENDIENTE** — Visibilidad padre-hijo en detalle de trámite
+- **Fase 5 🔲 PENDIENTE** — Mejoras: dry-run, catálogo de estatus por tipo
 
-- Se agregó toggle "Por Despacho" / "Por Vendedor"
-- Vista Por Vendedor agrupa todos los agentes con el mismo nombre
-- Si un vendedor aparece en 2+ despachos → borde ámbar + ícono ⚠
-- Botón "Solo duplicados" filtra para mostrar únicamente esos
-- Cada fila tiene botón "Hacer principal" / badge "Principal" (`es_primario` = TRUE/FALSE en `maestro_agentes`)
-- **Requiere la migración de arriba para funcionar**
+### Tablas nuevas (Fase 0)
+| Tabla | Descripción |
+|---|---|
+| `maestro_adjunto_categorias` | Categorías de adjuntos (Póliza, Comprobante, Nota interna…) |
+| `ticket_status_triggers` | Configuración de triggers: qué tipo + estatus → qué tipo hijo |
+| `ticket_trigger_field_mappings` | Mapeo campo-a-campo por trigger (con soporte sistema_key y valor fijo) |
+| `ticket_trigger_executions` | Log de ejecuciones (ok/error/skipped) |
+| `ticket_archivos.categoria_id` | FK nueva a `maestro_adjunto_categorias` |
+| `tickets.parent_ticket_id` | FK self-referencial para relación padre-hijo |
+| `tickets.trigger_origen_id` | Qué trigger generó este trámite |
 
-### 2. Base de Datos → Edición y borrado inline
+### Decisiones de diseño clave
+1. **Idempotencia con control del usuario**: si ya existe un hijo para ese trigger, el modal de confirmación (Fase 2) pregunta "¿Conservar el existente o crear uno nuevo?" en lugar de omitir silenciosamente
+2. **Sin ciclos**: los trámites con `parent_ticket_id IS NOT NULL` nunca disparan triggers
+3. **Adjuntos por categoría**: por defecto no pasan adjuntos; el admin configura qué categorías pasan en cada trigger
+4. **Ejecución no bloqueante**: el motor corre en `Promise.allSettled()` — el estatus se guarda primero, luego ejecuta triggers
+5. **Si falla**: toast de advertencia al usuario + notificación al admin, sin rollback del estatus
 
-**Archivo:** `src/pages/BaseDatosMaestrosAdmin.tsx`
+---
 
-- Despachos, gerencias y agentes ahora tienen botones inline de editar (lápiz) y eliminar (basura)
-- Edición con Enter/Escape
-- Estado unificado: `editingRow: { table, id, nombre, field? }`
+## Fixes completados en esta sesión (2026-06-30)
 
-### 3. Base de Datos → Tab "Trámites" (nuevo)
+### Fix: Vendedores duplicados — botón "Hacer principal"
+- `es_primario` column existe pero `DEFAULT true` hizo que todos mostraran "Principal"
+- SQL de reset provisto arriba para que aparezcan los botones
 
-**Archivo:** `src/pages/BaseDatosMaestrosAdmin.tsx`
-
-- Nueva pestaña con ícono Tag para gestionar:
-  - **Áreas** (`tramites_areas`): nombre, slug, color, activa/inactiva
-  - **Equipos** (`tramites_grupos_visualizacion`): nombre, activo/inactivo
-  - **Tipos de Trámite** (`ticket_tipos`): label, color, área asignada, activo/inactivo
-- Edición y borrado inline en las 3 tablas
-- Formulario de alta para cada sección
-
-### 4. TramiteDetalles → Equipos filtrados por área
-
-**Archivo:** `src/components/tramites/TramiteDetalles.tsx`
-
-- Al abrir un trámite, el dropdown de equipos solo muestra los equipos vinculados al área del tipo de trámite
-- Relación: `ticket_tipos.area_id` → `tramites_equipos_areas.area_id` → `tramites_equipos_areas.equipo_id` → `tramites_grupos_visualizacion`
-- Si no hay equipos mapeados para esa área → muestra todos (fallback)
-
-### 5. NuevoTramiteModal → Agente SICAS sin cuenta MOVI ya no bloquea
-
+### Fix: Agente SICAS sin cuenta MOVI — campo de texto para proponer nombre
 **Archivo:** `src/components/tramites/NuevoTramiteModal.tsx`
+- Nuevo state `propuestoNombreMOVI`
+- Cuando se selecciona un agente ⚠ en `agente_vendedor`, aparece un input de texto libre: "Nombre completo de la cuenta MOVI a crear…"
+- Al crear el trámite: si hay `asignado` → propone vinculación con usuario existente; si hay `propuestoNombreMOVI` → inserta en `maestro_mapeo_pendiente` con `nombre_propuesto` y `user_id_propuesto = null`
+- Admin ve "Cuenta MOVI a crear" en la tarjeta de propuesta pendiente (con nombre escrito)
+- Botón "Validar" bloquea hasta que se cree el usuario MOVI y se asigne manualmente
 
-Tres cambios aplicados en este orden:
-
-**a) `validateForm()` — bypass cuando agente ⚠ seleccionado**
-```
-Si agente_vendedor tiene un agente sin usuario_id → permite continuar aunque asignado=null
-```
-
-**b) Validación de campos requeridos — excluir `agente_vendedor`**
-```
-agente_vendedor se agrega a AUTO_FILL_KEYS + check explícito por sistema_key
-→ nunca bloquea aunque esté marcado como requerido en el FormBuilder
-```
-
-**c) Warning actualizado + notificación automática a admins**
-- El aviso en el campo cambió de "asígnalo manualmente" → "Al crear el trámite se enviará una notificación al Admin"
-- Tras crear el ticket, si `agente_vendedor` tiene un agente sin `usuario_id` y no hay `asignado`, se envía `crearNotificacion()` a todos los Administradores activos con enlace a Base de Datos → Vendedores
+### Fix: `agente_vendedor` ya no bloquea validación cuando está vacío
+- Campo sistema excluido de la validación de campos requeridos (igual que `equipo` y `area`)
 
 ---
 
@@ -107,34 +112,40 @@ agente_vendedor se agrega a AUTO_FILL_KEYS + check explícito por sistema_key
 
 | Tabla | Descripción |
 |---|---|
-| `maestro_agentes` | Agentes/vendedores SICAS. Cols: `id`, `nombre`, `despacho_id`, `gerencia_id`, `activo`, `es_primario` (NUEVA) |
+| `maestro_agentes` | Agentes/vendedores SICAS. Cols: `id`, `nombre`, `despacho_id`, `gerencia_id`, `activo`, `es_primario` |
 | `maestro_despachos` | Despachos/oficinas |
 | `maestro_gerencias` | Gerencias |
-| `sicas_vendor_user_mappings` | Mapa agente SICAS ↔ usuario MOVI. `status`: `active` / `pending_review` |
-| `maestro_mapeo_pendiente` | Propuestas de mapeo pendientes. `user_id_propuesto` es NOT NULL |
+| `maestro_mapeo_pendiente` | Propuestas mapeo SICAS→MOVI. `user_id_propuesto` nullable + `nombre_propuesto` nuevo |
 | `ticket_tipos` | Tipos de trámite. FK `area_id` → `tramites_areas` |
+| `tramite_tipo_campos` | Campos dinámicos del FormBuilder por tipo de trámite |
+| `tramite_respuestas` | Respuestas/valores de los campos dinámicos por ticket |
 | `tramites_areas` | Áreas (Operaciones, Comercial…) |
 | `tramites_grupos_visualizacion` | Equipos de trabajo |
 | `tramites_equipos_areas` | Relación N:N equipo ↔ área |
-| `tickets` | Trámites |
+| `tickets` | Trámites. Nuevas cols: `parent_ticket_id`, `trigger_origen_id` |
+| `ticket_archivos` | Adjuntos. Nueva col: `categoria_id` |
 | `usuarios` | Usuarios MOVI internos |
 
 ---
 
-## Archivos principales modificados recientemente
+## Archivos principales
 
 ```
-src/pages/BaseDatosMaestrosAdmin.tsx    ← vista principal admin (más modificado)
-src/components/tramites/NuevoTramiteModal.tsx  ← modal de nuevo trámite
-src/components/tramites/TramiteDetalles.tsx    ← detalle + asignación equipo
-supabase/migrations/20260629000002_agentes_es_primario.sql  ← PENDIENTE aplicar
+src/pages/BaseDatosMaestrosAdmin.tsx         ← Admin: Vendedores, Mapeo, Trámites, Catálogos
+src/components/tramites/NuevoTramiteModal.tsx ← Modal de nuevo trámite
+src/components/tramites/TramiteDetalles.tsx   ← Detalle + asignación equipo
+supabase/migrations/20260630000002_*          ← Fase 0 triggers (PENDIENTE aplicar)
 ```
 
 ---
 
-## Pendientes para la siguiente sesión
+## Siguiente paso al retomar
 
-- [ ] Aplicar migración `es_primario` en Supabase SQL Editor (ver sección ⚠ arriba)
-- [ ] Probar flujo completo: crear trámite con agente SICAS ⚠ → confirmar que llega notificación al admin
-- [ ] Probar "Hacer principal" después de aplicar la migración
-- [ ] Revisar si hay algo pendiente en SicasAdmin (flujo de aprobación de mapeos pendientes)
+**Fase 1 del sistema de triggers:** UI en FormBuilder para configurar triggers y mapeos de campos.
+
+Ubicación donde vivirá la UI: probablemente en `src/pages/BaseDatosMaestrosAdmin.tsx` (tab "Trámites" → editar un tipo → sección nueva "Triggers de Estatus") o en el FormBuilder de tipos de trámite si existe una página dedicada para eso.
+
+Antes de arrancar Fase 1, buscar el componente del FormBuilder:
+```
+grep -rn "FormBuilder\|tramite_tipo_campos" src/ --include="*.tsx" -l
+```
