@@ -195,11 +195,11 @@ export function Tramites() {
   const isGerente = usuario?.rol === 'Gerente';
   const isAgente = usuario?.rol === 'Agente';
   const canManageCatalogs = isAdmin || isGerente;
-  const isLider = [...myGrupoRoles.values()].some(r => r === 'lider');
 
   // Assignment UI state
   const [myOperacionesRole, setMyOperacionesRole] = useState<'lider' | 'ejecutivo' | 'miembro' | null>(null);
   const [myGrupoRoles, setMyGrupoRoles] = useState<Map<string, string>>(new Map());
+  const isLider = [...myGrupoRoles.values()].some(r => r === 'lider');
   const [myGrupoIds, setMyGrupoIds] = useState<string[]>([]);
   const [assigningTramiteId, setAssigningTramiteId] = useState<string | null>(null);
   const [teamEjecutivos, setTeamEjecutivos] = useState<Array<{ id: string; nombre_completo: string }>>([]);
