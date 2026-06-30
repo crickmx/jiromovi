@@ -748,9 +748,9 @@ export function Tramites() {
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             {isAdmin && (
-              <Button variant="outline" size="sm" onClick={() => setShowGruposModal(true)}>
+              <Button variant="outline" size="sm" onClick={() => navigate('/admin/tramites')}>
                 <Users className="w-4 h-4 mr-1.5" />
-                <span className="hidden sm:inline">Equipos</span>
+                <span className="hidden sm:inline">Admin Trámites</span>
               </Button>
             )}
             {isLider && !isAdmin && (
