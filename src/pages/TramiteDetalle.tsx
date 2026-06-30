@@ -519,6 +519,9 @@ export function TramiteDetalle() {
   const handleSave = async () => {
     if (!tramite || !usuario || !isDirty) return;
 
+    // Declarar silent aquí para que esté en scope en toda la función
+    let silent: PendingTrigger[] = [];
+
     // Check triggers: only when using FormBuilder estatus on non-child tickets
     if (estatusCampoDinamico && tipoUUID && selectedEstatusSlug && !tramite.parent_ticket_id) {
       const originalSlug =
@@ -533,7 +536,7 @@ export function TramiteDetalle() {
 
         const activeTriggers = (trigData || []) as PendingTrigger[];
         const confirmable    = activeTriggers.filter(t => t.requiere_confirmacion);
-        const silent         = activeTriggers.filter(t => !t.requiere_confirmacion);
+        silent               = activeTriggers.filter(t => !t.requiere_confirmacion);
 
         if (confirmable.length > 0) {
           const childChecks = await Promise.all(
