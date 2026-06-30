@@ -523,11 +523,12 @@ export function TramiteDetalle() {
     const fuente = camposDinamicos.find(c => c.key === campo_fuente);
     if (!fuente) return true;
     const valorFuente = respuestasDinamicas[fuente.id];
-    switch (condicion_operador) {
+    const op = condicion_operador || 'igual_a';
+    switch (op) {
       case 'igual_a':    return String(valorFuente ?? '') === String(condicion_valor ?? '');
       case 'distinto_a': return String(valorFuente ?? '') !== String(condicion_valor ?? '');
       case 'tiene_valor': return valorFuente !== undefined && valorFuente !== null && valorFuente !== '';
-      default: return true;
+      default:           return String(valorFuente ?? '') === String(condicion_valor ?? '');
     }
   };
 

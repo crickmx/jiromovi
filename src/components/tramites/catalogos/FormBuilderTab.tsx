@@ -649,15 +649,30 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                           <option value="distinto_a">es distinto de</option>
                           <option value="tiene_valor">tiene algún valor</option>
                         </select>
-                        {(editCampoConfig.condicion_operador || 'igual_a') !== 'tiene_valor' && (
-                          <input
-                            type="text"
-                            value={editCampoConfig.condicion_valor || ''}
-                            onChange={(e) => setEditCampoConfig({ ...editCampoConfig, condicion_valor: e.target.value })}
-                            placeholder="valor esperado..."
-                            className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg"
-                          />
-                        )}
+                        {(editCampoConfig.condicion_operador || 'igual_a') !== 'tiene_valor' && (() => {
+                          const fuenteCampo = campos.find(c => c.key === editCampoConfig.campo_fuente);
+                          const fuenteOpciones: { label: string; slug: string }[] = (fuenteCampo as any)?.config?.opciones || [];
+                          return fuenteOpciones.length > 0 ? (
+                            <select
+                              value={editCampoConfig.condicion_valor || ''}
+                              onChange={(e) => setEditCampoConfig({ ...editCampoConfig, condicion_valor: e.target.value })}
+                              className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg bg-white"
+                            >
+                              <option value="">Selecciona opción...</option>
+                              {fuenteOpciones.map(opt => (
+                                <option key={opt.slug} value={opt.slug}>{opt.label}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              value={editCampoConfig.condicion_valor || ''}
+                              onChange={(e) => setEditCampoConfig({ ...editCampoConfig, condicion_valor: e.target.value })}
+                              placeholder="valor esperado..."
+                              className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg"
+                            />
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
