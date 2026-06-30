@@ -84,10 +84,12 @@ CREATE TRIGGER trg_tetp_updated
 
 ALTER TABLE public.tramite_equipo_tipo_permisos ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "tetp_select" ON public.tramite_equipo_tipo_permisos;
 CREATE POLICY "tetp_select"
   ON public.tramite_equipo_tipo_permisos FOR SELECT
   TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "tetp_admin" ON public.tramite_equipo_tipo_permisos;
 CREATE POLICY "tetp_admin"
   ON public.tramite_equipo_tipo_permisos FOR ALL
   TO authenticated
