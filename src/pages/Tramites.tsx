@@ -566,51 +566,38 @@ export function Tramites() {
   const getTipoTramiteLabel = (tipo: string) => centralGetLabel(tipo);
 
   // Visibility filter:
-  // - Comercial tramites: visible to users of the SAME office (by role, no team needed)
-  // - Operaciones tramites: visible via Operaciones team membership (team controls which offices)
-  // - Admins see everything
+  // - Admin: todo
+  // - Gerente: trámites de su oficina (agente.oficina_id) + grupos a los que pertenece + directamente involucrado
+  // - Todos los demás: solo los propios (directamente involucrado) + trámites de sus grupos/equipos
   const visibleTramites = tramites.filter(tramite => {
     if (isAdmin) return true;
 
     const tramiteOficinaId = tramite.agente?.oficina_id ?? null;
-    const tipoArea = getTipoTramiteArea(tramite.tipo_tramite);
 
-    // Always show tramites the user created or is directly assigned to
     const isDirectlyInvolved =
       tramite.creado_por === usuario?.id ||
       tramite.assigned_to_user_id === usuario?.id ||
       tramite.agente_id === usuario?.id;
 
-    // ── Comercial area: role+office based, no team required ──
-    if (tipoArea === 'Comercial') {
-      // Gerentes see their own office's commercial tramites
-      if (isGerente) return tramiteOficinaId === usuario?.oficina_id;
-      // Agentes only see tramites where they are directly involved
-      if (isAgente) return isDirectlyInvolved;
-      // Empleados/Ejecutivos see all commercial tramites of their office
-      return tramiteOficinaId === usuario?.oficina_id || isDirectlyInvolved;
+    const isInMyGroup =
+      tramite.grupo_asignado_id !== null &&
+      myGrupoIds.includes(tramite.grupo_asignado_id);
+
+    // Pool del equipo: trámites SIN asignar en grupos del usuario (para autoasignarse)
+    const isPoolOfMyGroup =
+      !tramite.assigned_to_user_id &&
+      isInMyGroup;
+
+    // Gerente: su oficina + sus equipos + directamente involucrado
+    if (isGerente) {
+      return tramiteOficinaId === usuario?.oficina_id || isInMyGroup || isDirectlyInvolved;
     }
 
-    // ── Operaciones area: team-based scope ──
-    // Gerentes also see their office's operaciones tramites without needing a team
-    if (isGerente && tramiteOficinaId === usuario?.oficina_id) return true;
+    // Agente: solo sus propios trámites
+    if (isAgente) return isDirectlyInvolved;
 
-    // Check Operaciones team scope
-    const opsScopes = userScope.filter(s => s.area_categoria === 'Operaciones');
-    if (opsScopes.length > 0) {
-      for (const scope of opsScopes) {
-        if (scope.all_offices) return true;
-        const officeIds = scope.office_ids || [];
-        if (tramiteOficinaId && officeIds.includes(tramiteOficinaId)) return true;
-      }
-      return isDirectlyInvolved;
-    }
-
-    // Legacy fallback for users with userArea set but no scope array
-    if (userArea === 'Operaciones') return true;
-
-    // No team, no special role: only see own tramites
-    return isDirectlyInvolved;
+    // Ejecutivo y demás: propios + pool sin asignar de sus equipos (para autoasignarse)
+    return isDirectlyInvolved || isPoolOfMyGroup;
   });
 
   // ── Kanban helpers ────────────────────────────────────────────────────────

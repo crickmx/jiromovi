@@ -337,7 +337,10 @@ export default function BaseDatosMaestrosAdmin() {
     const { error: e2 } = await supabase.from('maestro_agentes').update({ es_primario: true }).eq('id', agenteId);
     if (e2) { toast('Error: ' + e2.message, 'err'); return; }
     toast('Oficina principal actualizada');
-    loadVendedores();
+    // Actualizar estado local para no perder la posición de scroll
+    setAgentes(prev => prev.map(a =>
+      a.nombre === agenteNombre ? { ...a, es_primario: a.id === agenteId } : a
+    ));
   }
 
   async function addMapeo() {

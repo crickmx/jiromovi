@@ -343,7 +343,7 @@ export function NuevoTramiteModal({
     if (!camposDinamicos.some(c => c.sistema_key === 'agente_vendedor')) return;
     supabase.from('maestro_agentes')
       .select('id, nombre, despacho_id, maestro_usuario_agente(user_id, activo, usuarios(nombre_completo))')
-      .eq('activo', true).order('nombre')
+      .eq('activo', true).eq('es_primario', true).order('nombre')
       .then(({ data }) => {
         const mapped = (data || []).map((a: any) => {
           const mapeo = (a.maestro_usuario_agente || []).find((m: any) => m.activo);

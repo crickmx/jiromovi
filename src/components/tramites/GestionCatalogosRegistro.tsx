@@ -7,6 +7,7 @@ import { InsuranceTypesList } from './catalogos/InsuranceTypesList';
 import { FormBuilderTab } from './catalogos/FormBuilderTab';
 import { PermisosPanel } from './catalogos/PermisosPanel';
 import { HistorialPanel } from './catalogos/HistorialPanel';
+import { TriggersTab } from './catalogos/TriggersTab';
 import { ColorPicker } from './catalogos/ColorPicker';
 import { TicketTipo, AREAS, Area, slugify } from './catalogos/types';
 import { logHistorial } from './catalogos/logHistorial';
@@ -30,7 +31,7 @@ export function GestionCatalogosRegistro() {
   // ── Navigation ──────────────────────────────────────────────────────────
   const [view, setView] = useState<'list' | 'edit'>('list');
   const [activeTipo, setActiveTipo] = useState<TicketTipo | null>(null);
-  const [activeTab, setActiveTab] = useState<'config' | 'campos' | 'permisos' | 'historial'>('config');
+  const [activeTab, setActiveTab] = useState<'config' | 'campos' | 'permisos' | 'triggers' | 'historial'>('config');
 
   // ── Ticket tipos ────────────────────────────────────────────────────────
   const [tiposTramite, setTiposTramite] = useState<TicketTipo[]>([]);
@@ -109,7 +110,7 @@ export function GestionCatalogosRegistro() {
     setActiveTipo(null);
   };
 
-  const switchTab = (tab: 'config' | 'campos' | 'permisos' | 'historial') => {
+  const switchTab = (tab: 'config' | 'campos' | 'permisos' | 'triggers' | 'historial') => {
     if (activeTab === 'config' && isDirty && !confirm('Tienes cambios sin guardar en Configuración. ¿Continuar sin guardar?')) return;
     setActiveTab(tab);
   };
@@ -233,6 +234,7 @@ export function GestionCatalogosRegistro() {
             { id: 'config',    label: 'Configuración' },
             { id: 'campos',    label: 'Campos del formulario' },
             { id: 'permisos',  label: 'Permisos' },
+            { id: 'triggers',  label: 'Triggers de Estatus' },
             { id: 'historial', label: 'Historial' },
           ].map(tab => (
             <button
@@ -299,6 +301,11 @@ export function GestionCatalogosRegistro() {
         {/* Tab: Permisos */}
         {activeTab === 'permisos' && (
           <PermisosPanel tipoId={activeTipo.id} usuarioId={usuario?.id} showToast={showToast} />
+        )}
+
+        {/* Tab: Triggers */}
+        {activeTab === 'triggers' && (
+          <TriggersTab tipoId={activeTipo.id} showToast={showToast} />
         )}
 
         {/* Tab: Historial */}

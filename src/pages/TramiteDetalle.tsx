@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList, Upload, Trash2 } from 'lucide-react';
+import { Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList, Upload, Trash2, GitBranch, ArrowUpRight } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
@@ -11,6 +11,7 @@ import { TramiteHistorial } from '../components/tramites/TramiteHistorial';
 import { ComisionesPendientes } from '../components/tramites/ComisionesPendientes';
 import { crearNotificacion } from '../lib/notificationHelpers';
 import { SearchableSelect } from '../components/tramites/catalogos/SearchableSelect';
+import { TriggerConfirmModal, PendingTrigger, ExistingChild } from '../components/tramites/TriggerConfirmModal';
 
 interface TramiteEstatus {
   id: string;
@@ -63,6 +64,8 @@ interface TramiteData {
   attending_user?: Usuario | null;
   insurers_nombres?: string[];
   fecha_promesa_entrega?: string | null;
+  parent_ticket_id?: string | null;
+  trigger_origen_id?: string | null;
 }
 
 export function TramiteDetalle() {
@@ -116,6 +119,18 @@ export function TramiteDetalle() {
     usuario_id?: string; usuario_nombre?: string;
   }[]>([]);
   const [fechaPromesaEntrega, setFechaPromesaEntrega] = useState('');
+  const [tipoUUID, setTipoUUID] = useState<string | null>(null);
+
+  // Trigger modal
+  const [triggerModalOpen, setTriggerModalOpen] = useState(false);
+  const [pendingTriggers, setPendingTriggers]   = useState<PendingTrigger[]>([]);
+  const [silentTriggers, setSilentTriggers]     = useState<PendingTrigger[]>([]);
+  const [existingChildren, setExistingChildren] = useState<Record<string, ExistingChild>>({});
+
+  // Relaciones padre / hijo (Fase 4)
+  interface TicketRef { id: string; folio: string; tipo_tramite: string; tipo_label?: string; cerrado_en: string | null }
+  const [childTickets, setChildTickets] = useState<TicketRef[]>([]);
+  const [parentTicket, setParentTicket] = useState<TicketRef | null>(null);
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
@@ -311,6 +326,25 @@ export function TramiteDetalle() {
     setLoading(false);
     await loadEstatus(ticketData.tipo_tramite);
     await loadCamposDinamicos(ticketData.tipo_tramite, ticketData.id);
+
+    // Cargar relaciones padre / hijo
+    const [childrenRes, parentRes] = await Promise.all([
+      supabase.from('tickets').select('id, folio, tipo_tramite, cerrado_en').eq('parent_ticket_id', ticketData.id),
+      ticketData.parent_ticket_id
+        ? supabase.from('tickets').select('id, folio, tipo_tramite, cerrado_en').eq('id', ticketData.parent_ticket_id).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+    ]);
+    const relValues = [
+      ...(childrenRes.data || []).map((t: any) => t.tipo_tramite as string),
+      (parentRes.data as any)?.tipo_tramite as string | undefined,
+    ].filter(Boolean) as string[];
+    let tipoLabelMap: Record<string, string> = {};
+    if (relValues.length > 0) {
+      const { data: tiposRel } = await supabase.from('ticket_tipos').select('value, label').in('value', relValues);
+      tipoLabelMap = Object.fromEntries((tiposRel || []).map((t: any) => [t.value, t.label]));
+    }
+    setChildTickets((childrenRes.data || []).map((t: any) => ({ ...t, tipo_label: tipoLabelMap[t.tipo_tramite] })));
+    setParentTicket((parentRes.data as any) ? { ...(parentRes.data as any), tipo_label: tipoLabelMap[(parentRes.data as any).tipo_tramite] } : null);
   };
 
   const loadCamposDinamicos = async (tipoTramite: string, tramiteId: string) => {
@@ -322,6 +356,7 @@ export function TramiteDetalle() {
       .maybeSingle();
 
     if (!tipoData?.id) { setCamposDinamicos([]); return; }
+    setTipoUUID(tipoData.id);
 
     const { data: campos } = await supabase
       .from('tramite_tipo_campos')
@@ -364,7 +399,7 @@ export function TramiteDetalle() {
     if (!camposDinamicos.some(c => c.sistema_key === 'agente_vendedor')) return;
     supabase.from('maestro_agentes')
       .select('id, nombre, maestro_usuario_agente(user_id, activo, usuarios(nombre_completo))')
-      .eq('activo', true).order('nombre')
+      .eq('activo', true).eq('es_primario', true).order('nombre')
       .then(({ data }) => {
         const mapped = (data || []).map((a: any) => {
           const mapeo = (a.maestro_usuario_agente || []).find((m: any) => m.activo);
@@ -484,6 +519,55 @@ export function TramiteDetalle() {
   const handleSave = async () => {
     if (!tramite || !usuario || !isDirty) return;
 
+    // Check triggers: only when using FormBuilder estatus on non-child tickets
+    if (estatusCampoDinamico && tipoUUID && selectedEstatusSlug && !tramite.parent_ticket_id) {
+      const originalSlug =
+        respuestasOriginales.find(r => r.campo_id === estatusCampoDinamico.id)?.valor_json ?? '';
+      if (selectedEstatusSlug !== originalSlug) {
+        const { data: trigData } = await supabase
+          .from('ticket_status_triggers')
+          .select('*, target_tipo:ticket_tipos!target_tipo_id(label,color)')
+          .eq('ticket_tipo_id', tipoUUID)
+          .eq('from_status', selectedEstatusSlug)
+          .eq('activo', true);
+
+        const activeTriggers = (trigData || []) as PendingTrigger[];
+        const confirmable    = activeTriggers.filter(t => t.requiere_confirmacion);
+        const silent         = activeTriggers.filter(t => !t.requiere_confirmacion);
+
+        if (confirmable.length > 0) {
+          const childChecks = await Promise.all(
+            confirmable.map(t =>
+              supabase.from('tickets').select('id, folio')
+                .eq('parent_ticket_id', tramite.id)
+                .eq('trigger_origen_id', t.id)
+                .maybeSingle()
+            )
+          );
+          const existingMap: Record<string, ExistingChild> = {};
+          confirmable.forEach((t, i) => {
+            if (childChecks[i].data) existingMap[t.id] = childChecks[i].data as ExistingChild;
+          });
+          setPendingTriggers(confirmable);
+          setSilentTriggers(silent);
+          setExistingChildren(existingMap);
+          setTriggerModalOpen(true);
+          return;
+        }
+        setSilentTriggers(silent);
+      }
+    }
+
+    await proceedWithSave({}, silent);
+  };
+
+  const proceedWithSave = async (
+    _decisions: Record<string, 'conservar' | 'nuevo'>,
+    _allTriggers: PendingTrigger[] = [],
+  ) => {
+    if (!tramite || !usuario) return;
+    const snap = tramite; // capturar antes de setTramite
+
     setSaving(true);
 
     const newEstatus = estatusList.find(e => e.id === selectedEstatus);
@@ -493,11 +577,13 @@ export function TramiteDetalle() {
       estatus: newEstatus || prev.estatus
     } : null);
 
+    const createdFolios: string[] = [];
+
     try {
       const { error } = await supabase
         .from('tickets')
         .update(buildUpdatePayload(selectedEstatus))
-        .eq('id', tramite.id);
+        .eq('id', snap.id);
 
       if (error) throw error;
 
@@ -511,7 +597,7 @@ export function TramiteDetalle() {
           if (isEmpty) continue;
 
           const payload: any = {
-            tramite_id: tramite.id,
+            tramite_id: snap.id,
             campo_id: campo.id,
             valor_texto:    ['texto_corto', 'texto_largo', 'aseguradora', 'ramo', 'email', 'telefono', 'rfc', 'curp'].includes(campo.tipo) ? String(val) : null,
             valor_numerico: ['numerico', 'porcentaje'].includes(campo.tipo) ? Number(val) : null,
@@ -534,22 +620,158 @@ export function TramiteDetalle() {
           const opcion = (c.config.opciones || []).find(o => o.slug === slug);
           return opcion?.clasificacion === 'terminacion';
         });
-        if (hayTerminacion && !tramite.cerrado_en) {
+        if (hayTerminacion && !snap.cerrado_en) {
           await supabase.from('tickets').update({
             cerrado_en: new Date().toISOString(),
             cerrado_por: usuario.id,
-          }).eq('id', tramite.id);
-        } else if (!hayTerminacion && tramite.cerrado_en) {
-          // Re-abrir: el estatus cambió a uno no-terminal
+          }).eq('id', snap.id);
+        } else if (!hayTerminacion && snap.cerrado_en) {
           await supabase.from('tickets').update({
             cerrado_en: null,
             cerrado_por: null,
-          }).eq('id', tramite.id);
+          }).eq('id', snap.id);
         }
       }
 
+      // ── Fase 3: Motor de ejecución de triggers ──────────────────────
+      if (_allTriggers.length > 0) {
+        const TEXTO_TIPOS_TR = ['texto_corto', 'texto_largo', 'area', 'equipo',
+          'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion',
+          'aseguradora', 'ramo', 'email', 'telefono', 'rfc', 'curp'];
+
+        const { data: estatusIniciado } = await supabase
+          .from('ticket_estatus').select('id').eq('nombre', 'Iniciado').maybeSingle();
+
+        for (const trigger of _allTriggers) {
+          // Si el usuario eligió conservar el hijo existente: solo log y continuar
+          if (_decisions[trigger.id] === 'conservar') {
+            await supabase.from('ticket_trigger_executions').insert({
+              trigger_id: trigger.id, parent_ticket_id: snap.id,
+              child_ticket_id: null, ejecutado_por: usuario.id,
+              estatus: 'skipped', error_msg: 'Usuario conservó trámite hijo existente',
+            });
+            continue;
+          }
+
+          try {
+            // 1. Tipo destino
+            const { data: targetTipo } = await supabase
+              .from('ticket_tipos').select('value').eq('id', trigger.target_tipo_id).single();
+            if (!targetTipo) throw new Error('Tipo destino no encontrado');
+
+            // 2. Prioridad
+            const prioHijo = trigger.prioridad_hijo === 'heredar'
+              ? snap.prioridad
+              : (trigger.prioridad_hijo as 'Alta' | 'Media' | 'Baja');
+
+            // 3. Crear trámite hijo
+            const { data: childTicket, error: childErr } = await supabase
+              .from('tickets')
+              .insert({
+                tipo_tramite: targetTipo.value,
+                estatus_id: estatusIniciado?.id ?? null,
+                prioridad: prioHijo,
+                instrucciones: `Generado por trigger "${trigger.nombre}"`,
+                creado_por: usuario.id,
+                modificado_por: usuario.id,
+                parent_ticket_id: snap.id,
+                trigger_origen_id: trigger.id,
+                agente_id: snap.agente?.id ?? null,
+              })
+              .select('id, folio').single();
+            if (childErr || !childTicket) throw childErr || new Error('Sin respuesta al crear hijo');
+            createdFolios.push(childTicket.folio);
+
+            // 4. Campos del tipo destino (con config para estatus inicial)
+            const { data: targetCampos } = await supabase
+              .from('tramite_tipo_campos')
+              .select('id, tipo, sistema_key, config')
+              .eq('tramite_tipo_id', trigger.target_tipo_id)
+              .eq('activo', true);
+
+            // 5. Fase 5: estatus inicial + custom label/color en el hijo
+            const estatusCampoTarget = (targetCampos || []).find(c => c.tipo === 'estatus');
+            if (estatusCampoTarget && trigger.initial_status) {
+              await supabase.from('tramite_respuestas').insert({
+                tramite_id: childTicket.id,
+                campo_id: estatusCampoTarget.id,
+                valor_json: trigger.initial_status,
+              });
+              const matchOpt = ((estatusCampoTarget as any).config?.opciones || [])
+                .find((o: any) => o.slug === trigger.initial_status);
+              if (matchOpt) {
+                const col = matchOpt.clasificacion === 'inicio' ? '#3B82F6'
+                  : matchOpt.clasificacion === 'terminacion' ? '#059669' : '#6B7280';
+                await supabase.from('tickets').update({
+                  custom_estatus_label: matchOpt.label,
+                  custom_estatus_color: col,
+                }).eq('id', childTicket.id);
+              }
+            }
+
+            // 6. Mapeos de campos
+            const { data: mappings } = await supabase
+              .from('ticket_trigger_field_mappings')
+              .select('source_campo_id, source_sistema_key, target_campo_id, target_sistema_key, valor_fijo')
+              .eq('trigger_id', trigger.id)
+              .order('orden');
+
+            for (const m of mappings || []) {
+              let srcVal: any = null;
+              if (m.valor_fijo != null) {
+                srcVal = m.valor_fijo;
+              } else if (m.source_sistema_key) {
+                if (m.source_sistema_key === 'poliza_numero') srcVal = snap.poliza;
+                else if (m.source_sistema_key === 'prioridad')  srcVal = snap.prioridad;
+              } else if (m.source_campo_id) {
+                const resp = respuestasOriginales.find(r => r.campo_id === m.source_campo_id);
+                srcVal = resp?.valor_json ?? resp?.valor_texto ?? resp?.valor_numerico ?? resp?.valor_fecha ?? resp?.valor_booleano ?? null;
+              }
+              if (srcVal === null || srcVal === undefined) continue;
+
+              if (m.target_campo_id) {
+                const tc = (targetCampos || []).find(c => c.id === m.target_campo_id);
+                if (!tc) continue;
+                await supabase.from('tramite_respuestas').insert({
+                  tramite_id: childTicket.id,
+                  campo_id: m.target_campo_id,
+                  valor_texto:    TEXTO_TIPOS_TR.includes(tc.tipo) ? String(srcVal) : null,
+                  valor_numerico: ['numerico', 'porcentaje'].includes(tc.tipo) ? Number(srcVal) : null,
+                  valor_fecha:    tc.tipo === 'fecha' ? String(srcVal) : null,
+                  valor_booleano: tc.tipo === 'booleano' ? Boolean(srcVal) : null,
+                  valor_json:     ['estatus', 'dropdown', 'seleccion_multiple', 'codigo_postal', 'adjunto'].includes(tc.tipo) ? srcVal : null,
+                });
+              } else if (m.target_sistema_key) {
+                const upd: any = {};
+                if (m.target_sistema_key === 'poliza_numero') upd.poliza = String(srcVal);
+                else if (m.target_sistema_key === 'prioridad') upd.prioridad = String(srcVal);
+                if (Object.keys(upd).length) await supabase.from('tickets').update(upd).eq('id', childTicket.id);
+              }
+            }
+
+            // 7. Log de ejecución exitosa
+            await supabase.from('ticket_trigger_executions').insert({
+              trigger_id: trigger.id, parent_ticket_id: snap.id,
+              child_ticket_id: childTicket.id, ejecutado_por: usuario.id, estatus: 'ok',
+            });
+          } catch (trigErr: any) {
+            console.error('Trigger execution error:', trigErr);
+            await supabase.from('ticket_trigger_executions').insert({
+              trigger_id: trigger.id, parent_ticket_id: snap.id,
+              child_ticket_id: null, ejecutado_por: usuario.id,
+              estatus: 'error', error_msg: trigErr.message || 'Error desconocido',
+            });
+          }
+        }
+      }
+      // ────────────────────────────────────────────────────────────────
+
       await loadTramite();
-      showToast('Cambios guardados con éxito');
+      showToast(
+        createdFolios.length > 0
+          ? `Guardado. ${createdFolios.length === 1 ? 'Trámite creado' : 'Trámites creados'}: ${createdFolios.join(', ')}`
+          : 'Cambios guardados con éxito'
+      );
     } catch (err: any) {
       console.error('Error updating tramite:', err);
       showToast('Error al guardar los cambios', 'error');
@@ -970,6 +1192,45 @@ export function TramiteDetalle() {
               </div>
             )}
 
+            {/* Fase 4: Trámites relacionados (padre / hijos) */}
+            {(parentTicket || childTickets.length > 0) && (
+              <div className="mt-6 pt-6 border-t border-neutral-100 space-y-2">
+                <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide flex items-center gap-1.5">
+                  <GitBranch className="w-3.5 h-3.5" />
+                  Trámites relacionados
+                </p>
+                {parentTicket && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl">
+                    <ArrowUpRight className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span className="text-xs text-amber-700">Trámite hijo de</span>
+                    <Link to={`/tramites/${parentTicket.id}`} className="text-xs font-semibold text-amber-800 hover:underline">
+                      {parentTicket.folio}
+                    </Link>
+                    {parentTicket.tipo_label && (
+                      <span className="text-xs text-amber-600">— {parentTicket.tipo_label}</span>
+                    )}
+                    {parentTicket.cerrado_en && (
+                      <span className="ml-auto text-xs text-neutral-400 shrink-0">Cerrado</span>
+                    )}
+                  </div>
+                )}
+                {childTickets.map(child => (
+                  <div key={child.id} className="flex items-center gap-2 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl">
+                    <GitBranch className="w-3 h-3 text-neutral-400 shrink-0" />
+                    <Link to={`/tramites/${child.id}`} className="text-xs font-semibold text-neutral-700 hover:text-blue-600 hover:underline">
+                      {child.folio}
+                    </Link>
+                    {child.tipo_label && (
+                      <span className="text-xs text-neutral-500">— {child.tipo_label}</span>
+                    )}
+                    {child.cerrado_en && (
+                      <span className="ml-auto text-xs text-neutral-400 shrink-0">Cerrado</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Sección 2 — Campos dinámicos (excluye estatus y sistema) */}
             {camposDinamicos.filter(c => !c.is_sistema && c.tipo !== 'estatus').length > 0 && (
               <div className="mt-6 pt-6 border-t border-neutral-100 space-y-4">
@@ -1217,6 +1478,22 @@ export function TramiteDetalle() {
         }`}>
           {toast.msg}
         </div>
+      )}
+
+      {triggerModalOpen && pendingTriggers.length > 0 && (
+        <TriggerConfirmModal
+          triggers={pendingTriggers}
+          existingChildren={existingChildren}
+          fromStatusLabel={
+            (estatusCampoDinamico?.config.opciones ?? []).find(o => o.slug === selectedEstatusSlug)?.label
+              ?? selectedEstatusSlug
+          }
+          onConfirm={(decisions) => {
+            setTriggerModalOpen(false);
+            proceedWithSave(decisions, [...pendingTriggers, ...silentTriggers]);
+          }}
+          onCancel={() => setTriggerModalOpen(false)}
+        />
       )}
     </div>
   );
