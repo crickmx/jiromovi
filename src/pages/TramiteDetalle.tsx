@@ -801,7 +801,7 @@ export function TramiteDetalle() {
                     <Save className="w-4 h-4" />
                     <span>{saving ? 'Guardando...' : 'Guardar'}</span>
                   </button>
-                  <div className="relative" ref={cerrarMenuRef}>
+                  {!estatusCampoDinamico && <div className="relative" ref={cerrarMenuRef}>
                     <button
                       onClick={() => setShowCerrarMenu(v => !v)}
                       disabled={saving}
@@ -831,7 +831,7 @@ export function TramiteDetalle() {
                         ))}
                       </div>
                     )}
-                  </div>
+                  </div>}
                 </>
               )}
               {canEdit && isCerrado && (

@@ -965,6 +965,64 @@ export function NuevoTramiteModal({
           </div>
         )}
 
+        {campo.tipo === 'email' && (
+          <input
+            type="email"
+            value={val || ''}
+            onChange={e => set(e.target.value)}
+            placeholder="correo@ejemplo.com"
+            className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        )}
+
+        {campo.tipo === 'telefono' && (
+          <input
+            type="tel"
+            value={val || ''}
+            onChange={e => set(e.target.value.replace(/\D/g, '').slice(0, 10))}
+            placeholder="10 dígitos"
+            maxLength={10}
+            className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        )}
+
+        {campo.tipo === 'rfc' && (
+          <input
+            type="text"
+            value={val || ''}
+            onChange={e => set(e.target.value.toUpperCase().slice(0, 13))}
+            placeholder="RFC (12 ó 13 caracteres)"
+            maxLength={13}
+            className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono uppercase"
+          />
+        )}
+
+        {campo.tipo === 'curp' && (
+          <input
+            type="text"
+            value={val || ''}
+            onChange={e => set(e.target.value.toUpperCase().slice(0, 18))}
+            placeholder="CURP (18 caracteres)"
+            maxLength={18}
+            className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono uppercase"
+          />
+        )}
+
+        {campo.tipo === 'porcentaje' && (
+          <div className="relative">
+            <input
+              type="number"
+              value={val ?? ''}
+              onChange={e => set(e.target.value === '' ? null : Math.min(100, Math.max(0, Number(e.target.value))))}
+              min={0}
+              max={100}
+              step="0.01"
+              className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400 pointer-events-none">%</span>
+          </div>
+        )}
+
       </div>
     );
   };
