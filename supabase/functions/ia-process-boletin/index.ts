@@ -647,72 +647,75 @@ interface CompositeSVGParams {
 function buildCompositeSVG(params: CompositeSVGParams): string {
   const { bgBase64, logoBase64, title, category, date, insurerName, brandColor } = params;
 
-  const truncatedTitle = title.length > 70 ? title.substring(0, 67) + "..." : title;
-  const titleLines = wrapText(truncatedTitle, 35);
+  const truncatedTitle = title.length > 80 ? title.substring(0, 77) + "..." : title;
+  const titleLines = wrapText(truncatedTitle, 38);
   const escapedTitle = titleLines.map(l => escapeXml(l));
   const escapedCategory = escapeXml(category);
   const escapedDate = escapeXml(date);
   const escapedInsurer = escapeXml(insurerName);
 
-  const titleY = 520;
-  const lineHeight = 52;
+  const lineHeight = 54;
+  // Vertically position title block so it ends ~40px from bottom
+  const titleBlockHeight = titleLines.length * lineHeight;
+  const titleY = 630 - 40 - 30 - titleBlockHeight; // 40px bottom margin, 30px for date line
 
   const logoSection = logoBase64
-    ? `<image href="${logoBase64}" x="60" y="40" width="180" height="80" preserveAspectRatio="xMinYMid meet" />`
+    ? `<image href="${logoBase64}" x="50" y="30" width="220" height="90" preserveAspectRatio="xMinYMid meet" />`
     : "";
 
   const insurerBadge = insurerName
-    ? `<rect x="60" y="135" width="${Math.min(insurerName.length * 12 + 40, 300)}" height="36" rx="18" fill="${brandColor}" opacity="0.9"/>
-       <text x="80" y="159" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">${escapedInsurer}</text>`
+    ? `<rect x="${1200 - Math.min(insurerName.length * 13 + 50, 320) - 50}" y="42" width="${Math.min(insurerName.length * 13 + 50, 320)}" height="40" rx="20" fill="${brandColor}" opacity="0.92"/>
+       <text x="${1200 - Math.min(insurerName.length * 13 + 50, 320) / 2 - 50}" y="68" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="white" text-anchor="middle">${escapedInsurer}</text>`
     : "";
 
   const titleTspans = escapedTitle
-    .map((line, i) => `<tspan x="60" dy="${i === 0 ? 0 : lineHeight}">${line}</tspan>`)
+    .map((line, i) => `<tspan x="600" dy="${i === 0 ? 0 : lineHeight}">${line}</tspan>`)
     .join("");
+
+  const categoryBadgeWidth = Math.min(category.length * 12 + 40, 280);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
     <linearGradient id="overlay" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="${brandColor}" stop-opacity="0.3"/>
-      <stop offset="40%" stop-color="${brandColor}" stop-opacity="0.1"/>
-      <stop offset="65%" stop-color="#000000" stop-opacity="0.5"/>
-      <stop offset="100%" stop-color="#000000" stop-opacity="0.85"/>
+      <stop offset="0%" stop-color="rgba(0,0,0,0)" stop-opacity="0"/>
+      <stop offset="40%" stop-color="#000000" stop-opacity="0.2"/>
+      <stop offset="65%" stop-color="#000000" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.92"/>
     </linearGradient>
-    <linearGradient id="topBar" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="${brandColor}" stop-opacity="0.95"/>
-      <stop offset="100%" stop-color="${brandColor}" stop-opacity="0.7"/>
-    </linearGradient>
+    <filter id="textShadow" x="-5%" y="-5%" width="110%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="rgba(0,0,0,0.8)"/>
+    </filter>
   </defs>
 
   <!-- Background Image -->
   <image href="${bgBase64}" x="0" y="0" width="1200" height="630" preserveAspectRatio="xMidYMid slice"/>
 
-  <!-- Gradient Overlay -->
+  <!-- Gradient Overlay (bottom-heavy) -->
   <rect width="1200" height="630" fill="url(#overlay)"/>
 
-  <!-- Top Header Bar -->
-  <rect x="0" y="0" width="1200" height="6" fill="${brandColor}"/>
+  <!-- Top accent bar -->
+  <rect x="0" y="0" width="1200" height="5" fill="${brandColor}"/>
 
-  <!-- Logo -->
+  <!-- Logo (top-left) -->
   ${logoSection}
 
-  <!-- Insurer Badge -->
+  <!-- Insurer badge (top-right) -->
   ${insurerBadge}
 
-  <!-- Category Badge -->
-  <rect x="60" y="${titleY - 50}" width="${Math.min(category.length * 11 + 30, 250)}" height="32" rx="16" fill="white" opacity="0.95"/>
-  <text x="75" y="${titleY - 28}" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="${brandColor}" letter-spacing="1">${escapedCategory.toUpperCase()}</text>
+  <!-- Category Badge (centered above title) -->
+  <rect x="${600 - categoryBadgeWidth / 2}" y="${titleY - 54}" width="${categoryBadgeWidth}" height="34" rx="17" fill="${brandColor}" opacity="0.95"/>
+  <text x="600" y="${titleY - 30}" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="white" letter-spacing="2" text-anchor="middle">${escapedCategory.toUpperCase()}</text>
 
-  <!-- Title -->
-  <text x="60" y="${titleY}" font-family="Arial, Helvetica, sans-serif" font-size="44" font-weight="bold" fill="white" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.5))">
+  <!-- Title (centered) -->
+  <text x="600" y="${titleY}" font-family="Arial, Helvetica, sans-serif" font-size="46" font-weight="bold" fill="white" text-anchor="middle" filter="url(#textShadow)">
     ${titleTspans}
   </text>
 
-  <!-- Date -->
-  <text x="60" y="${titleY + titleLines.length * lineHeight + 20}" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="rgba(255,255,255,0.8)">${escapedDate}</text>
+  <!-- Date (centered below title) -->
+  <text x="600" y="${titleY + titleBlockHeight + 28}" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="rgba(255,255,255,0.75)" text-anchor="middle">${escapedDate}</text>
 
-  <!-- Bottom accent line -->
-  <rect x="60" y="600" width="200" height="4" rx="2" fill="white" opacity="0.6"/>
+  <!-- Bottom accent line (centered) -->
+  <rect x="500" y="618" width="200" height="4" rx="2" fill="white" opacity="0.5"/>
 </svg>`;
 }
 
