@@ -163,6 +163,7 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/admin-digital', label: 'Admin Digital', icon: LayoutTemplate, visibleTo: ADMIN_ONLY },
     { path: '/admin/importacion-masiva', label: 'Importación Masiva', icon: Database, visibleTo: ADMIN_ONLY },
     { path: '/admin/base-datos', label: 'Base de Datos', icon: HardDrive, visibleTo: ADMIN_ONLY },
+    { path: '/admin/tramites', label: 'Trámites', icon: ClipboardList, visibleTo: ADMIN_ONLY, matchPrefix: true },
     { path: '/comisiones', label: 'Comisiones Admin', icon: Percent, visibleTo: ADMIN_ONLY, matchPrefix: true, excludePrefixes: ['/comisiones/regimen-fiscal', '/comisiones/mapeo-vendedores'] },
     { path: '/comisiones/regimen-fiscal', label: 'Regimen Fiscal', icon: Receipt, visibleTo: ADMIN_ONLY, matchPrefix: true },
     { path: '/comisiones/mapeo-vendedores', label: 'Mapeo Vendedores', icon: GitBranch, visibleTo: ADMIN_ONLY },
