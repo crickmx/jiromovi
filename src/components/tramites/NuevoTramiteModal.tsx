@@ -1118,15 +1118,18 @@ export function NuevoTramiteModal({
     if (campo.sistema_key === 'agente_vendedor') {
       const val = respuestasDinamicas[campo.id] || '';
       const selectedAgente = agentesVendedor.find(a => a.id === val);
+      const agenteOpts = agentesVendedor.map(a => ({
+        label: a.usuario_nombre ?? `⚠ ${a.nombre}`,
+        value: a.id,
+      }));
       return (
         <div key={campo.id}>
           <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">
             🔒 {campo.label}{campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
           </label>
-          <select
+          <SearchableSelect
             value={val}
-            onChange={e => {
-              const agenteId = e.target.value;
+            onChange={agenteId => {
               const agente = agentesVendedor.find(a => a.id === agenteId);
               const oficinaCampo = camposDinamicos.find(c => c.sistema_key === 'oficina_jiro');
               const despacho = agente ? despachos.find(d => d.id === agente.despacho_id) : null;
@@ -1137,15 +1140,9 @@ export function NuevoTramiteModal({
               }));
               if (agente?.usuario_id) setAsignado(agente.usuario_id);
             }}
-            className="w-full px-3 py-2 border border-violet-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-          >
-            <option value="">Selecciona usuario asignado...</option>
-            {agentesVendedor.map(a => (
-              <option key={a.id} value={a.id}>
-                {a.usuario_nombre ?? `⚠ ${a.nombre}`}
-              </option>
-            ))}
-          </select>
+            options={agenteOpts}
+            placeholder="Selecciona usuario asignado..."
+          />
           {val && !selectedAgente?.usuario_id && (
             <p className="text-xs text-amber-600 mt-1">
               Este agente no tiene usuario MOVI vinculado — asígnalo manualmente en "Asignar a".

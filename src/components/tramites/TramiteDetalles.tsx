@@ -255,8 +255,52 @@ export function TramiteDetalles({
     }
   };
 
+  const estatusOpciones = estatusCampoDinamico?.config?.opciones || [];
+  const estatusOpcionActual = estatusOpciones.find(o => o.slug === selectedEstatusSlug);
+  const getEstatusColor = (clasificacion?: string | null) =>
+    clasificacion === 'inicio' ? '#3B82F6'
+    : clasificacion === 'terminacion' ? '#059669'
+    : '#7C3AED';
+
   return (
     <div className="space-y-6">
+      {/* Estatus FormBuilder — PRIMERO y prominente */}
+      {estatusCampoDinamico && (
+        <div className="p-4 rounded-2xl border-2" style={{
+          borderColor: getEstatusColor(estatusOpcionActual?.clasificacion),
+          backgroundColor: getEstatusColor(estatusOpcionActual?.clasificacion) + '10',
+        }}>
+          <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: getEstatusColor(estatusOpcionActual?.clasificacion) }}>
+            {estatusCampoDinamico.label}
+          </p>
+          {canEdit ? (
+            <div className="flex flex-wrap gap-2">
+              {estatusOpciones.map(opt => {
+                const c = getEstatusColor(opt.clasificacion);
+                const isSel = opt.slug === selectedEstatusSlug;
+                return (
+                  <button
+                    key={opt.slug}
+                    type="button"
+                    onClick={() => onEstatusSlugChange?.(opt.slug)}
+                    className="px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all"
+                    style={isSel
+                      ? { backgroundColor: c, borderColor: c, color: '#fff' }
+                      : { backgroundColor: 'transparent', borderColor: c + '60', color: c }}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-xl font-bold" style={{ color: getEstatusColor(estatusOpcionActual?.clasificacion) }}>
+              {estatusOpcionActual?.label ?? selectedEstatusSlug ?? '—'}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Fila 1: Agente | Equipo */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
@@ -385,38 +429,10 @@ export function TramiteDetalles({
           )}
         </div>
 
-        <div>
-          <label className="block text-sm font-semibold text-neutral-700 mb-2">
-            {estatusCampoDinamico ? estatusCampoDinamico.label : 'Estatus'}
-          </label>
-          {estatusCampoDinamico ? (
-            // FormBuilder estatus: show custom options
-            canEdit ? (
-              <select
-                value={selectedEstatusSlug || ''}
-                onChange={(e) => onEstatusSlugChange?.(e.target.value)}
-                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all cursor-pointer"
-              >
-                <option value="">Seleccionar...</option>
-                {(estatusCampoDinamico.config.opciones || []).map(opt => (
-                  <option key={opt.slug} value={opt.slug}>{opt.label}</option>
-                ))}
-              </select>
-            ) : (() => {
-              const opcion = (estatusCampoDinamico.config.opciones || []).find(o => o.slug === selectedEstatusSlug);
-              const color = opcion?.clasificacion === 'inicio' ? '#3B82F6' : opcion?.clasificacion === 'terminacion' ? '#059669' : '#6B7280';
-              return (
-                <div
-                  className="px-4 py-3 rounded-xl border font-semibold"
-                  style={{ backgroundColor: color + '20', color, borderColor: color }}
-                >
-                  {opcion?.label ?? selectedEstatusSlug ?? '—'}
-                </div>
-              );
-            })()
-          ) : (
-            // Fallback: old ticket_estatus dropdown
-            canEdit ? (
+        {!estatusCampoDinamico && (
+          <div>
+            <label className="block text-sm font-semibold text-neutral-700 mb-2">Estatus</label>
+            {canEdit ? (
               <select
                 value={selectedEstatus}
                 onChange={(e) => setSelectedEstatus(e.target.value)}
@@ -437,9 +453,9 @@ export function TramiteDetalles({
               >
                 {tramite.estatus?.nombre}
               </div>
-            )
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

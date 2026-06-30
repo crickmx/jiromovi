@@ -19,7 +19,7 @@ interface Combinacion  { id: string; compania_id: string; ramo_id: string; subra
 
 interface Despacho  { id: string; nombre: string; activo: boolean }
 interface Gerencia  { id: string; nombre: string; despacho_id: string; activo: boolean }
-interface Agente    { id: string; nombre: string; despacho_id: string; gerencia_id: string | null; activo: boolean }
+interface Agente    { id: string; nombre: string; despacho_id: string; gerencia_id: string | null; activo: boolean; es_primario: boolean }
 
 interface UsuarioMOVI { id: string; nombre: string; email: string }
 interface MapeoUsuario {
@@ -83,6 +83,8 @@ export default function BaseDatosMaestrosAdmin() {
   const [loadingVend, setLoadingVend] = useState(false);
   const [searchVend, setSearchVend]   = useState('');
   const [expandedDespachos, setExpandedDespachos] = useState<Set<string>>(new Set());
+  const [vendGroupMode, setVendGroupMode] = useState<'despacho' | 'vendedor'>('despacho');
+  const [editingRow, setEditingRow] = useState<{ table: string; id: string; nombre: string } | null>(null);
 
   // ── Mapeo ───────────────────────────────────────────────────────────────────
   const [mapeos, setMapeos]           = useState<MapeoUsuario[]>([]);
@@ -235,6 +237,38 @@ export default function BaseDatosMaestrosAdmin() {
     const { error } = await supabase.from(table).update({ activo: !current }).eq('id', id);
     if (error) { toast('Error: ' + error.message, 'err'); return; }
     reload();
+  }
+
+  async function saveEditRow() {
+    if (!editingRow) return;
+    const n = normalize(editingRow.nombre);
+    if (!n) { toast('El nombre no puede estar vacío', 'err'); return; }
+    const { error } = await supabase.from(editingRow.table).update({ nombre: n }).eq('id', editingRow.id);
+    if (error) { toast('Error: ' + error.message, 'err'); return; }
+    toast('Actualizado');
+    setEditingRow(null);
+    const isVend = ['maestro_agentes', 'maestro_gerencias', 'maestro_despachos'].includes(editingRow.table);
+    if (isVend) loadVendedores(); else loadCatalogo();
+  }
+
+  async function deleteRow(table: string, id: string, reload: () => void) {
+    const { error } = await supabase.from(table).delete().eq('id', id);
+    if (error) {
+      if (error.code === '23503') toast('No se puede eliminar: tiene registros vinculados', 'err');
+      else toast('Error: ' + error.message, 'err');
+      return;
+    }
+    toast('Eliminado');
+    reload();
+  }
+
+  async function setPrimario(agenteId: string, agenteNombre: string) {
+    const { error: e1 } = await supabase.from('maestro_agentes').update({ es_primario: false }).eq('nombre', agenteNombre);
+    if (e1) { toast('Error: ' + e1.message, 'err'); return; }
+    const { error: e2 } = await supabase.from('maestro_agentes').update({ es_primario: true }).eq('id', agenteId);
+    if (e2) { toast('Error: ' + e2.message, 'err'); return; }
+    toast('Oficina principal actualizada');
+    loadVendedores();
   }
 
   async function addMapeo() {
@@ -830,7 +864,52 @@ export default function BaseDatosMaestrosAdmin() {
   // ─── TAB: Vendedores ──────────────────────────────────────────────────────────
 
   function TabVendedores() {
-    const despFiltrados = despachos.filter(d => d.nombre.toLowerCase().includes(searchVend.toLowerCase()));
+    const lc = searchVend.toLowerCase();
+    const despFiltrados = despachos.filter(d => d.nombre.toLowerCase().includes(lc));
+
+    // Agrupación por nombre del vendedor para la vista "Por Vendedor"
+    const vendedorMap = new Map<string, Agente[]>();
+    agentes.forEach(ag => {
+      if (!ag.nombre.toLowerCase().includes(lc)) return;
+      if (!vendedorMap.has(ag.nombre)) vendedorMap.set(ag.nombre, []);
+      vendedorMap.get(ag.nombre)!.push(ag);
+    });
+    const vendedorGroups = Array.from(vendedorMap.entries()).sort(([a], [b]) => a.localeCompare(b));
+    const dupCount = vendedorGroups.filter(([, ags]) => ags.length > 1).length;
+
+    function AgentRowDespacho({ ag, paddingClass = 'px-4' }: { ag: Agente; paddingClass?: string }) {
+      const isEdit = editingRow?.id === ag.id;
+      return (
+        <div className={`flex items-center gap-2 ${paddingClass} py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 group`}>
+          {isEdit ? (
+            <div className="flex-1 flex items-center gap-2">
+              <input value={editingRow!.nombre} onChange={e => setEditingRow({ ...editingRow!, nombre: e.target.value })}
+                onKeyDown={e => { if (e.key === 'Enter') saveEditRow(); if (e.key === 'Escape') setEditingRow(null); }}
+                className="flex-1 border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1 text-sm dark:bg-neutral-700 dark:text-white" autoFocus/>
+              <button onClick={saveEditRow} className="p-1 text-green-600 hover:text-green-700"><Save className="w-3.5 h-3.5"/></button>
+              <button onClick={() => setEditingRow(null)} className="p-1 text-neutral-400 hover:text-neutral-600"><X className="w-3.5 h-3.5"/></button>
+            </div>
+          ) : (
+            <>
+              <span className="flex-1 text-sm text-neutral-700 dark:text-neutral-200">{ag.nombre}</span>
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                <button onClick={() => toggleActivo('maestro_agentes', ag.id, ag.activo, loadVendedores)} className="flex-shrink-0">
+                  <BadgeActivo activo={ag.activo}/>
+                </button>
+                <button onClick={() => setEditingRow({ table: 'maestro_agentes', id: ag.id, nombre: ag.nombre })}
+                  className="p-1 text-neutral-400 hover:text-blue-600 rounded" title="Editar nombre">
+                  <Edit2 className="w-3.5 h-3.5"/>
+                </button>
+                <button onClick={() => { if (window.confirm(`¿Eliminar vendedor "${ag.nombre}"?`)) deleteRow('maestro_agentes', ag.id, loadVendedores); }}
+                  className="p-1 text-neutral-400 hover:text-red-600 rounded" title="Eliminar">
+                  <Trash2 className="w-3.5 h-3.5"/>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-6">
@@ -844,7 +923,35 @@ export default function BaseDatosMaestrosAdmin() {
         </div>
 
         <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5">
-          <SectionHeader title="Despachos y vendedores" count={agentes.length} onAdd={() => setShowAddDespacho(v => !v)}/>
+          {/* Header con toggle de vista y botón de agregar */}
+          <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+            <h3 className="font-semibold text-neutral-800 dark:text-neutral-100">
+              Despachos y vendedores <span className="text-neutral-400 font-normal text-sm">({agentes.length})</span>
+            </h3>
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-lg border border-neutral-200 dark:border-neutral-600 overflow-hidden text-xs font-medium">
+                <button onClick={() => setVendGroupMode('despacho')}
+                  className={`px-3 py-1.5 flex items-center gap-1 transition ${vendGroupMode === 'despacho' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700'}`}>
+                  <Building2 className="w-3 h-3"/>
+                  Por Despacho
+                </button>
+                <button onClick={() => setVendGroupMode('vendedor')}
+                  className={`px-3 py-1.5 flex items-center gap-1.5 transition ${vendGroupMode === 'vendedor' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700'}`}>
+                  <Users className="w-3 h-3"/>
+                  Por Vendedor
+                  {dupCount > 0 && (
+                    <span className={`rounded-full px-1.5 py-0.5 text-xs font-bold leading-none ${vendGroupMode === 'vendedor' ? 'bg-amber-200 text-amber-900' : 'bg-amber-100 text-amber-700'}`}>{dupCount}</span>
+                  )}
+                </button>
+              </div>
+              <button onClick={() => setShowAddDespacho(v => !v)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition">
+                <Plus className="w-3.5 h-3.5"/>
+                Nuevo despacho
+              </button>
+            </div>
+          </div>
+
           {showAddDespacho && (
             <div className="flex gap-2 mb-3">
               <input value={addDespachoNombre} onChange={e => setAddDespachoNombre(e.target.value)}
@@ -854,57 +961,185 @@ export default function BaseDatosMaestrosAdmin() {
               <button onClick={() => setShowAddDespacho(false)} className="px-3 py-2 bg-neutral-100 dark:bg-neutral-700 rounded-lg text-sm"><X className="w-4 h-4"/></button>
             </div>
           )}
+
           {loadingVend ? <Skeleton/> : (
-            <div className="space-y-2 max-h-[480px] overflow-y-auto">
-              {despFiltrados.map(desp => {
-                const gersDeDesp = gerencias.filter(g => g.despacho_id === desp.id);
-                const agtsDeDesp = agentes.filter(a => a.despacho_id === desp.id);
-                const expanded = expandedDespachos.has(desp.id);
-                return (
-                  <div key={desp.id} className="border border-neutral-200 dark:border-neutral-600 rounded-lg overflow-hidden">
-                    <button
-                      onClick={() => setExpandedDespachos(prev => { const s = new Set(prev); s.has(desp.id) ? s.delete(desp.id) : s.add(desp.id); return s; })}
-                      className="w-full flex items-center gap-2 px-4 py-3 bg-neutral-50 dark:bg-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-left">
-                      {expanded ? <ChevronDown className="w-4 h-4 text-neutral-500"/> : <ChevronRight className="w-4 h-4 text-neutral-500"/>}
-                      <Building2 className="w-4 h-4 text-blue-500"/>
-                      <span className="font-medium text-neutral-800 dark:text-neutral-100 text-sm">{desp.nombre}</span>
-                      <span className="text-xs text-neutral-400 ml-auto">{agtsDeDesp.length} vendedores</span>
-                      <BadgeActivo activo={desp.activo}/>
-                    </button>
-                    {expanded && (
-                      <div className="divide-y divide-neutral-100 dark:divide-neutral-700">
-                        {gersDeDesp.map(ger => (
-                          <div key={ger.id}>
-                            <div className="px-4 py-2 bg-neutral-50/50 dark:bg-neutral-800 flex items-center gap-2">
-                              <Users className="w-3.5 h-3.5 text-purple-400"/>
-                              <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-300 uppercase tracking-wide">{ger.nombre}</span>
+            <div className="space-y-2 max-h-[520px] overflow-y-auto">
+
+              {/* ─── VISTA POR DESPACHO ─────────────────────────────────────── */}
+              {vendGroupMode === 'despacho' && (
+                <>
+                  {despFiltrados.map(desp => {
+                    const gersDeDesp = gerencias.filter(g => g.despacho_id === desp.id);
+                    const agtsDeDesp = agentes.filter(a => a.despacho_id === desp.id);
+                    const expanded = expandedDespachos.has(desp.id);
+                    const isEditDesp = editingRow?.id === desp.id;
+                    return (
+                      <div key={desp.id} className="border border-neutral-200 dark:border-neutral-600 rounded-lg overflow-hidden">
+                        {/* Header del despacho */}
+                        <div className="flex items-center gap-2 px-4 py-3 bg-neutral-50 dark:bg-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-600 group">
+                          <button
+                            onClick={() => setExpandedDespachos(prev => { const s = new Set(prev); s.has(desp.id) ? s.delete(desp.id) : s.add(desp.id); return s; })}
+                            className="flex-shrink-0">
+                            {expanded ? <ChevronDown className="w-4 h-4 text-neutral-500"/> : <ChevronRight className="w-4 h-4 text-neutral-500"/>}
+                          </button>
+                          <Building2 className="w-4 h-4 text-blue-500 flex-shrink-0"/>
+                          {isEditDesp ? (
+                            <div className="flex-1 flex items-center gap-2">
+                              <input value={editingRow!.nombre} onChange={e => setEditingRow({ ...editingRow!, nombre: e.target.value })}
+                                onKeyDown={e => { if (e.key === 'Enter') saveEditRow(); if (e.key === 'Escape') setEditingRow(null); }}
+                                className="flex-1 border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1 text-sm dark:bg-neutral-700 dark:text-white" autoFocus/>
+                              <button onClick={saveEditRow} className="p-1 text-green-600"><Save className="w-3.5 h-3.5"/></button>
+                              <button onClick={() => setEditingRow(null)} className="p-1 text-neutral-400"><X className="w-3.5 h-3.5"/></button>
                             </div>
-                            {agentes.filter(a => a.gerencia_id === ger.id).map(ag => (
-                              <div key={ag.id} className="flex items-center justify-between px-6 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 group">
-                                <span className="text-sm text-neutral-700 dark:text-neutral-200">{ag.nombre}</span>
-                                <button onClick={() => toggleActivo('maestro_agentes', ag.id, ag.activo, loadVendedores)}
-                                  className="opacity-0 group-hover:opacity-100 transition">
-                                  <BadgeActivo activo={ag.activo}/>
+                          ) : (
+                            <>
+                              <button onClick={() => setExpandedDespachos(prev => { const s = new Set(prev); s.has(desp.id) ? s.delete(desp.id) : s.add(desp.id); return s; })}
+                                className="flex-1 flex items-center gap-2 text-left">
+                                <span className="font-medium text-neutral-800 dark:text-neutral-100 text-sm">{desp.nombre}</span>
+                                <span className="text-xs text-neutral-400 ml-auto">{agtsDeDesp.length} vendedores</span>
+                                <BadgeActivo activo={desp.activo}/>
+                              </button>
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition flex-shrink-0">
+                                <button onClick={() => setEditingRow({ table: 'maestro_despachos', id: desp.id, nombre: desp.nombre })}
+                                  className="p-1 text-neutral-400 hover:text-blue-600 rounded" title="Editar nombre">
+                                  <Edit2 className="w-3.5 h-3.5"/>
+                                </button>
+                                <button onClick={() => { if (window.confirm(`¿Eliminar despacho "${desp.nombre}"?`)) deleteRow('maestro_despachos', desp.id, loadVendedores); }}
+                                  className="p-1 text-neutral-400 hover:text-red-600 rounded" title="Eliminar">
+                                  <Trash2 className="w-3.5 h-3.5"/>
                                 </button>
                               </div>
+                            </>
+                          )}
+                        </div>
+                        {expanded && (
+                          <div className="divide-y divide-neutral-100 dark:divide-neutral-700">
+                            {gersDeDesp.map(ger => {
+                              const isEditGer = editingRow?.id === ger.id;
+                              return (
+                                <div key={ger.id}>
+                                  <div className="px-4 py-2 bg-neutral-50/50 dark:bg-neutral-800 flex items-center gap-2 group">
+                                    <Users className="w-3.5 h-3.5 text-purple-400 flex-shrink-0"/>
+                                    {isEditGer ? (
+                                      <div className="flex-1 flex items-center gap-2">
+                                        <input value={editingRow!.nombre} onChange={e => setEditingRow({ ...editingRow!, nombre: e.target.value })}
+                                          onKeyDown={e => { if (e.key === 'Enter') saveEditRow(); if (e.key === 'Escape') setEditingRow(null); }}
+                                          className="flex-1 border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1 text-xs dark:bg-neutral-700 dark:text-white" autoFocus/>
+                                        <button onClick={saveEditRow} className="p-1 text-green-600"><Save className="w-3 h-3"/></button>
+                                        <button onClick={() => setEditingRow(null)} className="p-1 text-neutral-400"><X className="w-3 h-3"/></button>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <span className="flex-1 text-xs font-semibold text-neutral-600 dark:text-neutral-300 uppercase tracking-wide">{ger.nombre}</span>
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                                          <button onClick={() => setEditingRow({ table: 'maestro_gerencias', id: ger.id, nombre: ger.nombre })}
+                                            className="p-1 text-neutral-400 hover:text-blue-600 rounded" title="Editar nombre">
+                                            <Edit2 className="w-3 h-3"/>
+                                          </button>
+                                          <button onClick={() => { if (window.confirm(`¿Eliminar gerencia "${ger.nombre}"?`)) deleteRow('maestro_gerencias', ger.id, loadVendedores); }}
+                                            className="p-1 text-neutral-400 hover:text-red-600 rounded" title="Eliminar">
+                                            <Trash2 className="w-3 h-3"/>
+                                          </button>
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
+                                  {agentes.filter(a => a.gerencia_id === ger.id).map(ag => (
+                                    <AgentRowDespacho key={ag.id} ag={ag} paddingClass="px-6"/>
+                                  ))}
+                                </div>
+                              );
+                            })}
+                            {agentes.filter(a => a.despacho_id === desp.id && !a.gerencia_id).map(ag => (
+                              <AgentRowDespacho key={ag.id} ag={ag} paddingClass="px-4"/>
                             ))}
                           </div>
-                        ))}
-                        {agentes.filter(a => a.despacho_id === desp.id && !a.gerencia_id).map(ag => (
-                          <div key={ag.id} className="flex items-center justify-between px-4 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 group">
-                            <span className="text-sm text-neutral-700 dark:text-neutral-200">{ag.nombre}</span>
-                            <button onClick={() => toggleActivo('maestro_agentes', ag.id, ag.activo, loadVendedores)}
-                              className="opacity-0 group-hover:opacity-100 transition">
-                              <BadgeActivo activo={ag.activo}/>
-                            </button>
-                          </div>
-                        ))}
+                        )}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-              {despFiltrados.length === 0 && <EmptyState msg="Sin despachos. Importa un Excel o agrega uno manualmente."/>}
+                    );
+                  })}
+                  {despFiltrados.length === 0 && <EmptyState msg="Sin despachos. Importa un Excel o agrega uno manualmente."/>}
+                </>
+              )}
+
+              {/* ─── VISTA POR VENDEDOR ─────────────────────────────────────── */}
+              {vendGroupMode === 'vendedor' && (
+                <>
+                  {dupCount > 0 && (
+                    <div className="flex items-start gap-2 px-3 py-2.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg text-xs text-amber-700 dark:text-amber-400 mb-2">
+                      <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5"/>
+                      <span>
+                        <strong>{dupCount} vendedor{dupCount > 1 ? 'es' : ''}</strong> con registros en múltiples despachos.
+                        Haz clic en "Hacer principal" para definir cuál se muestra en el sistema.
+                      </span>
+                    </div>
+                  )}
+                  {vendedorGroups.map(([nombre, ags]) => {
+                    const isDup = ags.length > 1;
+                    return (
+                      <div key={nombre} className={`border rounded-lg overflow-hidden ${isDup ? 'border-amber-300 dark:border-amber-700' : 'border-neutral-200 dark:border-neutral-600'}`}>
+                        <div className={`flex items-center gap-2 px-4 py-2.5 ${isDup ? 'bg-amber-50/70 dark:bg-amber-900/20' : 'bg-neutral-50 dark:bg-neutral-700'}`}>
+                          {isDup && <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0"/>}
+                          <span className="font-medium text-sm text-neutral-800 dark:text-neutral-100 flex-1">{nombre}</span>
+                          {isDup && <span className="text-xs text-amber-600 dark:text-amber-400">{ags.length} despachos</span>}
+                        </div>
+                        <div className="divide-y divide-neutral-100 dark:divide-neutral-700">
+                          {ags.map(ag => {
+                            const desp = despachos.find(d => d.id === ag.despacho_id);
+                            const ger  = gerencias.find(g => g.id === ag.gerencia_id);
+                            const isEdit = editingRow?.id === ag.id;
+                            return (
+                              <div key={ag.id} className="flex items-center gap-3 px-4 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 group">
+                                <Building2 className="w-3.5 h-3.5 text-blue-400 flex-shrink-0"/>
+                                {isEdit ? (
+                                  <div className="flex-1 flex items-center gap-2">
+                                    <input value={editingRow!.nombre} onChange={e => setEditingRow({ ...editingRow!, nombre: e.target.value })}
+                                      onKeyDown={e => { if (e.key === 'Enter') saveEditRow(); if (e.key === 'Escape') setEditingRow(null); }}
+                                      className="flex-1 border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1 text-sm dark:bg-neutral-700 dark:text-white" autoFocus
+                                      placeholder="Nombre del vendedor"/>
+                                    <button onClick={saveEditRow} className="p-1 text-green-600"><Save className="w-3.5 h-3.5"/></button>
+                                    <button onClick={() => setEditingRow(null)} className="p-1 text-neutral-400"><X className="w-3.5 h-3.5"/></button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="flex-1 min-w-0">
+                                      <span className="text-sm text-neutral-700 dark:text-neutral-200">{desp?.nombre ?? '—'}</span>
+                                      {ger && <span className="ml-1.5 text-xs text-neutral-400">· {ger.nombre}</span>}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                                      {isDup && (
+                                        ag.es_primario
+                                          ? <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 text-xs rounded-full font-medium">Principal</span>
+                                          : <button onClick={() => setPrimario(ag.id, ag.nombre)}
+                                              className="inline-flex items-center gap-1 px-2 py-0.5 bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 text-xs rounded-full hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900/40 dark:hover:text-green-400 transition opacity-0 group-hover:opacity-100">
+                                              Hacer principal
+                                            </button>
+                                      )}
+                                      <BadgeActivo activo={ag.activo}/>
+                                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                                        <button onClick={() => setEditingRow({ table: 'maestro_agentes', id: ag.id, nombre: ag.nombre })}
+                                          className="p-1 text-neutral-400 hover:text-blue-600 rounded" title="Editar nombre">
+                                          <Edit2 className="w-3.5 h-3.5"/>
+                                        </button>
+                                        <button onClick={() => { if (window.confirm(`¿Eliminar "${ag.nombre}" del despacho "${desp?.nombre}"?`)) deleteRow('maestro_agentes', ag.id, loadVendedores); }}
+                                          className="p-1 text-neutral-400 hover:text-red-600 rounded" title="Eliminar">
+                                          <Trash2 className="w-3.5 h-3.5"/>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {vendedorGroups.length === 0 && <EmptyState msg="Sin vendedores encontrados."/>}
+                </>
+              )}
+
             </div>
           )}
         </div>

@@ -527,7 +527,7 @@ export function TramiteDetalle() {
           }
         }
 
-        // Auto-cierre: si un campo estatus dinámico tiene clasificacion 'terminacion'
+        // Auto-cierre/re-apertura según clasificación del estatus dinámico
         const hayTerminacion = camposDinamicos.some(c => {
           if (c.tipo !== 'estatus') return false;
           const slug = respuestasDinamicas[c.id];
@@ -538,6 +538,12 @@ export function TramiteDetalle() {
           await supabase.from('tickets').update({
             cerrado_en: new Date().toISOString(),
             cerrado_por: usuario.id,
+          }).eq('id', tramite.id);
+        } else if (!hayTerminacion && tramite.cerrado_en) {
+          // Re-abrir: el estatus cambió a uno no-terminal
+          await supabase.from('tickets').update({
+            cerrado_en: null,
+            cerrado_por: null,
           }).eq('id', tramite.id);
         }
       }
