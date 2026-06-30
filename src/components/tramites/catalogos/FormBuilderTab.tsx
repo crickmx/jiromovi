@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Save, Trash2, Settings, GripVertical, X, Eye, Lock, Zap } from 'lucide-react';
 import { useFormBuilder } from './useFormBuilder';
 import { FormPreview } from './FormPreview';
 import { CAMPO_TIPOS, SISTEMA_TIPO_META, MIME_OPTIONS, slugify } from './types';
+import { supabase } from '../../../lib/supabase';
 
 interface Props {
   tipoId: string;
@@ -11,6 +12,13 @@ interface Props {
 }
 
 export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
+  const [adjuntoCategorias, setAdjuntoCategorias] = useState<{ id: string; nombre: string }[]>([]);
+
+  useEffect(() => {
+    supabase.from('maestro_adjunto_categorias').select('id, nombre').eq('activo', true).order('orden')
+      .then(({ data }) => { if (data) setAdjuntoCategorias(data); });
+  }, []);
+
   const {
     campos, loadingCampos, loadCampos,
     showAddField, setShowAddField,
@@ -380,6 +388,20 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                           className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg" />
                       </div>
                     </div>
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Categoría del archivo</label>
+                      <select
+                        value={editCampoConfig.categoria_id || ''}
+                        onChange={(e) => setEditCampoConfig({ ...editCampoConfig, categoria_id: e.target.value || null })}
+                        className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg bg-white"
+                      >
+                        <option value="">— Usuario elige al adjuntar —</option>
+                        {adjuntoCategorias.map(cat => (
+                          <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+                        ))}
+                      </select>
+                      <p className="text-[10px] text-neutral-400 mt-1">Si se define aquí, el archivo se categoriza automáticamente sin pedirle al usuario.</p>
+                    </div>
                   </>
                 )}
 
@@ -425,6 +447,14 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                             }}
                             className={`px-2 py-1 border-l border-neutral-200 transition-colors ${opt.clasificacion === 'terminacion' ? 'bg-red-500 text-white' : 'bg-white text-neutral-400 hover:bg-red-50 hover:text-red-600'}`}
                           >Fin</button>
+                          <button
+                            onClick={() => {
+                              const opts = [...(editCampoConfig.opciones || [])];
+                              opts[i] = { ...opts[i], clasificacion: opt.clasificacion === 'en_espera' ? null : 'en_espera' };
+                              setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+                            }}
+                            className={`px-2 py-1 border-l border-neutral-200 transition-colors ${opt.clasificacion === 'en_espera' ? 'bg-amber-500 text-white' : 'bg-white text-neutral-400 hover:bg-amber-50 hover:text-amber-600'}`}
+                          >Espera</button>
                         </div>
                         <button
                           onClick={() => {

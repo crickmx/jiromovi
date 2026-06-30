@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList, Upload, Trash2, GitBranch, ArrowUpRight } from 'lucide-react';
+import { Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList, Upload, Trash2, GitBranch, ArrowUpRight, Paperclip } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
@@ -516,8 +516,33 @@ export function TramiteDetalle() {
     };
   };
 
+  const esCampoVisible = (campo: any): boolean => {
+    if (!campo.config?.condicion_activa) return true;
+    const { campo_fuente, condicion_operador, condicion_valor } = campo.config;
+    if (!campo_fuente) return true;
+    const fuente = camposDinamicos.find(c => c.key === campo_fuente);
+    if (!fuente) return true;
+    const valorFuente = respuestasDinamicas[fuente.id];
+    switch (condicion_operador) {
+      case 'igual_a':    return String(valorFuente ?? '') === String(condicion_valor ?? '');
+      case 'distinto_a': return String(valorFuente ?? '') !== String(condicion_valor ?? '');
+      case 'tiene_valor': return valorFuente !== undefined && valorFuente !== null && valorFuente !== '';
+      default: return true;
+    }
+  };
+
   const handleSave = async () => {
     if (!tramite || !usuario || !isDirty) return;
+
+    // Validar campos requeridos visibles antes de guardar
+    const faltantes = camposDinamicos.filter(c =>
+      !c.is_sistema && c.tipo !== 'estatus' && c.requerido && esCampoVisible(c) &&
+      (() => { const v = respuestasDinamicas[c.id]; return v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0); })()
+    );
+    if (faltantes.length > 0) {
+      showToast(`Campos requeridos sin completar: ${faltantes.map(c => c.label).join(', ')}`, 'error');
+      return;
+    }
 
     // Declarar silent aquí para que esté en scope en toda la función
     let silent: PendingTrigger[] = [];
@@ -589,6 +614,48 @@ export function TramiteDetalle() {
         .eq('id', snap.id);
 
       if (error) throw error;
+
+      // ── Lógica de suspensión de plazo (en_espera) ──────────────────────────
+      if (estatusCampoDinamico) {
+        const slugAnterior = respuestasOriginales.find(r => r.campo_id === estatusCampoDinamico.id)?.valor_json ?? '';
+        const slugNuevo    = selectedEstatusSlug;
+        const getClasif = (slug: string) =>
+          (estatusCampoDinamico.config?.opciones ?? []).find((o: { slug: string; clasificacion?: string }) => o.slug === slug)?.clasificacion ?? null;
+        const clasifAnterior = getClasif(String(slugAnterior));
+        const clasifNuevo    = getClasif(String(slugNuevo));
+
+        if (clasifAnterior !== 'en_espera' && clasifNuevo === 'en_espera') {
+          // Abre una nueva pausa
+          await supabase.from('tramite_pausas').insert({
+            tramite_id: snap.id,
+            estatus_slug: String(slugNuevo),
+            inicio_pausa: new Date().toISOString(),
+            creado_por: usuario.id,
+          });
+        } else if (clasifAnterior === 'en_espera' && clasifNuevo !== 'en_espera') {
+          // Cierra la pausa abierta y calcula días hábiles pausados
+          const { data: pausaAbierta } = await supabase
+            .from('tramite_pausas')
+            .select('id, inicio_pausa')
+            .eq('tramite_id', snap.id)
+            .is('fin_pausa', null)
+            .order('inicio_pausa', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (pausaAbierta) {
+            const ahora = new Date();
+            const diasPausados = Math.ceil(
+              await calcularDiasHabilesEntre(new Date(pausaAbierta.inicio_pausa), ahora)
+            );
+            await supabase.from('tramite_pausas').update({
+              fin_pausa: ahora.toISOString(),
+              dias_habiles_pausados: diasPausados,
+            }).eq('id', pausaAbierta.id);
+          }
+        }
+      }
+      // ──────────────────────────────────────────────────────────────────────
 
       // Guardar respuestas de campos dinámicos (upsert por tramite_id + campo_id)
       if (camposDinamicos.length > 0) {
@@ -1238,7 +1305,7 @@ export function TramiteDetalle() {
             {camposDinamicos.filter(c => !c.is_sistema && c.tipo !== 'estatus').length > 0 && (
               <div className="mt-6 pt-6 border-t border-neutral-100 space-y-4">
                 <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Campos del trámite</p>
-                {camposDinamicos.filter(c => !c.is_sistema && c.tipo !== 'estatus').map(campo => {
+                {camposDinamicos.filter(c => !c.is_sistema && c.tipo !== 'estatus' && esCampoVisible(c)).map(campo => {
                   const val = respuestasDinamicas[campo.id];
                   const set = (v: any) => setRespuestasDinamicas(prev => ({ ...prev, [campo.id]: v }));
                   const editable = canEdit && !isCerrado;
@@ -1430,9 +1497,10 @@ export function TramiteDetalle() {
                               </div>
                             ))}
                             {editable && archivos.length < maxFiles && (
-                              <label className="flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-dashed border-neutral-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 transition-colors">
-                                <Upload className="w-4 h-4 text-neutral-400" />
-                                <span className="text-sm text-neutral-500">Adjuntar archivo</span>
+                              <label className="flex flex-col items-center justify-center gap-2 px-4 py-6 border-[3px] border-dashed border-neutral-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 transition-colors group">
+                                <Paperclip className="w-7 h-7 text-neutral-300 group-hover:text-blue-400 transition-colors" />
+                                <span className="text-sm font-medium text-neutral-500 group-hover:text-blue-500 transition-colors">Adjuntar archivo</span>
+                                {accept && <span className="text-xs text-neutral-400">{(campo.config.tipos_mime || []).join(', ').replace(/[^/]+\//g, '').toUpperCase()} · máx. {maxMb} MB</span>}
                                 <input
                                   type="file"
                                   accept={accept}
@@ -1452,6 +1520,7 @@ export function TramiteDetalle() {
                                     const { data: archivoData } = await supabase.from('ticket_archivos').insert({
                                       ticket_id: tramite.id, usuario_id: usuario?.id,
                                       nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size,
+                                      categoria_id: campo.config.categoria_id || null,
                                     }).select('id').single();
                                     set([...archivos, { id: archivoData?.id || '', nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size }]);
                                     e.target.value = '';
