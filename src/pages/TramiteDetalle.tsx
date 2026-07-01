@@ -127,6 +127,14 @@ export function TramiteDetalle() {
   const [silentTriggers, setSilentTriggers]     = useState<PendingTrigger[]>([]);
   const [existingChildren, setExistingChildren] = useState<Record<string, ExistingChild>>({});
 
+  // Modal "¿Cambiar estatus?" antes de guardar
+  const [estatusModalOpen, setEstatusModalOpen] = useState(false);
+  const [modalKeepCurrent, setModalKeepCurrent] = useState(true);
+  const [modalChosenSlug, setModalChosenSlug]   = useState('');
+  const [modalChosenId,   setModalChosenId]     = useState('');
+  // Ref para pasar el override a proceedWithSave sin depender de estado asíncrono
+  const estatusOverrideRef = useRef<{ slug: string; id: string } | null>(null);
+
   // Relaciones padre / hijo (Fase 4)
   interface TicketRef { id: string; folio: string; tipo_tramite: string; tipo_label?: string; cerrado_en: string | null }
   const [childTickets, setChildTickets] = useState<TicketRef[]>([]);
@@ -486,7 +494,7 @@ export function TramiteDetalle() {
 
   const ESTATUS_FINALES_COTIZACION = ['Emitido (Ganado)', 'No Emitido (Perdido)'];
 
-  const buildUpdatePayload = (estatusId: string) => {
+  const buildUpdatePayload = (estatusId: string, slugOverride?: string) => {
     const estatus = estatusList.find(e => e.id === estatusId);
     const esFinalCotizacion =
       tramite?.tipo_tramite === 'cotizacion_emision' &&
@@ -496,11 +504,11 @@ export function TramiteDetalle() {
     let customLabel: string | null = null;
     let customColor: string | null = null;
     if (estatusCampoDinamico) {
-      const slug = respuestasDinamicas[estatusCampoDinamico.id];
+      const slug = slugOverride !== undefined ? slugOverride : respuestasDinamicas[estatusCampoDinamico.id];
       const opcion = (estatusCampoDinamico.config.opciones || []).find(o => o.slug === slug);
       if (opcion) {
         customLabel = opcion.label;
-        customColor = opcion.clasificacion === 'inicio' ? '#3B82F6' : opcion.clasificacion === 'terminacion' ? '#059669' : '#6B7280';
+        customColor = opcion.clasificacion === 'inicio' ? '#3B82F6' : opcion.clasificacion === 'terminacion' ? '#059669' : opcion.clasificacion === 'en_espera' ? '#F59E0B' : '#6B7280';
       }
     }
 
@@ -535,7 +543,7 @@ export function TramiteDetalle() {
   const handleSave = async () => {
     if (!tramite || !usuario || !isDirty) return;
 
-    // Validar campos requeridos visibles antes de guardar
+    // Validar campos requeridos visibles antes de mostrar modal
     const faltantes = camposDinamicos.filter(c =>
       !c.is_sistema && c.tipo !== 'estatus' && c.requerido && esCampoVisible(c) &&
       (() => { const v = respuestasDinamicas[c.id]; return v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0); })()
@@ -545,19 +553,45 @@ export function TramiteDetalle() {
       return;
     }
 
-    // Declarar silent aquí para que esté en scope en toda la función
-    let silent: PendingTrigger[] = [];
+    // Abrir modal de confirmación de estatus
+    setModalKeepCurrent(true);
+    setModalChosenSlug(selectedEstatusSlug);
+    setModalChosenId(selectedEstatus);
+    setEstatusModalOpen(true);
+  };
 
-    // Check triggers: only when using FormBuilder estatus on non-child tickets
-    if (estatusCampoDinamico && tipoUUID && selectedEstatusSlug && !tramite.parent_ticket_id) {
-      const originalSlug =
-        respuestasOriginales.find(r => r.campo_id === estatusCampoDinamico.id)?.valor_json ?? '';
-      if (selectedEstatusSlug !== originalSlug) {
+  // Llamado por el modal de estatus cuando el usuario confirma
+  const handleEstatusModalConfirm = async () => {
+    if (!tramite) return;
+
+    const chosenSlug = modalKeepCurrent ? selectedEstatusSlug : modalChosenSlug;
+    const chosenId   = modalKeepCurrent ? selectedEstatus     : (estatusCampoDinamico ? selectedEstatus : modalChosenId);
+
+    // Guardar override en ref para que proceedWithSave lo use sin depender del estado asíncrono
+    if (!modalKeepCurrent) {
+      estatusOverrideRef.current = { slug: chosenSlug, id: chosenId };
+      // Actualizar estado para UI
+      if (estatusCampoDinamico) {
+        setRespuestasDinamicas(prev => ({ ...prev, [estatusCampoDinamico.id]: chosenSlug }));
+      } else {
+        setSelectedEstatus(chosenId);
+      }
+    } else {
+      estatusOverrideRef.current = null;
+    }
+
+    setEstatusModalOpen(false);
+
+    // Trigger check con el estatus elegido
+    let silent: PendingTrigger[] = [];
+    if (estatusCampoDinamico && tipoUUID && chosenSlug && !tramite.parent_ticket_id) {
+      const originalSlug = respuestasOriginales.find(r => r.campo_id === estatusCampoDinamico.id)?.valor_json ?? '';
+      if (chosenSlug !== originalSlug) {
         const { data: trigData } = await supabase
           .from('ticket_status_triggers')
           .select('*, target_tipo:ticket_tipos!target_tipo_id(label,color)')
           .eq('ticket_tipo_id', tipoUUID)
-          .eq('from_status', selectedEstatusSlug)
+          .eq('from_status', chosenSlug)
           .eq('activo', true);
 
         const activeTriggers = (trigData || []) as PendingTrigger[];
@@ -597,9 +631,15 @@ export function TramiteDetalle() {
     if (!tramite || !usuario) return;
     const snap = tramite; // capturar antes de setTramite
 
+    // Leer override de estatus (establecido por handleEstatusModalConfirm)
+    const override = estatusOverrideRef.current;
+    const effectiveId   = override?.id   ?? selectedEstatus;
+    const effectiveSlug = override?.slug ?? selectedEstatusSlug;
+    estatusOverrideRef.current = null; // limpiar para siguiente save
+
     setSaving(true);
 
-    const newEstatus = estatusList.find(e => e.id === selectedEstatus);
+    const newEstatus = estatusList.find(e => e.id === effectiveId);
     setTramite(prev => prev ? {
       ...prev,
       prioridad: selectedPrioridad,
@@ -611,7 +651,7 @@ export function TramiteDetalle() {
     try {
       const { error } = await supabase
         .from('tickets')
-        .update(buildUpdatePayload(selectedEstatus))
+        .update(buildUpdatePayload(effectiveId, estatusCampoDinamico ? effectiveSlug : undefined))
         .eq('id', snap.id);
 
       if (error) throw error;
@@ -619,7 +659,7 @@ export function TramiteDetalle() {
       // ── Lógica de suspensión de plazo (en_espera) ──────────────────────────
       if (estatusCampoDinamico) {
         const slugAnterior = respuestasOriginales.find(r => r.campo_id === estatusCampoDinamico.id)?.valor_json ?? '';
-        const slugNuevo    = selectedEstatusSlug;
+        const slugNuevo    = effectiveSlug;
         const getClasif = (slug: string) =>
           (estatusCampoDinamico.config?.opciones ?? []).find((o: { slug: string; clasificacion?: string }) => o.slug === slug)?.clasificacion ?? null;
         const clasifAnterior = getClasif(String(slugAnterior));
@@ -687,7 +727,10 @@ export function TramiteDetalle() {
         // Auto-cierre/re-apertura según clasificación del estatus dinámico
         const hayTerminacion = camposDinamicos.some(c => {
           if (c.tipo !== 'estatus') return false;
-          const slug = respuestasDinamicas[c.id];
+          // Usar effectiveSlug si este campo es el estatusCampoDinamico
+          const slug = (estatusCampoDinamico && c.id === estatusCampoDinamico.id)
+            ? effectiveSlug
+            : respuestasDinamicas[c.id];
           const opcion = (c.config.opciones || []).find(o => o.slug === slug);
           return opcion?.clasificacion === 'terminacion';
         });
@@ -1550,6 +1593,134 @@ export function TramiteDetalle() {
           toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
         }`}>
           {toast.msg}
+        </div>
+      )}
+
+      {/* ── Modal: ¿Cambiar estatus antes de guardar? ─────────────────────────── */}
+      {estatusModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            {/* Cabecera */}
+            <div className="px-5 pt-5 pb-4 border-b border-neutral-100 dark:border-neutral-700">
+              <p className="text-base font-semibold text-neutral-900 dark:text-white">Antes de guardar…</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">¿Deseas cambiar el estatus del trámite?</p>
+            </div>
+
+            {/* Cuerpo */}
+            <div className="px-5 py-4 space-y-3">
+              {/* Opción A: mantener */}
+              <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                modalKeepCurrent
+                  ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300'
+              }`}>
+                <input
+                  type="radio"
+                  className="mt-0.5 accent-blue-500"
+                  checked={modalKeepCurrent}
+                  onChange={() => setModalKeepCurrent(true)}
+                />
+                <div>
+                  <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100">Mantener estatus actual</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                    {estatusCampoDinamico
+                      ? (estatusCampoDinamico.config.opciones ?? []).find(o => o.slug === selectedEstatusSlug)?.label || selectedEstatusSlug || '—'
+                      : (estatusList.find(e => e.id === selectedEstatus)?.nombre ?? '—')}
+                  </p>
+                </div>
+              </label>
+
+              {/* Opción B: cambiar */}
+              <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                !modalKeepCurrent
+                  ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300'
+              }`}>
+                <input
+                  type="radio"
+                  className="mt-0.5 accent-blue-500"
+                  checked={!modalKeepCurrent}
+                  onChange={() => {
+                    setModalKeepCurrent(false);
+                    // Inicializar con primera opción diferente al actual
+                    if (estatusCampoDinamico) {
+                      const opts = estatusCampoDinamico.config.opciones ?? [];
+                      const first = opts.find(o => o.slug !== selectedEstatusSlug) ?? opts[0];
+                      if (first) setModalChosenSlug(first.slug);
+                    } else {
+                      const first = estatusList.find(e => e.id !== selectedEstatus) ?? estatusList[0];
+                      if (first) setModalChosenId(first.id);
+                    }
+                  }}
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100">Cambiar estatus a…</p>
+
+                  {/* Selector de estatus */}
+                  {!modalKeepCurrent && (
+                    <div className="mt-2 space-y-1.5">
+                      {estatusCampoDinamico
+                        ? (estatusCampoDinamico.config.opciones ?? []).map(opt => {
+                            const dotColor =
+                              opt.clasificacion === 'inicio' ? 'bg-blue-500' :
+                              opt.clasificacion === 'terminacion' ? 'bg-green-500' :
+                              opt.clasificacion === 'en_espera' ? 'bg-amber-500' : 'bg-neutral-400';
+                            return (
+                              <label key={opt.slug} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
+                                modalChosenSlug === opt.slug
+                                  ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-medium'
+                                  : 'border-neutral-200 dark:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200'
+                              }`}>
+                                <input
+                                  type="radio"
+                                  className="sr-only"
+                                  checked={modalChosenSlug === opt.slug}
+                                  onChange={() => setModalChosenSlug(opt.slug)}
+                                />
+                                <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`}/>
+                                {opt.label}
+                              </label>
+                            );
+                          })
+                        : estatusList.map(est => (
+                            <label key={est.id} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
+                              modalChosenId === est.id
+                                ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-medium'
+                                : 'border-neutral-200 dark:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200'
+                            }`}>
+                              <input
+                                type="radio"
+                                className="sr-only"
+                                checked={modalChosenId === est.id}
+                                onChange={() => setModalChosenId(est.id)}
+                              />
+                              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: est.color || '#6B7280' }}/>
+                              {est.nombre}
+                            </label>
+                          ))
+                      }
+                    </div>
+                  )}
+                </div>
+              </label>
+            </div>
+
+            {/* Botones */}
+            <div className="px-5 pb-5 flex gap-2 justify-end">
+              <button
+                onClick={() => setEstatusModalOpen(false)}
+                className="px-4 py-2 text-sm rounded-xl border border-neutral-200 dark:border-neutral-600 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleEstatusModalConfirm}
+                className="px-4 py-2 text-sm rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
+              >
+                Guardar cambios
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
