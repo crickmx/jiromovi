@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader as Loader2, RefreshCw, CircleCheck as CheckCircle, Circle as XCircle, Building, Users, Trash2, Link as LinkIcon, FlaskConical, Stethoscope, CircleAlert as AlertCircle, Zap, Square, Clock, SearchCheck, ChevronDown, ChevronRight } from 'lucide-react';
+import { Loader as Loader2, RefreshCw, CircleCheck as CheckCircle, Circle as XCircle, Building, Users, Trash2, Link as LinkIcon, FlaskConical, Stethoscope, CircleAlert as AlertCircle, Zap, Square, Clock, SearchCheck, ChevronDown, ChevronRight, UserPlus, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { crearNotificacionGlobal } from '../lib/notificationHelpers';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -24,11 +26,18 @@ import {
   unmapDespacho,
   mapVendedor,
   unmapVendedor,
+  getMoviUsersWithoutSicasMapping,
+  addUserToSicas,
+  getPendingSicasRequests,
+  approveSicasRequest,
+  rejectSicasRequest,
 } from '../lib/sicasUtils';
 import type { SicasConfig, SicasDespachoWithMapping, SicasVendedorWithMapping } from '../lib/sicasTypes';
+import type { MoviUserSinMapeo, SicasPendingRequest } from '../lib/sicasUtils';
 
 export default function SicasAdmin() {
   const navigate = useNavigate();
+  const { usuario } = useAuth();
   const [activeTab, setActiveTab] = useState('conexion');
   const [config, setConfig] = useState<SicasConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,6 +56,15 @@ export default function SicasAdmin() {
   const [filterUnmappedVendedores, setFilterUnmappedVendedores] = useState(false);
   const [searchDespacho, setSearchDespacho] = useState('');
   const [searchVendedor, setSearchVendedor] = useState('');
+
+  // --- Estado para usuarios MOVI sin mapeo SICAS ---
+  const [moviSinMapeo, setMoviSinMapeo] = useState<MoviUserSinMapeo[]>([]);
+  const [loadingMoviSinMapeo, setLoadingMoviSinMapeo] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState<SicasPendingRequest[]>([]);
+  const [loadingPending, setLoadingPending] = useState(false);
+  const [addingSicasUser, setAddingSicasUser] = useState<string | null>(null);
+  const [reviewingRequest, setReviewingRequest] = useState<string | null>(null);
+  const [searchMoviSinMapeo, setSearchMoviSinMapeo] = useState('');
 
   const [diagnosticCatalogId, setDiagnosticCatalogId] = useState('12');
   const [diagnosticTypeReturn, setDiagnosticTypeReturn] = useState('1');
@@ -126,6 +144,13 @@ export default function SicasAdmin() {
     loadVendedores();
   }, [filterUnmappedVendedores]);
 
+  useEffect(() => {
+    if (activeTab === 'vendedores') {
+      loadMoviSinMapeo();
+      loadPendingRequests();
+    }
+  }, [activeTab]);
+
   async function loadData() {
     setLoading(true);
     try {
@@ -176,6 +201,99 @@ export default function SicasAdmin() {
     } catch (error) {
       console.error('Error loading vendedores:', error);
       setMessage({ type: 'error', text: `Error cargando vendedores: ${error}` });
+    }
+  }
+
+  async function loadMoviSinMapeo() {
+    setLoadingMoviSinMapeo(true);
+    try {
+      const data = await getMoviUsersWithoutSicasMapping();
+      setMoviSinMapeo(data);
+    } catch (error) {
+      console.error('Error loading unmapped MOVI users:', error);
+    } finally {
+      setLoadingMoviSinMapeo(false);
+    }
+  }
+
+  async function loadPendingRequests() {
+    setLoadingPending(true);
+    try {
+      const data = await getPendingSicasRequests();
+      setPendingRequests(data);
+    } catch (error) {
+      console.error('Error loading pending SICAS requests:', error);
+    } finally {
+      setLoadingPending(false);
+    }
+  }
+
+  async function handleAddUserToSicas(user: MoviUserSinMapeo) {
+    if (!usuario) return;
+    const isAdmin = usuario.rol === 'Administrador' || usuario.rol === 'Gerente';
+    setAddingSicasUser(user.id);
+    try {
+      const fullName = `${user.nombre} ${user.apellidos}`.trim() || user.nombre_completo;
+      const result = await addUserToSicas(user.id, usuario.id, fullName, isAdmin);
+      if (!result.success) {
+        setMessage({ type: 'error', text: `Error: ${result.error}` });
+        return;
+      }
+      if (result.status === 'active') {
+        setMessage({ type: 'success', text: `${fullName} agregado al mapeo SICAS exitosamente.` });
+      } else {
+        setMessage({ type: 'success', text: `Solicitud enviada. El administrador revisará el acceso de ${fullName} en SICAS.` });
+        await crearNotificacionGlobal(
+          'Solicitud: agregar usuario a SICAS',
+          `${usuario.nombre_completo || usuario.nombre} solicita agregar a ${fullName} al mapeo SICAS. Revisa y aprueba en SICAS Admin.`,
+          '/sicas-admin?tab=vendedores',
+          { tipo: 'rol', rol: 'Administrador' },
+          usuario.id
+        );
+      }
+      await loadMoviSinMapeo();
+      if (isAdmin) await loadPendingRequests();
+    } catch (error: any) {
+      setMessage({ type: 'error', text: `Error: ${error.message}` });
+    } finally {
+      setAddingSicasUser(null);
+    }
+  }
+
+  async function handleApproveRequest(req: SicasPendingRequest) {
+    if (!usuario) return;
+    setReviewingRequest(req.id);
+    try {
+      const result = await approveSicasRequest(req.id, usuario.id);
+      if (result.success) {
+        setMessage({ type: 'success', text: `Solicitud aprobada: ${req.vend_nombre} ahora está en SICAS.` });
+        await loadPendingRequests();
+        await loadMoviSinMapeo();
+      } else {
+        setMessage({ type: 'error', text: `Error al aprobar: ${result.error}` });
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: `Error: ${error.message}` });
+    } finally {
+      setReviewingRequest(null);
+    }
+  }
+
+  async function handleRejectRequest(req: SicasPendingRequest) {
+    if (!usuario) return;
+    setReviewingRequest(req.id);
+    try {
+      const result = await rejectSicasRequest(req.id, usuario.id);
+      if (result.success) {
+        setMessage({ type: 'success', text: `Solicitud rechazada para ${req.vend_nombre}.` });
+        await loadPendingRequests();
+      } else {
+        setMessage({ type: 'error', text: `Error al rechazar: ${result.error}` });
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: `Error: ${error.message}` });
+    } finally {
+      setReviewingRequest(null);
     }
   }
 
@@ -1529,6 +1647,143 @@ export default function SicasAdmin() {
                     ))
                   )}
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Solicitudes pendientes — solo admin/gerente */}
+            {(usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente') && (
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-amber-500" />
+                    Solicitudes pendientes de aprobación
+                    {pendingRequests.length > 0 && (
+                      <Badge className="bg-amber-500 text-white ml-1">{pendingRequests.length}</Badge>
+                    )}
+                  </CardTitle>
+                  <CardDescription>Usuarios solicitados para agregar al mapeo SICAS por otros usuarios</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loadingPending ? (
+                    <div className="flex items-center gap-2 text-neutral-500 text-sm py-4">
+                      <Loader2 className="w-4 h-4 animate-spin" />Cargando solicitudes...
+                    </div>
+                  ) : pendingRequests.length === 0 ? (
+                    <p className="text-sm text-neutral-400 py-4 text-center">No hay solicitudes pendientes</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {pendingRequests.map(req => (
+                        <div key={req.id} className="flex items-center gap-4 p-4 border border-amber-200 bg-amber-50 rounded-xl">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-neutral-900 truncate">{req.usuario?.nombre_completo || req.vend_nombre}</p>
+                            {req.solicitante && (
+                              <p className="text-xs text-neutral-500 mt-0.5">
+                                Solicitado por {req.solicitante.nombre_completo} · {new Date(req.mapped_at).toLocaleDateString('es-MX')}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Button
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700 text-white"
+                              disabled={reviewingRequest === req.id}
+                              onClick={() => handleApproveRequest(req)}
+                            >
+                              {reviewingRequest === req.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ThumbsUp className="w-3.5 h-3.5" />}
+                              <span className="ml-1">Aprobar</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-red-300 text-red-600 hover:bg-red-50"
+                              disabled={reviewingRequest === req.id}
+                              onClick={() => handleRejectRequest(req)}
+                            >
+                              <ThumbsDown className="w-3.5 h-3.5" />
+                              <span className="ml-1">Rechazar</span>
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Usuarios MOVI sin mapeo SICAS */}
+            <Card className="mt-6">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <UserPlus className="w-5 h-5 text-blue-500" />
+                      Usuarios MOVI sin mapeo SICAS
+                      {moviSinMapeo.length > 0 && (
+                        <Badge variant="secondary" className="ml-1">{moviSinMapeo.length}</Badge>
+                      )}
+                    </CardTitle>
+                    <CardDescription>Usuarios que existen en MOVI pero no tienen un mapeo en la base de datos SICAS</CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={loadMoviSinMapeo} disabled={loadingMoviSinMapeo}>
+                    <RefreshCw className={`w-4 h-4 mr-1 ${loadingMoviSinMapeo ? 'animate-spin' : ''}`} />
+                    Actualizar
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingMoviSinMapeo ? (
+                  <div className="flex items-center gap-2 text-neutral-500 text-sm py-4">
+                    <Loader2 className="w-4 h-4 animate-spin" />Buscando usuarios sin mapeo...
+                  </div>
+                ) : moviSinMapeo.length === 0 ? (
+                  <div className="text-center py-8">
+                    <CheckCircle className="w-10 h-10 mx-auto mb-2 text-green-400" />
+                    <p className="text-sm text-neutral-500">Todos los usuarios MOVI tienen mapeo SICAS</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-4">
+                      <Input
+                        placeholder="Buscar usuario..."
+                        value={searchMoviSinMapeo}
+                        onChange={e => setSearchMoviSinMapeo(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      {moviSinMapeo
+                        .filter(u => {
+                          const q = searchMoviSinMapeo.toLowerCase();
+                          return !q || (u.nombre + ' ' + u.apellidos).toLowerCase().includes(q) || u.email_personal?.toLowerCase().includes(q);
+                        })
+                        .map(user => (
+                          <div key={user.id} className="flex items-center gap-4 p-3 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-neutral-900 truncate">
+                                {user.nombre_completo || `${user.nombre} ${user.apellidos}`.trim()}
+                              </p>
+                              {user.email_personal && (
+                                <p className="text-xs text-neutral-500 truncate">{user.email_personal}</p>
+                              )}
+                            </div>
+                            <Button
+                              size="sm"
+                              disabled={addingSicasUser === user.id}
+                              onClick={() => handleAddUserToSicas(user)}
+                              className="shrink-0"
+                            >
+                              {addingSicasUser === user.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                              ) : (
+                                <UserPlus className="w-3.5 h-3.5 mr-1" />
+                              )}
+                              {usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente' ? 'Agregar' : 'Solicitar'}
+                            </Button>
+                          </div>
+                        ))}
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </Section>

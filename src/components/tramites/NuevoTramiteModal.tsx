@@ -7,8 +7,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { BaseModal } from '../BaseModal';
 import {
   canAccessRegistroActividades,
-  getInsuranceTypes,
-  getAseguradoras as getAseguradorasRA,
   getUsersByOffice,
   getResponsableByOffice,
   createRegistroActividad,
@@ -22,10 +20,11 @@ import {
   getTipoTramiteArea,
   AREA_CONFIG,
   isCommercialTicketType,
-  type InsuranceType,
-  type Aseguradora as AseguradoraRA,
   type UsuarioOficina
 } from '../../lib/registroActividadesTypes';
+import { SearchableSelect } from './catalogos/SearchableSelect';
+import { useTiposTramite } from '../../hooks/useTiposTramite';
+import { calcularDeadline } from '../../lib/diasHabiles';
 
 interface TramiteEstatus {
   id: string;
@@ -107,9 +106,13 @@ export function NuevoTramiteModal({
   const [tipoTramite, setTipoTramite] = useState<string>('correccion_poliza_registrada');
   const [usuariosDisponibles, setUsuariosDisponibles] = useState<Usuario[]>([]);
   const [asignado, setAsignado] = useState<string>('');
+  const [propuestoNombreMOVI, setPropuestoNombreMOVI] = useState('');
   const [prioridad, setPrioridad] = useState<'Alta' | 'Media' | 'Baja'>('Baja');
   const [descripcion, setDescripcion] = useState('');
   const [archivos, setArchivos] = useState<File[]>([]);
+  const [adjuntosTemporales, setAdjuntosTemporales] = useState<Record<string, File[]>>({});
+  const [adjuntoCategorias, setAdjuntoCategorias] = useState<{id: string; nombre: string}[]>([]);
+  const [archivoCategoriaId, setArchivoCategoriaId] = useState('');
 
   const [polizaNumero, setPolizaNumero] = useState('');
 
@@ -120,6 +123,13 @@ export function NuevoTramiteModal({
   const [loadingDocumentos, setLoadingDocumentos] = useState(false);
 
   const [aseguradoras, setAseguradoras] = useState<Aseguradora[]>([]);
+  const [catalogoRamos,     setCatalogoRamos]     = useState<{id: string; nombre: string}[]>([]);
+  const [catalogoCompanias, setCatalogoCompanias] = useState<{id: string; nombre: string}[]>([]);
+  const [combinaciones,     setCombinaciones]     = useState<{compania_id: string; ramo_id: string}[]>([]);
+  const [cpSearchState, setCpSearchState] = useState<Record<string, {
+    colonias: {colonia: string; municipio: string; estado: string}[];
+    loading: boolean;
+  }>>({});
   const [polizaFiles, setPolizaFiles] = useState<PolizaFile[]>([
     { id: '1', file: null, aseguradora: '', claveAgente: '' }
   ]);
@@ -130,8 +140,8 @@ export function NuevoTramiteModal({
 
   // --- Estado para Cotización / Emisión ---
   const [ceAgenteUserId, setCeAgenteUserId] = useState('');
-  const [ceInsuranceTypeId, setCeInsuranceTypeId] = useState('');
-  const [ceSelectedInsurers, setCeSelectedInsurers] = useState<string[]>([]);
+  const [ceRamoId, setCeRamoId] = useState('');            // UUID de maestro_ramos
+  const [ceSelectedInsurers, setCeSelectedInsurers] = useState<string[]>([]); // nombres de maestro_companias
   const [ceRequestDatetime, setCeRequestDatetime] = useState(formatDateTimeForInput(new Date()));
   const [ceCompletionDatetime, setCeCompletionDatetime] = useState('');
   const [ceEstatusNombre, setCeEstatusNombre] = useState('Iniciado');
@@ -147,8 +157,6 @@ export function NuevoTramiteModal({
   const [comMonto, setComMonto] = useState('');
   const [comAsunto, setComAsunto] = useState('');
 
-  const [ceInsuranceTypes, setCeInsuranceTypes] = useState<InsuranceType[]>([]);
-  const [ceAseguradorasRA, setCeAseguradorasRA] = useState<AseguradoraRA[]>([]);
   const [ceAgenteUsers, setCeAgenteUsers] = useState<UsuarioOficina[]>([]);
 
   const DRAFT_KEY = 'tramite_nuevo_draft';
@@ -156,14 +164,48 @@ export function NuevoTramiteModal({
 
   // Ref para rastrear si estamos inicializando con datos precargados
   const isInitializingWithPreloadedData = useRef(false);
+  const insurerDropdownRef = useRef<HTMLDivElement>(null);
 
-  const [tiposDb, setTiposDb] = useState<Array<{ value: string; label: string; area: string; is_custom: boolean; assignment_mode: string }>>([]);
+  const [tiposDb, setTiposDb] = useState<Array<{ id: string; value: string; label: string; area: string; is_custom: boolean }>>([]);
 
+  // Campos dinámicos del catálogo para el tipo de trámite seleccionado
+  interface CampoDinamicoOption { label: string; slug: string; clasificacion?: string | null }
+  interface CampoDinamico {
+    id: string; key: string; label: string; tipo: string;
+    requerido: boolean; ayuda: string | null; display_order: number;
+    is_sistema: boolean; sistema_key: string | null;
+    config: { opciones?: CampoDinamicoOption[]; max_length?: number; [k: string]: any };
+  }
+  const [camposDinamicos, setCamposDinamicos] = useState<CampoDinamico[]>([]);
+  const [respuestasDinamicas, setRespuestasDinamicas] = useState<Record<string, any>>({});
+  const [agentesVendedor, setAgentesVendedor] = useState<{
+    id: string; nombre: string; despacho_id: string;
+    usuario_id?: string; usuario_nombre?: string;
+  }[]>([]);
+  const [despachos, setDespachos] = useState<{id: string; nombre: string}[]>([]);
+  // IDs de ticket_tipos que el usuario NO puede crear (calculado al cargar)
+  const [tiposBlockedIds, setTiposBlockedIds] = useState<Set<string>>(new Set());
+  // IDs de ticket_tipos donde el usuario puede crear pero NO editar
+  const [tiposReadOnlyAfterCreate, setTiposReadOnlyAfterCreate] = useState<Set<string>>(new Set());
+  const [fechaPromesaEntrega, setFechaPromesaEntrega] = useState('');
+
+  const { tiposMap } = useTiposTramite();
   const isAgent = usuario?.rol === 'Agente';
   const canAssignOthers = !isAgent;
-  const isPoolMode = tiposDb.find(t => t.value === tipoTramite)?.assignment_mode === 'pool';
+  const isPoolMode = false;
   const [canAccessRegistroAct, setCanAccessRegistroAct] = useState(false);
   const [autoResponsableId, setAutoResponsableId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!ceShowInsurerDropdown) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (insurerDropdownRef.current && !insurerDropdownRef.current.contains(e.target as Node)) {
+        setCeShowInsurerDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [ceShowInsurerDropdown]);
 
   useEffect(() => {
     if (isOpen && usuario) {
@@ -189,6 +231,8 @@ export function NuevoTramiteModal({
       loadLotesDisponibles();
       checkRegistroAccess();
       loadTiposDb();
+      supabase.from('maestro_adjunto_categorias').select('id, nombre').eq('activo', true).order('orden')
+        .then(({ data }) => setAdjuntoCategorias((data || []) as {id: string; nombre: string}[]));
 
       // Auto-find responsable from agent's office
       if (isAgent && usuario.oficina_id) {
@@ -214,10 +258,52 @@ export function NuevoTramiteModal({
   const loadTiposDb = async () => {
     const { data } = await supabase
       .from('ticket_tipos')
-      .select('value, label, area, is_custom, assignment_mode')
+      .select('id, value, label, area, is_custom')
       .eq('activo', true)
       .order('orden');
-    if (data) setTiposDb(data as Array<{ value: string; label: string; area: string; is_custom: boolean; assignment_mode: string }>);
+    if (!data) return;
+    setTiposDb(data as Array<{ id: string; value: string; label: string; area: string; is_custom: boolean }>);
+
+    // Admin y Gerente no tienen restricciones
+    if (!usuario || ['Administrador', 'Gerente'].includes(usuario.rol)) return;
+
+    const tipoIds = data.map(t => t.id);
+
+    // Permisos por rol
+    const { data: rolData } = await supabase
+      .from('tramite_tipo_rol_permisos')
+      .select('tramite_tipo_id, puede_crear, puede_editar')
+      .eq('rol', usuario.rol)
+      .in('tramite_tipo_id', tipoIds);
+
+    // Override por usuario
+    const { data: overData } = await supabase
+      .from('tramite_tipo_usuario_override')
+      .select('tramite_tipo_id, puede_crear, puede_editar')
+      .eq('user_id', usuario.id)
+      .in('tramite_tipo_id', tipoIds);
+
+    const blocked = new Set<string>();
+    const readOnlyAfterCreate = new Set<string>();
+    for (const tipo of data) {
+      const override = overData?.find(o => o.tramite_tipo_id === tipo.id);
+      const rolPerm = rolData?.find(r => r.tramite_tipo_id === tipo.id);
+
+      // Bloquear creación
+      if (override !== undefined) {
+        if (override.puede_crear === false) blocked.add(tipo.id);
+      } else {
+        if (rolPerm?.puede_crear === false) blocked.add(tipo.id);
+      }
+
+      // Marcar como solo-lectura después de crear (puede crear pero no editar)
+      if (!blocked.has(tipo.id)) {
+        const puedeEditar = override?.puede_editar ?? rolPerm?.puede_editar ?? true;
+        if (puedeEditar === false) readOnlyAfterCreate.add(tipo.id);
+      }
+    }
+    setTiposBlockedIds(blocked);
+    setTiposReadOnlyAfterCreate(readOnlyAfterCreate);
   };
 
   const COTIZACION_EMISION_SUBTYPE_ID = '2ef883f9-96fc-452e-92eb-ff6826be412d';
@@ -228,6 +314,67 @@ export function NuevoTramiteModal({
       loadLotesDisponibles();
     }
   }, [tipoTramite, usuario]);
+
+  // Cargar campos dinámicos del catálogo cuando cambia el tipo de trámite
+  useEffect(() => {
+    const tipoInfo = tiposDb.find(t => t.value === tipoTramite);
+    if (!tipoInfo?.id) { setCamposDinamicos([]); setRespuestasDinamicas({}); return; }
+    supabase
+      .from('tramite_tipo_campos')
+      .select('id, key, label, tipo, requerido, ayuda, display_order, config, is_sistema, sistema_key')
+      .eq('tramite_tipo_id', tipoInfo.id)
+      .eq('activo', true)
+      .order('display_order')
+      .then(({ data }) => {
+        const campos = (data as CampoDinamico[]) || [];
+        setCamposDinamicos(campos);
+        // Auto-set el primer slug con clasificacion='inicio' del campo estatus
+        const estatusCampo = campos.find(c => c.tipo === 'estatus');
+        const primeraOpcionInicio = estatusCampo?.config.opciones?.find(o => o.clasificacion === 'inicio');
+        if (estatusCampo && primeraOpcionInicio) {
+          setRespuestasDinamicas({ [estatusCampo.id]: primeraOpcionInicio.slug });
+        } else {
+          setRespuestasDinamicas({});
+        }
+      });
+  }, [tipoTramite, tiposDb]);
+
+  // Cargar catálogos para campos sistema agente_vendedor / oficina_jiro
+  useEffect(() => {
+    if (!camposDinamicos.some(c => c.sistema_key === 'agente_vendedor')) return;
+    supabase.from('maestro_agentes')
+      .select('id, nombre, despacho_id, maestro_usuario_agente(user_id, activo, usuarios(nombre_completo))')
+      .eq('activo', true).eq('es_primario', true).order('nombre')
+      .then(({ data }) => {
+        const mapped = (data || []).map((a: any) => {
+          const mapeo = (a.maestro_usuario_agente || []).find((m: any) => m.activo);
+          return {
+            id: a.id, nombre: a.nombre, despacho_id: a.despacho_id,
+            usuario_id: mapeo?.user_id ?? undefined,
+            usuario_nombre: mapeo?.usuarios?.nombre_completo ?? undefined,
+          };
+        });
+        setAgentesVendedor(mapped);
+      });
+    supabase.from('maestro_despachos').select('id, nombre').eq('activo', true).order('nombre')
+      .then(({ data }) => setDespachos((data || []) as {id: string; nombre: string}[]));
+  }, [camposDinamicos]);
+
+  // Cargar catálogos maestro para campos tipo aseguradora / ramo
+  // También se activa para cotizacion_emision y tipos comerciales (reemplazan campos legacy)
+  useEffect(() => {
+    const tieneAseg = camposDinamicos.some(c => c.tipo === 'aseguradora');
+    const tieneRamo = camposDinamicos.some(c => c.tipo === 'ramo');
+    const esCeOComercial = tipoTramite === 'cotizacion_emision' || isCommercialTicketType(tipoTramite);
+    if (!tieneAseg && !tieneRamo && !esCeOComercial) return;
+
+    supabase.from('maestro_companias').select('id, nombre').eq('activo', true).order('nombre')
+      .then(({ data }) => setCatalogoCompanias((data || []) as {id: string; nombre: string}[]));
+    supabase.from('maestro_ramos').select('id, nombre').order('nombre')
+      .then(({ data }) => setCatalogoRamos((data || []) as {id: string; nombre: string}[]));
+    supabase.from('maestro_combinaciones').select('compania_id, ramo_id')
+      .then(({ data }) => setCombinaciones((data || []) as {compania_id: string; ramo_id: string}[]));
+  }, [camposDinamicos, tipoTramite]);
 
   useEffect(() => {
     if (tipoTramite === 'correccion_comisiones' && asignado) {
@@ -267,13 +414,9 @@ export function NuevoTramiteModal({
   const loadCeCatalogs = async () => {
     if (!usuario) return;
     try {
-      const [insurance, insurers, agentes] = await Promise.all([
-        getInsuranceTypes(),
-        getAseguradorasRA(),
-        usuario.oficina_id ? getUsersByOffice(usuario.oficina_id) : Promise.resolve([])
-      ]);
-      setCeInsuranceTypes(insurance);
-      setCeAseguradorasRA(insurers);
+      const agentes = usuario.oficina_id
+        ? await getUsersByOffice(usuario.oficina_id)
+        : [];
       setCeAgenteUsers(agentes);
     } catch (err) {
       console.error('Error loading CE catalogs:', err);
@@ -298,6 +441,7 @@ export function NuevoTramiteModal({
     setPrioridad('Baja');
     setDescripcion(preloadedData?.instrucciones || '');
     setArchivos([]);
+    setArchivoCategoriaId('');
     setPolizaNumero('');
 
     // Respetar lote precargado si existe
@@ -314,7 +458,7 @@ export function NuevoTramiteModal({
 
     // Reset CE fields
     setCeAgenteUserId('');
-    setCeInsuranceTypeId('');
+    setCeRamoId('');
     setCeSelectedInsurers([]);
     setCeRequestDatetime(formatDateTimeForInput(new Date()));
     setCeCompletionDatetime('');
@@ -330,6 +474,7 @@ export function NuevoTramiteModal({
     setComFechaVencimiento('');
     setComMonto('');
     setComAsunto('');
+    setFechaPromesaEntrega('');
   };
 
   const restoreFromDraft = (draft: Record<string, unknown>) => {
@@ -339,7 +484,7 @@ export function NuevoTramiteModal({
     setDescripcion((draft.descripcion as string) || '');
     setPolizaNumero((draft.polizaNumero as string) || '');
     setCeAgenteUserId((draft.ceAgenteUserId as string) || '');
-    setCeInsuranceTypeId((draft.ceInsuranceTypeId as string) || '');
+    setCeRamoId((draft.ceRamoId as string) || '');
     setCeSelectedInsurers((draft.ceSelectedInsurers as string[]) || []);
     setComAgenteUserId((draft.comAgenteUserId as string) || '');
     setComCliente((draft.comCliente as string) || '');
@@ -359,6 +504,7 @@ export function NuevoTramiteModal({
     setCeEstatusNombre('Iniciado');
     setCeShowInsurerDropdown(false);
     setCeInsurerSearchTerm('');
+    setFechaPromesaEntrega((draft.fechaPromesaEntrega as string) || '');
     setError('');
   };
 
@@ -367,14 +513,14 @@ export function NuevoTramiteModal({
     if (!isOpen) return;
     saveDraft(DRAFT_KEY, {
       tipoTramite, asignado, prioridad, descripcion, polizaNumero,
-      ceAgenteUserId, ceInsuranceTypeId, ceSelectedInsurers,
+      ceAgenteUserId, ceRamoId, ceSelectedInsurers,
       comAgenteUserId, comCliente, comPoliza, comAseguradora,
-      comFechaVencimiento, comMonto, comAsunto,
+      comFechaVencimiento, comMonto, comAsunto, fechaPromesaEntrega,
     });
   }, [isOpen, tipoTramite, asignado, prioridad, descripcion, polizaNumero,
-      ceAgenteUserId, ceInsuranceTypeId, ceSelectedInsurers,
+      ceAgenteUserId, ceRamoId, ceSelectedInsurers,
       comAgenteUserId, comCliente, comPoliza, comAseguradora,
-      comFechaVencimiento, comMonto, comAsunto]);
+      comFechaVencimiento, comMonto, comAsunto, fechaPromesaEntrega]);
 
   const loadUsuarios = async () => {
     const { data } = await supabase
@@ -467,13 +613,24 @@ export function NuevoTramiteModal({
   };
 
   const loadAseguradoras = async () => {
-    const { data } = await supabase
-      .from('cat_aseguradoras')
+    // Preferir maestro_companias (importadas por admin vía /admin/base-datos).
+    // Fallback a cat_aseguradoras mientras no haya datos importados.
+    const { data: maestro } = await supabase
+      .from('maestro_companias')
       .select('nombre')
       .eq('activo', true)
       .order('nombre');
 
-    if (data) setAseguradoras(data);
+    if (maestro?.length) {
+      setAseguradoras(maestro);
+    } else {
+      const { data } = await supabase
+        .from('cat_aseguradoras')
+        .select('nombre')
+        .eq('activo', true)
+        .order('nombre');
+      if (data) setAseguradoras(data);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -557,8 +714,14 @@ export function NuevoTramiteModal({
     }
 
     if (!isAgent && !asignado) {
-      setError('Debe seleccionar a quién asignar el trámite');
-      return false;
+      // Permitir si hay un agente SICAS seleccionado sin usuario MOVI (se notificará al admin)
+      const agCampo = camposDinamicos.find(c => c.sistema_key === 'agente_vendedor');
+      const agId    = agCampo ? respuestasDinamicas[agCampo.id] : null;
+      const agSin   = agId ? agentesVendedor.find(a => a.id === agId && !a.usuario_id) : null;
+      if (!agSin) {
+        setError('Debe seleccionar a quién asignar el trámite');
+        return false;
+      }
     }
 
     if (tipoTramite === 'correccion_comisiones') {
@@ -599,7 +762,439 @@ export function NuevoTramiteModal({
       }
     }
 
+    // Validar campos dinámicos requeridos (omitir campos sistema auto-fill)
+    // agente_vendedor se omite: es opcional por diseño — puede no existir contraparte SICAS
+    const AUTO_FILL_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'oficina_jiro', 'agente_vendedor'];
+    for (const campo of camposDinamicos) {
+      if (!campo.requerido) continue;
+      if (campo.is_sistema && AUTO_FILL_KEYS.includes(campo.sistema_key || '')) continue;
+      if (campo.sistema_key === 'agente_vendedor') continue; // nunca bloquear: SICAS puede no tener contraparte
+      if (campo.tipo === 'adjunto') {
+        if (!(adjuntosTemporales[campo.id]?.length > 0)) {
+          setError(`El campo "${campo.label}" es obligatorio`);
+          return false;
+        }
+        continue;
+      }
+      const val = respuestasDinamicas[campo.id];
+      const isEmpty = val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0);
+      if (isEmpty) {
+        setError(`El campo "${campo.label}" es obligatorio`);
+        return false;
+      }
+    }
+
+    // Validar categoría de adjuntos si hay archivos adjuntados
+    const tieneAdjuntoLegacy = tipoTramite !== 'registro_poliza' && tipoTramite !== 'solicitud_comisiones_pendientes';
+    if (tieneAdjuntoLegacy && archivos.length > 0 && !archivoCategoriaId) {
+      setError('Selecciona una categoría para los archivos adjuntos');
+      return false;
+    }
+
     return true;
+  };
+
+  const renderCampoDinamico = (campo: CampoDinamico) => {
+    const val = respuestasDinamicas[campo.id];
+    const set = (v: any) => setRespuestasDinamicas(prev => ({ ...prev, [campo.id]: v }));
+
+    return (
+      <div key={campo.id}>
+        <label className="block text-sm font-medium text-neutral-700 mb-1">
+          {campo.label}{campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
+        </label>
+        {campo.ayuda && <p className="text-xs text-neutral-500 mb-1">{campo.ayuda}</p>}
+
+        {campo.tipo === 'texto_corto' && (
+          <input
+            type="text"
+            value={val || ''}
+            onChange={e => set(e.target.value)}
+            maxLength={campo.config.max_length}
+            className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        )}
+
+        {campo.tipo === 'texto_largo' && (
+          <textarea
+            value={val || ''}
+            onChange={e => set(e.target.value)}
+            maxLength={campo.config.max_length}
+            rows={3}
+            className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          />
+        )}
+
+        {campo.tipo === 'numerico' && (
+          <input
+            type="number"
+            value={val ?? ''}
+            onChange={e => set(e.target.value === '' ? null : Number(e.target.value))}
+            step={campo.config.es_entero ? '1' : 'any'}
+            className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        )}
+
+        {campo.tipo === 'fecha' && (
+          <input
+            type="date"
+            value={val || ''}
+            onChange={e => set(e.target.value)}
+            min={campo.config.min_fecha}
+            max={campo.config.max_fecha}
+            className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        )}
+
+        {campo.tipo === 'booleano' && (
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={!!val}
+              onChange={e => set(e.target.checked)}
+              className="w-4 h-4 text-blue-600 rounded"
+            />
+            <span className="text-sm text-neutral-700">Sí</span>
+          </label>
+        )}
+
+        {(campo.tipo === 'estatus' || campo.tipo === 'dropdown') && (
+          <SearchableSelect
+            value={val || ''}
+            onChange={set}
+            options={(campo.config.opciones || []).map((opt: CampoDinamicoOption) => ({ label: opt.label, value: opt.slug }))}
+            placeholder="Seleccionar..."
+          />
+        )}
+
+        {campo.tipo === 'aseguradora' && (
+          <select
+            value={val || ''}
+            onChange={e => {
+              set(e.target.value);
+              // Limpiar ramo dependiente si hay campo con filtrar_por_aseguradora
+              const ramoCampo = camposDinamicos.find(c => c.tipo === 'ramo' && c.config?.filtrar_por_aseguradora);
+              if (ramoCampo) setRespuestasDinamicas(prev => ({ ...prev, [ramoCampo.id]: '' }));
+            }}
+            className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          >
+            <option value="">Selecciona aseguradora...</option>
+            {catalogoCompanias.map(c => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
+          </select>
+        )}
+
+        {campo.tipo === 'ramo' && (() => {
+          let ramosDisp = catalogoRamos;
+          if (campo.config?.filtrar_por_aseguradora) {
+            const asegCampo = camposDinamicos.find(c => c.tipo === 'aseguradora');
+            const asegNombre = asegCampo ? respuestasDinamicas[asegCampo.id] : null;
+            if (asegNombre) {
+              const compania = catalogoCompanias.find(c => c.nombre === asegNombre);
+              if (compania) {
+                const validIds = new Set(combinaciones.filter(cb => cb.compania_id === compania.id).map(cb => cb.ramo_id));
+                ramosDisp = catalogoRamos.filter(r => validIds.has(r.id));
+              } else {
+                ramosDisp = [];
+              }
+            } else {
+              ramosDisp = [];
+            }
+          }
+          const placeholder = campo.config?.filtrar_por_aseguradora && !ramosDisp.length
+            ? 'Selecciona primero una aseguradora...'
+            : 'Selecciona ramo...';
+          return (
+            <select
+              value={val || ''}
+              onChange={e => set(e.target.value)}
+              disabled={campo.config?.filtrar_por_aseguradora && ramosDisp.length === 0}
+              className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <option value="">{placeholder}</option>
+              {ramosDisp.map(r => <option key={r.id} value={r.nombre}>{r.nombre}</option>)}
+            </select>
+          );
+        })()}
+
+        {campo.tipo === 'codigo_postal' && (() => {
+          const cpState = cpSearchState[campo.id] || { colonias: [], loading: false };
+          const stored = val as { codigo?: string; colonia?: string; municipio?: string; estado?: string } | undefined;
+          return (
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={stored?.codigo || ''}
+                onChange={async e => {
+                  const cp = e.target.value.replace(/\D/g, '').slice(0, 5);
+                  set({ codigo: cp, colonia: '', municipio: '', estado: '' });
+                  if (cp.length === 5) {
+                    setCpSearchState(prev => ({ ...prev, [campo.id]: { colonias: [], loading: true } }));
+                    const { data } = await supabase
+                      .from('codigos_postales')
+                      .select('colonia, municipio, estado')
+                      .eq('codigo', cp)
+                      .order('colonia');
+                    setCpSearchState(prev => ({ ...prev, [campo.id]: { colonias: data || [], loading: false } }));
+                  } else {
+                    setCpSearchState(prev => ({ ...prev, [campo.id]: { colonias: [], loading: false } }));
+                  }
+                }}
+                placeholder="Ej: 76000"
+                maxLength={5}
+                className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {cpState.loading && <p className="text-xs text-neutral-400">Buscando colonias...</p>}
+              {cpState.colonias.length > 0 && (
+                <select
+                  value={stored?.colonia || ''}
+                  onChange={e => {
+                    const col = cpState.colonias.find(c => c.colonia === e.target.value);
+                    if (col) set({ codigo: stored?.codigo, ...col });
+                  }}
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value="">Selecciona colonia...</option>
+                  {cpState.colonias.map(c => <option key={c.colonia} value={c.colonia}>{c.colonia}</option>)}
+                </select>
+              )}
+              {stored?.municipio && (
+                <p className="text-xs text-neutral-500">{stored.municipio}, {stored.estado}</p>
+              )}
+            </div>
+          );
+        })()}
+
+        {campo.tipo === 'seleccion_multiple' && (
+          <div className="flex flex-wrap gap-2">
+            {(campo.config.opciones || []).map((opt: CampoDinamicoOption) => {
+              const selected: string[] = Array.isArray(val) ? val : [];
+              const isChecked = selected.includes(opt.slug);
+              return (
+                <button
+                  key={opt.slug}
+                  type="button"
+                  onClick={() => set(isChecked ? selected.filter(s => s !== opt.slug) : [...selected, opt.slug])}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${isChecked ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-neutral-600 border-neutral-300 hover:border-blue-400'}`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {campo.tipo === 'email' && (
+          <input
+            type="email"
+            value={val || ''}
+            onChange={e => set(e.target.value)}
+            placeholder="correo@ejemplo.com"
+            className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        )}
+
+        {campo.tipo === 'telefono' && (
+          <input
+            type="tel"
+            value={val || ''}
+            onChange={e => set(e.target.value.replace(/\D/g, '').slice(0, 10))}
+            placeholder="10 dígitos"
+            maxLength={10}
+            className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        )}
+
+        {campo.tipo === 'rfc' && (
+          <input
+            type="text"
+            value={val || ''}
+            onChange={e => set(e.target.value.toUpperCase().slice(0, 13))}
+            placeholder="RFC (12 ó 13 caracteres)"
+            maxLength={13}
+            className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono uppercase"
+          />
+        )}
+
+        {campo.tipo === 'curp' && (
+          <input
+            type="text"
+            value={val || ''}
+            onChange={e => set(e.target.value.toUpperCase().slice(0, 18))}
+            placeholder="CURP (18 caracteres)"
+            maxLength={18}
+            className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono uppercase"
+          />
+        )}
+
+        {campo.tipo === 'porcentaje' && (
+          <div className="relative">
+            <input
+              type="number"
+              value={val ?? ''}
+              onChange={e => set(e.target.value === '' ? null : Math.min(100, Math.max(0, Number(e.target.value))))}
+              min={0}
+              max={100}
+              step="0.01"
+              className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400 pointer-events-none">%</span>
+          </div>
+        )}
+
+        {campo.tipo === 'adjunto' && (() => {
+          const files = adjuntosTemporales[campo.id] || [];
+          const maxFiles = campo.config.max_archivos || 1;
+          const maxMb = campo.config.max_mb || 10;
+          const accept = (campo.config.tipos_mime || []).join(',') || undefined;
+          return (
+            <div className="space-y-2">
+              {files.length < maxFiles && (
+                <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-neutral-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 transition-colors">
+                  <Upload className="w-4 h-4 text-neutral-400" />
+                  <span className="text-sm text-neutral-500">
+                    {files.length > 0 ? 'Agregar otro archivo' : 'Haz clic para adjuntar'}
+                  </span>
+                  <input
+                    type="file"
+                    accept={accept}
+                    multiple={maxFiles > 1}
+                    className="hidden"
+                    onChange={e => {
+                      const selected = Array.from(e.target.files || []);
+                      const tooBig = selected.filter(f => f.size > maxMb * 1024 * 1024);
+                      if (tooBig.length) { setError(`El archivo excede el límite de ${maxMb} MB.`); return; }
+                      const merged = [...files, ...selected].slice(0, maxFiles);
+                      setAdjuntosTemporales(prev => ({ ...prev, [campo.id]: merged }));
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+              )}
+              {files.map((f, i) => (
+                <div key={i} className="flex items-center gap-2 px-3 py-2 bg-neutral-50 rounded-xl border border-neutral-200">
+                  <FileText className="w-4 h-4 text-neutral-400 shrink-0" />
+                  <span className="text-sm flex-1 truncate">{f.name}</span>
+                  <span className="text-xs text-neutral-400 shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
+                  <button type="button"
+                    onClick={() => setAdjuntosTemporales(prev => ({ ...prev, [campo.id]: files.filter((_, j) => j !== i) }))}
+                    className="p-1 text-red-400 hover:text-red-600 transition-colors shrink-0">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+              {maxFiles > 1 && (
+                <p className="text-xs text-neutral-400">{files.length}/{maxFiles} archivos · máx {maxMb} MB c/u</p>
+              )}
+            </div>
+          );
+        })()}
+
+      </div>
+    );
+  };
+
+  const renderCampoSistema = (campo: CampoDinamico) => {
+    const tipoInfo = tiposDb.find(t => t.value === tipoTramite);
+    const violet = 'px-3 py-2 bg-violet-50 border border-violet-200 rounded-xl text-sm text-violet-700 flex items-center gap-2';
+    const lock = <span className="text-[10px] font-bold bg-violet-100 text-violet-500 px-1.5 py-0.5 rounded">AUTO</span>;
+
+    if (campo.sistema_key === 'area') return (
+      <div key={campo.id}>
+        <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">🔒 {campo.label}</label>
+        <div className={violet}>{lock}{tipoInfo?.area || 'Sin área'}</div>
+      </div>
+    );
+
+    if (campo.sistema_key === 'equipo') return (
+      <div key={campo.id}>
+        <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">🔒 {campo.label}</label>
+        <div className={violet}>{lock}Auto-asignado al crear</div>
+      </div>
+    );
+
+    if (campo.sistema_key === 'fecha_creacion') return (
+      <div key={campo.id}>
+        <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">🔒 {campo.label}</label>
+        <div className={violet}>{lock}{new Date().toLocaleString('es-MX')}</div>
+      </div>
+    );
+
+    if (campo.sistema_key === 'fecha_finalizacion') return (
+      <div key={campo.id}>
+        <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">🔒 {campo.label}</label>
+        <div className="px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm text-neutral-400 italic">
+          Se registrará al cerrar el trámite
+        </div>
+      </div>
+    );
+
+    if (campo.sistema_key === 'agente_vendedor') {
+      const val = respuestasDinamicas[campo.id] || '';
+      const selectedAgente = agentesVendedor.find(a => a.id === val);
+      const agenteOpts = agentesVendedor.map(a => ({
+        label: a.usuario_nombre ?? `⚠ ${a.nombre}`,
+        value: a.id,
+      }));
+      return (
+        <div key={campo.id}>
+          <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">
+            🔒 {campo.label}{campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          <SearchableSelect
+            value={val}
+            onChange={agenteId => {
+              const agente = agentesVendedor.find(a => a.id === agenteId);
+              const oficinaCampo = camposDinamicos.find(c => c.sistema_key === 'oficina_jiro');
+              const despacho = agente ? despachos.find(d => d.id === agente.despacho_id) : null;
+              setRespuestasDinamicas(prev => ({
+                ...prev,
+                [campo.id]: agenteId,
+                ...(oficinaCampo ? { [oficinaCampo.id]: despacho?.nombre || '' } : {}),
+              }));
+              if (agente?.usuario_id) setAsignado(agente.usuario_id);
+            }}
+            options={agenteOpts}
+            placeholder="Selecciona usuario asignado..."
+          />
+          {val && !selectedAgente?.usuario_id && (
+            <div className="mt-2 space-y-2">
+              <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700">
+                  Este agente no tiene cuenta MOVI vinculada. Escribe el nombre de la cuenta que el Admin debe crear o vincular.
+                </p>
+              </div>
+              <input
+                type="text"
+                value={propuestoNombreMOVI}
+                onChange={e => setPropuestoNombreMOVI(e.target.value)}
+                placeholder="Nombre completo de la cuenta MOVI a crear…"
+                className="w-full px-3 py-2 text-sm border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white placeholder-neutral-400"
+              />
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (campo.sistema_key === 'oficina_jiro') {
+      const val = respuestasDinamicas[campo.id];
+      return (
+        <div key={campo.id}>
+          <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">🔒 {campo.label}</label>
+          <div className={violet}>
+            {val
+              ? <><span className="text-[10px] font-bold bg-violet-100 text-violet-500 px-1.5 py-0.5 rounded">CAT</span>{val}</>
+              : <span className="text-neutral-400 italic text-sm">Auto-completa al seleccionar agente</span>
+            }
+          </div>
+        </div>
+      );
+    }
+
+    if (campo.sistema_key === 'estatus') return renderCampoDinamico(campo);
+
+    return null;
   };
 
   const buildCommercialDescription = (): string => {
@@ -618,32 +1213,71 @@ export function NuevoTramiteModal({
     if (!usuario) return;
 
     const effectiveAgenteId = isAgent ? usuario.id : (ceAgenteUserId || (preloadedData?.instrucciones ? usuario.id : ''));
-    // When agent creates, auto-assign responsable from office; otherwise use current user
-    const effectiveAttendingId = isAgent ? (autoResponsableId || '') : usuario.id;
+
+    // Resolve team assignment rules (same logic as handleSubmit for other tramite types)
+    const grupoResult = await resolveGrupoParaTicket(effectiveAgenteId || null, 'cotizacion_emision');
+    const grupoAsignadoId = grupoResult?.grupo_id ?? null;
+    // Rule with ejecutivo → direct assign; rule without ejecutivo → pool (empty); no rule → office fallback
+    const effectiveAttendingId = grupoResult !== null
+      ? (grupoResult.ejecutivo_id ?? '')
+      : (isAgent ? (autoResponsableId || '') : usuario.id);
 
     const formData = {
       tipo_tramite: 'cotizacion_emision',
       activity_subtype_id: COTIZACION_EMISION_SUBTYPE_ID,
       agente_usuario_id: effectiveAgenteId,
-      insurance_type_id: ceInsuranceTypeId,
-      insurers: ceSelectedInsurers,
+      insurance_type_id: null,       // deprecated; se usa maestro_ramo_id ahora
+      insurers: ceSelectedInsurers,  // array de nombres de maestro_companias
       attending_user_id: effectiveAttendingId,
-      request_datetime: formatDateTimeFromInput(ceRequestDatetime),
-      completion_datetime: (!isAgent && ceCompletionDatetime) ? formatDateTimeFromInput(ceCompletionDatetime) : undefined,
+      request_datetime: new Date().toISOString(),
       estatus_nombre: isAgent ? 'Iniciado' : ceEstatusNombre,
       prioridad: isAgent ? 'Media' : prioridad,
       instrucciones: descripcion
     };
 
     if (!effectiveAgenteId && !preloadedData?.instrucciones) { setError('El agente es obligatorio'); return; }
-    if (!ceInsuranceTypeId && !preloadedData?.instrucciones) { setError('El tipo de seguro es obligatorio'); return; }
+    if (!ceRamoId && !preloadedData?.instrucciones) { setError('El ramo es obligatorio'); return; }
     if (ceSelectedInsurers.length === 0 && !preloadedData?.instrucciones) { setError('Debe seleccionar al menos una aseguradora'); return; }
-    if (!ceRequestDatetime && !preloadedData?.instrucciones) { setError('La fecha de inicio es obligatoria'); return; }
+    if (archivos.length > 0 && !archivoCategoriaId) { setError('Selecciona una categoría para los archivos adjuntos'); return; }
 
     setLoading(true);
     setError('');
     try {
       const ticket = await createRegistroActividad({ ...formData, creado_por: usuario.id });
+      if (ticket?.id) {
+        const postUpdates: Record<string, any> = {};
+        if (grupoAsignadoId) postUpdates.grupo_asignado_id = grupoAsignadoId;
+        if (fechaPromesaEntrega) postUpdates.fecha_promesa_entrega = fechaPromesaEntrega;
+        if (ceRamoId) postUpdates.maestro_ramo_id = ceRamoId;
+        if (Object.keys(postUpdates).length > 0) {
+          await supabase.from('tickets').update(postUpdates).eq('id', ticket.id);
+        }
+      }
+      if (ticket?.id && archivos.length > 0) {
+        for (const archivo of archivos) {
+          const fileExt = archivo.name.split('.').pop();
+          const fileName = `${ticket.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const { error: uploadError } = await supabase.storage
+            .from('ticket-archivos')
+            .upload(fileName, archivo);
+          if (uploadError) throw uploadError;
+          const { data: { publicUrl } } = supabase.storage
+            .from('ticket-archivos')
+            .getPublicUrl(fileName);
+          const { error: archivoError } = await supabase
+            .from('ticket_archivos')
+            .insert({
+              ticket_id: ticket.id,
+              usuario_id: usuario.id,
+              nombre: archivo.name,
+              url: publicUrl,
+              tipo: archivo.type,
+              tamano: archivo.size,
+              categoria_id: archivoCategoriaId || null,
+            });
+          if (archivoError) throw archivoError;
+        }
+      }
       clearDraft(DRAFT_KEY);
       if (ticket?.id) onSuccessWithId?.(ticket.id);
       onSuccess();
@@ -673,17 +1307,19 @@ export function NuevoTramiteModal({
       }
 
       const isCommercial = isCommercialTicketType(tipoTramite);
-      const isPoolMode = tiposDb.find(t => t.value === tipoTramite)?.assignment_mode === 'pool';
       // Resolve team + optional auto-ejecutivo based on the agent user (applies to all tramite types)
       const agentUserId = isAgent
         ? usuario.id
         : (isCommercial ? comAgenteUserId : asignado) ?? null;
       const grupoResult = await resolveGrupoParaTicket(agentUserId, tipoTramite);
       const grupoAsignadoId = grupoResult?.grupo_id ?? null;
-      // If the rule specifies an ejecutivo, auto-assign directly to them; otherwise use normal logic
+      // grupoResult found + ejecutivo_id null → pool assignment (no individual responsible)
+      // grupoResult found + ejecutivo_id set  → auto-assign to that ejecutivo
+      // grupoResult null                       → fall back to manual/auto logic
       const autoEjecutivoId = grupoResult?.ejecutivo_id ?? null;
-      const responsableId = autoEjecutivoId
-        ?? (isPoolMode ? null : (isAgent ? (autoResponsableId || null) : (isCommercial ? usuario.id : asignado)));
+      const responsableId = grupoResult !== null
+        ? autoEjecutivoId
+        : (isAgent ? (autoResponsableId || null) : (isCommercial ? usuario.id : asignado));
       const assignedTo = isCommercial ? usuario.id : (isAgent ? usuario.id : asignado);
 
       const ticketData: any = {
@@ -696,7 +1332,7 @@ export function NuevoTramiteModal({
         agente_id: isCommercial ? comAgenteUserId : (isAgent ? usuario.id : assignedTo),
         agente_usuario_id: isCommercial ? comAgenteUserId : undefined,
         assigned_to_user_id: responsableId,
-        grupo_asignado_id: grupoAsignadoId ?? undefined
+        grupo_asignado_id: grupoAsignadoId ?? undefined,
       };
 
       if (tipoTramite === 'correccion_poliza_registrada') {
@@ -729,6 +1365,95 @@ export function NuevoTramiteModal({
 
       if (ticketError) throw ticketError;
 
+      // Guardar respuestas de campos dinámicos (sistema + custom)
+      if (camposDinamicos.length > 0) {
+        // Auto-poblar campos sistema antes de guardar
+        const tipoInfoGuardado = tiposDb.find(t => t.value === tipoTramite);
+        const autoSistema: Record<string, string> = {};
+        const areaCampo = camposDinamicos.find(c => c.sistema_key === 'area');
+        if (areaCampo && tipoInfoGuardado?.area) autoSistema[areaCampo.id] = tipoInfoGuardado.area;
+        const fechaCreCampo = camposDinamicos.find(c => c.sistema_key === 'fecha_creacion');
+        if (fechaCreCampo) autoSistema[fechaCreCampo.id] = new Date().toISOString();
+        const equipoCampo = camposDinamicos.find(c => c.sistema_key === 'equipo');
+        if (equipoCampo && grupoAsignadoId) {
+          const { data: grupoData } = await supabase
+            .from('tramites_grupos_visualizacion').select('nombre').eq('id', grupoAsignadoId).single();
+          if (grupoData) autoSistema[equipoCampo.id] = grupoData.nombre;
+        }
+        const respuestasMerged = { ...autoSistema, ...respuestasDinamicas };
+
+        const TEXTO_TIPOS = ['texto_corto', 'texto_largo', 'area', 'equipo',
+          'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion',
+          'aseguradora', 'ramo', 'email', 'telefono', 'rfc', 'curp'];
+
+        const respuestas = camposDinamicos
+          .filter(c => c.tipo !== 'adjunto' && respuestasMerged[c.id] !== undefined && respuestasMerged[c.id] !== null && respuestasMerged[c.id] !== '')
+          .map(c => {
+            const val = respuestasMerged[c.id];
+            return {
+              tramite_id: ticket.id,
+              campo_id: c.id,
+              valor_texto:    TEXTO_TIPOS.includes(c.tipo) ? String(val) : null,
+              valor_numerico: ['numerico', 'porcentaje'].includes(c.tipo) ? Number(val) : null,
+              valor_fecha:    c.tipo === 'fecha' ? String(val) : null,
+              valor_booleano: c.tipo === 'booleano' ? Boolean(val) : null,
+              valor_json:     ['estatus', 'dropdown', 'seleccion_multiple', 'codigo_postal'].includes(c.tipo) ? val : null,
+            };
+          });
+        if (respuestas.length > 0) {
+          await supabase.from('tramite_respuestas').insert(respuestas);
+        }
+
+        // Subir archivos de campos adjunto dinámicos
+        for (const campo of camposDinamicos.filter(c => c.tipo === 'adjunto')) {
+          const files = adjuntosTemporales[campo.id] || [];
+          if (files.length === 0) continue;
+          const fileData: { id: string; nombre: string; url: string; tipo: string; tamano: number }[] = [];
+          for (const file of files) {
+            const ext = file.name.split('.').pop();
+            const fileName = `${ticket.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+            const { error: upErr } = await supabase.storage.from('ticket-archivos').upload(fileName, file);
+            if (upErr) throw upErr;
+            const { data: { publicUrl } } = supabase.storage.from('ticket-archivos').getPublicUrl(fileName);
+            const { data: archivoData, error: archivoErr } = await supabase.from('ticket_archivos').insert({
+              ticket_id: ticket.id, usuario_id: usuario.id,
+              nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size,
+            }).select('id').single();
+            if (archivoErr) throw archivoErr;
+            fileData.push({ id: archivoData!.id, nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size });
+          }
+          await supabase.from('tramite_respuestas').insert({
+            tramite_id: ticket.id, campo_id: campo.id, valor_json: fileData,
+          });
+        }
+
+        // Guardar custom_estatus_label y custom_estatus_color en el ticket
+        const estatusCampo = camposDinamicos.find(c => c.tipo === 'estatus');
+        if (estatusCampo) {
+          const slug = respuestasDinamicas[estatusCampo.id];
+          const opcion = (estatusCampo.config.opciones || []).find(o => o.slug === slug);
+          if (opcion) {
+            const color = opcion.clasificacion === 'inicio' ? '#3B82F6' : opcion.clasificacion === 'terminacion' ? '#059669' : '#6B7280';
+            await supabase.from('tickets').update({ custom_estatus_label: opcion.label, custom_estatus_color: color }).eq('id', ticket.id);
+          }
+        }
+
+        // Auto-cierre: si algún campo estatus tiene clasificacion 'terminacion'
+        const hayTerminacion = camposDinamicos.some(c => {
+          if (c.tipo !== 'estatus') return false;
+          const slug = respuestasDinamicas[c.id];
+          if (!slug) return false;
+          const opcion = (c.config.opciones || []).find(o => o.slug === slug);
+          return opcion?.clasificacion === 'terminacion';
+        });
+        if (hayTerminacion) {
+          await supabase.from('tickets').update({
+            cerrado_en: new Date().toISOString(),
+            cerrado_por: usuario.id,
+          }).eq('id', ticket.id);
+        }
+      }
+
       // Crear asignación en ticket_asignaciones
       if (responsableId) {
         const { error: assignError } = await supabase
@@ -740,6 +1465,51 @@ export function NuevoTramiteModal({
           });
 
         if (assignError) console.error('Error creating assignment:', assignError);
+      }
+
+      // Proponer mapeo si el agente_vendedor seleccionado no tiene usuario MOVI vinculado
+      {
+        const agCampo = camposDinamicos.find(c => c.sistema_key === 'agente_vendedor');
+        if (agCampo) {
+          const agId   = respuestasDinamicas[agCampo.id];
+          const ag     = agentesVendedor.find(a => a.id === agId);
+          if (ag && !ag.usuario_id) {
+            let notifMsg = '';
+            if (asignado) {
+              // Vincular con usuario MOVI existente
+              await supabase.from('maestro_mapeo_pendiente').upsert(
+                { agente_id: agId, user_id_propuesto: asignado, propuesto_por: usuario.id, ticket_id: ticket.id },
+                { onConflict: 'agente_id,user_id_propuesto', ignoreDuplicates: true }
+              );
+              notifMsg = `${usuario.nombre_completo} propuso vincular al agente "${ag.nombre}" con un usuario MOVI en el trámite ${ticket.folio}.`;
+            } else if (propuestoNombreMOVI.trim()) {
+              // Solicitar creación de nueva cuenta MOVI
+              await supabase.from('maestro_mapeo_pendiente').insert({
+                agente_id: agId,
+                user_id_propuesto: null,
+                nombre_propuesto: propuestoNombreMOVI.trim(),
+                propuesto_por: usuario.id,
+                ticket_id: ticket.id,
+              });
+              notifMsg = `Se solicitó crear la cuenta MOVI "${propuestoNombreMOVI.trim()}" para el agente "${ag.nombre}" (trámite ${ticket.folio}).`;
+            } else {
+              notifMsg = `El agente "${ag.nombre}" no tiene cuenta MOVI vinculada (trámite ${ticket.folio}). Asígnale un usuario en Base de Datos → Vendedores.`;
+            }
+            const { data: adminsNotif } = await supabase.from('usuarios').select('id')
+              .eq('rol', 'Administrador').eq('activo', true);
+            for (const adm of (adminsNotif ?? [])) {
+              await crearNotificacion({
+                user_id: adm.id,
+                titulo: asignado ? 'Propuesta de mapeo pendiente' : 'Agente sin cuenta MOVI en trámite nuevo',
+                mensaje: notifMsg,
+                modulo: 'BaseDatosMaestros',
+                icono: 'link',
+                accion_url: '/admin/base-datos',
+                accion_texto: 'Ir a Mapeo',
+              });
+            }
+          }
+        }
       }
 
       // Notificar al responsable asignado o al líder del equipo
@@ -915,11 +1685,31 @@ export function NuevoTramiteModal({
                 nombre: archivo.name,
                 url: publicUrl,
                 tipo: archivo.type,
-                tamano: archivo.size
+                tamano: archivo.size,
+                categoria_id: archivoCategoriaId || null,
               });
 
             if (archivoError) throw archivoError;
           }
+        }
+      }
+
+      // Post-update: fecha_promesa_entrega — manual o auto-calculada por SLA del tipo
+      if (ticket?.id && !isAgent) {
+        let promesa = fechaPromesaEntrega;
+        if (!promesa) {
+          const tipoDb = tiposMap.get(tipoTramite);
+          if (tipoDb?.sla_horas) {
+            try {
+              const deadline = await calcularDeadline(new Date(), tipoDb.sla_horas);
+              promesa = deadline.toISOString().split('T')[0];
+            } catch { /* ignorar si falla cálculo */ }
+          }
+        }
+        if (promesa) {
+          try {
+            await supabase.from('tickets').update({ fecha_promesa_entrega: promesa }).eq('id', ticket.id);
+          } catch { /* ignorar si columna no existe aún */ }
         }
       }
 
@@ -964,6 +1754,28 @@ export function NuevoTramiteModal({
   if (!isOpen) {
     return null;
   }
+
+  // ── Cascada aseguradora ↔ ramo (solo para form CE) ──────────────────────────
+  // Cascada directa: aseguradoras seleccionadas → filtra ramos disponibles
+  const ceSelectedCompaniaIds = catalogoCompanias
+    .filter(c => ceSelectedInsurers.includes(c.nombre))
+    .map(c => c.id);
+  const ceRamosDisponibles = ceSelectedInsurers.length === 0
+    ? catalogoRamos
+    : catalogoRamos.filter(r => {
+        const ids = new Set(combinaciones.filter(cb => ceSelectedCompaniaIds.includes(cb.compania_id)).map(cb => cb.ramo_id));
+        return ids.has(r.id);
+      });
+
+  // Cascada inversa: ramo seleccionado → filtra aseguradoras disponibles
+  const ceCompaniasDisponibles = ceRamoId
+    ? catalogoCompanias.filter(c => {
+        const ids = new Set(combinaciones.filter(cb => cb.ramo_id === ceRamoId).map(cb => cb.compania_id));
+        return ids.has(c.id);
+      })
+    : catalogoCompanias;
+
+  const ceRamoNombre = catalogoRamos.find(r => r.id === ceRamoId)?.nombre ?? '';
 
   return (
     <BaseModal
@@ -1014,6 +1826,7 @@ export function NuevoTramiteModal({
                   if (t.value === 'formulario_cotizacion' || t.value === 'cambio_bancario') return false;
                   if (t.value === 'cotizacion_emision') return !!canAccessRegistroAct;
                   if (isAgent && isCommercialTicketType(t.value)) return false;
+                  if (tiposBlockedIds.has(t.id)) return false;
                   return true;
                 });
               if (tiposForArea.length === 0) return null;
@@ -1037,6 +1850,13 @@ export function NuevoTramiteModal({
               </p>
             );
           })()}
+          {/* Aviso: puede crear pero no editar */}
+          {tiposReadOnlyAfterCreate.has(tiposDb.find(t => t.value === tipoTramite)?.id ?? '') && (
+            <div className="mt-2 flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
+              <span className="mt-0.5 flex-shrink-0">ℹ️</span>
+              <span>Podrás crear este trámite, pero no podrás modificar sus campos una vez enviado.</span>
+            </div>
+          )}
         </div>
 
         {/* ===== SECCIÓN COTIZACIÓN / EMISIÓN ===== */}
@@ -1118,38 +1938,52 @@ export function NuevoTramiteModal({
                 </div>
               )}
 
-              {/* Tipo de Seguro */}
+              {/* Ramo (maestro_ramos, cascada inversa desde aseguradoras) */}
               <div>
                 <label className="block text-sm font-semibold text-neutral-900 mb-2">
                   <Shield className="w-4 h-4 inline mr-1.5" />
-                  Tipo de Seguro *
+                  Ramo *
                 </label>
                 <select
-                  value={ceInsuranceTypeId}
-                  onChange={(e) => setCeInsuranceTypeId(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                  value={ceRamoId}
+                  onChange={(e) => {
+                    setCeRamoId(e.target.value);
+                    // Cascada inversa: si el ramo cambia, quitar aseguradoras incompatibles
+                    if (e.target.value && ceSelectedInsurers.length > 0) {
+                      const validIds = new Set(combinaciones.filter(cb => cb.ramo_id === e.target.value).map(cb => cb.compania_id));
+                      const validNombres = new Set(catalogoCompanias.filter(c => validIds.has(c.id)).map(c => c.nombre));
+                      setCeSelectedInsurers(prev => prev.filter(n => validNombres.has(n)));
+                    }
+                  }}
+                  disabled={ceRamosDisponibles.length === 0}
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm disabled:opacity-50"
                 >
-                  <option value="">Seleccione...</option>
-                  {ceInsuranceTypes.map(type => (
-                    <option key={type.id} value={type.id}>{type.nombre}</option>
+                  <option value="">
+                    {ceRamosDisponibles.length === 0 ? 'Sin ramos para las aseguradoras seleccionadas' : 'Seleccione ramo...'}
+                  </option>
+                  {ceRamosDisponibles.map(r => (
+                    <option key={r.id} value={r.id}>{r.nombre}</option>
                   ))}
                 </select>
+                {ceRamoNombre && (
+                  <p className="text-xs text-blue-600 mt-1">Ramo: {ceRamoNombre}</p>
+                )}
               </div>
             </div>
 
-            {/* Aseguradoras multiselect */}
-            <div className="relative">
+            {/* Aseguradoras multiselect — lee de maestro_companias (cascada desde ramo) */}
+            <div className="relative" ref={insurerDropdownRef}>
               <label className="block text-sm font-semibold text-neutral-900 mb-2">
                 <Building2 className="w-4 h-4 inline mr-1.5" />
                 Aseguradoras * (seleccione una o más)
               </label>
               <div
-                className="w-full px-4 py-2.5 text-sm border border-neutral-300 rounded-xl cursor-pointer"
+                className="w-full px-4 py-2.5 text-sm border border-neutral-300 rounded-xl cursor-pointer min-h-[42px]"
                 onClick={() => setCeShowInsurerDropdown(!ceShowInsurerDropdown)}
               >
                 {ceSelectedInsurers.length === 0
                   ? <span className="text-neutral-400">Seleccione aseguradoras...</span>
-                  : <span className="text-neutral-900">{ceAseguradorasRA.filter(a => ceSelectedInsurers.includes(a.id)).map(a => a.nombre).join(', ')}</span>
+                  : <span className="text-neutral-900">{ceSelectedInsurers.join(', ')}</span>
                 }
               </div>
               {ceShowInsurerDropdown && (
@@ -1161,61 +1995,60 @@ export function NuevoTramiteModal({
                       value={ceInsurerSearchTerm}
                       onChange={(e) => setCeInsurerSearchTerm(e.target.value)}
                       onClick={(e) => e.stopPropagation()}
-                      className="w-full px-3 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                      className="w-full px-3 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div className="p-1">
-                    {ceAseguradorasRA
-                      .filter(a => (a.nombre ?? '').toLowerCase().includes(ceInsurerSearchTerm.toLowerCase()))
-                      .map(aseg => (
-                        <label key={aseg.id} className="flex items-center gap-2 p-1.5 hover:bg-neutral-100 rounded cursor-pointer">
+                    {ceCompaniasDisponibles
+                      .filter(c => c.nombre.toLowerCase().includes(ceInsurerSearchTerm.toLowerCase()))
+                      .map(c => (
+                        <label key={c.id} className="flex items-center gap-2 p-1.5 hover:bg-neutral-100 rounded cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={ceSelectedInsurers.includes(aseg.id)}
-                            onChange={() => setCeSelectedInsurers(prev =>
-                              prev.includes(aseg.id) ? prev.filter(x => x !== aseg.id) : [...prev, aseg.id]
-                            )}
+                            checked={ceSelectedInsurers.includes(c.nombre)}
+                            onChange={() => {
+                              setCeSelectedInsurers(prev =>
+                                prev.includes(c.nombre) ? prev.filter(x => x !== c.nombre) : [...prev, c.nombre]
+                              );
+                              // Cascada directa: si cambia aseguradoras y hay un ramo incompatible, limpiar ramo
+                              if (ceRamoId) {
+                                const newSelected = ceSelectedInsurers.includes(c.nombre)
+                                  ? ceSelectedInsurers.filter(x => x !== c.nombre)
+                                  : [...ceSelectedInsurers, c.nombre];
+                                const newIds = catalogoCompanias.filter(cp => newSelected.includes(cp.nombre)).map(cp => cp.id);
+                                const validRamoIds = new Set(combinaciones.filter(cb => newIds.includes(cb.compania_id)).map(cb => cb.ramo_id));
+                                if (newSelected.length > 0 && !validRamoIds.has(ceRamoId)) {
+                                  setCeRamoId('');
+                                }
+                              }
+                            }}
                             className="w-3.5 h-3.5 rounded border-neutral-300"
                           />
-                          <span className="text-xs text-neutral-700">{aseg.nombre}</span>
+                          <span className="text-xs text-neutral-700">{c.nombre}</span>
                         </label>
                       ))}
+                    {ceCompaniasDisponibles.length === 0 && (
+                      <p className="text-xs text-neutral-400 p-2">
+                        {ceRamoId ? 'No hay aseguradoras para el ramo seleccionado' : 'Sin datos en catálogo'}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
             </div>
 
-            <div className={`grid grid-cols-1 ${!isAgent ? 'md:grid-cols-2' : ''} gap-4`}>
-              {/* Fecha de Inicio */}
+            <div>
+              {/* Fecha de Inicio — auto, solo lectura */}
               <div>
                 <label className="block text-sm font-semibold text-neutral-900 mb-2">
                   <Calendar className="w-4 h-4 inline mr-1.5" />
-                  Fecha de Inicio *
+                  Fecha de Creación
                 </label>
-                <input
-                  type="datetime-local"
-                  value={ceRequestDatetime}
-                  onChange={(e) => setCeRequestDatetime(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-                />
-              </div>
-
-              {/* Fecha de Finalización - solo para no-agentes */}
-              {!isAgent && (
-                <div>
-                  <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                    <Clock className="w-4 h-4 inline mr-1.5" />
-                    Fecha de Finalización
-                    {isEstatusFinal(ceEstatusNombre) && <span className="text-red-500 ml-1">*</span>}
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={ceCompletionDatetime}
-                    onChange={(e) => setCeCompletionDatetime(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-                  />
+                <div className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm text-neutral-600">
+                  {new Date().toLocaleString('es-MX', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  <span className="ml-2 text-xs text-neutral-400">(se registra al guardar)</span>
                 </div>
-              )}
+              </div>
             </div>
 
             {/* Prioridad dentro del bloque CE - solo para no-agentes */}
@@ -1651,7 +2484,61 @@ export function NuevoTramiteModal({
           />
         </div>
 
-        {tipoTramite !== 'registro_poliza' && tipoTramite !== 'solicitud_comisiones_pendientes' && tipoTramite !== 'cotizacion_emision' && (
+        {/* Fecha de Creación — auto-filled, read-only, siempre visible */}
+        <div>
+          <label className="block text-sm font-semibold text-neutral-900 mb-2">
+            Fecha de Creación
+          </label>
+          <input
+            type="date"
+            value={new Date().toISOString().split('T')[0]}
+            readOnly
+            className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl bg-neutral-50 text-neutral-500 cursor-default"
+          />
+        </div>
+
+        {/* Sección 1 — Campos sistema (fijos, siempre en orden) */}
+        {camposDinamicos.some(c => c.is_sistema) && (
+          <div className="space-y-4 pt-2 border-t border-violet-100">
+            <p className="text-xs font-semibold text-violet-500 uppercase tracking-wide flex items-center gap-1.5">
+              🔒 Información del Trámite
+            </p>
+            {camposDinamicos
+              .filter(c => c.is_sistema)
+              .sort((a, b) => a.display_order - b.display_order)
+              .map(renderCampoSistema)}
+          </div>
+        )}
+
+        {/* Sección 2 — Campos personalizados del catálogo */}
+        {camposDinamicos.some(c => !c.is_sistema) && (
+          <div className="space-y-4 pt-2 border-t border-neutral-100">
+            <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Campos adicionales</p>
+            {camposDinamicos
+              .filter(c => !c.is_sistema)
+              .sort((a, b) => a.display_order - b.display_order)
+              .map(renderCampoDinamico)}
+          </div>
+        )}
+
+        {/* Fecha Promesa de Entrega — solo líderes, gerentes y admins */}
+        {!isAgent && (
+          <div>
+            <label className="block text-sm font-semibold text-neutral-900 mb-2">
+              <Calendar className="w-4 h-4 inline mr-1.5" />
+              Fecha Promesa de Entrega
+              <span className="text-xs font-normal text-neutral-500 ml-2">Opcional</span>
+            </label>
+            <input
+              type="date"
+              value={fechaPromesaEntrega}
+              onChange={(e) => setFechaPromesaEntrega(e.target.value)}
+              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+            />
+          </div>
+        )}
+
+        {tipoTramite !== 'registro_poliza' && tipoTramite !== 'solicitud_comisiones_pendientes' && (
           <div>
             <label className="block text-sm font-semibold text-neutral-900 mb-2">
               <Upload className="w-4 h-4 inline mr-2" />
@@ -1660,6 +2547,21 @@ export function NuevoTramiteModal({
                 Documentos adjuntos: {archivos.length} / 20
               </span>
             </label>
+            <div className="mb-3">
+              <label className="block text-xs font-medium text-neutral-600 mb-1">
+                Categoría del adjunto {archivos.length > 0 && <span className="text-red-500">*</span>}
+              </label>
+              <select
+                value={archivoCategoriaId}
+                onChange={e => setArchivoCategoriaId(e.target.value)}
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Selecciona una categoría...</option>
+                {adjuntoCategorias.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+                ))}
+              </select>
+            </div>
             <div className="border-2 border-dashed border-neutral-300 rounded-xl p-6 text-center hover:border-accent transition-all">
               <input
                 type="file"

@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCached, setCached, invalidateCacheByPrefix } from '../lib/sessionCache';
+import { useTiposTramite } from '../hooks/useTiposTramite';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useImpersonation } from '../contexts/ImpersonationContext';
 import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound, LayoutList, LayoutGrid, ChevronDown, ArrowUpDown } from 'lucide-react';
+import { crearNotificacion } from '../lib/notificationHelpers';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
 import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
+import { PanelLider } from '../components/tramites/PanelLider';
 import { AgenteDashboard } from '../components/tramites/AgenteDashboard';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -42,12 +46,15 @@ interface TramiteItem {
   eliminado_por: string | null;
   ultima_accion_por: string | null;
   agente_id: string | null;
+  agente_usuario_id: string | null;
   creado_por: string | null;
   assigned_to_user_id: string | null;
   grupo_asignado_id: string | null;
   agente: { nombre_completo: string; oficina_id: string | null; oficina: { nombre: string } | null } | null;
   responsable: { nombre_completo: string } | null;
   estatus: TramiteEstatus | null;
+  custom_estatus_label: string | null;
+  custom_estatus_color: string | null;
   ticket_asignaciones: Array<{
     ejecutivo: { nombre_completo: string } | null;
   }>;
@@ -59,7 +66,6 @@ interface TicketTipoDB {
   label: string;
   area: string;
   color: string;
-  assignment_mode: string;
 }
 
 const TRAMITE_OPTIONS_FOR_FILTER = TIPO_TRAMITE_OPTIONS.filter(
@@ -67,6 +73,23 @@ const TRAMITE_OPTIONS_FOR_FILTER = TIPO_TRAMITE_OPTIONS.filter(
 );
 
 const PRIORIDADES = ['Alta', 'Media', 'Baja'] as const;
+
+function getSlaInfo(fechaCreacion: string, slaHoras: number | null | undefined) {
+  const daysOpen = Math.max(0, Math.floor((Date.now() - new Date(fechaCreacion).getTime()) / 86_400_000));
+  const HPD = 8; // horas por día (hardcoded; configuracion_jornada no está cargada aquí)
+  if (!slaHoras) return { daysOpen, slaDias: null as number | null, color: 'text-neutral-400 dark:text-white/30', bg: 'bg-neutral-100 dark:bg-white/5', pulsing: false };
+  const horasUsadas = daysOpen * HPD;
+  const pct = horasUsadas / slaHoras;
+  const slaDias = Math.ceil(slaHoras / HPD);
+  if (pct <= 0.70) return { daysOpen, slaDias, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-900/20', pulsing: false };
+  if (pct <= 0.90) return { daysOpen, slaDias, color: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-50 dark:bg-yellow-900/20', pulsing: false };
+  if (pct <= 1.00) return { daysOpen, slaDias, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-900/20', pulsing: false };
+  return { daysOpen, slaDias, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/20', pulsing: true };
+}
+
+function fmtFecha(iso: string) {
+  return new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
 
 // ── Multi-select dropdown component ─────────────────────────────────────────
 function MultiSelectDropdown({
@@ -157,6 +180,7 @@ function MultiSelectDropdown({
 
 export function Tramites() {
   const { usuario } = useAuth();
+  const { isImpersonating, impersonatedUser } = useImpersonation();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'activos' | 'cerrados' | 'papelera'>('activos');
   const [tramites, setTramites] = useState<TramiteItem[]>([]);
@@ -179,6 +203,7 @@ export function Tramites() {
   const [showNuevoModal, setShowNuevoModal] = useState(false);
   const [showCatalogosModal, setShowCatalogosModal] = useState(false);
   const [showGruposModal, setShowGruposModal] = useState(false);
+  const [showPanelLider, setShowPanelLider] = useState(false);
   const [userArea, setUserArea] = useState<string | null>(null);
   const [userAreaLoaded, setUserAreaLoaded] = useState(false);
   // scope: area → allowed office IDs (null = all offices for that area)
@@ -191,6 +216,8 @@ export function Tramites() {
 
   // Assignment UI state
   const [myOperacionesRole, setMyOperacionesRole] = useState<'lider' | 'ejecutivo' | 'miembro' | null>(null);
+  const [myGrupoRoles, setMyGrupoRoles] = useState<Map<string, string>>(new Map());
+  const isLider = [...myGrupoRoles.values()].some(r => r === 'lider');
   const [myGrupoIds, setMyGrupoIds] = useState<string[]>([]);
   const [assigningTramiteId, setAssigningTramiteId] = useState<string | null>(null);
   const [teamEjecutivos, setTeamEjecutivos] = useState<Array<{ id: string; nombre_completo: string }>>([]);
@@ -211,16 +238,9 @@ export function Tramites() {
   }, [selectedTipos, estatusList]);
 
   const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const [tiposDb, setTiposDb] = useState<Map<string, TicketTipoDB>>(new Map());
+  const { tiposMap: tiposDb, loading: tiposLoading } = useTiposTramite();
 
   useEffect(() => {
-    supabase.from('ticket_tipos').select('value, label, area, color, assignment_mode').eq('activo', true).then(({ data }) => {
-      if (data) {
-        const map = new Map<string, TicketTipoDB>();
-        for (const t of data) map.set(t.value, t);
-        setTiposDb(map);
-      }
-    });
     supabase.from('tramites_grupos_visualizacion').select('id, nombre').eq('activo', true).order('nombre').then(({ data }) => {
       if (data) setGrupos(data as Array<{ id: string; nombre: string }>);
     });
@@ -254,6 +274,49 @@ export function Tramites() {
     };
   }, [userAreaLoaded, activeTab]);
 
+  // SLA overdue notifications — once per session, after tramites and tipos are loaded
+  useEffect(() => {
+    if (!isAdmin || tiposLoading || !tramites.length) return;
+    const today = new Date().toISOString().split('T')[0];
+    const now = Date.now();
+    const overdue = tramites.filter(t => {
+      if (t.cerrado_en || t.eliminado_at) return false;
+      const td = tiposDb.get(t.tipo_tramite);
+      if (!td?.sla_horas) return false;
+      const days = Math.floor((now - new Date(t.fecha_creacion).getTime()) / 86_400_000);
+      return days > td.sla_horas && !localStorage.getItem(`sla_notified_${t.id}_${today}`);
+    });
+    if (!overdue.length) return;
+
+    (async () => {
+      const { data: adminsData } = await supabase.from('usuarios').select('id').eq('rol', 'Administrador').eq('activo', true);
+      const adminIds: string[] = (adminsData ?? []).map((u: { id: string }) => u.id);
+
+      for (const ticket of overdue) {
+        const td = tiposDb.get(ticket.tipo_tramite)!;
+        const days = Math.floor((now - new Date(ticket.fecha_creacion).getTime()) / 86_400_000);
+        const recipients = new Set<string>(adminIds);
+
+        if (ticket.grupo_asignado_id) {
+          const { data: lideresData } = await supabase
+            .from('tramites_grupos_miembros')
+            .select('usuario_id')
+            .eq('grupo_id', ticket.grupo_asignado_id)
+            .eq('rol_en_equipo', 'lider');
+          (lideresData ?? []).forEach((l: { usuario_id: string }) => recipients.add(l.usuario_id));
+        }
+
+        const titulo = `Trámite vencido: ${ticket.folio}`;
+        const mensaje = `"${td.label}" lleva ${days} días abierto (SLA: ${td.sla_horas}h ≈ ${Math.ceil((td.sla_horas ?? 0) / 8)} días hábiles).`;
+        for (const uid of recipients) {
+          await crearNotificacion({ user_id: uid, titulo, mensaje, modulo: 'tramites', accion_url: `/tramites/${ticket.id}`, accion_texto: 'Ver trámite', enviar_whatsapp: false });
+        }
+        localStorage.setItem(`sla_notified_${ticket.id}_${today}`, '1');
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tramites.length, tiposLoading, isAdmin]);
+
   // Close sort dropdown on outside click
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -265,6 +328,7 @@ export function Tramites() {
 
   const loadUserArea = async () => {
     if (!usuario?.id) return;
+    setUserAreaLoaded(false); // Reset so the loadData effect re-fires after impersonation state settles
     if (isAdmin) {
       setUserArea(null);
       setUserScope([]);
@@ -292,13 +356,28 @@ export function Tramites() {
     const desde = new Date();
     desde.setDate(desde.getDate() - 20);
     try {
-      const { data } = await supabase
+      let q = supabase
         .from('tickets')
         .select(`*, agente:agente_id(nombre_completo, oficina_id, oficina:oficina_id(nombre)), responsable:assigned_to_user_id(nombre_completo), estatus:estatus_id(*), ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo)), ticket_archivos(id)`)
         .is('eliminado_at', null)
         .not('cerrado_en', 'is', null)
         .gte('cerrado_en', desde.toISOString())
         .order('cerrado_en', { ascending: false });
+
+      if (isImpersonating && impersonatedUser) {
+        const impersonatedRol = impersonatedUser.rol || '';
+        if (!['Administrador'].includes(impersonatedRol)) {
+          const uid = impersonatedUser.id;
+          const { data: gruposData } = await supabase
+            .from('tramites_grupos_miembros').select('grupo_id').eq('usuario_id', uid);
+          const grupIds = (gruposData || []).map(g => g.grupo_id);
+          let orFilter = `agente_id.eq.${uid},creado_por.eq.${uid},assigned_to_user_id.eq.${uid},agente_usuario_id.eq.${uid},attending_user_id.eq.${uid}`;
+          if (grupIds.length > 0) orFilter += `,and(assigned_to_user_id.is.null,attending_user_id.is.null,grupo_asignado_id.in.(${grupIds.join(',')}))`;
+          q = q.or(orFilter);
+        }
+      }
+
+      const { data } = await q;
       if (data) setTramitesCerrados20(data as TramiteItem[]);
     } catch {}
   };
@@ -331,7 +410,8 @@ export function Tramites() {
   const loadTramites = async (bypassCache = false) => {
     if (!usuario) return;
 
-    const cacheKey = `tramites_${activeTab}`;
+    // Include impersonation context in cache key so admin vs. impersonated views never share the same cache entry
+    const cacheKey = `tramites_${activeTab}_${isImpersonating ? (impersonatedUser?.id ?? 'imp') : 'self'}`;
 
     if (!bypassCache) {
       const cached = getCached<TramiteItem[]>(cacheKey);
@@ -358,6 +438,27 @@ export function Tramites() {
         query = query.not('cerrado_en', 'is', null);
       } else {
         query = query.is('cerrado_en', null);
+      }
+
+      // When admin is impersonating a non-admin/gerente user, RLS still runs as the real admin
+      // (auth.uid() = admin). Apply an explicit filter to replicate the impersonated user's visibility.
+      if (isImpersonating && impersonatedUser) {
+        const impersonatedRol = impersonatedUser.rol || '';
+        if (!['Administrador'].includes(impersonatedRol)) {
+          const uid = impersonatedUser.id;
+          // Also include pool tramites (unassigned) for groups the user belongs to.
+          // Query inline to avoid myGrupoIds timing dependency.
+          const { data: gruposData } = await supabase
+            .from('tramites_grupos_miembros')
+            .select('grupo_id')
+            .eq('usuario_id', uid);
+          const grupIds = (gruposData || []).map(g => g.grupo_id);
+          let orFilter = `agente_id.eq.${uid},creado_por.eq.${uid},assigned_to_user_id.eq.${uid},agente_usuario_id.eq.${uid},attending_user_id.eq.${uid}`;
+          if (grupIds.length > 0) {
+            orFilter += `,and(assigned_to_user_id.is.null,attending_user_id.is.null,grupo_asignado_id.in.(${grupIds.join(',')}))`;
+          }
+          query = query.or(orFilter);
+        }
       }
 
       const { data, error } = await query;
@@ -451,9 +552,18 @@ export function Tramites() {
     if (tramitesPapelera.length === 0) return;
     if (!confirm(`¿Vaciar la papelera? Se eliminarán permanentemente ${tramitesPapelera.length} trámite(s). Esta acción no se puede deshacer.`)) return;
     const ids = tramitesPapelera.map(t => t.id);
-    await supabase.from('tickets').delete().in('id', ids);
+    // Delete one-by-one to avoid RLS/FK issues with bulk .in() deletes
+    const errors: string[] = [];
+    for (const id of ids) {
+      const { error } = await supabase.from('tickets').delete().eq('id', id);
+      if (error) errors.push(error.message);
+    }
     invalidateCacheByPrefix('tramites_');
-    setTramitesPapelera([]);
+    // Always re-fetch from DB so state matches reality (catches silent failures)
+    await loadPapelera();
+    if (errors.length > 0) {
+      alert(`No se pudieron eliminar ${errors.length} trámite(s). Verifica los permisos.`);
+    }
   };
 
   const loadMyOperacionesRole = async () => {
@@ -464,14 +574,24 @@ export function Tramites() {
       .eq('usuario_id', usuario.id);
     if (data) {
       type Row = { grupo_id: string; rol_en_equipo: string; grupo: { area_categoria: string; activo: boolean } | null };
-      const opsEntries = (data as Row[]).filter(m => m.grupo?.area_categoria === 'Operaciones' && m.grupo?.activo);
+      const allActive = (data as Row[]).filter(m => m.grupo?.activo);
+      const opsEntries = allActive.filter(m => m.grupo?.area_categoria === 'Operaciones');
       const opsEntry = opsEntries[0] ?? null;
       setMyOperacionesRole(opsEntry ? (opsEntry.rol_en_equipo as 'lider' | 'ejecutivo' | 'miembro') : null);
-      setMyGrupoIds(opsEntries.map(m => m.grupo_id));
+      setMyGrupoIds(allActive.map(m => m.grupo_id)); // all areas, not just Operaciones
+      const rolesMap = new Map<string, string>();
+      for (const m of allActive) rolesMap.set(m.grupo_id, m.rol_en_equipo);
+      setMyGrupoRoles(rolesMap);
     }
   };
 
-  const loadTeamEjecutivos = async () => {
+  const loadTeamEjecutivos = async (grupoId?: string | null) => {
+    if (grupoId) {
+      const { data } = await supabase.rpc('get_grupo_miembros_ejecutivos', { p_grupo_id: grupoId });
+      if (data) setTeamEjecutivos(data as Array<{ id: string; nombre_completo: string }>);
+      return;
+    }
+    // Fallback: todos los ejecutivos de grupos Operaciones activos
     const { data: grupos } = await supabase
       .from('tramites_grupos_visualizacion')
       .select('id')
@@ -496,7 +616,7 @@ export function Tramites() {
 
   const handleTakeTramite = async (tramiteId: string) => {
     if (!usuario) return;
-    await supabase.from('tickets').update({ assigned_to_user_id: usuario.id }).eq('id', tramiteId);
+    await supabase.from('tickets').update({ assigned_to_user_id: usuario.id, attending_user_id: usuario.id }).eq('id', tramiteId);
     await supabase.from('ticket_asignaciones').insert({
       ticket_id: tramiteId, ejecutivo_id: usuario.id, asignado_por: usuario.id,
     });
@@ -506,7 +626,7 @@ export function Tramites() {
 
   const handleAssignTramite = async (tramiteId: string, ejecutivoId: string) => {
     if (!usuario || !ejecutivoId) return;
-    await supabase.from('tickets').update({ assigned_to_user_id: ejecutivoId }).eq('id', tramiteId);
+    await supabase.from('tickets').update({ assigned_to_user_id: ejecutivoId, attending_user_id: ejecutivoId }).eq('id', tramiteId);
     await supabase.from('ticket_asignaciones').insert({
       ticket_id: tramiteId, ejecutivo_id: ejecutivoId, asignado_por: usuario.id,
     });
@@ -519,56 +639,54 @@ export function Tramites() {
   const getTipoTramiteLabel = (tipo: string) => centralGetLabel(tipo);
 
   // Visibility filter:
-  // - Comercial tramites: visible to users of the SAME office (by role, no team needed)
-  // - Operaciones tramites: visible via Operaciones team membership (team controls which offices)
-  // - Admins see everything
+  // - Admin: todo
+  // - Gerente: trámites de su oficina (agente.oficina_id) + grupos a los que pertenece + directamente involucrado
+  // - Todos los demás: solo los propios (directamente involucrado) + trámites de sus grupos/equipos
   const visibleTramites = tramites.filter(tramite => {
     if (isAdmin) return true;
 
     const tramiteOficinaId = tramite.agente?.oficina_id ?? null;
-    const tipoArea = getTipoTramiteArea(tramite.tipo_tramite);
 
-    // Always show tramites the user created or is directly assigned to
     const isDirectlyInvolved =
       tramite.creado_por === usuario?.id ||
       tramite.assigned_to_user_id === usuario?.id ||
       tramite.agente_id === usuario?.id;
 
-    // ── Comercial area: role+office based, no team required ──
-    if (tipoArea === 'Comercial') {
-      // Gerentes see their own office's commercial tramites
-      if (isGerente) return tramiteOficinaId === usuario?.oficina_id;
-      // Agentes only see tramites where they are directly involved
-      if (isAgente) return isDirectlyInvolved;
-      // Empleados/Ejecutivos see all commercial tramites of their office
-      return tramiteOficinaId === usuario?.oficina_id || isDirectlyInvolved;
+    const isInMyGroup =
+      tramite.grupo_asignado_id !== null &&
+      myGrupoIds.includes(tramite.grupo_asignado_id);
+
+    // Pool del equipo: trámites SIN asignar en grupos del usuario (para autoasignarse)
+    const isPoolOfMyGroup =
+      !tramite.assigned_to_user_id &&
+      isInMyGroup;
+
+    // Gerente: su oficina + sus equipos + directamente involucrado
+    if (isGerente) {
+      return tramiteOficinaId === usuario?.oficina_id || isInMyGroup || isDirectlyInvolved;
     }
 
-    // ── Operaciones area: team-based scope ──
-    // Gerentes also see their office's operaciones tramites without needing a team
-    if (isGerente && tramiteOficinaId === usuario?.oficina_id) return true;
+    // Agente: solo sus propios trámites
+    if (isAgente) return isDirectlyInvolved;
 
-    // Check Operaciones team scope
-    const opsScopes = userScope.filter(s => s.area_categoria === 'Operaciones');
-    if (opsScopes.length > 0) {
-      for (const scope of opsScopes) {
-        if (scope.all_offices) return true;
-        const officeIds = scope.office_ids || [];
-        if (tramiteOficinaId && officeIds.includes(tramiteOficinaId)) return true;
-      }
-      return isDirectlyInvolved;
-    }
-
-    // Legacy fallback for users with userArea set but no scope array
-    if (userArea === 'Operaciones') return true;
-
-    // No team, no special role: only see own tramites
-    return isDirectlyInvolved;
+    // Ejecutivo y demás: propios + pool sin asignar de sus equipos (para autoasignarse)
+    return isDirectlyInvolved || isPoolOfMyGroup;
   });
 
   // ── Kanban helpers ────────────────────────────────────────────────────────
-  const needsAttentionFn = (t: TramiteItem) =>
-    !!t.ultima_accion_por && t.ultima_accion_por !== usuario?.id;
+  const needsAttentionFn = (t: TramiteItem) => {
+    if (isAdmin && !isImpersonating) {
+      // Admin: solo cuando el agente fue el último en actuar (empleado necesita responder)
+      if (!t.ultima_accion_por) return false;
+      return (
+        t.ultima_accion_por === t.agente_id ||
+        (!!t.agente_usuario_id && t.ultima_accion_por === t.agente_usuario_id)
+      );
+    }
+    // Ejecutivos / agentes: sin acción aún (null) también requiere atención
+    const effectiveId = isImpersonating && impersonatedUser ? impersonatedUser.id : usuario?.id;
+    return !t.ultima_accion_por || t.ultima_accion_por !== effectiveId;
+  };
 
   const filteredTramites = useMemo(() => {
     const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -667,15 +785,24 @@ export function Tramites() {
 
   const kanbanAtención = filteredTramites.filter(t => needsAttentionFn(t));
   const kanbanProceso  = filteredTramites.filter(t => !needsAttentionFn(t));
-  const kanbanCerrados = (isAdmin
-    ? tramitesCerrados20
-    : tramitesCerrados20.filter(t =>
-        t.agente_id === usuario?.id ||
-        t.assigned_to_user_id === usuario?.id ||
-        t.creado_por === usuario?.id ||
-        t.agente?.oficina_id === usuario?.oficina_id
-      )
-  );
+
+  // Terminados: apply the same user-facing filters as filteredTramites
+  const kanbanCerrados = useMemo(() => {
+    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const term = norm(searchTerm ?? '');
+    return tramitesCerrados20.filter(t => {
+      const matches = (v: string | null | undefined) => norm(v ?? '').includes(term);
+      const matchSearch = !term || matches(t.folio) || matches(t.instrucciones) || matches(t.poliza) || matches(t.agente?.nombre_completo) || matches(t.responsable?.nombre_completo) || matches(getTipoTramiteLabel(t.tipo_tramite));
+      const matchAreas      = selectedAreas.length === 0 || selectedAreas.includes(getTipoTramiteArea(t.tipo_tramite));
+      const matchTipos      = selectedTipos.length === 0 || selectedTipos.includes(t.tipo_tramite);
+      const matchEstatuses  = selectedEstatuses.length === 0 || (t.estatus != null && selectedEstatuses.includes(t.estatus.id));
+      const matchPrioridades = selectedPrioridades.length === 0 || selectedPrioridades.includes(t.prioridad);
+      const matchOficinas   = selectedOficinas.length === 0 || (t.agente?.oficina_id != null && selectedOficinas.includes(t.agente.oficina_id));
+      const matchAgentes    = selectedAgentes.length === 0 || (t.agente_id != null && selectedAgentes.includes(t.agente_id));
+      const matchEquipos    = selectedEquipos.length === 0 || (t.grupo_asignado_id != null && selectedEquipos.includes(t.grupo_asignado_id));
+      return matchSearch && matchAreas && matchTipos && matchEstatuses && matchPrioridades && matchOficinas && matchAgentes && matchEquipos;
+    });
+  }, [tramitesCerrados20, searchTerm, selectedAreas, selectedTipos, selectedEstatuses, selectedPrioridades, selectedOficinas, selectedAgentes, selectedEquipos]);
 
   return (
     <div className="space-y-5">
@@ -691,9 +818,15 @@ export function Tramites() {
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             {isAdmin && (
-              <Button variant="outline" size="sm" onClick={() => setShowGruposModal(true)}>
+              <Button variant="outline" size="sm" onClick={() => navigate('/admin/tramites')}>
                 <Users className="w-4 h-4 mr-1.5" />
-                <span className="hidden sm:inline">Equipos</span>
+                <span className="hidden sm:inline">Admin Trámites</span>
+              </Button>
+            )}
+            {isLider && !isAdmin && (
+              <Button variant="outline" size="sm" onClick={() => setShowPanelLider(true)}>
+                <Users className="w-4 h-4 mr-1.5" />
+                <span className="hidden sm:inline">Mi equipo</span>
               </Button>
             )}
             {canManageCatalogs && (
@@ -708,10 +841,12 @@ export function Tramites() {
                 <span className="hidden sm:inline">Reportes</span>
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={() => navigate('/cotizar/formularios')}>
-              <FileText className="w-4 h-4 mr-1.5" />
-              <span className="hidden sm:inline">Formularios</span>
-            </Button>
+            {isAdmin && (
+              <Button variant="outline" size="sm" onClick={() => navigate('/cotizar/formularios')}>
+                <FileText className="w-4 h-4 mr-1.5" />
+                <span className="hidden sm:inline">Formularios</span>
+              </Button>
+            )}
             <div className="flex rounded-lg border border-neutral-200 dark:border-white/10 overflow-hidden">
               <button
                 onClick={() => setViewMode('lista')}
@@ -1127,23 +1262,34 @@ export function Tramites() {
                 : tramite.ticket_archivos.length > 0
                   ? `Se adjuntó un archivo: ${tramite.ticket_archivos[tramite.ticket_archivos.length - 1].nombre}`
                   : null;
+              const estatusLabel = tramite.custom_estatus_label ?? tramite.estatus?.nombre;
+              const estatusColor = tramite.custom_estatus_color ?? tramite.estatus?.color;
+              const sla = getSlaInfo(tramite.fecha_creacion, tipoDb?.sla_horas);
               return (
                 <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex">
-                  <button onClick={(e) => handleMarkAsRead(e, tramite.id)} className="absolute -top-1.5 -right-1.5 z-10" title="Marcar como leído">
-                    <span className="relative flex h-4 w-4">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
-                      <span className="relative inline-flex h-4 w-4 rounded-full bg-orange-500 shadow-sm shadow-orange-300/60" />
-                    </span>
-                  </button>
+                  {!tramite.cerrado_en && (
+                    <button onClick={(e) => handleMarkAsRead(e, tramite.id)} className="absolute -top-1.5 -right-1.5 z-10" title="Marcar como leído">
+                      <span className="relative flex h-4 w-4">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
+                        <span className="relative inline-flex h-4 w-4 rounded-full bg-orange-500 shadow-sm shadow-orange-300/60" />
+                      </span>
+                    </button>
+                  )}
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
                   <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
                     <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
                     <p className={`text-[10px] font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
-                    {tramite.estatus && <span className="text-[10px] font-bold uppercase" style={{ color: tramite.estatus.color }}>{tramite.estatus.nombre}</span>}
+                    {estatusLabel && <span className="text-[10px] font-bold uppercase" style={{ color: estatusColor ?? undefined }}>{estatusLabel}</span>}
                     {preview && (
                       <p className="text-[10px] text-neutral-500 dark:text-white/40 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
                     )}
-                    <div className="flex items-center justify-between mt-1 gap-1">
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[10px] text-neutral-400 dark:text-white/30">{fmtFecha(tramite.fecha_creacion)}</span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${sla.bg} ${sla.color} ${sla.pulsing ? 'animate-pulse' : ''}`}>
+                        {sla.daysOpen}d{sla.slaDias ? ` / ${sla.slaDias}d` : ''}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-0.5 gap-1">
                       <span className={`text-[10px] font-extrabold uppercase tracking-widest truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
                       <div className="flex items-center gap-1 shrink-0">
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tramite.prioridad === 'Alta' ? 'bg-red-100 text-red-600' : tramite.prioridad === 'Media' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>{tramite.prioridad}</span>
@@ -1180,17 +1326,26 @@ export function Tramites() {
                 : tramite.ticket_archivos.length > 0
                   ? `Se adjuntó un archivo: ${tramite.ticket_archivos[tramite.ticket_archivos.length - 1].nombre}`
                   : null;
+              const estatusLabel = tramite.custom_estatus_label ?? tramite.estatus?.nombre;
+              const estatusColor = tramite.custom_estatus_color ?? tramite.estatus?.color;
+              const sla = getSlaInfo(tramite.fecha_creacion, tipoDb?.sla_horas);
               return (
                 <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex">
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
                   <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
                     <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
                     <p className={`text-[10px] font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
-                    {tramite.estatus && <span className="text-[10px] font-bold uppercase" style={{ color: tramite.estatus.color }}>{tramite.estatus.nombre}</span>}
+                    {estatusLabel && <span className="text-[10px] font-bold uppercase" style={{ color: estatusColor ?? undefined }}>{estatusLabel}</span>}
                     {preview && (
                       <p className="text-[10px] text-neutral-500 dark:text-white/40 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
                     )}
-                    <div className="flex items-center justify-between mt-1 gap-1">
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[10px] text-neutral-400 dark:text-white/30">{fmtFecha(tramite.fecha_creacion)}</span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${sla.bg} ${sla.color} ${sla.pulsing ? 'animate-pulse' : ''}`}>
+                        {sla.daysOpen}d{sla.slaDias ? ` / ${sla.slaDias}d` : ''}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-0.5 gap-1">
                       <span className={`text-[10px] font-extrabold uppercase tracking-widest truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
                       <div className="flex items-center gap-1 shrink-0">
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tramite.prioridad === 'Alta' ? 'bg-red-100 text-red-600' : tramite.prioridad === 'Media' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>{tramite.prioridad}</span>
@@ -1217,7 +1372,7 @@ export function Tramites() {
             </div>
             {kanbanCerrados.length === 0 ? (
               <p className="text-xs text-neutral-400 dark:text-white/30 text-center py-8">Sin cierres recientes</p>
-            ) : kanbanCerrados.map(tramite => {
+            ) : kanbanCerrados.slice(0, 10).map(tramite => {
               const area = getTipoTramiteArea(tramite.tipo_tramite);
               const ac = AREA_CONFIG[area];
               const tipoDb = tiposDb.get(tramite.tipo_tramite);
@@ -1228,17 +1383,22 @@ export function Tramites() {
                 : tramite.ticket_archivos.length > 0
                   ? `Se adjuntó un archivo: ${tramite.ticket_archivos[tramite.ticket_archivos.length - 1].nombre}`
                   : null;
+              const totalDays = Math.max(0, Math.floor((new Date(tramite.cerrado_en!).getTime() - new Date(tramite.fecha_creacion).getTime()) / 86_400_000));
               return (
                 <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex opacity-75">
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
                   <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
                     <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
                     <p className={`text-[10px] font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
-                    {tramite.estatus && <span className="text-[10px] font-bold uppercase" style={{ color: tramite.estatus.color }}>{tramite.estatus.nombre}</span>}
+                    {(tramite.custom_estatus_label ?? tramite.estatus?.nombre) && <span className="text-[10px] font-bold uppercase" style={{ color: tramite.custom_estatus_color ?? tramite.estatus?.color ?? undefined }}>{tramite.custom_estatus_label ?? tramite.estatus?.nombre}</span>}
                     {preview && (
                       <p className="text-[10px] text-neutral-500 dark:text-white/40 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
                     )}
-                    <div className="flex items-center justify-between mt-1">
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[10px] text-neutral-400 dark:text-white/30">{fmtFecha(tramite.fecha_creacion)}</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-neutral-100 dark:bg-white/5 text-neutral-400 dark:text-white/30">{totalDays}d</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-0.5">
                       <span className={`text-[10px] font-extrabold uppercase tracking-widest truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
                       <span className="text-[10px] text-neutral-400 dark:text-white/30 shrink-0">{new Date(tramite.cerrado_en!).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit' })}</span>
                     </div>
@@ -1247,10 +1407,10 @@ export function Tramites() {
               );
             })}
             <button
-              onClick={() => setActiveTab('cerrados')}
+              onClick={() => { setActiveTab('cerrados'); setViewMode('lista'); }}
               className="mt-1 text-xs font-semibold text-neutral-500 dark:text-white/40 hover:text-neutral-700 dark:hover:text-white/70 py-2 border border-neutral-200 dark:border-white/10 rounded-xl hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors"
             >
-              Ver más →
+              {kanbanCerrados.length > 10 ? `Ver todos (${kanbanCerrados.length}) →` : 'Ver en tablero →'}
             </button>
           </div>
 
@@ -1336,11 +1496,11 @@ export function Tramites() {
 
                     {/* Status / priority / dates */}
                     <div className="space-y-0.5 text-xs">
-                      {tramite.estatus && (
+                      {(tramite.custom_estatus_label ?? tramite.estatus?.nombre) && (
                         <p className="text-neutral-600 dark:text-white/60">
                           <span className="text-neutral-400 dark:text-white/35">Estatus: </span>
-                          <span className="font-bold uppercase" style={{ color: tramite.estatus.color }}>
-                            {tramite.estatus.nombre}
+                          <span className="font-bold uppercase" style={{ color: tramite.custom_estatus_color ?? tramite.estatus?.color ?? undefined }}>
+                            {tramite.custom_estatus_label ?? tramite.estatus?.nombre}
                           </span>
                         </p>
                       )}
@@ -1411,62 +1571,60 @@ export function Tramites() {
                         )}
                       </div>
                       {(() => {
-                        const isPool = tiposDb.get(tramite.tipo_tramite)?.assignment_mode === 'pool';
-                        const isUnassigned = tramite.assigned_to_user_id === null;
-                        const canTake = myOperacionesRole === 'ejecutivo' || myOperacionesRole === 'miembro' || myOperacionesRole === 'lider';
-                        const canAssign = myOperacionesRole === 'lider' || isAdmin;
-                        if (isPool && isUnassigned && activeTab === 'activos') {
+                        const isPool = !tramite.assigned_to_user_id && !!tramite.grupo_asignado_id;
+                        const myRoleInGroup = tramite.grupo_asignado_id ? myGrupoRoles.get(tramite.grupo_asignado_id) : null;
+                        const canAssignOrTake = !!myRoleInGroup || isAdmin || isGerente;
+                        const isSelfOnly = !!myRoleInGroup && myRoleInGroup === 'ejecutivo' && !isAdmin && !isGerente;
+                        if (isPool && activeTab === 'activos' && canAssignOrTake) {
                           return (
                             <div className="flex items-center gap-1.5 flex-wrap justify-end" onClick={e => e.stopPropagation()}>
                               <span className="text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/40">
                                 Sin Asignar
                               </span>
-                              {canTake && !canAssign && (
+                              {assigningTramiteId === tramite.id ? (
+                                <div className="flex items-center gap-1">
+                                  <select
+                                    value={assignTargetId}
+                                    onChange={e => setAssignTargetId(e.target.value)}
+                                    onClick={e => e.stopPropagation()}
+                                    className="text-xs border border-neutral-200 dark:border-white/15 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none max-w-[150px] bg-white dark:bg-neutral-800 dark:text-white"
+                                  >
+                                    <option value="">Ejecutivo...</option>
+                                    {teamEjecutivos.map(u => (
+                                      <option key={u.id} value={u.id}>{u.nombre_completo}</option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); void handleAssignTramite(tramite.id, assignTargetId); }}
+                                    disabled={!assignTargetId}
+                                    className="p-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition-colors"
+                                  >
+                                    <Check className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setAssigningTramiteId(null); setAssignTargetId(''); }}
+                                    className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/8 transition-colors text-neutral-400"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ) : (
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); void handleTakeTramite(tramite.id); }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAssigningTramiteId(tramite.id);
+                                    setAssignTargetId('');
+                                    if (isSelfOnly && usuario) {
+                                      setTeamEjecutivos([{ id: usuario.id, nombre_completo: (usuario as any).nombre_completo || `${usuario.nombre} ${usuario.apellidos}`.trim() }]);
+                                    } else {
+                                      void loadTeamEjecutivos(tramite.grupo_asignado_id);
+                                    }
+                                  }}
                                   className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 transition-colors"
                                 >
-                                  <UserCheck className="w-3 h-3" />
-                                  Tomar
+                                  <UserPlus className="w-3 h-3" />
+                                  {isSelfOnly ? 'Tomar' : 'Asignar'}
                                 </button>
-                              )}
-                              {canAssign && (
-                                assigningTramiteId === tramite.id ? (
-                                  <div className="flex items-center gap-1">
-                                    <select
-                                      value={assignTargetId}
-                                      onChange={e => setAssignTargetId(e.target.value)}
-                                      onClick={e => e.stopPropagation()}
-                                      className="text-xs border border-neutral-200 dark:border-white/15 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none max-w-[150px] bg-white dark:bg-neutral-800 dark:text-white"
-                                    >
-                                      <option value="">Ejecutivo...</option>
-                                      {teamEjecutivos.map(u => (
-                                        <option key={u.id} value={u.id}>{u.nombre_completo}</option>
-                                      ))}
-                                    </select>
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); void handleAssignTramite(tramite.id, assignTargetId); }}
-                                      disabled={!assignTargetId}
-                                      className="p-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition-colors"
-                                    >
-                                      <Check className="w-3 h-3" />
-                                    </button>
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); setAssigningTramiteId(null); setAssignTargetId(''); }}
-                                      className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/8 transition-colors text-neutral-400"
-                                    >
-                                      <X className="w-3 h-3" />
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setAssigningTramiteId(tramite.id); setAssignTargetId(''); void loadTeamEjecutivos(); }}
-                                    className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-lg bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-white/8 dark:text-white/70 border border-neutral-200 dark:border-white/10 transition-colors"
-                                  >
-                                    <UserPlus className="w-3 h-3" />
-                                    Asignar
-                                  </button>
-                                )
                               )}
                             </div>
                           );
@@ -1519,6 +1677,8 @@ export function Tramites() {
           </div>
         </div>
       )}
+
+      {showPanelLider && <PanelLider onClose={() => setShowPanelLider(false)} />}
 
       {showGruposModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
