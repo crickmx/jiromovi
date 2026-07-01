@@ -1390,7 +1390,7 @@ export function Tramites() {
                   <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
                     <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
                     <p className={`text-[10px] font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
-                    {tramite.estatus && <span className="text-[10px] font-bold uppercase" style={{ color: tramite.estatus.color }}>{tramite.estatus.nombre}</span>}
+                    {(tramite.custom_estatus_label ?? tramite.estatus?.nombre) && <span className="text-[10px] font-bold uppercase" style={{ color: tramite.custom_estatus_color ?? tramite.estatus?.color ?? undefined }}>{tramite.custom_estatus_label ?? tramite.estatus?.nombre}</span>}
                     {preview && (
                       <p className="text-[10px] text-neutral-500 dark:text-white/40 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
                     )}

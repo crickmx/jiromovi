@@ -582,6 +582,36 @@ export function TramiteDetalle() {
 
     setEstatusModalOpen(false);
 
+    // Re-validar campos requeridos que dependen del estatus elegido (la validación
+    // en handleSave corría antes del modal, cuando el estatus aún era el anterior)
+    const faltantesConEstatus = camposDinamicos.filter(c => {
+      if (c.is_sistema || c.tipo === 'estatus' || !c.requerido) return false;
+      const visible = (() => {
+        if (!c.config?.condicion_activa) return true;
+        const { campo_fuente, condicion_operador, condicion_valor } = c.config;
+        if (!campo_fuente) return true;
+        const fuente = camposDinamicos.find(f => f.key === campo_fuente);
+        if (!fuente) return true;
+        const valorFuente = (estatusCampoDinamico && fuente.id === estatusCampoDinamico.id)
+          ? chosenSlug
+          : respuestasDinamicas[fuente.id];
+        const op = condicion_operador || 'igual_a';
+        switch (op) {
+          case 'igual_a':     return String(valorFuente ?? '') === String(condicion_valor ?? '');
+          case 'distinto_a':  return String(valorFuente ?? '') !== String(condicion_valor ?? '');
+          case 'tiene_valor': return valorFuente !== undefined && valorFuente !== null && valorFuente !== '';
+          default:            return String(valorFuente ?? '') === String(condicion_valor ?? '');
+        }
+      })();
+      if (!visible) return false;
+      const v = respuestasDinamicas[c.id];
+      return v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0);
+    });
+    if (faltantesConEstatus.length > 0) {
+      showToast(`Campos requeridos sin completar: ${faltantesConEstatus.map(c => c.label).join(', ')}`, 'error');
+      return;
+    }
+
     // Trigger check con el estatus elegido
     let silent: PendingTrigger[] = [];
     if (estatusCampoDinamico && tipoUUID && chosenSlug && !tramite.parent_ticket_id) {
