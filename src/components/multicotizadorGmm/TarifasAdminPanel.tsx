@@ -71,11 +71,92 @@ function isFactorColumn(header: string): boolean {
   return FACTOR_COL_PATTERNS.some(p => p.test(header.trim()));
 }
 
-function parseBupaExcel(file: ArrayBuffer, product: 'BNV' | 'BNP'): ParsedBupaResult {
+function parseBupaExcelBnv(file: ArrayBuffer): ParsedBupaResult {
   const uint8 = new Uint8Array(file);
-  // bookVBA:false skips loading the VBA blob (reduces memory).
-  // raw:false uses the formatted text (w) for cells so VBA-computed values
-  // that were cached on last save are read back as their display string.
+  const workbook = XLSX.read(uint8, { type: 'array', bookVBA: false, cellFormula: false, cellText: true, raw: false });
+
+  const rates: ParsedBupaRate[] = [];
+  const detectedSumas = new Set<number>();
+  const detectedDeducibles = new Set<number>();
+  const detectedCoaseguros = new Set<number>();
+  const errors: string[] = [];
+
+  function parseNum(v: any): number {
+    if (typeof v === 'number') return v;
+    if (v === null || v === undefined) return NaN;
+    return Number(String(v).replace(/,/g, '').trim());
+  }
+
+  // MasterBase sheet: col M(12)=llave, N(13)=plan_name, O(14)=region, P(15)=low_age, Q(16)=rate
+  const masterSheetName = resolveSheetName(workbook, 'MasterBase');
+  if (!masterSheetName) {
+    const available = workbook.SheetNames.join(', ');
+    throw new Error(`No se encontro la hoja 'MasterBase' en el archivo. Hojas disponibles: [${available}]`);
+  }
+
+  const sheet = workbook.Sheets[masterSheetName];
+  const jsonData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: false });
+
+  // Find header row: look for a row that has a cell containing "llave" or "planname" in cols M/N area
+  let dataStartRow = 1;
+  for (let r = 0; r < Math.min(jsonData.length, 10); r++) {
+    const row = jsonData[r];
+    if (!row) continue;
+    const col12 = String(row[12] || '').toLowerCase().trim();
+    const col13 = String(row[13] || '').toLowerCase().trim();
+    if (col12.includes('llave') || col13.includes('plan')) {
+      dataStartRow = r + 1;
+      break;
+    }
+  }
+
+  for (let rowIdx = dataStartRow; rowIdx < jsonData.length; rowIdx++) {
+    const row = jsonData[rowIdx];
+    if (!row) continue;
+
+    const llave = String(row[12] || '').trim();
+    const planName = String(row[13] || '').trim();
+    const region = String(row[14] || '').trim();
+    const lowAge = parseNum(row[15]);
+    const rate = parseNum(row[16]);
+
+    if (!llave || !planName || !region || isNaN(lowAge) || isNaN(rate) || rate <= 0) continue;
+    // Skip legacy NVDCS plan codes — only process NVFS plans
+    if (!planName.startsWith('NVFS')) continue;
+
+    rates.push({ plan_name: llave, region, age: lowAge, rate, rate_type: 'Unisex' });
+
+    // Decode PlanName to populate detected options
+    // NVFS{sa}D{ded}C{coas}[TC{tc}]
+    const saMatch = planName.match(/^NVFS(\d+(?:\.\d+)?)D/);
+    const dedMatch = planName.match(/D(\d+(?:\.\d+)?)C/);
+    const coasMatch = planName.match(/C(\d+(?:\.\d+)?)/);
+    if (saMatch) detectedSumas.add(Number(saMatch[1]));
+    if (dedMatch) detectedDeducibles.add(Number(dedMatch[1]));
+    if (coasMatch) detectedCoaseguros.add(Number(coasMatch[1]));
+  }
+
+  if (rates.length === 0) {
+    throw new Error(
+      `Se encontro la hoja MasterBase pero no contiene filas NVFS validas. ` +
+      `Verifique que las columnas M(llave), N(plan_name), O(region), P(low_age), Q(rate) sean correctas.`
+    );
+  }
+
+  return {
+    rates,
+    sumas_aseguradas: Array.from(detectedSumas).sort((a, b) => a - b),
+    deducibles: Array.from(detectedDeducibles).sort((a, b) => a - b),
+    coaseguros: Array.from(detectedCoaseguros).sort((a, b) => a - b),
+    derecho_poliza: 1600,
+    asistencia_extranjero: 1632,
+    costo_catastrofica: 5800,
+    errors,
+  };
+}
+
+function parseBupaExcelBnp(file: ArrayBuffer): ParsedBupaResult {
+  const uint8 = new Uint8Array(file);
   const workbook = XLSX.read(uint8, { type: 'array', bookVBA: false, cellFormula: false, cellText: true, raw: false });
 
   const rates: ParsedBupaRate[] = [];
@@ -99,7 +180,6 @@ function parseBupaExcel(file: ArrayBuffer, product: 'BNV' | 'BNP'): ParsedBupaRe
     const jsonData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: false });
     if (jsonData.length < 3) return false;
 
-    // Find header row containing an age column label
     let headerRowIdx = -1;
     let ageColIdx = -1;
 
@@ -117,7 +197,6 @@ function parseBupaExcel(file: ArrayBuffer, product: 'BNV' | 'BNP'): ParsedBupaRe
       if (headerRowIdx !== -1) break;
     }
 
-    // Fallback: detect start of an incrementing-age sequence
     if (headerRowIdx === -1) {
       for (let r = 0; r < Math.min(jsonData.length, 10); r++) {
         const row = jsonData[r];
@@ -149,20 +228,14 @@ function parseBupaExcel(file: ArrayBuffer, product: 'BNV' | 'BNP'): ParsedBupaRe
       if (!colHeader) continue;
 
       let region = 'Mexico Region 1';
-      if (
-        colHeader.toLowerCase().includes('region 2') ||
-        colHeader.toLowerCase().includes('zona 2') ||
-        colHeader.includes('R2')
-      ) {
+      if (colHeader.toLowerCase().includes('region 2') || colHeader.toLowerCase().includes('zona 2') || colHeader.includes('R2')) {
         region = 'Mexico Region 2';
       }
 
       let rateType = 'Unisex';
-      if (product === 'BNP') {
-        const lh = colHeader.toLowerCase();
-        if (lh.includes('fem') || lh.includes('mujer') || lh.includes('female') || lh.endsWith('f')) rateType = 'Female';
-        else if (lh.includes('masc') || lh.includes('hombre') || lh.includes('male') || lh.endsWith('m')) rateType = 'Male';
-      }
+      const lh = colHeader.toLowerCase();
+      if (lh.includes('fem') || lh.includes('mujer') || lh.includes('female') || lh.endsWith('f')) rateType = 'Female';
+      else if (lh.includes('masc') || lh.includes('hombre') || lh.includes('male') || lh.endsWith('m')) rateType = 'Male';
 
       const saMatch = colHeader.match(/S(\d+)/i) || colHeader.match(/(\d+)\s*(?:MDP|M)/i);
       const dedMatch = colHeader.match(/D(\d+)/i) || colHeader.match(/(?:ded|DED)[\s_-]*(\d+)/i);
@@ -171,10 +244,7 @@ function parseBupaExcel(file: ArrayBuffer, product: 'BNV' | 'BNP'): ParsedBupaRe
       if (dedMatch) detectedDeducibles.add(Number(dedMatch[1]));
       if (coasMatch) detectedCoaseguros.add(Number(coasMatch[1]));
 
-      const isFactor = isFactorColumn(colHeader);
-      // Factor columns use a sequential row index as their "age" so that paired
-      // tables (e.g. Sumas aseguradas ↔ FD Suma asegurada) align by position even
-      // when the Excel age cells contain formula-computed values that read as 0.
+      const isFactor = FACTOR_COL_PATTERNS.some(p => p.test(colHeader.trim()));
       let factorRowIdx = 0;
 
       for (let rowIdx = dataStartRow; rowIdx < jsonData.length; rowIdx++) {
@@ -182,8 +252,6 @@ function parseBupaExcel(file: ArrayBuffer, product: 'BNV' | 'BNP'): ParsedBupaRe
         if (!row) continue;
         const rate = parseNum(row[colIdx]);
         if (isNaN(rate)) continue;
-        // For base-rate columns skip zero/negative values.
-        // For factor columns allow any numeric value including 0.
         if (!isFactor && rate <= 0) continue;
 
         let age: number;
@@ -204,14 +272,12 @@ function parseBupaExcel(file: ArrayBuffer, product: 'BNV' | 'BNP'): ParsedBupaRe
 
   const rateSheets = ['Master', 'MasterBase'];
   let foundRateSheet = false;
-
   for (const targetSheet of rateSheets) {
     const resolvedName = resolveSheetName(workbook, targetSheet);
     if (!resolvedName) continue;
     if (parseSheet(resolvedName)) { foundRateSheet = true; break; }
   }
 
-  // If no rates in Master/MasterBase, scan all other sheets
   if (!foundRateSheet || rates.length === 0) {
     for (const sheetName of workbook.SheetNames) {
       const lowerName = sheetName.toLowerCase();
@@ -221,13 +287,11 @@ function parseBupaExcel(file: ArrayBuffer, product: 'BNV' | 'BNP'): ParsedBupaRe
         lowerName.includes('objetos') || lowerName.includes('comparativ') ||
         lowerName.includes('datos asegurado')
       ) continue;
-
       parseSheet(sheetName);
       if (rates.length > 50) break;
     }
   }
 
-  // Try to extract config values (derecho poliza, asistencia) from known locations
   for (const sheetName of workbook.SheetNames) {
     const lowerName = sheetName.toLowerCase();
     if (lowerName.includes('config') || lowerName.includes('param') || lowerName.includes('datos')) {
@@ -265,6 +329,10 @@ function parseBupaExcel(file: ArrayBuffer, product: 'BNV' | 'BNP'): ParsedBupaRe
     costo_catastrofica: costoCatastrofica,
     errors,
   };
+}
+
+function parseBupaExcel(file: ArrayBuffer, product: 'BNV' | 'BNP'): ParsedBupaResult {
+  return product === 'BNV' ? parseBupaExcelBnv(file) : parseBupaExcelBnp(file);
 }
 
 export function TarifasAdminPanel() {
@@ -408,10 +476,13 @@ export function TarifasAdminPanel() {
 
     setUploadProgress(`Insertando ${parsed.rates.length.toLocaleString()} tarifas...`);
     const batchSize = 500;
+    const isBnv = uploadProduct === 'BNV';
     for (let i = 0; i < parsed.rates.length; i += batchSize) {
       const batch = parsed.rates.slice(i, i + batchSize).map(r => ({
         package_id: pkg.id,
-        lookup_key: `${r.plan_name}|${r.region}|${r.age}|${r.rate_type}`,
+        // BNV: plan_name holds the raw llave string (e.g. "NVFS1D0C0Mexico Region 1 BNV18")
+        // BNP: build key from components as before
+        lookup_key: isBnv ? r.plan_name : `${r.plan_name}|${r.region}|${r.age}|${r.rate_type}`,
         plan_name: r.plan_name,
         region: r.region,
         age: r.age,

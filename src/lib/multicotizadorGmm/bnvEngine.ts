@@ -10,6 +10,7 @@ export interface BnvRateRecord {
   age: number;
   rate: number;
   rate_type: string;
+  lookup_key?: string;
 }
 
 export interface BnvPackageConfig {
@@ -20,108 +21,90 @@ export interface BnvPackageConfig {
 
 export interface BnvAvailableOptions {
   sumasAseguradas: number[];  // MDP values e.g. [1, 2, 3, 4, 5, 10]
-  deducibles: number[];       // K values e.g. [15, 20, 30, 50, 100]
+  deducibles: number[];       // K values e.g. [0, 15, 20, 30, 50, 100]
   coaseguros: number[];       // percent values e.g. [0, 10, 20]
+  topesCoaseguro: number[];   // K values e.g. [0, 30, 50]
 }
 
-interface BnvFactorTables {
-  baseRates: Map<number, number>;
-  saFactors: Map<number, number>;
-  dedFactors: Map<number, number>;
-  coasFactors: Map<number, number>;
-  fdZona2: number;
-  factorDescuento: number;
-  factorMujer: number;
-  isIncomplete: boolean;
+// Region string as stored in MasterBase col O
+const REGION_STRINGS: Record<'Zona 1' | 'Zona 2', string> = {
+  'Zona 1': 'Mexico Region 1 BNV',
+  'Zona 2': 'Mexico Region 2 (no CDMX, ZM Y MTY)',
+};
+
+// FD_Zona: multiplier applied per-member before summing
+const FD_ZONA: Record<'Zona 1' | 'Zona 2', number> = {
+  'Zona 1': 0.8,
+  'Zona 2': 1.0,
+};
+
+const ADMINISTRACION = 1600;
+
+/**
+ * Build the PlanName code from user selections.
+ * Formula from Excel: CONCATENATE("NVFS", sa_mdp, "D", ded_k, "C", coas_pct, IF(tc=0,"","TC"), IF(tc=0,"",tc_k))
+ * sumaMdp    = suma_asegurada in MDP units (e.g. 1, 2, 3, 4, 5, 10)
+ * deducibleK = deducible in K units (e.g. 0, 15, 20, 30, 50, 100)
+ * coaseguroPct = coaseguro percent (e.g. 0, 10, 20)
+ * topePesos  = tope_coaseguro in MXN pesos (e.g. 0, 30000, 50000) — divided by 1000 for TC code
+ */
+export function buildBnvPlanName(
+  sumaMdp: number,
+  deducibleK: number,
+  coaseguroPct: number,
+  topePesos: number,
+): string {
+  const topeK = topePesos / 1000;
+  const base = `NVFS${sumaMdp}D${deducibleK}C${coaseguroPct}`;
+  return topeK > 0 ? `${base}TC${topeK}` : base;
 }
 
-function nearestKey(map: Map<number, number>, value: number): number {
-  if (map.has(value)) return value;
-  let nearest = NaN;
-  let minDist = Infinity;
-  for (const k of map.keys()) {
-    const d = Math.abs(k - value);
-    if (d < minDist) { minDist = d; nearest = k; }
-  }
-  return nearest;
+/**
+ * Build the exact lookup key as stored in MasterBase col M (llave de busqueda).
+ * Llave = PlanName + Region + LowAge (concatenated, no separator)
+ */
+function buildLookupKey(planName: string, region: string, age: number): string {
+  return `${planName}${region}${age}`;
 }
 
-function groupByPlan(rates: BnvRateRecord[]): Map<string, Array<{ age: number; rate: number }>> {
-  const map = new Map<string, Array<{ age: number; rate: number }>>();
-  for (const r of rates) {
-    const rate = Number(r.rate);
-    if (isNaN(rate)) continue;
-    const age = Number(r.age);
-    if (!map.has(r.plan_name)) map.set(r.plan_name, []);
-    map.get(r.plan_name)!.push({ age, rate });
-  }
-  for (const arr of map.values()) arr.sort((a, b) => a.age - b.age);
-  return map;
-}
-
-function extractFactorTables(rates: BnvRateRecord[]): BnvFactorTables {
-  const byPlan = groupByPlan(rates);
-
-  const baseRates = new Map<number, number>();
-  for (const { age, rate } of (byPlan.get('40000') || [])) {
-    baseRates.set(age, rate);
-  }
-
-  const saValues = byPlan.get('Sumas aseguradas') || [];
-  const saFDs = byPlan.get('FD Suma asegurada') || [];
-  const saFactors = new Map<number, number>();
-  for (let i = 0; i < Math.min(saValues.length, saFDs.length); i++) {
-    saFactors.set(saValues[i].rate, saFDs[i].rate);
-  }
-
-  const dedValues = byPlan.get('Deducibles') || [];
-  const dedFDs = byPlan.get('FD Deducible') || [];
-  const dedFactors = new Map<number, number>();
-  for (let i = 0; i < Math.min(dedValues.length, dedFDs.length); i++) {
-    dedFactors.set(dedValues[i].rate, dedFDs[i].rate);
-  }
-
-  const coasValues = byPlan.get('Coasegurado') || [];
-  const coasFDs = byPlan.get('FD Coasegurado') || [];
-  const coasFactors = new Map<number, number>();
-  if (coasFDs.length > 0) coasFactors.set(0, coasFDs[0].rate);
-  else coasFactors.set(0, 1.0);
-  for (let i = 0; i < coasValues.length && i + 1 < coasFDs.length; i++) {
-    coasFactors.set(coasValues[i].rate, coasFDs[i + 1].rate);
-  }
-
-  const fdZonaEntries = byPlan.get('FD Zona') || [];
-  const fdZona2 = fdZonaEntries.find(e => e.rate < 1.0)?.rate ?? 0.8;
-
-  const factorDescuentoEntries = byPlan.get('Factor descuento') || [];
-  const factorDescuento = factorDescuentoEntries[0]?.rate ?? 1.0;
-
-  const factorMujerEntries = byPlan.get('Factor es mujer') || [];
-  const factorMujer = factorMujerEntries[0]?.rate ?? 2600;
-
-  // Detect incomplete factor tables (fewer entries than expected)
-  const isIncomplete = saFDs.length < 2 || dedFDs.length < 2;
-
-  return { baseRates, saFactors, dedFactors, coasFactors, fdZona2, factorDescuento, factorMujer, isIncomplete };
-}
-
+/** Derive available options from the set of stored llave strings. */
 export function getBnvAvailableOptions(rates: BnvRateRecord[]): BnvAvailableOptions {
-  const byPlan = groupByPlan(rates);
+  const sumasSet = new Set<number>();
+  const dedsSet = new Set<number>();
+  const coasSet = new Set<number>();
+  const topesSet = new Set<number>();
+  topesSet.add(0);
 
-  const saValues = (byPlan.get('Sumas aseguradas') || []).map(e => e.rate / 1_000_000);
-  const dedFDs = byPlan.get('FD Deducible') || [];
-  // BNV Deducibles start at age=1 in the stored data
-  const dedEntries = (byPlan.get('Deducibles') || []).filter(e => e.rate >= 1000);
-  const dedValues = dedFDs.length >= dedEntries.length
-    ? dedEntries.map(e => e.rate / 1_000)
-    : dedEntries.map(e => e.rate / 1_000);
-  const rawCoas = byPlan.get('Coasegurado') || [];
-  const coasValues = [0, ...rawCoas.filter(e => e.rate <= 1).map(e => Math.round(e.rate * 100))];
+  // plan_name holds the llave; extract PlanName prefix before the region string
+  const regionPrefixes = Object.values(REGION_STRINGS);
+
+  for (const r of rates) {
+    // llave = PlanName + Region + age  (plan_name col holds llave)
+    const llave = r.plan_name;
+    let planName = llave;
+    for (const rp of regionPrefixes) {
+      const idx = llave.indexOf(rp);
+      if (idx !== -1) { planName = llave.slice(0, idx); break; }
+    }
+
+    if (!planName.startsWith('NVFS')) continue;
+
+    const saMatch = planName.match(/^NVFS(\d+(?:\.\d+)?)D/);
+    const dedMatch = planName.match(/D(\d+(?:\.\d+)?)C/);
+    const coasMatch = planName.match(/C(\d+(?:\.\d+)?)(?:TC|$)/);
+    const topeMatch = planName.match(/TC(\d+(?:\.\d+)?)$/);
+
+    if (saMatch) sumasSet.add(Number(saMatch[1]));
+    if (dedMatch) dedsSet.add(Number(dedMatch[1]));
+    if (coasMatch) coasSet.add(Number(coasMatch[1]));
+    if (topeMatch) topesSet.add(Number(topeMatch[1]) * 1000); // convert K→pesos
+  }
 
   return {
-    sumasAseguradas: saValues.length > 0 ? saValues : [1, 2, 3, 4, 5, 10],
-    deducibles: dedValues.length > 0 ? dedValues : [15, 20, 30, 50, 100],
-    coaseguros: coasValues.length > 0 ? [...new Set(coasValues)].sort((a, b) => a - b) : [0, 10, 20],
+    sumasAseguradas: Array.from(sumasSet).sort((a, b) => a - b),
+    deducibles: Array.from(dedsSet).sort((a, b) => a - b),
+    coaseguros: Array.from(coasSet).sort((a, b) => a - b),
+    topesCoaseguro: Array.from(topesSet).sort((a, b) => a - b),
   };
 }
 
@@ -129,7 +112,7 @@ export function calculateBnv(
   input: BnvQuoteInput,
   people: QuotePerson[],
   rates: BnvRateRecord[],
-  packageConfig: BnvPackageConfig
+  packageConfig: BnvPackageConfig,
 ): BnvCalculationResult {
   try {
     if (!rates || rates.length === 0) {
@@ -140,70 +123,66 @@ export function calculateBnv(
       };
     }
 
-    const tables = extractFactorTables(rates);
-
-    if (tables.baseRates.size === 0) {
-      return {
-        product: 'BNV', people_results: [], prima_anual_total: 0, totals: {} as any,
-        tariff_package_id: packageConfig.id,
-        error: 'El archivo de tarifas BNV no contiene una tabla de tasas base valida.',
-      };
+    // Build the rate index keyed by lookup_key for O(1) exact lookup
+    const rateIndex = new Map<string, number>();
+    for (const r of rates) {
+      const key = r.lookup_key ?? r.plan_name;
+      rateIndex.set(key, Number(r.rate));
     }
 
-    const saPesos = input.suma_asegurada * 1_000_000;
-    const dedPesos = input.deducible * 1_000;
-    const coasDecimal = input.coaseguro / 100;
+    const planName = buildBnvPlanName(
+      input.suma_asegurada,
+      input.deducible,
+      input.coaseguro,
+      input.tope_coaseguro,
+    );
 
-    const fdZona = input.region_zone === 'Zona 2' ? tables.fdZona2 : 1.0;
-    const fdSA = tables.saFactors.size > 0
-      ? (tables.saFactors.get(nearestKey(tables.saFactors, saPesos)) ?? 1.0) : 1.0;
-    const fdDed = tables.dedFactors.size > 0
-      ? (tables.dedFactors.get(nearestKey(tables.dedFactors, dedPesos)) ?? 1.0) : 1.0;
-    const fdCoas = tables.coasFactors.size > 0
-      ? (tables.coasFactors.get(nearestKey(tables.coasFactors, coasDecimal)) ?? 1.0) : 1.0;
-
-    const allAges = [...tables.baseRates.keys()].sort((a, b) => a - b);
+    const regionStr = REGION_STRINGS[input.region_zone] ?? REGION_STRINGS['Zona 1'];
+    const fdZona = FD_ZONA[input.region_zone] ?? 1.0;
 
     const peopleResults: BnvPersonResult[] = people.map(p => {
-      const nearestAge = allAges.reduce((prev, curr) =>
-        Math.abs(curr - p.age) < Math.abs(prev - p.age) ? curr : prev, allAges[0]);
-      const baseRate = tables.baseRates.get(nearestAge) ?? 0;
-      const isFemale = p.gender === 'Femenino';
-      const annualRate =
-        baseRate * fdSA * fdDed * fdCoas * fdZona * tables.factorDescuento
-        + (isFemale ? tables.factorMujer : 0);
+      const llave = buildLookupKey(planName, regionStr, p.age);
+      const rawRate = rateIndex.get(llave) ?? 0;
+      const memberRate = rawRate * fdZona;
 
       return {
         person_id: p.id,
         person_name: p.name,
         relation: p.relation,
         age: p.age,
-        lookup_key: `${input.region_zone}|SA${input.suma_asegurada}M|D${input.deducible}K|C${input.coaseguro}%`,
-        base_rate: baseRate,
-        discounted_rate: annualRate,
+        lookup_key: llave,
+        base_rate: rawRate,
+        discounted_rate: memberRate,
       };
     });
 
-    const primaAnualTotal = peopleResults.reduce((sum, p) => sum + p.discounted_rate, 0);
+    const missingRates = peopleResults.filter(p => p.base_rate === 0);
+
+    // Sum all member rates (already multiplied by FD_Zona)
+    const sumMemberRates = peopleResults.reduce((sum, p) => sum + p.discounted_rate, 0);
+    // Add Administracion once, then apply IVA
+    const primaAnualTotal = (sumMemberRates + ADMINISTRACION) * (1 + IVA_RATE);
 
     const totals: Record<FormaPago, BnvPaymentBreakdown> = {} as any;
     const formasPago: FormaPago[] = ['Anual', 'Semestral', 'Trimestral', 'Mensual'];
 
     for (const fp of formasPago) {
       const { factor, num_recibos } = PAYMENT_FACTORS[fp];
-      const primaNeta = primaAnualTotal * factor;
-      const asistencia = input.asistencia_extranjero ? packageConfig.asistencia_extranjero : 0;
-      const subtotal = primaNeta + asistencia + packageConfig.derecho_poliza;
-      const iva = subtotal * IVA_RATE;
-      const total = subtotal + iva;
+      // Apply payment frequency factor to the annual pre-IVA base
+      const preFactor = sumMemberRates + ADMINISTRACION;
+      const primaNeta = preFactor * factor;
+      const iva = primaNeta * IVA_RATE;
+      const total = primaNeta + iva;
       const primerPago = total / num_recibos;
 
       totals[fp] = {
         forma_pago: fp,
         prima_neta: primaNeta,
-        asistencia_extranjero: asistencia,
-        derecho_poliza: packageConfig.derecho_poliza,
-        subtotal, iva, total,
+        asistencia_extranjero: 0,
+        derecho_poliza: ADMINISTRACION,
+        subtotal: primaNeta,
+        iva,
+        total,
         primer_pago: primerPago,
         pagos_subsecuentes: num_recibos > 1 ? primerPago : 0,
         num_recibos,
@@ -218,8 +197,11 @@ export function calculateBnv(
       tariff_package_id: packageConfig.id,
     };
 
-    if (tables.isIncomplete) {
-      (result as any).warning = 'La tarifa BNV tiene tablas de factores incompletas. Para resultados exactos, sube nuevamente el archivo de cotizador.';
+    if (missingRates.length > 0) {
+      const names = missingRates.map(p => `${p.person_name} (${p.age} años)`).join(', ');
+      (result as any).warning =
+        `No se encontro tarifa para: ${names}. Llave buscada: ${missingRates[0].lookup_key}. ` +
+        'Verifica que el plan y la region sean correctos.';
     }
 
     return result;
