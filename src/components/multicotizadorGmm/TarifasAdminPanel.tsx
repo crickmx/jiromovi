@@ -61,9 +61,22 @@ interface ParsedBupaResult {
   errors: string[];
 }
 
+// Factor columns store small multipliers (can be 0 or between 0 and 1) that must
+// not be filtered by the rate > 0 guard used for base-rate columns.
+const FACTOR_COL_PATTERNS = [
+  /^fd\s/i, /^fd$/i, /factor/i, /sumas\s*aseguradas/i,
+  /deducibles/i, /coasegurado/i, /renovac/i, /transfer/i, /^nn$/i,
+];
+function isFactorColumn(header: string): boolean {
+  return FACTOR_COL_PATTERNS.some(p => p.test(header.trim()));
+}
+
 function parseBupaExcel(file: ArrayBuffer, product: 'BNV' | 'BNP'): ParsedBupaResult {
   const uint8 = new Uint8Array(file);
-  const workbook = XLSX.read(uint8, { type: 'array', bookVBA: true });
+  // bookVBA:false skips loading the VBA blob (reduces memory).
+  // raw:false uses the formatted text (w) for cells so VBA-computed values
+  // that were cached on last save are read back as their display string.
+  const workbook = XLSX.read(uint8, { type: 'array', bookVBA: false, cellFormula: false, cellText: true, raw: false });
 
   const rates: ParsedBupaRate[] = [];
   const detectedSumas = new Set<number>();
@@ -74,18 +87,19 @@ function parseBupaExcel(file: ArrayBuffer, product: 'BNV' | 'BNP'): ParsedBupaRe
   let asistenciaExtranjero = 1632;
   let costoCatastrofica = 5800;
 
-  const rateSheets = ['Master', 'MasterBase'];
-  let foundRateSheet = false;
+  function parseNum(v: any): number {
+    if (typeof v === 'number') return v;
+    if (v === null || v === undefined) return NaN;
+    return Number(String(v).replace(/,/g, '').trim());
+  }
 
-  for (const targetSheet of rateSheets) {
-    const resolvedName = resolveSheetName(workbook, targetSheet);
-    if (!resolvedName) continue;
+  function parseSheet(sheetName: string): boolean {
+    const sheet = workbook.Sheets[sheetName];
+    if (!sheet) return false;
+    const jsonData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: false });
+    if (jsonData.length < 3) return false;
 
-    const sheet = workbook.Sheets[resolvedName];
-    const jsonData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
-    if (jsonData.length < 3) continue;
-
-    // Find the header row - look for a row with "Edad" or numeric age pattern
+    // Find header row containing an age column label
     let headerRowIdx = -1;
     let ageColIdx = -1;
 
@@ -103,15 +117,14 @@ function parseBupaExcel(file: ArrayBuffer, product: 'BNV' | 'BNP'): ParsedBupaRe
       if (headerRowIdx !== -1) break;
     }
 
-    // If no explicit "Edad" header found, check if first column starts with 0 or small numbers
+    // Fallback: detect start of an incrementing-age sequence
     if (headerRowIdx === -1) {
       for (let r = 0; r < Math.min(jsonData.length, 10); r++) {
         const row = jsonData[r];
         if (!row) continue;
-        const firstVal = Number(row[0]);
+        const firstVal = parseNum(row[0]);
         if (firstVal === 0 || firstVal === 1) {
-          // Check if subsequent rows are incrementing ages
-          const nextVal = jsonData[r + 1] ? Number(jsonData[r + 1][0]) : NaN;
+          const nextVal = jsonData[r + 1] ? parseNum(jsonData[r + 1][0]) : NaN;
           if (!isNaN(nextVal) && nextVal === firstVal + 1) {
             headerRowIdx = r - 1;
             ageColIdx = 0;
@@ -122,156 +135,94 @@ function parseBupaExcel(file: ArrayBuffer, product: 'BNV' | 'BNP'): ParsedBupaRe
     }
 
     if (headerRowIdx === -1 || ageColIdx === -1) {
-      errors.push(`Hoja "${resolvedName}": no se encontro columna de edad`);
-      continue;
+      errors.push(`Hoja "${sheetName}": no se encontro columna de edad`);
+      return false;
     }
 
-    foundRateSheet = true;
-
-    // Parse column headers for plan identification
     const headers = jsonData[headerRowIdx] || [];
     const dataStartRow = headerRowIdx + 1;
+    let colsWithRates = 0;
 
     for (let colIdx = 0; colIdx < headers.length; colIdx++) {
       if (colIdx === ageColIdx) continue;
       const colHeader = String(headers[colIdx] || '').trim();
       if (!colHeader) continue;
 
-      // Detect plan parameters from column header
-      // Common patterns: "S5D50C10", "SA5000000_D50000_C10", "5MDP_50K_10%", etc.
       let region = 'Mexico Region 1';
-      if (colHeader.toLowerCase().includes('region 2') || colHeader.toLowerCase().includes('zona 2') || colHeader.includes('R2')) {
+      if (
+        colHeader.toLowerCase().includes('region 2') ||
+        colHeader.toLowerCase().includes('zona 2') ||
+        colHeader.includes('R2')
+      ) {
         region = 'Mexico Region 2';
       }
 
-      // Detect gender from column header (for BNP)
       let rateType = 'Unisex';
       if (product === 'BNP') {
-        const lowerHeader = colHeader.toLowerCase();
-        if (lowerHeader.includes('fem') || lowerHeader.includes('mujer') || lowerHeader.includes('female') || lowerHeader.endsWith('f')) {
-          rateType = 'Female';
-        } else if (lowerHeader.includes('masc') || lowerHeader.includes('hombre') || lowerHeader.includes('male') || lowerHeader.endsWith('m')) {
-          rateType = 'Male';
-        }
+        const lh = colHeader.toLowerCase();
+        if (lh.includes('fem') || lh.includes('mujer') || lh.includes('female') || lh.endsWith('f')) rateType = 'Female';
+        else if (lh.includes('masc') || lh.includes('hombre') || lh.includes('male') || lh.endsWith('m')) rateType = 'Male';
       }
 
-      // Extract SA, deducible, coaseguro from header
       const saMatch = colHeader.match(/S(\d+)/i) || colHeader.match(/(\d+)\s*(?:MDP|M)/i);
       const dedMatch = colHeader.match(/D(\d+)/i) || colHeader.match(/(?:ded|DED)[\s_-]*(\d+)/i);
       const coasMatch = colHeader.match(/C(\d+)/i) || colHeader.match(/(?:coas|COAS)[\s_-]*(\d+)/i);
-
       if (saMatch) detectedSumas.add(Number(saMatch[1]));
       if (dedMatch) detectedDeducibles.add(Number(dedMatch[1]));
       if (coasMatch) detectedCoaseguros.add(Number(coasMatch[1]));
 
-      // Parse rate data for each age row
-      let validRatesInCol = 0;
+      const isFactor = isFactorColumn(colHeader);
+      // Factor columns use a sequential row index as their "age" so that paired
+      // tables (e.g. Sumas aseguradas ↔ FD Suma asegurada) align by position even
+      // when the Excel age cells contain formula-computed values that read as 0.
+      let factorRowIdx = 0;
+
       for (let rowIdx = dataStartRow; rowIdx < jsonData.length; rowIdx++) {
         const row = jsonData[rowIdx];
         if (!row) continue;
-        const age = Number(row[ageColIdx]);
-        const rate = Number(row[colIdx]);
-        if (isNaN(age) || age < 0 || age > 120) continue;
-        if (isNaN(rate) || rate <= 0) continue;
+        const rate = parseNum(row[colIdx]);
+        if (isNaN(rate)) continue;
+        // For base-rate columns skip zero/negative values.
+        // For factor columns allow any numeric value including 0.
+        if (!isFactor && rate <= 0) continue;
 
-        rates.push({
-          plan_name: colHeader,
-          region,
-          age,
-          rate,
-          rate_type: rateType,
-        });
-        validRatesInCol++;
-      }
+        let age: number;
+        if (isFactor) {
+          age = factorRowIdx++;
+        } else {
+          age = parseNum(row[ageColIdx]);
+          if (isNaN(age) || age < 0 || age > 120) continue;
+        }
 
-      if (validRatesInCol === 0 && colIdx > ageColIdx) {
-        // Column had a header but no valid rates - might not be a rate column
+        rates.push({ plan_name: colHeader, region, age, rate, rate_type: rateType });
+        colsWithRates++;
       }
     }
 
-    if (rates.length > 0) break; // Found rates in first valid sheet
+    return colsWithRates > 0;
   }
 
-  // If no rates found in Master/MasterBase, try all other sheets
+  const rateSheets = ['Master', 'MasterBase'];
+  let foundRateSheet = false;
+
+  for (const targetSheet of rateSheets) {
+    const resolvedName = resolveSheetName(workbook, targetSheet);
+    if (!resolvedName) continue;
+    if (parseSheet(resolvedName)) { foundRateSheet = true; break; }
+  }
+
+  // If no rates in Master/MasterBase, scan all other sheets
   if (!foundRateSheet || rates.length === 0) {
     for (const sheetName of workbook.SheetNames) {
       const lowerName = sheetName.toLowerCase();
-      // Skip known non-rate sheets
-      if (lowerName.includes('instruc') || lowerName.includes('template') ||
-          lowerName.includes('brochure') || lowerName.includes('version') ||
-          lowerName.includes('objetos') || lowerName.includes('comparativ') ||
-          lowerName.includes('datos asegurado')) continue;
+      if (
+        lowerName.includes('instruc') || lowerName.includes('template') ||
+        lowerName.includes('brochure') || lowerName.includes('version') ||
+        lowerName.includes('objetos') || lowerName.includes('comparativ') ||
+        lowerName.includes('datos asegurado')
+      ) continue;
 
-      const sheet = workbook.Sheets[sheetName];
-      const jsonData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
-      if (jsonData.length < 10) continue;
-
-      // Look for a large numeric data block (ages 0-99 with rates)
-      let ageColIdx = -1;
-      let dataStartRow = -1;
-
-      for (let r = 0; r < Math.min(jsonData.length, 20); r++) {
-        const row = jsonData[r];
-        if (!row) continue;
-
-        // Check each cell for start of an age sequence
-        for (let c = 0; c < Math.min(row.length, 5); c++) {
-          const val = Number(row[c]);
-          if (val === 0 || val === 1) {
-            const nextRow = jsonData[r + 1];
-            const nextVal = nextRow ? Number(nextRow[c]) : NaN;
-            if (!isNaN(nextVal) && nextVal === val + 1) {
-              ageColIdx = c;
-              dataStartRow = r;
-              break;
-            }
-          }
-        }
-        if (ageColIdx !== -1) break;
-      }
-
-      if (ageColIdx === -1 || dataStartRow === -1) continue;
-
-      // Found an age column. Get headers from row above.
-      const headerRow = dataStartRow > 0 ? jsonData[dataStartRow - 1] : null;
-
-      for (let colIdx = 0; colIdx < (jsonData[dataStartRow]?.length || 0); colIdx++) {
-        if (colIdx === ageColIdx) continue;
-
-        const colHeader = headerRow ? String(headerRow[colIdx] || `Col${colIdx}`) : `Col${colIdx}`;
-
-        let region = 'Mexico Region 1';
-        if (colHeader.toLowerCase().includes('region 2') || colHeader.toLowerCase().includes('zona 2')) {
-          region = 'Mexico Region 2';
-        }
-
-        let rateType = 'Unisex';
-        if (product === 'BNP') {
-          const lh = colHeader.toLowerCase();
-          if (lh.includes('fem') || lh.includes('mujer')) rateType = 'Female';
-          else if (lh.includes('masc') || lh.includes('hombre')) rateType = 'Male';
-        }
-
-        let validRates = 0;
-        for (let rowIdx = dataStartRow; rowIdx < jsonData.length; rowIdx++) {
-          const row = jsonData[rowIdx];
-          if (!row) continue;
-          const age = Number(row[ageColIdx]);
-          const rate = Number(row[colIdx]);
-          if (isNaN(age) || age < 0 || age > 120) continue;
-          if (isNaN(rate) || rate <= 0) continue;
-
-          rates.push({
-            plan_name: colHeader,
-            region,
-            age,
-            rate,
-            rate_type: rateType,
-          });
-          validRates++;
-        }
-      }
-
+      parseSheet(sheetName);
       if (rates.length > 50) break;
     }
   }
@@ -281,12 +232,12 @@ function parseBupaExcel(file: ArrayBuffer, product: 'BNV' | 'BNP'): ParsedBupaRe
     const lowerName = sheetName.toLowerCase();
     if (lowerName.includes('config') || lowerName.includes('param') || lowerName.includes('datos')) {
       const sheet = workbook.Sheets[sheetName];
-      const jsonData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
+      const jsonData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: false });
       for (const row of jsonData) {
         if (!Array.isArray(row)) continue;
         const label = String(row[0] || '').toLowerCase();
         for (let c = 1; c < row.length; c++) {
-          const val = Number(row[c]);
+          const val = parseNum(row[c]);
           if (isNaN(val) || val <= 0) continue;
           if (label.includes('derecho') || label.includes('poliza')) { derechoPoliza = val; break; }
           if (label.includes('asistencia') && !label.includes('catastro')) { asistenciaExtranjero = val; break; }
