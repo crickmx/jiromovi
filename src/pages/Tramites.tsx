@@ -552,9 +552,18 @@ export function Tramites() {
     if (tramitesPapelera.length === 0) return;
     if (!confirm(`¿Vaciar la papelera? Se eliminarán permanentemente ${tramitesPapelera.length} trámite(s). Esta acción no se puede deshacer.`)) return;
     const ids = tramitesPapelera.map(t => t.id);
-    await supabase.from('tickets').delete().in('id', ids);
+    // Delete one-by-one to avoid RLS/FK issues with bulk .in() deletes
+    const errors: string[] = [];
+    for (const id of ids) {
+      const { error } = await supabase.from('tickets').delete().eq('id', id);
+      if (error) errors.push(error.message);
+    }
     invalidateCacheByPrefix('tramites_');
-    setTramitesPapelera([]);
+    // Always re-fetch from DB so state matches reality (catches silent failures)
+    await loadPapelera();
+    if (errors.length > 0) {
+      alert(`No se pudieron eliminar ${errors.length} trámite(s). Verifica los permisos.`);
+    }
   };
 
   const loadMyOperacionesRole = async () => {
@@ -1363,7 +1372,7 @@ export function Tramites() {
             </div>
             {kanbanCerrados.length === 0 ? (
               <p className="text-xs text-neutral-400 dark:text-white/30 text-center py-8">Sin cierres recientes</p>
-            ) : kanbanCerrados.map(tramite => {
+            ) : kanbanCerrados.slice(0, 10).map(tramite => {
               const area = getTipoTramiteArea(tramite.tipo_tramite);
               const ac = AREA_CONFIG[area];
               const tipoDb = tiposDb.get(tramite.tipo_tramite);
@@ -1398,10 +1407,10 @@ export function Tramites() {
               );
             })}
             <button
-              onClick={() => setActiveTab('cerrados')}
+              onClick={() => { setActiveTab('cerrados'); setViewMode('lista'); }}
               className="mt-1 text-xs font-semibold text-neutral-500 dark:text-white/40 hover:text-neutral-700 dark:hover:text-white/70 py-2 border border-neutral-200 dark:border-white/10 rounded-xl hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors"
             >
-              Ver más →
+              {kanbanCerrados.length > 10 ? `Ver todos (${kanbanCerrados.length}) →` : 'Ver en tablero →'}
             </button>
           </div>
 
