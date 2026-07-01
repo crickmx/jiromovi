@@ -419,25 +419,36 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                     <div>
                     <label className="block text-xs font-medium text-neutral-600 mb-1.5">Opciones de estatus</label>
                     {(editCampoConfig.opciones || []).map((opt: { label: string; slug: string; clasificacion?: string | null }, i: number) => (
-                      <div key={i} className="flex gap-1 mb-1.5 items-center">
-                        <input
-                          type="text"
-                          value={opt.label}
-                          onChange={(e) => {
-                            const opts = [...(editCampoConfig.opciones || [])];
-                            opts[i] = { ...opts[i], label: e.target.value, slug: slugify(e.target.value) || opts[i].slug };
-                            setEditCampoConfig({ ...editCampoConfig, opciones: opts });
-                          }}
-                          className="flex-1 px-2 py-1 text-xs border border-neutral-300 rounded-lg focus:ring-1 focus:ring-blue-400 focus:outline-none"
-                        />
-                        <div className="flex rounded-lg overflow-hidden border border-neutral-200 text-[10px] font-medium shrink-0">
+                      <div key={i} className="mb-2">
+                        <div className="flex gap-1 items-center mb-0.5">
+                          <input
+                            type="text"
+                            value={opt.label}
+                            onChange={(e) => {
+                              const opts = [...(editCampoConfig.opciones || [])];
+                              opts[i] = { ...opts[i], label: e.target.value, slug: slugify(e.target.value) || opts[i].slug };
+                              setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+                            }}
+                            className="flex-1 px-2 py-1 text-xs border border-neutral-300 rounded-lg focus:ring-1 focus:ring-blue-400 focus:outline-none"
+                          />
+                          <button
+                            onClick={() => {
+                              const opts = (editCampoConfig.opciones || []).filter((_: any, j: number) => j !== i);
+                              setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+                            }}
+                            className="p-1 hover:bg-red-50 rounded text-neutral-400 hover:text-red-500 shrink-0"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <div className="flex rounded-lg overflow-hidden border border-neutral-200 text-[10px] font-medium">
                           <button
                             onClick={() => {
                               const opts = [...(editCampoConfig.opciones || [])];
                               opts[i] = { ...opts[i], clasificacion: opt.clasificacion === 'inicio' ? null : 'inicio' };
                               setEditCampoConfig({ ...editCampoConfig, opciones: opts });
                             }}
-                            className={`px-2 py-1 transition-colors ${opt.clasificacion === 'inicio' ? 'bg-green-500 text-white' : 'bg-white text-neutral-400 hover:bg-green-50 hover:text-green-600'}`}
+                            className={`flex-1 py-1 transition-colors ${opt.clasificacion === 'inicio' ? 'bg-green-500 text-white' : 'bg-white text-neutral-400 hover:bg-green-50 hover:text-green-600'}`}
                           >Inicio</button>
                           <button
                             onClick={() => {
@@ -445,7 +456,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                               opts[i] = { ...opts[i], clasificacion: opt.clasificacion === 'terminacion' ? null : 'terminacion' };
                               setEditCampoConfig({ ...editCampoConfig, opciones: opts });
                             }}
-                            className={`px-2 py-1 border-l border-neutral-200 transition-colors ${opt.clasificacion === 'terminacion' ? 'bg-red-500 text-white' : 'bg-white text-neutral-400 hover:bg-red-50 hover:text-red-600'}`}
+                            className={`flex-1 py-1 border-l border-neutral-200 transition-colors ${opt.clasificacion === 'terminacion' ? 'bg-red-500 text-white' : 'bg-white text-neutral-400 hover:bg-red-50 hover:text-red-600'}`}
                           >Fin</button>
                           <button
                             onClick={() => {
@@ -453,18 +464,9 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                               opts[i] = { ...opts[i], clasificacion: opt.clasificacion === 'en_espera' ? null : 'en_espera' };
                               setEditCampoConfig({ ...editCampoConfig, opciones: opts });
                             }}
-                            className={`px-2 py-1 border-l border-neutral-200 transition-colors ${opt.clasificacion === 'en_espera' ? 'bg-amber-500 text-white' : 'bg-white text-neutral-400 hover:bg-amber-50 hover:text-amber-600'}`}
-                          >Espera</button>
+                            className={`flex-1 py-1 border-l border-neutral-200 transition-colors ${opt.clasificacion === 'en_espera' ? 'bg-amber-500 text-white' : 'bg-white text-neutral-400 hover:bg-amber-50 hover:text-amber-600'}`}
+                          >En espera</button>
                         </div>
-                        <button
-                          onClick={() => {
-                            const opts = (editCampoConfig.opciones || []).filter((_: any, j: number) => j !== i);
-                            setEditCampoConfig({ ...editCampoConfig, opciones: opts });
-                          }}
-                          className="p-1 hover:bg-red-50 rounded text-neutral-400 hover:text-red-500"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
                       </div>
                     ))}
                     <button
