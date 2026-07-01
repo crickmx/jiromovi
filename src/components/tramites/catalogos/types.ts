@@ -24,18 +24,28 @@ export type CampoTipo =
   | 'estatus' | 'fecha' | 'booleano' | 'dropdown' | 'seleccion_multiple'
   | 'aseguradora' | 'ramo' | 'rfc' | 'codigo_postal'
   | 'telefono' | 'email' | 'curp' | 'porcentaje'
-  // ── Campos Sistema (Sección 1 fija) ────────────────────────────────────────
+  // ── Campos Sistema fijos (no movibles) ─────────────────────────────────────
   | 'area' | 'equipo' | 'agente_vendedor' | 'oficina_jiro'
-  | 'fecha_creacion' | 'fecha_finalizacion';
+  | 'fecha_creacion' | 'fecha_finalizacion'
+  // ── Campos Sistema configurables (reordenables, ocultables, obligatorios) ──
+  | 'asignado_a' | 'prioridad' | 'descripcion'
+  | 'fecha_promesa_entrega' | 'archivos_adjuntos';
 
 export const SISTEMA_TIPO_META: Partial<Record<CampoTipo, { icon: string; desc: string; badge: string }>> = {
-  area:               { icon: 'AR', desc: 'Área del tipo de trámite, asignada automáticamente',     badge: 'Autofill' },
-  equipo:             { icon: 'EQ', desc: 'Equipo responsable, auto-asignado al crear el trámite',  badge: 'Autofill' },
-  estatus:            { icon: '≡',  desc: 'Estado del trámite — define inicio y terminación',       badge: 'Configurable' },
-  agente_vendedor:    { icon: 'UA', desc: 'Usuario asignado al trámite, del catálogo de personas',   badge: 'Catálogo' },
-  oficina_jiro:       { icon: 'OJ', desc: 'Oficina/despacho JIRO, filtrada por agente seleccionado', badge: 'Catálogo' },
-  fecha_creacion:     { icon: 'FC', desc: 'Fecha y hora de creación, auto-capturada al crear',      badge: 'Autofill' },
-  fecha_finalizacion: { icon: 'FF', desc: 'Fecha y hora de cierre, auto-capturada al terminar',     badge: 'Autofill' },
+  // Fijos
+  area:                 { icon: 'AR', desc: 'Área del tipo de trámite, asignada automáticamente',           badge: 'Autofill' },
+  equipo:               { icon: 'EQ', desc: 'Equipo responsable, auto-asignado al crear el trámite',        badge: 'Autofill' },
+  estatus:              { icon: '≡',  desc: 'Estado del trámite — define inicio y terminación',             badge: 'Configurable' },
+  agente_vendedor:      { icon: 'UA', desc: 'Agente/vendedor del catálogo SICAS',                           badge: 'Catálogo' },
+  oficina_jiro:         { icon: 'OJ', desc: 'Oficina/despacho JIRO, filtrada por agente seleccionado',      badge: 'Catálogo' },
+  fecha_creacion:       { icon: 'FC', desc: 'Fecha y hora de creación, auto-capturada al crear',            badge: 'Autofill' },
+  fecha_finalizacion:   { icon: 'FF', desc: 'Fecha y hora de cierre, auto-capturada al terminar',           badge: 'Autofill' },
+  // Configurables
+  asignado_a:           { icon: 'U',  desc: 'Usuario responsable/asignado al trámite',                      badge: 'Configurable' },
+  prioridad:            { icon: 'P',  desc: 'Prioridad del trámite (Baja / Media / Alta)',                  badge: 'Configurable' },
+  descripcion:          { icon: 'D',  desc: 'Descripción o notas libres del trámite',                       badge: 'Configurable' },
+  fecha_promesa_entrega:{ icon: 'FP', desc: 'Fecha límite de entrega prometida al solicitante',             badge: 'Configurable' },
+  archivos_adjuntos:    { icon: 'AF', desc: 'Archivos adjuntos del trámite con categoría',                  badge: 'Configurable' },
 };
 
 export interface TipoCampo {

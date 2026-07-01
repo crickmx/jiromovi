@@ -29,7 +29,7 @@ export function TriggerConfirmModal({ triggers, existingChildren, fromStatusLabe
   const [decisions, setDecisions] = useState<Record<string, 'conservar' | 'nuevo'>>(() => {
     const init: Record<string, 'conservar' | 'nuevo'> = {};
     for (const t of triggers) {
-      init[t.id] = existingChildren[t.id] ? 'conservar' : 'nuevo';
+      init[t.id] = 'nuevo';
     }
     return init;
   });
@@ -93,8 +93,8 @@ export function TriggerConfirmModal({ triggers, existingChildren, fromStatusLabe
                       <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
                         <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
                         <p className="text-xs text-amber-700">
-                          Ya existe un trámite hijo <strong>{existing.folio}</strong> generado por este trigger.
-                          ¿Qué deseas hacer?
+                          Este trigger ya generó el trámite <strong>{existing.folio}</strong> anteriormente.
+                          ¿Quieres crear un nuevo trámite automático?
                         </p>
                       </div>
                       <div className="grid grid-cols-2 gap-2">

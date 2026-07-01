@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Plus, Save, Trash2, Settings, GripVertical, X, Eye, Lock, Zap } from 'lucide-react';
-import { useFormBuilder } from './useFormBuilder';
+import { useFormBuilder, LOCKED_SISTEMA_KEYS, CONFIGURABLE_SISTEMA_KEYS, SISTEMA_CAMPO_DEFAULTS } from './useFormBuilder';
 import { FormPreview } from './FormPreview';
-import { CAMPO_TIPOS, SISTEMA_TIPO_META, MIME_OPTIONS, slugify } from './types';
+import { CAMPO_TIPOS, SISTEMA_TIPO_META, MIME_OPTIONS, slugify, CampoTipo } from './types';
 import { supabase } from '../../../lib/supabase';
 
 interface Props {
@@ -29,14 +29,19 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
     editCampoConfig, setEditCampoConfig,
     editCampoAyuda, setEditCampoAyuda,
     savingCampo, dragging,
-    handleAddCampo, handleSaveCampo, handleDeleteCampo,
+    handleAddCampo, handleAddSistemaCampo, handleSaveCampo, handleDeleteCampo,
     handleDragStart, handleDragOver, handleDrop,
   } = useFormBuilder(tipoId, showToast);
 
   useEffect(() => { loadCampos(); }, [tipoId]);
 
-  const sistemaCampos = campos.filter(c => c.is_sistema).sort((a, b) => a.display_order - b.display_order);
-  const customCampos  = campos.filter(c => !c.is_sistema).sort((a, b) => a.display_order - b.display_order);
+  // Campos fijos (area, equipo, fecha_creacion, fecha_finalizacion) — nunca movibles
+  const lockedCampos   = campos.filter(c => c.is_sistema && LOCKED_SISTEMA_KEYS.includes(c.sistema_key ?? '')).sort((a, b) => a.display_order - b.display_order);
+  // Pool draggable unificado: sistema configurables + custom, ordenados por display_order
+  const draggableCampos = campos.filter(c => !(c.is_sistema && LOCKED_SISTEMA_KEYS.includes(c.sistema_key ?? ''))).sort((a, b) => a.display_order - b.display_order);
+  // Sistema configurables que aún no están en el formulario (para el panel de agregar)
+  const addedSistemaKeys = campos.filter(c => c.is_sistema).map(c => c.sistema_key ?? '');
+  const availableSistemaKeys = CONFIGURABLE_SISTEMA_KEYS.filter(sk => !addedSistemaKeys.includes(sk));
 
   return (
     <div className="flex flex-1 overflow-hidden min-h-0">
@@ -52,8 +57,8 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
           <>
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs text-neutral-400 uppercase tracking-wider">
-                {customCampos.length} campo{customCampos.length !== 1 ? 's' : ''} personalizados
-                {!showPreview && customCampos.length > 0 && ' · arrastra para reordenar'}
+                {draggableCampos.length} campo{draggableCampos.length !== 1 ? 's' : ''} en el formulario
+                {!showPreview && draggableCampos.length > 0 && ' · arrastra para reordenar'}
               </p>
               {campos.length > 0 && (
                 <button
@@ -72,31 +77,21 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
               <FormPreview campos={campos} />
             ) : (
               <>
-                {/* ── Sección 1: Campos sistema (FIJOS) ── */}
-                {sistemaCampos.length > 0 && (
+                {/* ── Campos fijos del sistema (no movibles) ── */}
+                {lockedCampos.length > 0 && (
                   <div className="mb-4">
                     <div className="flex items-center gap-1.5 mb-2">
                       <Lock className="w-3 h-3 text-neutral-400" />
                       <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                        Sección 1 — Siempre presentes en todos los formularios
+                        Campos del sistema — siempre presentes, no configurables
                       </p>
                     </div>
                     <div className="space-y-1 border border-neutral-200 rounded-xl p-2 bg-neutral-50/60">
-                      {sistemaCampos.map((campo) => {
-                        const meta = SISTEMA_TIPO_META[campo.tipo];
-                        const isEditableConfig = campo.tipo === 'estatus';
+                      {lockedCampos.map(campo => {
+                        const meta = SISTEMA_TIPO_META[campo.tipo as CampoTipo];
                         return (
-                          <div
-                            key={campo.id}
-                            className={`flex items-center gap-2 border rounded-lg p-2 bg-white transition-colors ${
-                              editingCampo?.id === campo.id
-                                ? 'border-violet-400 ring-1 ring-violet-200'
-                                : 'border-neutral-200 hover:border-neutral-300'
-                            }`}
-                          >
-                            <div className="p-1 text-neutral-200">
-                              <Lock className="w-3.5 h-3.5" />
-                            </div>
+                          <div key={campo.id} className="flex items-center gap-2 border border-neutral-200 rounded-lg p-2 bg-white">
+                            <div className="p-1 text-neutral-200"><Lock className="w-3.5 h-3.5" /></div>
                             <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 bg-violet-50 text-violet-600 font-mono">
                               {meta?.icon ?? '?'}
                             </div>
@@ -105,17 +100,8 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                               <p className="text-[10px] text-neutral-400">{meta?.desc ?? campo.tipo}</p>
                             </div>
                             <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-500 border border-violet-200 shrink-0">
-                              {meta?.badge ?? 'Sistema'}
+                              {meta?.badge ?? 'AUTO'}
                             </span>
-                            {isEditableConfig && (
-                              <button
-                                onClick={() => editingCampo?.id === campo.id ? setEditingCampo(null) : startEditCampo(campo)}
-                                className="p-1.5 hover:bg-violet-50 rounded-lg transition-colors text-neutral-400 hover:text-violet-600"
-                                title="Configurar opciones de estatus"
-                              >
-                                <Settings className="w-3.5 h-3.5" />
-                              </button>
-                            )}
                           </div>
                         );
                       })}
@@ -123,35 +109,27 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                   </div>
                 )}
 
-                {/* ── Sección 2: Campos personalizados ── */}
-                {(sistemaCampos.length > 0 || customCampos.length > 0) && (
+                {/* ── Pool unificado: sistema configurables + custom ── */}
+                {draggableCampos.length > 0 && (
                   <div className="flex items-center gap-1.5 mb-2">
                     <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                      Sección 2 — Campos del formulario
+                      Campos del formulario — arrastra para reordenar
                     </p>
                   </div>
                 )}
 
-                {customCampos.length === 0 && sistemaCampos.length > 0 && (
+                {draggableCampos.length === 0 && (
                   <div className="text-center py-8 text-neutral-400 border-2 border-dashed border-neutral-200 rounded-xl mb-2">
-                    <p className="text-sm text-neutral-400">Sin campos personalizados aún</p>
-                    <p className="text-xs mt-1">Agrega campos específicos para este tipo de trámite</p>
-                  </div>
-                )}
-
-                {customCampos.length === 0 && sistemaCampos.length === 0 && (
-                  <div className="text-center py-12 text-neutral-400">
-                    <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-neutral-100 flex items-center justify-center">
-                      <Plus className="w-7 h-7 text-neutral-300" />
-                    </div>
-                    <p className="text-sm font-medium text-neutral-500">Sin campos definidos</p>
-                    <p className="text-xs mt-1 mb-4">Los campos del sistema se crean automáticamente.</p>
+                    <p className="text-sm text-neutral-400">Sin campos en el formulario</p>
+                    <p className="text-xs mt-1">Agrega campos desde el panel derecho</p>
                   </div>
                 )}
 
                 <div className="space-y-1.5">
-                  {customCampos.map((campo) => {
+                  {draggableCampos.map(campo => {
                     const idx = campos.findIndex(c => c.id === campo.id);
+                    const isSistema = campo.is_sistema;
+                    const meta = isSistema ? SISTEMA_TIPO_META[campo.tipo as CampoTipo] : null;
                     return (
                       <div
                         key={campo.id}
@@ -162,20 +140,30 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                         onDragEnd={() => {}}
                         className={`flex items-center gap-2 border rounded-xl p-2.5 bg-white transition-opacity ${
                           dragging === idx ? 'opacity-30' : 'opacity-100'
-                        } ${editingCampo?.id === campo.id ? 'border-blue-400 ring-1 ring-blue-200' : 'border-neutral-200'}`}
+                        } ${editingCampo?.id === campo.id
+                          ? isSistema ? 'border-violet-400 ring-1 ring-violet-200' : 'border-blue-400 ring-1 ring-blue-200'
+                          : 'border-neutral-200 hover:border-neutral-300'
+                        }`}
                       >
                         <div className="cursor-grab p-1 text-neutral-300 hover:text-neutral-500">
                           <GripVertical className="w-4 h-4" />
                         </div>
-                        <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 bg-blue-50 text-blue-600 font-mono">
-                          {CAMPO_TIPOS.find(t => t.tipo === campo.tipo)?.icon ?? '?'}
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 font-mono ${
+                          isSistema ? 'bg-violet-50 text-violet-600' : 'bg-blue-50 text-blue-600'
+                        }`}>
+                          {isSistema ? (meta?.icon ?? 'S') : (CAMPO_TIPOS.find(t => t.tipo === campo.tipo)?.icon ?? '?')}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-neutral-800 truncate">{campo.label}</p>
-                          <p className="text-[10px] text-neutral-400 font-mono">{campo.key}</p>
+                          <p className="text-[10px] text-neutral-400 font-mono">{isSistema ? (campo.sistema_key ?? campo.tipo) : campo.key}</p>
                         </div>
                         {campo.requerido && (
                           <span className="text-[10px] text-red-500 font-mono shrink-0">req</span>
+                        )}
+                        {isSistema && (
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-500 border border-violet-200 shrink-0">
+                            {meta?.badge ?? 'Sistema'}
+                          </span>
                         )}
                         <button
                           onClick={() => editingCampo?.id === campo.id ? setEditingCampo(null) : startEditCampo(campo)}
@@ -186,6 +174,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                         <button
                           onClick={() => handleDeleteCampo(campo)}
                           className="p-1.5 hover:bg-red-50 rounded-lg transition-colors text-neutral-300 hover:text-red-500"
+                          title={isSistema ? 'Ocultar del formulario' : 'Eliminar campo'}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -219,6 +208,34 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                 </button>
               </div>
               <div className="space-y-3">
+                {/* Campos sistema configurables disponibles (no agregados aún) */}
+                {availableSistemaKeys.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-bold text-violet-400 uppercase tracking-wider mb-1 px-0.5">Sistema</p>
+                    <div className="space-y-1">
+                      {availableSistemaKeys.map(sk => {
+                        const meta = SISTEMA_TIPO_META[sk as CampoTipo];
+                        const defaults = SISTEMA_CAMPO_DEFAULTS[sk];
+                        return (
+                          <button
+                            key={sk}
+                            onClick={() => handleAddSistemaCampo(sk)}
+                            className="w-full flex items-center gap-2.5 p-2 bg-violet-50 border border-violet-200 rounded-xl hover:border-violet-400 hover:bg-violet-100 transition-colors text-left"
+                          >
+                            <div className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center text-xs font-bold text-violet-600 shrink-0 font-mono">
+                              {meta?.icon ?? 'S'}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-violet-800">{defaults?.label ?? sk}</p>
+                              <p className="text-[10px] text-violet-500 leading-tight">{meta?.desc}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {/* Campos personalizados */}
                 {Object.entries(
                   CAMPO_TIPOS.reduce<Record<string, typeof CAMPO_TIPOS>>((acc, ct) => {
                     (acc[ct.grupo] = acc[ct.grupo] || []).push(ct);
@@ -261,14 +278,15 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                 </button>
               </div>
 
-              {editingCampo.is_sistema && editingCampo.tipo !== 'estatus' && (
+              {editingCampo.is_sistema && LOCKED_SISTEMA_KEYS.includes(editingCampo.sistema_key ?? '') && (
                 <div className="mb-3 text-xs text-violet-700 bg-violet-50 border border-violet-200 rounded-lg px-3 py-2 leading-relaxed">
-                  {SISTEMA_TIPO_META[editingCampo.tipo]?.desc ?? 'Campo del sistema, no configurable.'}
+                  {SISTEMA_TIPO_META[editingCampo.tipo as CampoTipo]?.desc ?? 'Campo del sistema fijo, no configurable.'}
                 </div>
               )}
 
               <div className="space-y-3">
-                {!editingCampo.is_sistema && (
+                {/* Campos custom y sistema configurables: etiqueta + ayuda + requerido */}
+                {(!editingCampo.is_sistema || !LOCKED_SISTEMA_KEYS.includes(editingCampo.sistema_key ?? '')) && editingCampo.tipo !== 'estatus' && (
                   <>
                     <div>
                       <label className="block text-xs font-medium text-neutral-600 mb-1">Etiqueta *</label>
@@ -280,16 +298,18 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-medium text-neutral-600 mb-1">Texto de ayuda</label>
-                      <input
-                        type="text"
-                        value={editCampoAyuda}
-                        onChange={(e) => setEditCampoAyuda(e.target.value)}
-                        placeholder="Ej: incluye prefijo 52"
-                        className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      />
-                    </div>
+                    {!editingCampo.is_sistema && (
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">Texto de ayuda</label>
+                        <input
+                          type="text"
+                          value={editCampoAyuda}
+                          onChange={(e) => setEditCampoAyuda(e.target.value)}
+                          placeholder="Ej: incluye prefijo 52"
+                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                      </div>
+                    )}
 
                     <label className="flex items-center gap-2 cursor-pointer select-none">
                       <input

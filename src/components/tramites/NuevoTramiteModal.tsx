@@ -713,17 +713,6 @@ export function NuevoTramiteModal({
       return true;
     }
 
-    if (!isAgent && !asignado) {
-      // Permitir si hay un agente SICAS seleccionado sin usuario MOVI (se notificará al admin)
-      const agCampo = camposDinamicos.find(c => c.sistema_key === 'agente_vendedor');
-      const agId    = agCampo ? respuestasDinamicas[agCampo.id] : null;
-      const agSin   = agId ? agentesVendedor.find(a => a.id === agId && !a.usuario_id) : null;
-      if (!agSin) {
-        setError('Debe seleccionar a quién asignar el trámite');
-        return false;
-      }
-    }
-
     if (tipoTramite === 'correccion_comisiones') {
       if (!loteSeleccionado) {
         setError('Debe seleccionar un lote de comisiones');
@@ -763,12 +752,38 @@ export function NuevoTramiteModal({
     }
 
     // Validar campos dinámicos requeridos (omitir campos sistema auto-fill)
-    // agente_vendedor se omite: es opcional por diseño — puede no existir contraparte SICAS
     const AUTO_FILL_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'oficina_jiro', 'agente_vendedor'];
     for (const campo of camposDinamicos) {
       if (!campo.requerido) continue;
       if (campo.is_sistema && AUTO_FILL_KEYS.includes(campo.sistema_key || '')) continue;
-      if (campo.sistema_key === 'agente_vendedor') continue; // nunca bloquear: SICAS puede no tener contraparte
+
+      // Validación de campos sistema configurables (usan estado propio, no respuestasDinamicas)
+      if (campo.is_sistema && campo.sistema_key === 'asignado_a') {
+        if (!asignado) {
+          const agCampo = camposDinamicos.find(c => c.sistema_key === 'agente_vendedor');
+          const agId = agCampo ? respuestasDinamicas[agCampo.id] : null;
+          const agSin = agId ? agentesVendedor.find(a => a.id === agId && !a.usuario_id) : null;
+          if (!agSin) { setError(`El campo "${campo.label}" es obligatorio`); return false; }
+        }
+        continue;
+      }
+      if (campo.is_sistema && campo.sistema_key === 'prioridad') {
+        if (!prioridad) { setError(`El campo "${campo.label}" es obligatorio`); return false; }
+        continue;
+      }
+      if (campo.is_sistema && campo.sistema_key === 'descripcion') {
+        if (!descripcion?.trim()) { setError(`El campo "${campo.label}" es obligatorio`); return false; }
+        continue;
+      }
+      if (campo.is_sistema && campo.sistema_key === 'fecha_promesa_entrega') {
+        if (!fechaPromesaEntrega) { setError(`El campo "${campo.label}" es obligatorio`); return false; }
+        continue;
+      }
+      if (campo.is_sistema && campo.sistema_key === 'archivos_adjuntos') {
+        if (archivos.length === 0) { setError(`El campo "${campo.label}" es obligatorio`); return false; }
+        continue;
+      }
+
       if (campo.tipo === 'adjunto') {
         if (!(adjuntosTemporales[campo.id]?.length > 0)) {
           setError(`El campo "${campo.label}" es obligatorio`);
@@ -1193,6 +1208,151 @@ export function NuevoTramiteModal({
     }
 
     if (campo.sistema_key === 'estatus') return renderCampoDinamico(campo);
+
+    if (campo.sistema_key === 'asignado_a') {
+      if (isAgent || tipoTramite === 'cotizacion_emision' || isCommercialTicketType(tipoTramite)) return null;
+      return (
+        <div key={campo.id} className="space-y-3">
+          {isPoolMode && (
+            <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-sm text-amber-800">
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-600" />
+              <span>Este tipo de trámite se enviará a la <strong>cola de Mesa de Control</strong>. Un ejecutivo será asignado posteriormente.</span>
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-semibold text-neutral-900 mb-2">
+              <User className="w-4 h-4 inline mr-2" />
+              {isPoolMode ? 'Agente del Trámite' : (campo.label || 'Asignar a')}
+              {campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
+            </label>
+            <select
+              value={asignado}
+              onChange={(e) => setAsignado(e.target.value)}
+              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
+            >
+              <option value="">{isPoolMode ? 'Selecciona el agente' : 'Selecciona un usuario'}</option>
+              {usuariosDisponibles.map(u => (
+                <option key={u.id} value={u.id}>{u.nombre_completo} ({u.rol})</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      );
+    }
+
+    if (campo.sistema_key === 'prioridad') {
+      if (isAgent || tipoTramite === 'cotizacion_emision' || isCommercialTicketType(tipoTramite)) return null;
+      return (
+        <div key={campo.id}>
+          <label className="block text-sm font-semibold text-neutral-900 mb-2">
+            {campo.label || 'Prioridad'}
+            {campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          <select
+            value={prioridad}
+            onChange={(e) => setPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
+          >
+            <option value="Baja">Baja</option>
+            <option value="Media">Media</option>
+            <option value="Alta">Alta</option>
+          </select>
+        </div>
+      );
+    }
+
+    if (campo.sistema_key === 'descripcion') return (
+      <div key={campo.id}>
+        <label className="block text-sm font-semibold text-neutral-900 mb-2">
+          {campo.label || 'Descripción / Notas'}
+          {campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
+        </label>
+        <textarea
+          value={descripcion}
+          onChange={(e) => setDescripcion(e.target.value)}
+          rows={4}
+          placeholder="Describe el motivo del trámite con el mayor detalle posible... (Opcional)"
+          className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent resize-none"
+        />
+      </div>
+    );
+
+    if (campo.sistema_key === 'fecha_promesa_entrega') {
+      if (isAgent) return null;
+      return (
+        <div key={campo.id}>
+          <label className="block text-sm font-semibold text-neutral-900 mb-2">
+            <Calendar className="w-4 h-4 inline mr-1.5" />
+            {campo.label || 'Fecha Promesa de Entrega'}
+            {campo.requerido
+              ? <span className="text-red-500 ml-0.5">*</span>
+              : <span className="text-xs font-normal text-neutral-500 ml-2">Opcional</span>
+            }
+          </label>
+          <input
+            type="date"
+            value={fechaPromesaEntrega}
+            onChange={(e) => setFechaPromesaEntrega(e.target.value)}
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+          />
+        </div>
+      );
+    }
+
+    if (campo.sistema_key === 'archivos_adjuntos') {
+      if (tipoTramite === 'registro_poliza' || tipoTramite === 'solicitud_comisiones_pendientes') return null;
+      return (
+        <div key={campo.id}>
+          <label className="block text-sm font-semibold text-neutral-900 mb-2">
+            <Upload className="w-4 h-4 inline mr-2" />
+            {campo.label || 'Archivos Adjuntos'}
+            {campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
+            <span className="text-xs font-normal text-neutral-500 ml-2">Documentos adjuntos: {archivos.length} / 20</span>
+          </label>
+          <div className="mb-3">
+            <label className="block text-xs font-medium text-neutral-600 mb-1">
+              Categoría del adjunto {archivos.length > 0 && <span className="text-red-500">*</span>}
+            </label>
+            <select
+              value={archivoCategoriaId}
+              onChange={e => setArchivoCategoriaId(e.target.value)}
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Selecciona una categoría...</option>
+              {adjuntoCategorias.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+              ))}
+            </select>
+          </div>
+          <div className="border-2 border-dashed border-neutral-300 rounded-xl p-6 text-center hover:border-accent transition-all">
+            <input type="file" multiple onChange={handleFileChange} className="hidden" id="file-upload" />
+            <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center justify-center">
+              <Upload className="w-10 h-10 text-neutral-400 mb-2" />
+              <p className="text-sm text-neutral-600 mb-1">Haz clic para seleccionar archivos</p>
+              <p className="text-xs text-neutral-500">PDF, imágenes, documentos (máx. 20 archivos)</p>
+            </label>
+          </div>
+          {archivos.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {archivos.map((archivo, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <FileText className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-neutral-900 truncate">{archivo.name}</p>
+                      <p className="text-xs text-neutral-500">{(archivo.size / 1024).toFixed(2)} KB</p>
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => removeFile(index)} className="text-red-600 hover:text-red-700 ml-2 flex-shrink-0">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
 
     return null;
   };
@@ -2146,51 +2306,6 @@ export function NuevoTramiteModal({
           </div>
         )}
 
-        {isPoolMode && tipoTramite !== 'cotizacion_emision' && !isCommercialTicketType(tipoTramite) && (
-          <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-sm text-amber-800">
-            <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-600" />
-            <span>Este tipo de trámite se enviará a la <strong>cola de Mesa de Control</strong>. Un ejecutivo será asignado posteriormente.</span>
-          </div>
-        )}
-
-        {canAssignOthers && tipoTramite !== 'cotizacion_emision' && !isCommercialTicketType(tipoTramite) && (
-          <div>
-            <label className="block text-sm font-semibold text-neutral-900 mb-2">
-              <User className="w-4 h-4 inline mr-2" />
-              {isPoolMode ? 'Agente del Trámite' : 'Asignar a'}
-            </label>
-            <select
-              value={asignado}
-              onChange={(e) => setAsignado(e.target.value)}
-              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
-            >
-              <option value="">{isPoolMode ? 'Selecciona el agente' : 'Selecciona un usuario'}</option>
-              {usuariosDisponibles.map(u => (
-                <option key={u.id} value={u.id}>
-                  {u.nombre_completo} ({u.rol})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {!isAgent && tipoTramite !== 'cotizacion_emision' && !isCommercialTicketType(tipoTramite) && (
-          <div>
-            <label className="block text-sm font-semibold text-neutral-900 mb-2">
-              Prioridad
-            </label>
-            <select
-              value={prioridad}
-              onChange={(e) => setPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
-              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
-            >
-              <option value="Baja">Baja</option>
-              <option value="Media">Media</option>
-              <option value="Alta">Alta</option>
-            </select>
-          </div>
-        )}
-
         {tipoTramite === 'correccion_poliza_registrada' && (
           <div>
             <label className="block text-sm font-semibold text-neutral-900 mb-2">
@@ -2471,145 +2586,11 @@ export function NuevoTramiteModal({
           </div>
         )}
 
-        <div>
-          <label className="block text-sm font-semibold text-neutral-900 mb-2">
-            Descripción / Notas
-          </label>
-          <textarea
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value)}
-            rows={4}
-            placeholder="Describe el motivo del trámite con el mayor detalle posible... (Opcional)"
-            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent resize-none"
-          />
-        </div>
-
-        {/* Fecha de Creación — auto-filled, read-only, siempre visible */}
-        <div>
-          <label className="block text-sm font-semibold text-neutral-900 mb-2">
-            Fecha de Creación
-          </label>
-          <input
-            type="date"
-            value={new Date().toISOString().split('T')[0]}
-            readOnly
-            className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl bg-neutral-50 text-neutral-500 cursor-default"
-          />
-        </div>
-
-        {/* Sección 1 — Campos sistema (fijos, siempre en orden) */}
-        {camposDinamicos.some(c => c.is_sistema) && (
-          <div className="space-y-4 pt-2 border-t border-violet-100">
-            <p className="text-xs font-semibold text-violet-500 uppercase tracking-wide flex items-center gap-1.5">
-              🔒 Información del Trámite
-            </p>
-            {camposDinamicos
-              .filter(c => c.is_sistema)
-              .sort((a, b) => a.display_order - b.display_order)
-              .map(renderCampoSistema)}
-          </div>
-        )}
-
-        {/* Sección 2 — Campos personalizados del catálogo */}
-        {camposDinamicos.some(c => !c.is_sistema) && (
-          <div className="space-y-4 pt-2 border-t border-neutral-100">
-            <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Campos adicionales</p>
-            {camposDinamicos
-              .filter(c => !c.is_sistema)
-              .sort((a, b) => a.display_order - b.display_order)
-              .map(renderCampoDinamico)}
-          </div>
-        )}
-
-        {/* Fecha Promesa de Entrega — solo líderes, gerentes y admins */}
-        {!isAgent && (
-          <div>
-            <label className="block text-sm font-semibold text-neutral-900 mb-2">
-              <Calendar className="w-4 h-4 inline mr-1.5" />
-              Fecha Promesa de Entrega
-              <span className="text-xs font-normal text-neutral-500 ml-2">Opcional</span>
-            </label>
-            <input
-              type="date"
-              value={fechaPromesaEntrega}
-              onChange={(e) => setFechaPromesaEntrega(e.target.value)}
-              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-            />
-          </div>
-        )}
-
-        {tipoTramite !== 'registro_poliza' && tipoTramite !== 'solicitud_comisiones_pendientes' && (
-          <div>
-            <label className="block text-sm font-semibold text-neutral-900 mb-2">
-              <Upload className="w-4 h-4 inline mr-2" />
-              Archivos Adjuntos
-              <span className="text-xs font-normal text-neutral-500 ml-2">
-                Documentos adjuntos: {archivos.length} / 20
-              </span>
-            </label>
-            <div className="mb-3">
-              <label className="block text-xs font-medium text-neutral-600 mb-1">
-                Categoría del adjunto {archivos.length > 0 && <span className="text-red-500">*</span>}
-              </label>
-              <select
-                value={archivoCategoriaId}
-                onChange={e => setArchivoCategoriaId(e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Selecciona una categoría...</option>
-                {adjuntoCategorias.map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.nombre}</option>
-                ))}
-              </select>
-            </div>
-            <div className="border-2 border-dashed border-neutral-300 rounded-xl p-6 text-center hover:border-accent transition-all">
-              <input
-                type="file"
-                multiple
-                onChange={handleFileChange}
-                className="hidden"
-                id="file-upload"
-              />
-              <label
-                htmlFor="file-upload"
-                className="cursor-pointer flex flex-col items-center justify-center"
-              >
-                <Upload className="w-10 h-10 text-neutral-400 mb-2" />
-                <p className="text-sm text-neutral-600 mb-1">
-                  Haz clic para seleccionar archivos
-                </p>
-                <p className="text-xs text-neutral-500">
-                  PDF, imágenes, documentos (máx. 20 archivos)
-                </p>
-              </label>
-            </div>
-
-            {archivos.length > 0 && (
-              <div className="mt-3 space-y-2">
-                {archivos.map((archivo, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <FileText className="w-4 h-4 text-neutral-400 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-neutral-900 truncate">{archivo.name}</p>
-                        <p className="text-xs text-neutral-500">
-                          {(archivo.size / 1024).toFixed(2)} KB
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeFile(index)}
-                      className="text-red-600 hover:text-red-700 ml-2 flex-shrink-0"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        {/* Campos del formulario — unificados, ordenados por display_order configurado en el FormBuilder */}
+        {[...camposDinamicos]
+          .sort((a, b) => a.display_order - b.display_order)
+          .map(campo => campo.is_sistema ? renderCampoSistema(campo) : renderCampoDinamico(campo))
+        }
 
         <div className="flex justify-end gap-3 pt-4 border-t border-neutral-200">
           <button

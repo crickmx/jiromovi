@@ -4,6 +4,24 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { TipoCampo, CampoTipo, CAMPO_TIPOS, slugify } from './types';
 import { logHistorial } from './logHistorial';
 
+// Campos sistema que nunca se pueden mover ni eliminar
+export const LOCKED_SISTEMA_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion'];
+
+// Defaults para re-agregar campos sistema configurables que el admin haya ocultado
+export const SISTEMA_CAMPO_DEFAULTS: Record<string, { label: string; tipo: string; key: string; config: Record<string, any> }> = {
+  estatus:              { label: 'Estatus',                   tipo: 'estatus',              key: 'estatus_tramite',      config: { opciones: [{ label: 'Iniciado', slug: 'iniciado', clasificacion: 'inicio' }, { label: 'Terminado', slug: 'terminado', clasificacion: 'terminacion' }] } },
+  agente_vendedor:      { label: 'Agente / Vendedor',         tipo: 'agente_vendedor',      key: 'agente_vendedor',      config: {} },
+  oficina_jiro:         { label: 'Oficina Jiro',              tipo: 'oficina_jiro',         key: 'oficina_jiro',         config: {} },
+  asignado_a:           { label: 'Asignar a',                 tipo: 'asignado_a',           key: 'asignado_a',           config: {} },
+  prioridad:            { label: 'Prioridad',                 tipo: 'prioridad',            key: 'prioridad',            config: {} },
+  descripcion:          { label: 'Descripción / Notas',       tipo: 'descripcion',          key: 'descripcion',          config: {} },
+  fecha_promesa_entrega:{ label: 'Fecha Promesa de Entrega',  tipo: 'fecha_promesa_entrega',key: 'fecha_promesa_entrega',config: {} },
+  archivos_adjuntos:    { label: 'Archivos Adjuntos',         tipo: 'archivos_adjuntos',    key: 'archivos_adjuntos',    config: {} },
+};
+
+// Sistema keys que el admin puede agregar/quitar del formulario
+export const CONFIGURABLE_SISTEMA_KEYS = Object.keys(SISTEMA_CAMPO_DEFAULTS);
+
 type ShowToast = (msg: string, type?: 'success' | 'error') => void;
 
 export function useFormBuilder(tipoId: string, showToast: ShowToast) {
@@ -115,7 +133,20 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
   };
 
   const handleDeleteCampo = async (campo: TipoCampo) => {
-    if (campo.is_sistema) return;
+    // Campos fijos del sistema: nunca se pueden eliminar
+    if (campo.is_sistema && LOCKED_SISTEMA_KEYS.includes(campo.sistema_key ?? '')) return;
+
+    // Campos sistema configurables: se desactivan (ocultan del form), no se borran
+    if (campo.is_sistema) {
+      if (!confirm(`¿Ocultar "${campo.label}" de este tipo de trámite? Podrás volver a agregarlo desde el FormBuilder.`)) return;
+      await supabase.from('tramite_tipo_campos').update({ activo: false }).eq('id', campo.id);
+      logHistorial(tipoId, 'campo_ocultado', { campo_label: campo.label, campo_key: campo.key }, usuario?.id, usuario?.nombre_completo);
+      setCampos(prev => prev.filter(c => c.id !== campo.id));
+      if (editingCampo?.id === campo.id) setEditingCampo(null);
+      showToast('Campo ocultado');
+      return;
+    }
+
     const { count } = await supabase
       .from('tramite_respuestas')
       .select('*', { count: 'exact', head: true })
@@ -139,8 +170,46 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     showToast('Campo eliminado');
   };
 
+  const handleAddSistemaCampo = async (sistemaKey: string) => {
+    const defaults = SISTEMA_CAMPO_DEFAULTS[sistemaKey];
+    if (!defaults) return;
+    // Intentar restaurar si existe desactivado; si no, insertar nuevo
+    const { data: existing } = await supabase
+      .from('tramite_tipo_campos')
+      .select('id')
+      .eq('tramite_tipo_id', tipoId)
+      .eq('sistema_key', sistemaKey)
+      .eq('activo', false)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase.from('tramite_tipo_campos').update({ activo: true }).eq('id', existing.id);
+    } else {
+      await supabase
+        .from('tramite_tipo_campos')
+        .insert({
+          tramite_tipo_id: tipoId,
+          key: defaults.key,
+          label: defaults.label,
+          tipo: defaults.tipo,
+          requerido: false,
+          display_order: campos.length + 1,
+          config: defaults.config,
+          activo: true,
+          is_sistema: true,
+          sistema_key: sistemaKey,
+        });
+    }
+    await loadCampos();
+    setShowAddField(false);
+    showToast('Campo de sistema agregado');
+  };
+
+  const isLocked = (campo: TipoCampo | undefined) =>
+    !!campo?.is_sistema && LOCKED_SISTEMA_KEYS.includes(campo.sistema_key ?? '');
+
   const handleDragStart = (_e: React.DragEvent, index: number) => {
-    if (campos[index]?.is_sistema) return;
+    if (isLocked(campos[index])) return;
     dragIdx.current = index;
     setDragging(index);
     _e.dataTransfer.effectAllowed = 'move';
@@ -155,15 +224,21 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     e.preventDefault();
     setDragging(null);
     if (dragIdx.current === null || dragIdx.current === dropIndex) return;
-    if (campos[dragIdx.current]?.is_sistema || campos[dropIndex]?.is_sistema) return;
+    if (isLocked(campos[dragIdx.current]) || isLocked(campos[dropIndex])) return;
     const reordered = [...campos];
     const [moved] = reordered.splice(dragIdx.current, 1);
     reordered.splice(dropIndex, 0, moved);
-    const updated = reordered.map((c, i) => ({ ...c, display_order: i + 1 }));
+    // Asignar display_order secuencial solo a los campos no-bloqueados; los bloqueados conservan sus valores negativos
+    let order = 1;
+    const updated = reordered.map(c =>
+      isLocked(c) ? c : { ...c, display_order: order++ }
+    );
     setCampos(updated);
     dragIdx.current = null;
     for (const c of updated) {
-      await supabase.from('tramite_tipo_campos').update({ display_order: c.display_order }).eq('id', c.id);
+      if (!isLocked(c)) {
+        await supabase.from('tramite_tipo_campos').update({ display_order: c.display_order }).eq('id', c.id);
+      }
     }
   };
 
@@ -178,7 +253,7 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     editCampoAyuda, setEditCampoAyuda,
     savingCampo,
     dragging,
-    handleAddCampo, handleSaveCampo, handleDeleteCampo,
+    handleAddCampo, handleAddSistemaCampo, handleSaveCampo, handleDeleteCampo,
     handleDragStart, handleDragOver, handleDrop,
   };
 }
