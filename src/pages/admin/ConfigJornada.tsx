@@ -64,8 +64,8 @@ export default function ConfigJornada() {
     <div className="flex flex-col h-full">
       <PageHeader
         title="Configuración de Jornada"
-        subtitle="Define el horario laboral para el cálculo de días hábiles y SLA"
-        icon={<Clock className="w-6 h-6" />}
+        description="Define el horario laboral para el cálculo de días hábiles y SLA"
+        icon={Clock}
       />
 
       <div className="flex-1 overflow-auto p-6">

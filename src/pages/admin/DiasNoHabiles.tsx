@@ -79,8 +79,8 @@ export default function DiasNoHabiles() {
     <div className="flex flex-col h-full">
       <PageHeader
         title="Días No Hábiles"
-        subtitle="Festivos oficiales (Art. 74 LFT) y excepciones personalizadas de la empresa"
-        icon={<Calendar className="w-6 h-6" />}
+        description="Festivos oficiales (Art. 74 LFT) y excepciones personalizadas de la empresa"
+        icon={Calendar}
       />
 
       <div className="flex-1 overflow-auto p-6">
