@@ -71,11 +71,16 @@ export default function MulticotizadorGMM() {
   const savedResultsRef = useRef<string | null>(null);
 
   const loadSavedQuotes = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error: loadError } = await supabase
       .from('multicotizador_gmm_quotes')
       .select('*')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(50);
+    if (loadError) {
+      console.error('[MulticotizadorGMM] loadSavedQuotes error:', loadError.message);
+      return;
+    }
     if (data) setSavedQuotes(data as any);
   }, []);
 
@@ -84,7 +89,11 @@ export default function MulticotizadorGMM() {
   }, [activeTab, loadSavedQuotes]);
 
   const autoSaveQuote = useCallback(async (optionResults: OptionResult[]) => {
-    if (!usuario?.id) return;
+    // Always use the real authenticated session UID — not usuario.id which may be
+    // an impersonated user and would fail the RLS WITH CHECK (created_by = auth.uid())
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user.id;
+    if (!userId) return;
 
     const resultsKey = JSON.stringify(optionResults);
     if (savedResultsRef.current === resultsKey) return;
@@ -94,7 +103,7 @@ export default function MulticotizadorGMM() {
       const { data, error: saveError } = await supabase
         .from('multicotizador_gmm_quotes')
         .insert({
-          created_by: usuario.id,
+          created_by: userId,
           client_name: clientName.trim() || 'Sin nombre',
           people_json: people,
           options_json: options,
@@ -111,11 +120,12 @@ export default function MulticotizadorGMM() {
       if (data?.folio) setLastSavedFolio(data.folio);
       setAutoSaveStatus('saved');
       setTimeout(() => setAutoSaveStatus('idle'), 3000);
-    } catch {
+    } catch (err: any) {
+      console.error('[MulticotizadorGMM] autoSaveQuote error:', err?.message);
       setAutoSaveStatus('error');
       setTimeout(() => setAutoSaveStatus('idle'), 4000);
     }
-  }, [usuario?.id, clientName, people, options]);
+  }, [clientName, people, options]);
 
   const addPerson = () => setPeople(prev => [...prev, { ...DEFAULT_PERSON(), relation: prev.length === 0 ? 'Titular' : 'Dependiente' }]);
   const removePerson = (id: string) => setPeople(prev => prev.filter(p => p.id !== id));
