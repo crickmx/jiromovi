@@ -1496,11 +1496,11 @@ export function Tramites() {
 
                     {/* Status / priority / dates */}
                     <div className="space-y-0.5 text-xs">
-                      {tramite.estatus && (
+                      {(tramite.custom_estatus_label ?? tramite.estatus?.nombre) && (
                         <p className="text-neutral-600 dark:text-white/60">
                           <span className="text-neutral-400 dark:text-white/35">Estatus: </span>
-                          <span className="font-bold uppercase" style={{ color: tramite.estatus.color }}>
-                            {tramite.estatus.nombre}
+                          <span className="font-bold uppercase" style={{ color: tramite.custom_estatus_color ?? tramite.estatus?.color ?? undefined }}>
+                            {tramite.custom_estatus_label ?? tramite.estatus?.nombre}
                           </span>
                         </p>
                       )}
