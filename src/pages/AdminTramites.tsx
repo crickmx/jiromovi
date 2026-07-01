@@ -8,10 +8,11 @@ import { PageHeader } from '@/components/ui/page-header';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
+import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type TabId = 'areas' | 'equipos' | 'visibilidad' | 'reglas';
+type TabId = 'areas' | 'tipos' | 'equipos' | 'visibilidad' | 'reglas';
 
 interface Area {
   id: string; nombre: string; slug: string; color_hex: string; activa: boolean;
@@ -71,6 +72,7 @@ const COLOR_PALETTE = [
 
 const TABS: { id: TabId; label: string; icon: React.ElementType; desc: string }[] = [
   { id: 'areas',       label: 'Áreas',       icon: MapPin,    desc: 'Categorías de trámites' },
+  { id: 'tipos',       label: 'Tipos',       icon: FileText,  desc: 'Tipos de trámite' },
   { id: 'equipos',     label: 'Equipos',     icon: Users,     desc: 'Grupos de trabajo' },
   { id: 'visibilidad', label: 'Visibilidad', icon: Eye,       desc: 'Permisos por equipo' },
   { id: 'reglas',      label: 'Reglas',      icon: Shuffle,   desc: 'Asignación automática' },
@@ -778,6 +780,7 @@ export default function AdminTramites() {
       {/* Tab content */}
       <div>
         {tab === 'areas'       && <AreasTab />}
+        {tab === 'tipos'       && <GestionCatalogosRegistro />}
         {tab === 'equipos'     && <GestionGruposVisualizacion />}
         {tab === 'visibilidad' && <VisibilidadTab />}
         {tab === 'reglas'      && <ReglasTab onGoToEquipos={() => setTab('equipos')} />}
