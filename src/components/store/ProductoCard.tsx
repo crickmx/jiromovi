@@ -1,4 +1,4 @@
-import { ShoppingCart, TriangleAlert as AlertTriangle, Sparkles } from 'lucide-react';
+import { ShoppingCart, TriangleAlert as AlertTriangle, Sparkles, Wrench } from 'lucide-react';
 import type { StoreProducto } from '../../lib/storeTypes';
 
 interface Props {
@@ -24,13 +24,14 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
     return `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/store-productos/${imagenUrl}`;
   };
 
-  const sinStock = producto.stock === 0;
-  const pocasExistencias = producto.stock > 0 && producto.stock <= producto.stock_umbral;
+  const esPorPedido = producto.disponibilidad === 'por_pedido';
+  const sinStock = !esPorPedido && producto.stock === 0;
+  const pocasExistencias = !esPorPedido && producto.stock > 0 && producto.stock <= producto.stock_umbral;
 
   return (
-    <div className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow ${sinStock ? 'opacity-75' : ''}`}>
+    <div className={`bg-white dark:bg-white/5 rounded-xl shadow-sm border border-gray-200 dark:border-white/10 overflow-hidden hover:shadow-md transition-shadow ${sinStock ? 'opacity-75' : ''}`}>
       <div
-        className="aspect-square w-full bg-gray-100 cursor-pointer overflow-hidden relative"
+        className="aspect-square w-full bg-gray-100 dark:bg-white/5 cursor-pointer overflow-hidden relative"
         onClick={() => onVerDetalle(producto)}
       >
         <img
@@ -57,12 +58,20 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
             </span>
           </div>
         )}
+        {producto.tipo_item === 'servicio' && (
+          <div className="absolute top-2 right-2">
+            <span className="inline-flex items-center gap-1 bg-purple-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+              <Wrench className="w-3 h-3" />
+              Servicio
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="p-3 sm:p-4">
         <div className="mb-2 flex flex-wrap gap-1.5">
           {producto.categoria && (
-            <span className="inline-block px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
+            <span className="inline-block px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 dark:bg-accent/10 dark:text-accent rounded-full">
               {producto.categoria.nombre}
             </span>
           )}
@@ -75,18 +84,18 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
         </div>
 
         <h3
-          className="text-base sm:text-lg font-semibold text-gray-900 mb-2 cursor-pointer hover:text-accent transition-colors line-clamp-2"
+          className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2 cursor-pointer hover:text-accent transition-colors line-clamp-2"
           onClick={() => onVerDetalle(producto)}
         >
           {producto.titulo}
         </h3>
 
-        <p className="text-sm text-gray-600 mb-3 sm:mb-4 line-clamp-2">
+        <p className="text-sm text-gray-600 dark:text-white/60 mb-3 sm:mb-4 line-clamp-2">
           {producto.descripcion}
         </p>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
-          <p className="text-xl sm:text-2xl font-bold text-gray-900">
+          <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
             ${producto.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
           </p>
 
@@ -100,7 +109,7 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
             }`}
           >
             <ShoppingCart className="w-4 h-4" />
-            <span>{esPremium ? 'Ver Planes' : sinStock ? 'Agotado' : 'Agregar'}</span>
+            <span>{esPremium ? 'Ver Planes' : sinStock ? 'Agotado' : producto.tipo_item === 'servicio' ? 'Solicitar' : 'Agregar'}</span>
           </button>
         </div>
       </div>

@@ -6,9 +6,11 @@ import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
 import { RichTextEditor } from '../components/RichTextEditor';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Save, Upload, X, Calendar, Pin, Image, Paperclip, Eye, Users, Building2, User, FileText, CircleAlert as AlertCircle } from 'lucide-react';
+import { ArrowLeft, Save, Upload, X, Calendar, Pin, Image, Paperclip, Eye, Users, Building2, User, FileText, CircleAlert as AlertCircle, Sparkles, Loader as Loader2, CircleCheck as CheckCircle2, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn } from '@/lib/utils';
+import { extraerTextoDeArchivos, procesarDocumentoConIA } from '../lib/iaDocumentoUtils';
+import { generateCoverImage } from '../lib/coverImageGenerator';
 import {
   obtenerComunicadoPorId,
   crearComunicado,
@@ -21,6 +23,12 @@ import {
   establecerVisibilidad
 } from '../lib/comunicadosUtils';
 import type { ComunicadoCategoria } from '../lib/comunicadosTypes';
+
+interface AseguradoraOption {
+  id: string;
+  name: string;
+  logo_url: string;
+}
 
 export default function ComunicadoEditor() {
   const { id } = useParams<{ id: string }>();
@@ -38,6 +46,7 @@ export default function ComunicadoEditor() {
   const [fechaPublicacion, setFechaPublicacion] = useState('');
   const [fijado, setFijado] = useState(false);
   const [adjuntos, setAdjuntos] = useState<File[]>([]);
+  const [adjuntosExistentes, setAdjuntosExistentes] = useState<{ id: string; archivo_url: string; nombre_archivo: string; tamanio_bytes: number; tipo_mime: string }[]>([]);
   const [saving, setSaving] = useState(false);
 
   // Estados de visibilidad
@@ -45,6 +54,15 @@ export default function ComunicadoEditor() {
   const [rolesSeleccionados, setRolesSeleccionados] = useState<string[]>([]);
   const [oficinasSeleccionadas, setOficinasSeleccionadas] = useState<string[]>([]);
   const [oficinasDisponibles, setOficinasDisponibles] = useState<any[]>([]);
+
+  // Estados de IA
+  const [iaDocumentos, setIaDocumentos] = useState<File[]>([]);
+  const [iaTexto, setIaTexto] = useState('');
+  const [iaProcesando, setIaProcesando] = useState(false);
+  const [iaError, setIaError] = useState<string | null>(null);
+  const [iaCompletado, setIaCompletado] = useState(false);
+  const [iaAseguradoraId, setIaAseguradoraId] = useState('');
+  const [aseguradoras, setAseguradoras] = useState<AseguradoraOption[]>([]);
 
   const esAdmin = usuario?.rol === 'Administrador';
   const esGerente = usuario?.rol === 'Gerente';
@@ -77,6 +95,14 @@ export default function ComunicadoEditor() {
         .order('nombre');
       setOficinasDisponibles(oficinasData || []);
 
+      // Cargar aseguradoras con logo para imagen de portada IA
+      const { data: aseguradorasData } = await supabase
+        .from('web_page_insurers')
+        .select('id, name, logo_url')
+        .eq('is_active', true)
+        .order('display_order');
+      setAseguradoras(aseguradorasData || []);
+
       if (categoriasData.length > 0 && !categoriaId) {
         setCategoriaId(categoriasData[0].id);
       }
@@ -96,6 +122,10 @@ export default function ComunicadoEditor() {
           setImagenPrincipalUrl(comunicado.imagen_principal);
           setCategoriaId(comunicado.categoria_id);
           setFijado(comunicado.fijado);
+
+          if (comunicado.adjuntos && comunicado.adjuntos.length > 0) {
+            setAdjuntosExistentes(comunicado.adjuntos);
+          }
 
           if (comunicado.fecha_publicacion) {
             const fecha = new Date(comunicado.fecha_publicacion);
@@ -125,7 +155,8 @@ export default function ComunicadoEditor() {
   const handleAdjuntos = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const nuevosAdjuntos = Array.from(e.target.files);
-      if (adjuntos.length + nuevosAdjuntos.length > 5) {
+      const totalAdjuntos = adjuntos.length + adjuntosExistentes.length + nuevosAdjuntos.length;
+      if (totalAdjuntos > 5) {
         alert('Máximo 5 adjuntos permitidos');
         return;
       }
@@ -135,6 +166,110 @@ export default function ComunicadoEditor() {
 
   const eliminarAdjuntoLocal = (index: number) => {
     setAdjuntos(adjuntos.filter((_, i) => i !== index));
+  };
+
+  const handleIaDocumentos = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const nuevos = Array.from(e.target.files);
+      setIaDocumentos([...iaDocumentos, ...nuevos]);
+      setIaError(null);
+      setIaCompletado(false);
+    }
+  };
+
+  const eliminarIaDocumento = (index: number) => {
+    setIaDocumentos(iaDocumentos.filter((_, i) => i !== index));
+  };
+
+  const handleProcesarConIA = async () => {
+    if (iaDocumentos.length === 0 && !iaTexto.trim()) {
+      setIaError('Sube al menos un archivo o pega texto para procesar.');
+      return;
+    }
+
+    try {
+      setIaProcesando(true);
+      setIaError(null);
+
+      let textoExtraido = iaTexto;
+
+      if (iaDocumentos.length > 0) {
+        const textoArchivos = await extraerTextoDeArchivos(iaDocumentos);
+        if (textoArchivos.trim()) {
+          textoExtraido = textoExtraido
+            ? `${textoExtraido}\n\n${textoArchivos}`
+            : textoArchivos;
+        }
+      }
+
+      if (!textoExtraido.trim()) {
+        setIaError('No se pudo extraer texto de los archivos. Intenta pegando el contenido manualmente.');
+        return;
+      }
+
+      const resultado = await procesarDocumentoConIA(textoExtraido);
+
+      setTitulo(resultado.titulo);
+      setContenidoHtml(resultado.contenido_html);
+
+      // Auto-detect insurer from title/content if not already selected
+      let resolvedAseguradoraId = iaAseguradoraId;
+      if (!resolvedAseguradoraId && aseguradoras.length > 0) {
+        const searchText = `${resultado.titulo} ${resultado.contenido_html}`.toLowerCase();
+        const matched = aseguradoras.find(a => {
+          const nameLower = a.name.toLowerCase();
+          if (searchText.includes(nameLower)) return true;
+          // Match on any significant word (>4 chars) in the insurer name
+          return nameLower.split(/\s+/).some(word => word.length > 4 && searchText.includes(word));
+        });
+        if (matched) {
+          resolvedAseguradoraId = matched.id;
+          setIaAseguradoraId(matched.id);
+        }
+      }
+
+      // Generate composite cover image with title + insurer branding
+      const selectedAseguradora = aseguradoras.find(a => a.id === resolvedAseguradoraId);
+      try {
+        const selectedCategoria = categorias.find(c => c.id === categoriaId);
+        const coverBlob = await generateCoverImage({
+          backgroundUrl: resultado.imagen_url,
+          titulo: resultado.titulo,
+          aseguradoraNombre: selectedAseguradora?.name,
+          aseguradoraLogoUrl: selectedAseguradora?.logo_url,
+          categoria: selectedCategoria?.nombre,
+        });
+        const coverFile = new File([coverBlob], 'cover-ia.jpg', { type: 'image/jpeg' });
+        const uploadedUrl = await subirImagenComunicado(coverFile);
+        setImagenPrincipalUrl(uploadedUrl);
+        setImagenPrincipal(null);
+      } catch (coverErr) {
+        console.error('Error generating cover, using raw AI image:', coverErr);
+        if (resultado.imagen_url) {
+          setImagenPrincipalUrl(resultado.imagen_url);
+        }
+      }
+
+      // Add AI documents as publication attachments
+      if (iaDocumentos.length > 0) {
+        const totalAdjuntos = adjuntos.length + adjuntosExistentes.length + iaDocumentos.length;
+        if (totalAdjuntos <= 5) {
+          setAdjuntos(prev => [...prev, ...iaDocumentos]);
+        } else {
+          // Add as many as possible up to limit
+          const espacioDisponible = 5 - adjuntos.length - adjuntosExistentes.length;
+          if (espacioDisponible > 0) {
+            setAdjuntos(prev => [...prev, ...iaDocumentos.slice(0, espacioDisponible)]);
+          }
+        }
+      }
+
+      setIaCompletado(true);
+    } catch (err: any) {
+      setIaError(err.message || 'Error al procesar con IA');
+    } finally {
+      setIaProcesando(false);
+    }
   };
 
   const handleGuardar = async () => {
@@ -164,7 +299,6 @@ export default function ComunicadoEditor() {
       return;
     }
 
-    // Validar visibilidad para Administradores
     // Validación para Gerentes
     if (esGerente) {
       if (!usuario?.oficina_id) {
@@ -210,7 +344,7 @@ export default function ComunicadoEditor() {
         categoria_id: categoriaId,
         fecha_publicacion: fechaPub,
         publicado: true,
-        fijado: esGerente ? false : fijado, // Gerentes no pueden fijar
+        fijado: esGerente ? false : fijado,
         creado_por: usuario!.id
       };
 
@@ -249,26 +383,17 @@ export default function ComunicadoEditor() {
 
         // Lógica especial para Gerentes
         if (esGerente) {
-          // Gerentes: crear visibilidad para roles seleccionados de SU OFICINA
-          const oficinaGerente = usuario?.oficina_id;
-
           for (const rol of rolesSeleccionados) {
             reglasVisibilidad.push({
               comunicado_id: comunicadoId,
               rol: rol,
-              oficina_id: oficinaGerente,
+              oficina_id: usuario?.oficina_id,
               usuario_id: null,
               para_todos: false
             });
           }
-
-          // Los administradores verán automáticamente todas las publicaciones
-          // (esto se maneja en las políticas RLS y función puede_ver_comunicado)
-        }
-        // Lógica para Administradores
-        else if (esAdmin) {
+        } else if (esAdmin) {
           if (tipoVisibilidad === 'todos') {
-            // Visible para todos
             reglasVisibilidad.push({
               comunicado_id: comunicadoId,
               rol: null,
@@ -309,11 +434,9 @@ export default function ComunicadoEditor() {
       // Enviar notificaciones si es nuevo comunicado
       if (!esEdicion && comunicadoId) {
         try {
-          // Obtener destinatarios según las reglas de visibilidad
           let destinatarios: string[] = [];
 
           if (esGerente) {
-            // Para gerentes: notificar a usuarios de su oficina según roles seleccionados
             const { data: usuariosOficina } = await supabase
               .from('usuarios')
               .select('id')
@@ -325,7 +448,6 @@ export default function ComunicadoEditor() {
               destinatarios = usuariosOficina.map(u => u.id);
             }
 
-            // Agregar administradores
             const { data: admins } = await supabase
               .from('usuarios')
               .select('id')
@@ -336,7 +458,6 @@ export default function ComunicadoEditor() {
               destinatarios.push(...admins.map(a => a.id));
             }
           } else if (esAdmin) {
-            // Para administradores: notificar según configuración de visibilidad
             if (tipoVisibilidad === 'todos') {
               const { data: todosUsuarios } = await supabase
                 .from('usuarios')
@@ -369,13 +490,11 @@ export default function ComunicadoEditor() {
             }
           }
 
-          // Eliminar duplicados
           destinatarios = [...new Set(destinatarios)];
 
           if (destinatarios.length > 0) {
             const linkComunicado = `/comunicados/${comunicadoId}`;
 
-            // Usar el nuevo motor centralizado de notificaciones
             const { data: result, error: notifyError } = await supabase.rpc('notify', {
               p_event_code: 'nuevo_comunicado',
               p_user_ids: destinatarios,
@@ -394,7 +513,6 @@ export default function ComunicadoEditor() {
               console.log('Notificaciones programadas:', result);
             }
 
-            // Ejecutar dispatcher inmediatamente (sin esperar respuesta)
             fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notification-dispatcher`, {
               method: 'POST',
               headers: {
@@ -405,7 +523,6 @@ export default function ComunicadoEditor() {
           }
         } catch (error) {
           console.error('Error enviando notificaciones:', error);
-          // No bloqueamos el flujo si fallan las notificaciones
         }
       }
 
@@ -475,6 +592,174 @@ export default function ComunicadoEditor() {
 
         {/* Formulario */}
         <div className="bg-white rounded-xl border border-neutral-200 shadow-ios p-4 sm:p-6 md:p-8 space-y-6">
+          {/* Sección IA - Procesar documentos */}
+          {!esEdicion && (
+            <div className={cn(
+              "rounded-xl border-2 border-dashed p-4 sm:p-6 transition-colors",
+              iaCompletado ? "border-green-300 bg-green-50/50" : "border-primary-200 bg-primary-50/30"
+            )}>
+              <div className="flex items-center gap-2 mb-3">
+                <div className={cn(
+                  "w-8 h-8 rounded-lg flex items-center justify-center",
+                  iaCompletado ? "bg-green-100" : "bg-primary-100"
+                )}>
+                  {iaCompletado ? (
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  ) : (
+                    <Sparkles className="w-5 h-5 text-primary-600" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-neutral-900">
+                    {iaCompletado ? 'Contenido generado por IA' : 'Generar con IA'}
+                  </h3>
+                  <p className="text-xs text-neutral-500">
+                    {iaCompletado
+                      ? 'Revisa y edita el contenido generado abajo. Los archivos se adjuntaron automaticamente.'
+                      : 'Sube archivos o pega texto para generar el comunicado automaticamente'}
+                  </p>
+                </div>
+              </div>
+
+              {!iaCompletado && (
+                <>
+                  {/* Upload zone */}
+                  <label className="flex flex-col items-center justify-center w-full h-32 border border-neutral-300 border-dashed rounded-lg cursor-pointer hover:border-primary-400 hover:bg-primary-50/50 transition-colors mb-3">
+                    <Upload className="w-8 h-8 text-neutral-400 mb-1" />
+                    <span className="text-sm text-neutral-600 font-medium">Subir archivos</span>
+                    <span className="text-xs text-neutral-400 mt-0.5">PDF, DOCX, TXT, imagenes</span>
+                    <input
+                      type="file"
+                      multiple
+                      accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp"
+                      onChange={handleIaDocumentos}
+                      className="hidden"
+                      disabled={iaProcesando}
+                    />
+                  </label>
+
+                  {/* File list */}
+                  {iaDocumentos.length > 0 && (
+                    <div className="space-y-2 mb-3">
+                      {iaDocumentos.map((doc, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-2 bg-white rounded-lg border border-neutral-200">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <FileText className="w-4 h-4 text-primary-500 flex-shrink-0" />
+                            <span className="text-sm text-neutral-700 truncate">{doc.name}</span>
+                            <span className="text-xs text-neutral-400 flex-shrink-0">
+                              {(doc.size / 1024).toFixed(0)} KB
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => eliminarIaDocumento(idx)}
+                            className="text-neutral-400 hover:text-red-500 p-1"
+                            disabled={iaProcesando}
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Text area */}
+                  <textarea
+                    value={iaTexto}
+                    onChange={(e) => setIaTexto(e.target.value)}
+                    placeholder="O pega aqui el contenido del comunicado, circular o boletin que deseas transformar en articulo..."
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm resize-none focus:ring-2 focus:ring-primary-300 focus:border-transparent transition-all"
+                    rows={4}
+                    disabled={iaProcesando}
+                  />
+
+                  {/* Aseguradora selector for cover image */}
+                  <div className="mt-3">
+                    <label className="flex items-center gap-2 text-sm font-medium text-neutral-700 mb-1.5">
+                      <Shield className="w-4 h-4 text-primary-500" />
+                      Aseguradora (para imagen de portada)
+                    </label>
+                    <select
+                      value={iaAseguradoraId}
+                      onChange={(e) => setIaAseguradoraId(e.target.value)}
+                      disabled={iaProcesando}
+                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-300 focus:border-transparent transition-all bg-white"
+                    >
+                      <option value="">Sin aseguradora (generar sin logo)</option>
+                      {aseguradoras.map((aseg) => (
+                        <option key={aseg.id} value={aseg.id}>
+                          {aseg.name}
+                        </option>
+                      ))}
+                    </select>
+                    {iaAseguradoraId && (
+                      <div className="flex items-center gap-2 mt-2 p-2 bg-white border border-neutral-200 rounded-lg">
+                        <img
+                          src={aseguradoras.find(a => a.id === iaAseguradoraId)?.logo_url}
+                          alt=""
+                          className="h-8 w-auto object-contain"
+                        />
+                        <span className="text-xs text-neutral-500">
+                          El logo y nombre apareceran en la imagen de portada generada
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Error */}
+                  {iaError && (
+                    <div className="flex items-center gap-2 mt-2 p-2 bg-red-50 border border-red-200 rounded-lg">
+                      <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                      <span className="text-sm text-red-700">{iaError}</span>
+                    </div>
+                  )}
+
+                  {/* Process button */}
+                  <Button
+                    type="button"
+                    onClick={handleProcesarConIA}
+                    disabled={iaProcesando || (iaDocumentos.length === 0 && !iaTexto.trim())}
+                    className="mt-3 w-full sm:w-auto"
+                  >
+                    {iaProcesando ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Procesando con IA...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Procesar con IA
+                      </>
+                    )}
+                  </Button>
+
+                  {iaProcesando && (
+                    <p className="text-xs text-neutral-500 mt-2">
+                      Esto puede tomar 30-60 segundos. Se generara el titulo, contenido e imagen.
+                    </p>
+                  )}
+                </>
+              )}
+
+              {iaCompletado && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setIaCompletado(false);
+                    setIaDocumentos([]);
+                    setIaTexto('');
+                  }}
+                  className="mt-2"
+                >
+                  Procesar otro documento
+                </Button>
+              )}
+            </div>
+          )}
+
           {/* Título */}
           <div className="space-y-2">
             <Label htmlFor="titulo" className="text-sm sm:text-base">
@@ -567,6 +852,43 @@ export default function ComunicadoEditor() {
             <Label className="text-sm sm:text-base">
               Archivos Adjuntos (máximo 5)
             </Label>
+
+            {adjuntosExistentes.length > 0 && (
+              <div className="space-y-2">
+                <span className="text-xs text-neutral-500 font-medium">Archivos existentes:</span>
+                {adjuntosExistentes.map((adj) => (
+                  <div
+                    key={adj.id}
+                    className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100"
+                  >
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                      <a
+                        href={adj.archivo_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs sm:text-sm text-blue-700 truncate hover:underline"
+                      >
+                        {adj.nombre_archivo}
+                      </a>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={async () => {
+                        await eliminarAdjunto(adj.id);
+                        setAdjuntosExistentes(adjuntosExistentes.filter(a => a.id !== adj.id));
+                      }}
+                      className="text-red-600 hover:text-red-700 flex-shrink-0"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <label className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-3 border border-neutral-300 rounded-lg cursor-pointer hover:bg-neutral-50 active:bg-neutral-100 transition-colors btn-touch">
               <Paperclip className="w-4 h-4 sm:w-5 sm:h-5 text-neutral-600" />
               <span className="text-sm sm:text-base text-neutral-700 font-medium">Agregar archivos</span>
@@ -575,7 +897,7 @@ export default function ComunicadoEditor() {
                 multiple
                 onChange={handleAdjuntos}
                 className="hidden"
-                disabled={adjuntos.length >= 5}
+                disabled={adjuntos.length + adjuntosExistentes.length >= 5}
               />
             </label>
 
@@ -609,7 +931,6 @@ export default function ComunicadoEditor() {
             </h3>
 
             <div className="space-y-4">
-              {/* Publicar ahora o programar */}
               <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -716,7 +1037,6 @@ export default function ComunicadoEditor() {
             {/* UI completa para Administradores */}
             {esAdmin && (
               <div className="space-y-4">
-                {/* Tipo de visibilidad */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
                     ¿Quién puede ver este comunicado?
@@ -791,11 +1111,6 @@ export default function ComunicadoEditor() {
                         </label>
                       ))}
                     </div>
-                    {rolesSeleccionados.length === 0 && (
-                      <p className="text-sm text-amber-600 mt-2">
-                        Debes seleccionar al menos un rol
-                      </p>
-                    )}
                   </div>
                 )}
 
@@ -805,7 +1120,7 @@ export default function ComunicadoEditor() {
                     <label className="block text-sm font-medium text-gray-700 mb-3">
                       Selecciona las oficinas que pueden ver este comunicado:
                     </label>
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
                       {oficinasDisponibles.map((oficina) => (
                         <label key={oficina.id} className="flex items-center gap-2 cursor-pointer">
                           <input
@@ -824,36 +1139,35 @@ export default function ComunicadoEditor() {
                         </label>
                       ))}
                     </div>
-                    {oficinasSeleccionadas.length === 0 && (
-                      <p className="text-sm text-amber-600 mt-2">
-                        Debes seleccionar al menos una oficina
-                      </p>
-                    )}
                   </div>
                 )}
               </div>
             )}
           </div>
 
-          {/* Botones de acción */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-6 border-t border-neutral-200">
+          {/* Botón Guardar */}
+          <div className="border-t pt-6 flex justify-end gap-3">
             <Button
-              type="button"
-              onClick={handleGuardar}
-              disabled={saving}
-              className="btn-touch flex-1 sm:flex-initial order-2 sm:order-1"
-            >
-              <Save className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-              {saving ? 'Guardando...' : esEdicion ? 'Actualizar' : 'Publicar'}
-            </Button>
-
-            <Button
-              type="button"
               variant="outline"
               onClick={() => navigate('/comunicados')}
-              className="btn-touch flex-1 sm:flex-initial order-1 sm:order-2"
             >
               Cancelar
+            </Button>
+            <Button
+              onClick={handleGuardar}
+              disabled={saving}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  {esEdicion ? 'Actualizar' : 'Publicar'}
+                </>
+              )}
             </Button>
           </div>
         </div>

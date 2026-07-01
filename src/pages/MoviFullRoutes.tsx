@@ -48,7 +48,6 @@ const CentroNotificaciones = lazy(() => import('./CentroNotificaciones'));
 
 // Cotizar
 const CotizarHub = lazy(() => import('./CotizarHub'));
-const GMMCotizador = lazy(() => import('./GMMCotizador'));
 const FormulariosCotizacion = lazy(() => import('./FormulariosCotizacion'));
 const PublicQuoteForm = lazy(() => import('./PublicQuoteForm'));
 const QuoteFormWizard = lazy(() => import('./QuoteFormWizard'));
@@ -173,9 +172,10 @@ export default function MoviFullRoutes() {
           <Route path="/store/pedido/:id" element={<ProtectedRoute><StorePedidoDetalle /></ProtectedRoute>} />
           <Route path="/store/reporte" element={<ProtectedRoute><StorePedidosReporte /></ProtectedRoute>} />
           <Route path="/comunicados" element={<ProtectedRoute><Comunicados /></ProtectedRoute>} />
-          <Route path="/comunicados/:id" element={<ProtectedRoute><ComunicadoDetalle /></ProtectedRoute>} />
+          <Route path="/comunicados/nuevo" element={<ProtectedRoute><ComunicadoEditor /></ProtectedRoute>} />
           <Route path="/comunicados/editor/:id" element={<ProtectedRoute><ComunicadoEditor /></ProtectedRoute>} />
           <Route path="/comunicados/categorias" element={<ProtectedRoute><ComunicadoCategorias /></ProtectedRoute>} />
+          <Route path="/comunicados/:id" element={<ProtectedRoute><ComunicadoDetalle /></ProtectedRoute>} />
 
           {/* Comercial */}
           <Route path="/contactos" element={<ProtectedRoute><Contactos /></ProtectedRoute>} />
@@ -210,7 +210,7 @@ export default function MoviFullRoutes() {
 
           {/* Cotizar */}
           <Route path="/cotizar" element={<ProtectedRoute><CotizarHub /></ProtectedRoute>} />
-          <Route path="/cotizar/gmm-bx" element={<ProtectedRoute><GMMCotizador /></ProtectedRoute>} />
+          <Route path="/cotizar/gmm-bx" element={<Navigate to="/cotizar/multicotizador-gmm" replace />} />
           <Route path="/cotizar/formularios" element={<ProtectedRoute><FormulariosCotizacion /></ProtectedRoute>} />
           <Route path="/cotizar/formularios/:slug/wizard" element={<ProtectedRoute><QuoteFormWizard /></ProtectedRoute>} />
           <Route path="/cotizar/a-la-medida" element={<ProtectedRoute><AlaMedida /></ProtectedRoute>} />

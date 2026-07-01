@@ -124,7 +124,11 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
             }
             const Icon = ws.icon;
             const isActive = ws.id === activeWorkspaceId;
-            const firstPath = ws.items[0]?.path || '/dashboard';
+            const firstVisibleItem = ws.items.find(item =>
+              isTopLevelItemVisible(item as any, userRole) &&
+              (!isModuleVisible || isModuleVisible(item.path, userRole, oficinaId))
+            );
+            const firstPath = firstVisibleItem?.path || '/dashboard';
             const wsBadge = workspaceBadges?.[ws.id] ?? 0;
 
             const wsButton = (

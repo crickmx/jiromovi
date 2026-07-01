@@ -1,6 +1,6 @@
 import { CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, TrendingDown, TrendingUp } from 'lucide-react';
 import type { CarrierResult, FormaPago, OptionResult } from '../../lib/multicotizadorGmm/types';
-import { PRODUCT_LABELS, PRODUCT_COLORS, PAYMENT_FACTORS } from '../../lib/multicotizadorGmm/types';
+import { PRODUCT_LABELS, PRODUCT_COLORS, PRODUCT_LOGOS, PAYMENT_FACTORS } from '../../lib/multicotizadorGmm/types';
 
 interface ComparisonResultsProps {
   results: OptionResult[];
@@ -70,7 +70,8 @@ export function ComparisonResults({ results, selectedFormaPago }: ComparisonResu
                       <TrendingUp className="w-4 h-4 text-red-400 ml-auto" />
                     )}
                   </div>
-                  <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
+                  <div className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 mb-3">
+                    <img src={PRODUCT_LOGOS[opt.product_id]} alt="" className="w-4 h-4 object-contain" />
                     {PRODUCT_LABELS[opt.product_id]}
                   </div>
                   <div className="text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">
@@ -113,7 +114,10 @@ export function ComparisonResults({ results, selectedFormaPago }: ComparisonResu
                   <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Forma de Pago</th>
                   {validOptions.map(opt => (
                     <th key={opt.option_id} className="text-right px-5 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: PRODUCT_COLORS[opt.product_id] }}>
-                      <div>{opt.option_label}</div>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <img src={PRODUCT_LOGOS[opt.product_id]} alt="" className="w-4 h-4 object-contain" />
+                        {opt.option_label}
+                      </div>
                       <div className="font-normal text-[10px] opacity-70">{PRODUCT_LABELS[opt.product_id]}</div>
                     </th>
                   ))}
@@ -166,7 +170,10 @@ export function ComparisonResults({ results, selectedFormaPago }: ComparisonResu
                   <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Edad</th>
                   {validOptions.map(opt => (
                     <th key={opt.option_id} className="text-right px-5 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: PRODUCT_COLORS[opt.product_id] }}>
-                      {opt.option_label}
+                      <div className="flex items-center justify-end gap-1.5">
+                        <img src={PRODUCT_LOGOS[opt.product_id]} alt="" className="w-3.5 h-3.5 object-contain" />
+                        {opt.option_label}
+                      </div>
                     </th>
                   ))}
                 </tr>

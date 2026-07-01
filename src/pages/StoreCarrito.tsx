@@ -80,9 +80,10 @@ export default function StoreCarrito() {
 
   const itemsValidos = carrito.filter(item => item.producto);
 
-  const hayProblemasStock = itemsValidos.some(
-    item => item.producto!.stock === 0 || item.cantidad > item.producto!.stock
-  );
+  const hayProblemasStock = itemsValidos.some(item => {
+    if (item.producto?.disponibilidad === 'por_pedido') return false;
+    return item.producto!.stock === 0 || item.cantidad > item.producto!.stock;
+  });
 
   const calcularTotal = () => {
     return itemsValidos.reduce((sum, item) => sum + ((item.producto?.precio ?? 0) * item.cantidad), 0);
@@ -145,12 +146,12 @@ export default function StoreCarrito() {
                         ${item.producto!.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                       </p>
 
-                      {item.producto!.stock === 0 && (
+                      {item.producto!.disponibilidad !== 'por_pedido' && item.producto!.stock === 0 && (
                         <p className="text-xs text-red-600 font-medium flex items-center gap-1 mb-2">
                           <AlertTriangle className="w-3 h-3" /> Agotado
                         </p>
                       )}
-                      {item.producto!.stock > 0 && item.cantidad > item.producto!.stock && (
+                      {item.producto!.disponibilidad !== 'por_pedido' && item.producto!.stock > 0 && item.cantidad > item.producto!.stock && (
                         <p className="text-xs text-amber-600 font-medium flex items-center gap-1 mb-2">
                           <AlertTriangle className="w-3 h-3" /> Solo {item.producto!.stock} disponibles
                         </p>
@@ -182,7 +183,7 @@ export default function StoreCarrito() {
 
                           <button
                             onClick={() => handleActualizarCantidad(item.id, item.cantidad + 1)}
-                            disabled={item.cantidad >= (item.producto?.stock ?? 0)}
+                            disabled={item.cantidad >= (item.producto?.disponibilidad === 'por_pedido' ? 99 : (item.producto?.stock ?? 0))}
                             className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center border border-neutral-300 dark:border-white/20 rounded hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50"
                           >
                             <Plus className="w-3 h-3 sm:w-4 sm:h-4" />

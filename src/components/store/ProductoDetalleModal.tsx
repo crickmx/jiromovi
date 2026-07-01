@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, ShoppingCart, Minus, Plus, TriangleAlert as AlertTriangle, CheckCircle, ArrowRight, Sparkles, Loader2 } from 'lucide-react';
+import { X, ShoppingCart, Minus, Plus, TriangleAlert as AlertTriangle, CheckCircle, ArrowRight, Sparkles, Loader2, Wrench } from 'lucide-react';
 import type { StoreProducto } from '../../lib/storeTypes';
 import { supabase } from '../../lib/supabase';
 import { setupMarketingPremiumProductos } from '../../lib/storeUtils';
@@ -107,9 +107,11 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
 
   const efectivo = productoEfectivo();
 
-  const sinStock = producto.stock === 0;
-  const pocasExistencias = producto.stock > 0 && producto.stock <= producto.stock_umbral;
-  const maxCantidad = producto.stock;
+  const esPorPedido = producto.disponibilidad === 'por_pedido';
+  const esServicio = producto.tipo_item === 'servicio';
+  const sinStock = !esPorPedido && producto.stock === 0;
+  const pocasExistencias = !esPorPedido && producto.stock > 0 && producto.stock <= producto.stock_umbral;
+  const maxCantidad = esPorPedido ? 99 : producto.stock;
 
   const atributosConOpciones = (producto.atributos || []).filter(a => (a.opciones || []).length > 0);
   const todosAtributosSeleccionados = atributosConOpciones.length === 0 ||
@@ -126,8 +128,13 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-900">Detalle del Producto</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+          <h2 className="text-xl font-bold text-gray-900">
+            {esServicio ? 'Detalle del Servicio' : 'Detalle del Producto'}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -146,6 +153,21 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                   <span className="bg-red-600 text-white text-lg font-bold px-6 py-2 rounded-full">
                     Agotado
+                  </span>
+                </div>
+              )}
+              {esServicio && (
+                <div className="absolute top-3 right-3">
+                  <span className="inline-flex items-center gap-1.5 bg-purple-600 text-white text-sm font-semibold px-3 py-1.5 rounded-full">
+                    <Wrench className="w-4 h-4" />
+                    Servicio
+                  </span>
+                </div>
+              )}
+              {esPorPedido && !esServicio && (
+                <div className="absolute top-3 right-3">
+                  <span className="inline-flex items-center gap-1.5 bg-blue-600 text-white text-sm font-semibold px-3 py-1.5 rounded-full">
+                    Por pedido
                   </span>
                 </div>
               )}
@@ -224,7 +246,9 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
               {!esPremium && sinStock && (
                 <div className="mb-4 flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
                   <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                  <span className="text-sm font-medium text-red-800">Producto agotado</span>
+                  <span className="text-sm font-medium text-red-800">
+                    {esServicio ? 'Servicio no disponible' : 'Producto agotado'}
+                  </span>
                 </div>
               )}
 
@@ -233,6 +257,14 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                   <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
                   <span className="text-sm font-medium text-amber-800">
                     Pocas existencias ({producto.stock} disponibles)
+                  </span>
+                </div>
+              )}
+
+              {esPorPedido && (
+                <div className="mb-4 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                  <span className="text-sm font-medium text-blue-800">
+                    {esServicio ? 'Este servicio se solicita por pedido' : 'Siempre disponible - se solicita por pedido'}
                   </span>
                 </div>
               )}
@@ -278,7 +310,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
               {!esPremium && !sinStock && (
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Cantidad {maxCantidad > 0 && <span className="text-gray-400 font-normal">(max: {maxCantidad})</span>}
+                    Cantidad {!esPorPedido && maxCantidad > 0 && <span className="text-gray-400 font-normal">(max: {maxCantidad})</span>}
                   </label>
                   <div className="flex items-center gap-3">
                     <button
@@ -319,7 +351,13 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                   }`}
                 >
                   <ShoppingCart className="w-5 h-5" />
-                  {sinStock ? 'No disponible' : !todosAtributosSeleccionados ? 'Selecciona las opciones' : 'Agregar al Carrito'}
+                  {sinStock
+                    ? 'No disponible'
+                    : !todosAtributosSeleccionados
+                      ? 'Selecciona las opciones'
+                      : esServicio
+                        ? 'Solicitar Servicio'
+                        : 'Agregar al Carrito'}
                 </button>
                 <button
                   onClick={onClose}

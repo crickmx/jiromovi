@@ -138,7 +138,7 @@ export default function ComunicadoDetalle() {
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <Button
                   variant="outline"
-                  onClick={() => navigate(`/comunicados/editar/${comunicado.id}`)}
+                  onClick={() => navigate(`/comunicados/editor/${comunicado.id}`)}
                   className="btn-touch flex-1 sm:flex-initial"
                 >
                   <Edit className="w-4 h-4 mr-2" />

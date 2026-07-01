@@ -75,9 +75,19 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Parse Excel
-    const workbook = XLSX.read(uint8, { type: "array", bookVBA: true });
+    // Parse Excel — bookVBA:false uses cached cell values without VBA execution.
+    // cellText:true ensures the formatted text (w) is populated so that formula cells
+    // in XLSM files that lack a raw cached value can still be read via raw:false below.
+    const workbook = XLSX.read(uint8, { type: "array", bookVBA: false, cellFormula: false, cellText: true });
     const sheetNames = workbook.SheetNames;
+
+    // Parses numeric values from either raw numbers or formatted strings.
+    // With raw:false, sheet_to_json returns strings like "28,307.93"; strip commas first.
+    function parseNum(v: any): number {
+      if (typeof v === "number") return v;
+      if (v === null || v === undefined) return NaN;
+      return Number(String(v).replace(/,/g, "").trim());
+    }
 
     if (sheetNames.length === 0) {
       await supabase.storage.from("tariff-uploads").remove([storage_path]);
@@ -98,7 +108,10 @@ Deno.serve(async (req: Request) => {
 
     for (const sheetName of sheetNames) {
       const sheet = workbook.Sheets[sheetName];
-      const jsonData: any[] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
+      // raw:false uses the formatted text (w property) instead of raw values.
+      // This recovers VBA formula cell results in XLSM files where the raw cached
+      // value (v) is absent but the display text is still stored in the cell XML.
+      const jsonData: any[] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: false });
 
       if (jsonData.length < 2) continue;
 
@@ -111,7 +124,7 @@ Deno.serve(async (req: Request) => {
         for (const row of jsonData) {
           if (!Array.isArray(row)) continue;
           const label = String(row[0] || "").toLowerCase();
-          const val = Number(row[1]);
+          const val = parseNum(row[1]);
           if (label.includes("derecho") && !isNaN(val)) derechoPoliza = val;
           if (label.includes("asistencia") && !isNaN(val)) asistenciaExtranjero = val;
           if (label.includes("catastro") && !isNaN(val)) costoCatastrofica = val;
@@ -136,8 +149,8 @@ Deno.serve(async (req: Request) => {
           for (let i = 1; i < jsonData.length; i++) {
             const row = jsonData[i] as any[];
             if (!row) continue;
-            const age = Number(row[ageIdx2 !== -1 ? ageIdx2 : 0]);
-            const rate = Number(row[rateIdx]);
+            const age = parseNum(row[ageIdx2 !== -1 ? ageIdx2 : 0]);
+            const rate = parseNum(row[rateIdx]);
             if (isNaN(age) || isNaN(rate) || rate <= 0) continue;
 
             const lookupKey = lookupIdx !== -1 ? String(row[lookupIdx] || "") : sheetName;
@@ -157,6 +170,17 @@ Deno.serve(async (req: Request) => {
           }
         }
         continue;
+      }
+
+      // Factor/lookup table columns store small decimal factors or value lists —
+      // their rates can legitimately be 0 and must NOT be filtered out.
+      const FACTOR_COL_PATTERNS = [
+        /^fd\s/i, /^fd$/i, /factor/i, /sumas\s*aseguradas/i,
+        /deducibles/i, /coasegurado/i, /renovac/i, /transfer/i, /^nn$/i,
+      ];
+      function isFactorColumn(header: string): boolean {
+        const h = header.trim();
+        return FACTOR_COL_PATTERNS.some(p => p.test(h));
       }
 
       // Standard format: age in first col, plan codes as column headers
@@ -186,12 +210,30 @@ Deno.serve(async (req: Request) => {
           }
         }
 
+        const isFactor = isFactorColumn(colHeader);
+        // Track row index separately for factor columns so they get sequential ages
+        // even when the age column value doesn't increment (e.g. all-zero formula cells).
+        let factorRowIdx = 0;
+
         for (let rowIdx = 1; rowIdx < jsonData.length; rowIdx++) {
           const row = jsonData[rowIdx] as any[];
           if (!row) continue;
-          const age = Number(row[ageColIdx]);
-          const rate = Number(row[colIdx]);
-          if (isNaN(age) || isNaN(rate) || rate <= 0) continue;
+          const rawAge = row[ageColIdx];
+          const rate = parseNum(row[colIdx]);
+          if (isNaN(rate)) continue;
+          // For base rate columns (non-factor) skip zero/negative rates.
+          // For factor columns allow any non-NaN value including 0.
+          if (!isFactor && rate <= 0) continue;
+
+          let age: number;
+          if (isFactor) {
+            // Use sequential row index so paired factor tables (e.g. Sumas aseguradas ↔ FD Suma asegurada)
+            // align correctly by index regardless of what the age cell contains.
+            age = factorRowIdx++;
+          } else {
+            age = parseNum(rawAge);
+            if (isNaN(age)) continue;
+          }
 
           const lookupKey = `${colHeader}${region}${age}${rateType !== "Unisex" ? rateType : ""}`;
           rates.push({

@@ -6,6 +6,9 @@ export interface StoreCategoria {
   created_at: string;
 }
 
+export type TipoItem = 'producto' | 'servicio';
+export type Disponibilidad = 'por_existencia' | 'por_pedido';
+
 export interface StoreProducto {
   id: string;
   categoria_id: string;
@@ -18,6 +21,8 @@ export interface StoreProducto {
   stock: number;
   stock_umbral: number;
   tipo?: string | null;
+  tipo_item: TipoItem;
+  disponibilidad: Disponibilidad;
   created_at: string;
   categoria?: StoreCategoria;
   costos_extras?: StoreProductoCostoExtra[];

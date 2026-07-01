@@ -266,7 +266,11 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
                 }
                 const Icon = ws.icon;
                 const active = ws.id === (workspace?.id ?? null);
-                const firstPath = ws.items[0]?.path || '/dashboard';
+                const firstVisibleItem = ws.items.find(item =>
+                  isItemVisible(item, userRole) &&
+                  (!isModuleVisible || isModuleVisible(item.path, userRole, oficinaId))
+                );
+                const firstPath = firstVisibleItem?.path || '/dashboard';
 
                 return (
                   <button

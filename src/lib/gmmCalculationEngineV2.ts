@@ -152,6 +152,17 @@ function vlookup(
     row = table.find(r => String(r.col_0) === String(key));
   }
 
+  // Handle percentage-string keys like "10%" -> try matching as decimal 0.1
+  if (!row && typeof key === 'string' && key.includes('%')) {
+    const pctNum = parseFloat(key.replace('%', '').trim()) / 100;
+    if (!isNaN(pctNum)) {
+      row = table.find(r => {
+        const rowNum = Number(r.col_0);
+        return !isNaN(rowNum) && Math.abs(rowNum - pctNum) < 0.0001;
+      });
+    }
+  }
+
   if (!row) {
     const availableKeys = table.slice(0, 10).map(r => `"${r.col_0}"`).join(', ');
     const totalKeys = table.length;
@@ -485,10 +496,9 @@ function obtenerConfiguracionCoberturas(
       activa: input.coberturas.cobertura_internacional,
       baseCalculo: 'primaBaseConCargas',
       calcularFactor: (edad, sexo, input, tables) => {
-        const row = tables.cobertura_internacional_carga_sistema.find(r => Number(r.col_0) === edad);
+        const row = tables.cobertura_internacional_carga_sistema.find(r => r.col_0 === input.estado);
         if (row) {
-          const col = sexo === 'Hombre' ? 'col_1' : 'col_2';
-          return roundTo5Decimals(Number(row[col] || 0));
+          return roundTo5Decimals(Number(row.col_2 || 0));
         }
         return 0;
       }

@@ -731,12 +731,14 @@ export async function crearPedido(
 
   if (detalleError) throw detalleError;
 
-  // Descontar stock de cada producto
+  // Descontar stock solo de productos por existencia
   for (const item of itemsCarrito) {
-    await supabase.rpc('decrementar_stock', {
-      p_producto_id: item.producto_id,
-      p_cantidad: item.cantidad
-    });
+    if (item.producto?.disponibilidad === 'por_existencia') {
+      await supabase.rpc('decrementar_stock', {
+        p_producto_id: item.producto_id,
+        p_cantidad: item.cantidad
+      });
+    }
   }
 
   const { error: historialError } = await supabase
