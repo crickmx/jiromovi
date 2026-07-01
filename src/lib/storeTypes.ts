@@ -15,6 +15,7 @@ export interface StoreProducto {
   costo_base: number;
   imagen_url: string;
   activo: boolean;
+  tipo?: string | null;
   created_at: string;
   categoria?: StoreCategoria;
   costos_extras?: StoreProductoCostoExtra[];

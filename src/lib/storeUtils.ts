@@ -819,3 +819,63 @@ export async function eliminarPedido(pedidoId: string) {
 
   if (error) throw error;
 }
+
+// Crea automáticamente los dos productos de Marketing Premium si no existen.
+// Requiere sesión de admin (la llama el admin desde StoreAdmin o el modal).
+// Falla silenciosamente para usuarios sin permisos.
+export async function setupMarketingPremiumProductos() {
+  // Buscar variantes ya configuradas
+  const { data: existentes } = await supabase
+    .from('store_productos')
+    .select('*')
+    .in('tipo', ['marketing_premium_mensual', 'marketing_premium_anual'])
+    .eq('activo', true);
+
+  const tieneAnual = existentes?.some(p => p.tipo === 'marketing_premium_anual');
+  const tieneMensual = existentes?.some(p => p.tipo === 'marketing_premium_mensual');
+  if (tieneAnual && tieneMensual) return;
+
+  // Buscar producto base por nombre
+  const { data: candidatos } = await supabase
+    .from('store_productos')
+    .select('*')
+    .ilike('titulo', '%marketing%')
+    .eq('activo', true);
+
+  if (!candidatos?.length) return;
+
+  // Usar el de mayor precio como base para el plan anual
+  const base = [...candidatos].sort((a, b) => b.precio - a.precio)[0];
+
+  if (!tieneAnual) {
+    await supabase
+      .from('store_productos')
+      .update({ tipo: 'marketing_premium_anual', precio: 2000 })
+      .eq('id', base.id);
+  }
+
+  if (!tieneMensual) {
+    // Recuperar el anual actualizado para copiar sus datos
+    const { data: anual } = await supabase
+      .from('store_productos')
+      .select('*')
+      .eq('tipo', 'marketing_premium_anual')
+      .eq('activo', true)
+      .maybeSingle();
+
+    if (!anual) return;
+
+    await supabase
+      .from('store_productos')
+      .insert({
+        titulo: 'Marketing Jiro - Plan Mensual',
+        descripcion: anual.descripcion,
+        precio: 200,
+        costo_base: 0,
+        imagen_url: anual.imagen_url,
+        activo: true,
+        tipo: 'marketing_premium_mensual',
+        categoria_id: anual.categoria_id,
+      });
+  }
+}

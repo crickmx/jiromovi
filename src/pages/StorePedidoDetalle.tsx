@@ -151,11 +151,48 @@ export default function StorePedidoDetalle() {
     try {
       setActualizandoEstatus(true);
       await actualizarEstatusPedido(pedidoId, nuevoEstatusId);
+
+      // Verificar si el nuevo estatus es "Entregado"
+      const nuevoEstatus = estatus.find(e => e.id === nuevoEstatusId);
+      if (nuevoEstatus?.nombre === 'Entregado' && pedido) {
+        await activarPremiumSiAplica(pedido);
+      }
+
       await cargarDatos();
     } catch (error) {
       console.error('Error actualizando estatus:', error);
     } finally {
       setActualizandoEstatus(false);
+    }
+  };
+
+  const activarPremiumSiAplica = async (pedidoData: StorePedidoCompleto) => {
+    const METODO_MAP: Record<string, 'deposito_jiro' | 'bono_anual' | 'comisiones'> = {
+      'Cargo a Bono de Agente': 'bono_anual',
+      'Descuento de Comisiones': 'comisiones',
+    };
+
+    for (const detalle of pedidoData.detalle ?? []) {
+      const tipo = detalle.producto?.tipo;
+      if (tipo !== 'marketing_premium_mensual' && tipo !== 'marketing_premium_anual') continue;
+
+      const plan = tipo === 'marketing_premium_anual' ? 'anual' : 'mensual';
+      const metodoPagoMkt = METODO_MAP[pedidoData.metodo_pago ?? ''] ?? 'deposito_jiro';
+      const hoy = new Date().toISOString().split('T')[0];
+
+      await supabase
+        .from('usuarios')
+        .update({
+          plan_mkt_premium: true,
+          mkt_premium_plan: plan,
+          mkt_premium_metodo_pago: metodoPagoMkt,
+          mkt_premium_fecha_pago: hoy,
+          mkt_premium_fecha_inicio: hoy,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', pedidoData.usuario_id);
+
+      break; // Solo activar una vez aunque haya varios ítems premium
     }
   };
 

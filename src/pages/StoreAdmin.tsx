@@ -12,7 +12,8 @@ import {
   subirImagenProducto,
   crearCategoria,
   actualizarCategoria,
-  eliminarCategoria
+  eliminarCategoria,
+  setupMarketingPremiumProductos
 } from '../lib/storeUtils';
 import { supabase } from '../lib/supabase';
 import type { StoreProducto, StoreCategoria, StoreProductoCostoExtra } from '../lib/storeTypes';
@@ -51,6 +52,7 @@ export default function StoreAdmin() {
       return;
     }
     cargarDatos();
+    setupMarketingPremiumProductos().catch(() => {});
   }, [usuario]);
 
   const cargarDatos = async () => {
@@ -397,6 +399,7 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
   const [imagenUrl, setImagenUrl] = useState(producto?.imagen_url || '');
   const [imagenFile, setImagenFile] = useState<File | null>(null);
   const [activo, setActivo] = useState(producto?.activo ?? true);
+  const [tipo, setTipo] = useState(producto?.tipo ?? '');
   const [guardando, setGuardando] = useState(false);
 
   // Costos extras
@@ -492,7 +495,8 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
         costo_base: parseFloat(costoBase) || 0,
         categoria_id: categoriaId,
         imagen_url: finalImagenUrl,
-        activo
+        activo,
+        tipo: tipo || null,
       };
 
       if (producto) {
@@ -712,6 +716,27 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
             </div>
           </div>
         )}
+
+        {/* Vinculación con funciones del sistema */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-neutral-700 dark:text-white/70">
+            Vinculación con el sistema <span className="text-neutral-400 font-normal">(opcional)</span>
+          </label>
+          <select
+            value={tipo}
+            onChange={e => setTipo(e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-neutral-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
+          >
+            <option value="">Sin vinculación (producto normal)</option>
+            <option value="marketing_premium_mensual">Marketing Premium — Plan Mensual ($200/mes)</option>
+            <option value="marketing_premium_anual">Marketing Premium — Plan Anual ($2,000/año)</option>
+          </select>
+          {tipo && (
+            <p className="text-xs text-purple-600 dark:text-purple-400">
+              Al marcar el pedido como "Entregado", se activará automáticamente el Plan MKT Premium del usuario.
+            </p>
+          )}
+        </div>
 
         <div className="flex items-center gap-2">
           <input

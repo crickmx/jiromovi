@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow, Camera, Sparkles, Bookmark } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
@@ -132,6 +132,10 @@ const WORKSPACE_MERCADOTECNIA: WorkspaceDefinition = {
     { path: '/mercadotecnia/mis-disenos', label: 'Mis Diseños', icon: Paintbrush, visibleTo: ALL_ROLES },
     { path: '/mercadotecnia/mi-pagina-web', label: 'Mi Página Web', icon: Globe, visibleTo: ALL_ROLES },
     { path: '/mercadotecnia/mi-marca', label: 'Mi Marca', icon: Fingerprint, visibleTo: ALL_ROLES },
+    { path: '/mercadotecnia/fotos-estudio', label: 'Mis Fotos de Estudio', icon: Camera, visibleTo: ALL_ROLES },
+    { path: '/mercadotecnia/recursos-marca', label: 'Jiro Brand Kit', icon: Bookmark, visibleTo: ALL_ROLES },
+    { path: '/mercadotecnia/fotos-estudio/admin', label: 'Gestionar Fotos', icon: Upload, visibleTo: ADMIN_ONLY },
+    { path: '/mercadotecnia/premium/admin', label: 'Gestionar Premium', icon: Sparkles, visibleTo: ADMIN_ONLY },
   ],
 };
 

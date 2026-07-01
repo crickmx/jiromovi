@@ -70,9 +70,13 @@ const Vacaciones = lazy(() => import('./Vacaciones'));
 const AccesosNacional = lazy(() => import('./AccesosNacional'));
 
 // Mercadotecnia
+const Mercadotecnia = lazy(() => import('./Mercadotecnia'));
 const MiMarca = lazy(() => import('./MiMarca'));
 const Publicidad = lazy(() => import('./Publicidad'));
 const MiPaginaWeb = lazy(() => import('./MiPaginaWeb'));
+const FotosEstudio = lazy(() => import('./FotosEstudio'));
+const FotosEstudioAdmin = lazy(() => import('./FotosEstudioAdmin'));
+const MarketingPremiumAdmin = lazy(() => import('./MarketingPremiumAdmin'));
 const CentroDigital = lazy(() => import('./CentroDigital'));
 
 // Seguros Education
@@ -230,10 +234,14 @@ export default function MoviFullRoutes() {
           <Route path="/accesos-nacional" element={<ProtectedRoute><AccesosNacional /></ProtectedRoute>} />
 
           {/* Mercadotecnia */}
-          <Route path="/mercadotecnia/publicidad" element={<ProtectedRoute><Publicidad key="publicidad" /></ProtectedRoute>} />
-          <Route path="/mercadotecnia/mis-disenos" element={<ProtectedRoute><Publicidad key="mis-disenos" initialTab="mis-disenos" /></ProtectedRoute>} />
-          <Route path="/mercadotecnia/mi-pagina-web" element={<ProtectedRoute><MiPaginaWeb /></ProtectedRoute>} />
-          <Route path="/mercadotecnia/mi-marca" element={<ProtectedRoute><MiMarca /></ProtectedRoute>} />
+          <Route path="/mercadotecnia/publicidad" element={<ProtectedRoute><Mercadotecnia section="publicidad" /></ProtectedRoute>} />
+          <Route path="/mercadotecnia/mis-disenos" element={<ProtectedRoute><Mercadotecnia section="mis-disenos" /></ProtectedRoute>} />
+          <Route path="/mercadotecnia/mi-pagina-web" element={<ProtectedRoute><Mercadotecnia section="mi-pagina-web" /></ProtectedRoute>} />
+          <Route path="/mercadotecnia/mi-marca" element={<ProtectedRoute><Mercadotecnia section="mi-marca" /></ProtectedRoute>} />
+          <Route path="/mercadotecnia/fotos-estudio" element={<ProtectedRoute><Mercadotecnia section="fotos-estudio" /></ProtectedRoute>} />
+          <Route path="/mercadotecnia/recursos-marca" element={<ProtectedRoute><Mercadotecnia section="recursos-marca" /></ProtectedRoute>} />
+          <Route path="/mercadotecnia/fotos-estudio/admin" element={<ProtectedRoute requireAdmin><FotosEstudioAdmin /></ProtectedRoute>} />
+          <Route path="/mercadotecnia/premium/admin" element={<ProtectedRoute requireAdmin><MarketingPremiumAdmin /></ProtectedRoute>} />
           <Route path="/centro-digital" element={<ProtectedRoute><CentroDigital /></ProtectedRoute>} />
 
           {/* Seguros Education */}
