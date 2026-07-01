@@ -75,10 +75,19 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Parse Excel — bookVBA:false forces XLSX to use last-cached cell values instead
-    // of attempting VBA evaluation, which returns 0 for formula cells in XLSM files.
-    const workbook = XLSX.read(uint8, { type: "array", bookVBA: false, cellFormula: false });
+    // Parse Excel — bookVBA:false uses cached cell values without VBA execution.
+    // cellText:true ensures the formatted text (w) is populated so that formula cells
+    // in XLSM files that lack a raw cached value can still be read via raw:false below.
+    const workbook = XLSX.read(uint8, { type: "array", bookVBA: false, cellFormula: false, cellText: true });
     const sheetNames = workbook.SheetNames;
+
+    // Parses numeric values from either raw numbers or formatted strings.
+    // With raw:false, sheet_to_json returns strings like "28,307.93"; strip commas first.
+    function parseNum(v: any): number {
+      if (typeof v === "number") return v;
+      if (v === null || v === undefined) return NaN;
+      return Number(String(v).replace(/,/g, "").trim());
+    }
 
     if (sheetNames.length === 0) {
       await supabase.storage.from("tariff-uploads").remove([storage_path]);
@@ -99,7 +108,10 @@ Deno.serve(async (req: Request) => {
 
     for (const sheetName of sheetNames) {
       const sheet = workbook.Sheets[sheetName];
-      const jsonData: any[] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
+      // raw:false uses the formatted text (w property) instead of raw values.
+      // This recovers VBA formula cell results in XLSM files where the raw cached
+      // value (v) is absent but the display text is still stored in the cell XML.
+      const jsonData: any[] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: false });
 
       if (jsonData.length < 2) continue;
 
@@ -112,7 +124,7 @@ Deno.serve(async (req: Request) => {
         for (const row of jsonData) {
           if (!Array.isArray(row)) continue;
           const label = String(row[0] || "").toLowerCase();
-          const val = Number(row[1]);
+          const val = parseNum(row[1]);
           if (label.includes("derecho") && !isNaN(val)) derechoPoliza = val;
           if (label.includes("asistencia") && !isNaN(val)) asistenciaExtranjero = val;
           if (label.includes("catastro") && !isNaN(val)) costoCatastrofica = val;
@@ -137,8 +149,8 @@ Deno.serve(async (req: Request) => {
           for (let i = 1; i < jsonData.length; i++) {
             const row = jsonData[i] as any[];
             if (!row) continue;
-            const age = Number(row[ageIdx2 !== -1 ? ageIdx2 : 0]);
-            const rate = Number(row[rateIdx]);
+            const age = parseNum(row[ageIdx2 !== -1 ? ageIdx2 : 0]);
+            const rate = parseNum(row[rateIdx]);
             if (isNaN(age) || isNaN(rate) || rate <= 0) continue;
 
             const lookupKey = lookupIdx !== -1 ? String(row[lookupIdx] || "") : sheetName;
@@ -207,7 +219,7 @@ Deno.serve(async (req: Request) => {
           const row = jsonData[rowIdx] as any[];
           if (!row) continue;
           const rawAge = row[ageColIdx];
-          const rate = Number(row[colIdx]);
+          const rate = parseNum(row[colIdx]);
           if (isNaN(rate)) continue;
           // For base rate columns (non-factor) skip zero/negative rates.
           // For factor columns allow any non-NaN value including 0.
@@ -219,7 +231,7 @@ Deno.serve(async (req: Request) => {
             // align correctly by index regardless of what the age cell contains.
             age = factorRowIdx++;
           } else {
-            age = Number(rawAge);
+            age = parseNum(rawAge);
             if (isNaN(age)) continue;
           }
 
