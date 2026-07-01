@@ -75,8 +75,9 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Parse Excel
-    const workbook = XLSX.read(uint8, { type: "array", bookVBA: true });
+    // Parse Excel — bookVBA:false forces XLSX to use last-cached cell values instead
+    // of attempting VBA evaluation, which returns 0 for formula cells in XLSM files.
+    const workbook = XLSX.read(uint8, { type: "array", bookVBA: false, cellFormula: false });
     const sheetNames = workbook.SheetNames;
 
     if (sheetNames.length === 0) {
@@ -159,6 +160,17 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
+      // Factor/lookup table columns store small decimal factors or value lists —
+      // their rates can legitimately be 0 and must NOT be filtered out.
+      const FACTOR_COL_PATTERNS = [
+        /^fd\s/i, /^fd$/i, /factor/i, /sumas\s*aseguradas/i,
+        /deducibles/i, /coasegurado/i, /renovac/i, /transfer/i, /^nn$/i,
+      ];
+      function isFactorColumn(header: string): boolean {
+        const h = header.trim();
+        return FACTOR_COL_PATTERNS.some(p => p.test(h));
+      }
+
       // Standard format: age in first col, plan codes as column headers
       for (let colIdx = 1; colIdx < headers.length; colIdx++) {
         const colHeader = String(headers[colIdx] || "");
@@ -186,12 +198,30 @@ Deno.serve(async (req: Request) => {
           }
         }
 
+        const isFactor = isFactorColumn(colHeader);
+        // Track row index separately for factor columns so they get sequential ages
+        // even when the age column value doesn't increment (e.g. all-zero formula cells).
+        let factorRowIdx = 0;
+
         for (let rowIdx = 1; rowIdx < jsonData.length; rowIdx++) {
           const row = jsonData[rowIdx] as any[];
           if (!row) continue;
-          const age = Number(row[ageColIdx]);
+          const rawAge = row[ageColIdx];
           const rate = Number(row[colIdx]);
-          if (isNaN(age) || isNaN(rate) || rate <= 0) continue;
+          if (isNaN(rate)) continue;
+          // For base rate columns (non-factor) skip zero/negative rates.
+          // For factor columns allow any non-NaN value including 0.
+          if (!isFactor && rate <= 0) continue;
+
+          let age: number;
+          if (isFactor) {
+            // Use sequential row index so paired factor tables (e.g. Sumas aseguradas ↔ FD Suma asegurada)
+            // align correctly by index regardless of what the age cell contains.
+            age = factorRowIdx++;
+          } else {
+            age = Number(rawAge);
+            if (isNaN(age)) continue;
+          }
 
           const lookupKey = `${colHeader}${region}${age}${rateType !== "Unisex" ? rateType : ""}`;
           rates.push({

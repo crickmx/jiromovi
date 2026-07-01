@@ -19,13 +19,13 @@ interface OptionConfiguratorProps {
 
 const DEFAULT_BNV_INPUT: BnvQuoteInput = {
   region_zone: 'Zona 1', suma_asegurada: 10, deducible: 15, coaseguro: 10,
-  tope_coaseguro: 30000, client_type: 'Normal', asistencia_extranjero: true, forma_pago: 'Anual',
+  tope_coaseguro: 30000, client_type: 'Normal', asistencia_extranjero: false, forma_pago: 'Anual',
 };
 
 const DEFAULT_BNP_INPUT: BnpQuoteInput = {
   region_zone: 'Zona 1', suma_asegurada: 50, deducible: 35, coaseguro: 20,
   client_type: 'Normal', maternidad_titular: false, maternidad_conyuge: false,
-  asistencia_extranjero: true, cobertura_catastrofica_extranjero: false, forma_pago: 'Anual',
+  asistencia_extranjero: false, cobertura_catastrofica_extranjero: false, forma_pago: 'Anual',
 };
 
 const DEFAULT_BXPLUS_INPUT: BxplusQuoteInput = {
