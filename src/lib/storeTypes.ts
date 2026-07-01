@@ -17,6 +17,7 @@ export interface StoreProducto {
   activo: boolean;
   stock: number;
   stock_umbral: number;
+  tipo?: string | null;
   created_at: string;
   categoria?: StoreCategoria;
   costos_extras?: StoreProductoCostoExtra[];

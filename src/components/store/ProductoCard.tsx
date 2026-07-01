@@ -1,12 +1,15 @@
-import { ShoppingCart, TriangleAlert as AlertTriangle } from 'lucide-react';
+import { ShoppingCart, TriangleAlert as AlertTriangle, Sparkles } from 'lucide-react';
 import type { StoreProducto } from '../../lib/storeTypes';
 
 interface Props {
   producto: StoreProducto;
+  onAgregar: (producto: StoreProducto) => void;
   onVerDetalle: (producto: StoreProducto) => void;
 }
 
-export function ProductoCard({ producto, onVerDetalle }: Props) {
+export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
+  const esPremium =
+    producto.tipo === 'marketing_premium_mensual' || producto.tipo === 'marketing_premium_anual';
   const PLACEHOLDER_SVG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23f3f4f6'/%3E%3Cpath d='M80 120l20-30 20 30M110 120l15-20 15 20' stroke='%239ca3af' stroke-width='2' fill='none'/%3E%3Ccircle cx='90' cy='80' r='8' fill='%239ca3af'/%3E%3Crect x='60' y='60' width='80' height='80' rx='4' stroke='%239ca3af' stroke-width='2' fill='none'/%3E%3C/svg%3E";
 
   const getImageUrl = (imagenUrl: string) => {
@@ -57,10 +60,16 @@ export function ProductoCard({ producto, onVerDetalle }: Props) {
       </div>
 
       <div className="p-3 sm:p-4">
-        <div className="mb-2">
+        <div className="mb-2 flex flex-wrap gap-1.5">
           {producto.categoria && (
             <span className="inline-block px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
               {producto.categoria.nombre}
+            </span>
+          )}
+          {(producto.tipo === 'marketing_premium_mensual' || producto.tipo === 'marketing_premium_anual') && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold bg-purple-100 text-purple-700 rounded-full">
+              <Sparkles className="w-3 h-3" />
+              {producto.tipo === 'marketing_premium_mensual' ? 'MKT Premium · Mensual' : 'MKT Premium · Anual'}
             </span>
           )}
         </div>
@@ -82,16 +91,16 @@ export function ProductoCard({ producto, onVerDetalle }: Props) {
           </p>
 
           <button
-            onClick={() => onVerDetalle(producto)}
-            disabled={sinStock}
+            onClick={() => esPremium ? onVerDetalle(producto) : sinStock ? undefined : onAgregar(producto)}
+            disabled={!esPremium && sinStock}
             className={`w-full sm:w-auto flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium text-sm sm:text-base transition-colors ${
-              sinStock
+              !esPremium && sinStock
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-accent text-white hover:bg-accent-hover'
             }`}
           >
             <ShoppingCart className="w-4 h-4" />
-            <span>{sinStock ? 'Agotado' : 'Agregar'}</span>
+            <span>{esPremium ? 'Ver Planes' : sinStock ? 'Agotado' : 'Agregar'}</span>
           </button>
         </div>
       </div>

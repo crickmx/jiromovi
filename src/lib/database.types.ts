@@ -107,6 +107,11 @@ export interface Database {
           created_at: string
           updated_at: string
           mi_logotipo_url: string | null
+          plan_mkt_premium: boolean
+          mkt_premium_fecha_inicio: string | null
+          mkt_premium_fecha_pago: string | null
+          mkt_premium_plan: 'mensual' | 'anual' | null
+          mkt_premium_metodo_pago: 'deposito_jiro' | 'bono_anual' | 'comisiones' | null
         }
         Insert: {
           id: string
@@ -132,6 +137,11 @@ export interface Database {
           created_at?: string
           updated_at?: string
           mi_logotipo_url?: string | null
+          plan_mkt_premium?: boolean
+          mkt_premium_fecha_inicio?: string | null
+          mkt_premium_fecha_pago?: string | null
+          mkt_premium_plan?: 'mensual' | 'anual' | null
+          mkt_premium_metodo_pago?: 'deposito_jiro' | 'bono_anual' | 'comisiones' | null
         }
         Update: {
           id?: string
@@ -157,6 +167,11 @@ export interface Database {
           created_at?: string
           updated_at?: string
           mi_logotipo_url?: string | null
+          plan_mkt_premium?: boolean
+          mkt_premium_fecha_inicio?: string | null
+          mkt_premium_fecha_pago?: string | null
+          mkt_premium_plan?: 'mensual' | 'anual' | null
+          mkt_premium_metodo_pago?: 'deposito_jiro' | 'bono_anual' | 'comisiones' | null
         }
       }
       campos_personalizados: {
