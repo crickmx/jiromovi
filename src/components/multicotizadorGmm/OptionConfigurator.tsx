@@ -18,12 +18,12 @@ interface OptionConfiguratorProps {
 }
 
 const DEFAULT_BNV_INPUT: BnvQuoteInput = {
-  region_zone: 'Zona 1', suma_asegurada: 100, deducible: 35, coaseguro: 10,
+  region_zone: 'Zona 1', suma_asegurada: 10, deducible: 15, coaseguro: 10,
   tope_coaseguro: 30000, client_type: 'Normal', asistencia_extranjero: true, forma_pago: 'Anual',
 };
 
 const DEFAULT_BNP_INPUT: BnpQuoteInput = {
-  region_zone: 'Zona 1', suma_asegurada: 50, deducible: 35, coaseguro: 10,
+  region_zone: 'Zona 1', suma_asegurada: 50, deducible: 35, coaseguro: 20,
   client_type: 'Normal', maternidad_titular: false, maternidad_conyuge: false,
   asistencia_extranjero: true, cobertura_catastrofica_extranjero: false, forma_pago: 'Anual',
 };
@@ -185,6 +185,16 @@ export function OptionConfigurator({ option, onUpdate, onRemove, onDuplicate, ca
 // Parameter Sub-forms
 // ========================
 
+// BNV: Sumas aseguradas [1,2,3,4,5,10] MDP; Deducibles [15,20,30,50,100] K; Coaseguros [0,10,20]%
+const BNV_SUMAS = [1, 2, 3, 4, 5, 10];
+const BNV_DEDUCIBLES = [15, 20, 30, 50, 100];
+const BNV_COASEGUROS = [0, 10, 20];
+
+// BNP: Sumas aseguradas [5,10,20,50] MDP; Deducibles [17,35,55,75,115] K; Coaseguros [0,10,20]%
+const BNP_SUMAS = [5, 10, 20, 50];
+const BNP_DEDUCIBLES = [17, 35, 55, 75, 115];
+const BNP_COASEGUROS = [0, 10, 20];
+
 function BnvParams({ input, onChange }: { input: BnvQuoteInput; onChange: (p: Partial<BnvQuoteInput>) => void }) {
   return (
     <div className="grid grid-cols-3 gap-3">
@@ -196,17 +206,17 @@ function BnvParams({ input, onChange }: { input: BnvQuoteInput; onChange: (p: Pa
       </Field>
       <Field label="Suma Asegurada (MDP)">
         <select value={input.suma_asegurada} onChange={e => onChange({ suma_asegurada: Number(e.target.value) })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {[3, 5, 10, 15, 20, 30, 50, 75, 100].map(v => <option key={v} value={v}>{v}</option>)}
+          {BNV_SUMAS.map(v => <option key={v} value={v}>${v} MDP</option>)}
         </select>
       </Field>
-      <Field label="Deducible (miles)">
+      <Field label="Deducible">
         <select value={input.deducible} onChange={e => onChange({ deducible: Number(e.target.value) })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {[5, 10, 15, 20, 25, 30, 35, 40, 50, 100].map(v => <option key={v} value={v}>${v},000</option>)}
+          {BNV_DEDUCIBLES.map(v => <option key={v} value={v}>${v.toLocaleString()}</option>)}
         </select>
       </Field>
       <Field label="Coaseguro (%)">
         <select value={input.coaseguro} onChange={e => onChange({ coaseguro: Number(e.target.value) })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {[0, 10, 20, 30].map(v => <option key={v} value={v}>{v}%</option>)}
+          {BNV_COASEGUROS.map(v => <option key={v} value={v}>{v}%</option>)}
         </select>
       </Field>
       <Field label="Tope Coaseguro">
@@ -229,17 +239,17 @@ function BnpParams({ input, onChange }: { input: BnpQuoteInput; onChange: (p: Pa
       </Field>
       <Field label="Suma Asegurada (MDP)">
         <select value={input.suma_asegurada} onChange={e => onChange({ suma_asegurada: Number(e.target.value) })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {[5, 10, 15, 20, 30, 50, 75, 100].map(v => <option key={v} value={v}>{v}</option>)}
+          {BNP_SUMAS.map(v => <option key={v} value={v}>${v} MDP</option>)}
         </select>
       </Field>
-      <Field label="Deducible (miles)">
+      <Field label="Deducible">
         <select value={input.deducible} onChange={e => onChange({ deducible: Number(e.target.value) })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {[5, 10, 15, 20, 25, 30, 35, 50].map(v => <option key={v} value={v}>${v},000</option>)}
+          {BNP_DEDUCIBLES.map(v => <option key={v} value={v}>${v.toLocaleString()}</option>)}
         </select>
       </Field>
       <Field label="Coaseguro (%)">
         <select value={input.coaseguro} onChange={e => onChange({ coaseguro: Number(e.target.value) })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {[0, 10, 20, 30].map(v => <option key={v} value={v}>{v}%</option>)}
+          {BNP_COASEGUROS.map(v => <option key={v} value={v}>{v}%</option>)}
         </select>
       </Field>
     </div>

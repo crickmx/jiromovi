@@ -19,95 +19,114 @@ export interface BnpPackageConfig {
   costo_catastrofica_extranjero: number;
 }
 
-const REGION_MAP: Record<string, string> = {
-  'Zona 1': 'Mexico Region 1',
-  'Zona 2': 'Mexico Region 2',
-};
-
-function findBestRate(
-  rates: BnpRateRecord[],
-  age: number,
-  region: string,
-  gender: GenderType,
-  input: BnpQuoteInput
-): number {
-  const sa = input.suma_asegurada;
-  const ded = input.deducible;
-  const coas = input.coaseguro;
-
-  // Map gender to rate_type
-  const genderType = gender === 'Femenino' ? 'Female' : 'Male';
-
-  // Filter rates for this age and region
-  let ageRates = rates.filter(r => r.age === age && r.region === region);
-  if (ageRates.length === 0) {
-    ageRates = rates.filter(r => r.age === age);
-  }
-  if (ageRates.length === 0) {
-    // Find nearest age
-    const allAges = [...new Set(rates.map(r => r.age))].sort((a, b) => a - b);
-    if (allAges.length === 0) return 0;
-    const nearestAge = allAges.reduce((prev, curr) =>
-      Math.abs(curr - age) < Math.abs(prev - age) ? curr : prev, allAges[0]);
-    ageRates = rates.filter(r => r.age === nearestAge);
-  }
-
-  // Try gender-specific rates first
-  const genderedRates = ageRates.filter(r => r.rate_type === genderType);
-  if (genderedRates.length > 0) {
-    return findBestPlanMatch(genderedRates, sa, ded, coas);
-  }
-
-  // Fall back to Unisex
-  const unisexRates = ageRates.filter(r => r.rate_type === 'Unisex');
-  if (unisexRates.length > 0) {
-    return findBestPlanMatch(unisexRates, sa, ded, coas);
-  }
-
-  // Use whatever is available
-  return findBestPlanMatch(ageRates, sa, ded, coas);
+export interface BnpAvailableOptions {
+  sumasAseguradas: number[];  // MDP values e.g. [5, 10, 20, 50]
+  deducibles: number[];       // K values e.g. [17, 35, 55, 75, 115]
+  coaseguros: number[];       // percent values e.g. [0, 10, 20]
 }
 
-function findBestPlanMatch(ageRates: BnpRateRecord[], sa: number, ded: number, coas: number): number {
-  // Try exact plan name match patterns
-  const patterns = [
-    `S${sa}D${ded}C${coas}`,
-    `S${sa}D${ded}`,
-    `${sa}MDP_${ded}K_${coas}`,
-  ];
+interface BnpFactorTables {
+  baseRates: Map<number, number>;   // age → base annual rate
+  saFactors: Map<number, number>;   // sa_pesos → FD_SA multiplier
+  dedFactors: Map<number, number>;  // ded_pesos → FD_Ded multiplier
+  coasFactors: Map<number, number>; // coas_decimal → FD_Coas multiplier
+  fdZona2: number;                  // zone 2 factor (typically 0.8)
+  factorDescuento: number;          // plan discount (0.89 for new business)
+  factorMujer: number;              // annual additive surcharge for females
+}
 
-  for (const pat of patterns) {
-    const match = ageRates.find(r => r.plan_name.toUpperCase().includes(pat.toUpperCase()));
-    if (match) return match.rate;
+function nearestKey(map: Map<number, number>, value: number): number {
+  if (map.has(value)) return value;
+  let nearest = NaN;
+  let minDist = Infinity;
+  for (const k of map.keys()) {
+    const d = Math.abs(k - value);
+    if (d < minDist) { minDist = d; nearest = k; }
+  }
+  return nearest;
+}
+
+function groupByPlan(rates: BnpRateRecord[]): Map<string, Array<{ age: number; rate: number }>> {
+  const map = new Map<string, Array<{ age: number; rate: number }>>();
+  for (const r of rates) {
+    const rate = Number(r.rate);
+    if (isNaN(rate)) continue;
+    const age = Number(r.age);
+    if (!map.has(r.plan_name)) map.set(r.plan_name, []);
+    map.get(r.plan_name)!.push({ age, rate });
+  }
+  for (const arr of map.values()) arr.sort((a, b) => a.age - b.age);
+  return map;
+}
+
+function extractFactorTables(rates: BnpRateRecord[]): BnpFactorTables {
+  const byPlan = groupByPlan(rates);
+
+  // Base rates from "40000" column — actual annual rates indexed by insured age
+  const baseRates = new Map<number, number>();
+  for (const { age, rate } of (byPlan.get('40000') || [])) {
+    baseRates.set(age, rate);
   }
 
-  // Try matching with numeric extraction from plan_name
-  for (const r of ageRates) {
-    const planName = r.plan_name;
-    const saMatch = planName.match(/S(\d+)/i) || planName.match(/(\d+)\s*(?:MDP|M)/i);
-    const dedMatch = planName.match(/D(\d+)/i) || planName.match(/(?:ded|DED)[\s_-]*(\d+)/i);
-    const coasMatch = planName.match(/C(\d+)/i) || planName.match(/(?:coas|COAS)[\s_-]*(\d+)/i);
-
-    const planSa = saMatch ? Number(saMatch[1]) : null;
-    const planDed = dedMatch ? Number(dedMatch[1]) : null;
-    const planCoas = coasMatch ? Number(coasMatch[1]) : null;
-
-    if (planSa === sa && planDed === ded && (planCoas === null || planCoas === coas)) {
-      return r.rate;
-    }
+  // SA factor table: pair "Sumas aseguradas" values with "FD Suma asegurada" values by row index
+  const saValues = byPlan.get('Sumas aseguradas') || [];
+  const saFDs = byPlan.get('FD Suma asegurada') || [];
+  const saFactors = new Map<number, number>();
+  for (let i = 0; i < Math.min(saValues.length, saFDs.length); i++) {
+    saFactors.set(saValues[i].rate, saFDs[i].rate);
   }
 
-  // Single plan file
-  const uniquePlans = [...new Set(ageRates.map(r => r.plan_name))];
-  if (uniquePlans.length === 1) {
-    return ageRates[0].rate;
+  // Deductible factor table: pair "Deducibles" values with "FD Deducible" by row index
+  const dedValues = byPlan.get('Deducibles') || [];
+  const dedFDs = byPlan.get('FD Deducible') || [];
+  const dedFactors = new Map<number, number>();
+  for (let i = 0; i < Math.min(dedValues.length, dedFDs.length); i++) {
+    dedFactors.set(dedValues[i].rate, dedFDs[i].rate);
   }
 
-  if (ageRates.length > 0) {
-    return ageRates[0].rate;
+  // Coaseguro factor table:
+  // "FD Coasegurado"[0] = FD for coaseguro=0% (implicit, no entry in "Coasegurado")
+  // "FD Coasegurado"[i+1] = FD for "Coasegurado"[i] value
+  const coasValues = byPlan.get('Coasegurado') || [];
+  const coasFDs = byPlan.get('FD Coasegurado') || [];
+  const coasFactors = new Map<number, number>();
+  if (coasFDs.length > 0) coasFactors.set(0, coasFDs[0].rate);
+  else coasFactors.set(0, 1.0);
+  for (let i = 0; i < coasValues.length && i + 1 < coasFDs.length; i++) {
+    coasFactors.set(coasValues[i].rate, coasFDs[i + 1].rate);
   }
 
-  return 0;
+  // Zone 2 factor = first FD_Zona entry with value < 1.0
+  const fdZonaEntries = byPlan.get('FD Zona') || [];
+  const fdZona2 = fdZonaEntries.find(e => e.rate < 1.0)?.rate ?? 0.8;
+
+  // Factor descuento: first entry = new business rate (typically 0.89)
+  const factorDescuentoEntries = byPlan.get('Factor descuento') || [];
+  const factorDescuento = factorDescuentoEntries[0]?.rate ?? 0.89;
+
+  // Female annual surcharge (additive, not multiplicative)
+  const factorMujerEntries = byPlan.get('Factor es mujer') || [];
+  const factorMujer = factorMujerEntries[0]?.rate ?? 2600;
+
+  return { baseRates, saFactors, dedFactors, coasFactors, fdZona2, factorDescuento, factorMujer };
+}
+
+export function getBnpAvailableOptions(rates: BnpRateRecord[]): BnpAvailableOptions {
+  const byPlan = groupByPlan(rates);
+
+  const saValues = (byPlan.get('Sumas aseguradas') || []).map(e => e.rate / 1_000_000);
+  const dedFDs = byPlan.get('FD Deducible') || [];
+  const dedValues = (byPlan.get('Deducibles') || [])
+    .slice(0, dedFDs.length)
+    .map(e => e.rate / 1_000);
+  const rawCoas = byPlan.get('Coasegurado') || [];
+  const coasValues = [0, ...rawCoas.filter(e => e.rate <= 1).map(e => Math.round(e.rate * 100))];
+
+  return {
+    sumasAseguradas: saValues.length > 0 ? saValues : [5, 10, 20, 50],
+    deducibles: dedValues.length > 0 ? dedValues : [17, 35, 55, 75, 115],
+    coaseguros: coasValues.length > 0 ? [...new Set(coasValues)].sort((a, b) => a - b) : [0, 10, 20],
+  };
 }
 
 export function calculateBnp(
@@ -119,27 +138,59 @@ export function calculateBnp(
   try {
     if (!rates || rates.length === 0) {
       return {
-        product: 'BNP',
-        people_results: [],
-        prima_anual_total: 0,
-        totals: {} as any,
+        product: 'BNP', people_results: [], prima_anual_total: 0, totals: {} as any,
         tariff_package_id: packageConfig.id,
         error: 'No hay tarifas cargadas para BNP. Sube un archivo de cotizador en Tarifas.',
       };
     }
 
-    const region = REGION_MAP[input.region_zone] || 'Mexico Region 1';
+    const tables = extractFactorTables(rates);
+
+    if (tables.baseRates.size === 0) {
+      return {
+        product: 'BNP', people_results: [], prima_anual_total: 0, totals: {} as any,
+        tariff_package_id: packageConfig.id,
+        error: 'El archivo de tarifas BNP no contiene una tabla de tasas base valida.',
+      };
+    }
+
+    // Convert UI inputs to raw units
+    const saPesos = input.suma_asegurada * 1_000_000;
+    const dedPesos = input.deducible * 1_000;
+    const coasDecimal = input.coaseguro / 100;
+
+    // Zone multiplier
+    const fdZona = input.region_zone === 'Zona 2' ? tables.fdZona2 : 1.0;
+
+    // Factor lookups — use nearest available key when exact match not found
+    const fdSA = tables.saFactors.size > 0
+      ? (tables.saFactors.get(nearestKey(tables.saFactors, saPesos)) ?? 1.0) : 1.0;
+    const fdDed = tables.dedFactors.size > 0
+      ? (tables.dedFactors.get(nearestKey(tables.dedFactors, dedPesos)) ?? 1.0) : 1.0;
+    const fdCoas = tables.coasFactors.size > 0
+      ? (tables.coasFactors.get(nearestKey(tables.coasFactors, coasDecimal)) ?? 1.0) : 1.0;
+
+    const allAges = [...tables.baseRates.keys()].sort((a, b) => a - b);
 
     const peopleResults: BnpPersonResult[] = people.map(p => {
-      const annualRate = findBestRate(rates, p.age, region, p.gender as GenderType, input);
+      const nearestAge = allAges.reduce((prev, curr) =>
+        Math.abs(curr - p.age) < Math.abs(prev - p.age) ? curr : prev, allAges[0]);
+      const baseRate = tables.baseRates.get(nearestAge) ?? 0;
+      const isFemale = (p.gender as GenderType) === 'Femenino';
+
+      // Formula: base × FD_SA × FD_Ded × FD_Coas × FD_Zona × Factor_descuento + (female surcharge)
+      const annualPremium =
+        baseRate * fdSA * fdDed * fdCoas * fdZona * tables.factorDescuento
+        + (isFemale ? tables.factorMujer : 0);
+
       return {
         person_id: p.id,
         person_name: p.name,
         relation: p.relation,
         age: p.age,
         gender: p.gender as GenderType,
-        lookup_key: `${region}|SA${input.suma_asegurada}|D${input.deducible}|C${input.coaseguro}`,
-        annual_premium: annualRate,
+        lookup_key: `${input.region_zone}|SA${input.suma_asegurada}M|D${input.deducible}K|C${input.coaseguro}%`,
+        annual_premium: annualPremium,
       };
     });
 
@@ -164,9 +215,7 @@ export function calculateBnp(
         asistencia_extranjero: asistencia,
         catastrofica_extranjero: catastrofica,
         derecho_poliza: packageConfig.derecho_poliza,
-        subtotal,
-        iva,
-        total,
+        subtotal, iva, total,
         primer_pago: primerPago,
         pagos_subsecuentes: num_recibos > 1 ? primerPago : 0,
         num_recibos,
@@ -182,10 +231,7 @@ export function calculateBnp(
     };
   } catch (err: any) {
     return {
-      product: 'BNP',
-      people_results: [],
-      prima_anual_total: 0,
-      totals: {} as any,
+      product: 'BNP', people_results: [], prima_anual_total: 0, totals: {} as any,
       tariff_package_id: packageConfig.id,
       error: err.message || 'Error al calcular BNP',
     };
