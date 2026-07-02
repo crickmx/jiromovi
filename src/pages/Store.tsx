@@ -236,6 +236,7 @@ export default function Store() {
               <ProductoCard
                 key={producto.id}
                 producto={producto}
+                onAgregar={handleAgregarAlCarrito}
                 onVerDetalle={(p) => {
                   setProductoSeleccionado(p);
                   trackStoreProductViewed(p.titulo, p.id);
