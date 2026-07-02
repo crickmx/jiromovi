@@ -4,8 +4,8 @@ import { supabase } from './supabase';
 export interface ModuleVisibilityRule {
   id: string;
   module_key: string;
-  target_type: 'role' | 'office';
-  target_value: string; // role name or oficina_id
+  target_type: 'role' | 'office' | 'user';
+  target_value: string; // role name, oficina_id, or usuario id
   visible: boolean;
   updated_at: string;
 }
@@ -13,8 +13,11 @@ export interface ModuleVisibilityRule {
 interface UseModuleVisibilityReturn {
   rules: ModuleVisibilityRule[];
   loading: boolean;
-  /** Returns false only when there is an explicit hide rule for this key+target */
-  isVisible: (moduleKey: string, userRole: string, oficina_id?: string | null) => boolean;
+  /**
+   * Resolves visibility with most-specific-wins priority: user > office > role > visible by default.
+   * Administradores always see everything, regardless of rules.
+   */
+  isVisible: (moduleKey: string, userRole: string, oficina_id?: string | null, userId?: string | null) => boolean;
   reload: () => Promise<void>;
 }
 
@@ -46,16 +49,23 @@ export function useModuleVisibility(): UseModuleVisibilityReturn {
 
   useEffect(() => { fetch(); }, [fetch]);
 
-  const isVisible = useCallback((moduleKey: string, userRole: string, oficina_id?: string | null): boolean => {
-    // Check role rule
-    const roleRule = rules.find(r => r.module_key === moduleKey && r.target_type === 'role' && r.target_value === userRole);
-    if (roleRule && !roleRule.visible) return false;
+  const isVisible = useCallback((moduleKey: string, userRole: string, oficina_id?: string | null, userId?: string | null): boolean => {
+    // Administradores siempre ven todo, sin importar las reglas configuradas
+    if (userRole === 'Administrador') return true;
 
-    // Check office rule
+    // La regla más específica presente gana: usuario > oficina > rol
+    if (userId) {
+      const userRule = rules.find(r => r.module_key === moduleKey && r.target_type === 'user' && r.target_value === userId);
+      if (userRule) return userRule.visible;
+    }
+
     if (oficina_id) {
       const officeRule = rules.find(r => r.module_key === moduleKey && r.target_type === 'office' && r.target_value === oficina_id);
-      if (officeRule && !officeRule.visible) return false;
+      if (officeRule) return officeRule.visible;
     }
+
+    const roleRule = rules.find(r => r.module_key === moduleKey && r.target_type === 'role' && r.target_value === userRole);
+    if (roleRule) return roleRule.visible;
 
     return true;
   }, [rules]);

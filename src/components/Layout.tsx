@@ -34,7 +34,9 @@ export function Layout({ children }: LayoutProps) {
 
   const userRole = (usuario?.rol as UserRole) || 'Agente';
   const oficinaId = (usuario as any)?.oficina_id ?? null;
-  const { isVisible: isModuleVisible } = useModuleVisibility();
+  const { isVisible } = useModuleVisibility();
+  const isModuleVisible = (key: string, role: string, oficina_id?: string | null) =>
+    isVisible(key, role, oficina_id, usuario?.id);
   const { workspace, activeItem } = resolveWorkspace(location.pathname, userRole);
 
   const isFullHeight = FULL_HEIGHT_PREFIXES.some(prefix => location.pathname.startsWith(prefix));

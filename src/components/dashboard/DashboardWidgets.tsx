@@ -590,7 +590,7 @@ export function AccesosRapidosWidget({ usuario }: { usuario: Usuario }) {
   const baseActions = QUICK_ACTIONS[usuario.rol] || DEFAULT_QUICK_ACTIONS;
 
   const actions = baseActions
-    .filter(a => isVisible(a.path, rol, oficinaId))
+    .filter(a => isVisible(a.path, rol, oficinaId, usuario.id))
     .map(a => {
       if (a.path === '/mercadotecnia/mi-pagina-web' && (usuario as any).web_slug) {
         return { ...a, href: `https://agentedeseguros.website/${(usuario as any).web_slug}` };
