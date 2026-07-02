@@ -76,6 +76,7 @@ export default function MarketingPremiumAdmin() {
   const [guardado, setGuardado] = useState(false);
   const [needsMigration, setNeedsMigration] = useState(false);
   const [sqlCopiado, setSqlCopiado] = useState(false);
+  const [errorValidacion, setErrorValidacion] = useState('');
 
   useEffect(() => { cargarAgentes(); }, []);
 
@@ -126,8 +127,66 @@ export default function MarketingPremiumAdmin() {
     setGuardado(false);
   }
 
+  async function crearTramiteCobranzaPremium(agente: Agente) {
+    // Obtener el estatus "Iniciado" (o el primero disponible)
+    const { data: estatuses } = await supabase
+      .from('ticket_estatus')
+      .select('id, nombre')
+      .eq('activo', true)
+      .order('orden');
+
+    const estatus = estatuses?.find(e =>
+      e.nombre.toLowerCase().includes('inicia') || e.nombre.toLowerCase().includes('nuevo')
+    ) ?? estatuses?.[0];
+
+    if (!estatus || !usuario) return;
+
+    const METODO_LABELS: Record<string, string> = {
+      deposito_jiro: 'Depósito a cuenta Jiro',
+      bono_anual: 'Descuento de bono anual',
+      comisiones: 'Descuento a comisiones',
+    };
+
+    const plan = form.mkt_premium_plan ? (form.mkt_premium_plan === 'mensual' ? 'Mensual — $200 MXN/mes' : 'Anual — $2,000 MXN/año') : 'Sin especificar';
+    const metodo = form.mkt_premium_metodo_pago ? METODO_LABELS[form.mkt_premium_metodo_pago] : 'Sin especificar';
+    const fechaInicio = form.mkt_premium_fecha_inicio || 'Sin especificar';
+    const fechaPago = form.mkt_premium_fecha_pago || 'Sin especificar';
+
+    const instrucciones =
+      `Cobro de Marketing Premium activado para ${agente.nombre} ${agente.apellidos}.\n` +
+      `Plan: ${plan}\n` +
+      `Método de pago: ${metodo}\n` +
+      `Fecha de inicio: ${fechaInicio}\n` +
+      `Fecha de próximo pago: ${fechaPago}\n` +
+      `Oficina: ${agente.oficina?.nombre ?? '—'}`;
+
+    await supabase.from('tickets').insert({
+      tipo_tramite: 'cobranza',
+      prioridad: 'Media',
+      instrucciones,
+      creado_por: usuario.id,
+      modificado_por: usuario.id,
+      agente_id: agente.id,
+      assigned_to_user_id: usuario.id,
+      estatus_id: estatus.id,
+    });
+  }
+
   async function guardar() {
     if (!seleccionado) return;
+
+    // Validar que si se activa premium, tenga fechas de inicio y pago
+    if (form.plan_mkt_premium && !needsMigration) {
+      if (!form.mkt_premium_fecha_inicio || !form.mkt_premium_fecha_pago) {
+        setErrorValidacion('Para activar el premium debes seleccionar la fecha de inicio y la fecha de pago.');
+        return;
+      }
+    }
+    setErrorValidacion('');
+
+    // Detectar si el premium se está activando (transición false → true)
+    const activandoPremium = form.plan_mkt_premium && !seleccionado.plan_mkt_premium;
+
     setGuardando(true);
     setGuardado(false);
 
@@ -161,6 +220,11 @@ export default function MarketingPremiumAdmin() {
       };
       setSeleccionado(actualizado);
       setAgentes(prev => prev.map(a => a.id === actualizado.id ? actualizado : a));
+
+      // Crear trámite de cobranza solo al activar por primera vez
+      if (activandoPremium) {
+        await crearTramiteCobranzaPremium(actualizado);
+      }
     }
 
     setGuardando(false);
@@ -369,7 +433,7 @@ ALTER TABLE usuarios
                   <p className="text-xs text-neutral-400 mt-0.5">Activa o desactiva el acceso premium</p>
                 </div>
                 <button
-                  onClick={() => setForm(f => ({ ...f, plan_mkt_premium: !f.plan_mkt_premium }))}
+                  onClick={() => { setForm(f => ({ ...f, plan_mkt_premium: !f.plan_mkt_premium })); setErrorValidacion(''); }}
                   className={`relative w-12 h-6 rounded-full transition-colors shrink-0 ${
                     form.plan_mkt_premium ? 'bg-purple-600' : 'bg-neutral-300 dark:bg-white/20'
                   }`}
@@ -435,14 +499,22 @@ ALTER TABLE usuarios
 
                 {/* Fecha inicio */}
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-neutral-500 dark:text-white/50 uppercase tracking-wide">
-                    Fecha de inicio
+                  <label className={`text-xs font-medium uppercase tracking-wide ${
+                    form.plan_mkt_premium && !form.mkt_premium_fecha_inicio
+                      ? 'text-red-500'
+                      : 'text-neutral-500 dark:text-white/50'
+                  }`}>
+                    Fecha de inicio {form.plan_mkt_premium && !form.mkt_premium_fecha_inicio && '— requerida'}
                   </label>
                   <input
                     type="date"
                     value={form.mkt_premium_fecha_inicio}
-                    onChange={e => setForm(f => ({ ...f, mkt_premium_fecha_inicio: e.target.value }))}
-                    className="w-full px-3 py-2.5 text-sm rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    onChange={e => { setForm(f => ({ ...f, mkt_premium_fecha_inicio: e.target.value })); setErrorValidacion(''); }}
+                    className={`w-full px-3 py-2.5 text-sm rounded-xl border bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 ${
+                      form.plan_mkt_premium && !form.mkt_premium_fecha_inicio
+                        ? 'border-red-400 focus:ring-red-400'
+                        : 'border-neutral-200 dark:border-white/10 focus:ring-purple-400'
+                    }`}
                   />
                   {seleccionado.mkt_premium_fecha_inicio && (
                     <p className="text-xs text-neutral-400">Actual: {formatFecha(seleccionado.mkt_premium_fecha_inicio)}</p>
@@ -451,14 +523,22 @@ ALTER TABLE usuarios
 
                 {/* Fecha de pago */}
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-neutral-500 dark:text-white/50 uppercase tracking-wide">
-                    Fecha de pago / renovación
+                  <label className={`text-xs font-medium uppercase tracking-wide ${
+                    form.plan_mkt_premium && !form.mkt_premium_fecha_pago
+                      ? 'text-red-500'
+                      : 'text-neutral-500 dark:text-white/50'
+                  }`}>
+                    Fecha de pago / renovación {form.plan_mkt_premium && !form.mkt_premium_fecha_pago && '— requerida'}
                   </label>
                   <input
                     type="date"
                     value={form.mkt_premium_fecha_pago}
-                    onChange={e => setForm(f => ({ ...f, mkt_premium_fecha_pago: e.target.value }))}
-                    className="w-full px-3 py-2.5 text-sm rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    onChange={e => { setForm(f => ({ ...f, mkt_premium_fecha_pago: e.target.value })); setErrorValidacion(''); }}
+                    className={`w-full px-3 py-2.5 text-sm rounded-xl border bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 ${
+                      form.plan_mkt_premium && !form.mkt_premium_fecha_pago
+                        ? 'border-red-400 focus:ring-red-400'
+                        : 'border-neutral-200 dark:border-white/10 focus:ring-purple-400'
+                    }`}
                   />
                   {seleccionado.mkt_premium_fecha_pago && (
                     <p className="text-xs text-neutral-400">Actual: {formatFecha(seleccionado.mkt_premium_fecha_pago)}</p>
@@ -467,20 +547,28 @@ ALTER TABLE usuarios
               </div>
 
               {/* Guardar */}
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  onClick={guardar}
-                  disabled={guardando}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold transition disabled:opacity-60"
-                >
-                  <Save className="w-4 h-4" />
-                  {guardando ? 'Guardando…' : 'Guardar cambios'}
-                </button>
-                {guardado && (
-                  <span className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400 font-medium">
-                    <CheckCircle className="w-4 h-4" /> Guardado
-                  </span>
+              <div className="space-y-2 pt-2">
+                {errorValidacion && (
+                  <p className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 font-medium">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    {errorValidacion}
+                  </p>
                 )}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={guardar}
+                    disabled={guardando}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold transition disabled:opacity-60"
+                  >
+                    <Save className="w-4 h-4" />
+                    {guardando ? 'Guardando…' : 'Guardar cambios'}
+                  </button>
+                  {guardado && (
+                    <span className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400 font-medium">
+                      <CheckCircle className="w-4 h-4" /> Guardado
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
