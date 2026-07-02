@@ -27,7 +27,7 @@ export interface BnvAvailableOptions {
 }
 
 // Region string as stored in MasterBase col O
-const REGION_STRINGS: Record<'Zona 1' | 'Zona 2', string> = {
+export const BNV_REGION_STRINGS: Record<'Zona 1' | 'Zona 2', string> = {
   'Zona 1': 'Mexico Region 1 BNV',
   'Zona 2': 'Mexico Region 2 (no CDMX, ZM Y MTY)',
 };
@@ -71,7 +71,7 @@ export function getBnvAvailableOptions(rates: BnvRateRecord[]): BnvAvailableOpti
   topesSet.add(0);
 
   // plan_name holds the llave; extract PlanName prefix before the region string
-  const regionPrefixes = Object.values(REGION_STRINGS);
+  const regionPrefixes = Object.values(BNV_REGION_STRINGS);
 
   for (const r of rates) {
     // llave = PlanName + Region + age  (plan_name col holds llave)
@@ -132,7 +132,7 @@ export function calculateBnv(
       input.tope_coaseguro,
     );
 
-    const regionStr = REGION_STRINGS[input.region_zone] ?? REGION_STRINGS['Zona 1'];
+    const regionStr = BNV_REGION_STRINGS[input.region_zone] ?? BNV_REGION_STRINGS['Zona 1'];
 
     const peopleResults: BnvPersonResult[] = people.map(p => {
       const llave = buildLookupKey(planName, regionStr, p.age);

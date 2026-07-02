@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Heart, Calculator, History, Settings, Plus, Trash2, Users, FileDown, Loader, CircleAlert as AlertCircle, Check, Pencil } from 'lucide-react';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { supabase } from '../lib/supabase';
-import { calculateBnv, calculateBxplus, calculateBnp } from '../lib/multicotizadorGmm';
+import { calculateBnv, calculateBxplus, calculateBnp, buildBnvPlanName, BNV_REGION_STRINGS } from '../lib/multicotizadorGmm';
 import type {
   ProductId, QuotePerson, FormaPago, MultiGmmOption, OptionResult,
   BnvQuoteInput, BnpQuoteInput, BxplusQuoteInput, SavedMultiGmmQuote,
@@ -204,15 +204,7 @@ export default function MulticotizadorGMM() {
           .eq('status', 'active')
           .single();
         if (pkg) {
-          const { data: rates } = await supabase
-            .from('multicotizador_gmm_rates')
-            .select('plan_name, region, age, rate, rate_type')
-            .eq('package_id', pkg.id);
-          if (rates && rates.length > 0) {
-            productTariffs.BNV = { pkg, rates };
-          } else {
-            productTariffs.BNV = { error: 'La tarifa BNV activa no tiene datos. Sube un nuevo archivo de cotizador en la pestana Tarifas.' };
-          }
+          productTariffs.BNV = { pkg };
         } else {
           productTariffs.BNV = { error: 'No hay tarifa BNV activa. Sube una tarifa en la pestana Tarifas.' };
         }
@@ -278,8 +270,36 @@ export default function MulticotizadorGMM() {
         }
 
         if (opt.product_id === 'BNV') {
-          const { pkg, rates } = tariff;
-          const result = calculateBnv(opt.input as BnvQuoteInput, people, rates, {
+          const { pkg } = tariff;
+          const bnvInput = opt.input as BnvQuoteInput;
+          const planName = buildBnvPlanName(
+            bnvInput.suma_asegurada,
+            bnvInput.deducible,
+            bnvInput.coaseguro,
+            bnvInput.tope_coaseguro,
+          );
+          const regionStr = BNV_REGION_STRINGS[bnvInput.region_zone] ?? BNV_REGION_STRINGS['Zona 1'];
+          const lookupPrefix = `${planName}${regionStr}`;
+
+          const { data: rates, error: ratesError } = await supabase
+            .from('multicotizador_gmm_rates')
+            .select('plan_name, lookup_key, region, age, rate, rate_type')
+            .eq('package_id', pkg.id)
+            .like('plan_name', `${lookupPrefix}%`);
+
+          if (ratesError || !rates || rates.length === 0) {
+            optionResults.push({
+              option_id: opt.id, option_label: opt.label, product_id: 'BNV',
+              result: {
+                product: 'BNV', people_results: [], prima_anual_total: 0, totals: {} as any,
+                tariff_package_id: pkg.id,
+                error: `No se encontraron tarifas para el plan ${planName}. Verifica que el plan y la region sean correctos.`,
+              } as any,
+            });
+            continue;
+          }
+
+          const result = calculateBnv(bnvInput, people, rates, {
             id: pkg.id,
             derecho_poliza: pkg.derecho_poliza || 0,
             asistencia_extranjero: pkg.asistencia_extranjero || 0,
