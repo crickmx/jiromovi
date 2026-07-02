@@ -356,7 +356,7 @@ export function TarifasAdminPanel() {
         .order('created_at', { ascending: false }),
       supabase
         .from('tariff_packages')
-        .select('id, name, source_filename, status, rates_count, created_at')
+        .select('id, name, source_filename, status, created_at')
         .order('created_at', { ascending: false }),
     ]);
 
@@ -374,7 +374,7 @@ export function TarifasAdminPanel() {
           version_name: p.name || 'Sin nombre',
           source_filename: p.source_filename,
           status: p.status,
-          rates_count: p.rates_count || 0,
+          rates_count: 0,
           sumas_aseguradas: [],
           deducibles: [],
           coaseguros: [],
