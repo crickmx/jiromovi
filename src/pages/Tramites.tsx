@@ -5,7 +5,7 @@ import { useTiposTramite } from '../hooks/useTiposTramite';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useImpersonation } from '../contexts/ImpersonationContext';
-import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound, LayoutList, LayoutGrid, ChevronDown, ArrowUpDown, Flag, UserMinus, Activity } from 'lucide-react';
+import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound, LayoutList, LayoutGrid, ChevronDown, ArrowUpDown, Flag, UserMinus, Activity, Copy } from 'lucide-react';
 import { crearNotificacion } from '../lib/notificationHelpers';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
@@ -201,6 +201,7 @@ export function Tramites() {
   const sortRef = useRef<HTMLDivElement>(null);
   const [grupos, setGrupos] = useState<Array<{ id: string; nombre: string }>>([]);
   const [showNuevoModal, setShowNuevoModal] = useState(false);
+  const [duplicarPreload, setDuplicarPreload] = useState<{ tipoTramite?: string; descripcion?: string; prioridad?: string } | null>(null);
   const [showCatalogosModal, setShowCatalogosModal] = useState(false);
   const [showGruposModal, setShowGruposModal] = useState(false);
   const [showPanelLider, setShowPanelLider] = useState(false);
@@ -525,6 +526,24 @@ export function Tramites() {
     loadPapelera();
   };
 
+  const handleDuplicar = async (e: React.MouseEvent, tramite: TramiteItem) => {
+    e.stopPropagation();
+    // Fetch descripcion desde el ticket completo si no está en el resumen
+    let descripcion = '';
+    const { data } = await supabase
+      .from('tickets')
+      .select('descripcion')
+      .eq('id', tramite.id)
+      .single();
+    if (data) descripcion = data.descripcion ?? '';
+    setDuplicarPreload({
+      tipoTramite: tramite.tipo_tramite,
+      descripcion,
+      prioridad: tramite.prioridad,
+    });
+    setShowNuevoModal(true);
+  };
+
   const handleRestore = async (tramiteId: string) => {
     await supabase.from('tickets').update({
       eliminado_at: null,
@@ -668,6 +687,12 @@ export function Tramites() {
 
     // Agente: solo sus propios trámites
     if (isAgente) return isDirectlyInvolved;
+
+    // Lider: todos los tramites de su grupo (asignados o no)
+    const isLiderOfGroup =
+      tramite.grupo_asignado_id !== null &&
+      myGrupoRoles.get(tramite.grupo_asignado_id) === 'lider';
+    if (isLiderOfGroup) return true;
 
     // Ejecutivo y demás: propios + pool sin asignar de sus equipos (para autoasignarse)
     return isDirectlyInvolved || isPoolOfMyGroup;
@@ -1395,6 +1420,9 @@ export function Tramites() {
                       <span className={`text-[10px] font-extrabold uppercase tracking-widest truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
                       <div className="flex items-center gap-1 shrink-0">
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tramite.prioridad === 'Alta' ? 'bg-red-100 text-red-600' : tramite.prioridad === 'Media' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>{tramite.prioridad}</span>
+                        <button onClick={(e) => handleDuplicar(e, tramite)} className="p-0.5 rounded text-neutral-300 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors opacity-0 group-hover:opacity-100" title="Duplicar trámite">
+                          <Copy className="w-3 h-3" />
+                        </button>
                         {isAdmin && (
                           <button onClick={(e) => handleSoftDelete(e, tramite.id)} className="p-0.5 rounded text-neutral-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Mover a papelera">
                             <Trash2 className="w-3 h-3" />
@@ -1451,6 +1479,9 @@ export function Tramites() {
                       <span className={`text-[10px] font-extrabold uppercase tracking-widest truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
                       <div className="flex items-center gap-1 shrink-0">
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tramite.prioridad === 'Alta' ? 'bg-red-100 text-red-600' : tramite.prioridad === 'Media' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>{tramite.prioridad}</span>
+                        <button onClick={(e) => handleDuplicar(e, tramite)} className="p-0.5 rounded text-neutral-300 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors opacity-0 group-hover:opacity-100" title="Duplicar trámite">
+                          <Copy className="w-3 h-3" />
+                        </button>
                         {isAdmin && (
                           <button onClick={(e) => handleSoftDelete(e, tramite.id)} className="p-0.5 rounded text-neutral-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Mover a papelera">
                             <Trash2 className="w-3 h-3" />
@@ -1639,15 +1670,24 @@ export function Tramites() {
                         Folio: {tramite.folio}
                         {hasArchivos && <Paperclip className="w-3 h-3 shrink-0" title={`${tramite.ticket_archivos.length} archivo(s) adjunto(s)`} />}
                       </p>
-                      {isAdmin && (
+                      <div className="flex items-center gap-1 shrink-0">
                         <button
-                          onClick={(e) => handleSoftDelete(e, tramite.id)}
-                          className="p-1 rounded-md text-neutral-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"
-                          title="Mover a papelera"
+                          onClick={(e) => handleDuplicar(e, tramite)}
+                          className="p-1 rounded-md text-neutral-300 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors opacity-0 group-hover:opacity-100"
+                          title="Duplicar trámite"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Copy className="w-3.5 h-3.5" />
                         </button>
-                      )}
+                        {isAdmin && (
+                          <button
+                            onClick={(e) => handleSoftDelete(e, tramite.id)}
+                            className="p-1 rounded-md text-neutral-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"
+                            title="Mover a papelera"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -1749,13 +1789,15 @@ export function Tramites() {
 
       <NuevoTramiteModal
         isOpen={showNuevoModal}
-        onClose={() => setShowNuevoModal(false)}
+        onClose={() => { setShowNuevoModal(false); setDuplicarPreload(null); }}
         onSuccess={() => {
           setShowNuevoModal(false);
+          setDuplicarPreload(null);
           invalidateCacheByPrefix('tramites_');
           loadData();
         }}
         estatusList={estatusList}
+        preloadedData={duplicarPreload ?? undefined}
       />
 
       {showCatalogosModal && (

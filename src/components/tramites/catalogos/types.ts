@@ -61,7 +61,18 @@ export interface TipoCampo {
   activo: boolean;
   is_sistema: boolean;
   sistema_key: string | null;
+  visible_para_rol: RolVisibilidad;
+  editable_para_rol: RolVisibilidad;
 }
+
+export type RolVisibilidad = 'todos' | 'Empleado' | 'Gerente' | 'Administrador';
+
+export const ROL_VISIBILIDAD_OPCIONES: { value: RolVisibilidad; label: string }[] = [
+  { value: 'todos',          label: 'Todos' },
+  { value: 'Empleado',       label: 'Empleados y superiores' },
+  { value: 'Gerente',        label: 'Gerentes y superiores' },
+  { value: 'Administrador',  label: 'Solo Administrador' },
+];
 
 export interface EquipoMiembro {
   usuario_id: string;

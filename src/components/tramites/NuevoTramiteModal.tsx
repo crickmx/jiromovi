@@ -88,6 +88,8 @@ interface NuevoTramiteModalProps {
     comisionesLoteId?: string;
     comisionesLoteLabel?: string;
     instrucciones?: string;
+    descripcion?: string;
+    prioridad?: string;
   };
 }
 
@@ -175,7 +177,21 @@ export function NuevoTramiteModal({
     requerido: boolean; ayuda: string | null; display_order: number;
     is_sistema: boolean; sistema_key: string | null;
     config: { opciones?: CampoDinamicoOption[]; max_length?: number; [k: string]: any };
+    visible_para_rol?: string;
+    editable_para_rol?: string;
   }
+
+  const ROL_NIVEL: Record<string, number> = { Agente: 0, Empleado: 1, Gerente: 2, Administrador: 3 };
+  const canSeeCampo = (campo: CampoDinamico) => {
+    const min = ROL_NIVEL[campo.visible_para_rol ?? 'todos'];
+    if (min === undefined) return true;
+    return (ROL_NIVEL[usuario?.rol ?? 'Agente'] ?? 0) >= min;
+  };
+  const canEditCampo = (campo: CampoDinamico) => {
+    const min = ROL_NIVEL[campo.editable_para_rol ?? 'todos'];
+    if (min === undefined) return true;
+    return (ROL_NIVEL[usuario?.rol ?? 'Agente'] ?? 0) >= min;
+  };
   const [camposDinamicos, setCamposDinamicos] = useState<CampoDinamico[]>([]);
   const [respuestasDinamicas, setRespuestasDinamicas] = useState<Record<string, any>>({});
   const [agentesVendedor, setAgentesVendedor] = useState<{
@@ -321,7 +337,7 @@ export function NuevoTramiteModal({
     if (!tipoInfo?.id) { setCamposDinamicos([]); setRespuestasDinamicas({}); return; }
     supabase
       .from('tramite_tipo_campos')
-      .select('id, key, label, tipo, requerido, ayuda, display_order, config, is_sistema, sistema_key')
+      .select('id, key, label, tipo, requerido, ayuda, display_order, config, is_sistema, sistema_key, visible_para_rol, editable_para_rol')
       .eq('tramite_tipo_id', tipoInfo.id)
       .eq('activo', true)
       .order('display_order')
@@ -438,8 +454,8 @@ export function NuevoTramiteModal({
       setAsignado('');
     }
 
-    setPrioridad('Baja');
-    setDescripcion(preloadedData?.instrucciones || '');
+    setPrioridad((preloadedData?.prioridad as 'Alta' | 'Media' | 'Baja') || 'Baja');
+    setDescripcion(preloadedData?.descripcion || preloadedData?.instrucciones || '');
     setArchivos([]);
     setArchivoCategoriaId('');
     setPolizaNumero('');
@@ -755,6 +771,7 @@ export function NuevoTramiteModal({
     const AUTO_FILL_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'oficina_jiro', 'agente_vendedor'];
     for (const campo of camposDinamicos) {
       if (!campo.requerido) continue;
+      if (!canSeeCampo(campo)) continue;
       if (campo.is_sistema && AUTO_FILL_KEYS.includes(campo.sistema_key || '')) continue;
 
       // Validación de campos sistema configurables (usan estado propio, no respuestasDinamicas)
@@ -2589,7 +2606,20 @@ export function NuevoTramiteModal({
         {/* Campos del formulario — unificados, ordenados por display_order configurado en el FormBuilder */}
         {[...camposDinamicos]
           .sort((a, b) => a.display_order - b.display_order)
-          .map(campo => campo.is_sistema ? renderCampoSistema(campo) : renderCampoDinamico(campo))
+          .filter(campo => canSeeCampo(campo))
+          .map(campo => {
+            const rendered = campo.is_sistema ? renderCampoSistema(campo) : renderCampoDinamico(campo);
+            if (canEditCampo(campo)) return rendered;
+            return (
+              <div key={campo.id + '-ro'} className="relative pointer-events-none select-none opacity-60">
+                {rendered}
+                <div className="absolute top-1 right-1 flex items-center gap-1 text-[10px] bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded-md border border-neutral-200">
+                  <Lock className="w-2.5 h-2.5" />
+                  Solo lectura
+                </div>
+              </div>
+            );
+          })
         }
 
         <div className="flex justify-end gap-3 pt-4 border-t border-neutral-200">

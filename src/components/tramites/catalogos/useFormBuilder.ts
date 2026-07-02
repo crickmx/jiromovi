@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
-import { type TipoCampo, type CampoTipo, CAMPO_TIPOS, slugify } from './types';
+import { type TipoCampo, type CampoTipo, type RolVisibilidad, CAMPO_TIPOS, slugify } from './types';
 import { logHistorial } from './logHistorial';
 
 // Campos sistema que nunca se pueden mover ni eliminar
@@ -35,6 +35,8 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
   const [editCampoReq, setEditCampoReq] = useState(false);
   const [editCampoConfig, setEditCampoConfig] = useState<Record<string, any>>({});
   const [editCampoAyuda, setEditCampoAyuda] = useState('');
+  const [editCampoVisiblePara, setEditCampoVisiblePara] = useState<RolVisibilidad>('todos');
+  const [editCampoEditablePara, setEditCampoEditablePara] = useState<RolVisibilidad>('todos');
   const [savingCampo, setSavingCampo] = useState(false);
   const [dragging, setDragging] = useState<number | null>(null);
   const dragIdx = useRef<number | null>(null);
@@ -64,6 +66,8 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     setEditCampoReq(campo.requerido);
     setEditCampoConfig({ ...(campo.config || {}) });
     setEditCampoAyuda(campo.ayuda || '');
+    setEditCampoVisiblePara((campo.visible_para_rol ?? 'todos') as RolVisibilidad);
+    setEditCampoEditablePara((campo.editable_para_rol ?? 'todos') as RolVisibilidad);
     setShowAddField(false);
     setShowPreview(false);
   };
@@ -112,7 +116,7 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     setSavingCampo(true);
     const { error } = await supabase
       .from('tramite_tipo_campos')
-      .update({ label: editCampoLabel.trim(), requerido: editCampoReq, config: editCampoConfig, ayuda: editCampoAyuda.trim() || null })
+      .update({ label: editCampoLabel.trim(), requerido: editCampoReq, config: editCampoConfig, ayuda: editCampoAyuda.trim() || null, visible_para_rol: editCampoVisiblePara, editable_para_rol: editCampoEditablePara })
       .eq('id', editingCampo.id);
 
     if (error) { showToast('Error al guardar campo', 'error'); setSavingCampo(false); return; }
@@ -124,7 +128,7 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     logHistorial(tipoId, 'campo_actualizado', cambiosCampo, usuario?.id, usuario?.nombre_completo);
     setCampos(prev => prev.map(c =>
       c.id === editingCampo.id
-        ? { ...c, label: editCampoLabel.trim(), requerido: editCampoReq, config: editCampoConfig, ayuda: editCampoAyuda || null }
+        ? { ...c, label: editCampoLabel.trim(), requerido: editCampoReq, config: editCampoConfig, ayuda: editCampoAyuda || null, visible_para_rol: editCampoVisiblePara, editable_para_rol: editCampoEditablePara }
         : c
     ));
     setEditingCampo(null);
@@ -251,6 +255,8 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     editCampoReq, setEditCampoReq,
     editCampoConfig, setEditCampoConfig,
     editCampoAyuda, setEditCampoAyuda,
+    editCampoVisiblePara, setEditCampoVisiblePara,
+    editCampoEditablePara, setEditCampoEditablePara,
     savingCampo,
     dragging,
     handleAddCampo, handleAddSistemaCampo, handleSaveCampo, handleDeleteCampo,
