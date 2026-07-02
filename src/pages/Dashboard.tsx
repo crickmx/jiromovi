@@ -230,10 +230,10 @@ function KPIStrip({ usuario }: { usuario: Usuario }) {
             p_rol: usuario.rol,
             p_oficina_id: usuario.oficina_id || null,
           }),
-          supabase.from('notificaciones_internas')
+          supabase.from('notificaciones')
             .select('id', { count: 'exact', head: true })
             .eq('usuario_id', usuario.id)
-            .eq('leido', false),
+            .eq('leida', false),
         ]);
         if (!active) return;
         setKpis(kpiRes.data);
@@ -340,8 +340,8 @@ function NotificacionesFeed({ usuario }: { usuario: Usuario }) {
     setError(false);
     try {
       const { data } = await supabase
-        .from('notificaciones_internas')
-        .select('id, titulo, mensaje, created_at, tipo, leido, referencia_tipo')
+        .from('notificaciones')
+        .select('id, titulo, mensaje, created_at, tipo, leida, modulo')
         .eq('usuario_id', usuario.id)
         .order('created_at', { ascending: false })
         .limit(5);
@@ -367,9 +367,9 @@ function NotificacionesFeed({ usuario }: { usuario: Usuario }) {
       title="Notificaciones"
       icon={<Bell className="w-3.5 h-3.5" />}
       onMore={() => nav('/centro-notificaciones')}
-      badge={items.filter(n => !n.leido).length > 0 ? (
+      badge={items.filter(n => !n.leida).length > 0 ? (
         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400">
-          {items.filter(n => !n.leido).length}
+          {items.filter(n => !n.leida).length}
         </span>
       ) : undefined}
     >
@@ -396,26 +396,26 @@ function NotificacionesFeed({ usuario }: { usuario: Usuario }) {
               key={n.id}
               className={cn(
                 'px-4 py-3 flex items-start gap-3 transition-colors hover:bg-neutral-50 dark:hover:bg-white/[0.02]',
-                !n.leido && 'bg-blue-50/40 dark:bg-blue-500/[0.04]'
+                !n.leida && 'bg-blue-50/40 dark:bg-blue-500/[0.04]'
               )}
             >
               <div className={cn(
                 'mt-0.5 w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0',
-                !n.leido ? 'bg-blue-100 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400'
+                !n.leida ? 'bg-blue-100 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400'
                   : 'bg-neutral-100 dark:bg-white/6 text-neutral-400 dark:text-white/30'
               )}>
-                {typeIcon[n.referencia_tipo?.toLowerCase()] || <Bell className="w-3.5 h-3.5" />}
+                {typeIcon[n.modulo?.toLowerCase()] || <Bell className="w-3.5 h-3.5" />}
               </div>
               <div className="flex-1 min-w-0">
                 <p className={cn(
                   'text-sm leading-snug truncate',
-                  !n.leido ? 'font-medium text-neutral-800 dark:text-white/80' : 'text-neutral-600 dark:text-white/55'
+                  !n.leida ? 'font-medium text-neutral-800 dark:text-white/80' : 'text-neutral-600 dark:text-white/55'
                 )}>
                   {n.titulo || n.mensaje}
                 </p>
                 <p className="text-xs text-neutral-400 dark:text-white/30 mt-0.5">{getRelativeTime(n.created_at)}</p>
               </div>
-              {!n.leido && (
+              {!n.leida && (
                 <span className="mt-1.5 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
               )}
             </li>
@@ -548,10 +548,11 @@ function ComunicadosFeed() {
     setError(false);
     try {
       const { data } = await supabase
-        .from('comunicados')
-        .select('id, titulo, tipo, created_at')
-        .eq('activo', true)
-        .order('created_at', { ascending: false })
+        .from('comunicados_publicaciones')
+        .select('id, titulo, imagen_principal, fecha_publicacion, fijado')
+        .eq('publicado', true)
+        .order('fijado', { ascending: false })
+        .order('fecha_publicacion', { ascending: false })
         .limit(4);
       setItems(data || []);
     } catch {
@@ -594,20 +595,24 @@ function ComunicadosFeed() {
                 className="w-full flex items-start gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-white/[0.02] transition-colors group text-left"
               >
                 <div className="w-11 h-11 rounded-xl flex-shrink-0 overflow-hidden bg-neutral-100 dark:bg-white/6 flex items-center justify-center">
-                  <Newspaper className="w-4 h-4 text-neutral-300 dark:text-white/20" />
+                  {c.imagen_principal ? (
+                    <img src={c.imagen_principal} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <Newspaper className="w-4 h-4 text-neutral-300 dark:text-white/20" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-neutral-700 dark:text-white/70 leading-snug line-clamp-2 group-hover:text-neutral-900 dark:group-hover:text-white/85 transition-colors">
                     {c.titulo}
                   </p>
                   <div className="flex items-center gap-2 mt-1">
-                    {c.tipo && (
-                      <span className="text-[10px] font-medium text-neutral-400 dark:text-white/30 bg-neutral-100 dark:bg-white/6 px-2 py-0.5 rounded-full">
-                        {c.tipo}
+                    {c.fijado && (
+                      <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 rounded-full">
+                        Fijado
                       </span>
                     )}
                     <span className="text-[11px] text-neutral-400 dark:text-white/30">
-                      {new Date(c.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
+                      {new Date(c.fecha_publicacion || c.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
                     </span>
                   </div>
                 </div>
@@ -635,7 +640,7 @@ function EventosFeed() {
       try {
         const { data } = await supabase
           .from('aula_virtual_sesiones')
-          .select('id, titulo, fecha_inicio, modalidad, descripcion')
+          .select('id, titulo, fecha_inicio, estado, descripcion')
           .gte('fecha_inicio', new Date().toISOString())
           .order('fecha_inicio', { ascending: true })
           .limit(3);
