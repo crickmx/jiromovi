@@ -363,6 +363,11 @@ export async function generateMultiGmmPdf(
     return cur > max ? idx : maxIdx;
   }, 0);
 
+  const asesorNombre   = usuario?.nombre_publico || usuario?.nombre || 'Asesor';
+  const asesorCelular  = usuario?.celular_laboral || usuario?.celular || '';
+  const asesorWebSlug  = usuario?.web_slug || '';
+  const asesorEmail    = usuario?.email_laboral || usuario?.email || '';
+
   // Build QR target URL: WhatsApp if phone available, otherwise web profile
   const qrTargetUrl = asesorWebSlug
     ? `https://agentedeseguros.website/${asesorWebSlug}`
@@ -382,11 +387,6 @@ export async function generateMultiGmmPdf(
     loadImageAsBase64('/logo-bupa.png'),
     qrApiUrl ? loadImageAsBase64(qrApiUrl) : Promise.resolve(null),
   ]);
-
-  const asesorNombre   = usuario?.nombre_publico || usuario?.nombre || 'Asesor';
-  const asesorCelular  = usuario?.celular_laboral || usuario?.celular || '';
-  const asesorWebSlug  = usuario?.web_slug || '';
-  const asesorEmail    = usuario?.email_laboral || usuario?.email || '';
 
   // ================================================================
   // PAGE 1: COVER
