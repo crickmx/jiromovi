@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Store, Package, Plus, Pencil as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign, Tag, Download, Upload, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, Wrench } from 'lucide-react';
+import { Store, Package, Plus, Pencil as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign, Tag, Download, Upload, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, Wrench, Users, Zap } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   obtenerTodosProductos,
@@ -30,7 +30,7 @@ export default function StoreAdmin() {
   const [productos, setProductos] = useState<StoreProducto[]>([]);
   const [categorias, setCategorias] = useState<StoreCategoria[]>([]);
   const [loading, setLoading] = useState(true);
-  const [vistaActual, setVistaActual] = useState<'productos' | 'categorias'>('productos');
+  const [vistaActual, setVistaActual] = useState<'productos' | 'categorias' | 'equipos' | 'triggers'>('productos');
 
   const [showProductoModal, setShowProductoModal] = useState(false);
   const [productoEditando, setProductoEditando] = useState<StoreProducto | null>(null);
@@ -220,6 +220,30 @@ export default function StoreAdmin() {
           >
             <FolderOpen className="w-5 h-5 inline mr-2" />
             Categorías
+          </button>
+
+          <button
+            onClick={() => setVistaActual('equipos')}
+            className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+              vistaActual === 'equipos'
+                ? 'bg-accent text-white'
+                : 'bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/15'
+            }`}
+          >
+            <Users className="w-5 h-5 inline mr-2" />
+            Equipos
+          </button>
+
+          <button
+            onClick={() => setVistaActual('triggers')}
+            className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+              vistaActual === 'triggers'
+                ? 'bg-accent text-white'
+                : 'bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/15'
+            }`}
+          >
+            <Zap className="w-5 h-5 inline mr-2" />
+            Triggers
           </button>
         </div>
 
@@ -413,7 +437,7 @@ export default function StoreAdmin() {
               </div>
             </div>
           </div>
-        ) : (
+        ) : vistaActual === 'categorias' ? (
           <div>
             <div className="flex justify-end mb-6">
               <button
@@ -468,6 +492,10 @@ export default function StoreAdmin() {
               ))}
             </div>
           </div>
+        ) : vistaActual === 'equipos' ? (
+          <EquiposAccesoPanel />
+        ) : (
+          <TriggersPanel />
         )}
 
         {showProductoModal && (
@@ -1230,5 +1258,328 @@ function CategoriaModal({ categoria, onClose, onGuardar }: CategoriaModalProps) 
         </div>
       </div>
     </BaseModal>
+  );
+}
+
+// ───────────────────────────────────────────────────────
+// Panel: Equipos con acceso al store
+// ───────────────────────────────────────────────────────
+interface GrupoVisibilizacion {
+  id: string;
+  nombre: string;
+  color: string | null;
+  activo: boolean;
+}
+
+function EquiposAccesoPanel() {
+  const [grupos, setGrupos] = useState<GrupoVisibilizacion[]>([]);
+  const [equiposConAcceso, setEquiposConAcceso] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [guardando, setGuardando] = useState<string | null>(null);
+
+  useEffect(() => { cargar(); }, []);
+
+  const cargar = async () => {
+    setLoading(true);
+    const [gruposRes, accesoRes] = await Promise.all([
+      supabase.from('tramites_grupos_visualizacion').select('id, nombre, color, activo').eq('activo', true).order('nombre'),
+      supabase.from('store_equipos_acceso').select('grupo_id'),
+    ]);
+    setGrupos(gruposRes.data ?? []);
+    setEquiposConAcceso(new Set((accesoRes.data ?? []).map((r: { grupo_id: string }) => r.grupo_id)));
+    setLoading(false);
+  };
+
+  const toggleAcceso = async (grupoId: string, tieneAcceso: boolean) => {
+    setGuardando(grupoId);
+    if (tieneAcceso) {
+      await supabase.from('store_equipos_acceso').delete().eq('grupo_id', grupoId);
+      setEquiposConAcceso(prev => { const s = new Set(prev); s.delete(grupoId); return s; });
+    } else {
+      await supabase.from('store_equipos_acceso').insert({ grupo_id: grupoId });
+      setEquiposConAcceso(prev => new Set([...prev, grupoId]));
+    }
+    setGuardando(null);
+  };
+
+  if (loading) return <div className="text-center py-12 text-neutral-500">Cargando equipos...</div>;
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Equipos con acceso al store</h2>
+        <p className="text-sm text-neutral-500 dark:text-white/50 mt-1">
+          Los miembros de estos equipos pueden ver y editar todos los pedidos del store, y reciben notificaciones.
+        </p>
+      </div>
+      <div className="space-y-3 max-w-xl">
+        {grupos.length === 0 && (
+          <div className="text-sm text-neutral-400">No hay equipos configurados. Crea equipos en Tramites &rarr; Equipos.</div>
+        )}
+        {grupos.map(grupo => {
+          const tieneAcceso = equiposConAcceso.has(grupo.id);
+          return (
+            <div key={grupo.id} className="flex items-center justify-between bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 px-5 py-4">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: grupo.color ?? '#6b7280' }} />
+                <span className="font-medium text-neutral-900 dark:text-white">{grupo.nombre}</span>
+              </div>
+              <button
+                disabled={guardando === grupo.id}
+                onClick={() => toggleAcceso(grupo.id, tieneAcceso)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${tieneAcceso ? 'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400' : 'bg-accent text-white hover:bg-accent-hover'}`}
+              >
+                {tieneAcceso
+                  ? <><EyeOff className="w-4 h-4" /><span className="ml-1.5">Quitar acceso</span></>
+                  : <><Eye className="w-4 h-4" /><span className="ml-1.5">Dar acceso</span></>}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────
+// Panel: Triggers store → tramites
+// ───────────────────────────────────────────────────────
+interface StoreTrigger {
+  id: string;
+  nombre: string;
+  estatus_destino_id: string;
+  ticket_tipo_id: string;
+  descripcion_template: string;
+  activo: boolean;
+}
+interface StoreEstatusRow { id: string; nombre: string; }
+interface TicketTipoRow { id: string; nombre: string; value: string; }
+
+function TriggersPanel() {
+  const [triggers, setTriggers] = useState<StoreTrigger[]>([]);
+  const [estatusList, setEstatusList] = useState<StoreEstatusRow[]>([]);
+  const [tiposList, setTiposList] = useState<TicketTipoRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editando, setEditando] = useState<StoreTrigger | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  const [nombre, setNombre] = useState('');
+  const [estatusDestinoId, setEstatusDestinoId] = useState('');
+  const [ticketTipoId, setTicketTipoId] = useState('');
+  const [descripcionTemplate, setDescripcionTemplate] = useState('');
+  const [activoTrigger, setActivoTrigger] = useState(true);
+
+  useEffect(() => { cargar(); }, []);
+
+  const cargar = async () => {
+    setLoading(true);
+    const [triggersRes, estatusRes, tiposRes] = await Promise.all([
+      supabase.from('store_tramite_triggers').select('*').order('created_at'),
+      supabase.from('store_estatus_pedidos').select('id, nombre').eq('activo', true).order('orden'),
+      supabase.from('ticket_tipos').select('id, nombre, value').order('nombre'),
+    ]);
+    setTriggers(triggersRes.data ?? []);
+    setEstatusList(estatusRes.data ?? []);
+    setTiposList(tiposRes.data ?? []);
+    setLoading(false);
+  };
+
+  const abrirFormNuevo = () => {
+    setEditando(null);
+    setNombre('');
+    setEstatusDestinoId(estatusList[0]?.id ?? '');
+    setTicketTipoId(tiposList[0]?.id ?? '');
+    setDescripcionTemplate('Pedido {{folio}} cambio a {{estatus}} -- revisar y dar seguimiento.');
+    setActivoTrigger(true);
+    setShowForm(true);
+  };
+
+  const abrirFormEditar = (t: StoreTrigger) => {
+    setEditando(t);
+    setNombre(t.nombre);
+    setEstatusDestinoId(t.estatus_destino_id);
+    setTicketTipoId(t.ticket_tipo_id);
+    setDescripcionTemplate(t.descripcion_template);
+    setActivoTrigger(t.activo);
+    setShowForm(true);
+  };
+
+  const guardar = async () => {
+    if (!nombre.trim() || !estatusDestinoId || !ticketTipoId) return;
+    setGuardando(true);
+    const payload = {
+      nombre: nombre.trim(),
+      estatus_destino_id: estatusDestinoId,
+      ticket_tipo_id: ticketTipoId,
+      descripcion_template: descripcionTemplate,
+      activo: activoTrigger,
+    };
+    if (editando) {
+      await supabase.from('store_tramite_triggers').update(payload).eq('id', editando.id);
+    } else {
+      await supabase.from('store_tramite_triggers').insert(payload);
+    }
+    setGuardando(false);
+    setShowForm(false);
+    await cargar();
+  };
+
+  const eliminar = async (id: string) => {
+    if (!confirm('Eliminar este trigger?')) return;
+    await supabase.from('store_tramite_triggers').delete().eq('id', id);
+    await cargar();
+  };
+
+  const toggleActivo = async (t: StoreTrigger) => {
+    await supabase.from('store_tramite_triggers').update({ activo: !t.activo }).eq('id', t.id);
+    await cargar();
+  };
+
+  const getNombreEstatus = (id: string) => estatusList.find(e => e.id === id)?.nombre ?? id;
+  const getNombreTipo = (id: string) => tiposList.find(t => t.id === id)?.nombre ?? id;
+
+  if (loading) return <div className="text-center py-12 text-neutral-500">Cargando triggers...</div>;
+
+  return (
+    <div>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Triggers automaticos</h2>
+          <p className="text-sm text-neutral-500 dark:text-white/50 mt-1">
+            Cuando un pedido cambia a cierto estatus, se crea automaticamente un tramite vinculado.
+          </p>
+        </div>
+        <button
+          onClick={abrirFormNuevo}
+          className="flex items-center gap-2 bg-accent text-white px-5 py-2.5 rounded-lg hover:bg-accent-hover transition-colors font-medium text-sm shadow-sm whitespace-nowrap"
+        >
+          <Plus className="w-4 h-4" /><span className="ml-1">Nuevo trigger</span>
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6 mb-6">
+          <h3 className="font-semibold text-neutral-900 dark:text-white mb-4">
+            {editando ? 'Editar trigger' : 'Nuevo trigger'}
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">Nombre del trigger</label>
+              <input
+                type="text"
+                value={nombre}
+                onChange={e => setNombre(e.target.value)}
+                placeholder="Ej: Pedido confirmado"
+                className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">Cuando cambia a estatus</label>
+                <select
+                  value={estatusDestinoId}
+                  onChange={e => setEstatusDestinoId(e.target.value)}
+                  className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
+                >
+                  <option value="">Selecciona estatus...</option>
+                  {estatusList.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">Crea tramite de tipo</label>
+                <select
+                  value={ticketTipoId}
+                  onChange={e => setTicketTipoId(e.target.value)}
+                  className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
+                >
+                  <option value="">Selecciona tipo...</option>
+                  {tiposList.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">Plantilla de descripcion</label>
+              <textarea
+                value={descripcionTemplate}
+                onChange={e => setDescripcionTemplate(e.target.value)}
+                rows={2}
+                className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm resize-none"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="trigger-activo-chk"
+                checked={activoTrigger}
+                onChange={e => setActivoTrigger(e.target.checked)}
+                className="w-4 h-4 text-accent rounded"
+              />
+              <label htmlFor="trigger-activo-chk" className="text-sm text-neutral-700 dark:text-white/70">Trigger activo</label>
+            </div>
+          </div>
+          <div className="flex gap-3 mt-5">
+            <button
+              onClick={guardar}
+              disabled={guardando || !nombre.trim() || !estatusDestinoId || !ticketTipoId}
+              className="bg-accent text-white px-5 py-2 rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium disabled:opacity-50"
+            >
+              {guardando ? 'Guardando...' : editando ? 'Actualizar' : 'Crear'}
+            </button>
+            <button
+              onClick={() => setShowForm(false)}
+              className="bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 px-5 py-2 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/15 transition-colors text-sm font-medium"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {triggers.length === 0 ? (
+        <div className="text-center py-12 text-neutral-400">No hay triggers configurados. Crea uno para empezar.</div>
+      ) : (
+        <div className="space-y-3">
+          {triggers.map(trigger => (
+            <div
+              key={trigger.id}
+              className={`flex items-center justify-between bg-white dark:bg-white/5 rounded-xl border px-5 py-4 ${trigger.activo ? 'border-neutral-200 dark:border-white/10' : 'border-neutral-100 dark:border-white/5 opacity-60'}`}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <Zap className={`w-4 h-4 flex-shrink-0 ${trigger.activo ? 'text-yellow-500' : 'text-neutral-400'}`} />
+                  <span className="font-medium text-neutral-900 dark:text-white truncate">{trigger.nombre}</span>
+                  {!trigger.activo && (
+                    <span className="text-xs bg-neutral-100 dark:bg-white/10 text-neutral-500 px-2 py-0.5 rounded-full">Inactivo</span>
+                  )}
+                </div>
+                <div className="text-xs text-neutral-500 dark:text-white/50">
+                  Estatus: <strong>{getNombreEstatus(trigger.estatus_destino_id)}</strong> &middot; Tramite: <strong>{getNombreTipo(trigger.ticket_tipo_id)}</strong>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                <button
+                  onClick={() => toggleActivo(trigger)}
+                  className="p-2 rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors"
+                >
+                  {trigger.activo ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={() => abrirFormEditar(trigger)}
+                  className="p-2 rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => eliminar(trigger.id)}
+                  className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

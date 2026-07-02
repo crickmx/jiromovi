@@ -225,11 +225,42 @@ export default function StorePedidoDetalle() {
         await activarPremiumSiAplica(pedido);
       }
 
+      // Disparar triggers: crear tramites automaticos vinculados al pedido
+      await dispararTriggersEstatus(nuevoEstatusId, nuevoEstatus?.nombre ?? '');
+
       await cargarDatos();
     } catch (error) {
       console.error('Error actualizando estatus:', error);
     } finally {
       setActualizandoEstatus(false);
+    }
+  };
+
+  const dispararTriggersEstatus = async (nuevoEstatusId: string, nombreEstatus: string) => {
+    if (!pedidoId || !usuario?.id) return;
+    const { data: triggers } = await supabase
+      .from('store_tramite_triggers')
+      .select('*, ticket_tipos!inner(value, nombre)')
+      .eq('estatus_destino_id', nuevoEstatusId)
+      .eq('activo', true);
+    if (!triggers || triggers.length === 0) return;
+
+    const folio = pedido?.folio_oc ?? pedidoId.slice(0, 8).toUpperCase();
+    for (const trigger of triggers) {
+      const tipo = (trigger.ticket_tipos as { value: string; nombre: string }).value;
+      const descripcion = (trigger.descripcion_template as string)
+        .replace(/\{\{folio\}\}/g, folio)
+        .replace(/\{\{estatus\}\}/g, nombreEstatus);
+      await supabase.from('tickets').insert({
+        titulo: `${trigger.nombre} — Pedido ${folio}`,
+        descripcion,
+        tipo,
+        prioridad: 'Media',
+        estatus: 'Abierto',
+        creado_por: usuario.id,
+        oficina_id: usuario.oficina_id ?? null,
+        store_pedido_id: pedidoId,
+      });
     }
   };
 
