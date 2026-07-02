@@ -11,7 +11,7 @@ import { TramiteHistorial } from '../components/tramites/TramiteHistorial';
 import { ComisionesPendientes } from '../components/tramites/ComisionesPendientes';
 import { crearNotificacion } from '../lib/notificationHelpers';
 import { SearchableSelect } from '../components/tramites/catalogos/SearchableSelect';
-import { TriggerConfirmModal, PendingTrigger, ExistingChild } from '../components/tramites/TriggerConfirmModal';
+import { TriggerConfirmModal, type PendingTrigger, type ExistingChild } from '../components/tramites/TriggerConfirmModal';
 
 interface TramiteEstatus {
   id: string;

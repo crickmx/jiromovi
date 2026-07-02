@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../../../lib/supabase';
-import { Equipo, Permiso, RolPermiso, UsuarioOverride } from './types';
+import type { Equipo, Permiso, RolPermiso, UsuarioOverride } from './types';
 
 const ROLES_CONFIGURABLES = ['Agente', 'Empleado', 'Gerente'];
 

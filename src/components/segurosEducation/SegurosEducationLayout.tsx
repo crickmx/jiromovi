@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { GraduationCap, Video, Calendar, ChartBar as BarChart3, BookOpen, Hop as Home } from 'lucide-react';
 
 export const NAV_ITEMS = [

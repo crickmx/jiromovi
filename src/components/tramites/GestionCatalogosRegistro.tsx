@@ -9,7 +9,7 @@ import { PermisosPanel } from './catalogos/PermisosPanel';
 import { HistorialPanel } from './catalogos/HistorialPanel';
 import { TriggersTab } from './catalogos/TriggersTab';
 import { ColorPicker } from './catalogos/ColorPicker';
-import { TicketTipo, AREAS, Area, slugify } from './catalogos/types';
+import { type TicketTipo, AREAS, type Area, slugify } from './catalogos/types';
 import { logHistorial } from './catalogos/logHistorial';
 
 interface TipoStats { tickets: number; campos: number }

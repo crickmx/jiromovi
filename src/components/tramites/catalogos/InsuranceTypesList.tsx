@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Save, Pencil, Trash2, Shield, Search, ChevronDown, ChevronRight } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
-import { InsuranceType } from './types';
+import type { InsuranceType } from './types';
 
 interface Props {
   showToast: (msg: string, type?: 'success' | 'error') => void;

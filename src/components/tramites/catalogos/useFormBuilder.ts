@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
-import { TipoCampo, CampoTipo, CAMPO_TIPOS, slugify } from './types';
+import { type TipoCampo, type CampoTipo, CAMPO_TIPOS, slugify } from './types';
 import { logHistorial } from './logHistorial';
 
 // Campos sistema que nunca se pueden mover ni eliminar
