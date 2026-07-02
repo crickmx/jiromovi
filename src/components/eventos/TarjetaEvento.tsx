@@ -1,5 +1,5 @@
 import { Calendar, Clock, User, ExternalLink, Pencil as Edit, Trash2, Eye } from 'lucide-react';
-import { AulaEvento, formatearFechaEvento, formatearHoraEvento, esEventoFuturo, eventoPorComenzar } from '../../lib/aulaEventosUtils';
+import { type AulaEvento, formatearFechaEvento, formatearHoraEvento, esEventoFuturo, eventoPorComenzar } from '../../lib/aulaEventosUtils';
 
 interface TarjetaEventoProps {
   evento: AulaEvento;

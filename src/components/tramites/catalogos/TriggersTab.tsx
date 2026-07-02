@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Trash2, Save, ChevronDown, ChevronRight, Pencil, Zap, ArrowRight, AlertCircle } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
-import { TicketTipo, TipoCampo } from './types';
+import type { TicketTipo, TipoCampo } from './types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-import { TipoCampo } from './types';
+import type { TipoCampo } from './types';
 
 export function FormPreview({ campos }: { campos: TipoCampo[] }) {
   if (campos.length === 0) return null;

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, useMemo, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
 import { cargarPermisosAdicionales } from '../lib/permisosUtils';

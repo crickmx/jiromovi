@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Calendar, Clock, User, Link as LinkIcon, FileText, Save } from 'lucide-react';
-import { SelectorPermisos, PermisosSeleccionados } from './SelectorPermisos';
-import { AulaEvento } from '../../lib/aulaEventosUtils';
+import { SelectorPermisos, type PermisosSeleccionados } from './SelectorPermisos';
+import type { AulaEvento } from '../../lib/aulaEventosUtils';
 
 interface FormularioEventoProps {
   evento?: AulaEvento | null;

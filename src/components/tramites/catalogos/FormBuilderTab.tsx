@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, Save, Trash2, Settings, GripVertical, X, Eye, Lock, Zap } from 'lucide-react';
 import { useFormBuilder, LOCKED_SISTEMA_KEYS, CONFIGURABLE_SISTEMA_KEYS, SISTEMA_CAMPO_DEFAULTS } from './useFormBuilder';
 import { FormPreview } from './FormPreview';
-import { CAMPO_TIPOS, SISTEMA_TIPO_META, MIME_OPTIONS, slugify, CampoTipo } from './types';
+import { CAMPO_TIPOS, SISTEMA_TIPO_META, MIME_OPTIONS, slugify, type CampoTipo } from './types';
 import { supabase } from '../../../lib/supabase';
 
 interface Props {
