@@ -32,11 +32,6 @@ const REGION_STRINGS: Record<'Zona 1' | 'Zona 2', string> = {
   'Zona 2': 'Mexico Region 2 (no CDMX, ZM Y MTY)',
 };
 
-// FD_Zona: multiplier applied per-member before summing
-const FD_ZONA: Record<'Zona 1' | 'Zona 2', number> = {
-  'Zona 1': 0.8,
-  'Zona 2': 1.0,
-};
 
 const ADMINISTRACION = 1600;
 
@@ -138,12 +133,10 @@ export function calculateBnv(
     );
 
     const regionStr = REGION_STRINGS[input.region_zone] ?? REGION_STRINGS['Zona 1'];
-    const fdZona = FD_ZONA[input.region_zone] ?? 1.0;
 
     const peopleResults: BnvPersonResult[] = people.map(p => {
       const llave = buildLookupKey(planName, regionStr, p.age);
       const rawRate = rateIndex.get(llave) ?? 0;
-      const memberRate = rawRate * fdZona;
 
       return {
         person_id: p.id,
@@ -152,14 +145,14 @@ export function calculateBnv(
         age: p.age,
         lookup_key: llave,
         base_rate: rawRate,
-        discounted_rate: memberRate,
+        discounted_rate: rawRate,
       };
     });
 
     const missingRates = peopleResults.filter(p => p.base_rate === 0);
 
-    // prima_anual_total = pure sum of member rates × fdZona (no Administracion, no IVA)
-    // This matches how the DB stores prima_neta_total: $21,634 = rate only
+    // The region is already encoded in the lookup key — rate from DB is the direct prima neta.
+    // No zone multiplier needed; different zones use different lookup keys.
     const sumMemberRates = peopleResults.reduce((sum, p) => sum + p.discounted_rate, 0);
     const primaAnualTotal = sumMemberRates;
 
