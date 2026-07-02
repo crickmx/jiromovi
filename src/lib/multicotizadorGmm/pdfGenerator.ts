@@ -363,12 +363,24 @@ export async function generateMultiGmmPdf(
     return cur > max ? idx : maxIdx;
   }, 0);
 
+  // Build QR target URL: WhatsApp if phone available, otherwise web profile
+  const qrTargetUrl = asesorWebSlug
+    ? `https://agentedeseguros.website/${asesorWebSlug}`
+    : asesorCelular
+    ? `https://wa.me/52${asesorCelular.replace(/\D/g, '')}`
+    : null;
+
+  const qrApiUrl = qrTargetUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(qrTargetUrl)}&format=png&margin=2`
+    : null;
+
   // Preload images
-  const [logoBase64, profileBase64, bxLogoBase64, bupaLogoBase64] = await Promise.all([
+  const [logoBase64, profileBase64, bxLogoBase64, bupaLogoBase64, qrBase64] = await Promise.all([
     logoUrl ? loadImageAsBase64(logoUrl) : Promise.resolve(null),
     usuario?.imagen_perfil_url ? loadImageAsBase64(usuario.imagen_perfil_url) : Promise.resolve(null),
     loadImageAsBase64('/logo-bx.png'),
     loadImageAsBase64('/logo-bupa.png'),
+    qrApiUrl ? loadImageAsBase64(qrApiUrl) : Promise.resolve(null),
   ]);
 
   const asesorNombre   = usuario?.nombre_publico || usuario?.nombre || 'Asesor';
@@ -477,6 +489,26 @@ export async function generateMultiGmmPdf(
       doc.text(PRODUCT_LABELS[pid], logoX, logoSectionY + 11);
       logoX += 50;
     }
+  }
+
+  // QR code block
+  if (qrBase64 && qrTargetUrl) {
+    const qrSize = 30;
+    const qrX = pageWidth - margin - qrSize;
+    const qrBlockY = logoSectionY - 2;
+
+    try {
+      doc.addImage(qrBase64, 'PNG', qrX, qrBlockY, qrSize, qrSize);
+    } catch { /* skip */ }
+
+    doc.setFontSize(5);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...accent);
+    doc.text('ESCANEA PARA', qrX + qrSize / 2, qrBlockY + qrSize + 4, { align: 'center' });
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(100, 105, 115);
+    const qrLabel = asesorWebSlug ? 'VER MI PERFIL' : 'CONTACTAR POR WHATSAPP';
+    doc.text(qrLabel, qrX + qrSize / 2, qrBlockY + qrSize + 7.5, { align: 'center' });
   }
 
   // Advisor strip at bottom of cover
