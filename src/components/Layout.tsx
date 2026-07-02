@@ -11,6 +11,7 @@ import { resolveWorkspace } from '../lib/workspaceConfig';
 import type { UserRole } from '../lib/workspaceConfig';
 import { useModuleVisibility } from '../lib/useModuleVisibility';
 import { useTramitesAttentionCount } from '../hooks/useTramitesAttentionCount';
+import { useStoreAttentionCount } from '../hooks/useStoreAttentionCount';
 
 // Routes that need full-height layout (no padding, overflow-hidden)
 const FULL_HEIGHT_PREFIXES = [
@@ -42,8 +43,14 @@ export function Layout({ children }: LayoutProps) {
   const isFullHeight = FULL_HEIGHT_PREFIXES.some(prefix => location.pathname.startsWith(prefix));
 
   const tramitesAttentionCount = useTramitesAttentionCount(usuario?.id);
-  const badgeCounts = tramitesAttentionCount > 0 ? { '/tramites': tramitesAttentionCount } : {};
-  const workspaceBadges = tramitesAttentionCount > 0 ? { comercial: tramitesAttentionCount } : {};
+  const storeAttentionCount = useStoreAttentionCount(usuario?.id);
+
+  const badgeCounts: Record<string, number> = {};
+  if (tramitesAttentionCount > 0) badgeCounts['/tramites'] = tramitesAttentionCount;
+  if (storeAttentionCount > 0) badgeCounts['/store'] = storeAttentionCount;
+
+  const workspaceBadges: Partial<Record<string, number>> = {};
+  if (tramitesAttentionCount > 0) workspaceBadges['comercial'] = tramitesAttentionCount;
 
   // Auto-close drawer on route change
   useEffect(() => {
@@ -70,6 +77,7 @@ export function Layout({ children }: LayoutProps) {
           isModuleVisible={isModuleVisible}
           oficinaId={oficinaId}
           workspaceBadges={workspaceBadges}
+          topLevelBadges={storeAttentionCount > 0 ? { '/store': storeAttentionCount } : {}}
         />
       </div>
 

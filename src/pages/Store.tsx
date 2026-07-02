@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useStoreAttentionCount } from '../hooks/useStoreAttentionCount';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, Package, Settings, ShoppingBag, CircleCheck as CheckCircle, Circle as XCircle, Wrench } from 'lucide-react';
@@ -23,6 +24,7 @@ export default function Store() {
   const navigate = useNavigate();
 
   const isAdmin = tienePermisoAdminEnModulo(usuario, MODULOS.STORE);
+  const storeAttentionCount = useStoreAttentionCount(usuario?.id);
   const [productos, setProductos] = useState<StoreProducto[]>([]);
   const [categorias, setCategorias] = useState<StoreCategoria[]>([]);
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<string>('');
@@ -115,9 +117,17 @@ export default function Store() {
             <div className="flex flex-wrap items-center gap-2">
               {isAdmin && (
                 <>
-                  <Button variant="outline" size="sm" onClick={() => navigate('/store/pedidos')}>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/store/pedidos')} className="relative">
                     <ShoppingBag className="w-4 h-4 mr-1.5" />
                     <span className="hidden sm:inline">Pedidos</span>
+                    {storeAttentionCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center">
+                        <span className="absolute inset-0 rounded-full bg-red-400 opacity-60 animate-ping" style={{ animationDuration: '2s' }} />
+                        <span className="relative min-w-[16px] h-4 px-[3px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                          {storeAttentionCount > 99 ? '99+' : storeAttentionCount}
+                        </span>
+                      </span>
+                    )}
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => navigate('/store/admin')}>
                     <Settings className="w-4 h-4 mr-1.5" />
