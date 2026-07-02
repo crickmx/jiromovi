@@ -158,21 +158,21 @@ export function calculateBnv(
 
     const missingRates = peopleResults.filter(p => p.base_rate === 0);
 
-    // Sum all member rates (already multiplied by FD_Zona)
+    // prima_anual_total = pure sum of member rates × fdZona (no Administracion, no IVA)
+    // This matches how the DB stores prima_neta_total: $21,634 = rate only
     const sumMemberRates = peopleResults.reduce((sum, p) => sum + p.discounted_rate, 0);
-    // Add Administracion once, then apply IVA
-    const primaAnualTotal = (sumMemberRates + ADMINISTRACION) * (1 + IVA_RATE);
+    const primaAnualTotal = sumMemberRates;
 
     const totals: Record<FormaPago, BnvPaymentBreakdown> = {} as any;
     const formasPago: FormaPago[] = ['Anual', 'Semestral', 'Trimestral', 'Mensual'];
 
     for (const fp of formasPago) {
       const { factor, num_recibos } = PAYMENT_FACTORS[fp];
-      // Apply payment frequency factor to the annual pre-IVA base
-      const preFactor = sumMemberRates + ADMINISTRACION;
-      const primaNeta = preFactor * factor;
-      const iva = primaNeta * IVA_RATE;
-      const total = primaNeta + iva;
+      // Apply frequency factor to the pure member rates sum, then add Administracion, then IVA
+      const primaNeta = sumMemberRates * factor;
+      const subtotal = primaNeta + ADMINISTRACION;
+      const iva = subtotal * IVA_RATE;
+      const total = subtotal + iva;
       const primerPago = total / num_recibos;
 
       totals[fp] = {
@@ -180,7 +180,7 @@ export function calculateBnv(
         prima_neta: primaNeta,
         asistencia_extranjero: 0,
         derecho_poliza: ADMINISTRACION,
-        subtotal: primaNeta,
+        subtotal,
         iva,
         total,
         primer_pago: primerPago,
