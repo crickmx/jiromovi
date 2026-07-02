@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { MessageSquare, Plus, Users, Search } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,6 +23,7 @@ interface Chat {
 
 export function Chat() {
   const { usuario } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [loading, setLoading] = useState(true);
@@ -163,6 +165,17 @@ export function Chat() {
 
       console.log('[Chat] Chats enriquecidos:', enrichedChats.length);
       setChats(enrichedChats);
+
+      const openChatId = searchParams.get('open');
+      if (openChatId) {
+        const targetChat = enrichedChats.find((c: any) => c.id === openChatId);
+        if (targetChat) {
+          setSelectedChat(targetChat);
+        } else {
+          await loadChatDetails(openChatId);
+        }
+        setSearchParams({}, { replace: true });
+      }
     } catch (error) {
       console.error('[Chat] Error general:', error);
     } finally {

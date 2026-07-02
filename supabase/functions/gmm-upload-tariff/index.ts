@@ -1,3 +1,4 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import * as XLSX from 'npm:xlsx@0.18.5';
 
@@ -46,8 +47,21 @@ const EXCEL_RANGES: Record<string, ExcelRangeDefinition> = {
   iva: { sheet: 'Cotizacion', range: 'O69', type: 'value' },
 };
 
+function resolveSheetName(workbook: XLSX.WorkBook, targetName: string): string | null {
+  if (workbook.Sheets[targetName]) return targetName;
+  const targetLower = targetName.toLowerCase().trim();
+  for (const name of workbook.SheetNames) {
+    if (name.toLowerCase().trim() === targetLower) return name;
+  }
+  for (const name of workbook.SheetNames) {
+    if (name.toLowerCase().trim().startsWith(targetLower)) return name;
+  }
+  return null;
+}
+
 function parseRange(workbook: XLSX.WorkBook, sheetName: string, rangeStr: string, type: string) {
-  const sheet = workbook.Sheets[sheetName];
+  const resolvedName = resolveSheetName(workbook, sheetName);
+  const sheet = resolvedName ? workbook.Sheets[resolvedName] : null;
   if (!sheet) {
     throw new Error(`Sheet "${sheetName}" not found`);
   }
@@ -131,15 +145,20 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (existing) {
-      throw new Error('This tariff file has already been uploaded');
+      throw new Error('Este archivo de tarifas ya fue cargado anteriormente');
     }
 
     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
 
-    const requiredSheets = ['Tarifa', 'Cotizador', 'Cotizacion'];
+    const requiredSheets = ['Tarifa', 'Cotizacion'];
     for (const sheetName of requiredSheets) {
-      if (!workbook.Sheets[sheetName]) {
-        throw new Error(`Required sheet "${sheetName}" not found`);
+      const resolved = resolveSheetName(workbook, sheetName);
+      if (!resolved) {
+        const available = workbook.SheetNames.join(', ');
+        throw new Error(
+          `Hoja "${sheetName}" no encontrada. Hojas disponibles: [${available}]. ` +
+          'Verifique que el archivo sea un cotizador BX+ valido.'
+        );
       }
     }
 
@@ -149,7 +168,7 @@ Deno.serve(async (req: Request) => {
 
     const sanitizedFilename = sanitizeFilename(file.name);
     const storagePath = `${user!.id}/${Date.now()}_${sanitizedFilename}`;
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('gmm-tariffs')
       .upload(storagePath, arrayBuffer, {
         contentType: file.type,

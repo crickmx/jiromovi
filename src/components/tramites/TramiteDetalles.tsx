@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { User, Users, AlertCircle, FileText, Calendar, Clock, Briefcase, Shield, Building2, TrendingUp, UserCheck, X, UserPlus, Wrench } from 'lucide-react';
+import { User, Users, AlertCircle, FileText, Calendar, Clock, Briefcase, Shield, Building2, TrendingUp, UserCheck, X, UserPlus, Wrench, Link as LinkIcon } from 'lucide-react';
+import { addUserToSicas, getSicasMappingStatusForUsers } from '../../lib/sicasUtils';
+import { crearNotificacionGlobal } from '../../lib/notificationHelpers';
 import { getEstatusColor } from '../../lib/registroActividadesTypes';
 
 interface TramiteEstatus {
@@ -43,6 +45,7 @@ interface TramiteData {
   resultado?: string | null;
   insurers?: string[];
   insurers_nombres?: string[];
+  fecha_promesa_entrega?: string | null;
 }
 
 interface Asignacion {
@@ -60,6 +63,18 @@ interface Grupo {
   nombre: string;
 }
 
+interface EstatusOpcion {
+  label: string;
+  slug: string;
+  clasificacion?: string | null;
+}
+
+interface EstatusCampoDinamico {
+  id: string;
+  label: string;
+  config: { opciones?: EstatusOpcion[] };
+}
+
 interface TramiteDetallesProps {
   tramite: TramiteData;
   estatusList: TramiteEstatus[];
@@ -69,9 +84,13 @@ interface TramiteDetallesProps {
   setSelectedPrioridad: (value: 'Alta' | 'Media' | 'Baja') => void;
   canEdit?: boolean;
   canManageAssignment?: boolean;
+  canSelfAssignOnly?: boolean;
   grupoAsignadoId?: string | null;
   onResponsableChange?: (userId: string) => void;
   onEquipoChange?: (grupoId: string | null) => void;
+  estatusCampoDinamico?: EstatusCampoDinamico | null;
+  selectedEstatusSlug?: string;
+  onEstatusSlugChange?: (slug: string) => void;
 }
 
 export function TramiteDetalles({
@@ -83,9 +102,13 @@ export function TramiteDetalles({
   setSelectedPrioridad,
   canEdit = false,
   canManageAssignment = false,
+  canSelfAssignOnly = false,
   grupoAsignadoId,
   onResponsableChange,
   onEquipoChange,
+  estatusCampoDinamico,
+  selectedEstatusSlug,
+  onEstatusSlugChange,
 }: TramiteDetallesProps) {
   const { usuario } = useAuth();
   const [asignaciones, setAsignaciones] = useState<Asignacion[]>([]);
@@ -94,10 +117,35 @@ export function TramiteDetalles({
   const [addingEjecutivo, setAddingEjecutivo] = useState(false);
   const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [selectedGrupoId, setSelectedGrupoId] = useState<string>(grupoAsignadoId ?? '');
+  const [sicasMappedIds, setSicasMappedIds] = useState<Set<string>>(new Set());
+  const [addingToSicas, setAddingToSicas] = useState(false);
+  const [sicasMsg, setSicasMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [inicioEspera, setInicioEspera] = useState<string | null>(null);
 
   useEffect(() => {
     setSelectedGrupoId(grupoAsignadoId ?? '');
   }, [grupoAsignadoId]);
+
+  // Detectar si hay una pausa activa (en_espera) y guardar su inicio
+  useEffect(() => {
+    const esEnEspera = estatusCampoDinamico
+      ? (estatusCampoDinamico.config?.opciones ?? []).find(
+          (o: { slug: string; clasificacion?: string | null }) => o.slug === selectedEstatusSlug
+        )?.clasificacion === 'en_espera'
+      : false;
+
+    if (!esEnEspera) { setInicioEspera(null); return; }
+
+    supabase
+      .from('tramite_pausas')
+      .select('inicio_pausa')
+      .eq('tramite_id', tramite.id)
+      .is('fin_pausa', null)
+      .order('inicio_pausa', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => setInicioEspera(data?.inicio_pausa ?? null));
+  }, [tramite.id, selectedEstatusSlug, estatusCampoDinamico]);
 
   useEffect(() => {
     loadAsignaciones();
@@ -107,34 +155,62 @@ export function TramiteDetalles({
     setSelectedResponsable(tramite.responsable?.id ?? '');
   }, [tramite.responsable?.id]);
 
-  // Load available teams
+  // Load available teams, filtered by the area of this tramite type
   useEffect(() => {
-    supabase
-      .from('tramites_grupos_visualizacion')
-      .select('id, nombre')
-      .eq('activo', true)
-      .order('nombre')
-      .then(({ data }) => { if (data) setGrupos(data as Grupo[]); });
-  }, []);
+    const loadGrupos = async () => {
+      const { data: tipoData } = await supabase
+        .from('ticket_tipos')
+        .select('area_id')
+        .eq('value', tramite.tipo_tramite)
+        .maybeSingle();
+
+      if (tipoData?.area_id) {
+        const { data: equiposAreas } = await supabase
+          .from('tramites_equipos_areas')
+          .select('equipo_id')
+          .eq('area_id', tipoData.area_id);
+        const ids = (equiposAreas ?? []).map((e: { equipo_id: string }) => e.equipo_id);
+        if (ids.length) {
+          const { data } = await supabase
+            .from('tramites_grupos_visualizacion')
+            .select('id, nombre')
+            .in('id', ids)
+            .eq('activo', true)
+            .order('nombre');
+          if (data?.length) { setGrupos(data as Grupo[]); return; }
+        }
+      }
+
+      // Fallback: all active groups (legacy tickets or tipo without area mapping)
+      const { data: todos } = await supabase
+        .from('tramites_grupos_visualizacion')
+        .select('id, nombre')
+        .eq('activo', true)
+        .order('nombre');
+      if (todos) setGrupos(todos as Grupo[]);
+    };
+    loadGrupos();
+  }, [tramite.tipo_tramite]);
 
   // Load team members when selected group changes
   useEffect(() => {
     if (!canManageAssignment) { setTeamMembers([]); return; }
+    // Ejecutivo: solo puede asignarse a sí mismo
+    if (canSelfAssignOnly && usuario) {
+      setTeamMembers([{ id: usuario.id, nombre_completo: (usuario as any).nombre_completo || `${usuario.nombre} ${usuario.apellidos}`.trim() }]);
+      return;
+    }
     const load = async () => {
       if (selectedGrupoId) {
         const { data } = await supabase.rpc('get_grupo_miembros_ejecutivos', { p_grupo_id: selectedGrupoId });
         if (data) setTeamMembers(data as TeamMember[]);
       } else {
-        // No group selected: show all lider+ejecutivo from all active teams
-        const { data: todosGrupos } = await supabase
-          .from('tramites_grupos_visualizacion')
-          .select('id')
-          .eq('activo', true);
-        if (!todosGrupos?.length) { setTeamMembers([]); return; }
+        // No group selected: show lider+ejecutivo from area-filtered groups
+        if (!grupos.length) { setTeamMembers([]); return; }
         const { data: miembros } = await supabase
           .from('tramites_grupos_miembros')
           .select('usuario_id, usuarios!inner(id, nombre_completo)')
-          .in('grupo_id', todosGrupos.map((g: { id: string }) => g.id))
+          .in('grupo_id', grupos.map((g: Grupo) => g.id))
           .in('rol_en_equipo', ['lider', 'ejecutivo']);
         if (miembros) {
           type Row = { usuario_id: string; usuarios: { id: string; nombre_completo: string } };
@@ -151,7 +227,45 @@ export function TramiteDetalles({
       }
     };
     load();
-  }, [selectedGrupoId, canManageAssignment]);
+  }, [selectedGrupoId, canManageAssignment, grupos]);
+
+  // Cargar estado de mapeo SICAS para los miembros del equipo
+  useEffect(() => {
+    if (!teamMembers.length) return;
+    getSicasMappingStatusForUsers(teamMembers.map(m => m.id))
+      .then(ids => setSicasMappedIds(ids));
+  }, [teamMembers]);
+
+  const handleAgregarResponsableASicas = async (userId: string, userName: string) => {
+    if (!usuario) return;
+    const isAdmin = usuario.rol === 'Administrador' || usuario.rol === 'Gerente';
+    setAddingToSicas(true);
+    setSicasMsg(null);
+    try {
+      const result = await addUserToSicas(userId, usuario.id, userName, isAdmin);
+      if (!result.success) {
+        setSicasMsg({ type: 'err', text: result.error || 'Error al agregar' });
+        return;
+      }
+      if (result.status === 'active') {
+        setSicasMsg({ type: 'ok', text: `${userName} agregado a SICAS.` });
+        setSicasMappedIds(prev => new Set([...prev, userId]));
+      } else {
+        setSicasMsg({ type: 'ok', text: 'Solicitud enviada. El admin revisará el mapeo.' });
+        await crearNotificacionGlobal(
+          'Solicitud: agregar usuario a SICAS',
+          `${(usuario as any).nombre_completo || usuario.nombre} solicita agregar a ${userName} al mapeo SICAS.`,
+          '/sicas-admin?tab=vendedores',
+          { tipo: 'rol', rol: 'Administrador' },
+          usuario.id
+        );
+      }
+    } catch (e: any) {
+      setSicasMsg({ type: 'err', text: e.message });
+    } finally {
+      setAddingToSicas(false);
+    }
+  };
 
   const loadAsignaciones = async () => {
     const { data } = await supabase
@@ -186,8 +300,52 @@ export function TramiteDetalles({
     }
   };
 
+  const estatusOpciones = estatusCampoDinamico?.config?.opciones || [];
+  const estatusOpcionActual = estatusOpciones.find(o => o.slug === selectedEstatusSlug);
+  const getEstatusColor = (clasificacion?: string | null) =>
+    clasificacion === 'inicio' ? '#3B82F6'
+    : clasificacion === 'terminacion' ? '#059669'
+    : '#7C3AED';
+
   return (
     <div className="space-y-6">
+      {/* Estatus FormBuilder — PRIMERO y prominente */}
+      {estatusCampoDinamico && (
+        <div className="p-4 rounded-2xl border-2" style={{
+          borderColor: getEstatusColor(estatusOpcionActual?.clasificacion),
+          backgroundColor: getEstatusColor(estatusOpcionActual?.clasificacion) + '10',
+        }}>
+          <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: getEstatusColor(estatusOpcionActual?.clasificacion) }}>
+            {estatusCampoDinamico.label}
+          </p>
+          {canEdit ? (
+            <div className="flex flex-wrap gap-2">
+              {estatusOpciones.map(opt => {
+                const c = getEstatusColor(opt.clasificacion);
+                const isSel = opt.slug === selectedEstatusSlug;
+                return (
+                  <button
+                    key={opt.slug}
+                    type="button"
+                    onClick={() => onEstatusSlugChange?.(opt.slug)}
+                    className="px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all"
+                    style={isSel
+                      ? { backgroundColor: c, borderColor: c, color: '#fff' }
+                      : { backgroundColor: 'transparent', borderColor: c + '60', color: c }}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-xl font-bold" style={{ color: getEstatusColor(estatusOpcionActual?.clasificacion) }}>
+              {estatusOpcionActual?.label ?? selectedEstatusSlug ?? '—'}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Fila 1: Agente | Equipo */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
@@ -265,6 +423,34 @@ export function TramiteDetalles({
         </div>
       </div>
 
+      {/* Indicador SICAS para el responsable seleccionado */}
+      {canManageAssignment && selectedResponsable && !sicasMappedIds.has(selectedResponsable) && (() => {
+        const member = teamMembers.find(m => m.id === selectedResponsable);
+        if (!member) return null;
+        return (
+          <div className="flex items-center gap-3 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-sm">
+            <LinkIcon className="w-4 h-4 text-amber-500 shrink-0" />
+            <span className="text-amber-800 flex-1">
+              <span className="font-medium">{member.nombre_completo}</span> no tiene mapeo en SICAS.
+            </span>
+            {sicasMsg ? (
+              <span className={sicasMsg.type === 'ok' ? 'text-green-700 font-medium' : 'text-red-600 font-medium'}>
+                {sicasMsg.text}
+              </span>
+            ) : (
+              <button
+                type="button"
+                disabled={addingToSicas}
+                onClick={() => handleAgregarResponsableASicas(member.id, member.nombre_completo)}
+                className="px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium transition-colors disabled:opacity-50"
+              >
+                {addingToSicas ? 'Enviando...' : (usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente') ? 'Agregar a SICAS' : 'Solicitar acceso'}
+              </button>
+            )}
+          </div>
+        );
+      })()}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label className="block text-sm font-semibold text-neutral-700 mb-2">
@@ -288,33 +474,33 @@ export function TramiteDetalles({
           )}
         </div>
 
-        <div>
-          <label className="block text-sm font-semibold text-neutral-700 mb-2">
-            Estatus
-          </label>
-          {canEdit ? (
-            <select
-              value={selectedEstatus}
-              onChange={(e) => setSelectedEstatus(e.target.value)}
-              className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all cursor-pointer"
-            >
-              {estatusList.map(estatus => (
-                <option key={estatus.id} value={estatus.id}>{estatus.nombre}</option>
-              ))}
-            </select>
-          ) : (
-            <div
-              className="px-4 py-3 rounded-xl border font-semibold"
-              style={{
-                backgroundColor: tramite.estatus?.color + '20',
-                color: tramite.estatus?.color,
-                borderColor: tramite.estatus?.color
-              }}
-            >
-              {tramite.estatus?.nombre}
-            </div>
-          )}
-        </div>
+        {!estatusCampoDinamico && (
+          <div>
+            <label className="block text-sm font-semibold text-neutral-700 mb-2">Estatus</label>
+            {canEdit ? (
+              <select
+                value={selectedEstatus}
+                onChange={(e) => setSelectedEstatus(e.target.value)}
+                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all cursor-pointer"
+              >
+                {estatusList.map(estatus => (
+                  <option key={estatus.id} value={estatus.id}>{estatus.nombre}</option>
+                ))}
+              </select>
+            ) : (
+              <div
+                className="px-4 py-3 rounded-xl border font-semibold"
+                style={{
+                  backgroundColor: tramite.estatus?.color + '20',
+                  color: tramite.estatus?.color,
+                  borderColor: tramite.estatus?.color
+                }}
+              >
+                {tramite.estatus?.nombre}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -519,6 +705,22 @@ export function TramiteDetalles({
         </div>
       )}
 
+      {inicioEspera && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 mb-4">
+          <Clock className="w-5 h-5 text-amber-500 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold">Trámite en espera</p>
+            <p className="text-xs text-amber-600">
+              En espera desde{' '}
+              {new Date(inicioEspera).toLocaleString('es-MX', {
+                day: 'numeric', month: 'long', year: 'numeric',
+                hour: '2-digit', minute: '2-digit',
+              })}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="border-t border-neutral-200 pt-6">
         <h3 className="text-lg font-semibold text-neutral-900 mb-4">Información del Tramite</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -564,11 +766,27 @@ export function TramiteDetalles({
             )}
           </div>
 
+          {tramite.fecha_promesa_entrega && (
+            <div>
+              <div className="flex items-center space-x-2 text-neutral-600 mb-1">
+                <Calendar className="w-4 h-4" />
+                <span className="font-medium">Fecha Promesa de Entrega:</span>
+              </div>
+              <div className="text-neutral-900 ml-6">
+                {new Date(tramite.fecha_promesa_entrega + 'T00:00:00').toLocaleDateString('es-MX', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric'
+                })}
+              </div>
+            </div>
+          )}
+
           {tramite.cerrado_en && (
             <div>
               <div className="flex items-center space-x-2 text-neutral-600 mb-1">
                 <Calendar className="w-4 h-4" />
-                <span className="font-medium">Fecha de Cierre:</span>
+                <span className="font-medium">Fecha de Terminación:</span>
               </div>
               <div className="text-neutral-900 ml-6">
                 {new Date(tramite.cerrado_en).toLocaleString('es-MX', {

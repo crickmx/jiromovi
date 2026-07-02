@@ -4,9 +4,11 @@ import { supabase } from '../../lib/supabase';
 import * as XLSX from 'xlsx';
 import { PRODUCT_LABELS, PRODUCT_COLORS } from '../../lib/multicotizadorGmm/types';
 
+type UploadableProduct = 'BNV' | 'BNP' | 'BXPLUS';
+
 interface TariffPackage {
   id: string;
-  product: 'BNV' | 'BNP';
+  product: UploadableProduct;
   version_name: string;
   source_filename: string | null;
   status: 'draft' | 'active' | 'archived' | 'failed';
@@ -15,9 +17,11 @@ interface TariffPackage {
   deducibles: number[];
   coaseguros: number[];
   created_at: string;
+  source_table: 'multicotizador_gmm_packages' | 'tariff_packages';
 }
 
-const UPLOADABLE_PRODUCTS: { id: 'BNV' | 'BNP'; label: string }[] = [
+const UPLOADABLE_PRODUCTS: { id: UploadableProduct; label: string }[] = [
+  { id: 'BXPLUS', label: 'BX+ Unikuz' },
   { id: 'BNV', label: 'Bupa Nacional Vital' },
   { id: 'BNP', label: 'Bupa Nacional Plus' },
 ];
@@ -26,8 +30,19 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-interface ParsedRate {
-  lookup_key: string;
+function resolveSheetName(workbook: XLSX.WorkBook, targetName: string): string | null {
+  if (workbook.Sheets[targetName]) return targetName;
+  const targetLower = targetName.toLowerCase().trim();
+  for (const name of workbook.SheetNames) {
+    if (name.toLowerCase().trim() === targetLower) return name;
+  }
+  for (const name of workbook.SheetNames) {
+    if (name.toLowerCase().trim().startsWith(targetLower)) return name;
+  }
+  return null;
+}
+
+interface ParsedBupaRate {
   plan_name: string;
   region: string;
   age: number;
@@ -35,140 +50,289 @@ interface ParsedRate {
   rate_type: string;
 }
 
-function parseExcelFile(file: ArrayBuffer, product: 'BNV' | 'BNP') {
-  const uint8 = new Uint8Array(file);
-  const workbook = XLSX.read(uint8, { type: 'array', bookVBA: true });
-  const sheetNames = workbook.SheetNames;
+interface ParsedBupaResult {
+  rates: ParsedBupaRate[];
+  sumas_aseguradas: number[];
+  deducibles: number[];
+  coaseguros: number[];
+  derecho_poliza: number;
+  asistencia_extranjero: number;
+  costo_catastrofica: number;
+  errors: string[];
+}
 
-  if (sheetNames.length === 0) {
-    throw new Error('El archivo no contiene hojas');
+// Factor columns store small multipliers (can be 0 or between 0 and 1) that must
+// not be filtered by the rate > 0 guard used for base-rate columns.
+const FACTOR_COL_PATTERNS = [
+  /^fd\s/i, /^fd$/i, /factor/i, /sumas\s*aseguradas/i,
+  /deducibles/i, /coasegurado/i, /renovac/i, /transfer/i, /^nn$/i,
+];
+function isFactorColumn(header: string): boolean {
+  return FACTOR_COL_PATTERNS.some(p => p.test(header.trim()));
+}
+
+function parseBupaExcelBnv(file: ArrayBuffer): ParsedBupaResult {
+  const uint8 = new Uint8Array(file);
+  const workbook = XLSX.read(uint8, { type: 'array', bookVBA: false, cellFormula: false, cellText: true, raw: false });
+
+  const rates: ParsedBupaRate[] = [];
+  const detectedSumas = new Set<number>();
+  const detectedDeducibles = new Set<number>();
+  const detectedCoaseguros = new Set<number>();
+  const errors: string[] = [];
+
+  function parseNum(v: any): number {
+    if (typeof v === 'number') return v;
+    if (v === null || v === undefined) return NaN;
+    return Number(String(v).replace(/,/g, '').trim());
   }
 
-  const rates: ParsedRate[] = [];
-  const detectedSumas: Set<number> = new Set();
-  const detectedDeducibles: Set<number> = new Set();
-  const detectedCoaseguros: Set<number> = new Set();
+  // MasterBase sheet: col M(12)=llave, N(13)=plan_name, O(14)=region, P(15)=low_age, Q(16)=rate
+  const masterSheetName = resolveSheetName(workbook, 'MasterBase');
+  if (!masterSheetName) {
+    const available = workbook.SheetNames.join(', ');
+    throw new Error(`No se encontro la hoja 'MasterBase' en el archivo. Hojas disponibles: [${available}]`);
+  }
+
+  const sheet = workbook.Sheets[masterSheetName];
+  const jsonData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: false });
+
+  // Find header row: look for a row that has a cell containing "llave" or "planname" in cols M/N area
+  let dataStartRow = 1;
+  for (let r = 0; r < Math.min(jsonData.length, 10); r++) {
+    const row = jsonData[r];
+    if (!row) continue;
+    const col12 = String(row[12] || '').toLowerCase().trim();
+    const col13 = String(row[13] || '').toLowerCase().trim();
+    if (col12.includes('llave') || col13.includes('plan')) {
+      dataStartRow = r + 1;
+      break;
+    }
+  }
+
+  for (let rowIdx = dataStartRow; rowIdx < jsonData.length; rowIdx++) {
+    const row = jsonData[rowIdx];
+    if (!row) continue;
+
+    const llave = String(row[12] || '').trim();
+    const planName = String(row[13] || '').trim();
+    const region = String(row[14] || '').trim();
+    const lowAge = parseNum(row[15]);
+    const rate = parseNum(row[16]);
+
+    if (!llave || !planName || !region || isNaN(lowAge) || isNaN(rate) || rate <= 0) continue;
+    // Skip legacy NVDCS plan codes — only process NVFS plans
+    if (!planName.startsWith('NVFS')) continue;
+
+    rates.push({ plan_name: llave, region, age: lowAge, rate, rate_type: 'Unisex' });
+
+    // Decode PlanName to populate detected options
+    // NVFS{sa}D{ded}C{coas}[TC{tc}]
+    const saMatch = planName.match(/^NVFS(\d+(?:\.\d+)?)D/);
+    const dedMatch = planName.match(/D(\d+(?:\.\d+)?)C/);
+    const coasMatch = planName.match(/C(\d+(?:\.\d+)?)/);
+    if (saMatch) detectedSumas.add(Number(saMatch[1]));
+    if (dedMatch) detectedDeducibles.add(Number(dedMatch[1]));
+    if (coasMatch) detectedCoaseguros.add(Number(coasMatch[1]));
+  }
+
+  if (rates.length === 0) {
+    throw new Error(
+      `Se encontro la hoja MasterBase pero no contiene filas NVFS validas. ` +
+      `Verifique que las columnas M(llave), N(plan_name), O(region), P(low_age), Q(rate) sean correctas.`
+    );
+  }
+
+  return {
+    rates,
+    sumas_aseguradas: Array.from(detectedSumas).sort((a, b) => a - b),
+    deducibles: Array.from(detectedDeducibles).sort((a, b) => a - b),
+    coaseguros: Array.from(detectedCoaseguros).sort((a, b) => a - b),
+    derecho_poliza: 1600,
+    asistencia_extranjero: 1632,
+    costo_catastrofica: 5800,
+    errors,
+  };
+}
+
+function parseBupaExcelBnp(file: ArrayBuffer): ParsedBupaResult {
+  const uint8 = new Uint8Array(file);
+  const workbook = XLSX.read(uint8, { type: 'array', bookVBA: false, cellFormula: false, cellText: true, raw: false });
+
+  const rates: ParsedBupaRate[] = [];
+  const detectedSumas = new Set<number>();
+  const detectedDeducibles = new Set<number>();
+  const detectedCoaseguros = new Set<number>();
+  const errors: string[] = [];
   let derechoPoliza = 1600;
   let asistenciaExtranjero = 1632;
   let costoCatastrofica = 5800;
 
-  for (const sheetName of sheetNames) {
+  function parseNum(v: any): number {
+    if (typeof v === 'number') return v;
+    if (v === null || v === undefined) return NaN;
+    return Number(String(v).replace(/,/g, '').trim());
+  }
+
+  function parseSheet(sheetName: string): boolean {
     const sheet = workbook.Sheets[sheetName];
-    const jsonData: any[] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
+    if (!sheet) return false;
+    const jsonData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: false });
+    if (jsonData.length < 3) return false;
 
-    if (jsonData.length < 2) continue;
+    let headerRowIdx = -1;
+    let ageColIdx = -1;
 
-    const headers = jsonData[0] as any[];
-    if (!headers) continue;
-
-    const lowerSheet = sheetName.toLowerCase();
-    if (lowerSheet.includes('config') || lowerSheet.includes('param')) {
-      for (const row of jsonData) {
-        if (!Array.isArray(row)) continue;
-        const label = String(row[0] || '').toLowerCase();
-        const val = Number(row[1]);
-        if (label.includes('derecho') && !isNaN(val)) derechoPoliza = val;
-        if (label.includes('asistencia') && !isNaN(val)) asistenciaExtranjero = val;
-        if (label.includes('catastro') && !isNaN(val)) costoCatastrofica = val;
-      }
-      continue;
-    }
-
-    const ageColIdx = headers.findIndex((h: any) => {
-      const s = String(h || '').toLowerCase();
-      return s === 'age' || s === 'edad' || s === 'edades';
-    });
-
-    if (ageColIdx === -1) {
-      const lookupIdx = headers.findIndex((h: any) => String(h || '').toLowerCase().includes('lookup'));
-      const regionIdx = headers.findIndex((h: any) => String(h || '').toLowerCase().includes('region'));
-      const ageIdx2 = headers.findIndex((h: any) => String(h || '').toLowerCase() === 'age' || String(h || '').toLowerCase() === 'edad');
-      const rateIdx = headers.findIndex((h: any) => String(h || '').toLowerCase().includes('rate') || String(h || '').toLowerCase().includes('prima') || String(h || '').toLowerCase().includes('tarifa'));
-      const typeIdx = headers.findIndex((h: any) => String(h || '').toLowerCase().includes('type') || String(h || '').toLowerCase().includes('sexo') || String(h || '').toLowerCase().includes('genero'));
-
-      if (rateIdx !== -1) {
-        for (let i = 1; i < jsonData.length; i++) {
-          const row = jsonData[i] as any[];
-          if (!row) continue;
-          const age = Number(row[ageIdx2 !== -1 ? ageIdx2 : 0]);
-          const rate = Number(row[rateIdx]);
-          if (isNaN(age) || isNaN(rate) || rate <= 0) continue;
-
-          const lookupKey = lookupIdx !== -1 ? String(row[lookupIdx] || '') : sheetName;
-          const region = regionIdx !== -1 ? String(row[regionIdx] || 'Mexico Region 1') : 'Mexico Region 1';
-          const rateType = typeIdx !== -1 ? (String(row[typeIdx] || '').toLowerCase().includes('fem') || String(row[typeIdx] || '').toLowerCase().includes('mujer') ? 'Female' : 'Male') : 'Unisex';
-
-          rates.push({
-            lookup_key: lookupKey,
-            plan_name: lookupKey.replace(/Mexico Region \d.*$/, '').trim() || lookupKey,
-            region,
-            age,
-            rate,
-            rate_type: product === 'BNP' ? rateType : 'Unisex',
-          });
+    for (let r = 0; r < Math.min(jsonData.length, 15); r++) {
+      const row = jsonData[r];
+      if (!row) continue;
+      for (let c = 0; c < row.length; c++) {
+        const cell = String(row[c] || '').toLowerCase().trim();
+        if (cell === 'edad' || cell === 'age' || cell === 'edades') {
+          headerRowIdx = r;
+          ageColIdx = c;
+          break;
         }
       }
-      continue;
+      if (headerRowIdx !== -1) break;
     }
 
-    for (let colIdx = 1; colIdx < headers.length; colIdx++) {
-      const colHeader = String(headers[colIdx] || '');
+    if (headerRowIdx === -1) {
+      for (let r = 0; r < Math.min(jsonData.length, 10); r++) {
+        const row = jsonData[r];
+        if (!row) continue;
+        const firstVal = parseNum(row[0]);
+        if (firstVal === 0 || firstVal === 1) {
+          const nextVal = jsonData[r + 1] ? parseNum(jsonData[r + 1][0]) : NaN;
+          if (!isNaN(nextVal) && nextVal === firstVal + 1) {
+            headerRowIdx = r - 1;
+            ageColIdx = 0;
+            break;
+          }
+        }
+      }
+    }
+
+    if (headerRowIdx === -1 || ageColIdx === -1) {
+      errors.push(`Hoja "${sheetName}": no se encontro columna de edad`);
+      return false;
+    }
+
+    const headers = jsonData[headerRowIdx] || [];
+    const dataStartRow = headerRowIdx + 1;
+    let colsWithRates = 0;
+
+    for (let colIdx = 0; colIdx < headers.length; colIdx++) {
+      if (colIdx === ageColIdx) continue;
+      const colHeader = String(headers[colIdx] || '').trim();
       if (!colHeader) continue;
 
       let region = 'Mexico Region 1';
-      if (sheetName.toLowerCase().includes('region 2') || sheetName.toLowerCase().includes('zona 2') || colHeader.toLowerCase().includes('region 2')) {
+      if (colHeader.toLowerCase().includes('region 2') || colHeader.toLowerCase().includes('zona 2') || colHeader.includes('R2')) {
         region = 'Mexico Region 2';
       }
 
-      const saMatch = colHeader.match(/S(\d+)/i) || colHeader.match(/(\d{2,3})(?=D)/);
-      const dedMatch = colHeader.match(/D(\d+)/i);
-      const coasMatch = colHeader.match(/C(\d+)/i);
+      let rateType = 'Unisex';
+      const lh = colHeader.toLowerCase();
+      if (lh.includes('fem') || lh.includes('mujer') || lh.includes('female') || lh.endsWith('f')) rateType = 'Female';
+      else if (lh.includes('masc') || lh.includes('hombre') || lh.includes('male') || lh.endsWith('m')) rateType = 'Male';
+
+      const saMatch = colHeader.match(/S(\d+)/i) || colHeader.match(/(\d+)\s*(?:MDP|M)/i);
+      const dedMatch = colHeader.match(/D(\d+)/i) || colHeader.match(/(?:ded|DED)[\s_-]*(\d+)/i);
+      const coasMatch = colHeader.match(/C(\d+)/i) || colHeader.match(/(?:coas|COAS)[\s_-]*(\d+)/i);
       if (saMatch) detectedSumas.add(Number(saMatch[1]));
       if (dedMatch) detectedDeducibles.add(Number(dedMatch[1]));
       if (coasMatch) detectedCoaseguros.add(Number(coasMatch[1]));
 
-      let rateType = 'Unisex';
-      if (product === 'BNP') {
-        if (colHeader.toLowerCase().includes('female') || colHeader.toLowerCase().includes('mujer') || colHeader.toLowerCase().includes('fem')) {
-          rateType = 'Female';
-        } else if (colHeader.toLowerCase().includes('male') || colHeader.toLowerCase().includes('hombre') || colHeader.toLowerCase().includes('masc')) {
-          rateType = 'Male';
-        }
-      }
+      const isFactor = FACTOR_COL_PATTERNS.some(p => p.test(colHeader.trim()));
+      let factorRowIdx = 0;
 
-      for (let rowIdx = 1; rowIdx < jsonData.length; rowIdx++) {
-        const row = jsonData[rowIdx] as any[];
+      for (let rowIdx = dataStartRow; rowIdx < jsonData.length; rowIdx++) {
+        const row = jsonData[rowIdx];
         if (!row) continue;
-        const age = Number(row[ageColIdx]);
-        const rate = Number(row[colIdx]);
-        if (isNaN(age) || isNaN(rate) || rate <= 0) continue;
+        const rate = parseNum(row[colIdx]);
+        if (isNaN(rate)) continue;
+        if (!isFactor && rate <= 0) continue;
 
-        const lookupKey = `${colHeader}${region}${age}${rateType !== 'Unisex' ? rateType : ''}`;
-        rates.push({
-          lookup_key: lookupKey,
-          plan_name: colHeader,
-          region,
-          age,
-          rate,
-          rate_type: rateType,
-        });
+        let age: number;
+        if (isFactor) {
+          age = factorRowIdx++;
+        } else {
+          age = parseNum(row[ageColIdx]);
+          if (isNaN(age) || age < 0 || age > 120) continue;
+        }
+
+        rates.push({ plan_name: colHeader, region, age, rate, rate_type: rateType });
+        colsWithRates++;
+      }
+    }
+
+    return colsWithRates > 0;
+  }
+
+  const rateSheets = ['Master', 'MasterBase'];
+  let foundRateSheet = false;
+  for (const targetSheet of rateSheets) {
+    const resolvedName = resolveSheetName(workbook, targetSheet);
+    if (!resolvedName) continue;
+    if (parseSheet(resolvedName)) { foundRateSheet = true; break; }
+  }
+
+  if (!foundRateSheet || rates.length === 0) {
+    for (const sheetName of workbook.SheetNames) {
+      const lowerName = sheetName.toLowerCase();
+      if (
+        lowerName.includes('instruc') || lowerName.includes('template') ||
+        lowerName.includes('brochure') || lowerName.includes('version') ||
+        lowerName.includes('objetos') || lowerName.includes('comparativ') ||
+        lowerName.includes('datos asegurado')
+      ) continue;
+      parseSheet(sheetName);
+      if (rates.length > 50) break;
+    }
+  }
+
+  for (const sheetName of workbook.SheetNames) {
+    const lowerName = sheetName.toLowerCase();
+    if (lowerName.includes('config') || lowerName.includes('param') || lowerName.includes('datos')) {
+      const sheet = workbook.Sheets[sheetName];
+      const jsonData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: false });
+      for (const row of jsonData) {
+        if (!Array.isArray(row)) continue;
+        const label = String(row[0] || '').toLowerCase();
+        for (let c = 1; c < row.length; c++) {
+          const val = parseNum(row[c]);
+          if (isNaN(val) || val <= 0) continue;
+          if (label.includes('derecho') || label.includes('poliza')) { derechoPoliza = val; break; }
+          if (label.includes('asistencia') && !label.includes('catastro')) { asistenciaExtranjero = val; break; }
+          if (label.includes('catastro')) { costoCatastrofica = val; break; }
+        }
       }
     }
   }
 
   if (rates.length === 0) {
-    throw new Error('No se pudieron extraer tarifas del archivo. Verifique el formato.');
+    const available = workbook.SheetNames.join(', ');
+    throw new Error(
+      `No se pudieron extraer tarifas del archivo. Hojas disponibles: [${available}]. ` +
+      'Verifique que el archivo contenga una tabla de tarifas por edad.'
+    );
   }
 
   return {
     rates,
-    derechoPoliza,
-    asistenciaExtranjero,
-    costoCatastrofica,
-    sumas: Array.from(detectedSumas).sort((a, b) => a - b),
+    sumas_aseguradas: Array.from(detectedSumas).sort((a, b) => a - b),
     deducibles: Array.from(detectedDeducibles).sort((a, b) => a - b),
     coaseguros: Array.from(detectedCoaseguros).sort((a, b) => a - b),
+    derecho_poliza: derechoPoliza,
+    asistencia_extranjero: asistenciaExtranjero,
+    costo_catastrofica: costoCatastrofica,
+    errors,
   };
+}
+
+function parseBupaExcel(file: ArrayBuffer, product: 'BNV' | 'BNP'): ParsedBupaResult {
+  return product === 'BNV' ? parseBupaExcelBnv(file) : parseBupaExcelBnp(file);
 }
 
 export function TarifasAdminPanel() {
@@ -176,7 +340,7 @@ export function TarifasAdminPanel() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
-  const [uploadProduct, setUploadProduct] = useState<'BNV' | 'BNP'>('BNV');
+  const [uploadProduct, setUploadProduct] = useState<UploadableProduct>('BXPLUS');
   const [versionName, setVersionName] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -185,11 +349,42 @@ export function TarifasAdminPanel() {
 
   const loadPackages = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('multicotizador_gmm_packages')
-      .select('id, product, version_name, source_filename, status, rates_count, sumas_aseguradas, deducibles, coaseguros, created_at')
-      .order('created_at', { ascending: false });
-    if (data) setPackages(data as TariffPackage[]);
+    const [{ data: multiPkgs }, { data: bxPkgs }] = await Promise.all([
+      supabase
+        .from('multicotizador_gmm_packages')
+        .select('id, product, version_name, source_filename, status, rates_count, sumas_aseguradas, deducibles, coaseguros, created_at')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('tariff_packages')
+        .select('id, name, source_filename, status, created_at')
+        .order('created_at', { ascending: false }),
+    ]);
+
+    const combined: TariffPackage[] = [];
+    if (multiPkgs) {
+      for (const p of multiPkgs) {
+        combined.push({ ...p, source_table: 'multicotizador_gmm_packages' } as TariffPackage);
+      }
+    }
+    if (bxPkgs) {
+      for (const p of bxPkgs) {
+        combined.push({
+          id: p.id,
+          product: 'BXPLUS' as UploadableProduct,
+          version_name: p.name || 'Sin nombre',
+          source_filename: p.source_filename,
+          status: p.status,
+          rates_count: 0,
+          sumas_aseguradas: [],
+          deducibles: [],
+          coaseguros: [],
+          created_at: p.created_at,
+          source_table: 'tariff_packages',
+        });
+      }
+    }
+    combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    setPackages(combined);
     setLoading(false);
   }, []);
 
@@ -206,64 +401,11 @@ export function TarifasAdminPanel() {
     setUploadProgress('Leyendo archivo...');
 
     try {
-      const arrayBuffer = await selectedFile.arrayBuffer();
-
-      setUploadProgress('Procesando Excel...');
-      const parsed = parseExcelFile(arrayBuffer, uploadProduct);
-
-      setUploadProgress('Creando paquete de tarifas...');
-      const { data: pkg, error: pkgError } = await supabase
-        .from('multicotizador_gmm_packages')
-        .insert({
-          product: uploadProduct,
-          version_name: versionName.trim(),
-          source_filename: selectedFile.name,
-          status: 'draft',
-          derecho_poliza: parsed.derechoPoliza,
-          asistencia_extranjero: parsed.asistenciaExtranjero,
-          costo_catastrofica_extranjero: parsed.costoCatastrofica,
-          sumas_aseguradas: parsed.sumas,
-          deducibles: parsed.deducibles,
-          coaseguros: parsed.coaseguros,
-          topes_coaseguro: [],
-          client_types: [],
-          internal_factors: {},
-          rates_count: parsed.rates.length,
-          created_by: (await supabase.auth.getUser()).data.user?.id || null,
-        })
-        .select('id')
-        .single();
-
-      if (pkgError) {
-        setUploadError('Error creando paquete: ' + pkgError.message);
-        return;
+      if (uploadProduct === 'BXPLUS') {
+        await handleUploadBxplus();
+      } else {
+        await handleUploadBupa();
       }
-
-      const batchSize = 500;
-      const totalBatches = Math.ceil(parsed.rates.length / batchSize);
-      for (let i = 0; i < parsed.rates.length; i += batchSize) {
-        const batchNum = Math.floor(i / batchSize) + 1;
-        setUploadProgress(`Insertando tarifas (${batchNum}/${totalBatches})...`);
-        const batch = parsed.rates.slice(i, i + batchSize).map(r => ({
-          package_id: pkg.id,
-          ...r,
-        }));
-        const { error: rateError } = await supabase
-          .from('multicotizador_gmm_rates')
-          .insert(batch);
-        if (rateError) {
-          await supabase.from('multicotizador_gmm_packages')
-            .update({ status: 'failed', validation_errors: { message: rateError.message } })
-            .eq('id', pkg.id);
-          setUploadError('Error insertando tarifas: ' + rateError.message);
-          return;
-        }
-      }
-
-      setUploadSuccess(`Tarifa cargada: ${parsed.rates.length.toLocaleString()} tarifas procesadas`);
-      setSelectedFile(null);
-      setVersionName('');
-      loadPackages();
     } catch (err: any) {
       setUploadError(err.message || 'Error procesando archivo');
     } finally {
@@ -272,14 +414,116 @@ export function TarifasAdminPanel() {
     }
   };
 
-  const handleActivate = async (pkgId: string) => {
-    setActivating(pkgId);
+  const handleUploadBxplus = async () => {
+    setUploadProgress('Subiendo archivo al servidor...');
+    const formData = new FormData();
+    formData.append('file', selectedFile!);
+    formData.append('name', versionName.trim());
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmm-upload-tariff`,
+      {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${session?.access_token}` },
+        body: formData,
+      }
+    );
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Error uploading file');
+
+    setUploadSuccess('Tarifa BX+ Unikuz cargada exitosamente');
+    setSelectedFile(null);
+    setVersionName('');
+    loadPackages();
+  };
+
+  const handleUploadBupa = async () => {
+    const arrayBuffer = await selectedFile!.arrayBuffer();
+
+    setUploadProgress('Extrayendo tarifas del Excel...');
+    const parsed = parseBupaExcel(arrayBuffer, uploadProduct as 'BNV' | 'BNP');
+
+    if (parsed.errors.length > 0) {
+      setUploadError('Advertencias al procesar: ' + parsed.errors.slice(0, 3).join('; '));
+    }
+
+    setUploadProgress('Creando paquete de tarifas...');
+    const { data: pkg, error: pkgError } = await supabase
+      .from('multicotizador_gmm_packages')
+      .insert({
+        product: uploadProduct,
+        version_name: versionName.trim(),
+        source_filename: selectedFile!.name,
+        status: 'draft',
+        derecho_poliza: parsed.derecho_poliza,
+        asistencia_extranjero: parsed.asistencia_extranjero,
+        costo_catastrofica_extranjero: parsed.costo_catastrofica,
+        sumas_aseguradas: parsed.sumas_aseguradas,
+        deducibles: parsed.deducibles,
+        coaseguros: parsed.coaseguros,
+        topes_coaseguro: [],
+        client_types: [],
+        internal_factors: {},
+        rates_count: parsed.rates.length,
+        created_by: (await supabase.auth.getUser()).data.user?.id || null,
+      })
+      .select('id')
+      .single();
+
+    if (pkgError) throw new Error('Error creando paquete: ' + pkgError.message);
+
+    setUploadProgress(`Insertando ${parsed.rates.length.toLocaleString()} tarifas...`);
+    const batchSize = 500;
+    const isBnv = uploadProduct === 'BNV';
+    for (let i = 0; i < parsed.rates.length; i += batchSize) {
+      const batch = parsed.rates.slice(i, i + batchSize).map(r => ({
+        package_id: pkg.id,
+        // BNV: plan_name holds the raw llave string (e.g. "NVFS1D0C0Mexico Region 1 BNV18")
+        // BNP: build key from components as before
+        lookup_key: isBnv ? r.plan_name : `${r.plan_name}|${r.region}|${r.age}|${r.rate_type}`,
+        plan_name: r.plan_name,
+        region: r.region,
+        age: r.age,
+        rate: r.rate,
+        rate_type: r.rate_type,
+      }));
+      const { error: rateError } = await supabase
+        .from('multicotizador_gmm_rates')
+        .insert(batch);
+      if (rateError) {
+        await supabase.from('multicotizador_gmm_packages')
+          .update({ status: 'failed', validation_errors: { message: rateError.message } })
+          .eq('id', pkg.id);
+        throw new Error('Error insertando tarifas: ' + rateError.message);
+      }
+      setUploadProgress(`Insertando tarifas... ${Math.min(i + batchSize, parsed.rates.length).toLocaleString()} / ${parsed.rates.length.toLocaleString()}`);
+    }
+
+    setUploadSuccess(`Tarifa cargada: ${parsed.rates.length.toLocaleString()} registros de tarifa extraidos correctamente`);
+    setSelectedFile(null);
+    setVersionName('');
+    loadPackages();
+  };
+
+  const handleActivate = async (pkg: TariffPackage) => {
+    setActivating(pkg.id);
     try {
-      const { error } = await supabase.rpc('activate_multicotizador_tariff', { p_package_id: pkgId });
-      if (error) {
-        setUploadError('Error activando tarifa: ' + error.message);
+      if (pkg.source_table === 'tariff_packages') {
+        const { error } = await supabase.rpc('activate_tariff_package', { p_package_id: pkg.id });
+        if (error) {
+          setUploadError('Error activando tarifa: ' + error.message);
+        } else {
+          loadPackages();
+        }
       } else {
-        loadPackages();
+        const { error } = await supabase.rpc('activate_multicotizador_tariff', { p_package_id: pkg.id });
+        if (error) {
+          setUploadError('Error activando tarifa: ' + error.message);
+        } else {
+          loadPackages();
+        }
       }
     } catch (err: any) {
       setUploadError(err.message);
@@ -288,11 +532,12 @@ export function TarifasAdminPanel() {
     }
   };
 
-  const handleArchive = async (pkgId: string) => {
+  const handleArchive = async (pkg: TariffPackage) => {
+    const table = pkg.source_table === 'tariff_packages' ? 'tariff_packages' : 'multicotizador_gmm_packages';
     await supabase
-      .from('multicotizador_gmm_packages')
+      .from(table)
       .update({ status: 'archived' })
-      .eq('id', pkgId);
+      .eq('id', pkg.id);
     loadPackages();
   };
 
@@ -321,7 +566,7 @@ export function TarifasAdminPanel() {
           <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Subir Nueva Tarifa</h3>
         </div>
         <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
-          Sube un archivo Excel (.xlsm, .xlsx) con las tarifas de Bupa Nacional Vital o Bupa Nacional Plus. El archivo se procesa directamente en tu navegador.
+          Sube un archivo Excel (.xlsm, .xlsx) con las tarifas. BX+ se procesa en el servidor; BNV/BNP se procesan en el navegador.
         </p>
 
         <div className="grid sm:grid-cols-2 gap-4 mb-4">
@@ -329,7 +574,7 @@ export function TarifasAdminPanel() {
             <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Producto</label>
             <select
               value={uploadProduct}
-              onChange={e => setUploadProduct(e.target.value as 'BNV' | 'BNP')}
+              onChange={e => setUploadProduct(e.target.value as UploadableProduct)}
               className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white"
             >
               {UPLOADABLE_PRODUCTS.map(p => (
@@ -434,7 +679,7 @@ export function TarifasAdminPanel() {
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {pkg.status === 'draft' && (
                     <button
-                      onClick={() => handleActivate(pkg.id)}
+                      onClick={() => handleActivate(pkg)}
                       disabled={activating === pkg.id}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 text-xs font-medium hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors disabled:opacity-50"
                     >
@@ -444,7 +689,7 @@ export function TarifasAdminPanel() {
                   )}
                   {(pkg.status === 'draft' || pkg.status === 'active') && (
                     <button
-                      onClick={() => handleArchive(pkg.id)}
+                      onClick={() => handleArchive(pkg)}
                       className="p-1.5 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                       title="Archivar"
                     >
@@ -456,19 +701,6 @@ export function TarifasAdminPanel() {
             ))}
           </div>
         )}
-      </div>
-
-      {/* BX+ Note */}
-      <div className="bg-sky-50/50 dark:bg-sky-900/10 rounded-2xl border border-sky-200/50 dark:border-sky-800/20 p-5">
-        <div className="flex items-start gap-3">
-          <div className="w-2.5 h-2.5 rounded-full mt-1 flex-shrink-0" style={{ backgroundColor: PRODUCT_COLORS.BXPLUS }} />
-          <div>
-            <h4 className="text-sm font-semibold text-neutral-900 dark:text-white mb-1">Tarifas BX+</h4>
-            <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
-              Las tarifas de BX+ se administran desde el modulo GMM BX+ existente. El multicotizador utiliza automaticamente la tarifa activa de ese modulo.
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   );

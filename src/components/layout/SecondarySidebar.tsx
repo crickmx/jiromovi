@@ -14,9 +14,10 @@ interface Props {
   onMobileItemClick?: () => void;
   isModuleVisible?: (key: string, role: string, oficina_id?: string | null) => boolean;
   oficinaId?: string | null;
+  badgeCounts?: Record<string, number>;
 }
 
-export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, onToggleCollapse, mobileMode, onMobileItemClick, isModuleVisible, oficinaId }: Props) {
+export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, onToggleCollapse, mobileMode, onMobileItemClick, isModuleVisible, oficinaId, badgeCounts }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -100,6 +101,7 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
       <nav className="flex-1 overflow-y-auto py-3 px-2.5 space-y-0.5">
         {visibleItems.map((item) => {
           const active = isActive(item);
+          const badge = badgeCounts?.[item.path] ?? 0;
 
           return (
             <button
@@ -120,6 +122,19 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
                 active ? "bg-accent" : "bg-neutral-300 dark:bg-neutral-600"
               )} />
               <span className="truncate">{item.label}</span>
+
+              {/* Attention badge */}
+              {badge > 0 && (
+                <span className="ml-auto relative flex-shrink-0 flex items-center justify-center">
+                  <span
+                    className="absolute inset-0 rounded-full bg-red-400 opacity-60 animate-ping"
+                    style={{ animationDuration: '2s' }}
+                  />
+                  <span className="relative min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                    {badge > 99 ? '99+' : badge}
+                  </span>
+                </span>
+              )}
             </button>
           );
         })}

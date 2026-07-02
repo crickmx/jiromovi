@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Shield, Plus, Search, Eye, CreditCard as Edit, RotateCcw, Users, X, Check, UserPlus, Loader as Loader2, FileText, CircleAlert as AlertCircle, CircleCheck as CheckCircle2, Clock, Building2, ToggleLeft, ToggleRight, Trash2, Phone, Upload, Link, ImageOff, Camera, User, FileStack, Download, Copy, ExternalLink, Calendar, Hash } from 'lucide-react';
+import { Shield, Plus, Search, Eye, Pencil as Edit, RotateCcw, Users, X, Check, UserPlus, Loader as Loader2, FileText, CircleAlert as AlertCircle, CircleCheck as CheckCircle2, Clock, Building2, ToggleLeft, ToggleRight, Trash2, Phone, Upload, Link, ImageOff, Camera, User, FileStack, Download, Copy, ExternalLink, Calendar, Hash } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useImpersonation } from '@/contexts/ImpersonationContext';

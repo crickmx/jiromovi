@@ -68,16 +68,16 @@ Deno.serve(async (req: Request) => {
       .limit(1);
 
     if (existing && existing.length > 0) {
-      // Clean up storage file
       await supabase.storage.from("tariff-uploads").remove([storage_path]);
       return new Response(JSON.stringify({ error: "Este archivo ya fue cargado anteriormente", duplicate_id: existing[0].id }), {
         status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Parse Excel
-    const workbook = XLSX.read(uint8, { type: "array", bookVBA: true });
-    const sheetNames = workbook.SheetNames;
+    // Pass 1: read only the sheet name list — no sheet content is parsed.
+    // bookSheets:true populates SheetNames without parsing any cell data.
+    const index = XLSX.read(uint8, { bookSheets: true });
+    const sheetNames: string[] = index.SheetNames;
 
     if (sheetNames.length === 0) {
       await supabase.storage.from("tariff-uploads").remove([storage_path]);
@@ -86,7 +86,20 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Parse rates from all sheets
+    function parseNum(v: any): number {
+      if (typeof v === "number") return v;
+      if (v === null || v === undefined) return NaN;
+      return Number(String(v).replace(/,/g, "").trim());
+    }
+
+    const FACTOR_COL_PATTERNS = [
+      /^fd\s/i, /^fd$/i, /factor/i, /sumas\s*aseguradas/i,
+      /deducibles/i, /coasegurado/i, /renovac/i, /transfer/i, /^nn$/i,
+    ];
+    function isFactorColumn(header: string): boolean {
+      return FACTOR_COL_PATTERNS.some(p => p.test(header.trim()));
+    }
+
     const rates: Array<{ lookup_key: string; plan_name: string; region: string; age: number; rate: number; rate_type: string }> = [];
     const detectedSumas: Set<number> = new Set();
     const detectedDeducibles: Set<number> = new Set();
@@ -96,22 +109,42 @@ Deno.serve(async (req: Request) => {
     let asistenciaExtranjero = 1632;
     let costoCatastrofica = 5800;
 
+    // Pass 2: parse one sheet at a time to keep peak memory low.
+    // Each iteration builds a single sheet's DOM, processes it, then discards it.
     for (const sheetName of sheetNames) {
-      const sheet = workbook.Sheets[sheetName];
-      const jsonData: any[] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
+      // Parse only this one sheet from the raw buffer.
+      // raw:true reads numeric values directly — avoids the expensive string-formatting pass.
+      // cellText:false / cellFormula:false skip extra string allocations.
+      const wb = XLSX.read(uint8, {
+        type: "array",
+        bookVBA: false,
+        cellFormula: false,
+        cellText: false,
+        sheets: sheetName,
+      });
+
+      const sheet = wb.Sheets[sheetName];
+      if (!sheet) continue;
+
+      // raw:false here so XLSM formula-result text (w property) is used where the
+      // numeric cache (v) is absent — gives us the display value for factor cells.
+      const jsonData: any[] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: false });
+
+      // Release this sheet's parsed data before the next iteration.
+      // deno-lint-ignore no-explicit-any
+      (wb as any).Sheets = {};
 
       if (jsonData.length < 2) continue;
 
       const headers = jsonData[0] as any[];
       if (!headers) continue;
 
-      // Try to find config values
       const lowerSheet = sheetName.toLowerCase();
       if (lowerSheet.includes("config") || lowerSheet.includes("param")) {
         for (const row of jsonData) {
           if (!Array.isArray(row)) continue;
           const label = String(row[0] || "").toLowerCase();
-          const val = Number(row[1]);
+          const val = parseNum(row[1]);
           if (label.includes("derecho") && !isNaN(val)) derechoPoliza = val;
           if (label.includes("asistencia") && !isNaN(val)) asistenciaExtranjero = val;
           if (label.includes("catastro") && !isNaN(val)) costoCatastrofica = val;
@@ -119,7 +152,6 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      // Parse rate tables - detect format
       const ageColIdx = headers.findIndex((h: any) => {
         const s = String(h || "").toLowerCase();
         return s === "age" || s === "edad" || s === "edades";
@@ -128,24 +160,34 @@ Deno.serve(async (req: Request) => {
       if (ageColIdx === -1) {
         const lookupIdx = headers.findIndex((h: any) => String(h || "").toLowerCase().includes("lookup"));
         const regionIdx = headers.findIndex((h: any) => String(h || "").toLowerCase().includes("region"));
-        const ageIdx2 = headers.findIndex((h: any) => String(h || "").toLowerCase() === "age" || String(h || "").toLowerCase() === "edad");
-        const rateIdx = headers.findIndex((h: any) => String(h || "").toLowerCase().includes("rate") || String(h || "").toLowerCase().includes("prima") || String(h || "").toLowerCase().includes("tarifa"));
-        const typeIdx = headers.findIndex((h: any) => String(h || "").toLowerCase().includes("type") || String(h || "").toLowerCase().includes("sexo") || String(h || "").toLowerCase().includes("genero"));
+        const ageIdx2 = headers.findIndex((h: any) => {
+          const s = String(h || "").toLowerCase();
+          return s === "age" || s === "edad";
+        });
+        const rateIdx = headers.findIndex((h: any) => {
+          const s = String(h || "").toLowerCase();
+          return s.includes("rate") || s.includes("prima") || s.includes("tarifa");
+        });
+        const typeIdx = headers.findIndex((h: any) => {
+          const s = String(h || "").toLowerCase();
+          return s.includes("type") || s.includes("sexo") || s.includes("genero");
+        });
 
         if (rateIdx !== -1) {
           for (let i = 1; i < jsonData.length; i++) {
             const row = jsonData[i] as any[];
             if (!row) continue;
-            const age = Number(row[ageIdx2 !== -1 ? ageIdx2 : 0]);
-            const rate = Number(row[rateIdx]);
+            const age = parseNum(row[ageIdx2 !== -1 ? ageIdx2 : 0]);
+            const rate = parseNum(row[rateIdx]);
             if (isNaN(age) || isNaN(rate) || rate <= 0) continue;
 
             const lookupKey = lookupIdx !== -1 ? String(row[lookupIdx] || "") : sheetName;
             const region = regionIdx !== -1 ? String(row[regionIdx] || "Mexico Region 1") : "Mexico Region 1";
-            const rateType = typeIdx !== -1 ? (String(row[typeIdx] || "").toLowerCase().includes("fem") || String(row[typeIdx] || "").toLowerCase().includes("mujer") ? "Female" : "Male") : "Unisex";
+            const rateType = typeIdx !== -1
+              ? (String(row[typeIdx] || "").toLowerCase().includes("fem") || String(row[typeIdx] || "").toLowerCase().includes("mujer") ? "Female" : "Male")
+              : "Unisex";
 
             detectedRegions.add(region);
-
             rates.push({
               lookup_key: lookupKey,
               plan_name: lookupKey.replace(/Mexico Region \d.*$/, "").trim() || lookupKey,
@@ -159,13 +201,16 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      // Standard format: age in first col, plan codes as column headers
       for (let colIdx = 1; colIdx < headers.length; colIdx++) {
         const colHeader = String(headers[colIdx] || "");
         if (!colHeader) continue;
 
         let region = "Mexico Region 1";
-        if (sheetName.toLowerCase().includes("region 2") || sheetName.toLowerCase().includes("zona 2") || colHeader.toLowerCase().includes("region 2")) {
+        if (
+          sheetName.toLowerCase().includes("region 2") ||
+          sheetName.toLowerCase().includes("zona 2") ||
+          colHeader.toLowerCase().includes("region 2")
+        ) {
           region = "Mexico Region 2";
         }
         detectedRegions.add(region);
@@ -179,19 +224,29 @@ Deno.serve(async (req: Request) => {
 
         let rateType = "Unisex";
         if (product === "BNP") {
-          if (colHeader.toLowerCase().includes("female") || colHeader.toLowerCase().includes("mujer") || colHeader.toLowerCase().includes("fem")) {
-            rateType = "Female";
-          } else if (colHeader.toLowerCase().includes("male") || colHeader.toLowerCase().includes("hombre") || colHeader.toLowerCase().includes("masc")) {
-            rateType = "Male";
-          }
+          const ch = colHeader.toLowerCase();
+          if (ch.includes("female") || ch.includes("mujer") || ch.includes("fem")) rateType = "Female";
+          else if (ch.includes("male") || ch.includes("hombre") || ch.includes("masc")) rateType = "Male";
         }
+
+        const isFactor = isFactorColumn(colHeader);
+        let factorRowIdx = 0;
 
         for (let rowIdx = 1; rowIdx < jsonData.length; rowIdx++) {
           const row = jsonData[rowIdx] as any[];
           if (!row) continue;
-          const age = Number(row[ageColIdx]);
-          const rate = Number(row[colIdx]);
-          if (isNaN(age) || isNaN(rate) || rate <= 0) continue;
+          const rawAge = row[ageColIdx];
+          const rate = parseNum(row[colIdx]);
+          if (isNaN(rate)) continue;
+          if (!isFactor && rate <= 0) continue;
+
+          let age: number;
+          if (isFactor) {
+            age = factorRowIdx++;
+          } else {
+            age = parseNum(rawAge);
+            if (isNaN(age)) continue;
+          }
 
           const lookupKey = `${colHeader}${region}${age}${rateType !== "Unisex" ? rateType : ""}`;
           rates.push({
@@ -213,7 +268,6 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Create package record
     const { data: pkg, error: pkgError } = await supabase
       .from("multicotizador_gmm_packages")
       .insert({
@@ -241,8 +295,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Insert rates in batches of 1000
-    const batchSize = 1000;
+    const batchSize = 500;
     for (let i = 0; i < rates.length; i += batchSize) {
       const batch = rates.slice(i, i + batchSize).map(r => ({
         package_id: pkg.id,
@@ -252,7 +305,9 @@ Deno.serve(async (req: Request) => {
         .from("multicotizador_gmm_rates")
         .insert(batch);
       if (rateError) {
-        await supabase.from("multicotizador_gmm_packages").update({ status: "failed", validation_errors: { message: rateError.message } }).eq("id", pkg.id);
+        await supabase.from("multicotizador_gmm_packages")
+          .update({ status: "failed", validation_errors: { message: rateError.message } })
+          .eq("id", pkg.id);
         await supabase.storage.from("tariff-uploads").remove([storage_path]);
         return new Response(JSON.stringify({ error: "Error inserting rates: " + rateError.message }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -260,7 +315,6 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Clean up storage file after successful processing
     await supabase.storage.from("tariff-uploads").remove([storage_path]);
 
     return new Response(JSON.stringify({

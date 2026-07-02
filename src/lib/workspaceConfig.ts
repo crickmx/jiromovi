@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow, Camera, Sparkles, Bookmark } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, HardDrive, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow, Clock, Camera, Sparkles, Bookmark } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
@@ -166,6 +166,10 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/carga-masiva-usuarios', label: 'Carga Masiva', icon: Upload, visibleTo: ADMIN_ONLY },
     { path: '/admin-digital', label: 'Admin Digital', icon: LayoutTemplate, visibleTo: ADMIN_ONLY },
     { path: '/admin/importacion-masiva', label: 'Importación Masiva', icon: Database, visibleTo: ADMIN_ONLY },
+    { path: '/admin/base-datos', label: 'Base de Datos', icon: HardDrive, visibleTo: ADMIN_ONLY },
+    { path: '/admin/tramites', label: 'Trámites', icon: ClipboardList, visibleTo: ADMIN_ONLY, matchPrefix: true },
+    { path: '/admin/dias-no-habiles', label: 'Días No Hábiles', icon: Calendar, visibleTo: ADMIN_ONLY },
+    { path: '/admin/config-jornada', label: 'Jornada Laboral', icon: Clock, visibleTo: ADMIN_ONLY },
     { path: '/comisiones', label: 'Comisiones Admin', icon: Percent, visibleTo: ADMIN_ONLY, matchPrefix: true, excludePrefixes: ['/comisiones/regimen-fiscal', '/comisiones/mapeo-vendedores'] },
     { path: '/comisiones/regimen-fiscal', label: 'Regimen Fiscal', icon: Receipt, visibleTo: ADMIN_ONLY, matchPrefix: true },
     { path: '/comisiones/mapeo-vendedores', label: 'Mapeo Vendedores', icon: GitBranch, visibleTo: ADMIN_ONLY },

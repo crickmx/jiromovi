@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { PageHeader } from '@/components/ui/page-header';
@@ -12,9 +13,10 @@ import {
   Settings, Eye, Copy, Pencil, ToggleLeft, ToggleRight, TestTube, Send,
   Loader as Loader2, RefreshCw, Zap, Shield, FileText, MessageSquare,
   Bell, X, ChevronDown, ChevronRight, Server, Key, Tag, FlaskConical,
+  Newspaper, ExternalLink, Sparkles,
 } from 'lucide-react';
 
-type Tab = 'dashboard' | 'robots' | 'bandeja' | 'bitacora' | 'cuentas';
+type Tab = 'dashboard' | 'robots' | 'boletines' | 'bandeja' | 'bitacora' | 'cuentas';
 
 interface CuentaCorreo {
   id: string;
@@ -75,6 +77,7 @@ interface BandejaItem {
   cuenta_correo_id: string | null;
   carpeta_destino: string | null;
   created_at: string;
+  comunicado_borrador_id: string | null;
   ia_robots?: { nombre: string } | null;
   cuentaEmail?: string | null;
 }
@@ -115,6 +118,7 @@ export default function AutomatizacionIA() {
         {[
           { key: 'dashboard' as Tab, label: 'Dashboard', icon: Activity },
           { key: 'robots' as Tab, label: 'Robots', icon: Bot },
+          { key: 'boletines' as Tab, label: 'Boletines', icon: Newspaper },
           { key: 'bandeja' as Tab, label: 'Bandeja IA', icon: Mail },
           { key: 'bitacora' as Tab, label: 'Bitácora', icon: ScrollText },
           { key: 'cuentas' as Tab, label: 'Cuentas', icon: Settings },
@@ -136,6 +140,7 @@ export default function AutomatizacionIA() {
 
       {tab === 'dashboard' && <DashboardIA />}
       {tab === 'robots' && <RobotsPanel />}
+      {tab === 'boletines' && <BoletinesPanel />}
       {tab === 'bandeja' && <BandejaPanel />}
       {tab === 'bitacora' && <BitacoraPanel />}
       {tab === 'cuentas' && <CuentasPanel />}
@@ -372,6 +377,272 @@ function StatCard({ icon: Icon, label, value, color }: { icon: any; label: strin
       </div>
       <p className="text-2xl font-bold text-slate-900 dark:text-white">{value}</p>
       <p className="text-xs text-slate-500">{label}</p>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BOLETINES PANEL (Robot Comunicados Aseguradoras)
+// ═══════════════════════════════════════════════════════════════════
+interface BoletinItem {
+  id: string;
+  asunto: string;
+  remitente: string;
+  cuerpo_texto: string | null;
+  fecha_correo: string;
+  coincidencia_pct: number;
+  comunicado_borrador_id: string | null;
+  resultado: Record<string, unknown> | null;
+}
+
+const BOLETIN_ROBOT_ID = '43453bfd-d655-43bc-99b3-f8c037afeabb';
+
+function BoletinesPanel() {
+  const { usuario } = useAuth();
+  const navigate = useNavigate();
+  const [pendientes, setPendientes] = useState<BoletinItem[]>([]);
+  const [procesados, setProcesados] = useState<BoletinItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
+  const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => { loadBoletines(); }, []);
+
+  async function loadBoletines() {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      let robotId = BOLETIN_ROBOT_ID;
+
+      const { data: robot, error: robotErr } = await supabase
+        .from('ia_robots')
+        .select('id')
+        .eq('codigo', 'comunicados_aseguradoras')
+        .maybeSingle();
+
+      if (robotErr) {
+        console.error('loadBoletines robot error:', robotErr);
+      }
+      if (robot) {
+        robotId = robot.id;
+      }
+
+      const { data: allItems, error: bandejaErr } = await supabase
+        .from('ia_bandeja')
+        .select('id, asunto, remitente, cuerpo_texto, fecha_correo, coincidencia_pct, comunicado_borrador_id, resultado')
+        .eq('robot_id', robotId)
+        .eq('estado_procesamiento', 'completado')
+        .order('fecha_correo', { ascending: false })
+        .limit(50);
+
+      if (bandejaErr) {
+        console.error('loadBoletines bandeja error:', bandejaErr);
+        setLoadError(`Error al cargar boletines: ${bandejaErr.message}`);
+      }
+
+      const items = (allItems || []) as BoletinItem[];
+      setPendientes(items.filter(i => !i.comunicado_borrador_id));
+      setProcesados(items.filter(i => !!i.comunicado_borrador_id));
+    } catch (err: any) {
+      console.error('loadBoletines error:', err);
+      setLoadError(err.message || 'Error inesperado al cargar boletines');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function processBoletin(bandejaId?: string) {
+    setProcessing(true);
+    setResult(null);
+    if (bandejaId) setProcessingIds(new Set([bandejaId]));
+    else setProcessingIds(new Set(pendientes.map(p => p.id)));
+
+    try {
+      const body: Record<string, unknown> = { creado_por: usuario?.id };
+      if (bandejaId) body.bandeja_id = bandejaId;
+      else body.limit = 5;
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ia-process-boletin`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify(body),
+        }
+      );
+      const json = await res.json();
+      if (json.success) {
+        setResult({
+          ok: true,
+          msg: `${json.comunicados_creados || 0} comunicado(s) generado(s) como borrador`,
+        });
+        loadBoletines();
+      } else {
+        setResult({ ok: false, msg: json.error || json.message || 'Error al procesar' });
+      }
+    } catch {
+      setResult({ ok: false, msg: 'Error de red al ejecutar el procesamiento' });
+    } finally {
+      setProcessing(false);
+      setProcessingIds(new Set());
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 rounded-xl border border-teal-200 dark:border-teal-800 p-5">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-teal-500/20">
+              <Newspaper className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-900 dark:text-white">Robot de Boletines de Aseguradoras</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+                Identifica comunicados de aseguradoras, genera articulos y crea borradores de publicacion automaticamente
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={loadBoletines} className="gap-2">
+              <RefreshCw className="w-4 h-4" /> Actualizar
+            </Button>
+            {pendientes.length > 0 && (
+              <Button
+                onClick={() => processBoletin()}
+                disabled={processing}
+                className="gap-2 bg-teal-600 hover:bg-teal-700 text-white"
+              >
+                {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                Procesar todos ({pendientes.length})
+              </Button>
+            )}
+          </div>
+        </div>
+        {result && (
+          <div className={`mt-4 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm ${
+            result.ok ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                     : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400 border border-red-200 dark:border-red-800'
+          }`}>
+            {result.ok ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <XCircle className="w-4 h-4 flex-shrink-0" />}
+            {result.msg}
+          </div>
+        )}
+        {loadError && (
+          <div className="mt-4 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400 border border-red-200 dark:border-red-800">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            {loadError}
+          </div>
+        )}
+      </div>
+
+      {/* Pending bulletins */}
+      {pendientes.length > 0 && (
+        <Section title={`Boletines pendientes de procesar (${pendientes.length})`}>
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
+            {pendientes.map(item => (
+              <div key={item.id} className="p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                  <Mail className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-sm text-slate-900 dark:text-white truncate">{item.asunto || '(Sin asunto)'}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    De: {item.remitente} — {new Date(item.fecha_correo).toLocaleDateString('es-MX')}
+                    {item.coincidencia_pct > 0 && <span className="ml-2 text-teal-600">({item.coincidencia_pct}% match)</span>}
+                  </p>
+                  {item.cuerpo_texto && (
+                    <p className="text-xs text-slate-400 mt-1 line-clamp-1">{item.cuerpo_texto.substring(0, 150)}</p>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  className="gap-1.5 text-xs flex-shrink-0 border-teal-300 text-teal-700 hover:bg-teal-50 dark:border-teal-700 dark:text-teal-400"
+                  disabled={processing && processingIds.has(item.id)}
+                  onClick={() => processBoletin(item.id)}
+                >
+                  {processing && processingIds.has(item.id) ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  )}
+                  Generar comunicado
+                </Button>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Processed bulletins */}
+      <Section title={`Comunicados generados (${procesados.length})`}>
+        {procesados.length === 0 ? (
+          <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+            <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+              <FileText className="w-7 h-7 text-slate-400" />
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-400">No hay comunicados generados aun.</p>
+            <p className="text-xs text-slate-400 mt-1">Los boletines procesados aparecerán aqui con enlace al borrador.</p>
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
+            {procesados.map(item => {
+              const res = item.resultado as { titulo?: string; comunicado_id?: string; generated_at?: string } | null;
+              return (
+                <div key={item.id} className="p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm text-slate-900 dark:text-white truncate">{res?.titulo || item.asunto}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      De: {item.remitente} — Procesado: {res?.generated_at ? new Date(res.generated_at).toLocaleDateString('es-MX') : ''}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                      Borrador
+                    </span>
+                    {item.comunicado_borrador_id && (
+                      <button
+                        onClick={() => navigate(`/comunicados/editor/${item.comunicado_borrador_id}`)}
+                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" /> Editar
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Section>
+
+      {/* No bulletins at all */}
+      {pendientes.length === 0 && procesados.length === 0 && (
+        <div className="text-center py-16">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+            <Newspaper className="w-8 h-8 text-slate-400" />
+          </div>
+          <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1">Sin boletines clasificados</h3>
+          <p className="text-sm text-slate-500 max-w-md mx-auto">
+            Cuando se detecten emails de aseguradoras con comunicados o circulares, aparecerán aqui para ser procesados automaticamente en borradores de publicacion.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -875,18 +1146,29 @@ function RobotForm({ robot, onSave, onCancel }: { robot: Robot | null; onSave: (
 // BANDEJA IA PANEL
 // ═══════════════════════════════════════════════════════════════════
 function BandejaPanel() {
+  const navigate = useNavigate();
   const [items, setItems] = useState<BandejaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState('');
   const [previewItem, setPreviewItem] = useState<BandejaItem | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [robots, setRobots] = useState<{ id: string; nombre: string; codigo: string | null }[]>([]);
+  const [processing, setProcessing] = useState(false);
+  const [actionResult, setActionResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  useEffect(() => { loadBandeja(); loadRobots(); }, []);
   useEffect(() => { loadBandeja(); }, [filtroEstado]);
+
+  async function loadRobots() {
+    const { data } = await supabase.from('ia_robots').select('id, nombre, codigo').eq('estado', 'activo').order('nombre');
+    setRobots(data || []);
+  }
 
   async function loadBandeja() {
     setLoading(true);
     try {
       let query = supabase.from('ia_bandeja')
-        .select('id, asunto, remitente, destinatario, cuerpo_texto, fecha_correo, estado_procesamiento, coincidencia_pct, razon_clasificacion, robot_id, cuenta_correo_id, carpeta_destino, created_at')
+        .select('id, asunto, remitente, destinatario, cuerpo_texto, fecha_correo, estado_procesamiento, coincidencia_pct, razon_clasificacion, robot_id, cuenta_correo_id, carpeta_destino, created_at, comunicado_borrador_id')
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -895,7 +1177,6 @@ function BandejaPanel() {
       const { data: bandeja } = await query;
       const rows = bandeja || [];
 
-      // Fetch robot names
       const robotIds = [...new Set(rows.map((r: any) => r.robot_id).filter(Boolean))];
       const robotNamesMap: Record<string, string> = {};
       if (robotIds.length > 0) {
@@ -903,7 +1184,6 @@ function BandejaPanel() {
         (rRes.data || []).forEach((r: any) => { robotNamesMap[r.id] = r.nombre; });
       }
 
-      // Fetch cuenta emails
       const cuentaIds = [...new Set(rows.map((r: any) => r.cuenta_correo_id).filter(Boolean))];
       const cuentaEmailMap: Record<string, string> = {};
       if (cuentaIds.length > 0) {
@@ -923,6 +1203,88 @@ function BandejaPanel() {
     }
   }
 
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === items.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(items.map(i => i.id)));
+    }
+  }
+
+  async function handleAsignarRobot(robotId: string) {
+    if (selectedIds.size === 0) return;
+    setProcessing(true);
+    setActionResult(null);
+    try {
+      const { error, count } = await supabase.from('ia_bandeja')
+        .update({ robot_id: robotId, estado_procesamiento: 'completado' })
+        .in('id', [...selectedIds])
+        .select('id', { count: 'exact', head: true });
+      if (error) throw error;
+      if (count === 0) throw new Error('No se actualizaron registros. Verifica permisos.');
+      setActionResult({ type: 'success', message: `${count} correo(s) asignados al robot.` });
+      setSelectedIds(new Set());
+      loadBandeja();
+    } catch (err: any) {
+      setActionResult({ type: 'error', message: err.message || 'Error al asignar robot.' });
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  async function handleProcesarBoletin(robotId: string) {
+    if (selectedIds.size === 0) return;
+    setProcessing(true);
+    setActionResult(null);
+    try {
+      // First assign the robot and mark as completado
+      const { error: updateErr, count } = await supabase.from('ia_bandeja')
+        .update({ robot_id: robotId, estado_procesamiento: 'completado', comunicado_borrador_id: null })
+        .in('id', [...selectedIds])
+        .select('id', { count: 'exact', head: true });
+      if (updateErr) throw updateErr;
+      if (count === 0) throw new Error('No se actualizaron registros. Verifica permisos.');
+
+      // Invoke the edge function to process them
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+      const res = await fetch(`${supabaseUrl}/functions/v1/ia-process-boletin`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ robot_id: robotId, bandeja_ids: [...selectedIds] }),
+      });
+
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Error al procesar boletines');
+
+      const creados = result.comunicados_creados || 0;
+      const errores = (result.results || []).filter((r: any) => !r.success).length;
+      let msg = `${creados} comunicado(s) creados exitosamente.`;
+      if (errores > 0) msg += ` ${errores} con error.`;
+      setActionResult({ type: creados > 0 ? 'success' : 'error', message: msg });
+      setSelectedIds(new Set());
+      loadBandeja();
+    } catch (err: any) {
+      setActionResult({ type: 'error', message: err.message || 'Error al procesar boletines.' });
+    } finally {
+      setProcessing(false);
+    }
+  }
+
   const estadoColors: Record<string, string> = {
     pendiente: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
     procesando: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
@@ -931,6 +1293,8 @@ function BandejaPanel() {
     no_clasificado: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
     simulado: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
   };
+
+  const boletinRobot = robots.find(r => r.nombre.toLowerCase().includes('comunicados'));
 
   return (
     <div className="space-y-4">
@@ -954,19 +1318,115 @@ function BandejaPanel() {
         <span className="text-xs text-slate-400">{items.length} correos</span>
       </div>
 
+      {/* Action toolbar when items are selected */}
+      {selectedIds.size > 0 && (
+        <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl p-3 flex items-center gap-3 flex-wrap">
+          <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+            {selectedIds.size} seleccionado{selectedIds.size > 1 ? 's' : ''}
+          </span>
+          <div className="h-5 w-px bg-blue-200 dark:bg-blue-700" />
+
+          {/* Assign robot dropdown */}
+          <div className="flex items-center gap-2">
+            <select
+              className="rounded-lg border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium"
+              defaultValue=""
+              onChange={e => {
+                if (e.target.value) handleAsignarRobot(e.target.value);
+                e.target.value = '';
+              }}
+              disabled={processing}
+            >
+              <option value="" disabled>Asignar robot...</option>
+              {robots.map(r => (
+                <option key={r.id} value={r.id}>{r.nombre}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Process as Boletin button */}
+          {boletinRobot && (
+            <Button
+              onClick={() => handleProcesarBoletin(boletinRobot.id)}
+              disabled={processing}
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8"
+            >
+              {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Newspaper className="w-3.5 h-3.5" />}
+              Procesar como Boletin
+            </Button>
+          )}
+
+          {/* Process with selected robot */}
+          {!boletinRobot && robots.length > 0 && (
+            <select
+              className="rounded-lg border border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300"
+              defaultValue=""
+              onChange={e => {
+                if (e.target.value) handleProcesarBoletin(e.target.value);
+                e.target.value = '';
+              }}
+              disabled={processing}
+            >
+              <option value="" disabled>Procesar con robot...</option>
+              {robots.map(r => (
+                <option key={r.id} value={r.id}>{r.nombre}</option>
+              ))}
+            </select>
+          )}
+
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="ml-auto text-xs text-blue-500 hover:underline"
+          >
+            Deseleccionar
+          </button>
+        </div>
+      )}
+
+      {/* Result feedback */}
+      {actionResult && (
+        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm ${
+          actionResult.type === 'success'
+            ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+            : 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800'
+        }`}>
+          {actionResult.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+          <span>{actionResult.message}</span>
+          <button onClick={() => setActionResult(null)} className="ml-auto text-xs opacity-60 hover:opacity-100">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
       ) : items.length === 0 ? (
         <div className="text-center py-16">
           <Mail className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500">No hay correos en la bandeja IA.</p>
-          <p className="text-xs text-slate-400 mt-1">Los correos aparecerán aquí cuando se configure y active el monitoreo.</p>
+          <p className="text-xs text-slate-400 mt-1">Los correos aparecerán aqui cuando se configure y active el monitoreo.</p>
         </div>
       ) : (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
+          {/* Select all header */}
+          <div className="px-4 py-2.5 flex items-center gap-3 bg-slate-50 dark:bg-slate-800/80">
+            <input
+              type="checkbox"
+              checked={selectedIds.size === items.length && items.length > 0}
+              onChange={toggleSelectAll}
+              className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-xs text-slate-500">Seleccionar todos</span>
+          </div>
           {items.map(item => (
-            <div key={item.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-              <div className="flex items-start justify-between gap-3">
+            <div key={item.id} className={`p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${selectedIds.has(item.id) ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''}`}>
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(item.id)}
+                  onChange={() => toggleSelect(item.id)}
+                  className="w-4 h-4 mt-0.5 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500 flex-shrink-0"
+                />
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-sm text-slate-900 dark:text-white truncate">{item.asunto || '(Sin asunto)'}</p>
                   <p className="text-xs text-slate-500 mt-0.5">
@@ -983,21 +1443,31 @@ function BandejaPanel() {
                     <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{item.razon_clasificacion}</p>
                   )}
                 </div>
-                <div className="flex flex-col items-end gap-1.5">
+                <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${estadoColors[item.estado_procesamiento] || 'bg-slate-100 text-slate-600'}`}>
                     {item.estado_procesamiento}
                   </span>
                   <span className="text-xs text-slate-400">
                     {item.fecha_correo ? new Date(item.fecha_correo).toLocaleDateString('es-MX') : ''}
                   </span>
-                  {item.cuerpo_texto && (
-                    <button
-                      onClick={() => setPreviewItem(item)}
-                      className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                    >
-                      <Eye className="w-3 h-3" /> Ver
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {item.comunicado_borrador_id && (
+                      <button
+                        onClick={() => navigate(`/comunicados/editor/${item.comunicado_borrador_id}`)}
+                        className="flex items-center gap-1 text-xs text-teal-600 hover:text-teal-800 dark:text-teal-400 hover:underline"
+                      >
+                        <FileText className="w-3 h-3" /> Borrador
+                      </button>
+                    )}
+                    {item.cuerpo_texto && (
+                      <button
+                        onClick={() => setPreviewItem(item)}
+                        className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                      >
+                        <Eye className="w-3 h-3" /> Ver
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

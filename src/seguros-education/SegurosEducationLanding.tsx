@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Play, BookOpen, Video, Users, MapPin, Award, Clock, Wifi, ChevronRight, Menu, X, GraduationCap, Building2, ArrowRight, CircleCheck as CheckCircle, Monitor, Calendar, Globe, Zap, Mail, Phone, MessageSquare, Send, Loader as Loader2, CircleAlert as AlertCircle, ChevronDown, ExternalLink } from 'lucide-react';
+import { Play, BookOpen, Video, Users, MapPin, Award, Clock, Wifi, ChevronRight, Menu, X, GraduationCap, Building2, ArrowRight, CircleCheck as CheckCircle, Monitor, Calendar, Globe, Zap, Mail, Phone, MessageSquare, Send, Loader as Loader2, CircleAlert as AlertCircle, ChevronDown, ExternalLink, Star } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { SELoginModal } from './SELoginModal';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
@@ -297,6 +297,12 @@ export default function SegurosEducationLanding() {
   const [loadingContent, setLoadingContent] = useState(true);
   const heroRef = useRef<HTMLDivElement>(null);
   const contactoRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const root = document.getElementById('root');
+    root?.classList.add('public-page');
+    return () => { root?.classList.remove('public-page'); };
+  }, []);
 
   useEffect(() => {
     async function load() {

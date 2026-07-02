@@ -133,6 +133,17 @@ export default function TramitesReportes() {
   const [grupos, setGrupos] = useState<any[]>([]);
   const [usuariosDelGrupo, setUsuariosDelGrupo] = useState<string[]>([]);
 
+  // C1: Motor de Reportes FormBuilder
+  const [reporteDesde, setReporteDesde] = useState('');
+  const [reporteHasta, setReporteHasta] = useState('');
+  const [reporteAreaId, setReporteAreaId] = useState('');
+  const [reporteTipo, setReporteTipo] = useState('');
+  const [reporteEquipoId, setReporteEquipoId] = useState('');
+  const [reporteRows, setReporteRows] = useState<any[]>([]);
+  const [reporteLoading, setReporteLoading] = useState(false);
+  const [areasFormBuilder, setAreasFormBuilder] = useState<{ id: string; nombre: string }[]>([]);
+  const [tiposFormBuilder, setTiposFormBuilder] = useState<{ value: string; label: string }[]>([]);
+
   // Permisos
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
@@ -439,6 +450,79 @@ export default function TramitesReportes() {
     } catch (error) {
       console.error('Error loading tramites por usuario:', error);
     }
+  };
+
+  // C1: carga catálogos de áreas y tipos del motor FormBuilder
+  useEffect(() => {
+    if (!canViewReports) return;
+    const hoy = new Date();
+    const hace30 = new Date();
+    hace30.setDate(hoy.getDate() - 30);
+    setReporteDesde(hace30.toISOString().split('T')[0]);
+    setReporteHasta(hoy.toISOString().split('T')[0]);
+
+    supabase.from('tramites_areas').select('id, nombre').eq('activa', true).order('nombre')
+      .then(({ data }) => setAreasFormBuilder(data ?? []));
+    supabase.from('ticket_tipos').select('value, label').eq('activo', true).order('label')
+      .then(({ data }) => setTiposFormBuilder(data ?? []));
+  }, [canViewReports]);
+
+  const consultarReporte = async () => {
+    if (!reporteDesde || !reporteHasta) return;
+    setReporteLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('get_reporte_tramites', {
+        p_desde: new Date(reporteDesde).toISOString(),
+        p_hasta: new Date(reporteHasta + 'T23:59:59').toISOString(),
+        p_area_id: reporteAreaId || null,
+        p_tipo_tramite: reporteTipo || null,
+        p_equipo_id: reporteEquipoId || null,
+      });
+      if (!error) setReporteRows(data ?? []);
+      else console.error('get_reporte_tramites:', error);
+    } finally {
+      setReporteLoading(false);
+    }
+  };
+
+  const exportarReporteXLSX = async () => {
+    if (reporteRows.length === 0) return;
+    let campoKeys: { key: string; label: string }[] = [];
+    if (reporteTipo) {
+      const { data: tipoData } = await supabase
+        .from('ticket_tipos').select('id').eq('value', reporteTipo).single();
+      if (tipoData) {
+        const { data: camposData } = await supabase
+          .from('tramite_tipo_campos')
+          .select('key, label')
+          .eq('tipo_tramite_id', tipoData.id)
+          .eq('activo', true)
+          .eq('is_sistema', false)
+          .order('display_order');
+        campoKeys = camposData ?? [];
+      }
+    }
+    const rows = reporteRows.map((r: any) => {
+      const base: Record<string, any> = {
+        'Folio': r.folio,
+        'Tipo': r.tipo_nombre,
+        'Área': r.area_nombre,
+        'Equipo': r.equipo_nombre,
+        'Creado por': r.creado_por,
+        'Fecha Creación': r.created_at ? new Date(r.created_at).toLocaleDateString('es-MX') : '',
+        'Fecha Cierre': r.completed_at ? new Date(r.completed_at).toLocaleDateString('es-MX') : '',
+        'Lead Time (hrs)': r.lead_time_horas,
+        'Estatus': r.estatus_actual,
+        'Total Eventos': r.total_eventos,
+      };
+      const respuestas: Record<string, any> = r.respuestas ?? {};
+      campoKeys.forEach(c => { base[c.label] = respuestas[c.key] ?? ''; });
+      return base;
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Reporte');
+    XLSX.writeFile(wb, `reporte_fb_${reporteDesde}_${reporteHasta}.xlsx`);
   };
 
   const handleVerTramite = async (tramiteId: string) => {
@@ -1612,6 +1696,152 @@ export default function TramitesReportes() {
           <div className="mt-4 text-center text-sm text-neutral-600">
             Mostrando 50 de {tramitesFiltrados.length} trámites. Usa los filtros para refinar la búsqueda.
           </div>
+        )}
+      </div>
+
+      {/* ─── Motor de Reportes FormBuilder (vw_tramites_reporte) ─── */}
+      <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Download className="w-5 h-5 text-neutral-600" />
+            <h2 className="text-lg font-semibold text-neutral-900">Exportar Datos — Motor de Reportes</h2>
+          </div>
+          {reporteRows.length > 0 && (
+            <button
+              onClick={exportarReporteXLSX}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              Exportar XLSX ({reporteRows.length})
+            </button>
+          )}
+        </div>
+
+        {/* Filtros */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-neutral-600 mb-1">Desde</label>
+            <input
+              type="date"
+              value={reporteDesde}
+              onChange={e => setReporteDesde(e.target.value)}
+              className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-neutral-600 mb-1">Hasta</label>
+            <input
+              type="date"
+              value={reporteHasta}
+              onChange={e => setReporteHasta(e.target.value)}
+              className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-neutral-600 mb-1">Área</label>
+            <select
+              value={reporteAreaId}
+              onChange={e => setReporteAreaId(e.target.value)}
+              className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Todas</option>
+              {areasFormBuilder.map(a => (
+                <option key={a.id} value={a.id}>{a.nombre}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-neutral-600 mb-1">Tipo de Trámite</label>
+            <select
+              value={reporteTipo}
+              onChange={e => setReporteTipo(e.target.value)}
+              className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Todos</option>
+              {tiposFormBuilder.map(t => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-neutral-600 mb-1">Equipo</label>
+            <select
+              value={reporteEquipoId}
+              onChange={e => setReporteEquipoId(e.target.value)}
+              className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Todos</option>
+              {grupos.map(g => (
+                <option key={g.id} value={g.id}>{g.nombre}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <button
+            onClick={consultarReporte}
+            disabled={reporteLoading || !reporteDesde || !reporteHasta}
+            className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            {reporteLoading ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Activity className="w-4 h-4" />
+            )}
+            {reporteLoading ? 'Consultando...' : 'Consultar'}
+          </button>
+        </div>
+
+        {/* Tabla de resultados */}
+        {reporteRows.length > 0 && (
+          <div className="overflow-x-auto rounded-lg border border-neutral-200">
+            <table className="min-w-full text-sm">
+              <thead className="bg-neutral-50">
+                <tr>
+                  {['Folio','Tipo','Área','Equipo','Creado por','Fecha Creación','Lead Time (hrs)','Estatus','Eventos'].map(col => (
+                    <th key={col} className="py-2 px-3 text-left text-xs font-semibold text-neutral-600 whitespace-nowrap">{col}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {reporteRows.slice(0, 50).map((r: any, i: number) => (
+                  <tr key={i} className="border-t border-neutral-100 hover:bg-neutral-50">
+                    <td className="py-2 px-3 font-mono text-accent font-semibold whitespace-nowrap">{r.folio}</td>
+                    <td className="py-2 px-3 text-neutral-700 whitespace-nowrap">{r.tipo_nombre}</td>
+                    <td className="py-2 px-3 text-neutral-600 whitespace-nowrap">{r.area_nombre}</td>
+                    <td className="py-2 px-3 text-neutral-600 whitespace-nowrap">{r.equipo_nombre ?? '—'}</td>
+                    <td className="py-2 px-3 text-neutral-700 whitespace-nowrap">{r.creado_por}</td>
+                    <td className="py-2 px-3 text-neutral-600 whitespace-nowrap">
+                      {r.created_at ? new Date(r.created_at).toLocaleDateString('es-MX') : '—'}
+                    </td>
+                    <td className="py-2 px-3 text-neutral-600 font-variant-numeric tabular-nums">
+                      {r.lead_time_horas != null ? r.lead_time_horas : '—'}
+                    </td>
+                    <td className="py-2 px-3">
+                      {r.estatus_actual ? (
+                        <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                          {r.estatus_actual}
+                        </span>
+                      ) : <span className="text-neutral-400">Sin estatus</span>}
+                    </td>
+                    <td className="py-2 px-3 text-neutral-600 text-center">{r.total_eventos}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {reporteRows.length > 50 && (
+              <div className="p-3 text-center text-xs text-neutral-500 bg-neutral-50 border-t border-neutral-200">
+                Mostrando 50 de {reporteRows.length} registros. El XLSX incluye todos.
+              </div>
+            )}
+          </div>
+        )}
+
+        {reporteRows.length === 0 && !reporteLoading && reporteDesde && reporteHasta && (
+          <p className="text-sm text-neutral-500 text-center py-4">
+            Sin resultados para el período seleccionado. Presiona Consultar para cargar datos.
+          </p>
         )}
       </div>
 

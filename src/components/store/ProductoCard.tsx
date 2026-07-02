@@ -1,4 +1,4 @@
-import { ShoppingCart, Sparkles } from 'lucide-react';
+import { ShoppingCart, TriangleAlert as AlertTriangle, Sparkles, Wrench } from 'lucide-react';
 import type { StoreProducto } from '../../lib/storeTypes';
 
 interface Props {
@@ -24,10 +24,14 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
     return `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/store-productos/${imagenUrl}`;
   };
 
+  const esPorPedido = producto.disponibilidad === 'por_pedido';
+  const sinStock = !esPorPedido && producto.stock === 0;
+  const pocasExistencias = !esPorPedido && producto.stock > 0 && producto.stock <= producto.stock_umbral;
+
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+    <div className={`bg-white dark:bg-white/5 rounded-xl shadow-sm border border-gray-200 dark:border-white/10 overflow-hidden hover:shadow-md transition-shadow ${sinStock ? 'opacity-75' : ''}`}>
       <div
-        className="aspect-square w-full bg-gray-100 cursor-pointer overflow-hidden"
+        className="aspect-square w-full bg-gray-100 dark:bg-white/5 cursor-pointer overflow-hidden relative"
         onClick={() => onVerDetalle(producto)}
       >
         <img
@@ -39,12 +43,35 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
             target.src = PLACEHOLDER_SVG;
           }}
         />
+        {sinStock && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+            <span className="bg-red-600 text-white text-sm font-bold px-4 py-1.5 rounded-full">
+              Agotado
+            </span>
+          </div>
+        )}
+        {pocasExistencias && (
+          <div className="absolute top-2 left-2">
+            <span className="inline-flex items-center gap-1 bg-amber-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+              <AlertTriangle className="w-3 h-3" />
+              Pocas existencias
+            </span>
+          </div>
+        )}
+        {producto.tipo_item === 'servicio' && (
+          <div className="absolute top-2 right-2">
+            <span className="inline-flex items-center gap-1 bg-purple-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+              <Wrench className="w-3 h-3" />
+              Servicio
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="p-3 sm:p-4">
         <div className="mb-2 flex flex-wrap gap-1.5">
           {producto.categoria && (
-            <span className="inline-block px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
+            <span className="inline-block px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 dark:bg-accent/10 dark:text-accent rounded-full">
               {producto.categoria.nombre}
             </span>
           )}
@@ -57,27 +84,32 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
         </div>
 
         <h3
-          className="text-base sm:text-lg font-semibold text-gray-900 mb-2 cursor-pointer hover:text-accent transition-colors line-clamp-2"
+          className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2 cursor-pointer hover:text-accent transition-colors line-clamp-2"
           onClick={() => onVerDetalle(producto)}
         >
           {producto.titulo}
         </h3>
 
-        <p className="text-sm text-gray-600 mb-3 sm:mb-4 line-clamp-2">
+        <p className="text-sm text-gray-600 dark:text-white/60 mb-3 sm:mb-4 line-clamp-2">
           {producto.descripcion}
         </p>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
-          <p className="text-xl sm:text-2xl font-bold text-gray-900">
+          <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
             ${producto.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
           </p>
 
           <button
-            onClick={() => esPremium ? onVerDetalle(producto) : onAgregar(producto)}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-accent text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-accent-hover transition-colors font-medium text-sm sm:text-base"
+            onClick={() => esPremium ? onVerDetalle(producto) : sinStock ? undefined : onAgregar(producto)}
+            disabled={!esPremium && sinStock}
+            className={`w-full sm:w-auto flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium text-sm sm:text-base transition-colors ${
+              !esPremium && sinStock
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-accent text-white hover:bg-accent-hover'
+            }`}
           >
             <ShoppingCart className="w-4 h-4" />
-            <span>{esPremium ? 'Ver Planes' : 'Agregar'}</span>
+            <span>{esPremium ? 'Ver Planes' : sinStock ? 'Agotado' : producto.tipo_item === 'servicio' ? 'Solicitar' : 'Agregar'}</span>
           </button>
         </div>
       </div>

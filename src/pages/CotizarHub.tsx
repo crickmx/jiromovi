@@ -1,23 +1,11 @@
 import { useNavigate } from 'react-router-dom';
-import { Activity, Car, FolderInput as FormInput, Compass, ChevronRight, Calculator, Heart } from 'lucide-react';
+import { Car, FolderInput as FormInput, Compass, ChevronRight, Calculator, Heart } from 'lucide-react';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { useModuleVisibility } from '../lib/useModuleVisibility';
 import { isItemVisible, WORKSPACES } from '../lib/workspaceConfig';
 import type { UserRole } from '../lib/workspaceConfig';
 
 const MODULES = [
-  {
-    path: '/cotizar/gmm-bx',
-    label: 'GMM BX+',
-    description: 'Cotiza seguros de Gastos Medicos Mayores con tarifas actualizadas de Blue Cross y otras aseguradoras.',
-    icon: Activity,
-    color: 'from-sky-500 to-cyan-500',
-    bgLight: 'bg-sky-50 dark:bg-sky-900/20',
-    borderHover: 'hover:border-sky-200 dark:hover:border-sky-700',
-    shadowHover: 'hover:shadow-sky-100/40 dark:hover:shadow-sky-900/20',
-    iconColor: 'text-sky-600 dark:text-sky-400',
-    logo: '/logo-bx.png',
-  },
   {
     path: '/cotizar/multicotizador-gmm',
     label: 'Multicotizador GMM',
@@ -83,7 +71,7 @@ export default function CotizarHub() {
     const navItem = cotizarWorkspace.items.find(item => item.path === mod.path || mod.path.startsWith(item.path + '/'));
     if (navItem && !isItemVisible(navItem, rol)) return false;
     // Check database-driven module visibility rules
-    if (!isVisible(mod.path, rol, oficinaId)) return false;
+    if (!isVisible(mod.path, rol, oficinaId, usuario?.id)) return false;
     return true;
   });
 

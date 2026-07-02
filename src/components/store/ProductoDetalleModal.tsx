@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, ShoppingCart, Minus, Plus, CheckCircle, ArrowRight, Sparkles, Loader2 } from 'lucide-react';
+import { X, ShoppingCart, Minus, Plus, TriangleAlert as AlertTriangle, CheckCircle, ArrowRight, Sparkles, Loader2, Wrench } from 'lucide-react';
 import type { StoreProducto } from '../../lib/storeTypes';
 import { supabase } from '../../lib/supabase';
 import { setupMarketingPremiumProductos } from '../../lib/storeUtils';
@@ -53,11 +53,12 @@ function getImageUrl(imagenUrl: string) {
 interface Props {
   producto: StoreProducto;
   onClose: () => void;
-  onAgregar: (producto: StoreProducto, cantidad: number) => void;
+  onAgregar: (producto: StoreProducto, cantidad: number, atributos?: Record<string, string>) => void;
 }
 
 export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
   const [cantidad, setCantidad] = useState(1);
+  const [atributosSeleccionados, setAtributosSeleccionados] = useState<Record<string, string>>({});
 
   const esPremium = esProductoPremium(producto);
   const planInicial = producto.tipo === 'marketing_premium_anual' ? 'anual' : 'mensual';
@@ -106,8 +107,20 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
 
   const efectivo = productoEfectivo();
 
+  const esPorPedido = producto.disponibilidad === 'por_pedido';
+  const esServicio = producto.tipo_item === 'servicio';
+  const sinStock = !esPorPedido && producto.stock === 0;
+  const pocasExistencias = !esPorPedido && producto.stock > 0 && producto.stock <= producto.stock_umbral;
+  const maxCantidad = esPorPedido ? 99 : producto.stock;
+
+  const atributosConOpciones = (producto.atributos || []).filter(a => (a.opciones || []).length > 0);
+  const todosAtributosSeleccionados = atributosConOpciones.length === 0 ||
+    atributosConOpciones.every(a => atributosSeleccionados[a.nombre]);
+
   const handleAgregar = () => {
-    onAgregar(efectivo, cantidad);
+    if (!esPremium && (sinStock || !todosAtributosSeleccionados)) return;
+    const attrs = atributosConOpciones.length > 0 ? atributosSeleccionados : undefined;
+    onAgregar(efectivo, cantidad, attrs);
     onClose();
   };
 
@@ -115,8 +128,13 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-900">Detalle del Producto</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+          <h2 className="text-xl font-bold text-gray-900">
+            {esServicio ? 'Detalle del Servicio' : 'Detalle del Producto'}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -124,13 +142,35 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Imagen */}
-            <div className="aspect-square w-full bg-gray-100 rounded-lg overflow-hidden">
+            <div className="aspect-square w-full bg-gray-100 rounded-lg overflow-hidden relative">
               <img
                 src={getImageUrl(producto.imagen_url)}
                 alt={producto.titulo}
                 className="w-full h-full object-cover"
                 onError={e => { (e.target as HTMLImageElement).src = PLACEHOLDER_SVG; }}
               />
+              {sinStock && (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <span className="bg-red-600 text-white text-lg font-bold px-6 py-2 rounded-full">
+                    Agotado
+                  </span>
+                </div>
+              )}
+              {esServicio && (
+                <div className="absolute top-3 right-3">
+                  <span className="inline-flex items-center gap-1.5 bg-purple-600 text-white text-sm font-semibold px-3 py-1.5 rounded-full">
+                    <Wrench className="w-4 h-4" />
+                    Servicio
+                  </span>
+                </div>
+              )}
+              {esPorPedido && !esServicio && (
+                <div className="absolute top-3 right-3">
+                  <span className="inline-flex items-center gap-1.5 bg-blue-600 text-white text-sm font-semibold px-3 py-1.5 rounded-full">
+                    Por pedido
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Info */}
@@ -143,7 +183,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
 
               <h1 className="text-3xl font-bold text-gray-900 mb-4">{producto.titulo}</h1>
 
-              {/* ── Selector de plan ── */}
+              {/* ── Selector de plan (solo para premium) ── */}
               {esPremium && (
                 <div className="mb-5 space-y-2">
                   <p className="text-sm font-semibold text-gray-700">
@@ -194,7 +234,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
               )}
 
               {/* Precio */}
-              <p className="text-4xl font-bold text-accent mb-6">
+              <p className="text-4xl font-bold text-accent mb-4">
                 ${efectivo.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                 {esPremium && (
                   <span className="text-base font-normal text-gray-500 ml-2">
@@ -203,16 +243,75 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                 )}
               </p>
 
+              {!esPremium && sinStock && (
+                <div className="mb-4 flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                  <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                  <span className="text-sm font-medium text-red-800">
+                    {esServicio ? 'Servicio no disponible' : 'Producto agotado'}
+                  </span>
+                </div>
+              )}
+
+              {!esPremium && pocasExistencias && (
+                <div className="mb-4 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                  <span className="text-sm font-medium text-amber-800">
+                    Pocas existencias ({producto.stock} disponibles)
+                  </span>
+                </div>
+              )}
+
+              {esPorPedido && (
+                <div className="mb-4 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                  <span className="text-sm font-medium text-blue-800">
+                    {esServicio ? 'Este servicio se solicita por pedido' : 'Siempre disponible - se solicita por pedido'}
+                  </span>
+                </div>
+              )}
+
               {/* Descripción */}
               <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Descripción</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Descripcion</h3>
                 <p className="text-gray-600 whitespace-pre-wrap">{producto.descripcion}</p>
               </div>
 
+              {/* Attribute selectors (solo para productos normales) */}
+              {!esPremium && !sinStock && atributosConOpciones.length > 0 && (
+                <div className="mb-6 space-y-4">
+                  {atributosConOpciones.map(attr => (
+                    <div key={attr.id}>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        {attr.nombre} <span className="text-red-500">*</span>
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {(attr.opciones || []).filter(o => o.activo).map(opt => {
+                          const isSelected = atributosSeleccionados[attr.nombre] === opt.valor;
+                          return (
+                            <button
+                              key={opt.id}
+                              onClick={() => setAtributosSeleccionados(prev => ({ ...prev, [attr.nombre]: opt.valor }))}
+                              className={`px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
+                                isSelected
+                                  ? 'border-accent bg-primary-50 text-accent'
+                                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              {opt.valor}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Cantidad (oculta para premium) */}
-              {!esPremium && (
+              {!esPremium && !sinStock && (
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Cantidad</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Cantidad {!esPorPedido && maxCantidad > 0 && <span className="text-gray-400 font-normal">(max: {maxCantidad})</span>}
+                  </label>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setCantidad(Math.max(1, cantidad - 1))}
@@ -224,13 +323,15 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                     <input
                       type="number"
                       min="1"
+                      max={maxCantidad}
                       value={cantidad}
-                      onChange={e => setCantidad(Math.max(1, parseInt(e.target.value) || 1))}
+                      onChange={(e) => setCantidad(Math.max(1, Math.min(maxCantidad, parseInt(e.target.value) || 1)))}
                       className="w-20 text-center px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     />
                     <button
-                      onClick={() => setCantidad(cantidad + 1)}
+                      onClick={() => setCantidad(Math.min(maxCantidad, cantidad + 1))}
                       className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      disabled={cantidad >= maxCantidad}
                     >
                       <Plus className="w-4 h-4" />
                     </button>
@@ -242,10 +343,21 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
               <div className="flex flex-col gap-3">
                 <button
                   onClick={handleAgregar}
-                  className="flex items-center justify-center gap-2 bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-semibold text-lg"
+                  disabled={sinStock || !todosAtributosSeleccionados}
+                  className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-lg transition-colors ${
+                    sinStock || !todosAtributosSeleccionados
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-accent text-white hover:bg-accent-hover'
+                  }`}
                 >
                   <ShoppingCart className="w-5 h-5" />
-                  Agregar al Carrito
+                  {sinStock
+                    ? 'No disponible'
+                    : !todosAtributosSeleccionados
+                      ? 'Selecciona las opciones'
+                      : esServicio
+                        ? 'Solicitar Servicio'
+                        : 'Agregar al Carrito'}
                 </button>
                 <button
                   onClick={onClose}
@@ -255,11 +367,13 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                 </button>
               </div>
 
-              <div className="mt-6 p-4 bg-primary-50 rounded-lg">
-                <p className="text-sm text-primary-800">
-                  <strong>Total:</strong> ${(efectivo.precio * cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN
-                </p>
-              </div>
+              {(esPremium || !sinStock) && (
+                <div className="mt-6 p-4 bg-primary-50 rounded-lg">
+                  <p className="text-sm text-primary-800">
+                    <strong>{esPremium ? 'Total:' : 'Subtotal:'}</strong> ${(efectivo.precio * cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

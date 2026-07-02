@@ -48,7 +48,6 @@ const CentroNotificaciones = lazy(() => import('./CentroNotificaciones'));
 
 // Cotizar
 const CotizarHub = lazy(() => import('./CotizarHub'));
-const GMMCotizador = lazy(() => import('./GMMCotizador'));
 const FormulariosCotizacion = lazy(() => import('./FormulariosCotizacion'));
 const PublicQuoteForm = lazy(() => import('./PublicQuoteForm'));
 const QuoteFormWizard = lazy(() => import('./QuoteFormWizard'));
@@ -90,6 +89,7 @@ const ModuloViewer = lazy(() => import('./ModuloViewer'));
 const ExamenInterface = lazy(() => import('./ExamenInterface'));
 const CertificadoCedulaA = lazy(() => import('./CertificadoCedulaA'));
 const Manuales = lazy(() => import('./Manuales'));
+const ManualesAdmin = lazy(() => import('./ManualesAdmin'));
 const ManualViewer = lazy(() => import('./ManualViewer'));
 const SegurosEducationAnalytics = lazy(() => import('./SegurosEducationAnalytics'));
 
@@ -120,6 +120,10 @@ const AutomatizacionIA = lazy(() => import('./AutomatizacionIA'));
 const MascaraAdmin = lazy(() => import('./MascaraAdmin'));
 const TelefoniaAdmin = lazy(() => import('./TelefoniaAdmin'));
 const ModulosAdmin = lazy(() => import('./ModulosAdmin'));
+const BaseDatosMaestrosAdmin = lazy(() => import('./BaseDatosMaestrosAdmin'));
+const AdminTramites = lazy(() => import('./AdminTramites'));
+const DiasNoHabiles = lazy(() => import('./admin/DiasNoHabiles'));
+const ConfigJornada = lazy(() => import('./admin/ConfigJornada'));
 
 // Shared
 const Perfil = lazy(() => import('./Perfil'));
@@ -168,9 +172,10 @@ export default function MoviFullRoutes() {
           <Route path="/store/pedido/:id" element={<ProtectedRoute><StorePedidoDetalle /></ProtectedRoute>} />
           <Route path="/store/reporte" element={<ProtectedRoute><StorePedidosReporte /></ProtectedRoute>} />
           <Route path="/comunicados" element={<ProtectedRoute><Comunicados /></ProtectedRoute>} />
-          <Route path="/comunicados/:id" element={<ProtectedRoute><ComunicadoDetalle /></ProtectedRoute>} />
+          <Route path="/comunicados/nuevo" element={<ProtectedRoute><ComunicadoEditor /></ProtectedRoute>} />
           <Route path="/comunicados/editor/:id" element={<ProtectedRoute><ComunicadoEditor /></ProtectedRoute>} />
           <Route path="/comunicados/categorias" element={<ProtectedRoute><ComunicadoCategorias /></ProtectedRoute>} />
+          <Route path="/comunicados/:id" element={<ProtectedRoute><ComunicadoDetalle /></ProtectedRoute>} />
 
           {/* Comercial */}
           <Route path="/contactos" element={<ProtectedRoute><Contactos /></ProtectedRoute>} />
@@ -205,7 +210,7 @@ export default function MoviFullRoutes() {
 
           {/* Cotizar */}
           <Route path="/cotizar" element={<ProtectedRoute><CotizarHub /></ProtectedRoute>} />
-          <Route path="/cotizar/gmm-bx" element={<ProtectedRoute><GMMCotizador /></ProtectedRoute>} />
+          <Route path="/cotizar/gmm-bx" element={<Navigate to="/cotizar/multicotizador-gmm" replace />} />
           <Route path="/cotizar/formularios" element={<ProtectedRoute><FormulariosCotizacion /></ProtectedRoute>} />
           <Route path="/cotizar/formularios/:slug/wizard" element={<ProtectedRoute><QuoteFormWizard /></ProtectedRoute>} />
           <Route path="/cotizar/a-la-medida" element={<ProtectedRoute><AlaMedida /></ProtectedRoute>} />
@@ -255,6 +260,7 @@ export default function MoviFullRoutes() {
           <Route path="/seguros-education/cedula-a/examen/:examenId" element={<ProtectedRoute><ExamenInterface /></ProtectedRoute>} />
           <Route path="/seguros-education/cedula-a/certificado" element={<ProtectedRoute><CertificadoCedulaA /></ProtectedRoute>} />
           <Route path="/manuales" element={<ProtectedRoute><Manuales /></ProtectedRoute>} />
+          <Route path="/manuales/admin" element={<ProtectedRoute requireAdmin><ManualesAdmin /></ProtectedRoute>} />
           <Route path="/manuales/:slug" element={<ProtectedRoute><ManualViewer /></ProtectedRoute>} />
           <Route path="/seguros-education/analytics" element={<ProtectedRoute><SegurosEducationAnalytics /></ProtectedRoute>} />
 
@@ -286,6 +292,10 @@ export default function MoviFullRoutes() {
           <Route path="/admin/gamificacion" element={<ProtectedRoute requireAdmin><GamificacionAdmin /></ProtectedRoute>} />
           <Route path="/admin/automatizacion-ia" element={<ProtectedRoute requireAdmin><AutomatizacionIA /></ProtectedRoute>} />
           <Route path="/admin/modulos" element={<ProtectedRoute requireAdmin><ModulosAdmin /></ProtectedRoute>} />
+          <Route path="/admin/base-datos" element={<ProtectedRoute requireAdmin><BaseDatosMaestrosAdmin /></ProtectedRoute>} />
+          <Route path="/admin/tramites" element={<ProtectedRoute requireAdmin><AdminTramites /></ProtectedRoute>} />
+          <Route path="/admin/dias-no-habiles" element={<ProtectedRoute requireAdmin><DiasNoHabiles /></ProtectedRoute>} />
+          <Route path="/admin/config-jornada" element={<ProtectedRoute requireAdmin><ConfigJornada /></ProtectedRoute>} />
 
           {/* Shared profile */}
           <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />

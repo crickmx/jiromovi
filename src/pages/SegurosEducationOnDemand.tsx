@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { trackCourseStart } from '../lib/activityLogger';
-import { Search, Plus, Video, ListFilter as Filter, Play, Clock, Award, Upload, X, Settings, Trash2, CreditCard as Edit2, FileText } from 'lucide-react';
+import { Search, Plus, Video, ListFilter as Filter, Play, Clock, Award, Upload, X, Settings, Trash2, Pencil as Edit2, FileText } from 'lucide-react';
 import { VideoPlayer } from '../components/VideoPlayer';
 import { LessonDocuments } from '../components/segurosEducation/LessonDocuments';
 import { analyticsTracker } from '../lib/analyticsTracker';

@@ -2,7 +2,7 @@
  * Tipos TypeScript para el módulo de Registro de Actividades
  */
 
-export type AreaCategoria = 'Comercial' | 'Operaciones';
+export type AreaCategoria = 'Comercial' | 'Operaciones' | 'Mercadotecnia' | 'Administración' | 'Otro';
 
 export interface TipoTramiteConfig {
   value: string;
@@ -26,6 +26,14 @@ export const TIPO_TRAMITE_OPTIONS: TipoTramiteConfig[] = [
   { value: 'formulario_cotizacion',           label: 'Formulario de cotización',          area: 'Comercial',    tipoAplicable: 'general' },
 ];
 
+// Cache dinámico: arranca con la lista estática, useTiposTramite lo reemplaza con datos de DB.
+let _dynamicTipos: TipoTramiteConfig[] = TIPO_TRAMITE_OPTIONS;
+
+/** Llamado por useTiposTramite al cargar de DB para que los helpers reflejen tipos nuevos. */
+export function setDynamicTipos(tipos: TipoTramiteConfig[]): void {
+  _dynamicTipos = tipos;
+}
+
 export const COMMERCIAL_TICKET_TYPES = ['renovaciones', 'cobranza', 'otros_comercial', 'correccion_poliza_endoso'] as const;
 
 export function isCommercialTicketType(tipo: string): boolean {
@@ -33,20 +41,23 @@ export function isCommercialTicketType(tipo: string): boolean {
 }
 
 export function getTipoTramiteLabel(tipo: string): string {
-  return TIPO_TRAMITE_OPTIONS.find(t => t.value === tipo)?.label ?? tipo.replace(/_/g, ' ');
+  return _dynamicTipos.find(t => t.value === tipo)?.label ?? tipo.replace(/_/g, ' ');
 }
 
 export function getTipoTramiteArea(tipo: string): AreaCategoria {
-  return TIPO_TRAMITE_OPTIONS.find(t => t.value === tipo)?.area ?? 'Operaciones';
+  return _dynamicTipos.find(t => t.value === tipo)?.area ?? 'Operaciones';
 }
 
 export function getTipoTramitesByArea(area: AreaCategoria): TipoTramiteConfig[] {
-  return TIPO_TRAMITE_OPTIONS.filter(t => t.area === area);
+  return _dynamicTipos.filter(t => t.area === area);
 }
 
 export const AREA_CONFIG: Record<AreaCategoria, { color: string; bg: string; border: string }> = {
-  Comercial:    { color: 'text-sky-700',     bg: 'bg-sky-50',     border: 'border-sky-200' },
-  Operaciones:  { color: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-200' },
+  Comercial:      { color: 'text-sky-700',     bg: 'bg-sky-50',     border: 'border-sky-200' },
+  Operaciones:    { color: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-200' },
+  Mercadotecnia:  { color: 'text-violet-700',  bg: 'bg-violet-50',  border: 'border-violet-200' },
+  Administración: { color: 'text-teal-700',    bg: 'bg-teal-50',    border: 'border-teal-200' },
+  Otro:           { color: 'text-slate-600',   bg: 'bg-slate-50',   border: 'border-slate-200' },
 };
 
 export interface TramiteActivityType {

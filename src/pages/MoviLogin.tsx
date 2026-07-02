@@ -1,10 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, ArrowRight, ChevronLeft, RotateCcw, CircleCheck as CheckCircle } from 'lucide-react';
+import { Mail, ArrowRight, ChevronLeft, RotateCcw, CircleCheck as CheckCircle, Lock, Eye, EyeOff, Phone, Zap } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+const PREF_KEY = 'movi_login_preference';
+
+function getLoginPreference(): 'password' | 'express' {
+  try {
+    const v = localStorage.getItem(PREF_KEY);
+    if (v === 'express') return 'express';
+  } catch {}
+  return 'password';
+}
+
+function saveLoginPreference(pref: 'password' | 'express') {
+  try { localStorage.setItem(PREF_KEY, pref); } catch {}
+}
+
+function isPhoneInput(value: string): boolean {
+  const digits = value.replace(/\D/g, '');
+  return digits.length >= 10 && /^\d+$/.test(value.replace(/[\s\-+()]/g, ''));
+}
 
 function BackgroundLayer() {
   return (
@@ -31,17 +50,21 @@ function BackgroundLayer() {
   );
 }
 
-type Step = 'email' | 'code';
+type Step = 'main' | 'express-code';
 
 export default function MoviLogin() {
   useEffect(() => { document.title = 'MOVI Digital'; }, []);
 
   const navigate = useNavigate();
-  const [step, setStep] = useState<Step>('email');
-  const [email, setEmail] = useState('');
+  const [step, setStep] = useState<Step>('main');
+  const [mode, setMode] = useState<'password' | 'express'>(getLoginPreference);
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [code, setCode] = useState('');
   const [maskedEmail, setMaskedEmail] = useState('');
   const [error, setError] = useState('');
+  const [noPasswordMsg, setNoPasswordMsg] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -62,11 +85,82 @@ export default function MoviLogin() {
     }, 1000);
   }
 
-  async function handleEmailSubmit(e: React.FormEvent) {
+  async function resolveEmail(input: string): Promise<string | null> {
+    const trimmed = input.trim();
+    if (!isPhoneInput(trimmed)) return trimmed.toLowerCase();
+
+    const digits = trimmed.replace(/\D/g, '');
+    let phone10 = digits;
+    if (digits.length === 12 && digits.startsWith('52')) phone10 = digits.slice(2);
+    else if (digits.length === 13 && digits.startsWith('521')) phone10 = digits.slice(3);
+    else if (digits.length > 10) phone10 = digits.slice(-10);
+
+    const { data } = await supabase
+      .from('usuarios')
+      .select('email_laboral')
+      .or(`celular_laboral.ilike.%${phone10}%,celular_personal.ilike.%${phone10}%`)
+      .eq('estado', 'activo')
+      .is('deleted_at', null)
+      .limit(1)
+      .maybeSingle();
+
+    return data?.email_laboral?.toLowerCase() || null;
+  }
+
+  async function handlePasswordLogin(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    const trimmed = email.trim().toLowerCase();
-    if (!trimmed) { setError('Ingresa tu correo electrónico.'); return; }
+    setNoPasswordMsg(false);
+    const trimmed = identifier.trim();
+    if (!trimmed) { setError('Ingresa tu correo electrónico o celular.'); return; }
+    if (!password) { setError('Ingresa tu contraseña.'); return; }
+
+    setLoading(true);
+    try {
+      const email = await resolveEmail(trimmed);
+      if (!email) {
+        setError('No encontramos una cuenta activa con ese dato.');
+        return;
+      }
+
+      const { error: authErr } = await supabase.auth.signInWithPassword({ email, password });
+      if (authErr) {
+        if (authErr.message.includes('Invalid login credentials')) {
+          const { data: userExists } = await supabase
+            .from('usuarios')
+            .select('id')
+            .eq('email_laboral', email)
+            .eq('estado', 'activo')
+            .is('deleted_at', null)
+            .maybeSingle();
+
+          if (userExists) {
+            setNoPasswordMsg(true);
+          } else {
+            setError('Credenciales incorrectas. Verifica tu correo y contraseña.');
+          }
+          return;
+        }
+        setError('Error al iniciar sesión. Intenta de nuevo.');
+        return;
+      }
+
+      saveLoginPreference('password');
+      navigate('/dashboard', { replace: true });
+    } catch {
+      setError('Error de conexión. Intenta de nuevo.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleExpressSend(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setNoPasswordMsg(false);
+    const trimmed = identifier.trim().toLowerCase();
+    if (!trimmed) { setError('Ingresa tu correo electrónico o celular.'); return; }
+
     setLoading(true);
     try {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/send-login-code`, {
@@ -84,11 +178,12 @@ export default function MoviLogin() {
         return;
       }
       if (!data.email_sent && !data.whatsapp_sent) {
-        setError('No encontramos una cuenta activa con este correo en MOVI Digital.');
+        setError('No encontramos una cuenta activa con este dato en MOVI Digital.');
         return;
       }
       setMaskedEmail(data.masked_email || trimmed);
-      setStep('code');
+      setStep('express-code');
+      saveLoginPreference('express');
       startCooldown(120);
       setTimeout(() => codeInputRef.current?.focus(), 100);
     } catch {
@@ -108,19 +203,19 @@ export default function MoviLogin() {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/verify-login-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), code: trimmedCode, platform: 'movi' }),
+        body: JSON.stringify({ email: identifier.trim().toLowerCase(), code: trimmedCode, platform: 'movi' }),
       });
       const data = await res.json();
       if (!res.ok) {
         if (data.code === 'EXPIRED') {
           setError('El código ha expirado. Solicita uno nuevo.');
-          setStep('email');
+          setStep('main');
           setCode('');
           return;
         }
         if (data.code === 'MAX_ATTEMPTS') {
           setError('Demasiados intentos. Solicita un nuevo código.');
-          setStep('email');
+          setStep('main');
           setCode('');
           return;
         }
@@ -133,7 +228,6 @@ export default function MoviLogin() {
         return;
       }
 
-      // Register listener BEFORE verifyOtp so we catch SIGNED_IN reliably
       let navigationDone = false;
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_IN' && session && !navigationDone) {
@@ -149,12 +243,10 @@ export default function MoviLogin() {
       });
       if (otpErr) {
         subscription.unsubscribe();
-        console.error('verifyOtp error:', otpErr.message);
         setError('Error al iniciar sesión. Intenta de nuevo.');
         return;
       }
 
-      // Fallback: if SIGNED_IN never fires, navigate anyway after 3s
       setTimeout(() => {
         if (!navigationDone) {
           navigationDone = true;
@@ -178,7 +270,7 @@ export default function MoviLogin() {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/send-login-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), platform: 'movi' }),
+        body: JSON.stringify({ email: identifier.trim().toLowerCase(), platform: 'movi' }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -190,7 +282,7 @@ export default function MoviLogin() {
         return;
       }
       if (!data.email_sent && !data.whatsapp_sent) {
-        setError('No se pudo reenviar el código. Verifica tu correo.');
+        setError('No se pudo reenviar el código. Verifica tu dato.');
         return;
       }
       startCooldown(120);
@@ -250,7 +342,7 @@ export default function MoviLogin() {
 
               <div className="mt-10 space-y-4">
                 {[
-                  'Acceso seguro sin contraseña',
+                  'Acceso con contraseña o código express',
                   'Código por correo y WhatsApp',
                   'CRM y trámites integrados',
                   'Sincronización con SICAS en tiempo real',
@@ -287,18 +379,18 @@ export default function MoviLogin() {
 
             <div className="w-full max-w-[380px]">
 
-              {/* ── STEP: EMAIL ── */}
-              {step === 'email' && (
+              {/* ── STEP: MAIN (password or express input) ── */}
+              {step === 'main' && (
                 <>
-                  <div className="mb-8">
+                  <div className="mb-7">
                     <h2 className="text-2xl font-extrabold text-white tracking-tight">Iniciar sesión</h2>
                     <p className="mt-1.5 text-sm" style={{ color: 'rgba(255,255,255,0.38)' }}>
-                      Accede a MOVI Digital sin contraseña
+                      {mode === 'password' ? 'Ingresa con tu contraseña' : 'Recibe un código de acceso'}
                     </p>
                   </div>
 
                   {error && (
-                    <div className="mb-5 px-4 py-3 rounded-2xl text-sm font-medium" style={{
+                    <div className="mb-4 px-4 py-3 rounded-2xl text-sm font-medium" style={{
                       background: 'rgba(239,68,68,0.12)',
                       border: '1px solid rgba(239,68,68,0.25)',
                       color: '#fca5a5',
@@ -307,69 +399,226 @@ export default function MoviLogin() {
                     </div>
                   )}
 
-                  <form onSubmit={handleEmailSubmit} className="space-y-4" noValidate>
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold tracking-wide uppercase"
-                        style={{ color: 'rgba(255,255,255,0.4)' }}>
-                        Correo electrónico
-                      </label>
-                      <div className="relative">
-                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-                          style={{ color: 'rgba(255,255,255,0.3)' }} />
-                        <input
-                          type="email"
-                          value={email}
-                          onChange={e => setEmail(e.target.value)}
-                          placeholder="tu@correo.com"
-                          className={`${inputCls} pl-10 pr-4`}
-                          style={inputBase}
-                          onFocus={inputFocusOn}
-                          onBlur={inputFocusOff}
-                          autoComplete="email"
-                          autoFocus
-                        />
-                      </div>
+                  {noPasswordMsg && (
+                    <div className="mb-4 px-4 py-3 rounded-2xl text-sm" style={{
+                      background: 'rgba(13,110,253,0.1)',
+                      border: '1px solid rgba(13,110,253,0.25)',
+                      color: 'rgba(147,197,253,0.9)',
+                    }}>
+                      <p className="font-medium mb-1">Contraseña no configurada</p>
+                      <p className="text-xs" style={{ color: 'rgba(147,197,253,0.7)' }}>
+                        Aún no tienes una contraseña. Utiliza Ingreso Express y después podrás crear tu contraseña desde tu perfil.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => { setMode('express'); setNoPasswordMsg(false); setError(''); }}
+                        className="mt-2 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                        style={{ color: '#60a5fa' }}
+                      >
+                        <Zap className="w-3.5 h-3.5" />
+                        Ir a Ingreso Express
+                      </button>
                     </div>
+                  )}
 
+                  {/* ── PASSWORD MODE ── */}
+                  {mode === 'password' && (
+                    <form onSubmit={handlePasswordLogin} className="space-y-4" noValidate>
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold tracking-wide uppercase"
+                          style={{ color: 'rgba(255,255,255,0.4)' }}>
+                          Correo electrónico o celular
+                        </label>
+                        <div className="relative">
+                          {isPhoneInput(identifier)
+                            ? <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                            : <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                          }
+                          <input
+                            type="text"
+                            value={identifier}
+                            onChange={e => { setIdentifier(e.target.value); setNoPasswordMsg(false); }}
+                            placeholder="tu@correo.com o 10 dígitos"
+                            className={`${inputCls} pl-10 pr-4`}
+                            style={inputBase}
+                            onFocus={inputFocusOn}
+                            onBlur={inputFocusOff}
+                            autoComplete="email"
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold tracking-wide uppercase"
+                          style={{ color: 'rgba(255,255,255,0.4)' }}>
+                          Contraseña
+                        </label>
+                        <div className="relative">
+                          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+                            style={{ color: 'rgba(255,255,255,0.3)' }} />
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            value={password}
+                            onChange={e => { setPassword(e.target.value); setNoPasswordMsg(false); }}
+                            placeholder="Tu contraseña"
+                            className={`${inputCls} pl-10 pr-11`}
+                            style={inputBase}
+                            onFocus={inputFocusOn}
+                            onBlur={inputFocusOff}
+                            autoComplete="current-password"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2 p-0.5 rounded transition-colors"
+                            style={{ color: 'rgba(255,255,255,0.35)' }}
+                            tabIndex={-1}
+                          >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl text-sm font-bold text-white transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed mt-1"
+                        style={{
+                          background: loading ? 'rgba(13,110,253,0.5)' : 'linear-gradient(135deg, #0D6EFD, #0047bb)',
+                          boxShadow: loading ? 'none' : '0 4px 20px rgba(13,110,253,0.35)',
+                        }}
+                      >
+                        {loading ? (
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <span>Iniciar sesión</span>
+                            <ArrowRight className="w-4 h-4" />
+                          </>
+                        )}
+                      </button>
+                    </form>
+                  )}
+
+                  {/* ── EXPRESS MODE ── */}
+                  {mode === 'express' && (
+                    <form onSubmit={handleExpressSend} className="space-y-4" noValidate>
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold tracking-wide uppercase"
+                          style={{ color: 'rgba(255,255,255,0.4)' }}>
+                          Correo electrónico o celular
+                        </label>
+                        <div className="relative">
+                          {isPhoneInput(identifier)
+                            ? <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                            : <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                          }
+                          <input
+                            type="text"
+                            value={identifier}
+                            onChange={e => setIdentifier(e.target.value)}
+                            placeholder="tu@correo.com o 10 dígitos"
+                            className={`${inputCls} pl-10 pr-4`}
+                            style={inputBase}
+                            onFocus={inputFocusOn}
+                            onBlur={inputFocusOff}
+                            autoComplete="email"
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl text-sm font-bold text-white transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed mt-1"
+                        style={{
+                          background: loading ? 'rgba(13,110,253,0.5)' : 'linear-gradient(135deg, #0D6EFD, #0047bb)',
+                          boxShadow: loading ? 'none' : '0 4px 20px rgba(13,110,253,0.35)',
+                        }}
+                      >
+                        {loading ? (
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <span>Enviar código de acceso</span>
+                            <ArrowRight className="w-4 h-4" />
+                          </>
+                        )}
+                      </button>
+                    </form>
+                  )}
+
+                  {/* ── MODE SWITCH SEPARATOR ── */}
+                  <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }} />
+                    </div>
+                    <div className="relative flex justify-center">
+                      <span className="px-3 text-xs font-medium" style={{ background: '#050e20', color: 'rgba(255,255,255,0.3)' }}>
+                        O bien
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* ── ALTERNATE MODE BUTTON ── */}
+                  {mode === 'password' ? (
                     <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl text-sm font-bold text-white transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed mt-1"
+                      type="button"
+                      onClick={() => { setMode('express'); setError(''); setNoPasswordMsg(false); }}
+                      className="w-full flex items-center justify-center gap-2.5 h-12 rounded-2xl text-sm font-semibold transition-all duration-200 active:scale-[0.98]"
                       style={{
-                        background: loading ? 'rgba(13,110,253,0.5)' : 'linear-gradient(135deg, #0D6EFD, #0047bb)',
-                        boxShadow: loading ? 'none' : '0 4px 20px rgba(13,110,253,0.35)',
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        color: 'rgba(255,255,255,0.6)',
                       }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'rgba(255,255,255,0.85)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; }}
                     >
-                      {loading ? (
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <span>Enviar código de acceso</span>
-                          <ArrowRight className="w-4 h-4" />
-                        </>
-                      )}
+                      <Zap className="w-4 h-4" />
+                      <span>Ingreso Express (código sin contraseña)</span>
                     </button>
-                  </form>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => { setMode('password'); setError(''); setNoPasswordMsg(false); }}
+                      className="w-full flex items-center justify-center gap-2.5 h-12 rounded-2xl text-sm font-semibold transition-all duration-200 active:scale-[0.98]"
+                      style={{
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        color: 'rgba(255,255,255,0.6)',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'rgba(255,255,255,0.85)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; }}
+                    >
+                      <Lock className="w-4 h-4" />
+                      <span>Iniciar sesión con contraseña</span>
+                    </button>
+                  )}
 
-                  <p className="mt-6 text-xs text-center" style={{ color: 'rgba(255,255,255,0.28)' }}>
-                    Recibirás un código de 6 caracteres por correo y WhatsApp
+                  <p className="mt-5 text-xs text-center" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                    {mode === 'password'
+                      ? '¿No tienes contraseña? Usa Ingreso Express.'
+                      : 'Recibirás un código de 6 caracteres por correo y WhatsApp'
+                    }
                   </p>
                 </>
               )}
 
-              {/* ── STEP: CODE ── */}
-              {step === 'code' && (
+              {/* ── STEP: EXPRESS CODE ── */}
+              {step === 'express-code' && (
                 <>
                   <div className="mb-8">
                     <button
-                      onClick={() => { setStep('email'); setError(''); setCode(''); }}
+                      onClick={() => { setStep('main'); setError(''); setCode(''); }}
                       className="flex items-center gap-1.5 text-xs font-semibold mb-4 transition-colors"
                       style={{ color: 'rgba(255,255,255,0.4)' }}
                       onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}
                       onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
                     >
                       <ChevronLeft className="w-4 h-4" />
-                      Cambiar correo
+                      Volver
                     </button>
                     <h2 className="text-2xl font-extrabold text-white tracking-tight">Verifica tu acceso</h2>
                     <p className="mt-1.5 text-sm" style={{ color: 'rgba(255,255,255,0.38)' }}>

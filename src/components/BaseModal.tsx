@@ -9,6 +9,7 @@ interface BaseModalProps {
   footer?: ReactNode;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | '7xl';
   showCloseButton?: boolean;
+  closeOnEscape?: boolean;
 }
 
 export function BaseModal({
@@ -19,24 +20,22 @@ export function BaseModal({
   footer,
   maxWidth = '2xl',
   showCloseButton = true,
+  closeOnEscape = false,
 }: BaseModalProps) {
   useEffect(() => {
+    if (!isOpen) return;
+    document.body.style.overflow = 'hidden';
+    if (!closeOnEscape) return () => { document.body.style.overflow = 'unset'; };
+
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
+      if (e.key === 'Escape') onClose();
     };
-
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden';
-    }
-
+    document.addEventListener('keydown', handleEscape);
     return () => {
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, closeOnEscape]);
 
   if (!isOpen) return null;
 
@@ -56,11 +55,6 @@ export function BaseModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-ios p-4 overflow-y-auto animate-fade-in"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
-      }}
     >
       <div
         className={`relative bg-white rounded-ios-2xl shadow-ios-xl ${maxWidthClasses[maxWidth]} w-full my-4 flex flex-col max-h-[90vh] animate-scale-in`}

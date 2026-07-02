@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, Plus, CreditCard as Edit2, Trash2, Star, Clock, Search, X, Save, CircleAlert as AlertCircle, CircleCheck as CheckCircle, FileText, Download, Tag, Megaphone, RefreshCw, CloudDownload, CircleCheck as CheckCircle2, Circle as XCircle, Loader as Loader2, ChartBar as BarChart3, Globe } from 'lucide-react';
+import { BookOpen, Plus, Pencil as Edit2, Trash2, Star, Clock, Search, X, Save, CircleAlert as AlertCircle, CircleCheck as CheckCircle, FileText, Download, Tag, Megaphone, RefreshCw, CloudDownload, CircleCheck as CheckCircle2, Circle as XCircle, Loader as Loader2, ChartBar as BarChart3, Globe } from 'lucide-react';
 import { PageHeader } from '../components/ui/page-header';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';

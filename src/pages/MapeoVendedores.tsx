@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link2, Mail, User, CreditCard as Edit2, Trash2, X, Save, Plus, Search, CheckCircle, RefreshCw } from 'lucide-react';
+import { Link2, Mail, User, Pencil as Edit2, Trash2, X, Save, Plus, Search, CircleCheck as CheckCircle, RefreshCw } from 'lucide-react';
 import {
   obtenerVendorMappings,
   actualizarVendorMapping,

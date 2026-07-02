@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { supabaseUrl } from '../../lib/supabase';
-import { FileText, Download, Upload, Eye, FolderDown, Trash2, Music, Video, FileSpreadsheet, FileType2, File } from 'lucide-react';
+import { FileText, Download, Upload, Eye, FolderDown, Trash2, Music, Video, FileSpreadsheet, FileType2, File, Tag, X, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { FilePreviewModal } from './FilePreviewModal';
 import JSZip from 'jszip';
+
+interface Categoria {
+  id: string;
+  nombre: string;
+  orden: number;
+}
 
 interface Archivo {
   id: string;
@@ -14,6 +20,8 @@ interface Archivo {
   tamano: number | null;
   fecha_subida: string;
   eliminado_at: string | null;
+  categoria_id: string | null;
+  categoria?: { nombre: string } | null;
   usuarios: {
     nombre_completo: string;
   } | null;
@@ -27,13 +35,20 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
   const { usuario } = useAuth();
   const isAdmin = usuario?.rol === 'Administrador';
   const [archivos, setArchivos] = useState<Archivo[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [previewFile, setPreviewFile] = useState<Archivo | null>(null);
 
+  // Category picker state
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+  const [selectedCategoriaId, setSelectedCategoriaId] = useState('');
+  const [categoriaError, setCategoriaError] = useState(false);
+
   useEffect(() => {
     loadArchivos();
+    loadCategorias();
 
     const subscription = supabase
       .channel(`tramite_archivos_${tramiteId}`)
@@ -48,7 +63,7 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
         async (payload) => {
           const { data } = await supabase
             .from('ticket_archivos')
-            .select('*, usuarios!usuario_id(nombre_completo)')
+            .select('*, usuarios!usuario_id(nombre_completo), categoria:maestro_adjunto_categorias!categoria_id(nombre)')
             .eq('id', payload.new.id)
             .single();
 
@@ -68,10 +83,19 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
     };
   }, [tramiteId]);
 
+  const loadCategorias = async () => {
+    const { data } = await supabase
+      .from('maestro_adjunto_categorias')
+      .select('id, nombre, orden')
+      .eq('activo', true)
+      .order('orden');
+    if (data) setCategorias(data as Categoria[]);
+  };
+
   const loadArchivos = async () => {
     const { data } = await supabase
       .from('ticket_archivos')
-      .select('*, usuarios!usuario_id(nombre_completo)')
+      .select('*, usuarios!usuario_id(nombre_completo), categoria:maestro_adjunto_categorias!categoria_id(nombre)')
       .eq('ticket_id', tramiteId)
       .is('eliminado_at', null)
       .order('fecha_subida', { ascending: false });
@@ -90,16 +114,36 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
     setArchivos(prev => prev.filter(a => a.id !== archivoId));
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Step 1: intercept file selection, show category picker
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0 || !usuario) return;
+    if (!files || files.length === 0) return;
+    setPendingFiles(Array.from(files));
+    setSelectedCategoriaId('');
+    setCategoriaError(false);
+    e.target.value = '';
+  };
 
+  // Step 2: confirm category and upload
+  const handleConfirmUpload = async () => {
+    if (!selectedCategoriaId) {
+      setCategoriaError(true);
+      return;
+    }
+    const files = pendingFiles!;
+    setPendingFiles(null);
+    await doUpload(files, selectedCategoriaId);
+  };
+
+  const doUpload = async (files: File[], categoriaId: string) => {
+    if (!usuario) return;
     setUploading(true);
     const tempFiles: Archivo[] = [];
     const uploadedFileIds: string[] = [];
+    const categoriaObj = categorias.find(c => c.id === categoriaId);
 
     try {
-      for (const file of Array.from(files)) {
+      for (const file of files) {
         const tempId = `temp-${Date.now()}-${Math.random()}`;
         const optimisticFile: Archivo = {
           id: tempId,
@@ -108,9 +152,10 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
           tipo: file.type,
           tamano: file.size,
           fecha_subida: new Date().toISOString(),
-          usuarios: {
-            nombre_completo: usuario.nombre_completo
-          }
+          eliminado_at: null,
+          categoria_id: categoriaId,
+          categoria: categoriaObj ? { nombre: categoriaObj.nombre } : null,
+          usuarios: { nombre_completo: usuario.nombre_completo },
         };
 
         tempFiles.push(optimisticFile);
@@ -137,7 +182,8 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
             nombre: file.name,
             url: publicUrl,
             tipo: file.type,
-            tamano: file.size
+            tamano: file.size,
+            categoria_id: categoriaId,
           })
           .select()
           .single();
@@ -148,7 +194,7 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
 
         const { data, error: fetchError } = await supabase
           .from('ticket_archivos')
-          .select('*, usuarios!usuario_id(nombre_completo)')
+          .select('*, usuarios!usuario_id(nombre_completo), categoria:maestro_adjunto_categorias!categoria_id(nombre)')
           .eq('id', insertData.id)
           .single();
 
@@ -159,7 +205,6 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
         );
       }
 
-      // Dispatch notification for newly uploaded documents
       if (uploadedFileIds.length > 0) {
         dispatchDocumentNotification(uploadedFileIds, files);
       }
@@ -171,17 +216,16 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
       );
     } finally {
       setUploading(false);
-      e.target.value = '';
     }
   };
 
-  const dispatchDocumentNotification = async (fileIds: string[], files: FileList) => {
+  const dispatchDocumentNotification = async (fileIds: string[], files: File[]) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const fileNames = Array.from(files).map(f => f.name).join(', ');
-      const totalSize = Array.from(files).reduce((sum, f) => sum + f.size, 0);
+      const fileNames = files.map(f => f.name).join(', ');
+      const totalSize = files.reduce((sum, f) => sum + f.size, 0);
       const sizeLabel = totalSize < 1024 * 1024
         ? `${(totalSize / 1024).toFixed(1)} KB`
         : `${(totalSize / (1024 * 1024)).toFixed(1)} MB`;
@@ -405,7 +449,7 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
               id="file-upload-archivos"
               type="file"
               multiple
-              onChange={handleFileUpload}
+              onChange={handleFileSelect}
               disabled={uploading}
               className="hidden"
             />
@@ -432,7 +476,6 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
                 onClick={() => setPreviewFile(archivo)}
               >
                 <FileThumbnail archivo={archivo} />
-                {/* Hover overlay */}
                 <div className="absolute inset-0 bg-black/0 hover:bg-black/15 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
                   <div className="bg-white/90 dark:bg-neutral-900/90 rounded-full p-2">
                     <Eye className="w-5 h-5 text-neutral-700 dark:text-white" />
@@ -455,6 +498,12 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
                   <p className="text-[11px] text-neutral-400 dark:text-white/30 mt-0.5 truncate">
                     {archivo.usuarios.nombre_completo}
                   </p>
+                )}
+                {archivo.categoria && (
+                  <span className="inline-flex items-center gap-1 mt-1.5 px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-medium">
+                    <Tag className="w-2.5 h-2.5" />
+                    {archivo.categoria.nombre}
+                  </span>
                 )}
               </div>
 
@@ -518,6 +567,76 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
           fileType={previewFile.tipo}
           fileSize={previewFile.tamano}
         />
+      )}
+
+      {/* Category picker modal */}
+      {pendingFiles && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                  <Tag className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-neutral-900">Categoría del adjunto</h2>
+                  <p className="text-xs text-neutral-500 mt-0.5">
+                    {pendingFiles.length === 1
+                      ? pendingFiles[0].name
+                      : `${pendingFiles.length} archivos seleccionados`}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setPendingFiles(null)}
+                className="p-1.5 hover:bg-neutral-100 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4 text-neutral-400" />
+              </button>
+            </div>
+
+            <div className="px-5 py-4 space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-neutral-700 mb-1.5">
+                  Categoría <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={selectedCategoriaId}
+                  onChange={(e) => { setSelectedCategoriaId(e.target.value); setCategoriaError(false); }}
+                  className={`w-full px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                    categoriaError ? 'border-red-400 bg-red-50' : 'border-neutral-200'
+                  }`}
+                >
+                  <option value="">Selecciona una categoría...</option>
+                  {categorias.map(c => (
+                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                  ))}
+                </select>
+                {categoriaError && (
+                  <p className="flex items-center gap-1 mt-1.5 text-xs text-red-600">
+                    <AlertCircle className="w-3 h-3 shrink-0" />
+                    Debes seleccionar una categoría para continuar
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="px-5 py-4 border-t border-neutral-100 flex justify-end gap-2">
+              <button
+                onClick={() => setPendingFiles(null)}
+                className="px-4 py-2 text-sm text-neutral-600 bg-neutral-100 hover:bg-neutral-200 rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmUpload}
+                className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors font-semibold"
+              >
+                Subir archivo{pendingFiles.length > 1 ? 's' : ''}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

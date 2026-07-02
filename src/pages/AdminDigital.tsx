@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { FileText, PieChart, Zap, Globe, CreditCard, Lock, Eye, EyeOff } from 'lucide-react';
+import { FileText, ChartPie as PieChart, Zap, Globe, CreditCard, Lock, Eye, EyeOff, Car } from 'lucide-react';
 import { ClaraSidebar } from './adminDigital/ClaraSidebar';
 import { ClaraReviewTab } from './adminDigital/ClaraReviewTab';
 import { ClaraDashboardTab } from './adminDigital/ClaraDashboardTab';
 import { WebMonitorTab } from './adminDigital/WebMonitorTab';
+import { MultiAutosTab } from './adminDigital/MultiAutosTab';
 import {
   fetchCostCenters,
   fetchSimpleConcepts,
@@ -16,7 +17,7 @@ import type { ClaraTransaction, VendorMapping } from './adminDigital/claraUtils'
 const ADMIN_PASSWORD = 'Movi2024!';
 const SESSION_KEY = 'admin_digital_auth';
 
-type Module = 'monitor' | 'clara';
+type Module = 'monitor' | 'clara' | 'multiautos';
 type ClaraTab = 'revision' | 'conciliacion';
 
 function PasswordGate({ onSuccess }: { onSuccess: () => void }) {
@@ -220,6 +221,17 @@ export default function AdminDigital() {
               <CreditCard className="w-4 h-4" />
               Gastos Clara
             </button>
+            <button
+              onClick={() => setActiveModule('multiautos')}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                activeModule === 'multiautos'
+                  ? 'bg-white/15 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Car className="w-4 h-4" />
+              Multi-Autos
+            </button>
           </div>
         </div>
       </div>
@@ -236,6 +248,8 @@ export default function AdminDigital() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {activeModule === 'monitor' ? (
           <WebMonitorTab />
+        ) : activeModule === 'multiautos' ? (
+          <MultiAutosTab />
         ) : (
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Sidebar */}

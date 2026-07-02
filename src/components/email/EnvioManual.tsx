@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Send, UserCheck, Eye, X, Edit, Filter } from 'lucide-react';
+import { Send, UserCheck, Eye, X, Pencil as Edit, ListFilter as Filter } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface Plantilla {

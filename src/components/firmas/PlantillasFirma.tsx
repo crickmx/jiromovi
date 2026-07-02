@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, CreditCard as Edit, Trash2, Copy, Eye, Save, X, Code, Image as ImageIcon, Info } from 'lucide-react';
+import { Plus, Pencil as Edit, Trash2, Copy, Eye, Save, X, Code, Image as ImageIcon, Info } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { SIGNATURE_VARIABLES, EXAMPLE_CONTEXT, renderSignatureHtml } from '../../lib/emailSignatureUtils';
 

@@ -18,11 +18,13 @@ interface Props {
   onMobileClose?: () => void;
   isModuleVisible?: (key: string, role: string, oficina_id?: string | null) => boolean;
   oficinaId?: string | null;
+  workspaceBadges?: Partial<Record<WorkspaceId, number>>;
+  topLevelBadges?: Record<string, number>;
 }
 
 const TOOLTIP_CLS = "text-xs font-semibold bg-slate-900 text-white border-slate-700/60 shadow-xl rounded-xl px-3 py-1.5";
 
-export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut, mobileMode, onMobileClose, isModuleVisible, oficinaId }: Props) {
+export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut, mobileMode, onMobileClose, isModuleVisible, oficinaId, workspaceBadges, topLevelBadges }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -81,16 +83,30 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
               if (isModuleVisible && !isModuleVisible(item.path, userRole, oficinaId)) return null;
               const Icon = item.icon;
               const isActive = isTopLevelActive(item.path, item.matchPrefix);
+              const tlBadge = topLevelBadges?.[item.path] ?? 0;
+
+              const tlBadgeEl = tlBadge > 0 ? (
+                <span className="absolute -top-1 -right-1 flex items-center justify-center">
+                  <span
+                    className="absolute inset-0 rounded-full bg-red-400 opacity-60 animate-ping"
+                    style={{ animationDuration: '2s' }}
+                  />
+                  <span className="relative min-w-[16px] h-4 px-[3px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                    {tlBadge > 99 ? '99+' : tlBadge}
+                  </span>
+                </span>
+              ) : null;
 
               if (mobileMode) {
                 return (
                   <button
                     key={`link-${idx}`}
                     onClick={() => handleNav(item.path)}
-                    className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90', isActive && 'active')}
+                    className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90 relative', isActive && 'active')}
                     title={item.label}
                   >
                     <Icon className="w-[18px] h-[18px]" />
+                    {tlBadgeEl}
                   </button>
                 );
               }
@@ -100,9 +116,10 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => handleNav(item.path)}
-                      className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90', isActive && 'active')}
+                      className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90 relative', isActive && 'active')}
                     >
                       <Icon className="w-[18px] h-[18px]" />
+                      {tlBadgeEl}
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="right" sideOffset={10} className={TOOLTIP_CLS}>
@@ -114,7 +131,6 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
 
             const ws = entry.workspace;
             if (!isWorkspaceVisible(ws, userRole)) return null;
-            // Hide workspace rail button if all its items are overridden to hidden
             if (isModuleVisible) {
               const anyVisible = ws.items.some(item =>
                 isTopLevelItemVisible(item as any, userRole) &&
@@ -124,30 +140,42 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
             }
             const Icon = ws.icon;
             const isActive = ws.id === activeWorkspaceId;
-            const firstPath = ws.items[0]?.path || '/dashboard';
+            const firstVisibleItem = ws.items.find(item =>
+              isTopLevelItemVisible(item as any, userRole) &&
+              (!isModuleVisible || isModuleVisible(item.path, userRole, oficinaId))
+            );
+            const firstPath = firstVisibleItem?.path || '/dashboard';
+            const wsBadge = workspaceBadges?.[ws.id] ?? 0;
+
+            const wsButton = (
+              <button
+                onClick={() => handleNav(firstPath)}
+                className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90 relative', isActive && 'active')}
+                title={mobileMode ? ws.label : undefined}
+              >
+                <Icon className="w-[18px] h-[18px]" />
+                {wsBadge > 0 && (
+                  <span className="absolute -top-1 -right-1 flex items-center justify-center">
+                    <span
+                      className="absolute inset-0 rounded-full bg-red-400 opacity-60 animate-ping"
+                      style={{ animationDuration: '2s' }}
+                    />
+                    <span className="relative min-w-[16px] h-4 px-[3px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                      {wsBadge > 99 ? '99+' : wsBadge}
+                    </span>
+                  </span>
+                )}
+              </button>
+            );
 
             if (mobileMode) {
-              return (
-                <button
-                  key={ws.id}
-                  onClick={() => handleNav(firstPath)}
-                  className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90', isActive && 'active')}
-                  title={ws.label}
-                >
-                  <Icon className="w-[18px] h-[18px]" />
-                </button>
-              );
+              return <div key={ws.id}>{wsButton}</div>;
             }
 
             return (
               <Tooltip key={ws.id}>
                 <TooltipTrigger asChild>
-                  <button
-                    onClick={() => handleNav(firstPath)}
-                    className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90', isActive && 'active')}
-                  >
-                    <Icon className="w-[18px] h-[18px]" />
-                  </button>
+                  {wsButton}
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={10} className={TOOLTIP_CLS}>
                   {ws.label}

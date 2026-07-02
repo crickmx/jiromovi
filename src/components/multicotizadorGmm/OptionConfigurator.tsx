@@ -1,11 +1,11 @@
-import { useState, useCallback } from 'react';
-import { Heart, Calculator, History, Settings, Plus, Trash2, Users, FileDown, Save, Loader, CircleAlert as AlertCircle, Copy, ChevronDown, ChevronUp } from 'lucide-react';
-import { useMoviAuth } from '../../contexts/MoviAuthContext';
+import { useState } from 'react';
+import { Trash2, Copy, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import type {
-  ProductId, QuotePerson, FormaPago, MultiGmmOption,
+  ProductId, MultiGmmOption,
   BnvQuoteInput, BnpQuoteInput, BxplusQuoteInput, BxplusCoverages,
 } from '../../lib/multicotizadorGmm/types';
-import { PRODUCT_LABELS, PRODUCT_COLORS, BXPLUS_COVERAGE_LABELS, DEFAULT_BXPLUS_COVERAGES } from '../../lib/multicotizadorGmm/types';
+import { PRODUCT_LABELS, PRODUCT_COLORS, PRODUCT_LOGOS, BXPLUS_COVERAGE_LABELS, DEFAULT_BXPLUS_COVERAGES } from '../../lib/multicotizadorGmm/types';
+import { COVERAGE_HELP_TEXTS } from '../../lib/gmmCoverageHelp';
 
 interface OptionConfiguratorProps {
   option: MultiGmmOption;
@@ -18,19 +18,19 @@ interface OptionConfiguratorProps {
 }
 
 const DEFAULT_BNV_INPUT: BnvQuoteInput = {
-  region_zone: 'Zona 1', suma_asegurada: 100, deducible: 35, coaseguro: 10,
-  tope_coaseguro: 30000, client_type: 'Normal', asistencia_extranjero: true, forma_pago: 'Anual',
+  region_zone: 'Zona 1', suma_asegurada: 10, deducible: 15, coaseguro: 10,
+  tope_coaseguro: 30000, client_type: 'Normal', asistencia_extranjero: false, forma_pago: 'Anual',
 };
 
 const DEFAULT_BNP_INPUT: BnpQuoteInput = {
-  region_zone: 'Zona 1', suma_asegurada: 50, deducible: 35, coaseguro: 10,
+  region_zone: 'Zona 1', suma_asegurada: 50, deducible: 35, coaseguro: 20,
   client_type: 'Normal', maternidad_titular: false, maternidad_conyuge: false,
-  asistencia_extranjero: true, cobertura_catastrofica_extranjero: false, forma_pago: 'Anual',
+  asistencia_extranjero: false, cobertura_catastrofica_extranjero: false, forma_pago: 'Anual',
 };
 
 const DEFAULT_BXPLUS_INPUT: BxplusQuoteInput = {
-  estado: 'CIUDAD DE MEXICO', nivel_hospitalario: 'Alto', tabulador: 'A',
-  suma_asegurada: '500', deducible: '20000', coaseguro: '10%', forma_pago: 'Anual',
+  estado: 'CIUDAD DE MEXICO', nivel_hospitalario: 'Alto', tabulador: 'PALADIO-60,000',
+  suma_asegurada: '5000000', deducible: '17000', coaseguro: '0.1', forma_pago: 'Anual',
   coverages: { ...DEFAULT_BXPLUS_COVERAGES },
 };
 
@@ -72,7 +72,8 @@ export function OptionConfigurator({ option, onUpdate, onRemove, onDuplicate, ca
           onClick={e => e.stopPropagation()}
           className="text-sm font-semibold text-neutral-900 dark:text-white bg-transparent border-none focus:outline-none focus:ring-0 w-32"
         />
-        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: `${color}15`, color }}>
+        <span className="flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: `${color}15`, color }}>
+          <img src={PRODUCT_LOGOS[option.product_id]} alt="" className="w-3.5 h-3.5 object-contain" />
           {PRODUCT_LABELS[option.product_id]}
         </span>
         <div className="ml-auto flex items-center gap-1.5">
@@ -99,12 +100,13 @@ export function OptionConfigurator({ option, onUpdate, onRemove, onDuplicate, ca
                 <button
                   key={pid}
                   onClick={() => handleProductChange(pid)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
                     option.product_id === pid
                       ? 'border-teal-300 dark:border-teal-600 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300'
                       : 'border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-neutral-300'
                   }`}
                 >
+                  <img src={PRODUCT_LOGOS[pid]} alt="" className="w-4 h-4 object-contain" />
                   {PRODUCT_LABELS[pid]}
                 </button>
               ))}
@@ -124,10 +126,13 @@ export function OptionConfigurator({ option, onUpdate, onRemove, onDuplicate, ca
                 {(Object.entries(BXPLUS_COVERAGE_LABELS) as [keyof BxplusCoverages, string][]).map(([key, label]) => {
                   const checked = (option.input as BxplusQuoteInput).coverages?.[key] ?? false;
                   return (
-                    <label key={key} className="flex items-center gap-2 cursor-pointer py-0.5">
-                      <input type="checkbox" checked={checked} onChange={() => toggleCoverage(key)} className="w-3.5 h-3.5 rounded border-neutral-300 text-sky-600 focus:ring-sky-500" />
-                      <span className="text-xs text-neutral-700 dark:text-neutral-300">{label}</span>
-                    </label>
+                    <div key={key} className="flex items-center gap-2 py-0.5">
+                      <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                        <input type="checkbox" checked={checked} onChange={() => toggleCoverage(key)} className="w-3.5 h-3.5 rounded border-neutral-300 text-sky-600 focus:ring-sky-500 flex-shrink-0" />
+                        <span className="text-xs text-neutral-700 dark:text-neutral-300 truncate">{label}</span>
+                      </label>
+                      <CoverageHelpIcon coverageKey={key} />
+                    </div>
                   );
                 })}
               </div>
@@ -180,6 +185,16 @@ export function OptionConfigurator({ option, onUpdate, onRemove, onDuplicate, ca
 // Parameter Sub-forms
 // ========================
 
+// BNV: Sumas aseguradas [1,2,3,4,5,10] MDP; Deducibles [15,20,30,50,100] K; Coaseguros [0,10,20]%
+const BNV_SUMAS = [1, 2, 3, 4, 5, 10];
+const BNV_DEDUCIBLES = [15, 20, 30, 50, 100];
+const BNV_COASEGUROS = [0, 10, 20];
+
+// BNP: Sumas aseguradas [5,10,20,50] MDP; Deducibles [17,35,55,75,115] K; Coaseguros [0,10,20]%
+const BNP_SUMAS = [5, 10, 20, 50];
+const BNP_DEDUCIBLES = [17, 35, 55, 75, 115];
+const BNP_COASEGUROS = [0, 10, 20];
+
 function BnvParams({ input, onChange }: { input: BnvQuoteInput; onChange: (p: Partial<BnvQuoteInput>) => void }) {
   return (
     <div className="grid grid-cols-3 gap-3">
@@ -191,17 +206,17 @@ function BnvParams({ input, onChange }: { input: BnvQuoteInput; onChange: (p: Pa
       </Field>
       <Field label="Suma Asegurada (MDP)">
         <select value={input.suma_asegurada} onChange={e => onChange({ suma_asegurada: Number(e.target.value) })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {[3, 5, 10, 15, 20, 30, 50, 75, 100].map(v => <option key={v} value={v}>{v}</option>)}
+          {BNV_SUMAS.map(v => <option key={v} value={v}>${v} MDP</option>)}
         </select>
       </Field>
-      <Field label="Deducible (miles)">
+      <Field label="Deducible">
         <select value={input.deducible} onChange={e => onChange({ deducible: Number(e.target.value) })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {[5, 10, 15, 20, 25, 30, 35, 40, 50, 100].map(v => <option key={v} value={v}>${v},000</option>)}
+          {BNV_DEDUCIBLES.map(v => <option key={v} value={v}>${v.toLocaleString()}</option>)}
         </select>
       </Field>
       <Field label="Coaseguro (%)">
         <select value={input.coaseguro} onChange={e => onChange({ coaseguro: Number(e.target.value) })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {[0, 10, 20, 30].map(v => <option key={v} value={v}>{v}%</option>)}
+          {BNV_COASEGUROS.map(v => <option key={v} value={v}>{v}%</option>)}
         </select>
       </Field>
       <Field label="Tope Coaseguro">
@@ -224,29 +239,79 @@ function BnpParams({ input, onChange }: { input: BnpQuoteInput; onChange: (p: Pa
       </Field>
       <Field label="Suma Asegurada (MDP)">
         <select value={input.suma_asegurada} onChange={e => onChange({ suma_asegurada: Number(e.target.value) })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {[5, 10, 15, 20, 30, 50, 75, 100].map(v => <option key={v} value={v}>{v}</option>)}
+          {BNP_SUMAS.map(v => <option key={v} value={v}>${v} MDP</option>)}
         </select>
       </Field>
-      <Field label="Deducible (miles)">
+      <Field label="Deducible">
         <select value={input.deducible} onChange={e => onChange({ deducible: Number(e.target.value) })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {[5, 10, 15, 20, 25, 30, 35, 50].map(v => <option key={v} value={v}>${v},000</option>)}
+          {BNP_DEDUCIBLES.map(v => <option key={v} value={v}>${v.toLocaleString()}</option>)}
         </select>
       </Field>
       <Field label="Coaseguro (%)">
         <select value={input.coaseguro} onChange={e => onChange({ coaseguro: Number(e.target.value) })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {[0, 10, 20, 30].map(v => <option key={v} value={v}>{v}%</option>)}
+          {BNP_COASEGUROS.map(v => <option key={v} value={v}>{v}%</option>)}
         </select>
       </Field>
     </div>
   );
 }
 
+const BXPLUS_ESTADOS = [
+  'CIUDAD DE MEXICO', 'ESTADO DE MEXICO', 'NUEVO LEON', 'PUEBLA', 'QUERETARO',
+  'JALISCO 1(GUADALAJARA Y ALEDAÑOS)', 'JALISCO 2 ( RESTO JALISCO)',
+  'AGUASCALIENTES', 'BAJA CALIFORNIA NORTE', 'BAJA CALIFORNIA SUR',
+  'CAMPECHE', 'CHIAPAS', 'CHIHUAHUA', 'COAHUILA', 'COLIMA', 'DURANGO',
+  'GUANAJUATO', 'GUERRERO', 'HIDALGO', 'MICHOACAN', 'MORELOS', 'NAYARIT',
+  'OAXACA', 'QUINTANA ROO', 'SAN LUIS POTOSI', 'SINALOA', 'SONORA',
+  'TABASCO', 'TAMAULIPAS', 'TLAXCALA', 'VERACRUZ', 'YUCATAN', 'ZACATECAS',
+];
+
+const BXPLUS_TABULADORES = [
+  { value: 'PLATA- 50,000', label: 'Plata ($50,000)' },
+  { value: 'PALADIO-60,000', label: 'Paladio ($60,000)' },
+  { value: 'OSMIO-80,000', label: 'Osmio ($80,000)' },
+  { value: 'IRIDIO-90,000', label: 'Iridio ($90,000)' },
+  { value: 'ORO-110,000', label: 'Oro ($110,000)' },
+  { value: 'PLATINO-120,000', label: 'Platino ($120,000)' },
+];
+
+const BXPLUS_SUMAS_ASEGURADAS = [
+  { value: '2000000', label: '$2 MDP' },
+  { value: '5000000', label: '$5 MDP' },
+  { value: '10000000', label: '$10 MDP' },
+  { value: '30000000', label: '$30 MDP' },
+  { value: '50000000', label: '$50 MDP' },
+  { value: '125000000', label: '$125 MDP' },
+];
+
+const BXPLUS_DEDUCIBLES = [
+  { value: '12000', label: '$12,000' },
+  { value: '17000', label: '$17,000' },
+  { value: '23000', label: '$23,000' },
+  { value: '29000', label: '$29,000' },
+  { value: '35000', label: '$35,000' },
+  { value: '40000', label: '$40,000' },
+  { value: '46000', label: '$46,000' },
+  { value: '52000', label: '$52,000' },
+  { value: '58000', label: '$58,000' },
+  { value: '86000', label: '$86,000' },
+  { value: '115000', label: '$115,000' },
+];
+
+const BXPLUS_COASEGUROS = [
+  { value: '0.1', label: '10%' },
+  { value: '0.15', label: '15%' },
+  { value: '0.2', label: '20%' },
+  { value: '0.25', label: '25%' },
+  { value: '0.3', label: '30%' },
+];
+
 function BxplusParams({ input, onChange }: { input: BxplusQuoteInput; onChange: (p: Partial<BxplusQuoteInput>) => void }) {
   return (
     <div className="grid grid-cols-3 gap-3">
       <Field label="Estado">
         <select value={input.estado} onChange={e => onChange({ estado: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {['CIUDAD DE MEXICO', 'ESTADO DE MEXICO', 'JALISCO', 'NUEVO LEON', 'PUEBLA', 'QUERETARO', 'GUANAJUATO', 'AGUASCALIENTES', 'BAJA CALIFORNIA NORTE', 'BAJA CALIFORNIA SUR', 'CAMPECHE', 'CHIAPAS', 'CHIHUAHUA', 'COAHUILA', 'COLIMA', 'DURANGO', 'GUERRERO', 'HIDALGO', 'MICHOACAN', 'MORELOS', 'NAYARIT', 'OAXACA', 'QUINTANA ROO', 'SAN LUIS POTOSI', 'SINALOA', 'SONORA', 'TABASCO', 'TAMAULIPAS', 'TLAXCALA', 'VERACRUZ', 'YUCATAN', 'ZACATECAS'].map(v => <option key={v} value={v}>{v}</option>)}
+          {BXPLUS_ESTADOS.map(v => <option key={v} value={v}>{v}</option>)}
         </select>
       </Field>
       <Field label="Nivel Hospitalario">
@@ -256,22 +321,22 @@ function BxplusParams({ input, onChange }: { input: BxplusQuoteInput; onChange: 
       </Field>
       <Field label="Tabulador">
         <select value={input.tabulador} onChange={e => onChange({ tabulador: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {['A', 'B', 'C'].map(v => <option key={v} value={v}>{v}</option>)}
+          {BXPLUS_TABULADORES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
       </Field>
       <Field label="Suma Asegurada">
         <select value={input.suma_asegurada} onChange={e => onChange({ suma_asegurada: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {['200', '300', '400', '500', '750', '1000'].map(v => <option key={v} value={v}>${v} MDP</option>)}
+          {BXPLUS_SUMAS_ASEGURADAS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
       </Field>
       <Field label="Deducible">
         <select value={input.deducible} onChange={e => onChange({ deducible: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {['10000', '15000', '20000', '25000', '30000', '40000', '50000'].map(v => <option key={v} value={v}>${Number(v).toLocaleString()}</option>)}
+          {BXPLUS_DEDUCIBLES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
         </select>
       </Field>
       <Field label="Coaseguro">
         <select value={input.coaseguro} onChange={e => onChange({ coaseguro: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {['0%', '10%', '20%', '30%'].map(v => <option key={v} value={v}>{v}</option>)}
+          {BXPLUS_COASEGUROS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
         </select>
       </Field>
     </div>
@@ -283,6 +348,32 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div>
       <label className="block text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mb-1">{label}</label>
       {children}
+    </div>
+  );
+}
+
+function CoverageHelpIcon({ coverageKey }: { coverageKey: string }) {
+  const [show, setShow] = useState(false);
+  const text = COVERAGE_HELP_TEXTS[coverageKey];
+  if (!text) return null;
+
+  return (
+    <div className="relative flex-shrink-0">
+      <button
+        type="button"
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        onClick={e => { e.preventDefault(); setShow(!show); }}
+        className="p-0.5 rounded-full text-neutral-400 hover:text-sky-500 dark:text-neutral-500 dark:hover:text-sky-400 transition-colors"
+      >
+        <Info className="w-3.5 h-3.5" />
+      </button>
+      {show && (
+        <div className="absolute z-50 bottom-full right-0 mb-1.5 w-64 p-2.5 rounded-lg bg-neutral-900 dark:bg-neutral-800 text-white text-[11px] leading-relaxed shadow-lg border border-neutral-700 pointer-events-none">
+          {text}
+          <div className="absolute top-full right-3 w-2 h-2 bg-neutral-900 dark:bg-neutral-800 rotate-45 -mt-1 border-r border-b border-neutral-700" />
+        </div>
+      )}
     </div>
   );
 }

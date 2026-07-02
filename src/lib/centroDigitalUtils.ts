@@ -21,7 +21,28 @@ export async function obtenerCarpetas(): Promise<CentroDigitalCarpeta[]> {
     .order('nombre');
 
   if (error) throw error;
-  return data || [];
+
+  const carpetas = data || [];
+
+  if (carpetas.length > 0) {
+    const { data: counts } = await supabase
+      .from('centro_digital_archivos')
+      .select('carpeta_id')
+      .eq('estado', 'activo')
+      .in('carpeta_id', carpetas.map(c => c.id));
+
+    if (counts) {
+      const countMap: Record<string, number> = {};
+      for (const row of counts) {
+        countMap[row.carpeta_id] = (countMap[row.carpeta_id] || 0) + 1;
+      }
+      for (const carpeta of carpetas) {
+        carpeta.total_archivos = countMap[carpeta.id] || 0;
+      }
+    }
+  }
+
+  return carpetas;
 }
 
 export async function obtenerCarpetaPorId(

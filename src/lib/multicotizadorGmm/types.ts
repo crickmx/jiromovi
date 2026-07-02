@@ -199,13 +199,13 @@ export const BXPLUS_COVERAGE_LABELS: Record<keyof BxplusCoverages, string> = {
 
 export const DEFAULT_BXPLUS_COVERAGES: BxplusCoverages = {
   reconocimiento_antiguedad: false,
-  medicamentos_fuera: false,
+  medicamentos_fuera: true,
   complicaciones_no_amparadas: false,
   padecimientos_preexistentes: false,
-  eliminacion_deducible_accidente: false,
-  multiregion: false,
-  vip: false,
-  emergencia_medica_extranjero: false,
+  eliminacion_deducible_accidente: true,
+  multiregion: true,
+  vip: true,
+  emergencia_medica_extranjero: true,
   enfermedades_graves_extranjero: false,
   cobertura_internacional: false,
   ampliacion_servicios: false,
@@ -317,9 +317,15 @@ export const PAYMENT_FACTORS: Record<FormaPago, { factor: number; num_recibos: n
 export const IVA_RATE = 0.16;
 
 export const PRODUCT_LABELS: Record<ProductId, string> = {
-  BXPLUS: 'BX+',
+  BXPLUS: 'BX+ Unikuz',
   BNV: 'Bupa Nacional Vital',
   BNP: 'Bupa Nacional Plus',
+};
+
+export const PRODUCT_LOGOS: Record<ProductId, string> = {
+  BXPLUS: '/logo-bx.png',
+  BNV: '/logo-bupa.png',
+  BNP: '/logo-bupa.png',
 };
 
 export const PRODUCT_COLORS: Record<ProductId, string> = {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, Upload, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { UserPlus, Upload, Loader as Loader2, CircleAlert as AlertCircle, CircleCheck as CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -41,6 +41,12 @@ export default function RegistroPersonal() {
 
   useEffect(() => {
     cargarOficinas();
+  }, []);
+
+  useEffect(() => {
+    const root = document.getElementById('root');
+    if (root) root.classList.add('public-page');
+    return () => { if (root) root.classList.remove('public-page'); };
   }, []);
 
   const cargarOficinas = async () => {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutGrid, Plus, Users, Crown, Shield, CreditCard as Edit, Eye, Share2, MoveVertical as MoreVertical, Trash2, CreditCard as Edit3, ArrowRight } from 'lucide-react';
+import { LayoutGrid, Plus, Users, Crown, Shield, Pencil as Edit, Eye, Share2, MoveVertical as MoreVertical, Trash2, Pencil as Edit3, ArrowRight } from 'lucide-react';
 import { listarTableros, crearTablero, eliminarTablero, renombrarTablero } from '../../lib/crmUtils';
 import type { CRMBoardListItem } from '../../lib/crmTypes';
 import { useAuth } from '../../contexts/AuthContext';

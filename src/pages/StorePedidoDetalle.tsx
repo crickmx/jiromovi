@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CircleCheck as CheckCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader as Loader2 } from 'lucide-react';
+import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CircleCheck as CheckCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader as Loader2, Wallet, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
-import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus } from '../lib/storeUtils';
-import type { StorePedidoCompleto, StoreEstatusPedido, FormaPagoOC, MetodoPagoOC, StorePedidoGasto, StorePedidoDetalleGasto } from '../lib/storeTypes';
-import { TIPO_GASTO_OPTIONS } from '../lib/storeTypes';
+import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus, obtenerPagosPedido, registrarPago, eliminarPago } from '../lib/storeUtils';
+import type { StorePedidoCompleto, StoreEstatusPedido, FormaPagoOC, MetodoPagoOC, StorePedidoGasto, StorePedidoDetalleGasto, StorePedidoPago } from '../lib/storeTypes';
+import { TIPO_GASTO_OPTIONS, METODO_PAGO_OPCIONES, getFormasPagoParaMetodo } from '../lib/storeTypes';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { generarFolioOC, generarPDFOrdenCompra, validarDatosPagoCompletos } from '../lib/storePdfOrdenCompra';
@@ -32,9 +32,6 @@ export default function StorePedidoDetalle() {
   const [guardandoPago, setGuardandoPago] = useState(false);
   const [generandoOC, setGenerandoOC] = useState(false);
 
-  // Review & collection fields
-  const [revisadoPor, setRevisadoPor] = useState('');
-  const [cobrado, setCobrado] = useState(false);
 
   // Order expenses
   const [pedidoGastos, setPedidoGastos] = useState<StorePedidoGasto[]>([]);
@@ -53,6 +50,15 @@ export default function StorePedidoDetalle() {
   const [savingPedidoGasto, setSavingPedidoGasto] = useState(false);
   const [gastoError, setGastoError] = useState<string | null>(null);
 
+  // Payment tracking (pagos parciales/totales)
+  const [pagos, setPagos] = useState<StorePedidoPago[]>([]);
+  const [nuevoPagoFecha, setNuevoPagoFecha] = useState(new Date().toISOString().split('T')[0]);
+  const [nuevoPagoMetodo, setNuevoPagoMetodo] = useState('');
+  const [nuevoPagoMonto, setNuevoPagoMonto] = useState('');
+  const [nuevoPagoComentario, setNuevoPagoComentario] = useState('');
+  const [registrandoPago, setRegistrandoPago] = useState(false);
+  const [pagoError, setPagoError] = useState<string | null>(null);
+
   useEffect(() => {
     if (pedidoId) cargarDatos();
   }, [pedidoId]);
@@ -64,12 +70,11 @@ export default function StorePedidoDetalle() {
       setMetodoPago(pedido.metodo_pago || '');
       setMetodoPagoOtroDetalle(pedido.metodo_pago_otro_detalle || '');
       setObservacionesOC(pedido.observaciones_oc || '');
-      setRevisadoPor(pedido.revisado_por || '');
-      setCobrado(pedido.cobrado || false);
       cargarUsuariosOficina();
       if (isAdmin) {
         cargarGastosPedido();
         cargarGastosDetalle();
+        cargarPagos();
         const overrides: Record<string, string> = {};
         pedido.detalle.forEach(d => {
           if (d.costo_unitario_override != null) {
@@ -127,6 +132,56 @@ export default function StorePedidoDetalle() {
     }
   };
 
+  const cargarPagos = async () => {
+    if (!pedidoId) return;
+    try {
+      const data = await obtenerPagosPedido(pedidoId);
+      setPagos(data);
+    } catch (err) {
+      console.error('Error cargando pagos:', err);
+    }
+  };
+
+  const handleRegistrarPago = async () => {
+    if (!pedidoId) return;
+    if (!nuevoPagoMetodo) { setPagoError('Selecciona un metodo de pago.'); return; }
+    const monto = parseFloat(nuevoPagoMonto.replace(/[$,\s]/g, ''));
+    if (isNaN(monto) || monto <= 0) { setPagoError('Ingresa un monto valido mayor a $0.'); return; }
+    if (!nuevoPagoFecha) { setPagoError('Selecciona una fecha.'); return; }
+    setPagoError(null);
+    setRegistrandoPago(true);
+    try {
+      const nuevo = await registrarPago({
+        pedido_id: pedidoId,
+        fecha: nuevoPagoFecha,
+        metodo: nuevoPagoMetodo,
+        monto,
+        comentario: nuevoPagoComentario.trim() || undefined,
+      });
+      setPagos(prev => [nuevo, ...prev]);
+      setNuevoPagoFecha(new Date().toISOString().split('T')[0]);
+      setNuevoPagoMetodo('');
+      setNuevoPagoMonto('');
+      setNuevoPagoComentario('');
+    } catch (err: any) {
+      console.error('Error registrando pago:', err);
+      setPagoError(err?.message || 'Error al registrar el pago.');
+    } finally {
+      setRegistrandoPago(false);
+    }
+  };
+
+  const handleEliminarPago = async (pagoId: string) => {
+    if (!confirm('Eliminar este pago?')) return;
+    try {
+      await eliminarPago(pagoId);
+      setPagos(prev => prev.filter(p => p.id !== pagoId));
+    } catch (err: any) {
+      console.error('Error eliminando pago:', err);
+      alert('Error al eliminar: ' + (err?.message || 'error desconocido'));
+    }
+  };
+
   const cargarDatos = async () => {
     if (!pedidoId) return;
     try {
@@ -147,6 +202,18 @@ export default function StorePedidoDetalle() {
 
   const handleCambiarEstatus = async (nuevoEstatusId: string) => {
     if (!pedidoId || !isAdmin) return;
+
+    const estatusSeleccionado = estatus.find(e => e.id === nuevoEstatusId);
+    if (estatusSeleccionado?.nombre === 'Liquidado') {
+      const total = calcularTotal();
+      const totalPagado = pagos.reduce((sum, p) => sum + p.monto, 0);
+      const saldoPendiente = total - totalPagado;
+      if (saldoPendiente > 0.01) {
+        alert('No se puede marcar como Liquidado. El pedido tiene un saldo pendiente de $' + saldoPendiente.toLocaleString('es-MX', { minimumFractionDigits: 2 }) + '. Debe estar completamente pagado.');
+        return;
+      }
+    }
+
     if (!confirm('Cambiar el estatus de este pedido?')) return;
     try {
       setActualizandoEstatus(true);
@@ -158,11 +225,42 @@ export default function StorePedidoDetalle() {
         await activarPremiumSiAplica(pedido);
       }
 
+      // Disparar triggers: crear tramites automaticos vinculados al pedido
+      await dispararTriggersEstatus(nuevoEstatusId, nuevoEstatus?.nombre ?? '');
+
       await cargarDatos();
     } catch (error) {
       console.error('Error actualizando estatus:', error);
     } finally {
       setActualizandoEstatus(false);
+    }
+  };
+
+  const dispararTriggersEstatus = async (nuevoEstatusId: string, nombreEstatus: string) => {
+    if (!pedidoId || !usuario?.id) return;
+    const { data: triggers } = await supabase
+      .from('store_tramite_triggers')
+      .select('*, ticket_tipos!inner(value, nombre)')
+      .eq('estatus_destino_id', nuevoEstatusId)
+      .eq('activo', true);
+    if (!triggers || triggers.length === 0) return;
+
+    const folio = pedido?.folio_oc ?? pedidoId.slice(0, 8).toUpperCase();
+    for (const trigger of triggers) {
+      const tipo = (trigger.ticket_tipos as { value: string; nombre: string }).value;
+      const descripcion = (trigger.descripcion_template as string)
+        .replace(/\{\{folio\}\}/g, folio)
+        .replace(/\{\{estatus\}\}/g, nombreEstatus);
+      await supabase.from('tickets').insert({
+        titulo: `${trigger.nombre} — Pedido ${folio}`,
+        descripcion,
+        tipo,
+        prioridad: 'Media',
+        estatus: 'Abierto',
+        creado_por: usuario.id,
+        oficina_id: usuario.oficina_id ?? null,
+        store_pedido_id: pedidoId,
+      });
     }
   };
 
@@ -210,20 +308,6 @@ export default function StorePedidoDetalle() {
     }
   };
 
-  const handleGuardarRevision = async () => {
-    if (!pedidoId || !isAdmin) return;
-    const updates: any = { revisado_por: revisadoPor || null, cobrado };
-    if (cobrado && !pedido?.cobrado) {
-      updates.cobrado_en = new Date().toISOString();
-      updates.cobrado_por = usuario?.id;
-    }
-    if (!cobrado) {
-      updates.cobrado_en = null;
-      updates.cobrado_por = null;
-    }
-    await supabase.from('store_pedidos').update(updates).eq('id', pedidoId);
-    await cargarDatos();
-  };
 
   const handleGuardarPago = async () => {
     if (!pedidoId || !isAdmin || !formaPago || !metodoPago) return;
@@ -505,6 +589,15 @@ export default function StorePedidoDetalle() {
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-neutral-900 dark:text-white">{item.producto?.titulo}</h3>
                           <p className="text-sm text-neutral-600 dark:text-white/60 mt-0.5">Cantidad: {item.cantidad} x ${item.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
+                          {item.atributos_seleccionados && Object.keys(item.atributos_seleccionados).length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-1">
+                              {Object.entries(item.atributos_seleccionados).map(([key, value]) => (
+                                <span key={key} className="inline-flex items-center gap-1 bg-primary-50 border border-primary-200 rounded-full px-2 py-0.5 text-xs font-medium text-primary-800">
+                                  {key}: {value}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                           {isAdmin && (
                             <div className="flex items-center gap-2 mt-1.5">
                               <label className="text-xs text-neutral-500 dark:text-white/50">Costo unit.:</label>
@@ -640,6 +733,150 @@ export default function StorePedidoDetalle() {
               </div>
             )}
 
+            {/* Payment Control (Pagos Parciales/Totales) - Admin only */}
+            {isAdmin && (
+              <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4 flex items-center gap-2">
+                  <Wallet className="w-5 h-5" />
+                  Control de Pagos
+                </h2>
+
+                {/* Balance summary */}
+                {(() => {
+                  const totalPagado = pagos.reduce((sum, p) => sum + p.monto, 0);
+                  const saldoPendiente = ingresos - totalPagado;
+                  const porcentajePagado = ingresos > 0 ? (totalPagado / ingresos) * 100 : 0;
+                  return (
+                    <div className="mb-5">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-neutral-600 dark:text-white/60">Progreso de pago</span>
+                        <span className="text-sm font-medium text-neutral-900 dark:text-white">{porcentajePagado.toFixed(0)}%</span>
+                      </div>
+                      <div className="w-full h-2.5 bg-neutral-100 dark:bg-white/10 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${saldoPendiente <= 0 ? 'bg-green-500' : 'bg-blue-500'}`}
+                          style={{ width: `${Math.min(porcentajePagado, 100)}%` }}
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-3 mt-3">
+                        <div className="text-center">
+                          <p className="text-[10px] uppercase font-medium text-neutral-500 dark:text-white/50">Total</p>
+                          <p className="text-sm font-bold text-neutral-900 dark:text-white">${ingresos.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[10px] uppercase font-medium text-neutral-500 dark:text-white/50">Pagado</p>
+                          <p className="text-sm font-bold text-green-600">${totalPagado.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[10px] uppercase font-medium text-neutral-500 dark:text-white/50">Pendiente</p>
+                          <p className={`text-sm font-bold ${saldoPendiente <= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            ${Math.max(saldoPendiente, 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Payment history */}
+                {pagos.length > 0 && (
+                  <div className="mb-4">
+                    <h3 className="text-xs font-semibold uppercase text-neutral-500 dark:text-white/50 mb-2">Historial de pagos</h3>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {pagos.map(pago => (
+                        <div key={pago.id} className="flex items-start justify-between bg-neutral-50 dark:bg-white/5 rounded-lg px-3 py-2.5">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-green-700 dark:text-green-400">
+                                +${pago.monto.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                              </span>
+                              <span className="text-xs bg-neutral-200 dark:bg-white/10 text-neutral-700 dark:text-white/70 px-1.5 py-0.5 rounded">
+                                {pago.metodo}
+                              </span>
+                            </div>
+                            <p className="text-xs text-neutral-500 dark:text-white/50 mt-0.5">
+                              {format(new Date(pago.fecha + 'T12:00:00'), "d MMM yyyy", { locale: es })}
+                              {pago.registrado_por_usuario && ` - ${pago.registrado_por_usuario.nombre}`}
+                            </p>
+                            {pago.comentario && (
+                              <p className="text-xs text-neutral-600 dark:text-white/60 mt-0.5 italic">"{pago.comentario}"</p>
+                            )}
+                          </div>
+                          <button onClick={() => handleEliminarPago(pago.id)} className="text-red-400 hover:text-red-600 ml-2 flex-shrink-0 mt-0.5">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Register new payment form */}
+                <div className="border-t border-neutral-200 dark:border-white/10 pt-4">
+                  <h3 className="text-xs font-semibold uppercase text-neutral-500 dark:text-white/50 mb-3">Registrar pago</h3>
+                  {pagoError && <p className="text-xs text-red-600 mb-2">{pagoError}</p>}
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <div>
+                      <label className="block text-[10px] font-medium text-neutral-500 dark:text-white/50 mb-0.5">Fecha</label>
+                      <input
+                        type="date"
+                        value={nuevoPagoFecha}
+                        onChange={e => { setNuevoPagoFecha(e.target.value); setPagoError(null); }}
+                        className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-medium text-neutral-500 dark:text-white/50 mb-0.5">Metodo</label>
+                      <select
+                        value={nuevoPagoMetodo}
+                        onChange={e => { setNuevoPagoMetodo(e.target.value); setPagoError(null); }}
+                        className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg"
+                      >
+                        <option value="">Seleccionar...</option>
+                        {METODO_PAGO_OPCIONES.map(m => <option key={m} value={m}>{m}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <div>
+                      <label className="block text-[10px] font-medium text-neutral-500 dark:text-white/50 mb-0.5">Monto</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={nuevoPagoMonto}
+                        onChange={e => { setNuevoPagoMonto(e.target.value); setPagoError(null); }}
+                        placeholder="$0.00"
+                        className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-medium text-neutral-500 dark:text-white/50 mb-0.5">Comentario</label>
+                      <input
+                        type="text"
+                        value={nuevoPagoComentario}
+                        onChange={e => setNuevoPagoComentario(e.target.value)}
+                        placeholder="Opcional..."
+                        className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleRegistrarPago}
+                    disabled={registrandoPago || !nuevoPagoMetodo || !nuevoPagoMonto}
+                    className="w-full mt-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {registrandoPago ? (
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Plus className="w-4 h-4" />
+                    )}
+                    {registrandoPago ? 'Registrando...' : 'Registrar Pago'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* History */}
             {pedido.historial && pedido.historial.length > 0 && (
               <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
@@ -720,52 +957,6 @@ export default function StorePedidoDetalle() {
               </div>
             )}
 
-            {/* Review & Collection - Admin only */}
-            {isAdmin && (
-              <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
-                <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4 flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5" />
-                  Revision y Cobro
-                </h2>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">Revisado por:</p>
-                    <div className="flex flex-col gap-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="revisado" value="mesa_control" checked={revisadoPor === 'mesa_control'} onChange={e => setRevisadoPor(e.target.value)} className="text-accent" />
-                        <span className="text-sm">Mesa de control</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="revisado" value="descuento_nomina" checked={revisadoPor === 'descuento_nomina'} onChange={e => setRevisadoPor(e.target.value)} className="text-accent" />
-                        <span className="text-sm">Descuento de nomina</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="revisado" value="" checked={revisadoPor === ''} onChange={() => setRevisadoPor('')} className="text-accent" />
-                        <span className="text-sm text-neutral-400 dark:text-white/40">Sin revision</span>
-                      </label>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input type="checkbox" checked={cobrado} onChange={e => setCobrado(e.target.checked)} className="w-4 h-4 text-accent rounded" />
-                      <span className="text-sm font-medium text-neutral-700 dark:text-white/70">Cobrado</span>
-                    </label>
-                    {pedido.cobrado && pedido.cobrado_en && (
-                      <p className="text-xs text-neutral-400 dark:text-white/40 mt-1 ml-7">
-                        {format(new Date(pedido.cobrado_en), "d MMM yyyy HH:mm", { locale: es })}
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    onClick={handleGuardarRevision}
-                    className="w-full bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 px-4 py-2 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/15 transition-colors text-sm font-medium"
-                  >
-                    Guardar revision
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/* Status change - Admin only */}
             {isAdmin && (
               <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
@@ -778,6 +969,9 @@ export default function StorePedidoDetalle() {
                 >
                   {estatus.map(est => <option key={est.id} value={est.id}>{est.nombre}</option>)}
                 </select>
+                <p className="text-xs text-neutral-500 dark:text-white/40 mt-2">
+                  Liquidado solo se habilita cuando el saldo pendiente es $0.00
+                </p>
               </div>
             )}
 
@@ -805,18 +999,17 @@ export default function StorePedidoDetalle() {
                     </div>
                   )}
                   <div>
-                    <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Forma de Pago *</label>
-                    <select value={formaPago} onChange={e => setFormaPago(e.target.value as FormaPagoOC)} className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg">
-                      <option value="">Seleccionar...</option>
-                      <option value="Contado">Contado</option>
-                      <option value="Mensual">Mensual</option>
-                      <option value="Trimestral">Trimestral</option>
-                      <option value="Semestral">Semestral</option>
-                    </select>
-                  </div>
-                  <div>
                     <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Metodo de Pago *</label>
-                    <select value={metodoPago} onChange={e => setMetodoPago(e.target.value as MetodoPagoOC)} className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg">
+                    <select value={metodoPago} onChange={e => {
+                      const nuevoMetodo = e.target.value as MetodoPagoOC;
+                      setMetodoPago(nuevoMetodo);
+                      const formasDisponibles = getFormasPagoParaMetodo(nuevoMetodo);
+                      if (formasDisponibles.length === 1) {
+                        setFormaPago(formasDisponibles[0]);
+                      } else if (formaPago && !formasDisponibles.includes(formaPago as FormaPagoOC)) {
+                        setFormaPago('');
+                      }
+                    }} className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg">
                       <option value="">Seleccionar...</option>
                       <option value="Cargo a Oficina">Cargo a Oficina</option>
                       <option value="Cargo a Bono de Agente">Cargo a Bono de Agente</option>
@@ -829,6 +1022,23 @@ export default function StorePedidoDetalle() {
                   {metodoPago === 'Otro' && (
                     <input type="text" value={metodoPagoOtroDetalle} onChange={e => setMetodoPagoOtroDetalle(e.target.value)} placeholder="Especificar..." className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg" />
                   )}
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Forma de Pago *</label>
+                    <select
+                      value={formaPago}
+                      onChange={e => setFormaPago(e.target.value as FormaPagoOC)}
+                      disabled={!metodoPago}
+                      className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg disabled:opacity-50"
+                    >
+                      <option value="">Seleccionar...</option>
+                      {getFormasPagoParaMetodo(metodoPago).map(fp => (
+                        <option key={fp} value={fp}>{fp}</option>
+                      ))}
+                    </select>
+                    {!metodoPago && (
+                      <p className="text-[10px] text-neutral-400 dark:text-white/40 mt-0.5">Selecciona primero el metodo de pago</p>
+                    )}
+                  </div>
                   <textarea value={observacionesOC} onChange={e => setObservacionesOC(e.target.value)} placeholder="Observaciones..." className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg" rows={2} />
                 </div>
                 <div className="flex flex-col gap-2">

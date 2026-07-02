@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Container } from '../components/ui/container';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
-import { Calendar, Download, Pin, CreditCard as Edit, Trash2, FileText, Newspaper } from 'lucide-react';
+import { Calendar, Download, Pin, Pencil as Edit, Trash2, FileText, Newspaper } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { obtenerComunicadoPorId, eliminarComunicado, verificarVisibilidad } from '../lib/comunicadosUtils';
 import type { ComunicadoPublicacion } from '../lib/comunicadosTypes';
@@ -138,7 +138,7 @@ export default function ComunicadoDetalle() {
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <Button
                   variant="outline"
-                  onClick={() => navigate(`/comunicados/editar/${comunicado.id}`)}
+                  onClick={() => navigate(`/comunicados/editor/${comunicado.id}`)}
                   className="btn-touch flex-1 sm:flex-initial"
                 >
                   <Edit className="w-4 h-4 mr-2" />
