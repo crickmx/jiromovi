@@ -71,7 +71,7 @@ export default function CotizarHub() {
     const navItem = cotizarWorkspace.items.find(item => item.path === mod.path || mod.path.startsWith(item.path + '/'));
     if (navItem && !isItemVisible(navItem, rol)) return false;
     // Check database-driven module visibility rules
-    if (!isVisible(mod.path, rol, oficinaId)) return false;
+    if (!isVisible(mod.path, rol, oficinaId, usuario?.id)) return false;
     return true;
   });
 

@@ -1,9 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { invalidateModuleVisibilityCache } from '../lib/useModuleVisibility';
 import { PageHeader } from '@/components/ui/page-header';
-import { Layers, Building2, RefreshCw, CircleCheck as CheckCircle2, Circle as XCircle, Loader as Loader2, ChevronDown, ChevronUp, Eye, EyeOff, Info } from 'lucide-react';
+import {
+  Layers, Building2, RefreshCw, CircleCheck as CheckCircle2, Circle as XCircle,
+  Loader as Loader2, ChevronDown, ChevronUp, Eye, EyeOff, Info, UserRound, Search,
+  Undo2, AlertTriangle, Check,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TOP_LEVEL_ITEMS, WORKSPACES } from '@/lib/workspaceConfig';
 import type { UserRole } from '@/lib/workspaceConfig';
@@ -16,10 +20,12 @@ interface ModuleRow {
   workspace: string;
 }
 
+type TargetType = 'role' | 'office' | 'user';
+
 interface VisibilityRule {
   id?: string;
   module_key: string;
-  target_type: 'role' | 'office';
+  target_type: TargetType;
   target_value: string;
   visible: boolean;
 }
@@ -27,6 +33,28 @@ interface VisibilityRule {
 interface Oficina {
   id: string;
   nombre: string;
+}
+
+interface UsuarioLite {
+  id: string;
+  nombre: string;
+  apellidos: string;
+  rol: string;
+  oficina_id: string | null;
+}
+
+/** Estado de un cambio aún no guardado: 'hereda' = borrar el override (volver a heredar). */
+type DraftValue = 'visible' | 'oculto' | 'hereda';
+
+interface BulkChange {
+  moduleKey: string;
+  action: DraftValue;
+}
+
+interface TargetOption {
+  id: string;
+  label: string;
+  sublabel?: string;
 }
 
 const ALL_ROLES: UserRole[] = ['Administrador', 'Gerente', 'Empleado', 'Agente'];
@@ -51,24 +79,26 @@ function buildModuleList(): ModuleRow[] {
 
 const ALL_MODULES = buildModuleList();
 
+// Map workspace label -> its own module_key (used to toggle the whole section at once)
+const WORKSPACE_SECTION_KEY = new Map<string, string>(WORKSPACES.map(ws => [ws.label, ws.id]));
+
 // ─── RuleMap helpers ─────────────────────────────────────────────────────────
 
-function ruleKey(moduleKey: string, targetType: 'role' | 'office', targetValue: string) {
+function ruleKey(moduleKey: string, targetType: TargetType, targetValue: string) {
   return `${moduleKey}||${targetType}||${targetValue}`;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-type TabId = 'roles' | 'oficinas';
+type TabId = 'roles' | 'oficinas' | 'usuarios';
 
 export default function ModulosAdmin() {
   const { usuario } = useAuth();
   const [tab, setTab] = useState<TabId>('roles');
   const [rules, setRules] = useState<Map<string, VisibilityRule>>(new Map());
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
-  const [selectedOficina, setSelectedOficina] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<string | null>(null); // key being saved
+  const [saving, setSaving] = useState<string | null>(null); // key being saved (solo tab Rol)
   const [saveResult, setSaveResult] = useState<{ key: string; ok: boolean } | null>(null);
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(new Set(WORKSPACES.map(w => w.id)));
 
@@ -86,17 +116,15 @@ export default function ModulosAdmin() {
       map.set(ruleKey(r.module_key, r.target_type, r.target_value), r as VisibilityRule);
     }
     setRules(map);
-    const ofs = (oficinasData ?? []) as Oficina[];
-    setOficinas(ofs);
-    if (!selectedOficina && ofs.length > 0) setSelectedOficina(ofs[0].id);
+    setOficinas((oficinasData ?? []) as Oficina[]);
     setLoading(false);
-  }, [selectedOficina]);
+  }, []);
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // ── Toggle ─────────────────────────────────────────────────────────────────
+  // ── Toggle binario inmediato (solo usado por la tab "Por Rol") ─────────────
 
-  const toggleRule = async (moduleKey: string, targetType: 'role' | 'office', targetValue: string, currentlyVisible: boolean) => {
+  const toggleRule = async (moduleKey: string, targetType: TargetType, targetValue: string, currentlyVisible: boolean) => {
     const k = ruleKey(moduleKey, targetType, targetValue);
     const existing = rules.get(k);
     const newVisible = !currentlyVisible;
@@ -106,14 +134,12 @@ export default function ModulosAdmin() {
     let error: unknown = null;
 
     if (existing?.id) {
-      // Update
       const { error: e } = await supabase
         .from('module_visibility')
         .update({ visible: newVisible, updated_by: usuario?.id, updated_at: new Date().toISOString() })
         .eq('id', existing.id);
       error = e;
     } else {
-      // Insert
       const { error: e } = await supabase
         .from('module_visibility')
         .insert({ module_key: moduleKey, target_type: targetType, target_value: targetValue, visible: newVisible, updated_by: usuario?.id });
@@ -136,11 +162,59 @@ export default function ModulosAdmin() {
     setSaving(null);
   };
 
-  // ── Visibility getter ──────────────────────────────────────────────────────
+  // ── Getters ──────────────────────────────────────────────────────────────
 
-  const getVisible = (moduleKey: string, targetType: 'role' | 'office', targetValue: string): boolean => {
+  /** Valor explícito guardado para esta combinación, o null si no hay regla. */
+  const getRuleRaw = (moduleKey: string, targetType: TargetType, targetValue: string): boolean | null => {
     const r = rules.get(ruleKey(moduleKey, targetType, targetValue));
-    return r ? r.visible : true; // default: visible
+    return r ? r.visible : null;
+  };
+
+  const getVisible = (moduleKey: string, targetType: TargetType, targetValue: string): boolean =>
+    getRuleRaw(moduleKey, targetType, targetValue) ?? true;
+
+  // ── Guardado masivo (usado por "Por Oficina" y "Por Usuario") ──────────────
+
+  const applyBulkChanges = async (
+    targetType: TargetType,
+    targetIds: string[],
+    changes: BulkChange[]
+  ): Promise<{ ok: true } | { ok: false; message: string }> => {
+    const toUpsert = changes
+      .filter(c => c.action !== 'hereda')
+      .flatMap(c => targetIds.map(targetId => ({
+        module_key: c.moduleKey,
+        target_type: targetType,
+        target_value: targetId,
+        visible: c.action === 'visible',
+        updated_by: usuario?.id,
+        updated_at: new Date().toISOString(),
+      })));
+
+    const heredaKeys = changes.filter(c => c.action === 'hereda').map(c => c.moduleKey);
+
+    try {
+      if (toUpsert.length > 0) {
+        const { error } = await supabase
+          .from('module_visibility')
+          .upsert(toUpsert, { onConflict: 'module_key,target_type,target_value' });
+        if (error) throw error;
+      }
+      if (heredaKeys.length > 0) {
+        const { error } = await supabase
+          .from('module_visibility')
+          .delete()
+          .eq('target_type', targetType)
+          .in('target_value', targetIds)
+          .in('module_key', heredaKeys);
+        if (error) throw error;
+      }
+      invalidateModuleVisibilityCache();
+      await fetchAll();
+      return { ok: true };
+    } catch (e: any) {
+      return { ok: false, message: e?.message ?? 'Error desconocido al guardar los cambios.' };
+    }
   };
 
   // ── Grouped modules ────────────────────────────────────────────────────────
@@ -174,8 +248,8 @@ export default function ModulosAdmin() {
   return (
     <div className="flex flex-col gap-6 pb-10">
       <PageHeader
-        title="Visibilidad de Modulos"
-        description="Controla que modulos son visibles para cada rol o cada oficina sin modificar el codigo."
+        title="Visibilidad de MOVI"
+        description="Controla qué secciones y subsecciones ve cada rol, oficina o usuario, sin tocar código ni Supabase."
         icon={Layers}
         actions={
           <button
@@ -192,14 +266,15 @@ export default function ModulosAdmin() {
       <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/40 text-sm text-blue-800 dark:text-blue-300">
         <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
         <p>
-          Por defecto todos los modulos son <strong>visibles</strong>. Usa los controles para <strong>ocultar</strong> un modulo a un rol o una oficina especifica.
-          Los cambios aplican inmediatamente para los usuarios al recargar la pagina.
+          Por defecto todo es <strong>visible</strong>. Cuando hay reglas en conflicto, gana la más específica:
+          <strong> usuario &gt; oficina &gt; rol</strong>. Los Administradores siempre ven todo, sin excepción.
+          En "Por Oficina" y "Por Usuario" puedes elegir varios a la vez y aplicar los cambios juntos con confirmación.
         </p>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 p-1 bg-neutral-100 dark:bg-white/[0.06] rounded-2xl w-fit">
-        {([['roles', 'Por Rol', Layers], ['oficinas', 'Por Oficina', Building2]] as const).map(([id, label, Icon]) => (
+        {([['roles', 'Por Rol', Layers], ['oficinas', 'Por Oficina', Building2], ['usuarios', 'Por Usuario', UserRound]] as const).map(([id, label, Icon]) => (
           <button
             key={id}
             onClick={() => setTab(id)}
@@ -217,7 +292,7 @@ export default function ModulosAdmin() {
       </div>
 
       {/* Content */}
-      {tab === 'roles' ? (
+      {tab === 'roles' && (
         <RolesTab
           modulesByWorkspace={modulesByWorkspace}
           expandedWorkspaces={expandedWorkspaces}
@@ -227,18 +302,29 @@ export default function ModulosAdmin() {
           saving={saving}
           saveResult={saveResult}
         />
-      ) : (
-        <OficinaTab
+      )}
+      {tab === 'oficinas' && (
+        <BulkTargetEditor
+          targetOptions={oficinas.map(o => ({ id: o.id, label: o.nombre }))}
+          emptyTargetsMessage="No hay oficinas activas registradas."
+          pickerPlaceholder="Seleccionar oficinas..."
+          nounSingular="oficina"
+          nounPlural="oficinas"
+          modulesByWorkspace={modulesByWorkspace}
+          expandedWorkspaces={expandedWorkspaces}
+          toggleWorkspace={toggleWorkspace}
+          getCurrent={(moduleKey, targetId) => getRuleRaw(moduleKey, 'office', targetId)}
+          onSave={(targetIds, changes) => applyBulkChanges('office', targetIds, changes)}
+        />
+      )}
+      {tab === 'usuarios' && (
+        <UsuarioBulkTab
           modulesByWorkspace={modulesByWorkspace}
           expandedWorkspaces={expandedWorkspaces}
           toggleWorkspace={toggleWorkspace}
           oficinas={oficinas}
-          selectedOficina={selectedOficina}
-          setSelectedOficina={setSelectedOficina}
-          getVisible={getVisible}
-          toggleRule={toggleRule}
-          saving={saving}
-          saveResult={saveResult}
+          getRuleRaw={getRuleRaw}
+          onSave={(targetIds, changes) => applyBulkChanges('user', targetIds, changes)}
         />
       )}
     </div>
@@ -251,8 +337,8 @@ interface RolesTabProps {
   modulesByWorkspace: { workspace: string; modules: ModuleRow[] }[];
   expandedWorkspaces: Set<string>;
   toggleWorkspace: (ws: string) => void;
-  getVisible: (key: string, type: 'role' | 'office', value: string) => boolean;
-  toggleRule: (key: string, type: 'role' | 'office', value: string, currentlyVisible: boolean) => Promise<void>;
+  getVisible: (key: string, type: TargetType, value: string) => boolean;
+  toggleRule: (key: string, type: TargetType, value: string, currentlyVisible: boolean) => Promise<void>;
   saving: string | null;
   saveResult: { key: string; ok: boolean } | null;
 }
@@ -262,6 +348,7 @@ function RolesTab({ modulesByWorkspace, expandedWorkspaces, toggleWorkspace, get
     <div className="space-y-3">
       {modulesByWorkspace.map(({ workspace, modules }) => {
         const expanded = expandedWorkspaces.has(workspace);
+        const sectionKey = WORKSPACE_SECTION_KEY.get(workspace);
         return (
           <WorkspaceSection
             key={workspace}
@@ -278,9 +365,6 @@ function RolesTab({ modulesByWorkspace, expandedWorkspaces, toggleWorkspace, get
               const visible = getVisible(module.key, 'role', role);
               return (
                 <ToggleCell
-                  moduleKey={module.key}
-                  targetType="role"
-                  targetValue={role}
                   visible={visible}
                   isSaving={saving === k}
                   saveResult={saveResult?.key === k ? saveResult : null}
@@ -288,6 +372,19 @@ function RolesTab({ modulesByWorkspace, expandedWorkspaces, toggleWorkspace, get
                 />
               );
             }}
+            renderSectionCell={sectionKey ? (role) => {
+              const k = ruleKey(sectionKey, 'role', role);
+              const visible = getVisible(sectionKey, 'role', role);
+              return (
+                <ToggleCell
+                  compact
+                  visible={visible}
+                  isSaving={saving === k}
+                  saveResult={saveResult?.key === k ? saveResult : null}
+                  onToggle={() => toggleRule(sectionKey, 'role', role, visible)}
+                />
+              );
+            } : undefined}
           />
         );
       })}
@@ -295,85 +392,405 @@ function RolesTab({ modulesByWorkspace, expandedWorkspaces, toggleWorkspace, get
   );
 }
 
-// ─── Oficina Tab ──────────────────────────────────────────────────────────────
+// ─── BulkTargetEditor (compartido por "Por Oficina" y "Por Usuario") ───────────
 
-interface OficinaTabProps {
+interface BulkTargetEditorProps {
+  targetOptions: TargetOption[];
+  emptyTargetsMessage: string;
+  pickerPlaceholder: string;
+  nounSingular: string;
+  nounPlural: string;
+  extraNote?: string;
+  modulesByWorkspace: { workspace: string; modules: ModuleRow[] }[];
+  expandedWorkspaces: Set<string>;
+  toggleWorkspace: (ws: string) => void;
+  /** Valor explícito actual (sin heredar) para mostrar como referencia cuando hay un solo destinatario seleccionado. */
+  getCurrent: (moduleKey: string, targetId: string) => boolean | null;
+  onSave: (targetIds: string[], changes: BulkChange[]) => Promise<{ ok: true } | { ok: false; message: string }>;
+}
+
+function BulkTargetEditor({
+  targetOptions, emptyTargetsMessage, pickerPlaceholder, nounSingular, nounPlural, extraNote,
+  modulesByWorkspace, expandedWorkspaces, toggleWorkspace, getCurrent, onSave,
+}: BulkTargetEditorProps) {
+  const [selected, setSelected] = useState<string[]>([]);
+  const [draft, setDraft] = useState<Map<string, DraftValue>>(new Map());
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const setDraftValue = (moduleKey: string, next: DraftValue | null) => {
+    setDraft(prev => {
+      const nextMap = new Map(prev);
+      if (next === null) nextMap.delete(moduleKey); else nextMap.set(moduleKey, next);
+      return nextMap;
+    });
+  };
+
+  const moduleLabelByKey = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const { workspace, modules } of modulesByWorkspace) {
+      const sectionKey = WORKSPACE_SECTION_KEY.get(workspace);
+      if (sectionKey) m.set(sectionKey, `${workspace} (sección completa)`);
+      for (const mod of modules) m.set(mod.key, `${workspace} · ${mod.label}`);
+    }
+    return m;
+  }, [modulesByWorkspace]);
+
+  const changesList = useMemo(
+    () => Array.from(draft.entries()).map(([moduleKey, action]) => ({ moduleKey, action, moduleLabel: moduleLabelByKey.get(moduleKey) ?? moduleKey })),
+    [draft, moduleLabelByKey]
+  );
+
+  const targetLabels = selected.map(id => targetOptions.find(o => o.id === id)?.label ?? id);
+
+  const handleConfirm = async () => {
+    setSaving(true);
+    setErrorMsg(null);
+    const result = await onSave(selected, changesList.map(({ moduleKey, action }) => ({ moduleKey, action })));
+    setSaving(false);
+    if (result.ok) {
+      setDraft(new Map());
+      setConfirmOpen(false);
+      setSuccessMsg(`Cambios aplicados a ${selected.length} ${selected.length === 1 ? nounSingular : nounPlural}.`);
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } else {
+      setErrorMsg(result.message);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <MultiSelect options={targetOptions} selected={selected} onChange={setSelected} placeholder={pickerPlaceholder} />
+        {successMsg && (
+          <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 className="w-4 h-4" /> {successMsg}
+          </span>
+        )}
+      </div>
+
+      {extraNote && <p className="text-xs text-neutral-400 dark:text-neutral-500">{extraNote}</p>}
+
+      {targetOptions.length === 0 ? (
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">{emptyTargetsMessage}</p>
+      ) : selected.length === 0 ? (
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 px-1">
+          Selecciona al menos {nounSingular === 'usuario' ? 'un usuario' : 'una oficina'} arriba para configurar sus secciones.
+        </p>
+      ) : (
+        <>
+          <div className="space-y-3 pb-16">
+            {modulesByWorkspace.map(({ workspace, modules }) => {
+              const expanded = expandedWorkspaces.has(workspace);
+              const sectionKey = WORKSPACE_SECTION_KEY.get(workspace);
+              return (
+                <WorkspaceSection
+                  key={workspace}
+                  workspace={workspace}
+                  modules={modules}
+                  expanded={expanded}
+                  onToggle={() => toggleWorkspace(workspace)}
+                  columns={['draft']}
+                  columnHeader={() => <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">Cambio a aplicar</span>}
+                  renderCell={(module) => (
+                    <DraftToggle
+                      value={draft.get(module.key) ?? null}
+                      current={selected.length === 1 ? getCurrent(module.key, selected[0]) : null}
+                      onChange={(next) => setDraftValue(module.key, next)}
+                    />
+                  )}
+                  renderSectionCell={sectionKey ? () => (
+                    <DraftToggle
+                      compact
+                      value={draft.get(sectionKey) ?? null}
+                      current={selected.length === 1 ? getCurrent(sectionKey, selected[0]) : null}
+                      onChange={(next) => setDraftValue(sectionKey, next)}
+                    />
+                  ) : undefined}
+                />
+              );
+            })}
+          </div>
+
+          {draft.size > 0 && (
+            <div className="fixed bottom-0 left-0 right-0 md:left-[72px] z-10 flex items-center justify-between gap-3 px-5 py-3 bg-white/95 dark:bg-[#111113]/95 backdrop-blur border-t border-neutral-200 dark:border-white/10">
+              <p className="text-sm text-neutral-600 dark:text-neutral-300">
+                <strong>{draft.size}</strong> cambio{draft.size > 1 ? 's' : ''} pendiente{draft.size > 1 ? 's' : ''} para{' '}
+                <strong>{selected.length}</strong> {selected.length === 1 ? nounSingular : nounPlural}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setDraft(new Map())}
+                  className="px-3.5 py-2 rounded-xl text-sm font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/8 transition-colors"
+                >
+                  Descartar
+                </button>
+                <button
+                  onClick={() => { setErrorMsg(null); setConfirmOpen(true); }}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent/90 transition-colors"
+                >
+                  Guardar cambios
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {confirmOpen && (
+        <ConfirmModal
+          targetLabels={targetLabels}
+          changes={changesList}
+          saving={saving}
+          errorMsg={errorMsg}
+          onCancel={() => { if (!saving) { setConfirmOpen(false); setErrorMsg(null); } }}
+          onConfirm={handleConfirm}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── UsuarioBulkTab (busca usuarios y alimenta el BulkTargetEditor) ────────────
+
+interface UsuarioBulkTabProps {
   modulesByWorkspace: { workspace: string; modules: ModuleRow[] }[];
   expandedWorkspaces: Set<string>;
   toggleWorkspace: (ws: string) => void;
   oficinas: Oficina[];
-  selectedOficina: string;
-  setSelectedOficina: (id: string) => void;
-  getVisible: (key: string, type: 'role' | 'office', value: string) => boolean;
-  toggleRule: (key: string, type: 'role' | 'office', value: string, currentlyVisible: boolean) => Promise<void>;
-  saving: string | null;
-  saveResult: { key: string; ok: boolean } | null;
+  getRuleRaw: (moduleKey: string, targetType: TargetType, targetValue: string) => boolean | null;
+  onSave: (targetIds: string[], changes: BulkChange[]) => Promise<{ ok: true } | { ok: false; message: string }>;
 }
 
-function OficinaTab({ modulesByWorkspace, expandedWorkspaces, toggleWorkspace, oficinas, selectedOficina, setSelectedOficina, getVisible, toggleRule, saving, saveResult }: OficinaTabProps) {
-  const selected = oficinas.find(o => o.id === selectedOficina);
+function UsuarioBulkTab({ modulesByWorkspace, expandedWorkspaces, toggleWorkspace, oficinas, getRuleRaw, onSave }: UsuarioBulkTabProps) {
+  const [users, setUsers] = useState<UsuarioLite[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('usuarios')
+        .select('id, nombre, apellidos, rol, oficina_id')
+        .eq('activo', true)
+        .neq('rol', 'Administrador')
+        .order('nombre');
+      setUsers((data ?? []) as UsuarioLite[]);
+      setLoading(false);
+    })();
+  }, []);
+
+  const oficinaNombre = (id: string | null) => oficinas.find(o => o.id === id)?.nombre ?? 'Sin oficina';
+
+  const targetOptions: TargetOption[] = useMemo(
+    () => users.map(u => ({ id: u.id, label: `${u.nombre} ${u.apellidos}`, sublabel: `${u.rol} · ${oficinaNombre(u.oficina_id)}` })),
+    [users, oficinas]
+  );
+
+  const usersById = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
+
+  const getCurrent = (moduleKey: string, userId: string): boolean | null => {
+    const explicit = getRuleRaw(moduleKey, 'user', userId);
+    if (explicit !== null) return explicit;
+    const u = usersById.get(userId);
+    if (!u) return null;
+    if (u.oficina_id) {
+      const officeVal = getRuleRaw(moduleKey, 'office', u.oficina_id);
+      if (officeVal !== null) return officeVal;
+    }
+    const roleVal = getRuleRaw(moduleKey, 'role', u.rol);
+    if (roleVal !== null) return roleVal;
+    return true;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-10">
+        <Loader2 className="w-6 h-6 animate-spin text-accent" />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      {/* Oficina picker */}
-      <div className="flex flex-wrap gap-2">
-        {oficinas.map(o => (
-          <button
-            key={o.id}
-            onClick={() => setSelectedOficina(o.id)}
-            className={cn(
-              'px-3.5 py-1.5 rounded-xl text-sm font-medium border transition-all duration-200',
-              o.id === selectedOficina
-                ? 'bg-accent text-white border-accent shadow-sm'
-                : 'bg-white dark:bg-white/[0.06] border-neutral-200 dark:border-white/10 text-neutral-700 dark:text-neutral-300 hover:border-accent/50 hover:text-accent'
-            )}
-          >
-            {o.nombre}
-          </button>
-        ))}
-        {oficinas.length === 0 && (
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">No hay oficinas activas registradas.</p>
-        )}
-      </div>
+    <BulkTargetEditor
+      targetOptions={targetOptions}
+      emptyTargetsMessage="No hay usuarios activos registrados."
+      pickerPlaceholder="Seleccionar usuarios..."
+      nounSingular="usuario"
+      nounPlural="usuarios"
+      extraNote="Los administradores no aparecen aquí — siempre ven todo, sin importar las reglas."
+      modulesByWorkspace={modulesByWorkspace}
+      expandedWorkspaces={expandedWorkspaces}
+      toggleWorkspace={toggleWorkspace}
+      getCurrent={getCurrent}
+      onSave={onSave}
+    />
+  );
+}
 
-      {selected && (
-        <div className="space-y-3">
-          {modulesByWorkspace.map(({ workspace, modules }) => {
-            const expanded = expandedWorkspaces.has(workspace);
-            return (
-              <WorkspaceSection
-                key={workspace}
-                workspace={workspace}
-                modules={modules}
-                expanded={expanded}
-                onToggle={() => toggleWorkspace(workspace)}
-                columns={[selected.nombre]}
-                columnHeader={() => (
-                  <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-200 flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5 text-accent" />
-                    {selected.nombre}
-                  </span>
-                )}
-                renderCell={(module) => {
-                  const k = ruleKey(module.key, 'office', selected.id);
-                  const visible = getVisible(module.key, 'office', selected.id);
-                  return (
-                    <ToggleCell
-                      moduleKey={module.key}
-                      targetType="office"
-                      targetValue={selected.id}
-                      visible={visible}
-                      isSaving={saving === k}
-                      saveResult={saveResult?.key === k ? saveResult : null}
-                      onToggle={() => toggleRule(module.key, 'office', selected.id, visible)}
-                    />
-                  );
-                }}
+// ─── MultiSelect ────────────────────────────────────────────────────────────────
+
+function MultiSelect({ options, selected, onChange, placeholder }: {
+  options: TargetOption[]; selected: string[]; onChange: (ids: string[]) => void; placeholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter(o => o.label.toLowerCase().includes(q) || o.sublabel?.toLowerCase().includes(q));
+  }, [options, search]);
+
+  const toggle = (id: string) => {
+    onChange(selected.includes(id) ? selected.filter(s => s !== id) : [...selected, id]);
+  };
+
+  const label = selected.length === 0 ? placeholder : `${selected.length} seleccionado${selected.length > 1 ? 's' : ''}`;
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={cn(
+          'inline-flex items-center justify-between gap-2 min-w-[240px] px-3.5 py-2.5 rounded-xl text-sm font-medium border transition-colors',
+          selected.length > 0
+            ? 'bg-accent/10 border-accent/40 text-accent'
+            : 'bg-white dark:bg-[#111113] border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-300'
+        )}
+      >
+        {label}
+        <ChevronDown className={cn('w-4 h-4 transition-transform', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div className="absolute z-20 mt-1.5 w-80 max-h-96 overflow-hidden flex flex-col rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-[#16161a] shadow-xl">
+          <div className="p-2 border-b border-neutral-100 dark:border-white/[0.06] flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar..."
+                className="w-full pl-7 pr-2 py-1.5 rounded-lg text-sm bg-neutral-100 dark:bg-white/[0.06] text-neutral-800 dark:text-neutral-100 placeholder:text-neutral-400 focus:outline-none"
               />
-            );
-          })}
+            </div>
+            {selected.length > 0 && (
+              <button onClick={() => onChange([])} className="text-xs font-medium text-neutral-500 hover:text-red-500 whitespace-nowrap">
+                Limpiar
+              </button>
+            )}
+          </div>
+          <div className="overflow-y-auto flex-1">
+            {filtered.map(o => {
+              const checked = selected.includes(o.id);
+              return (
+                <button
+                  key={o.id}
+                  onClick={() => toggle(o.id)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-neutral-50 dark:hover:bg-white/[0.04] transition-colors"
+                >
+                  <div className={cn(
+                    'w-4 h-4 rounded flex items-center justify-center border flex-shrink-0',
+                    checked ? 'bg-accent border-accent' : 'border-neutral-300 dark:border-white/20'
+                  )}>
+                    {checked && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm text-neutral-800 dark:text-neutral-100 truncate">{o.label}</p>
+                    {o.sublabel && <p className="text-xs text-neutral-400 dark:text-neutral-500 truncate">{o.sublabel}</p>}
+                  </div>
+                </button>
+              );
+            })}
+            {filtered.length === 0 && <p className="px-3 py-6 text-sm text-center text-neutral-400">Sin resultados.</p>}
+          </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── ConfirmModal ─────────────────────────────────────────────────────────────
+
+function ConfirmModal({ targetLabels, changes, saving, errorMsg, onCancel, onConfirm }: {
+  targetLabels: string[];
+  changes: { moduleLabel: string; action: DraftValue }[];
+  saving: boolean;
+  errorMsg: string | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={onCancel}>
+      <div
+        className="w-full max-w-md rounded-2xl bg-white dark:bg-[#16161a] border border-neutral-200 dark:border-white/10 shadow-2xl p-5 space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-full bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
+            <AlertTriangle className="w-4.5 h-4.5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-neutral-800 dark:text-white">Confirmar cambios de visibilidad</h3>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+              Se aplicará a {targetLabels.length} {targetLabels.length === 1 ? 'destinatario' : 'destinatarios'}:{' '}
+              {targetLabels.slice(0, 5).join(', ')}{targetLabels.length > 5 ? ` y ${targetLabels.length - 5} más` : ''}.
+            </p>
+          </div>
+        </div>
+
+        <div className="max-h-48 overflow-y-auto rounded-xl border border-neutral-100 dark:border-white/[0.06] divide-y divide-neutral-100 dark:divide-white/[0.05]">
+          {changes.map((c, i) => (
+            <div key={i} className="flex items-center justify-between px-3 py-2 text-sm gap-3">
+              <span className="text-neutral-700 dark:text-neutral-200 truncate">{c.moduleLabel}</span>
+              <span className={cn(
+                'text-xs font-semibold px-2 py-0.5 rounded-lg flex-shrink-0',
+                c.action === 'visible' && 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400',
+                c.action === 'oculto' && 'bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400',
+                c.action === 'hereda' && 'bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400',
+              )}>
+                {c.action === 'visible' ? 'Visible' : c.action === 'oculto' ? 'Oculto' : 'Hereda'}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {errorMsg && (
+          <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 text-xs text-red-700 dark:text-red-400">
+            <XCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-1">
+          <button
+            onClick={onCancel}
+            disabled={saving}
+            className="px-3.5 py-2 rounded-xl text-sm font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/8 transition-colors disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={saving}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-60"
+          >
+            {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            {saving ? 'Guardando...' : errorMsg ? 'Reintentar' : 'Confirmar y guardar'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -388,29 +805,38 @@ interface WorkspaceSectionProps<C> {
   columns: C[];
   columnHeader: (col: C) => React.ReactNode;
   renderCell: (module: ModuleRow, col: C) => React.ReactNode;
+  /** Optional control to toggle the whole section (workspace) at once, shown in the header. */
+  renderSectionCell?: (col: C) => React.ReactNode;
 }
 
-function WorkspaceSection<C>({ workspace, modules, expanded, onToggle, columns, columnHeader, renderCell }: WorkspaceSectionProps<C>) {
+function WorkspaceSection<C>({ workspace, modules, expanded, onToggle, columns, columnHeader, renderCell, renderSectionCell }: WorkspaceSectionProps<C>) {
   return (
     <div className="rounded-2xl border border-neutral-200 dark:border-white/[0.08] bg-white dark:bg-[#111113] overflow-hidden">
       {/* Header */}
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-neutral-50 dark:hover:bg-white/[0.04] transition-colors"
-      >
-        <span className="text-sm font-semibold text-neutral-800 dark:text-white">{workspace}</span>
-        <div className="flex items-center gap-2 text-neutral-400 dark:text-neutral-500">
-          <span className="text-xs">{modules.length} modulos</span>
-          {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+      <div className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-neutral-50 dark:hover:bg-white/[0.04] transition-colors">
+        <button onClick={onToggle} className="flex items-center gap-2 text-left flex-1 min-w-0">
+          <span className="text-sm font-semibold text-neutral-800 dark:text-white">{workspace}</span>
+          <span className="text-xs text-neutral-400 dark:text-neutral-500">{modules.length} subsecciones</span>
+        </button>
+        <div className="flex items-center gap-3">
+          {renderSectionCell && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-neutral-400 dark:text-neutral-500 hidden sm:inline">Toda la sección:</span>
+              {columns.map((col, i) => <span key={i}>{renderSectionCell(col)}</span>)}
+            </div>
+          )}
+          <button onClick={onToggle} className="text-neutral-400 dark:text-neutral-500">
+            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
         </div>
-      </button>
+      </div>
 
       {expanded && (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[500px]">
             <thead>
               <tr className="border-t border-neutral-100 dark:border-white/[0.06] bg-neutral-50/60 dark:bg-white/[0.025]">
-                <th className="text-left px-5 py-2.5 text-xs font-semibold text-neutral-500 dark:text-neutral-400 w-48">Modulo</th>
+                <th className="text-left px-5 py-2.5 text-xs font-semibold text-neutral-500 dark:text-neutral-400 w-48">Subsección</th>
                 {columns.map((col, i) => (
                   <th key={i} className="px-4 py-2.5 text-center min-w-[110px]">
                     {columnHeader(col)}
@@ -442,19 +868,17 @@ function WorkspaceSection<C>({ workspace, modules, expanded, onToggle, columns, 
   );
 }
 
-// ─── ToggleCell ───────────────────────────────────────────────────────────────
+// ─── ToggleCell (binario: usado en Rol) ────────────────────────────────────────
 
 interface ToggleCellProps {
-  moduleKey: string;
-  targetType: 'role' | 'office';
-  targetValue: string;
   visible: boolean;
   isSaving: boolean;
   saveResult: { key: string; ok: boolean } | null;
   onToggle: () => void;
+  compact?: boolean;
 }
 
-function ToggleCell({ visible, isSaving, saveResult, onToggle }: ToggleCellProps) {
+function ToggleCell({ visible, isSaving, saveResult, onToggle, compact }: ToggleCellProps) {
   if (isSaving) {
     return (
       <div className="flex items-center justify-center">
@@ -477,9 +901,10 @@ function ToggleCell({ visible, isSaving, saveResult, onToggle }: ToggleCellProps
   return (
     <button
       onClick={onToggle}
-      title={visible ? 'Ocultar modulo' : 'Mostrar modulo'}
+      title={visible ? 'Ocultar' : 'Mostrar'}
       className={cn(
-        'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all duration-200 hover:scale-105 active:scale-95',
+        'inline-flex items-center gap-1.5 rounded-xl text-xs font-semibold border transition-all duration-200 hover:scale-105 active:scale-95',
+        compact ? 'px-2.5 py-1' : 'px-3 py-1.5',
         visible
           ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'
           : 'bg-neutral-100 dark:bg-white/[0.06] border-neutral-200 dark:border-white/10 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-white/[0.1]'
@@ -490,5 +915,52 @@ function ToggleCell({ visible, isSaving, saveResult, onToggle }: ToggleCellProps
         : <><EyeOff className="w-3 h-3" /> Oculto</>
       }
     </button>
+  );
+}
+
+// ─── DraftToggle (4 estados, sin guardar hasta confirmar: usado en Oficina/Usuario) ──
+
+interface DraftToggleProps {
+  /** null = sin cambios (no se toca al guardar) */
+  value: DraftValue | null;
+  /** Valor explícito actual, solo se muestra como referencia si hay un único destinatario seleccionado. */
+  current: boolean | null;
+  onChange: (next: DraftValue | null) => void;
+  compact?: boolean;
+}
+
+function DraftToggle({ value, current, onChange, compact }: DraftToggleProps) {
+  const cycle = () => {
+    if (value === null) onChange('visible');
+    else if (value === 'visible') onChange('oculto');
+    else if (value === 'oculto') onChange('hereda');
+    else onChange(null);
+  };
+
+  const currentLabel = current === null ? null : current ? 'visible' : 'oculto';
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <button
+        onClick={cycle}
+        title={value === null ? 'Sin cambios — clic para editar' : `Se aplicará: ${value}`}
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-xl text-xs font-semibold border transition-all duration-200 hover:scale-105 active:scale-95',
+          compact ? 'px-2.5 py-1' : 'px-3 py-1.5',
+          value === null && 'bg-neutral-50 dark:bg-white/[0.04] border-dashed border-neutral-300 dark:border-white/15 text-neutral-400 dark:text-neutral-500',
+          value === 'visible' && 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400',
+          value === 'oculto' && 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/40 text-red-600 dark:text-red-400',
+          value === 'hereda' && 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800/40 text-blue-600 dark:text-blue-400',
+        )}
+      >
+        {value === null && 'Sin cambios'}
+        {value === 'visible' && <><Eye className="w-3 h-3" /> Visible</>}
+        {value === 'oculto' && <><EyeOff className="w-3 h-3" /> Oculto</>}
+        {value === 'hereda' && <><Undo2 className="w-3 h-3" /> Hereda</>}
+      </button>
+      {currentLabel && !compact && (
+        <span className="text-[10px] text-neutral-400 dark:text-neutral-500">actual: {currentLabel}</span>
+      )}
+    </div>
   );
 }
