@@ -90,7 +90,23 @@ export async function obtenerProductos(categoriaId?: string) {
 
   const { data, error } = await query;
 
-  if (error) throw error;
+  // Si las tablas de atributos no existen aún (migración pendiente), caer a query simple
+  if (error) {
+    let fallbackQuery = supabase
+      .from('store_productos')
+      .select('*, categoria:store_categorias(*)')
+      .eq('activo', true)
+      .order('created_at', { ascending: false });
+
+    if (categoriaId) {
+      fallbackQuery = fallbackQuery.eq('categoria_id', categoriaId);
+    }
+
+    const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+    if (fallbackError) throw fallbackError;
+    return (fallbackData ?? []) as StoreProducto[];
+  }
+
   return data as StoreProducto[];
 }
 
