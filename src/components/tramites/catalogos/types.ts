@@ -1,4 +1,4 @@
-// ── Shared types & constants for the Catálogos module ─────────────────────
+// ── Shared types & constants for the Catálogos module ──────────────────────
 
 export interface InsuranceType {
   id: string;
