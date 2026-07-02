@@ -88,6 +88,8 @@ interface NuevoTramiteModalProps {
     comisionesLoteId?: string;
     comisionesLoteLabel?: string;
     instrucciones?: string;
+    descripcion?: string;
+    prioridad?: string;
   };
 }
 
@@ -438,8 +440,8 @@ export function NuevoTramiteModal({
       setAsignado('');
     }
 
-    setPrioridad('Baja');
-    setDescripcion(preloadedData?.instrucciones || '');
+    setPrioridad((preloadedData?.prioridad as 'Alta' | 'Media' | 'Baja') || 'Baja');
+    setDescripcion(preloadedData?.descripcion || preloadedData?.instrucciones || '');
     setArchivos([]);
     setArchivoCategoriaId('');
     setPolizaNumero('');
