@@ -113,6 +113,7 @@ export function NuevoTramiteModal({
   const [descripcion, setDescripcion] = useState('');
   const [archivos, setArchivos] = useState<File[]>([]);
   const [adjuntosTemporales, setAdjuntosTemporales] = useState<Record<string, File[]>>({});
+  const [adjuntoCategoriasIds, setAdjuntoCategoriasIds] = useState<Record<string, string>>({});
   const [adjuntoCategorias, setAdjuntoCategorias] = useState<{id: string; nombre: string}[]>([]);
   const [archivoCategoriaId, setArchivoCategoriaId] = useState('');
 
@@ -1078,8 +1079,22 @@ export function NuevoTramiteModal({
           const maxFiles = campo.config.max_archivos || 1;
           const maxMb = campo.config.max_mb || 10;
           const accept = (campo.config.tipos_mime || []).join(',') || undefined;
+          const categoriaFija = campo.config.categoria_id as string | undefined;
           return (
             <div className="space-y-2">
+              {/* Selector de categoría cuando el admin no pre-configuró una */}
+              {!categoriaFija && adjuntoCategorias.length > 0 && (
+                <select
+                  value={adjuntoCategoriasIds[campo.id] || ''}
+                  onChange={e => setAdjuntoCategoriasIds(prev => ({ ...prev, [campo.id]: e.target.value }))}
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value="">Categoría del archivo (opcional)</option>
+                  {adjuntoCategorias.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+                  ))}
+                </select>
+              )}
               {files.length < maxFiles && (
                 <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-neutral-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 transition-colors">
                   <Upload className="w-4 h-4 text-neutral-400" />
@@ -1585,6 +1600,8 @@ export function NuevoTramiteModal({
         for (const campo of camposDinamicos.filter(c => c.tipo === 'adjunto')) {
           const files = adjuntosTemporales[campo.id] || [];
           if (files.length === 0) continue;
+          // Categoría: fija del config (admin la preconfiguró) o elegida por el usuario en el selector
+          const categoriaIdAdjunto = (campo.config.categoria_id as string | undefined) || adjuntoCategoriasIds[campo.id] || null;
           const fileData: { id: string; nombre: string; url: string; tipo: string; tamano: number }[] = [];
           for (const file of files) {
             const ext = file.name.split('.').pop();
@@ -1595,6 +1612,7 @@ export function NuevoTramiteModal({
             const { data: archivoData, error: archivoErr } = await supabase.from('ticket_archivos').insert({
               ticket_id: ticket.id, usuario_id: usuario.id,
               nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size,
+              categoria_id: categoriaIdAdjunto,
             }).select('id').single();
             if (archivoErr) throw archivoErr;
             fileData.push({ id: archivoData!.id, nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size });
