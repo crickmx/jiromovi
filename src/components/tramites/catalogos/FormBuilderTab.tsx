@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, Save, Trash2, Settings, GripVertical, X, Eye, Lock, Zap } from 'lucide-react';
 import { useFormBuilder, LOCKED_SISTEMA_KEYS, CONFIGURABLE_SISTEMA_KEYS, SISTEMA_CAMPO_DEFAULTS } from './useFormBuilder';
 import { FormPreview } from './FormPreview';
-import { CAMPO_TIPOS, SISTEMA_TIPO_META, MIME_OPTIONS, slugify, type CampoTipo } from './types';
+import { CAMPO_TIPOS, SISTEMA_TIPO_META, MIME_OPTIONS, ROL_VISIBILIDAD_OPCIONES, slugify, type CampoTipo, type RolVisibilidad } from './types';
 import { supabase } from '../../../lib/supabase';
 
 interface Props {
@@ -28,6 +28,8 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
     editCampoReq, setEditCampoReq,
     editCampoConfig, setEditCampoConfig,
     editCampoAyuda, setEditCampoAyuda,
+    editCampoVisiblePara, setEditCampoVisiblePara,
+    editCampoEditablePara, setEditCampoEditablePara,
     savingCampo, dragging,
     handleAddCampo, handleAddSistemaCampo, handleSaveCampo, handleDeleteCampo,
     handleDragStart, handleDragOver, handleDrop,
@@ -159,6 +161,12 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                         </div>
                         {campo.requerido && (
                           <span className="text-[10px] text-red-500 font-mono shrink-0">req</span>
+                        )}
+                        {(campo.visible_para_rol && campo.visible_para_rol !== 'todos') && (
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0 flex items-center gap-0.5">
+                            <Lock className="w-2.5 h-2.5" />
+                            {campo.visible_para_rol === 'Administrador' ? 'Admin' : campo.visible_para_rol}+
+                          </span>
                         )}
                         {isSistema && (
                           <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-500 border border-violet-200 shrink-0">
@@ -320,6 +328,37 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                       />
                       <span className="text-sm text-neutral-700">Campo requerido</span>
                     </label>
+
+                    {/* Acceso por rol */}
+                    <div className="pt-2 border-t border-neutral-100 space-y-2">
+                      <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> Acceso por rol
+                      </p>
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">Visible para</label>
+                        <select
+                          value={editCampoVisiblePara}
+                          onChange={(e) => setEditCampoVisiblePara(e.target.value as RolVisibilidad)}
+                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                        >
+                          {ROL_VISIBILIDAD_OPCIONES.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">Editable para</label>
+                        <select
+                          value={editCampoEditablePara}
+                          onChange={(e) => setEditCampoEditablePara(e.target.value as RolVisibilidad)}
+                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                        >
+                          {ROL_VISIBILIDAD_OPCIONES.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                   </>
                 )}
 
