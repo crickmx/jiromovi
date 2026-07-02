@@ -13,7 +13,7 @@ import { PermisosTipoBulkTab } from '../components/tramites/catalogos/PermisosTi
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type TabId = 'areas' | 'tipos' | 'equipos' | 'visibilidad' | 'permisos' | 'reglas';
+type TabId = 'areas' | 'tipos' | 'equipos' | 'permisos' | 'reglas';
 
 interface Area {
   id: string; nombre: string; slug: string; color_hex: string; activa: boolean;
@@ -75,7 +75,6 @@ const TABS: { id: TabId; label: string; icon: React.ElementType; desc: string }[
   { id: 'areas',       label: 'Áreas',       icon: MapPin,    desc: 'Categorías de trámites' },
   { id: 'tipos',       label: 'Tipos',       icon: FileText,  desc: 'Tipos de trámite' },
   { id: 'equipos',     label: 'Equipos',     icon: Users,     desc: 'Grupos de trabajo' },
-  { id: 'visibilidad', label: 'Visibilidad', icon: Eye,       desc: 'Permisos por equipo' },
   { id: 'permisos',    label: 'Permisos',    icon: Lock,      desc: 'Quién crea cada tipo' },
   { id: 'reglas',      label: 'Reglas',      icon: Shuffle,   desc: 'Asignación automática' },
 ];
@@ -784,7 +783,6 @@ export default function AdminTramites() {
         {tab === 'areas'       && <AreasTab />}
         {tab === 'tipos'       && <GestionCatalogosRegistro />}
         {tab === 'equipos'     && <GestionGruposVisualizacion />}
-        {tab === 'visibilidad' && <VisibilidadTab />}
         {tab === 'permisos'    && <PermisosTipoBulkTab />}
         {tab === 'reglas'      && <ReglasTab onGoToEquipos={() => setTab('equipos')} />}
       </div>

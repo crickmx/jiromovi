@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { ChevronDown, Users } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { usePermisos } from './usePermisos';
 import { Tooltip } from './Tooltip';
 
@@ -17,10 +17,10 @@ interface Props {
 
 export function PermisosPanel({ tipoId, usuarioId, showToast }: Props) {
   const {
-    equiposPermisos, permisos: _permisos, loadingPermisos,
+    equiposPermisos,
     rolPermisos, usuarioOverrides,
-    savingPermId, savingVisibilidad, equiposColapsados,
-    loadPermisos, hasPermiso, togglePermiso,
+    savingVisibilidad, equiposColapsados,
+    loadPermisos,
     toggleRolVisibilidad, toggleUsuarioOverride,
     toggleEquipoColapsado, toggleEquipoOverride,
   } = usePermisos(tipoId, usuarioId, showToast);
@@ -162,73 +162,6 @@ export function PermisosPanel({ tipoId, usuarioId, showToast }: Props) {
           </div>
         </div>
       )}
-
-      {/* ── Permisos por Equipo ── */}
-      <div>
-        <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3">Permisos por Equipo</p>
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-xs text-blue-700">
-          Define quién puede <strong>crear</strong> o <strong>editar</strong> este tipo de trámite dentro de cada equipo.
-        </div>
-        {loadingPermisos ? (
-          <div className="space-y-3">
-            {[...Array(2)].map((_, i) => <div key={i} className="h-24 bg-neutral-100 rounded-xl animate-pulse" />)}
-          </div>
-        ) : equiposPermisos.length === 0 ? (
-          <div className="text-center py-10 text-neutral-400">
-            <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">No hay equipos con miembros asignados.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {equiposPermisos.map(equipo => (
-              <div key={equipo.id} className="border border-neutral-200 rounded-xl overflow-hidden">
-                <div className="bg-neutral-50 px-4 py-2.5 border-b border-neutral-200">
-                  <p className="text-xs font-bold text-neutral-700 uppercase tracking-wider">{equipo.nombre}</p>
-                </div>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr>
-                      <th className="text-left px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">Usuario</th>
-                      <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">
-                        <Tooltip text="Puede crear trámites de este tipo"><span className="cursor-default underline decoration-dotted">Crear</span></Tooltip>
-                      </th>
-                      <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">
-                        <Tooltip text="Puede editar trámites de este tipo"><span className="cursor-default underline decoration-dotted">Editar</span></Tooltip>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {equipo.miembros.map(miembro => (
-                      <tr key={miembro.usuario_id} className="border-t border-neutral-100 hover:bg-neutral-50">
-                        <td className="px-4 py-2.5">
-                          <p className="text-sm font-medium text-neutral-800">{miembro.nombre_completo}</p>
-                        </td>
-                        {(['crear_tramite', 'editar_tramite'] as const).map(action => {
-                          const active = hasPermiso(miembro.usuario_id, equipo.id, action);
-                          const saving = savingPermId === `${miembro.usuario_id}-${equipo.id}-${action}`;
-                          return (
-                            <td key={action} className="text-center px-4 py-2.5">
-                              <button
-                                onClick={() => togglePermiso(miembro.usuario_id, equipo.id, action)}
-                                disabled={saving}
-                                className={`w-6 h-6 rounded-md border-2 transition-colors mx-auto flex items-center justify-center text-xs ${
-                                  active ? 'bg-blue-600 border-blue-600 text-white' : 'border-neutral-300 bg-white hover:border-blue-400'
-                                } ${saving ? 'opacity-40' : ''}`}
-                              >
-                                {active && '✓'}
-                              </button>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
