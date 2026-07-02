@@ -5,7 +5,7 @@ import { useTiposTramite } from '../hooks/useTiposTramite';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useImpersonation } from '../contexts/ImpersonationContext';
-import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound, LayoutList, LayoutGrid, ChevronDown, ArrowUpDown, Flag, UserMinus, Activity } from 'lucide-react';
+import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound, LayoutList, LayoutGrid, ChevronDown, ArrowUpDown } from 'lucide-react';
 import { crearNotificacion } from '../lib/notificationHelpers';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
@@ -917,145 +917,43 @@ export function Tramites() {
 
       {isAgente && <AgenteDashboard />}
 
-      {/* KPI Summary — métricas operativas */}
-      {!isAgente && activeTab !== 'papelera' && (
-        (() => {
-          const today = new Date().toISOString().split('T')[0];
-          const activos = visibleTramites.filter(t => !t.cerrado_en && !t.eliminado_at);
-          const oldestAtención = kanbanAtención.reduce<TramiteItem | null>(
-            (acc, t) => (!acc || t.fecha_creacion < acc.fecha_creacion ? t : acc), null
-          );
-          const oldestDays = oldestAtención
-            ? Math.floor((Date.now() - new Date(oldestAtención.fecha_creacion).getTime()) / 86_400_000)
-            : 0;
+      {/* KPI Summary for non-agent users */}
+      {!isAgente && activeTab !== 'papelera' && visibleTramites.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          {(() => {
+            const activos = visibleTramites.filter(t => !t.cerrado_en);
+            const byType: Record<string, number> = {};
+            for (const t of activos) {
+              byType[t.tipo_tramite] = (byType[t.tipo_tramite] || 0) + 1;
+            }
+            const kpiTypes = TIPO_TRAMITE_OPTIONS.filter(
+              opt => opt.value !== 'cambio_bancario'
+            );
+            const kpis = kpiTypes
+              .map(opt => ({ ...opt, count: byType[opt.value] || 0 }))
+              .filter(k => k.count > 0);
 
-          const kpis = [
-            {
-              key: 'atencion',
-              accent: '#E84422',
-              icon: <AlertCircle className="w-[15px] h-[15px]" />,
-              count: kanbanAtención.length,
-              label1: 'Requiere',
-              label2: 'Atención',
-              sub: oldestAtención ? `Más antiguo: hace ${oldestDays}d` : 'Sin pendientes',
-              active: false,
-              onClick: undefined as (() => void) | undefined,
-            },
-            {
-              key: 'prioridad',
-              accent: '#B91C6E',
-              icon: <Flag className="w-[15px] h-[15px]" />,
-              count: activos.filter(t => t.prioridad === 'Alta').length,
-              label1: 'Alta',
-              label2: 'Prioridad',
-              sub: selectedPrioridades.includes('Alta') ? 'Filtro activo' : 'Clic para filtrar',
-              active: selectedPrioridades.includes('Alta'),
-              onClick: () => setSelectedPrioridades(prev =>
-                prev.includes('Alta') ? prev.filter(p => p !== 'Alta') : [...prev, 'Alta']
-              ),
-            },
-            {
-              key: 'riesgo',
-              accent: '#B45309',
-              icon: <Clock className="w-[15px] h-[15px]" />,
-              count: activos.filter(t =>
-                Math.floor((Date.now() - new Date(t.fecha_creacion).getTime()) / 86_400_000) > 7
-              ).length,
-              label1: 'En Riesgo',
-              label2: '+7 días',
-              sub: 'Abiertos más de una semana',
-              active: false,
-              onClick: undefined as (() => void) | undefined,
-            },
-            {
-              key: 'sinasignar',
-              accent: '#4F35B3',
-              icon: <UserMinus className="w-[15px] h-[15px]" />,
-              count: activos.filter(t => !t.assigned_to_user_id).length,
-              label1: 'Sin',
-              label2: 'Asignar',
-              sub: 'Sin responsable directo',
-              active: false,
-              onClick: undefined as (() => void) | undefined,
-            },
-            {
-              key: 'proceso',
-              accent: '#0B6FAB',
-              icon: <Activity className="w-[15px] h-[15px]" />,
-              count: kanbanProceso.length,
-              label1: 'En',
-              label2: 'Proceso',
-              sub: `de ${activos.length} activos totales`,
-              active: false,
-              onClick: undefined as (() => void) | undefined,
-            },
-            {
-              key: 'cerrados',
-              accent: '#1B7A47',
-              icon: <CheckCircle2 className="w-[15px] h-[15px]" />,
-              count: tramitesCerrados20.filter(t => t.cerrado_en?.startsWith(today)).length,
-              label1: 'Cerrados',
-              label2: 'Hoy',
-              sub: `${tramitesCerrados20.length} en los últimos 20d`,
-              active: activeTab === 'cerrados',
-              onClick: () => setActiveTab('cerrados'),
-            },
-          ];
+            if (kpis.length === 0) return null;
 
-          return (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              {kpis.map(kpi => (
+            return kpis.map(kpi => {
+              const ac = AREA_CONFIG[kpi.area];
+              return (
                 <button
-                  key={kpi.key}
-                  onClick={kpi.onClick}
-                  className={`relative group overflow-hidden bg-white dark:bg-neutral-800 rounded-2xl text-left transition-all duration-200 hover:-translate-y-0.5 ${kpi.onClick ? 'cursor-pointer' : 'cursor-default'}`}
-                  style={{
-                    border: kpi.active ? `1.5px solid ${kpi.accent}` : '1.5px solid #E5E7EB',
-                    boxShadow: kpi.active
-                      ? `0 0 0 3px ${kpi.accent}22, 0 4px 16px ${kpi.accent}18`
-                      : undefined,
-                  }}
-                  onMouseEnter={e => { if (!kpi.active) (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 24px ${kpi.accent}22`; }}
-                  onMouseLeave={e => { if (!kpi.active) (e.currentTarget as HTMLElement).style.boxShadow = ''; }}
+                  key={kpi.value}
+                  onClick={() => setSelectedTipos(prev => prev.includes(kpi.value) ? prev.filter(v => v !== kpi.value) : [...prev, kpi.value])}
+                  className={`rounded-xl border p-3 text-left transition-all duration-200 ${
+                    selectedTipos.includes(kpi.value)
+                      ? `${ac.bg} ${ac.border} ring-2 ring-offset-1 ring-current ${ac.color}`
+                      : 'bg-white dark:bg-neutral-800/50 border-neutral-200 dark:border-white/8 hover:border-neutral-300 dark:hover:border-white/15 hover:shadow-sm'
+                  }`}
                 >
-                  {/* Top accent stripe */}
-                  <div
-                    className="absolute top-0 inset-x-0 h-[3.5px] group-hover:h-[5px] transition-all duration-200"
-                    style={{ background: kpi.accent }}
-                  />
-
-                  <div className="p-4 pt-5">
-                    {/* Icon badge */}
-                    <div
-                      className="absolute top-[18px] right-3.5 w-[30px] h-[30px] rounded-lg flex items-center justify-center"
-                      style={{ background: kpi.accent + '18', color: kpi.accent }}
-                    >
-                      {kpi.icon}
-                    </div>
-
-                    {/* Count */}
-                    <p
-                      className="text-[2.1rem] font-extrabold leading-none mt-0.5 mb-1.5 tabular-nums"
-                      style={{ color: kpi.accent }}
-                    >
-                      {kpi.count}
-                    </p>
-
-                    {/* Label */}
-                    <p className="text-[11px] font-bold text-neutral-600 dark:text-white/60 leading-snug">
-                      {kpi.label1}<br />{kpi.label2}
-                    </p>
-
-                    {/* Sub */}
-                    <p className="mt-2.5 pt-2.5 border-t border-neutral-100 dark:border-white/8 text-[10px] text-neutral-400 dark:text-white/30 leading-snug">
-                      {kpi.sub}
-                    </p>
-                  </div>
+                  <p className="text-2xl font-bold text-neutral-900 dark:text-white">{kpi.count}</p>
+                  <p className={`text-xs font-medium mt-0.5 ${ac.color}`}>{kpi.label}</p>
                 </button>
-              ))}
-            </div>
-          );
-        })()
+              );
+            });
+          })()}
+        </div>
       )}
 
       {/* Filters — hidden in papelera mode */}

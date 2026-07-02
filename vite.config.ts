@@ -10,9 +10,6 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  optimizeDeps: {
-    include: ['date-holidays', 'date-holidays-parser'],
-  },
   build: {
     assetsDir: '_static',
   },
