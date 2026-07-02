@@ -1,8 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, ClipboardList, Globe, Copy, ExternalLink, ArrowRight, ChevronRight, Zap, MessageCircle, Phone, TrendingUp, Target, Users, BookOpen, Calendar, Play, Briefcase, Settings, ChartBar as BarChart2, FileText, Shield, UserCheck, Activity, Star, MapPin, Check, CircleAlert as AlertCircle, RefreshCw, Newspaper, GraduationCap, Video, DollarSign, Layers, MonitorPlay } from 'lucide-react';
+import { Bell, ClipboardList, Globe, Copy, ExternalLink, ArrowRight, ChevronRight, Zap, MessageCircle, Phone, TrendingUp, Target, Users, Calendar, Play, Briefcase, Settings, ChartBar as BarChart2, FileText, Shield, Activity, Star, MapPin, Check, CircleAlert as AlertCircle, RefreshCw, Newspaper, GraduationCap, Video, DollarSign, Layers, MonitorPlay } from 'lucide-react';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
-import { ChavaInsightsCard } from '../components/dashboard/ChavaInsightsCard';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { useModuleVisibility } from '@/lib/useModuleVisibility';
@@ -342,7 +341,7 @@ function NotificacionesFeed({ usuario }: { usuario: Usuario }) {
     try {
       const { data } = await supabase
         .from('notificaciones_internas')
-        .select('id, titulo, mensaje, created_at, tipo, leido, modulo')
+        .select('id, titulo, mensaje, created_at, tipo, leido, referencia_tipo')
         .eq('usuario_id', usuario.id)
         .order('created_at', { ascending: false })
         .limit(5);
@@ -405,7 +404,7 @@ function NotificacionesFeed({ usuario }: { usuario: Usuario }) {
                 !n.leido ? 'bg-blue-100 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400'
                   : 'bg-neutral-100 dark:bg-white/6 text-neutral-400 dark:text-white/30'
               )}>
-                {typeIcon[n.modulo?.toLowerCase()] || <Bell className="w-3.5 h-3.5" />}
+                {typeIcon[n.referencia_tipo?.toLowerCase()] || <Bell className="w-3.5 h-3.5" />}
               </div>
               <div className="flex-1 min-w-0">
                 <p className={cn(
@@ -550,7 +549,7 @@ function ComunicadosFeed() {
     try {
       const { data } = await supabase
         .from('comunicados')
-        .select('id, titulo, created_at, categoria:comunicados_categorias(nombre), imagen_portada_url')
+        .select('id, titulo, tipo, created_at')
         .eq('activo', true)
         .order('created_at', { ascending: false })
         .limit(4);
@@ -594,22 +593,17 @@ function ComunicadosFeed() {
                 onClick={() => nav(`/comunicados/${c.id}`)}
                 className="w-full flex items-start gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-white/[0.02] transition-colors group text-left"
               >
-                {/* Thumbnail / placeholder */}
                 <div className="w-11 h-11 rounded-xl flex-shrink-0 overflow-hidden bg-neutral-100 dark:bg-white/6 flex items-center justify-center">
-                  {c.imagen_portada_url ? (
-                    <img src={c.imagen_portada_url} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <Newspaper className="w-4 h-4 text-neutral-300 dark:text-white/20" />
-                  )}
+                  <Newspaper className="w-4 h-4 text-neutral-300 dark:text-white/20" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-neutral-700 dark:text-white/70 leading-snug line-clamp-2 group-hover:text-neutral-900 dark:group-hover:text-white/85 transition-colors">
                     {c.titulo}
                   </p>
                   <div className="flex items-center gap-2 mt-1">
-                    {c.categoria?.nombre && (
+                    {c.tipo && (
                       <span className="text-[10px] font-medium text-neutral-400 dark:text-white/30 bg-neutral-100 dark:bg-white/6 px-2 py-0.5 rounded-full">
-                        {c.categoria.nombre}
+                        {c.tipo}
                       </span>
                     )}
                     <span className="text-[11px] text-neutral-400 dark:text-white/30">
@@ -725,8 +719,7 @@ function OnDemandFeed({ usuario }: { usuario: Usuario }) {
         // Get lessons with optional progress
         const { data: lessons } = await supabase
           .from('seguros_lessons')
-          .select('id, titulo, thumbnail_url, duracion_minutos, categoria:seguros_categories(nombre)')
-          .eq('activo', true)
+          .select('id, titulo, miniatura_url, duracion')
           .order('created_at', { ascending: false })
           .limit(4);
 
@@ -739,10 +732,10 @@ function OnDemandFeed({ usuario }: { usuario: Usuario }) {
         if (lessonIds.length > 0) {
           const { data: prog } = await supabase
             .from('seguros_progress')
-            .select('lesson_id, porcentaje_completado')
+            .select('lesson_id, progreso')
             .eq('usuario_id', usuario.id)
             .in('lesson_id', lessonIds);
-          (prog || []).forEach((p: any) => { progressMap[p.lesson_id] = p.porcentaje_completado; });
+          (prog || []).forEach((p: any) => { progressMap[p.lesson_id] = p.progreso; });
         }
 
         if (active) setItems((lessons || []).map((l: any) => ({ ...l, progreso: progressMap[l.id] ?? 0 })));
@@ -781,8 +774,8 @@ function OnDemandFeed({ usuario }: { usuario: Usuario }) {
                 className="w-full flex items-start gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-white/[0.02] transition-colors group text-left"
               >
                 <div className="w-11 h-11 rounded-xl flex-shrink-0 overflow-hidden bg-neutral-100 dark:bg-white/6 flex items-center justify-center">
-                  {lesson.thumbnail_url ? (
-                    <img src={lesson.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                  {lesson.miniatura_url ? (
+                    <img src={lesson.miniatura_url} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <Play className="w-4 h-4 text-teal-500" />
                   )}
@@ -792,13 +785,8 @@ function OnDemandFeed({ usuario }: { usuario: Usuario }) {
                     {lesson.titulo}
                   </p>
                   <div className="flex items-center gap-2 mt-1">
-                    {lesson.categoria?.nombre && (
-                      <span className="text-[10px] text-neutral-400 dark:text-white/30 bg-neutral-100 dark:bg-white/6 px-2 py-0.5 rounded-full font-medium">
-                        {lesson.categoria.nombre}
-                      </span>
-                    )}
-                    {lesson.duracion_minutos && (
-                      <span className="text-[11px] text-neutral-400 dark:text-white/30">{lesson.duracion_minutos}min</span>
+                    {lesson.duracion && (
+                      <span className="text-[11px] text-neutral-400 dark:text-white/30">{lesson.duracion}min</span>
                     )}
                   </div>
                   {lesson.progreso > 0 && (
@@ -1014,10 +1002,7 @@ export default function Dashboard() {
       {/* ── 1. Hero personalizado ── */}
       <HeroSection usuario={usuario} />
 
-      {/* ── 2. Chava AI — Administrador only ── */}
-      {usuario.rol === 'Administrador' && <ChavaInsightsCard usuario={usuario} />}
-
-      {/* ── 3. KPI Strip ── */}
+      {/* ── 2. KPI Strip ── */}
       <KPIStrip usuario={usuario} />
 
       {/* ── 4. Main content grid ── */}
