@@ -117,6 +117,45 @@ where g.nombre ilike '%capita%';
 
 **Gap adicional encontrado (más importante):** `src/pages/TramiteDetalle.tsx` (donde se cambia el estatus de un trámite YA CREADO) **no lee `editable_para_rol` en ningún lado** — solo `NuevoTramiteModal.tsx` lo respeta (función `canEditCampo`, línea ~191, usa jerarquía `ROL_NIVEL: Agente=0, Empleado=1, Gerente=2, Administrador=3`). Agregar el toggle a la UI no bloqueará que un Agente cambie el estatus después de creado el trámite — para eso hay que replicar `canEditCampo`/`ROL_NIVEL` en `TramiteDetalle.tsx` y aplicarlo al control de cambio de estatus ahí.
 
+## BUG PENDIENTE #3 — Usuario no-admin ve su propio pedido de MOVI Store vacío (diagnosticado 2026-07-03, sin corregir)
+
+**Síntoma:** un usuario no-admin/no-gerente entra a `/store/pedido/:id` de un pedido **propio** y ve "Detalle de Pedido" con el Folio y la sección "Cliente" correctos, pero la sección "Productos" viene vacía y el Total muestra `$0.00`. El mismo pedido, visto por un Admin, muestra correctamente el producto ("Termo Corto JIRO", cantidad 2 × $150.00, total $300.00). Las secciones exclusivas de Admin (Ingresos/Costo/Ganancia neta, Cambiar Estatus, Control de Pagos, Información de Pago) están correctamente ocultas para el no-admin — eso no es el bug, es diseño esperado.
+
+**Ubicación:** `src/lib/storeUtils.ts` función `obtenerPedidoCompleto()` (línea ~630) hace un query separado a `store_pedidos_detalle` con join embebido a `store_productos`:
+```ts
+const { data: detalle } = await supabase
+  .from('store_pedidos_detalle')
+  .select(`*, store_productos!store_pedidos_detalle_producto_id_fkey(*, store_categorias!store_productos_categoria_id_fkey(*))`)
+  .eq('pedido_id', pedidoId);
+```
+Consumido por `src/pages/StorePedidoDetalle.tsx`. El total y la lista de productos que se renderizan (`detallesMapeados`, `total`) se calculan puramente a partir de este `detalle` — si el array viene vacío, el bug es 100% de la consulta/RLS, no de renderizado condicional por rol (no hay ningún `if (isAdmin)` alrededor de la sección Productos).
+
+**Confirmado:** el query a `store_pedidos` (cabecera del pedido — Folio, Cliente, SICAS, Oficina) SÍ funciona para el dueño no-admin, así que el problema es específico de `store_pedidos_detalle` (o del join a `store_productos`), no un problema general de sesión/auth.
+
+**Hipótesis a verificar (en orden de probabilidad, dado el patrón ya visto en este proyecto con `tickets_select_v6`):**
+1. **RLS drift en `store_pedidos_detalle`**: la migración base (`20251123033434_create_store_module.sql:295-305`) crea la política `"Usuarios pueden ver detalle de sus pedidos"` con `USING (EXISTS (SELECT 1 FROM store_pedidos WHERE store_pedidos.id = pedido_id AND store_pedidos.usuario_id = auth.uid()))` — en teoría correcta. Falta confirmar que esa política **sigue existiendo tal cual en producción** y no fue reemplazada/eliminada por una edición directa en el SQL Editor (como pasó con `tickets_select_v6`).
+2. **RLS en `store_productos`** (`activo = true` para cualquier autenticado) bloqueando el join embebido si el producto fue desactivado — menos probable porque el Admin sí ve el producto, pero vale confirmar que "Termo Corto JIRO" siga `activo = true`.
+3. Menos probable: algún cambio reciente a la tabla `store_pedidos_detalle` (columnas, FK) que rompió el nombre del FK usado en el embed (`store_pedidos_detalle_producto_id_fkey`) — si el nombre del constraint cambió, PostgREST devolvería error 400, no un array vacío silencioso, así que esto se puede descartar rápido revisando la consola/Network del navegador.
+
+**Diagnóstico a correr primero (SQL Editor de Supabase):**
+```sql
+-- 1. Confirmar que la política de "dueño ve su detalle" sigue existiendo y con qué USING
+select policyname, cmd, qual
+from pg_policies
+where tablename = 'store_pedidos_detalle'
+order by cmd;
+
+-- 2. Confirmar que el producto sigue activo
+select id, titulo, activo from store_productos where titulo ilike '%termo corto jiro%';
+
+-- 3. Confirmar que el detalle existe en la tabla (dueño del pedido correcto)
+select spd.*, sp.usuario_id
+from store_pedidos_detalle spd
+join store_pedidos sp on sp.id = spd.pedido_id
+where spd.pedido_id = '0ac22a32-4e4b-4ff5-87bf-9ca8cc09d599';
+```
+Si la query #3 sí regresa la fila (o sea, el dato existe), el problema es 100% RLS (#1 o #2) — hay que pedirle al usuario real (Ricardo, dueño de este pedido) que abra la pestaña Network al cargar `/store/pedido/0ac22a32-4e4b-4ff5-87bf-9ca8cc09d599` y comparta la respuesta del request a `store_pedidos_detalle` (mismo método de diagnóstico usado para el bug de líder de equipo — ver RLS de `tickets` arriba). Si la política del punto 1 no aparece o tiene un `qual` distinto al de la migración, es RLS drift y hay que recrearla con una migración nueva (mismo patrón que `20260703000001_restore_lider_equipo_tickets_visibility.sql`).
+
 ## Patrones frecuentes
 
 **Agregar un campo sistema nuevo al FormBuilder:**
