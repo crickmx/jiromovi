@@ -12,6 +12,38 @@ import type {
   StorePedidoPago
 } from './storeTypes';
 
+// ── Acceso al store por equipo (Admin > Tienda MOVI > Equipos con acceso) ──
+// Un usuario tiene acceso de equipo si pertenece a algún grupo de trámites
+// registrado en store_equipos_acceso. Independiente de tienePermisoAdminEnModulo
+// (esa función solo cubre Administrador / Gerente con elevación).
+
+export async function obtenerGruposConAccesoStore(): Promise<string[]> {
+  const { data } = await supabase.from('store_equipos_acceso').select('grupo_id');
+  return (data ?? []).map(r => r.grupo_id);
+}
+
+export async function tieneAccesoEquipoStore(userId: string | null | undefined): Promise<boolean> {
+  if (!userId) return false;
+  const gruposConAcceso = await obtenerGruposConAccesoStore();
+  if (gruposConAcceso.length === 0) return false;
+  const { count } = await supabase
+    .from('tramites_grupos_miembros')
+    .select('grupo_id', { count: 'exact', head: true })
+    .eq('usuario_id', userId)
+    .in('grupo_id', gruposConAcceso);
+  return (count ?? 0) > 0;
+}
+
+export async function obtenerMiembrosConAccesoStore(): Promise<string[]> {
+  const gruposConAcceso = await obtenerGruposConAccesoStore();
+  if (gruposConAcceso.length === 0) return [];
+  const { data } = await supabase
+    .from('tramites_grupos_miembros')
+    .select('usuario_id')
+    .in('grupo_id', gruposConAcceso);
+  return [...new Set((data ?? []).map(r => r.usuario_id))];
+}
+
 // ============================================
 // CATEGORÍAS
 // ============================================
@@ -762,17 +794,17 @@ export async function crearPedido(
 
   const nombreUsuario = usuario?.nombre_completo || usuario?.nombre || 'Usuario';
 
-  // Obtener todos los administradores
-  const { data: administradores } = await supabase
-    .from('usuarios')
-    .select('id')
-    .eq('rol', 'Administrador')
-    .eq('estado', 'Activo');
+  // Obtener administradores + miembros de equipos con acceso al store (Admin > Tienda MOVI > Equipos con acceso)
+  const [{ data: administradores }, miembrosEquipo] = await Promise.all([
+    supabase.from('usuarios').select('id').eq('rol', 'Administrador').eq('estado', 'Activo'),
+    obtenerMiembrosConAccesoStore(),
+  ]);
+  const destinatarios = [...new Set([...(administradores ?? []).map(a => a.id), ...miembrosEquipo])];
 
-  // Crear notificación para cada administrador
-  if (administradores && administradores.length > 0) {
-    const notificaciones = administradores.map(admin => ({
-      usuario_id: admin.id,
+  // Crear notificación para cada destinatario
+  if (destinatarios.length > 0) {
+    const notificaciones = destinatarios.map(usuarioId => ({
+      usuario_id: usuarioId,
       titulo: 'Nuevo pedido en Store',
       mensaje: `${nombreUsuario} realizó un nuevo pedido en Store.`,
       modulo: 'Store',

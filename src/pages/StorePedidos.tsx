@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Package, Eye, ListFilter as Filter, Download, Search, Calendar, Trash2, ChartBar as BarChart3, ClipboardList } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
-import { obtenerTodosPedidos, eliminarPedido } from '../lib/storeUtils';
+import { obtenerTodosPedidos, eliminarPedido, tieneAccesoEquipoStore } from '../lib/storeUtils';
 import type { StorePedido } from '../lib/storeTypes';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -22,11 +22,12 @@ export default function StorePedidos() {
   const [eliminando, setEliminando] = useState(false);
 
   useEffect(() => {
-    if (!tienePermisoAdminEnModulo(usuario, MODULOS.STORE)) {
-      navigate('/store');
-      return;
-    }
-    cargarPedidos();
+    (async () => {
+      if (!usuario) return;
+      const tieneAcceso = tienePermisoAdminEnModulo(usuario, MODULOS.STORE) || await tieneAccesoEquipoStore(usuario.id);
+      if (!tieneAcceso) { navigate('/store'); return; }
+      cargarPedidos();
+    })();
   }, [usuario]);
 
   useEffect(() => {

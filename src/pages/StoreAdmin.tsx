@@ -15,7 +15,8 @@ import {
   eliminarCategoria,
   exportarProductosExcel,
   importarProductosExcel,
-  setupMarketingPremiumProductos
+  setupMarketingPremiumProductos,
+  tieneAccesoEquipoStore
 } from '../lib/storeUtils';
 import type { ResultadoCargaMasiva } from '../lib/storeUtils';
 import { supabase } from '../lib/supabase';
@@ -56,12 +57,13 @@ export default function StoreAdmin() {
   };
 
   useEffect(() => {
-    if (!tienePermisoAdminEnModulo(usuario, MODULOS.STORE)) {
-      navigate('/store');
-      return;
-    }
-    cargarDatos();
-    setupMarketingPremiumProductos().catch(() => {});
+    (async () => {
+      if (!usuario) return;
+      const tieneAcceso = tienePermisoAdminEnModulo(usuario, MODULOS.STORE) || await tieneAccesoEquipoStore(usuario.id);
+      if (!tieneAcceso) { navigate('/store'); return; }
+      cargarDatos();
+      setupMarketingPremiumProductos().catch(() => {});
+    })();
   }, [usuario]);
 
   const cargarDatos = async () => {
@@ -222,17 +224,19 @@ export default function StoreAdmin() {
             Categorías
           </button>
 
-          <button
-            onClick={() => setVistaActual('equipos')}
-            className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-              vistaActual === 'equipos'
-                ? 'bg-accent text-white'
-                : 'bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/15'
-            }`}
-          >
-            <Users className="w-5 h-5 inline mr-2" />
-            Equipos
-          </button>
+          {tienePermisoAdminEnModulo(usuario, MODULOS.STORE) && (
+            <button
+              onClick={() => setVistaActual('equipos')}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                vistaActual === 'equipos'
+                  ? 'bg-accent text-white'
+                  : 'bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/15'
+              }`}
+            >
+              <Users className="w-5 h-5 inline mr-2" />
+              Equipos
+            </button>
+          )}
 
           <button
             onClick={() => setVistaActual('triggers')}

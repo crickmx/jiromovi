@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { tieneAccesoEquipoStore } from '../lib/storeUtils';
 
 export function useStoreAttentionCount(userId: string | null | undefined) {
   const [count, setCount] = useState(0);
@@ -16,9 +17,11 @@ export function useStoreAttentionCount(userId: string | null | undefined) {
     if (!userId) { setCount(0); return; }
 
     const fetchCount = async () => {
-      if (isAdmin) {
-        // Admin: tickets del store abiertos donde el agente fue el último en actuar
-        // (el cliente/equipo necesita responder)
+      // Admin, o miembro de un equipo con acceso al store (Admin > Tienda MOVI > Equipos
+      // con acceso): ve todos los pedidos, igual cuenta todo lo pendiente de respuesta.
+      const tieneAccesoAmplio = isAdmin || await tieneAccesoEquipoStore(userId);
+
+      if (tieneAccesoAmplio) {
         const { count: c } = await supabase
           .from('tickets')
           .select('*', { count: 'exact', head: true })
@@ -30,8 +33,7 @@ export function useStoreAttentionCount(userId: string | null | undefined) {
         return;
       }
 
-      // Miembro de equipo con acceso al store: tickets del store asignados a este usuario
-      // pendientes de su acción
+      // Sin acceso de equipo: solo tickets del store asignados directamente a este usuario
       const { count: c } = await supabase
         .from('tickets')
         .select('*', { count: 'exact', head: true })
