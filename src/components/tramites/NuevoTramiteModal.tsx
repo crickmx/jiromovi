@@ -208,6 +208,7 @@ export function NuevoTramiteModal({
 
   const { tiposMap } = useTiposTramite();
   const isAgent = usuario?.rol === 'Agente';
+  const isEmpleadoOAgente = isAgent || usuario?.rol === 'Empleado';
   const canAssignOthers = !isAgent;
   const isPoolMode = false;
   const [canAccessRegistroAct, setCanAccessRegistroAct] = useState(false);
@@ -1976,8 +1977,35 @@ export function NuevoTramiteModal({
     <BaseModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Nuevo Trámite"
+      title={tipoTramite ? `Nuevo: ${tiposDb.find(t => t.value === tipoTramite)?.label ?? tipoTramite}` : 'Nuevo Trámite'}
       maxWidth="4xl"
+      footer={
+        <>
+          <button
+            type="button"
+            onClick={() => { clearDraft(DRAFT_KEY); setDraftRestored(false); onClose(); }}
+            disabled={loading}
+            className="px-6 py-2.5 text-neutral-700 bg-white border border-neutral-300 rounded-xl hover:bg-neutral-50 transition-colors disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={loading}
+            className="px-6 py-2.5 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                Creando...
+              </>
+            ) : (
+              'Crear Trámite'
+            )}
+          </button>
+        </>
+      }
     >
       <div className="space-y-6">
         {draftRestored && (
@@ -2624,7 +2652,12 @@ export function NuevoTramiteModal({
         {/* Campos del formulario — unificados, ordenados por display_order configurado en el FormBuilder */}
         {[...camposDinamicos]
           .sort((a, b) => a.display_order - b.display_order)
-          .filter(campo => canSeeCampo(campo))
+          .filter(campo => {
+            if (!canSeeCampo(campo)) return false;
+            // Ocultar área y equipo para Empleado/Agente — se asignan automáticamente
+            if (campo.is_sistema && ['area', 'equipo'].includes(campo.sistema_key ?? '') && isEmpleadoOAgente) return false;
+            return true;
+          })
           .map(campo => {
             const rendered = campo.is_sistema ? renderCampoSistema(campo) : renderCampoDinamico(campo);
             if (canEditCampo(campo)) return rendered;
@@ -2640,31 +2673,9 @@ export function NuevoTramiteModal({
           })
         }
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-neutral-200">
-          <button
-            type="button"
-            onClick={() => { clearDraft(DRAFT_KEY); setDraftRestored(false); onClose(); }}
-            disabled={loading}
-            className="px-6 py-2.5 text-neutral-700 bg-white border border-neutral-300 rounded-xl hover:bg-neutral-50 transition-colors disabled:opacity-50"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={loading}
-            className="px-6 py-2.5 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center gap-2"
-          >
-            {loading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                Creando...
-              </>
-            ) : (
-              'Crear Trámite'
-            )}
-          </button>
-        </div>
+        {isEmpleadoOAgente && (
+          <p className="text-xs text-neutral-400 text-center pt-2">El área y equipo se asignan automáticamente según tu perfil.</p>
+        )}
       </div>
     </BaseModal>
   );

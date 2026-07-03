@@ -165,7 +165,11 @@ export function TramiteDetalle() {
     selectedEstatus !== (tramite.estatus?.id ?? tramite.estatus_id) ||
     selectedPrioridad !== tramite.prioridad ||
     fechaPromesaEntrega !== (tramite.fecha_promesa_entrega || '') ||
-    (!!estatusCampoDinamico && selectedEstatusSlug !== (respuestasOriginales.find(r => r.campo_id === estatusCampoDinamico.id)?.valor_json ?? ''))
+    camposDinamicos.some(campo => {
+      const original = respuestasOriginales.find(r => r.campo_id === campo.id)?.valor_json ?? null;
+      const current = respuestasDinamicas[campo.id] ?? null;
+      return JSON.stringify(original) !== JSON.stringify(current);
+    })
   );
 
   useEffect(() => {
@@ -1768,6 +1772,24 @@ export function TramiteDetalle() {
           }}
           onCancel={() => setTriggerModalOpen(false)}
         />
+      )}
+
+      {/* Barra de guardado sticky — visible cuando hay cambios pendientes */}
+      {isDirty && canEdit && !isCerrado && (
+        <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-sm border-t border-neutral-200 dark:border-neutral-700 shadow-lg px-6 py-3 flex items-center justify-between animate-fade-in">
+          <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+            Tienes cambios sin guardar
+          </div>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 px-5 py-2 bg-accent text-white rounded-xl text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
+          >
+            <Save className="w-4 h-4" />
+            {saving ? 'Guardando...' : 'Guardar cambios'}
+          </button>
+        </div>
       )}
     </div>
   );

@@ -220,7 +220,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
 
       {/* Right panel */}
       {(showAddField || editingCampo) && (
-        <div className="w-64 border-l border-neutral-200 bg-neutral-50 p-4 overflow-auto shrink-0">
+        <div className="w-64 border-l border-neutral-200 bg-neutral-50 p-4 overflow-auto shrink-0 animate-fade-in">
           {showAddField && !editingCampo && (
             <>
               <div className="flex items-center justify-between mb-3">

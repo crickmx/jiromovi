@@ -1383,13 +1383,16 @@ export function Tramites() {
 
           {/* Columna 1: Requiere atención */}
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 pb-2 border-b-2 border-orange-400">
-              <span className="relative flex h-3 w-3 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
-                <span className="relative inline-flex h-3 w-3 rounded-full bg-orange-500" />
-              </span>
-              <h3 className="text-sm font-bold text-neutral-700 dark:text-white/80">Requiere atención</h3>
-              <span className="ml-auto text-xs font-bold bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded-full">{kanbanAtención.length}</span>
+            <div className="pb-2 border-b-2 border-orange-400">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-3 w-3 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
+                  <span className="relative inline-flex h-3 w-3 rounded-full bg-orange-500" />
+                </span>
+                <h3 className="text-sm font-bold text-neutral-700 dark:text-white/80">Requiere atención</h3>
+                <span className="ml-auto text-xs font-bold bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded-full">{kanbanAtención.length}</span>
+              </div>
+              <p className="text-xs text-neutral-400 dark:text-white/25 mt-0.5 pl-5">Esperan tu respuesta o acción</p>
             </div>
             {kanbanAtención.length === 0 ? (
               <p className="text-xs text-neutral-400 dark:text-white/30 text-center py-8">Sin trámites pendientes</p>
@@ -1420,21 +1423,32 @@ export function Tramites() {
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
                   <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
                     <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
-                    <p className={`text-[10px] font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
-                    {estatusLabel && <span className="text-[10px] font-bold uppercase" style={{ color: estatusColor ?? undefined }}>{estatusLabel}</span>}
+                    <p className={`text-xs font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
+                    {estatusLabel && <span className="text-xs font-bold uppercase" style={{ color: estatusColor ?? undefined }}>{estatusLabel}</span>}
                     {preview && (
-                      <p className="text-[10px] text-neutral-500 dark:text-white/40 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
+                      <p className="text-xs text-neutral-500 dark:text-white/40 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
                     )}
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[10px] text-neutral-400 dark:text-white/30">{fmtFecha(tramite.fecha_creacion)}</span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${sla.bg} ${sla.color} ${sla.pulsing ? 'animate-pulse' : ''}`}>
+                      <span className="text-xs text-neutral-400 dark:text-white/30">{fmtFecha(tramite.fecha_creacion)}</span>
+                      <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${sla.bg} ${sla.color} ${sla.pulsing ? 'animate-pulse' : ''}`}>
                         {sla.daysOpen}d{sla.slaDias ? ` / ${sla.slaDias}d` : ''}
                       </span>
                     </div>
+                    {tramite.responsable?.nombre_completo ? (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <UserCheck className="w-2.5 h-2.5 text-neutral-300 dark:text-white/25 shrink-0" />
+                        <span className="text-xs text-neutral-400 dark:text-white/30 truncate">{tramite.responsable.nombre_completo}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <UserCheck className="w-2.5 h-2.5 text-amber-300 shrink-0" />
+                        <span className="text-xs text-amber-500 dark:text-amber-400/70">Sin responsable</span>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between mt-0.5 gap-1">
-                      <span className={`text-[10px] font-extrabold uppercase tracking-widest truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
+                      <span className={`text-xs font-extrabold uppercase tracking-widest truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
                       <div className="flex items-center gap-1 shrink-0">
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tramite.prioridad === 'Alta' ? 'bg-red-100 text-red-600' : tramite.prioridad === 'Media' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>{tramite.prioridad}</span>
+                        <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${tramite.prioridad === 'Alta' ? 'bg-red-100 text-red-600' : tramite.prioridad === 'Media' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>{tramite.prioridad}</span>
                         <button onClick={(e) => handleDuplicar(e, tramite)} className="p-0.5 rounded text-neutral-300 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors opacity-0 group-hover:opacity-100" title="Duplicar trámite">
                           <Copy className="w-3 h-3" />
                         </button>
@@ -1453,10 +1467,13 @@ export function Tramites() {
 
           {/* Columna 2: En proceso */}
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 pb-2 border-b-2 border-blue-400">
-              <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-              <h3 className="text-sm font-bold text-neutral-700 dark:text-white/80">En proceso</h3>
-              <span className="ml-auto text-xs font-bold bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-full">{kanbanProceso.length}</span>
+            <div className="pb-2 border-b-2 border-blue-400">
+              <div className="flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                <h3 className="text-sm font-bold text-neutral-700 dark:text-white/80">En proceso</h3>
+                <span className="ml-auto text-xs font-bold bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-full">{kanbanProceso.length}</span>
+              </div>
+              <p className="text-xs text-neutral-400 dark:text-white/25 mt-0.5 pl-5">Siendo atendidos por el equipo</p>
             </div>
             {kanbanProceso.length === 0 ? (
               <p className="text-xs text-neutral-400 dark:text-white/30 text-center py-8">Sin trámites en proceso</p>
@@ -1479,21 +1496,32 @@ export function Tramites() {
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
                   <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
                     <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
-                    <p className={`text-[10px] font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
-                    {estatusLabel && <span className="text-[10px] font-bold uppercase" style={{ color: estatusColor ?? undefined }}>{estatusLabel}</span>}
+                    <p className={`text-xs font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
+                    {estatusLabel && <span className="text-xs font-bold uppercase" style={{ color: estatusColor ?? undefined }}>{estatusLabel}</span>}
                     {preview && (
-                      <p className="text-[10px] text-neutral-500 dark:text-white/40 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
+                      <p className="text-xs text-neutral-500 dark:text-white/40 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
                     )}
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[10px] text-neutral-400 dark:text-white/30">{fmtFecha(tramite.fecha_creacion)}</span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${sla.bg} ${sla.color} ${sla.pulsing ? 'animate-pulse' : ''}`}>
+                      <span className="text-xs text-neutral-400 dark:text-white/30">{fmtFecha(tramite.fecha_creacion)}</span>
+                      <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${sla.bg} ${sla.color} ${sla.pulsing ? 'animate-pulse' : ''}`}>
                         {sla.daysOpen}d{sla.slaDias ? ` / ${sla.slaDias}d` : ''}
                       </span>
                     </div>
+                    {tramite.responsable?.nombre_completo ? (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <UserCheck className="w-2.5 h-2.5 text-neutral-300 dark:text-white/25 shrink-0" />
+                        <span className="text-xs text-neutral-400 dark:text-white/30 truncate">{tramite.responsable.nombre_completo}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <UserCheck className="w-2.5 h-2.5 text-amber-300 shrink-0" />
+                        <span className="text-xs text-amber-500 dark:text-amber-400/70">Sin responsable</span>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between mt-0.5 gap-1">
-                      <span className={`text-[10px] font-extrabold uppercase tracking-widest truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
+                      <span className={`text-xs font-extrabold uppercase tracking-widest truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
                       <div className="flex items-center gap-1 shrink-0">
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tramite.prioridad === 'Alta' ? 'bg-red-100 text-red-600' : tramite.prioridad === 'Media' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>{tramite.prioridad}</span>
+                        <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${tramite.prioridad === 'Alta' ? 'bg-red-100 text-red-600' : tramite.prioridad === 'Media' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>{tramite.prioridad}</span>
                         <button onClick={(e) => handleDuplicar(e, tramite)} className="p-0.5 rounded text-neutral-300 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors opacity-0 group-hover:opacity-100" title="Duplicar trámite">
                           <Copy className="w-3 h-3" />
                         </button>
@@ -1512,11 +1540,13 @@ export function Tramites() {
 
           {/* Columna 3: Terminados — últimos 20 días */}
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 pb-2 border-b-2 border-green-400">
-              <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
-              <h3 className="text-sm font-bold text-neutral-700 dark:text-white/80">Terminados</h3>
-              <span className="text-[10px] text-neutral-400 dark:text-white/30 hidden sm:inline">20 días</span>
-              <span className="ml-auto text-xs font-bold bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">{kanbanCerrados.length}</span>
+            <div className="pb-2 border-b-2 border-green-400">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                <h3 className="text-sm font-bold text-neutral-700 dark:text-white/80">Terminados</h3>
+                <span className="ml-auto text-xs font-bold bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">{kanbanCerrados.length}</span>
+              </div>
+              <p className="text-xs text-neutral-400 dark:text-white/25 mt-0.5 pl-5">Cerrados en los últimos 20 días</p>
             </div>
             {kanbanCerrados.length === 0 ? (
               <p className="text-xs text-neutral-400 dark:text-white/30 text-center py-8">Sin cierres recientes</p>
@@ -1537,18 +1567,18 @@ export function Tramites() {
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
                   <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
                     <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
-                    <p className={`text-[10px] font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
-                    {(tramite.custom_estatus_label ?? tramite.estatus?.nombre) && <span className="text-[10px] font-bold uppercase" style={{ color: tramite.custom_estatus_color ?? tramite.estatus?.color ?? undefined }}>{tramite.custom_estatus_label ?? tramite.estatus?.nombre}</span>}
+                    <p className={`text-xs font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
+                    {(tramite.custom_estatus_label ?? tramite.estatus?.nombre) && <span className="text-xs font-bold uppercase" style={{ color: tramite.custom_estatus_color ?? tramite.estatus?.color ?? undefined }}>{tramite.custom_estatus_label ?? tramite.estatus?.nombre}</span>}
                     {preview && (
-                      <p className="text-[10px] text-neutral-500 dark:text-white/40 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
+                      <p className="text-xs text-neutral-500 dark:text-white/40 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
                     )}
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[10px] text-neutral-400 dark:text-white/30">{fmtFecha(tramite.fecha_creacion)}</span>
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-neutral-100 dark:bg-white/5 text-neutral-400 dark:text-white/30">{totalDays}d</span>
+                      <span className="text-xs text-neutral-400 dark:text-white/30">{fmtFecha(tramite.fecha_creacion)}</span>
+                      <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-neutral-100 dark:bg-white/5 text-neutral-400 dark:text-white/30">{totalDays}d</span>
                     </div>
                     <div className="flex items-center justify-between mt-0.5">
-                      <span className={`text-[10px] font-extrabold uppercase tracking-widest truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
-                      <span className="text-[10px] text-neutral-400 dark:text-white/30 shrink-0">{new Date(tramite.cerrado_en!).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit' })}</span>
+                      <span className={`text-xs font-extrabold uppercase tracking-widest truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
+                      <span className="text-xs text-neutral-400 dark:text-white/30 shrink-0">{new Date(tramite.cerrado_en!).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit' })}</span>
                     </div>
                   </div>
                 </div>
