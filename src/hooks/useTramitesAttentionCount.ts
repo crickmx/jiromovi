@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useImpersonation } from '../contexts/ImpersonationContext';
 import { useAuth } from '../contexts/AuthContext';
+
+let _instanceId = 0;
 
 export function useTramitesAttentionCount(userId: string | null | undefined) {
   const [count, setCount] = useState(0);
   const { isImpersonating, impersonatedUser } = useImpersonation();
   const { usuario } = useAuth();
+  const channelName = useRef(`tramites-attention-count-${++_instanceId}`);
 
   const isAdmin = usuario?.rol === 'Administrador';
 
@@ -55,7 +58,7 @@ export function useTramitesAttentionCount(userId: string | null | undefined) {
     fetchCount();
 
     const channel = supabase
-      .channel('tramites-attention-count')
+      .channel(channelName.current)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, fetchCount)
       .subscribe();
 
