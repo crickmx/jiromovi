@@ -11,6 +11,16 @@
 - Supabase (PostgreSQL + RLS + Edge Functions)
 - Repo: https://github.com/crickmx/jiromovi · Deploy: Plesk
 
+## Glosario de roles — NO CONFUNDIR (causó un bug real el 2026-07-02)
+Hay dos sistemas de rol independientes que conviven en Trámites:
+
+| | Tabla / columna | Valores | Alcance |
+|---|---|---|---|
+| **Rol de sistema** (global) | `usuarios.rol` | Administrador, Gerente, Empleado, **Agente** | Toda la plataforma MOVI. `Agente` aquí = **cliente externo** — debe ver solo lo que él mismo solicitó. |
+| **Rol de equipo** (solo Trámites) | `tramites_grupos_miembros.rol_en_equipo` | **lider**, **ejecutivo**, miembro | Dentro de un equipo específico. Líder ve todo lo del equipo; Ejecutivo ve lo suyo + el pool sin asignar del equipo. |
+
+Son **ejes independientes**: cualquier combinación es válida (un Empleado o un Gerente pueden ser líder de un equipo). En código, las variables usan el prefijo `esRolSistema*` (`esRolSistemaAdmin/Gerente/Agente`) vs `esLiderDe*`/`rol_en_equipo` para distinguirlos a simple vista — ver `src/pages/Tramites.tsx` alrededor de `visibleTramites` para el patrón. **Nunca asumir que un chequeo de rol de sistema determina el rol de equipo, ni viceversa** — el bug de "líder no ve los trámites de su equipo" (2026-07-02) fue exactamente eso: el corte por rol de sistema `Agente` se evaluaba antes que el chequeo de líder de equipo.
+
 ## Reglas de arquitectura — CRÍTICAS
 - Tabla de tickets: `tickets` (NO `tramites`) — crítico para SQL y migraciones
 - Tipos de trámite: tabla `ticket_tipos`, columna `value` como slug

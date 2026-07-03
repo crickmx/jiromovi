@@ -210,15 +210,22 @@ export function Tramites() {
   // scope: area → allowed office IDs (null = all offices for that area)
   const [userScope, setUserScope] = useState<Array<{ area_categoria: string; office_ids: string[] | null; all_offices: boolean }>>([]);
 
-  const isAdmin = usuario?.rol === 'Administrador';
-  const isGerente = usuario?.rol === 'Gerente';
-  const isAgente = usuario?.rol === 'Agente';
-  const canManageCatalogs = isAdmin || isGerente;
+  // ── Dos sistemas de rol independientes — no confundir ──────────────────────
+  // 1) Rol de SISTEMA (usuarios.rol): permisos generales de toda la plataforma.
+  //    'Agente' aquí significa CLIENTE EXTERNO — debe ver solo lo que él solicitó.
+  // 2) Rol de EQUIPO (tramites_grupos_miembros.rol_en_equipo), solo en Trámites:
+  //    'lider' | 'ejecutivo' | 'miembro'. Es independiente del rol de sistema:
+  //    un Empleado o un Gerente pueden ser líder de un equipo. Nunca asumir que
+  //    un chequeo de rol de sistema determina el rol de equipo, ni viceversa.
+  const esRolSistemaAdmin = usuario?.rol === 'Administrador';
+  const esRolSistemaGerente = usuario?.rol === 'Gerente';
+  const esRolSistemaAgente = usuario?.rol === 'Agente'; // cliente externo, no confundir con rol de equipo 'ejecutivo'
+  const canManageCatalogs = esRolSistemaAdmin || esRolSistemaGerente;
 
   // Assignment UI state
   const [myOperacionesRole, setMyOperacionesRole] = useState<'lider' | 'ejecutivo' | 'miembro' | null>(null);
-  const [myGrupoRoles, setMyGrupoRoles] = useState<Map<string, string>>(new Map());
-  const isLider = [...myGrupoRoles.values()].some(r => r === 'lider');
+  const [myGrupoRoles, setMyGrupoRoles] = useState<Map<string, string>>(new Map()); // grupo_id -> rol_en_equipo (rol de EQUIPO)
+  const esLiderDeAlgunEquipo = [...myGrupoRoles.values()].some(r => r === 'lider');
   const [myGrupoIds, setMyGrupoIds] = useState<string[]>([]);
   const [assigningTramiteId, setAssigningTramiteId] = useState<string | null>(null);
   const [teamEjecutivos, setTeamEjecutivos] = useState<Array<{ id: string; nombre_completo: string }>>([]);
@@ -277,7 +284,7 @@ export function Tramites() {
 
   // SLA overdue notifications — once per session, after tramites and tipos are loaded
   useEffect(() => {
-    if (!isAdmin || tiposLoading || !tramites.length) return;
+    if (!esRolSistemaAdmin || tiposLoading || !tramites.length) return;
     const today = new Date().toISOString().split('T')[0];
     const now = Date.now();
     const overdue = tramites.filter(t => {
@@ -316,7 +323,7 @@ export function Tramites() {
       }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tramites.length, tiposLoading, isAdmin]);
+  }, [tramites.length, tiposLoading, esRolSistemaAdmin]);
 
   // Close sort dropdown on outside click
   useEffect(() => {
@@ -330,7 +337,7 @@ export function Tramites() {
   const loadUserArea = async () => {
     if (!usuario?.id) return;
     setUserAreaLoaded(false); // Reset so the loadData effect re-fires after impersonation state settles
-    if (isAdmin) {
+    if (esRolSistemaAdmin) {
       setUserArea(null);
       setUserScope([]);
       setUserAreaLoaded(true);
@@ -386,7 +393,7 @@ export function Tramites() {
   const loadData = async () => {
     setLoading(true);
     const tasks: Promise<void>[] = [loadEstatus(), loadTramites(), loadCerrados20()];
-    if (isAdmin) tasks.push(loadPapelera());
+    if (esRolSistemaAdmin) tasks.push(loadPapelera());
     await Promise.all(tasks);
     setLoading(false);
   };
@@ -493,7 +500,7 @@ export function Tramites() {
   };
 
   const loadPapelera = async () => {
-    if (!isAdmin) return;
+    if (!esRolSistemaAdmin) return;
     try {
       const { data } = await supabase
         .from('tickets')
@@ -657,12 +664,19 @@ export function Tramites() {
 
   const getTipoTramiteLabel = (tipo: string) => centralGetLabel(tipo);
 
-  // Visibility filter:
-  // - Admin: todo
-  // - Gerente: trámites de su oficina (agente.oficina_id) + grupos a los que pertenece + directamente involucrado
+  // Visibility filter — ORDEN IMPORTA. El rol de EQUIPO (líder/ejecutivo) se evalúa
+  // antes que los cortes por rol de SISTEMA (Gerente/Agente), porque son ejes
+  // independientes: un usuario con rol de sistema 'Agente' (cliente externo)
+  // también puede ser 'lider' de un equipo de trámites, y en ese caso debe ver
+  // todo lo de su equipo, no solo lo suyo. Ver comentario junto a esRolSistemaAdmin/
+  // esRolSistemaGerente/esRolSistemaAgente arriba para la explicación completa.
+  // - Admin (sistema): todo
+  // - Gerente (sistema): trámites de su oficina (agente.oficina_id) + grupos a los que pertenece + directamente involucrado
+  // - Líder (equipo, cualquier rol de sistema): todos los trámites de su equipo
+  // - Agente (sistema, cliente externo): solo los propios
   // - Todos los demás: solo los propios (directamente involucrado) + trámites de sus grupos/equipos
   const visibleTramites = tramites.filter(tramite => {
-    if (isAdmin) return true;
+    if (esRolSistemaAdmin) return true;
 
     const tramiteOficinaId = tramite.agente?.oficina_id ?? null;
 
@@ -681,19 +695,19 @@ export function Tramites() {
       isInMyGroup;
 
     // Gerente: su oficina + sus equipos + directamente involucrado
-    if (isGerente) {
+    if (esRolSistemaGerente) {
       return tramiteOficinaId === usuario?.oficina_id || isInMyGroup || isDirectlyInvolved;
     }
 
     // Lider: todos los tramites de su grupo (asignados o no) — se evalúa antes que el
     // corte de Agente, porque el rol de líder es por equipo, no por rol global del usuario
-    const isLiderOfGroup =
+    const esLiderDeEsteEquipo =
       tramite.grupo_asignado_id !== null &&
       myGrupoRoles.get(tramite.grupo_asignado_id) === 'lider';
-    if (isLiderOfGroup) return true;
+    if (esLiderDeEsteEquipo) return true;
 
     // Agente: solo sus propios trámites
-    if (isAgente) return isDirectlyInvolved;
+    if (esRolSistemaAgente) return isDirectlyInvolved;
 
     // Ejecutivo y demás: propios + pool sin asignar de sus equipos (para autoasignarse)
     return isDirectlyInvolved || isPoolOfMyGroup;
@@ -701,7 +715,7 @@ export function Tramites() {
 
   // ── Kanban helpers ────────────────────────────────────────────────────────
   const needsAttentionFn = (t: TramiteItem) => {
-    if (isAdmin && !isImpersonating) {
+    if (esRolSistemaAdmin && !isImpersonating) {
       // Admin: solo cuando el agente fue el último en actuar (empleado necesita responder)
       if (!t.ultima_accion_por) return false;
       return (
@@ -774,9 +788,9 @@ export function Tramites() {
   }, [visibleTramites]);
 
   const grupoOptions = useMemo(() => {
-    if (isAdmin) return grupos.map(g => ({ value: g.id, label: g.nombre }));
+    if (esRolSistemaAdmin) return grupos.map(g => ({ value: g.id, label: g.nombre }));
     return grupos.filter(g => myGrupoIds.includes(g.id)).map(g => ({ value: g.id, label: g.nombre }));
-  }, [grupos, isAdmin, myGrupoIds]);
+  }, [grupos, esRolSistemaAdmin, myGrupoIds]);
 
   const getPrioridadColor = (prioridad: string) => {
     switch (prioridad) {
@@ -836,20 +850,20 @@ export function Tramites() {
         title="Gestion de Tramites"
         description="Gestiona solicitudes y soporte interno"
         icon={ClipboardList}
-        badge={userArea && !isAdmin ? (
+        badge={userArea && !esRolSistemaAdmin ? (
           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${AREA_CONFIG[userArea as keyof typeof AREA_CONFIG]?.bg} ${AREA_CONFIG[userArea as keyof typeof AREA_CONFIG]?.color}`}>
             {userArea}
           </span>
         ) : undefined}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
-            {isAdmin && (
+            {esRolSistemaAdmin && (
               <Button variant="outline" size="sm" onClick={() => navigate('/admin/tramites')}>
                 <Users className="w-4 h-4 mr-1.5" />
                 <span className="hidden sm:inline">Admin Trámites</span>
               </Button>
             )}
-            {isLider && !isAdmin && (
+            {esLiderDeAlgunEquipo && !esRolSistemaAdmin && (
               <Button variant="outline" size="sm" onClick={() => setShowPanelLider(true)}>
                 <Users className="w-4 h-4 mr-1.5" />
                 <span className="hidden sm:inline">Mi equipo</span>
@@ -861,13 +875,13 @@ export function Tramites() {
                 <span className="hidden sm:inline">Catalogos</span>
               </Button>
             )}
-            {(isAdmin || isGerente) && (
+            {(esRolSistemaAdmin || esRolSistemaGerente) && (
               <Button variant="outline" size="sm" onClick={() => navigate('/tramites/reportes')}>
                 <BarChart3 className="w-4 h-4 mr-1.5" />
                 <span className="hidden sm:inline">Reportes</span>
               </Button>
             )}
-            {isAdmin && (
+            {esRolSistemaAdmin && (
               <Button variant="outline" size="sm" onClick={() => navigate('/cotizar/formularios')}>
                 <FileText className="w-4 h-4 mr-1.5" />
                 <span className="hidden sm:inline">Formularios</span>
@@ -920,7 +934,7 @@ export function Tramites() {
             <CheckCircle2 className="w-4 h-4" />
             Concluidos
           </button>
-          {isAdmin && (
+          {esRolSistemaAdmin && (
             <button
               onClick={() => setActiveTab('papelera')}
               className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
@@ -941,10 +955,10 @@ export function Tramites() {
         </div>
       </PageHeader>
 
-      {isAgente && <AgenteDashboard />}
+      {esRolSistemaAgente && <AgenteDashboard />}
 
       {/* KPI Summary — métricas operativas */}
-      {!isAgente && activeTab !== 'papelera' && (
+      {!esRolSistemaAgente && activeTab !== 'papelera' && (
         (() => {
           const today = new Date().toISOString().split('T')[0];
           const activos = visibleTramites.filter(t => !t.cerrado_en && !t.eliminado_at);
@@ -1424,7 +1438,7 @@ export function Tramites() {
                         <button onClick={(e) => handleDuplicar(e, tramite)} className="p-0.5 rounded text-neutral-300 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors opacity-0 group-hover:opacity-100" title="Duplicar trámite">
                           <Copy className="w-3 h-3" />
                         </button>
-                        {isAdmin && (
+                        {esRolSistemaAdmin && (
                           <button onClick={(e) => handleSoftDelete(e, tramite.id)} className="p-0.5 rounded text-neutral-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Mover a papelera">
                             <Trash2 className="w-3 h-3" />
                           </button>
@@ -1483,7 +1497,7 @@ export function Tramites() {
                         <button onClick={(e) => handleDuplicar(e, tramite)} className="p-0.5 rounded text-neutral-300 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors opacity-0 group-hover:opacity-100" title="Duplicar trámite">
                           <Copy className="w-3 h-3" />
                         </button>
-                        {isAdmin && (
+                        {esRolSistemaAdmin && (
                           <button onClick={(e) => handleSoftDelete(e, tramite.id)} className="p-0.5 rounded text-neutral-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Mover a papelera">
                             <Trash2 className="w-3 h-3" />
                           </button>
@@ -1638,7 +1652,7 @@ export function Tramites() {
                           </span>
                         </p>
                       )}
-                      {!isAgente && (
+                      {!esRolSistemaAgente && (
                         <p className="text-neutral-600 dark:text-white/60">
                           <span className="text-neutral-400 dark:text-white/35">Prioridad: </span>
                           <span className={`font-bold uppercase ${tramite.prioridad === 'Alta' ? 'text-red-600' : tramite.prioridad === 'Media' ? 'text-amber-600' : 'text-green-600'}`}>
@@ -1679,7 +1693,7 @@ export function Tramites() {
                         >
                           <Copy className="w-3.5 h-3.5" />
                         </button>
-                        {isAdmin && (
+                        {esRolSistemaAdmin && (
                           <button
                             onClick={(e) => handleSoftDelete(e, tramite.id)}
                             className="p-1 rounded-md text-neutral-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"
@@ -1716,8 +1730,8 @@ export function Tramites() {
                       {(() => {
                         const isPool = !tramite.assigned_to_user_id && !!tramite.grupo_asignado_id;
                         const myRoleInGroup = tramite.grupo_asignado_id ? myGrupoRoles.get(tramite.grupo_asignado_id) : null;
-                        const canAssignOrTake = !!myRoleInGroup || isAdmin || isGerente;
-                        const isSelfOnly = !!myRoleInGroup && myRoleInGroup === 'ejecutivo' && !isAdmin && !isGerente;
+                        const canAssignOrTake = !!myRoleInGroup || esRolSistemaAdmin || esRolSistemaGerente;
+                        const isSelfOnly = !!myRoleInGroup && myRoleInGroup === 'ejecutivo' && !esRolSistemaAdmin && !esRolSistemaGerente;
                         if (isPool && activeTab === 'activos' && canAssignOrTake) {
                           return (
                             <div className="flex items-center gap-1.5 flex-wrap justify-end" onClick={e => e.stopPropagation()}>
