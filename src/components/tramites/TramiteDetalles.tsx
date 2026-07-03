@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { User, Users, AlertCircle, FileText, Calendar, Clock, Briefcase, Shield, Building2, TrendingUp, UserCheck, X, UserPlus, Wrench, Link as LinkIcon } from 'lucide-react';
+import { User, AlertCircle, FileText, Calendar, Clock, Briefcase, Shield, Building2, TrendingUp, UserCheck, Wrench, Link as LinkIcon } from 'lucide-react';
 import { addUserToSicas, getSicasMappingStatusForUsers } from '../../lib/sicasUtils';
 import { crearNotificacionGlobal } from '../../lib/notificationHelpers';
 import { getEstatusColor } from '../../lib/registroActividadesTypes';
@@ -48,11 +48,6 @@ interface TramiteData {
   fecha_promesa_entrega?: string | null;
 }
 
-interface Asignacion {
-  id: string;
-  ejecutivo: Usuario | null;
-}
-
 interface TeamMember {
   id: string;
   nombre_completo: string;
@@ -90,7 +85,6 @@ interface TramiteDetallesProps {
   onEquipoChange?: (grupoId: string | null) => void;
   estatusCampoDinamico?: EstatusCampoDinamico | null;
   selectedEstatusSlug?: string;
-  onEstatusSlugChange?: (slug: string) => void;
 }
 
 export function TramiteDetalles({
@@ -108,13 +102,10 @@ export function TramiteDetalles({
   onEquipoChange,
   estatusCampoDinamico,
   selectedEstatusSlug,
-  onEstatusSlugChange,
 }: TramiteDetallesProps) {
   const { usuario } = useAuth();
-  const [asignaciones, setAsignaciones] = useState<Asignacion[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [selectedResponsable, setSelectedResponsable] = useState(tramite.responsable?.id ?? '');
-  const [addingEjecutivo, setAddingEjecutivo] = useState(false);
   const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [selectedGrupoId, setSelectedGrupoId] = useState<string>(grupoAsignadoId ?? '');
   const [sicasMappedIds, setSicasMappedIds] = useState<Set<string>>(new Set());
@@ -146,10 +137,6 @@ export function TramiteDetalles({
       .maybeSingle()
       .then(({ data }) => setInicioEspera(data?.inicio_pausa ?? null));
   }, [tramite.id, selectedEstatusSlug, estatusCampoDinamico]);
-
-  useEffect(() => {
-    loadAsignaciones();
-  }, [tramite.id]);
 
   useEffect(() => {
     setSelectedResponsable(tramite.responsable?.id ?? '');
@@ -267,30 +254,6 @@ export function TramiteDetalles({
     }
   };
 
-  const loadAsignaciones = async () => {
-    const { data } = await supabase
-      .from('ticket_asignaciones')
-      .select('id, ejecutivo:ejecutivo_id(id, nombre_completo)')
-      .eq('ticket_id', tramite.id);
-    if (data) setAsignaciones(data as Asignacion[]);
-  };
-
-  const handleRemoverEjecutivo = async (asignacionId: string) => {
-    await supabase.from('ticket_asignaciones').delete().eq('id', asignacionId);
-    await loadAsignaciones();
-  };
-
-  const handleAgregarEjecutivo = async (userId: string) => {
-    if (!userId || !usuario) return;
-    await supabase.from('ticket_asignaciones').insert({
-      ticket_id: tramite.id,
-      ejecutivo_id: userId,
-      asignado_por: usuario.id,
-    });
-    setAddingEjecutivo(false);
-    await loadAsignaciones();
-  };
-
   const getPrioridadColor = (prioridad: string) => {
     switch (prioridad) {
       case 'Alta': return 'bg-red-100 text-red-700 border-red-300';
@@ -300,8 +263,6 @@ export function TramiteDetalles({
     }
   };
 
-  const estatusOpciones = estatusCampoDinamico?.config?.opciones || [];
-  const estatusOpcionActual = estatusOpciones.find(o => o.slug === selectedEstatusSlug);
   const getEstatusColor = (clasificacion?: string | null) =>
     clasificacion === 'inicio' ? '#3B82F6'
     : clasificacion === 'terminacion' ? '#059669'
@@ -309,43 +270,6 @@ export function TramiteDetalles({
 
   return (
     <div className="space-y-6">
-      {/* Estatus FormBuilder — PRIMERO y prominente */}
-      {estatusCampoDinamico && (
-        <div className="p-4 rounded-2xl border-2" style={{
-          borderColor: getEstatusColor(estatusOpcionActual?.clasificacion),
-          backgroundColor: getEstatusColor(estatusOpcionActual?.clasificacion) + '10',
-        }}>
-          <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: getEstatusColor(estatusOpcionActual?.clasificacion) }}>
-            {estatusCampoDinamico.label}
-          </p>
-          {canEdit ? (
-            <div className="flex flex-wrap gap-2">
-              {estatusOpciones.map(opt => {
-                const c = getEstatusColor(opt.clasificacion);
-                const isSel = opt.slug === selectedEstatusSlug;
-                return (
-                  <button
-                    key={opt.slug}
-                    type="button"
-                    onClick={() => onEstatusSlugChange?.(opt.slug)}
-                    className="px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all"
-                    style={isSel
-                      ? { backgroundColor: c, borderColor: c, color: '#fff' }
-                      : { backgroundColor: 'transparent', borderColor: c + '60', color: c }}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-xl font-bold" style={{ color: getEstatusColor(estatusOpcionActual?.clasificacion) }}>
-              {estatusOpcionActual?.label ?? selectedEstatusSlug ?? '—'}
-            </p>
-          )}
-        </div>
-      )}
-
       {/* Fila 1: Agente | Equipo */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
@@ -514,62 +438,6 @@ export function TramiteDetalles({
           </div>
         </div>
       </div>
-
-      {(asignaciones.length > 0 || canManageAssignment) && (
-        <div>
-          <label className="block text-sm font-semibold text-neutral-700 mb-2 flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            Ejecutivos Asignados
-          </label>
-          <div className="flex flex-wrap gap-2 items-center">
-            {asignaciones.map(asignacion => (
-              <span
-                key={asignacion.id}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-800 rounded-lg border border-blue-200 font-medium text-sm"
-              >
-                {asignacion.ejecutivo?.nombre_completo}
-                {canManageAssignment && (
-                  <button
-                    onClick={() => handleRemoverEjecutivo(asignacion.id)}
-                    className="ml-0.5 hover:text-red-600 transition-colors"
-                    title="Quitar ejecutivo"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </span>
-            ))}
-            {canManageAssignment && (
-              addingEjecutivo ? (
-                <select
-                  autoFocus
-                  defaultValue=""
-                  onChange={e => { if (e.target.value) handleAgregarEjecutivo(e.target.value); }}
-                  onBlur={() => setAddingEjecutivo(false)}
-                  className="px-3 py-1.5 text-sm border border-blue-300 rounded-lg bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
-                >
-                  <option value="" disabled>Seleccionar ejecutivo...</option>
-                  {teamMembers
-                    .filter(m => !asignaciones.some(a => a.ejecutivo?.id === m.id))
-                    .map(m => <option key={m.id} value={m.id}>{m.nombre_completo}</option>)
-                  }
-                </select>
-              ) : (
-                <button
-                  onClick={() => setAddingEjecutivo(true)}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 border border-blue-200 border-dashed rounded-lg hover:bg-blue-50 transition-colors"
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  Agregar
-                </button>
-              )
-            )}
-            {asignaciones.length === 0 && !addingEjecutivo && !canManageAssignment && (
-              <span className="text-sm text-neutral-400 italic">Sin ejecutivos asignados</span>
-            )}
-          </div>
-        </div>
-      )}
 
       <div>
         <label className="block text-sm font-semibold text-neutral-700 mb-2">

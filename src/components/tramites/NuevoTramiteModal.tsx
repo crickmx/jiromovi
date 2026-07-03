@@ -1558,6 +1558,18 @@ export function NuevoTramiteModal({
 
       if (ticketError) throw ticketError;
 
+      // Guardar el texto de creación como primer comentario, para que quede en el
+      // historial de la conversación (antes solo se guardaba en tickets.instrucciones
+      // y la pestaña Comentarios arrancaba vacía).
+      const comentarioInicial = (ticketData.instrucciones as string)?.trim();
+      if (comentarioInicial && comentarioInicial !== 'Sin descripción') {
+        await supabase.from('ticket_comentarios').insert({
+          ticket_id: ticket.id,
+          usuario_id: usuario.id,
+          mensaje: comentarioInicial,
+        });
+      }
+
       // Guardar respuestas de campos dinámicos (sistema + custom)
       if (camposDinamicos.length > 0) {
         // Auto-poblar campos sistema antes de guardar
