@@ -91,8 +91,9 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                     <div className="space-y-1 border border-neutral-200 rounded-xl p-2 bg-neutral-50/60">
                       {lockedCampos.map(campo => {
                         const meta = SISTEMA_TIPO_META[campo.tipo as CampoTipo];
+                        const isEditing = editingCampo?.id === campo.id;
                         return (
-                          <div key={campo.id} className="flex items-center gap-2 border border-neutral-200 rounded-lg p-2 bg-white">
+                          <div key={campo.id} className={`flex items-center gap-2 border rounded-lg p-2 bg-white transition-colors ${isEditing ? 'border-violet-400 ring-1 ring-violet-200' : 'border-neutral-200'}`}>
                             <div className="p-1 text-neutral-200"><Lock className="w-3.5 h-3.5" /></div>
                             <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 bg-violet-50 text-violet-600 font-mono">
                               {meta?.icon ?? '?'}
@@ -101,9 +102,22 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                               <p className="text-sm font-medium text-neutral-700 truncate">{campo.label}</p>
                               <p className="text-[10px] text-neutral-400">{meta?.desc ?? campo.tipo}</p>
                             </div>
+                            {(campo.visible_para_rol && campo.visible_para_rol !== 'todos') && (
+                              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0 flex items-center gap-0.5">
+                                <Lock className="w-2.5 h-2.5" />
+                                {campo.visible_para_rol === 'Administrador' ? 'Admin' : campo.visible_para_rol}+
+                              </span>
+                            )}
                             <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-500 border border-violet-200 shrink-0">
                               {meta?.badge ?? 'AUTO'}
                             </span>
+                            <button
+                              onClick={() => isEditing ? setEditingCampo(null) : startEditCampo(campo)}
+                              className={`p-1.5 hover:bg-neutral-100 rounded-lg transition-colors ${isEditing ? 'text-violet-600' : 'text-neutral-400 hover:text-neutral-700'}`}
+                              title="Configurar visibilidad"
+                            >
+                              <Settings className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         );
                       })}
@@ -293,7 +307,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
               )}
 
               <div className="space-y-3">
-                {/* Campos custom y sistema configurables: etiqueta + ayuda + requerido */}
+                {/* Etiqueta + ayuda + requerido — solo para no-locked y no-estatus */}
                 {(!editingCampo.is_sistema || !LOCKED_SISTEMA_KEYS.includes(editingCampo.sistema_key ?? '')) && editingCampo.tipo !== 'estatus' && (
                   <>
                     <div>
@@ -328,38 +342,40 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                       />
                       <span className="text-sm text-neutral-700">Campo requerido</span>
                     </label>
-
-                    {/* Acceso por rol */}
-                    <div className="pt-2 border-t border-neutral-100 space-y-2">
-                      <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider flex items-center gap-1">
-                        <Lock className="w-3 h-3" /> Acceso por rol
-                      </p>
-                      <div>
-                        <label className="block text-xs font-medium text-neutral-600 mb-1">Visible para</label>
-                        <select
-                          value={editCampoVisiblePara}
-                          onChange={(e) => setEditCampoVisiblePara(e.target.value as RolVisibilidad)}
-                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
-                        >
-                          {ROL_VISIBILIDAD_OPCIONES.map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-neutral-600 mb-1">Editable para</label>
-                        <select
-                          value={editCampoEditablePara}
-                          onChange={(e) => setEditCampoEditablePara(e.target.value as RolVisibilidad)}
-                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
-                        >
-                          {ROL_VISIBILIDAD_OPCIONES.map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
                   </>
+                )}
+
+                {/* Acceso por rol — visible para TODOS los tipos (incluyendo locked y estatus) */}
+                {editingCampo.tipo !== 'estatus' && (
+                  <div className="pt-2 border-t border-neutral-100 space-y-2">
+                    <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider flex items-center gap-1">
+                      <Lock className="w-3 h-3" /> Acceso por rol
+                    </p>
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Visible para</label>
+                      <select
+                        value={editCampoVisiblePara}
+                        onChange={(e) => setEditCampoVisiblePara(e.target.value as RolVisibilidad)}
+                        className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                      >
+                        {ROL_VISIBILIDAD_OPCIONES.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Editable para</label>
+                      <select
+                        value={editCampoEditablePara}
+                        onChange={(e) => setEditCampoEditablePara(e.target.value as RolVisibilidad)}
+                        className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                      >
+                        {ROL_VISIBILIDAD_OPCIONES.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 )}
 
                 {(editingCampo.tipo === 'texto_corto' || editingCampo.tipo === 'texto_largo') && (
@@ -545,6 +561,36 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                         Configurar triggers de estatus
                       </button>
                     )}
+                    {/* Acceso por rol para el campo estatus */}
+                    <div className="pt-2 border-t border-neutral-100 space-y-2">
+                      <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> Acceso por rol
+                      </p>
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">Visible para</label>
+                        <select
+                          value={editCampoVisiblePara}
+                          onChange={(e) => setEditCampoVisiblePara(e.target.value as RolVisibilidad)}
+                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                        >
+                          {ROL_VISIBILIDAD_OPCIONES.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">Editable para</label>
+                        <select
+                          value={editCampoEditablePara}
+                          onChange={(e) => setEditCampoEditablePara(e.target.value as RolVisibilidad)}
+                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                        >
+                          {ROL_VISIBILIDAD_OPCIONES.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -739,16 +785,14 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                   </div>
                 )}
 
-                {(!editingCampo.is_sistema || editingCampo.tipo === 'estatus') && (
-                  <button
-                    onClick={handleSaveCampo}
-                    disabled={savingCampo || !editCampoLabel.trim()}
-                    className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm disabled:opacity-50"
-                  >
-                    <Save className="w-4 h-4" />
-                    {savingCampo ? 'Guardando...' : 'Guardar campo'}
-                  </button>
-                )}
+                <button
+                  onClick={handleSaveCampo}
+                  disabled={savingCampo || !editCampoLabel.trim()}
+                  className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  {savingCampo ? 'Guardando...' : 'Guardar campo'}
+                </button>
               </div>
             </>
           )}
