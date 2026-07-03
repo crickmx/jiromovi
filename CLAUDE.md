@@ -156,6 +156,34 @@ where spd.pedido_id = '0ac22a32-4e4b-4ff5-87bf-9ca8cc09d599';
 ```
 Si la query #3 sí regresa la fila (o sea, el dato existe), el problema es 100% RLS (#1 o #2) — hay que pedirle al usuario real (Ricardo, dueño de este pedido) que abra la pestaña Network al cargar `/store/pedido/0ac22a32-4e4b-4ff5-87bf-9ca8cc09d599` y comparta la respuesta del request a `store_pedidos_detalle` (mismo método de diagnóstico usado para el bug de líder de equipo — ver RLS de `tickets` arriba). Si la política del punto 1 no aparece o tiene un `qual` distinto al de la migración, es RLS drift y hay que recrearla con una migración nueva (mismo patrón que `20260703000001_restore_lider_equipo_tickets_visibility.sql`).
 
+## BUG PENDIENTE #4 — El modal "Antes de guardar..." aparece aunque el estatus ya se cambió a mano (diagnosticado 2026-07-03, sin corregir)
+
+**Síntoma reportado:** el usuario cambia el Equipo y el Responsable de un trámite (correcto: esos campos se guardan al instante, no requieren el botón Guardar — ver nota abajo). Luego cambia el Estatus (esto sí activa el botón Guardar, ya arreglado en el bug de `isDirty` de más arriba). Al dar clic en Guardar, aparece el modal "Antes de guardar…" preguntando "¿Deseas cambiar el estatus del trámite?" — como si el usuario no hubiera hecho ya ese cambio. Esa pregunta es confusa/redundante: el usuario ya decidió y seleccionó el nuevo estatus explícitamente en el dropdown del encabezado antes de guardar.
+
+**Nota aparte (no es bug):** que "Equipo" y "Responsable" no muevan el botón Guardar es comportamiento intencional del código actual — `onEquipoChange`/`onResponsableChange` (`TramiteDetalle.tsx`, funciones `handleEquipoChange` y `handleResponsableChange`) escriben directo a Supabase en cuanto cambian, sin pasar por `isDirty`/Guardar. No confundir con el bug de arriba (`isDirty` no reaccionaba a campos de texto/número/fecha/booleano) — eso ya se corrigió, esto es un diseño aparte.
+
+**Causa confirmada:** `handleSave()` en `src/pages/TramiteDetalle.tsx` (línea ~577) abre el modal de forma **incondicional** cada vez que se guarda:
+```ts
+const handleSave = async () => {
+  if (!tramite || !usuario || !isDirty) return;
+  // ...validación de campos requeridos...
+  // Abrir modal de confirmación de estatus
+  setModalKeepCurrent(true);
+  setModalChosenSlug(selectedEstatusSlug);
+  setModalChosenId(selectedEstatus);
+  setEstatusModalOpen(true);   // <- siempre, sin comparar si el estatus ya cambió
+};
+```
+Nunca compara `selectedEstatusSlug`/`selectedEstatus` contra el valor original del trámite (`respuestasOriginales`/`tramite.estatus_id`) antes de decidir si preguntar. El modal fue pensado para el caso en que el usuario guarda **otros** cambios (prioridad, campos del formulario) sin haber tocado el estatus — ahí sí tiene sentido ofrecerle la opción de "aprovechar y cambiarlo también". Pero si el usuario **ya** lo cambió con el nuevo dropdown del encabezado (agregado en el fix de estatus de más arriba), no hay nada que preguntar: ya se decidió.
+
+**Fix propuesto (pendiente de implementar):** en `handleSave()`, calcular si el estatus ya cambió —
+```ts
+const estatusYaCambio = estatusCampoDinamico
+  ? selectedEstatusSlug !== (respuestasOriginales.find(r => r.campo_id === estatusCampoDinamico.id)?.valor_json ?? '')
+  : selectedEstatus !== (tramite.estatus?.id ?? tramite.estatus_id);
+```
+Si `estatusYaCambio` es `true`, saltar el modal y ejecutar directo la misma lógica que hoy corre `handleEstatusModalConfirm()` (validación de campos requeridos + chequeo de triggers + `proceedWithSave`) — esa función ya funciona correctamente con `modalKeepCurrent = true` (usa `selectedEstatusSlug`/`selectedEstatus` tal cual, sin necesitar override), así que probablemente baste con extraer su cuerpo a una función compartida y llamarla directo desde `handleSave()` cuando `estatusYaCambio` sea `true`, en vez de abrir el modal. Solo abrir el modal (comportamiento actual) cuando `estatusYaCambio` sea `false`.
+
 ## Patrones frecuentes
 
 **Agregar un campo sistema nuevo al FormBuilder:**
