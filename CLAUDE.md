@@ -21,6 +21,17 @@ Hay dos sistemas de rol independientes que conviven en Trámites:
 
 Son **ejes independientes**: cualquier combinación es válida (un Empleado o un Gerente pueden ser líder de un equipo). En código, las variables usan el prefijo `esRolSistema*` (`esRolSistemaAdmin/Gerente/Agente`) vs `esLiderDe*`/`rol_en_equipo` para distinguirlos a simple vista — ver `src/pages/Tramites.tsx` alrededor de `visibleTramites` para el patrón. **Nunca asumir que un chequeo de rol de sistema determina el rol de equipo, ni viceversa** — el bug de "líder no ve los trámites de su equipo" (2026-07-02) fue exactamente eso: el corte por rol de sistema `Agente` se evaluaba antes que el chequeo de líder de equipo.
 
+## ⚠️ RLS de `tickets` puede estar DESINCRONIZADA de las migraciones del repo
+El 2026-07-03 se descubrió que la política activa en producción, **`tickets_select_v6`**, y su función auxiliar **`get_my_grupo_ids()`**, fueron creadas directamente en el SQL Editor de Supabase — **no existen en ningún archivo de `supabase/migrations/`**. Reemplazaron a `tickets_select_v4` (la última versión que sí estaba en el repo) y en el camino **eliminaron silenciosamente** la cláusula que dejaba a un líder de equipo ver todos los trámites asignados de su equipo (v6 solo dejaba ver el *pool sin asignar*, igual que cualquier miembro).
+
+**Lección**: si un fix de código para `Tramites.tsx`/visibilidad no funciona pese a que el código, los datos y la lógica se ven correctos, **verificar la política RLS real en producción antes que nada**:
+```sql
+select policyname, cmd, qual from pg_policies where tablename = 'tickets' and cmd = 'SELECT';
+```
+Si el nombre de la política (`tickets_select_vN`) es más alto que el de la última migración conocida en el repo, hay drift — alguien la editó fuera de control de versiones.
+
+**Fix aplicado**: migración `20260703000001_restore_lider_equipo_tickets_visibility.sql` — crea `get_my_grupos_lider_ids()` y reemplaza v6 por `tickets_select_v7`, agregando de vuelta la cláusula de líder sin tocar el resto de lo que v6 ya cubría. Diagnosticado en vivo inspeccionando el Network tab del navegador (petición a `tickets` regresaba `[]` para una líder con datos y permisos correctos) — **esta técnica (pedir al usuario el Response de la Network tab) es más rápida que adivinar desde las migraciones cuando el RLS real puede haber divergido del repo.**
+
 ## Reglas de arquitectura — CRÍTICAS
 - Tabla de tickets: `tickets` (NO `tramites`) — crítico para SQL y migraciones
 - Tipos de trámite: tabla `ticket_tipos`, columna `value` como slug
