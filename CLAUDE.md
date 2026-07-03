@@ -1,5 +1,9 @@
 # jiromovi — instrucciones para Claude Code
 
+## ⚠️ Patrón recurrente: "acceso por equipo" que solo llega a RLS, nunca al frontend
+Se ha repetido 3 veces (permisos de trámites, líder de equipo, y `store_equipos_acceso` el 2026-07-03): alguien agrega una tabla + política RLS para dar acceso a un equipo/grupo, pero **ninguna pantalla del frontend la consulta** — las páginas siguen usando solo un chequeo de rol simple (`rol === 'Administrador'`, `tienePermisoAdminEnModulo`, etc.). RLS deja pasar los datos, pero la UI nunca llega a pedirlos (redirige antes, o cuenta mal en un badge/notificación).
+**Antes de asumir "el fix de código está mal" o "falta correr una migración"**: buscar si existe una tabla nueva de acceso-por-equipo (`*_equipos_acceso`, `*_grupos_miembros`, etc.) y verificar con `grep` si algún componente de página la usa además de RLS. Si solo aparece en el admin panel que la configura y en una migración de RLS, ese es el bug.
+
 ## Git / Deploy
 - **Siempre pushear a `origin/produccion`** — Plesk despliega desde esa rama.
 - Rama local activa: `FUSION!!!` (trackea `origin/main` por defecto — ignorar).
