@@ -30,7 +30,14 @@ select policyname, cmd, qual from pg_policies where tablename = 'tickets' and cm
 ```
 Si el nombre de la política (`tickets_select_vN`) es más alto que el de la última migración conocida en el repo, hay drift — alguien la editó fuera de control de versiones.
 
-**Fix aplicado**: migración `20260703000001_restore_lider_equipo_tickets_visibility.sql` — crea `get_my_grupos_lider_ids()` y reemplaza v6 por `tickets_select_v7`, agregando de vuelta la cláusula de líder sin tocar el resto de lo que v6 ya cubría. Diagnosticado en vivo inspeccionando el Network tab del navegador (petición a `tickets` regresaba `[]` para una líder con datos y permisos correctos) — **esta técnica (pedir al usuario el Response de la Network tab) es más rápida que adivinar desde las migraciones cuando el RLS real puede haber divergido del repo.**
+**Fix aplicado**: migración `20260703000001_restore_lider_equipo_tickets_visibility.sql` — crea `get_my_grupos_lider_ids()` y reemplaza v6 por `tickets_select_v7`, agregando de vuelta la cláusula de líder sin tocar el resto de lo que v6 ya cubría. Diagnosticado en vivo inspeccionando el Network tab del navegador (petición a `tickets` regresaba `[]` para una líder con datos y permisos correctos) — **esta técnica (pedir al usuario el Response de la Network tab) es más rápida que adivinar desde las migraciones cuando el RLS real puede haber divergido del repo.** Confirmado resuelto (2026-07-03) con la usuaria real viendo sus 13 trámites tras el fix.
+
+## ⚠️ "Vista Admin — Viendo como" (impersonación) NO cambia la sesión real de Supabase
+Es una simulación **solo de cliente**: `MoviAuthContext`/`ImpersonationContext` cambian el objeto `usuario` que la UI usa para renderizar y para armar los filtros de las queries (por eso los `.eq()`/`.or()` sí llevan el ID del usuario impersonado), **pero el JWT real que viaja en `Authorization: Bearer` sigue siendo el del admin que inició sesión de verdad**. Confirmado decodificando el JWT de una petición de red: `sub` = el ID del admin real, no el del usuario impersonado.
+
+**Consecuencia crítica**: cualquier política RLS que dependa de `auth.uid()` (la enorme mayoría) se evalúa como el **admin real**, nunca como el usuario impersonado — sin importar lo que diga el banner naranja "Viendo como". Esto invalida cualquier prueba de RLS/permisos hecha vía impersonación. Ejemplo real (2026-07-03): un fix de RLS para "líder ve su equipo" parecía no funcionar probándolo con "Vista Admin"; al pedirle a la usuaria real que iniciara sesión con su propia cuenta, el fix sí funcionaba correctamente.
+
+**Cómo probar correctamente algo que depende de RLS**: pedirle al usuario real que inicie sesión con su propia cuenta — la impersonación solo sirve para verificar UI/UX, no permisos de base de datos.
 
 ## Reglas de arquitectura — CRÍTICAS
 - Tabla de tickets: `tickets` (NO `tramites`) — crítico para SQL y migraciones
