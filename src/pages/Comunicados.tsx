@@ -289,10 +289,7 @@ export default function Comunicados() {
             </Section>
           ) : (
             <>
-              <div
-                className="grid grid-cols-1 md:grid-cols-2"
-                style={{ gap: '24px' }}
-              >
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                 {comunicados.map((comunicado) => {
                   const esDeGerente = !!comunicado.oficina_origen_id;
 
@@ -300,105 +297,71 @@ export default function Comunicados() {
                     <article
                       key={comunicado.id}
                       className={cn(
-                        "bg-white rounded-xl border overflow-hidden cursor-pointer group",
-                        "shadow-sm hover:shadow-md transition-shadow duration-200",
+                        "bg-white rounded-lg border shadow-ios overflow-hidden",
+                        "transition-all duration-200 hover:shadow-ios-md cursor-pointer group",
+                        "flex flex-col h-full",
                         esDeGerente
-                          ? "border-t-[3px] border-t-primary-500 border-x-neutral-200 border-b-neutral-200"
-                          : "border-neutral-200 hover:border-neutral-300"
+                          ? "border-t-4 border-t-primary-500 border-l-neutral-200 border-r-neutral-200 border-b-neutral-200"
+                          : "border-neutral-200 hover:border-primary-300"
                       )}
-                      style={{ aspectRatio: '1 / 1', display: 'flex', flexDirection: 'column' }}
                       onClick={() => {
                         trackAnnouncementOpened(comunicado.titulo, comunicado.id);
                         navigate(`/comunicados/${comunicado.id}`);
                       }}
                     >
-                      {/* Imagen — 40% de la altura */}
-                      <div
-                        className="relative w-full overflow-hidden bg-neutral-100 flex-shrink-0"
-                        style={{ height: '40%' }}
-                      >
-                        {comunicado.imagen_principal ? (
-                          <img
-                            src={comunicado.imagen_principal}
-                            alt={comunicado.titulo}
-                            crossOrigin="anonymous"
-                            className="w-full h-full object-cover object-center group-hover:scale-[1.03] transition-transform duration-300"
-                            onError={(e) => {
-                              e.currentTarget.parentElement!.classList.add('hidden');
-                            }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-neutral-100">
-                            <FileText className="w-10 h-10 text-neutral-300" />
-                          </div>
-                        )}
-                        {comunicado.fijado && (
-                          <span className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500 text-white rounded-full text-xs font-semibold shadow-sm">
-                            <Pin className="w-3 h-3" />
-                            Destacado
-                          </span>
-                        )}
+                      {/* Imagen */}
+                      <div className="w-full h-48 overflow-hidden bg-neutral-100">
+                        <img
+                          src={comunicado.imagen_principal}
+                          alt={comunicado.titulo}
+                          crossOrigin="anonymous"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
                       </div>
 
-                      {/* Contenido — 60% de la altura */}
-                      <div
-                        className="px-4 py-3 flex flex-col justify-between"
-                        style={{ height: '60%' }}
-                      >
-                        <div className="flex flex-col gap-1.5 min-h-0">
-                          {/* Categoría */}
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            {comunicado.categoria && (
-                              <span className="inline-flex items-center px-2 py-0.5 bg-primary-50 text-primary-700 rounded-full text-xs font-semibold tracking-wide uppercase">
-                                {comunicado.categoria.nombre}
-                              </span>
-                            )}
-                            {esDeGerente && comunicado.oficina_origen && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-neutral-100 text-neutral-600 rounded-full text-xs font-medium">
-                                <div className="w-1.5 h-1.5 bg-accent rounded-full" />
-                                {comunicado.oficina_origen.nombre}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Título */}
-                          <h2
-                            className="font-bold text-neutral-900 group-hover:text-accent transition-colors leading-snug"
-                            style={{
-                              fontSize: 'clamp(0.875rem, 1.5vw, 1.05rem)',
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden',
-                            }}
-                          >
-                            {comunicado.titulo}
-                          </h2>
-
-                          {/* Resumen */}
-                          <p
-                            className="text-neutral-500 leading-relaxed"
-                            style={{
-                              fontSize: 'clamp(0.75rem, 1.2vw, 0.875rem)',
-                              display: '-webkit-box',
-                              WebkitLineClamp: 3,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden',
-                            }}
-                          >
-                            {extraerTextoPlano(comunicado.contenido_html, 180)}
-                          </p>
+                      {/* Contenido */}
+                      <div className="flex flex-col flex-1 p-4">
+                        {/* Meta info */}
+                        <div className="flex flex-wrap items-center gap-2 mb-3">
+                          {comunicado.fijado && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-semibold">
+                              <Pin className="w-3 h-3" />
+                              <span className="hidden sm:inline">Destacado</span>
+                            </span>
+                          )}
+                          {esDeGerente && comunicado.oficina_origen && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-50 text-primary-700 border border-primary-200 rounded-full text-xs font-semibold">
+                              <div className="w-2 h-2 bg-accent rounded-full"></div>
+                              <span className="hidden sm:inline">{comunicado.oficina_origen.nombre}</span>
+                            </span>
+                          )}
+                          {comunicado.categoria && (
+                            <span className="inline-flex items-center px-2 py-0.5 bg-primary-50 text-primary-700 rounded-full text-xs font-medium">
+                              {comunicado.categoria.nombre}
+                            </span>
+                          )}
                         </div>
 
-                        {/* Fecha + CTA */}
-                        <div className="flex items-center justify-between pt-2 border-t border-neutral-100 mt-2">
-                          <span className="inline-flex items-center gap-1 text-neutral-400 text-xs">
+                        {/* Título */}
+                        <h2 className="text-lg font-bold text-neutral-900 mb-2 line-clamp-2 group-hover:text-accent transition-colors">
+                          {comunicado.titulo}
+                        </h2>
+
+                        {/* Extracto */}
+                        <p className="text-sm text-neutral-600 mb-4 line-clamp-3 leading-relaxed flex-1">
+                          {extraerTextoPlano(comunicado.contenido_html, 150)}
+                        </p>
+
+                        {/* Footer */}
+                        <div className="flex items-center justify-between pt-3 border-t border-neutral-100">
+                          <span className="inline-flex items-center gap-1 text-neutral-500 text-xs">
                             <Calendar className="w-3 h-3" />
-                            {new Date(comunicado.fecha_publicacion || comunicado.fecha_creacion).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            {new Date(comunicado.fecha_publicacion || comunicado.fecha_creacion).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
                           </span>
-                          <span className="text-accent group-hover:text-primary-700 font-semibold text-xs flex items-center gap-0.5 transition-colors">
+                          <span className="text-accent group-hover:text-primary-700 font-medium text-sm flex items-center gap-1 transition-colors">
                             Leer más
-                            <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                           </span>
                         </div>
                       </div>

@@ -1,57 +1,10 @@
 /**
  * Utilidad de días hábiles para México.
- * Festivos LFT Art. 74 + tabla dias_no_habiles (excepciones personalizadas)
- * + configuracion_jornada (horario laboral global).
+ * Fuentes: date-holidays (Art. 74 LFT) + tabla dias_no_habiles (excepciones personalizadas)
+ *          + configuracion_jornada (horario laboral global).
  */
+import Holidays from 'date-holidays';
 import { supabase } from './supabase';
-
-// ── Festivos México LFT Art. 74 ────────────────────────────────────────────────
-
-interface HolidayDef {
-  month: number; // 1-12
-  day?: number;  // fixed day, or use rule
-  rule?: 'first-monday' | 'third-monday';
-}
-
-const MX_HOLIDAYS: HolidayDef[] = [
-  { month: 1,  day: 1  }, // Año Nuevo
-  { month: 2,  rule: 'first-monday'  }, // Día de la Constitución
-  { month: 3,  rule: 'third-monday'  }, // Natalicio Benito Juárez
-  { month: 5,  day: 1  }, // Día del Trabajo
-  { month: 9,  day: 16 }, // Independencia
-  { month: 11, rule: 'third-monday' }, // Revolución Mexicana
-  { month: 12, day: 25 }, // Navidad
-];
-
-function getNthMonday(year: number, month: number, n: number): Date {
-  const d = new Date(year, month - 1, 1);
-  const dow = d.getDay(); // 0=Sun
-  const offset = dow === 1 ? 0 : (8 - dow) % 7;
-  d.setDate(1 + offset + (n - 1) * 7);
-  return d;
-}
-
-function getMxHolidayDates(year: number): Set<string> {
-  const set = new Set<string>();
-  for (const h of MX_HOLIDAYS) {
-    let date: Date;
-    if (h.day) {
-      date = new Date(year, h.month - 1, h.day);
-    } else if (h.rule === 'first-monday') {
-      date = getNthMonday(year, h.month, 1);
-    } else {
-      date = getNthMonday(year, h.month, 3);
-    }
-    set.add(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`);
-  }
-  return set;
-}
-
-function isMxHoliday(date: Date): boolean {
-  const key = fechaStr(date);
-  const year = date.getFullYear();
-  return getMxHolidayDates(year).has(key);
-}
 
 // ── Tipos ──────────────────────────────────────────────────────────────────────
 
@@ -68,6 +21,8 @@ let _jornada: Jornada | null = null;
 let _diasConfig: Map<string, 'cerrado' | 'media'> | null = null;
 let _cacheTs = 0;
 const CACHE_TTL = 5 * 60 * 1000;
+
+const hd = new Holidays('MX');
 
 async function loadConfig(): Promise<{ jornada: Jornada; diasConfig: Map<string, 'cerrado' | 'media'> }> {
   if (_jornada && _diasConfig && Date.now() - _cacheTs < CACHE_TTL) {
@@ -114,7 +69,7 @@ function esDiaHabilInterno(fecha: Date, diasConfig: Map<string, 'cerrado' | 'med
   const dow = fecha.getDay();
   if (dow === 0 || dow === 6) return false;
   if (diasConfig.get(fechaStr(fecha)) === 'cerrado') return false;
-  if (isMxHoliday(fecha)) return false;
+  if (hd.isHoliday(fecha)) return false;
   return true;
 }
 
@@ -167,7 +122,7 @@ export async function calcularHorasHabilesEntre(
     if (dia.getDay() === 0 || dia.getDay() === 6) return 0;
     const cfg = diasConfig.get(fechaStr(dia));
     if (cfg === 'cerrado') return 0;
-  if (isMxHoliday(dia)) return 0;
+    if (hd.isHoliday(dia)) return 0;
     const jorIni = ji.h * 60 + ji.m;
     const jorFin = jf.h * 60 + jf.m;
     const desdeMin = desde ? Math.max(jorIni, desde.getHours() * 60 + desde.getMinutes()) : jorIni;
@@ -286,17 +241,14 @@ export interface FestivoInfo {
 }
 
 export async function getFestivosDelAno(year: number): Promise<FestivoInfo[]> {
-  const NOMBRES: Record<string, string> = {
-    '01-01': 'Año Nuevo',
-    '05-01': 'Día del Trabajo',
-    '09-16': 'Día de Independencia',
-    '12-25': 'Navidad',
-  };
-  const oficiales: FestivoInfo[] = Array.from(getMxHolidayDates(year)).map(fecha => ({
-    fecha,
-    nombre: NOMBRES[fecha.slice(5)] ?? 'Día festivo',
-    tipo: 'automatico' as const,
-  }));
+  const hdYear = new Holidays('MX');
+  const oficiales: FestivoInfo[] = hdYear.getHolidays(year)
+    .filter(h => h.type === 'public')
+    .map(h => ({
+      fecha: fechaStr(new Date(h.date)),
+      nombre: h.name,
+      tipo: 'automatico' as const,
+    }));
 
   const { data: custom } = await supabase
     .from('dias_no_habiles')
