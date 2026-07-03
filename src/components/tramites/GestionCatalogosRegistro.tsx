@@ -43,12 +43,17 @@ export function GestionCatalogosRegistro() {
   const [areaOpen, setAreaOpen] = useState<Record<string, boolean>>({});
 
   // ── Edit - Config tab ───────────────────────────────────────────────────
-  const [editConfig, setEditConfig] = useState({ label: '', area: 'Comercial' as Area, color: '#0369a1' });
+  const [editConfig, setEditConfig] = useState({ label: '', area: 'Comercial' as Area, color: '#0369a1', slaDias: '' });
   const [savingConfig, setSavingConfig] = useState(false);
+  const [horasProductivasDia, setHorasProductivasDia] = useState(8);
 
   const isAdmin = usuario?.rol === 'Administrador';
 
   useEffect(() => { loadTiposTramite(); }, []);
+  useEffect(() => {
+    supabase.from('configuracion_jornada').select('horas_productivas_dia').limit(1).single()
+      .then(({ data }) => { if (data?.horas_productivas_dia) setHorasProductivasDia(data.horas_productivas_dia); });
+  }, []);
 
   const loadTiposTramite = async () => {
     const { data } = await supabase.from('ticket_tipos').select('*').order('orden');
@@ -75,10 +80,19 @@ export function GestionCatalogosRegistro() {
 
   // ── Derived ─────────────────────────────────────────────────────────────
 
+  // Conversión de días hábiles (lo que ve el admin) <-> horas hábiles (lo que usa el contador)
+  const horasToDiasLabel = (horas: number | null | undefined): string =>
+    horas ? String(Math.round((horas / horasProductivasDia) * 10) / 10) : '';
+  const diasToHoras = (dias: string): number | null => {
+    const n = parseFloat(dias);
+    return dias.trim() && !isNaN(n) && n > 0 ? Math.round(n * horasProductivasDia) : null;
+  };
+
   const isDirty = activeTipo !== null && (
     editConfig.label !== activeTipo.label ||
     editConfig.color !== activeTipo.color ||
-    (activeTipo.is_custom && editConfig.area !== activeTipo.area)
+    (activeTipo.is_custom && editConfig.area !== activeTipo.area) ||
+    diasToHoras(editConfig.slaDias) !== (activeTipo.sla_horas ?? null)
   );
 
   const filteredTipos = searchTipo.trim()
@@ -100,7 +114,7 @@ export function GestionCatalogosRegistro() {
 
   const openEditor = (tipo: TicketTipo) => {
     setActiveTipo(tipo);
-    setEditConfig({ label: tipo.label, area: tipo.area as Area, color: tipo.color });
+    setEditConfig({ label: tipo.label, area: tipo.area as Area, color: tipo.color, slaDias: horasToDiasLabel(tipo.sla_horas) });
     setActiveTab('config');
     setView('edit');
   };
@@ -120,7 +134,8 @@ export function GestionCatalogosRegistro() {
   const handleSaveConfig = async () => {
     if (!activeTipo || !editConfig.label.trim()) { showToast('El nombre es obligatorio', 'error'); return; }
     setSavingConfig(true);
-    const payload: Record<string, string> = { label: editConfig.label.trim(), color: editConfig.color };
+    const nuevoSlaHoras = diasToHoras(editConfig.slaDias);
+    const payload: Record<string, any> = { label: editConfig.label.trim(), color: editConfig.color, sla_horas: nuevoSlaHoras };
     if (activeTipo.is_custom) payload.area = editConfig.area;
     const { error } = await supabase.from('ticket_tipos').update(payload).eq('id', activeTipo.id);
     if (error) { showToast('Error: ' + error.message, 'error'); }
@@ -129,6 +144,7 @@ export function GestionCatalogosRegistro() {
       if (editConfig.label.trim() !== activeTipo.label) { cambios.label_antes = activeTipo.label; cambios.label_despues = editConfig.label.trim(); }
       if (editConfig.color !== activeTipo.color) { cambios.color_antes = activeTipo.color; cambios.color_despues = editConfig.color; }
       if (activeTipo.is_custom && editConfig.area !== activeTipo.area) { cambios.area_antes = activeTipo.area; cambios.area_despues = editConfig.area; }
+      if (nuevoSlaHoras !== (activeTipo.sla_horas ?? null)) { cambios.sla_horas_antes = activeTipo.sla_horas ?? null; cambios.sla_horas_despues = nuevoSlaHoras; }
       if (Object.keys(cambios).length > 0) logHistorial(activeTipo.id, 'config_actualizada', cambios, usuario?.id, usuario?.nombre_completo);
       setActiveTipo({ ...activeTipo, ...payload });
       invalidateTiposTramiteCache();
@@ -278,6 +294,26 @@ export function GestionCatalogosRegistro() {
                 </select>
               </div>
             )}
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Tiempo de respuesta (SLA)</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={editConfig.slaDias}
+                  onChange={(e) => setEditConfig({ ...editConfig, slaDias: e.target.value })}
+                  placeholder="Sin límite"
+                  className="w-32 px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                />
+                <span className="text-sm text-neutral-500">días hábiles</span>
+              </div>
+              <p className="text-xs text-neutral-400 mt-1">
+                {editConfig.slaDias.trim()
+                  ? `≈ ${diasToHoras(editConfig.slaDias) ?? '—'} horas hábiles (jornada de ${horasProductivasDia}h/día) — el contador sigue trabajando en horas hábiles, esto es solo para configurar más fácil.`
+                  : 'Deja vacío si este tipo de trámite no tiene un tiempo de respuesta comprometido.'}
+              </p>
+            </div>
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">Color</label>
               <ColorPicker value={editConfig.color} onChange={(c) => setEditConfig({ ...editConfig, color: c })} />
