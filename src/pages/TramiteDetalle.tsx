@@ -12,6 +12,7 @@ import { ComisionesPendientes } from '../components/tramites/ComisionesPendiente
 import { crearNotificacion } from '../lib/notificationHelpers';
 import { SearchableSelect } from '../components/tramites/catalogos/SearchableSelect';
 import { TriggerConfirmModal, type PendingTrigger, type ExistingChild } from '../components/tramites/TriggerConfirmModal';
+import { calcularDiasHabilesEntre } from '../lib/diasHabiles';
 
 interface TramiteEstatus {
   id: string;
