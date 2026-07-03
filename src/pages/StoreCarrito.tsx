@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Trash2, Plus, Minus, Package, TriangleAlert as AlertTriangle } from 'lucide-react';
+import { ShoppingCart, Trash2, Plus, Minus, Package, TriangleAlert as AlertTriangle, Clock } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   obtenerCarrito,
@@ -17,6 +17,7 @@ export default function StoreCarrito() {
   const [carrito, setCarrito] = useState<StoreCarritoItem[]>([]);
   const [notasUsuario, setNotasUsuario] = useState('');
   const [direccionEntrega, setDireccionEntrega] = useState('');
+  const [areaEntrega, setAreaEntrega] = useState('');
   const [loading, setLoading] = useState(true);
   const [procesando, setProcesando] = useState(false);
 
@@ -63,11 +64,12 @@ export default function StoreCarrito() {
 
     try {
       setProcesando(true);
-      await crearPedido(usuario.id, itemsValidos, notasUsuario, direccionEntrega);
+      await crearPedido(usuario.id, itemsValidos, notasUsuario, direccionEntrega, undefined, areaEntrega);
 
       setCarrito([]);
       setNotasUsuario('');
       setDireccionEntrega('');
+      setAreaEntrega('');
 
       navigate('/store/mis-pedidos');
     } catch (error) {
@@ -80,10 +82,13 @@ export default function StoreCarrito() {
 
   const itemsValidos = carrito.filter(item => item.producto);
 
-  const hayProblemasStock = itemsValidos.some(item => {
+  // Backorder: cantidad supera stock disponible (se permite, entrega diferida)
+  const itemsBackorder = itemsValidos.filter(item => {
     if (item.producto?.disponibilidad === 'por_pedido') return false;
-    return item.producto!.stock === 0 || item.cantidad > item.producto!.stock;
+    if (item.producto?.tipo_item === 'servicio') return false;
+    return item.cantidad > (item.producto?.stock ?? 0);
   });
+  const hayBackorder = itemsBackorder.length > 0;
 
   const calcularTotal = () => {
     return itemsValidos.reduce((sum, item) => sum + ((item.producto?.precio ?? 0) * item.cantidad), 0);
@@ -146,14 +151,12 @@ export default function StoreCarrito() {
                         ${item.producto!.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                       </p>
 
-                      {item.producto!.disponibilidad !== 'por_pedido' && item.producto!.stock === 0 && (
-                        <p className="text-xs text-red-600 font-medium flex items-center gap-1 mb-2">
-                          <AlertTriangle className="w-3 h-3" /> Agotado
-                        </p>
-                      )}
-                      {item.producto!.disponibilidad !== 'por_pedido' && item.producto!.stock > 0 && item.cantidad > item.producto!.stock && (
-                        <p className="text-xs text-amber-600 font-medium flex items-center gap-1 mb-2">
-                          <AlertTriangle className="w-3 h-3" /> Solo {item.producto!.stock} disponibles
+                      {item.producto!.disponibilidad !== 'por_pedido' && item.producto!.tipo_item !== 'servicio' && item.cantidad > item.producto!.stock && (
+                        <p className="text-xs text-amber-700 font-medium flex items-center gap-1 mb-2">
+                          <Clock className="w-3 h-3" />
+                          {item.producto!.stock === 0
+                            ? 'Sin stock · Entrega: 7 días hábiles + envío'
+                            : `En bodega: ${item.producto!.stock} uds · Faltante: 7 días hábiles`}
                         </p>
                       )}
 
@@ -183,7 +186,7 @@ export default function StoreCarrito() {
 
                           <button
                             onClick={() => handleActualizarCantidad(item.id, item.cantidad + 1)}
-                            disabled={item.cantidad >= (item.producto?.disponibilidad === 'por_pedido' ? 99 : (item.producto?.stock ?? 0))}
+                            disabled={item.cantidad >= 999}
                             className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center border border-neutral-300 dark:border-white/20 rounded hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50"
                           >
                             <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -235,6 +238,19 @@ export default function StoreCarrito() {
 
                   <div>
                     <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
+                      Área / Zona <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={areaEntrega}
+                      onChange={(e) => setAreaEntrega(e.target.value)}
+                      placeholder="Ej: Oficina Norte, CDMX, etc."
+                      className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                       Dirección de entrega (opcional)
                     </label>
                     <textarea
@@ -262,16 +278,18 @@ export default function StoreCarrito() {
                   </div>
                 </div>
 
-                {hayProblemasStock && (
-                  <div className="mb-4 flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3">
-                    <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
-                    <span className="text-sm text-red-700 dark:text-red-400">Algunos productos exceden el stock disponible</span>
+                {hayBackorder && (
+                  <div className="mb-4 flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg px-4 py-3">
+                    <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <p className="text-sm text-amber-800 dark:text-amber-300">
+                      Algunos productos superan el stock disponible. Se surtirán en <strong>7 días hábiles</strong> + tiempo de envío.
+                    </p>
                   </div>
                 )}
 
                 <button
                   onClick={handleRealizarPedido}
-                  disabled={procesando || hayProblemasStock}
+                  disabled={procesando || !areaEntrega.trim()}
                   className="w-full bg-accent text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg hover:bg-accent-hover transition-colors font-semibold text-base sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {procesando ? 'Procesando...' : 'Realizar Pedido'}

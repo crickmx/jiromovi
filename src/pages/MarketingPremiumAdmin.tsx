@@ -63,7 +63,7 @@ function emptyForm(a?: Agente | null): FormData {
   };
 }
 
-export default function MarketingPremiumAdmin() {
+export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean } = {}) {
   const { usuario } = useAuth();
   const [agentes, setAgentes] = useState<Agente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -262,11 +262,13 @@ ALTER TABLE usuarios
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Marketing Premium — Gestión"
-        description="Administra suscripciones, planes y métodos de pago de los agentes"
-        icon={Sparkles}
-      />
+      {!embedded && (
+        <PageHeader
+          title="Marketing Premium — Gestión"
+          description="Administra suscripciones, planes y métodos de pago de los agentes"
+          icon={Sparkles}
+        />
+      )}
 
       {/* Banner de migración pendiente */}
       {needsMigration && (

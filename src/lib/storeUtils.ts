@@ -708,7 +708,8 @@ export async function crearPedido(
   itemsCarrito: StoreCarritoItem[],
   notasUsuario?: string,
   direccionEntrega?: string,
-  responsablePagoId?: string
+  responsablePagoId?: string,
+  areaEntrega?: string
 ) {
   const estatusPendiente = await obtenerEstatus();
   const estatusId = estatusPendiente.find(e => e.nombre === 'Pendiente')?.id;
@@ -724,6 +725,7 @@ export async function crearPedido(
       usuario_id: usuarioId,
       notas_usuario: notasUsuario,
       direccion_entrega: direccionEntrega,
+      area_entrega: areaEntrega || null,
       estatus_id: estatusId,
       responsable_pago_id: responsablePagoId || null,
       folio_oc: folioData
@@ -733,13 +735,18 @@ export async function crearPedido(
 
   if (pedidoError) throw pedidoError;
 
-  const detalle = itemsCarrito.map(item => ({
-    pedido_id: pedido.id,
-    producto_id: item.producto_id,
-    cantidad: item.cantidad,
-    precio_unitario: item.producto!.precio,
-    atributos_seleccionados: item.atributos_seleccionados || {}
-  }));
+  const detalle = itemsCarrito.map(item => {
+    const attrs = { ...(item.atributos_seleccionados || {}) };
+    const precioVariante = attrs._precio ? parseFloat(attrs._precio) : NaN;
+    delete attrs._precio;
+    return {
+      pedido_id: pedido.id,
+      producto_id: item.producto_id,
+      cantidad: item.cantidad,
+      precio_unitario: (!isNaN(precioVariante) && precioVariante > 0) ? precioVariante : item.producto!.precio,
+      atributos_seleccionados: attrs
+    };
+  });
 
   const { error: detalleError } = await supabase
     .from('store_pedidos_detalle')

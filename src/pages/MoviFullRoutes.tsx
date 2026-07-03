@@ -76,6 +76,7 @@ const MiPaginaWeb = lazy(() => import('./MiPaginaWeb'));
 const FotosEstudio = lazy(() => import('./FotosEstudio'));
 const FotosEstudioAdmin = lazy(() => import('./FotosEstudioAdmin'));
 const MarketingPremiumAdmin = lazy(() => import('./MarketingPremiumAdmin'));
+const MktAdminDashboard = lazy(() => import('./MktAdminDashboard'));
 const CentroDigital = lazy(() => import('./CentroDigital'));
 
 // Seguros Education
@@ -245,6 +246,7 @@ export default function MoviFullRoutes() {
           <Route path="/mercadotecnia/mi-marca" element={<ProtectedRoute><Mercadotecnia section="mi-marca" /></ProtectedRoute>} />
           <Route path="/mercadotecnia/fotos-estudio" element={<ProtectedRoute><Mercadotecnia section="fotos-estudio" /></ProtectedRoute>} />
           <Route path="/mercadotecnia/recursos-marca" element={<ProtectedRoute><Mercadotecnia section="recursos-marca" /></ProtectedRoute>} />
+          <Route path="/mercadotecnia/admin" element={<ProtectedRoute requireAdmin><MktAdminDashboard /></ProtectedRoute>} />
           <Route path="/mercadotecnia/fotos-estudio/admin" element={<ProtectedRoute requireAdmin><FotosEstudioAdmin /></ProtectedRoute>} />
           <Route path="/mercadotecnia/premium/admin" element={<ProtectedRoute requireAdmin><MarketingPremiumAdmin /></ProtectedRoute>} />
           <Route path="/centro-digital" element={<ProtectedRoute><CentroDigital /></ProtectedRoute>} />

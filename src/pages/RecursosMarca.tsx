@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Upload, Trash2, Download, X, Image, FileText, FileArchive, File, Search, AlertTriangle, Copy, CheckCircle, ZoomIn } from 'lucide-react';
+import { Upload, Trash2, Download, X, Image, FileText, FileArchive, File, Search, AlertTriangle, Loader2, CheckCircle2, ZoomIn } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { LoadingState } from '@/components/ui/loading-state';
@@ -47,7 +47,8 @@ function FileIcon({ tipo, className }: { tipo: string; className?: string }) {
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
 export default function RecursosMarca() {
-  const { usuario, isAdmin } = useAuth();
+  const { usuario } = useAuth();
+  const isAdmin = usuario?.rol === 'Administrador';
   const [recursos, setRecursos] = useState<Recurso[]>([]);
   const [loading, setLoading] = useState(true);
   const [bucketError, setBucketError] = useState(false);
@@ -55,9 +56,11 @@ export default function RecursosMarca() {
   const [busqueda, setBusqueda] = useState('');
   const [subiendo, setSubiendo] = useState(false);
   const [eliminando, setEliminando] = useState<string | null>(null);
-  const [sqlCopiado, setSqlCopiado] = useState(false);
   const [ampliado, setAmpliado] = useState<Recurso | null>(null);
   const [carpetaUpload, setCarpetaUpload] = useState('logos/');
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [configurando, setConfigurando] = useState(false);
+  const [configError, setConfigError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { cargar(); }, [carpeta]);
@@ -77,7 +80,8 @@ export default function RecursosMarca() {
         .list(prefijo.replace(/\/$/, ''), { limit: 500, sortBy: { column: 'name', order: 'asc' } });
 
       if (error) {
-        if (error.message?.includes('not found') || error.message?.includes('Bucket')) {
+        const msg = (error.message ?? '').toLowerCase();
+        if (msg.includes('not found') || msg.includes('bucket') || msg.includes('does not exist')) {
           setBucketError(true);
           setLoading(false);
           return;
@@ -109,12 +113,16 @@ export default function RecursosMarca() {
   async function subir(files: FileList | null) {
     if (!files?.length || !isAdmin) return;
     setSubiendo(true);
+    setUploadError(null);
 
+    const errores: string[] = [];
     for (const file of Array.from(files)) {
       const path = `${carpetaUpload}${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
-      await supabase.storage.from(BUCKET).upload(path, file, { upsert: false });
+      const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false });
+      if (error) errores.push(`${file.name}: ${error.message}`);
     }
 
+    if (errores.length) setUploadError(errores.join(' · '));
     await cargar();
     setSubiendo(false);
   }
@@ -126,6 +134,32 @@ export default function RecursosMarca() {
     setRecursos(prev => prev.filter(r => r.fullPath !== recurso.fullPath));
     if (ampliado?.fullPath === recurso.fullPath) setAmpliado(null);
     setEliminando(null);
+  }
+
+  async function configurarBucket() {
+    if (!isAdmin) return;
+    setConfigurando(true);
+    setConfigError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/setup-recursos-marca`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session?.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Error desconocido');
+      await cargar();
+    } catch (e) {
+      setConfigError(e instanceof Error ? e.message : 'Error al configurar');
+    } finally {
+      setConfigurando(false);
+    }
   }
 
   function descargar(recurso: Recurso) {
@@ -140,55 +174,36 @@ export default function RecursosMarca() {
     busqueda === '' || norm(r.name).includes(norm(busqueda))
   );
 
-  const BUCKET_SQL = `-- Ejecuta en Supabase Dashboard → SQL Editor
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES ('recursos-marca', 'recursos-marca', false, 52428800,
-  ARRAY['image/png','image/jpeg','image/webp','image/svg+xml','application/pdf','application/zip','image/gif'])
-ON CONFLICT (id) DO NOTHING;
-
-CREATE POLICY IF NOT EXISTS "Auth read recursos-marca"
-  ON storage.objects FOR SELECT
-  USING (bucket_id = 'recursos-marca' AND auth.role() = 'authenticated');
-
-CREATE POLICY IF NOT EXISTS "Admin insert recursos-marca"
-  ON storage.objects FOR INSERT
-  WITH CHECK (bucket_id = 'recursos-marca' AND
-    EXISTS (SELECT 1 FROM usuarios WHERE id = auth.uid() AND rol = 'Administrador'));
-
-CREATE POLICY IF NOT EXISTS "Admin delete recursos-marca"
-  ON storage.objects FOR DELETE
-  USING (bucket_id = 'recursos-marca' AND
-    EXISTS (SELECT 1 FROM usuarios WHERE id = auth.uid() AND rol = 'Administrador'));`;
-
   if (!usuario) return null;
 
   if (bucketError) {
     return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 space-y-4">
-        <div className="flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-semibold text-amber-800">Bucket "recursos-marca" no encontrado</p>
-            <p className="text-xs text-amber-700 mt-1">
-              Ejecuta el siguiente SQL en <strong>Supabase Dashboard → SQL Editor</strong> para crear el bucket de almacenamiento.
-            </p>
+      <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 p-8 flex flex-col items-center text-center gap-4">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center">
+          <AlertTriangle className="w-7 h-7 text-amber-500" />
+        </div>
+        <div>
+          <p className="text-base font-semibold text-neutral-800 dark:text-white">Brand Kit no configurado</p>
+          <p className="text-sm text-neutral-500 dark:text-white/50 mt-1 max-w-sm">
+            El almacenamiento de archivos aún no está activo.
+            {isAdmin ? ' Haz clic en el botón para configurarlo automáticamente.' : ' Pide a un administrador que lo configure.'}
+          </p>
+        </div>
+        {isAdmin && (
+          <div className="flex flex-col items-center gap-2">
+            <button
+              onClick={configurarBucket}
+              disabled={configurando}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition disabled:opacity-60"
+            >
+              {configurando ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+              {configurando ? 'Configurando…' : 'Configurar Brand Kit'}
+            </button>
+            {configError && (
+              <p className="text-xs text-red-600 dark:text-red-400">{configError}</p>
+            )}
           </div>
-        </div>
-        <div className="relative">
-          <pre className="text-xs bg-amber-100 border border-amber-200 rounded-xl p-3 overflow-x-auto text-amber-900 whitespace-pre-wrap">
-            {BUCKET_SQL}
-          </pre>
-          <button
-            onClick={() => { navigator.clipboard.writeText(BUCKET_SQL); setSqlCopiado(true); setTimeout(() => setSqlCopiado(false), 2500); }}
-            className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-lg bg-white border border-amber-300 text-xs text-amber-800 hover:bg-amber-50 transition"
-          >
-            <Copy className="w-3 h-3" />
-            {sqlCopiado ? 'Copiado ✓' : 'Copiar'}
-          </button>
-        </div>
-        <button onClick={cargar} className="text-xs text-amber-700 underline">
-          Ya creé el bucket — recargar
-        </button>
+        )}
       </div>
     );
   }
@@ -258,6 +273,12 @@ CREATE POLICY IF NOT EXISTS "Admin delete recursos-marca"
           </div>
         )}
       </div>
+
+      {uploadError && (
+        <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-2.5">
+          {uploadError}
+        </p>
+      )}
 
       {/* Contenido */}
       {loading ? (

@@ -134,8 +134,7 @@ const WORKSPACE_MERCADOTECNIA: WorkspaceDefinition = {
     { path: '/mercadotecnia/mi-marca', label: 'Mi Marca', icon: Fingerprint, visibleTo: ALL_ROLES },
     { path: '/mercadotecnia/fotos-estudio', label: 'Mis Fotos de Estudio', icon: Camera, visibleTo: ALL_ROLES },
     { path: '/mercadotecnia/recursos-marca', label: 'Jiro Brand Kit', icon: Bookmark, visibleTo: ALL_ROLES },
-    { path: '/mercadotecnia/fotos-estudio/admin', label: 'Gestionar Fotos', icon: Upload, visibleTo: ADMIN_ONLY },
-    { path: '/mercadotecnia/premium/admin', label: 'Gestionar Premium', icon: Sparkles, visibleTo: ADMIN_ONLY },
+    { path: '/mercadotecnia/admin', label: 'Marketing Admin', icon: LayoutGrid, visibleTo: ADMIN_ONLY },
   ],
 };
 

@@ -54,6 +54,7 @@ export interface StoreProductoAtributoOpcion {
   valor: string;
   orden: number;
   activo: boolean;
+  precio?: number | null;
   created_at: string;
 }
 
@@ -103,6 +104,7 @@ export interface StorePedido {
   usuario_id: string;
   notas_usuario?: string;
   direccion_entrega?: string;
+  area_entrega?: string;
   estatus_id: string;
   created_at: string;
   updated_at: string;
