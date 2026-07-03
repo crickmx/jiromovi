@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+
+let _instanceId = 0;
 
 export function useStoreAttentionCount(userId: string | null | undefined) {
   const [count, setCount] = useState(0);
   const { usuario } = useAuth();
+  const channelName = useRef(`store-attention-count-${++_instanceId}`);
 
   const isAdmin = usuario?.rol === 'Administrador';
 
@@ -42,7 +45,7 @@ export function useStoreAttentionCount(userId: string | null | undefined) {
     fetchCount();
 
     const channel = supabase
-      .channel('store-attention-count')
+      .channel(channelName.current)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, fetchCount)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'store_pedidos' }, fetchCount)
       .subscribe();
