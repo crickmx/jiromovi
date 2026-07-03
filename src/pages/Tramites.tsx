@@ -685,14 +685,15 @@ export function Tramites() {
       return tramiteOficinaId === usuario?.oficina_id || isInMyGroup || isDirectlyInvolved;
     }
 
-    // Agente: solo sus propios trámites
-    if (isAgente) return isDirectlyInvolved;
-
-    // Lider: todos los tramites de su grupo (asignados o no)
+    // Lider: todos los tramites de su grupo (asignados o no) — se evalúa antes que el
+    // corte de Agente, porque el rol de líder es por equipo, no por rol global del usuario
     const isLiderOfGroup =
       tramite.grupo_asignado_id !== null &&
       myGrupoRoles.get(tramite.grupo_asignado_id) === 'lider';
     if (isLiderOfGroup) return true;
+
+    // Agente: solo sus propios trámites
+    if (isAgente) return isDirectlyInvolved;
 
     // Ejecutivo y demás: propios + pool sin asignar de sus equipos (para autoasignarse)
     return isDirectlyInvolved || isPoolOfMyGroup;

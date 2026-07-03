@@ -46,38 +46,34 @@ Migración aplicada: `supabase/migrations/20260701000001_fase8_campos_form_confi
 - Categoría de adjuntos no se asignaba al adjuntar desde FormBuilder → fix en commit `38947464`.
 - Sistemas huérfanos de permisos por equipo (`tramite_equipo_tipo_permisos`, `tramite_team_tipo_config`, `usuario_team_permisos`): no tenían ningún efecto real porque `NuevoTramiteModal.tsx` nunca los lee. Se ocultó la tab "Visibilidad" de `AdminTramites.tsx` y la sección "Permisos por Equipo" de `PermisosPanel.tsx`. Tablas y función SQL siguen intactas por si se retoma. Detalle completo en memoria del proyecto (`project_jiromovi.md`).
 
-## BUG PENDIENTE #1 — Empezar aquí mañana: Líder de equipo no ve trámites de su equipo
-**Síntoma:** MERCADOTECNIA fue asignada como líder (`rol_en_equipo='lider'` en `tramites_grupos_miembros`) del equipo "Comercial CAPITA", donde YURI AGUILAR GONZÁLEZ es ejecutivo. MERCADOTECNIA no ve los trámites de Yuri.
+## BUG PENDIENTE #1 — Líder de equipo no ve trámites de su equipo (parcialmente resuelto 2026-07-02)
 
-**Ya se investigó:**
-- El fix de visibilidad para líderes (commit `8f895262 fix+feat: lider equipo ve todos sus tramites`) ya está mergeado en `produccion`. La lógica en `src/pages/Tramites.tsx:691-695` (`isLiderOfGroup`) se ve correcta: compara `tramite.grupo_asignado_id` contra `myGrupoRoles.get(grupo_id) === 'lider'`.
-- **Encontrado con SQL:** el trámite `TK599F9` de Yuri tiene `grupo_asignado_id = null`. Como la lógica del líder depende exactamente de ese campo, si está en `null` nunca se va a ver sin importar que el líder esté bien configurado.
-- **Falta confirmar:** si esto es un caso aislado (¿por qué ese trámite no se asignó a un grupo?) o si TODOS los trámites de Yuri tienen `grupo_asignado_id = null` (apuntaría a un problema más de fondo: los trámites no se están asignando a un equipo al crearse/reasignarse, no un problema de la lógica del líder). También falta confirmar el rol global de MERCADOTECNIA (`usuarios.rol`) y si el grupo "Comercial CAPITA" está `activo=true` (si no, se filtra silenciosamente en `loadMyOperacionesRole()`).
+**Causa #1 (CÓDIGO, ya arreglada):** en `src/pages/Tramites.tsx`, el chequeo `if (isAgente) return isDirectlyInvolved;` se ejecutaba **antes** del chequeo `isLiderOfGroup`, cortando el flujo para cualquier líder cuyo rol global (`usuarios.rol`) fuera `'Agente'` — el rol de líder es por equipo (`tramites_grupos_miembros.rol_en_equipo`), no por rol global, así que nunca se llegaba a evaluar. **Fix:** se movió el chequeo `isLiderOfGroup` para que se evalúe primero. Verificado con 3 agentes en paralelo: las políticas RLS de Supabase (`tickets_select_v4`) ya soportaban esto correctamente de forma independiente — no era un problema de RLS.
 
-**Consultas para retomar** (correr en el SQL Editor de Supabase):
+**Causa #2 (DATOS, en investigación):** `grupo_asignado_id` en `tickets` solo se asigna si existe una regla explícita en `tramites_grupos_reglas` para ese agente (por área específica o comodín `area IS NULL`) — resuelto vía RPC `get_grupo_para_ticket()`. Si el agente no tiene regla, o solo tiene regla para otra área, el campo queda `null` para siempre (no hay backfill ni trigger de respaldo). El trámite `TK599F9` de Yuri Aguilar tiene `grupo_asignado_id = null` — con el fix de código ya aplicado, este trámite específico **sigue sin verse** hasta que se resuelva esto.
+
+**Nota de diseño confirmada con el usuario:** los trámites-hijo generados por triggers (`TramiteDetalle.tsx:812-824`) y la reasignación de "responsable" (`handleResponsableChange`) NO tocan `grupo_asignado_id` — esto es intencional, cada trámite debe resolver su propio grupo según su propio tipo/agente, no heredar. No tocar.
+
+**Consultas para retomar** (correr en el SQL Editor de Supabase — agente_id de Yuri ya conocido: `0a8f09a2-270b-4695-b559-8b3a45239b59`):
 ```sql
--- 1. Usuario MERCADOTECNIA y su rol global
-select id, nombre_completo, rol
-from usuarios
-where nombre_completo ilike '%mercadotecnia%' or nombre ilike '%mercadotecnia%';
+-- Tipo de trámite y área de TK599F9
+select t.id, t.folio, t.tipo_tramite, tt.area, tt.activo as tipo_activo
+from tickets t
+left join ticket_tipos tt on tt.value = t.tipo_tramite
+where t.folio = 'TK599F9';
 
--- 2. Grupo "Comercial CAPITA": id y si está activo
-select id, nombre, activo, area_categoria
-from tramites_grupos_visualizacion
-where nombre ilike '%capita%';
+-- Reglas de asignación que tiene Yuri configuradas (¿existe alguna que matchee esa área, o wildcard?)
+select r.*, g.nombre as grupo_nombre, g.activo as grupo_activo
+from tramites_grupos_reglas r
+join tramites_grupos_visualizacion g on g.id = r.grupo_id
+where r.usuario_id = '0a8f09a2-270b-4695-b559-8b3a45239b59';
 
--- 3. MERCADOTECNIA como 'lider' en ese grupo específico
-select gm.usuario_id, u.nombre_completo, gm.grupo_id, g.nombre as grupo, gm.rol_en_equipo, g.activo as grupo_activo
+-- Confirmar MERCADOTECNIA como 'lider' del grupo "Comercial CAPITA" y que el grupo esté activo
+select gm.usuario_id, u.nombre_completo, u.rol as rol_global, gm.grupo_id, g.nombre as grupo, gm.rol_en_equipo, g.activo as grupo_activo
 from tramites_grupos_miembros gm
 join usuarios u on u.id = gm.usuario_id
 join tramites_grupos_visualizacion g on g.id = gm.grupo_id
 where g.nombre ilike '%capita%';
-
--- 4. TODOS los trámites de Yuri y su grupo_asignado_id (ver si es un patrón, no solo TK599F9)
-select t.id, t.folio, t.agente_id, t.grupo_asignado_id, u.nombre_completo as agente_nombre
-from tickets t
-join usuarios u on u.id = t.agente_id
-where u.nombre_completo ilike '%yuri%aguilar%';
 ```
 
 ## BUG PENDIENTE #2 — Campo "Estatus" no tiene el toggle de "Acceso por rol"
