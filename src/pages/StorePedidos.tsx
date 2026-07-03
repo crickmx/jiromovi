@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Package, Eye, ListFilter as Filter, Download, Search, Calendar, Trash2, ChartBar as BarChart3, ClipboardList } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
-import { obtenerTodosPedidos, eliminarPedido, tieneAccesoEquipoStore } from '../lib/storeUtils';
+import { obtenerTodosPedidos, eliminarPedido, tieneAccesoEquipoStore, esLiderDeEquipoConAccesoStore } from '../lib/storeUtils';
 import type { StorePedido } from '../lib/storeTypes';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -20,12 +20,15 @@ export default function StorePedidos() {
   const [busqueda, setBusqueda] = useState('');
   const [pedidoAEliminar, setPedidoAEliminar] = useState<StorePedido | null>(null);
   const [eliminando, setEliminando] = useState(false);
+  const [puedeVerReporte, setPuedeVerReporte] = useState(false);
 
   useEffect(() => {
     (async () => {
       if (!usuario) return;
-      const tieneAcceso = tienePermisoAdminEnModulo(usuario, MODULOS.STORE) || await tieneAccesoEquipoStore(usuario.id);
+      const esAdminOModulo = tienePermisoAdminEnModulo(usuario, MODULOS.STORE);
+      const tieneAcceso = esAdminOModulo || await tieneAccesoEquipoStore(usuario.id);
       if (!tieneAcceso) { navigate('/store'); return; }
+      setPuedeVerReporte(esAdminOModulo || await esLiderDeEquipoConAccesoStore(usuario.id));
       cargarPedidos();
     })();
   }, [usuario]);
@@ -271,13 +274,15 @@ export default function StorePedidos() {
           backTo="/store"
           backLabel="Volver a MOVI Store"
           actions={
-            <button
-              onClick={() => navigate('/store/reporte')}
-              className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors shadow-sm"
-            >
-              <BarChart3 className="w-4 h-4" />
-              Reporte Ganancias
-            </button>
+            puedeVerReporte ? (
+              <button
+                onClick={() => navigate('/store/reporte')}
+                className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors shadow-sm"
+              >
+                <BarChart3 className="w-4 h-4" />
+                Reporte Ganancias
+              </button>
+            ) : undefined
           }
           className="mb-6 sm:mb-8"
         />

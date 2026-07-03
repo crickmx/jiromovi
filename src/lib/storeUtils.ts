@@ -34,6 +34,19 @@ export async function tieneAccesoEquipoStore(userId: string | null | undefined):
   return (count ?? 0) > 0;
 }
 
+export async function esLiderDeEquipoConAccesoStore(userId: string | null | undefined): Promise<boolean> {
+  if (!userId) return false;
+  const gruposConAcceso = await obtenerGruposConAccesoStore();
+  if (gruposConAcceso.length === 0) return false;
+  const { count } = await supabase
+    .from('tramites_grupos_miembros')
+    .select('grupo_id', { count: 'exact', head: true })
+    .eq('usuario_id', userId)
+    .eq('rol_en_equipo', 'lider')
+    .in('grupo_id', gruposConAcceso);
+  return (count ?? 0) > 0;
+}
+
 export async function obtenerMiembrosConAccesoStore(): Promise<string[]> {
   const gruposConAcceso = await obtenerGruposConAccesoStore();
   if (gruposConAcceso.length === 0) return [];
