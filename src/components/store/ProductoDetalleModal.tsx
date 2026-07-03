@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, ShoppingCart, Minus, Plus, TriangleAlert as AlertTriangle, CheckCircle, ArrowRight, Sparkles, Loader2, Wrench } from 'lucide-react';
+import { X, ShoppingCart, Minus, Plus, TriangleAlert as AlertTriangle, CheckCircle, ArrowRight, Sparkles, Loader2, Wrench, Clock } from 'lucide-react';
 import type { StoreProducto } from '../../lib/storeTypes';
 import { supabase } from '../../lib/supabase';
 import { setupMarketingPremiumProductos } from '../../lib/storeUtils';
@@ -109,17 +109,32 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
 
   const esPorPedido = producto.disponibilidad === 'por_pedido';
   const esServicio = producto.tipo_item === 'servicio';
-  const sinStock = !esPorPedido && producto.stock === 0;
-  const pocasExistencias = !esPorPedido && producto.stock > 0 && producto.stock <= producto.stock_umbral;
-  const maxCantidad = esPorPedido ? 99 : producto.stock;
+  // Stock visual: sin bloquear pedido — backorders permitidos con entrega diferida
+  const agotado = !esPorPedido && !esServicio && producto.stock === 0;
+  const pocasExistencias = !esPorPedido && !esServicio && producto.stock > 0 && producto.stock <= producto.stock_umbral;
+  const maxCantidad = 999;
+  const esBackorder = !esPorPedido && !esServicio && cantidad > producto.stock;
 
   const atributosConOpciones = (producto.atributos || []).filter(a => (a.opciones || []).length > 0);
   const todosAtributosSeleccionados = atributosConOpciones.length === 0 ||
     atributosConOpciones.every(a => atributosSeleccionados[a.nombre]);
 
+  // Precio efectivo: usa el precio de la opción seleccionada si tiene uno
+  const precioVariante = (() => {
+    for (const attr of atributosConOpciones) {
+      const selectedValor = atributosSeleccionados[attr.nombre];
+      if (!selectedValor) continue;
+      const opt = (attr.opciones || []).find(o => o.valor === selectedValor);
+      if (opt?.precio != null) return opt.precio;
+    }
+    return null;
+  })();
+  const precioMostrado = precioVariante ?? efectivo.precio;
+
   const handleAgregar = () => {
-    if (!esPremium && (sinStock || !todosAtributosSeleccionados)) return;
-    const attrs = atributosConOpciones.length > 0 ? atributosSeleccionados : undefined;
+    if (!esPremium && !todosAtributosSeleccionados) return;
+    let attrs: Record<string, string> | undefined = atributosConOpciones.length > 0 ? { ...atributosSeleccionados } : undefined;
+    if (attrs && precioVariante != null) attrs._precio = String(precioVariante);
     onAgregar(efectivo, cantidad, attrs);
     onClose();
   };
@@ -149,13 +164,6 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                 className="w-full h-full object-cover"
                 onError={e => { (e.target as HTMLImageElement).src = PLACEHOLDER_SVG; }}
               />
-              {sinStock && (
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <span className="bg-red-600 text-white text-lg font-bold px-6 py-2 rounded-full">
-                    Agotado
-                  </span>
-                </div>
-              )}
               {esServicio && (
                 <div className="absolute top-3 right-3">
                   <span className="inline-flex items-center gap-1.5 bg-purple-600 text-white text-sm font-semibold px-3 py-1.5 rounded-full">
@@ -181,87 +189,110 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                 </span>
               )}
 
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">{producto.titulo}</h1>
+              <div className="flex items-center gap-3 flex-wrap mb-4">
+                <h1 className="text-3xl font-bold text-gray-900">{producto.titulo}</h1>
+                {agotado && (
+                  <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-300 whitespace-nowrap">
+                    Sin existencias
+                  </span>
+                )}
+                {pocasExistencias && !agotado && (
+                  <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-orange-300 whitespace-nowrap">
+                    Pocas existencias ({producto.stock})
+                  </span>
+                )}
+              </div>
 
               {/* ── Selector de plan (solo para premium) ── */}
               {esPremium && (
-                <div className="mb-5 space-y-2">
-                  <p className="text-sm font-semibold text-gray-700">
+                <div className="mb-5 space-y-3">
+                  <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                     Elige tu plan:
-                    {cargandoVariantes && (
-                      <Loader2 className="inline-block w-3 h-3 ml-2 animate-spin text-purple-500" />
-                    )}
+                    {cargandoVariantes && <Loader2 className="w-3 h-3 animate-spin text-purple-500" />}
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     {/* Mensual */}
                     <button
                       onClick={() => setPlanSeleccionado('mensual')}
-                      className={`relative p-4 rounded-xl border-2 text-left transition ${
+                      className={`relative p-4 rounded-xl border-2 text-left transition-all ${
                         planSeleccionado === 'mensual'
-                          ? 'border-purple-500 bg-purple-50'
-                          : 'border-gray-200 hover:border-purple-300'
+                          ? 'border-purple-500 bg-purple-50 shadow-sm'
+                          : 'border-gray-200 bg-white hover:border-purple-300'
                       }`}
                     >
-                      <p className="text-sm font-semibold text-gray-900">Mensual</p>
-                      <p className="text-xl font-bold text-purple-700 mt-1">$200</p>
-                      <p className="text-xs text-gray-500">MXN / mes</p>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Mensual</p>
+                      <p className="text-2xl font-bold text-purple-700 leading-none">$200</p>
+                      <p className="text-xs text-gray-400 mt-1">MXN / mes</p>
                       {planSeleccionado === 'mensual' && (
-                        <CheckCircle className="absolute top-2 right-2 w-4 h-4 text-purple-500" />
+                        <CheckCircle className="absolute top-2.5 right-2.5 w-4 h-4 text-purple-500" />
                       )}
                     </button>
 
                     {/* Anual */}
                     <button
                       onClick={() => setPlanSeleccionado('anual')}
-                      className={`relative p-4 rounded-xl border-2 text-left transition ${
+                      className={`relative pt-5 pb-4 px-4 rounded-xl border-2 text-left transition-all ${
                         planSeleccionado === 'anual'
-                          ? 'border-purple-500 bg-purple-50'
-                          : 'border-gray-200 hover:border-purple-300'
+                          ? 'border-emerald-500 bg-emerald-50 shadow-sm'
+                          : 'border-gray-200 bg-white hover:border-emerald-400'
                       }`}
                     >
-                      <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-purple-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap">
-                        Ahorra $400
+                      <span className="absolute -top-2.5 left-3 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap tracking-wide">
+                        AHORRA 17%
                       </span>
-                      <p className="text-sm font-semibold text-gray-900">Anual</p>
-                      <p className="text-xl font-bold text-purple-700 mt-1">$2,000</p>
-                      <p className="text-xs text-gray-500">MXN / año</p>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Anual</p>
+                      <div className="flex items-baseline gap-1.5">
+                        <p className="text-2xl font-bold text-emerald-600 leading-none">$167</p>
+                        <p className="text-xs text-gray-400">/mes</p>
+                      </div>
+                      <p className="text-xs text-gray-400 line-through mt-0.5">$200/mes</p>
+                      <p className="text-xs font-medium text-emerald-700 mt-1">$2,000 MXN / año</p>
                       {planSeleccionado === 'anual' && (
-                        <CheckCircle className="absolute top-2 right-2 w-4 h-4 text-purple-500" />
+                        <CheckCircle className="absolute top-2.5 right-2.5 w-4 h-4 text-emerald-500" />
                       )}
                     </button>
                   </div>
+
+                  {planSeleccionado === 'anual' && (
+                    <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                      <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <p className="text-sm text-emerald-800 font-medium">
+                        Ahorras <span className="font-bold">$400 MXN</span> vs pago mensual · equivale a 2 meses gratis
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Precio */}
-              <p className="text-4xl font-bold text-accent mb-4">
-                ${efectivo.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                {esPremium && (
-                  <span className="text-base font-normal text-gray-500 ml-2">
-                    MXN / {planSeleccionado === 'mensual' ? 'mes' : 'año'}
-                  </span>
+              <div className="mb-4">
+                <p className="text-4xl font-bold text-accent leading-none">
+                  ${precioMostrado.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                  {esPremium && (
+                    <span className="text-base font-normal text-gray-500 ml-2">
+                      MXN / {planSeleccionado === 'mensual' ? 'mes' : 'año'}
+                    </span>
+                  )}
+                </p>
+                {esPremium && planSeleccionado === 'anual' && (
+                  <p className="text-sm text-gray-500 mt-1">Equivale a $167 MXN/mes · facturación anual</p>
                 )}
-              </p>
+              </div>
 
-              {!esPremium && sinStock && (
-                <div className="mb-4 flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-                  <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                  <span className="text-sm font-medium text-red-800">
-                    {esServicio ? 'Servicio no disponible' : 'Producto agotado'}
-                  </span>
+              {(esBackorder || agotado) && (
+                <div className="mb-4 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                  <Clock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-amber-800">
+                    <p className="font-semibold">Entrega diferida</p>
+                    <p>{agotado
+                      ? 'Sin stock en bodega.'
+                      : `Stock disponible: ${producto.stock} uds · Faltante: ${cantidad - producto.stock} uds.`
+                    } Entrega estimada: <strong>7 días hábiles + tiempo de envío.</strong></p>
+                  </div>
                 </div>
               )}
 
-              {!esPremium && pocasExistencias && (
-                <div className="mb-4 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-                  <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
-                  <span className="text-sm font-medium text-amber-800">
-                    Pocas existencias ({producto.stock} disponibles)
-                  </span>
-                </div>
-              )}
-
-              {esPorPedido && (
+{esPorPedido && (
                 <div className="mb-4 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
                   <span className="text-sm font-medium text-blue-800">
                     {esServicio ? 'Este servicio se solicita por pedido' : 'Siempre disponible - se solicita por pedido'}
@@ -297,6 +328,11 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                               }`}
                             >
                               {opt.valor}
+                              {opt.precio != null && (
+                                <span className="block text-xs font-normal mt-0.5 opacity-75">
+                                  ${opt.precio.toLocaleString('es-MX', { minimumFractionDigits: 0 })}
+                                </span>
+                              )}
                             </button>
                           );
                         })}
@@ -343,21 +379,23 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
               <div className="flex flex-col gap-3">
                 <button
                   onClick={handleAgregar}
-                  disabled={sinStock || !todosAtributosSeleccionados}
+                  disabled={!todosAtributosSeleccionados}
                   className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-lg transition-colors ${
-                    sinStock || !todosAtributosSeleccionados
+                    !todosAtributosSeleccionados
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-accent text-white hover:bg-accent-hover'
                   }`}
                 >
                   <ShoppingCart className="w-5 h-5" />
-                  {sinStock
-                    ? 'No disponible'
-                    : !todosAtributosSeleccionados
-                      ? 'Selecciona las opciones'
+                  {!todosAtributosSeleccionados
+                    ? 'Selecciona las opciones'
+                    : esPremium
+                      ? `Solicitar Plan ${planSeleccionado === 'mensual' ? 'Mensual' : 'Anual'}`
                       : esServicio
                         ? 'Solicitar Servicio'
-                        : 'Agregar al Carrito'}
+                        : esBackorder || agotado
+                          ? 'Agregar (entrega diferida)'
+                          : 'Agregar al Carrito'}
                 </button>
                 <button
                   onClick={onClose}
@@ -368,9 +406,13 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
               </div>
 
               {(esPremium || !sinStock) && (
-                <div className="mt-6 p-4 bg-primary-50 rounded-lg">
-                  <p className="text-sm text-primary-800">
-                    <strong>{esPremium ? 'Total:' : 'Subtotal:'}</strong> ${(efectivo.precio * cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN
+                <div className={`mt-6 p-4 rounded-lg ${esPremium && planSeleccionado === 'anual' ? 'bg-emerald-50 border border-emerald-200' : 'bg-primary-50'}`}>
+                  <p className={`text-sm font-medium ${esPremium && planSeleccionado === 'anual' ? 'text-emerald-900' : 'text-primary-800'}`}>
+                    <strong>{esPremium ? 'Total:' : 'Subtotal:'}</strong>{' '}
+                    ${(precioMostrado * cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN
+                    {esPremium && planSeleccionado === 'anual' && (
+                      <span className="ml-2 text-emerald-700 font-normal">(en lugar de $2,400)</span>
+                    )}
                   </p>
                 </div>
               )}

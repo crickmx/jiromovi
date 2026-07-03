@@ -26,7 +26,7 @@ interface Foto {
 const norm = (s: string) =>
   s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
-export default function FotosEstudioAdmin() {
+export default function FotosEstudioAdmin({ embedded }: { embedded?: boolean } = {}) {
   const { usuario } = useAuth();
   const [agentes, setAgentes] = useState<Agente[]>([]);
   const [loadingAgentes, setLoadingAgentes] = useState(true);
@@ -115,7 +115,7 @@ export default function FotosEstudioAdmin() {
     );
 
     const errores = resultados.filter(Boolean);
-    if (errores.length) setError('Algunas fotos no se pudieron subir.');
+    if (errores.length) setError(`Error al subir: ${(errores[0] as any)?.message ?? 'desconocido'}`);
 
     e.target.value = '';
     setSubiendo(false);
@@ -143,11 +143,13 @@ export default function FotosEstudioAdmin() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Fotos de Estudio — Admin"
-        description="Gestiona la carpeta de fotos de estudio de cada agente"
-        icon={Camera}
-      />
+      {!embedded && (
+        <PageHeader
+          title="Fotos de Estudio — Admin"
+          description="Gestiona la carpeta de fotos de estudio de cada agente"
+          icon={Camera}
+        />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-5 items-start">
 

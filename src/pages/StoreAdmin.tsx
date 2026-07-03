@@ -37,6 +37,9 @@ export default function StoreAdmin() {
   const [showCategoriaModal, setShowCategoriaModal] = useState(false);
   const [categoriaEditando, setCategoriaEditando] = useState<StoreCategoria | null>(null);
 
+  // Inline edit en tabla de productos
+  const [inlineEdit, setInlineEdit] = useState<{ id: string; campo: 'precio' | 'stock'; valor: string } | null>(null);
+
   // Carga masiva
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importando, setImportando] = useState(false);
@@ -101,6 +104,18 @@ export default function StoreAdmin() {
       console.error('Error eliminando producto:', error);
       alert('Error al eliminar producto. Puede que tenga pedidos asociados.');
     }
+  };
+
+  const handleInlineEditSave = async () => {
+    if (!inlineEdit) return;
+    const val = parseFloat(inlineEdit.valor);
+    if (isNaN(val) || val < 0) { setInlineEdit(null); return; }
+    const patch = inlineEdit.campo === 'precio' ? { precio: val } : { stock: Math.round(val) };
+    try {
+      await actualizarProducto(inlineEdit.id, patch);
+      setProductos(prev => prev.map(p => p.id === inlineEdit.id ? { ...p, ...patch } : p));
+    } catch (e) { console.error(e); }
+    setInlineEdit(null);
   };
 
   const handleToggleActivoProducto = async (producto: StoreProducto) => {
@@ -366,9 +381,28 @@ export default function StoreAdmin() {
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-sm font-semibold text-neutral-900 dark:text-white">
-                            ${producto.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                          </span>
+                          {inlineEdit?.id === producto.id && inlineEdit.campo === 'precio' ? (
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              autoFocus
+                              value={inlineEdit.valor}
+                              onChange={e => setInlineEdit({ ...inlineEdit, valor: e.target.value })}
+                              onBlur={handleInlineEditSave}
+                              onKeyDown={e => { if (e.key === 'Enter') handleInlineEditSave(); if (e.key === 'Escape') setInlineEdit(null); }}
+                              className="w-24 px-2 py-1 text-sm border border-accent rounded focus:outline-none focus:ring-2 focus:ring-accent dark:bg-neutral-800 dark:text-white"
+                            />
+                          ) : (
+                            <button
+                              onClick={() => setInlineEdit({ id: producto.id, campo: 'precio', valor: String(producto.precio) })}
+                              className="text-sm font-semibold text-neutral-900 dark:text-white hover:text-accent transition-colors group flex items-center gap-1"
+                              title="Clic para editar precio"
+                            >
+                              ${producto.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                              <Edit className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                            </button>
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           {producto.costo_base > 0 ? (
@@ -387,16 +421,33 @@ export default function StoreAdmin() {
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300">
                               Siempre disponible
                             </span>
+                          ) : inlineEdit?.id === producto.id && inlineEdit.campo === 'stock' ? (
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              autoFocus
+                              value={inlineEdit.valor}
+                              onChange={e => setInlineEdit({ ...inlineEdit, valor: e.target.value })}
+                              onBlur={handleInlineEditSave}
+                              onKeyDown={e => { if (e.key === 'Enter') handleInlineEditSave(); if (e.key === 'Escape') setInlineEdit(null); }}
+                              className="w-20 px-2 py-1 text-sm border border-accent rounded focus:outline-none focus:ring-2 focus:ring-accent dark:bg-neutral-800 dark:text-white"
+                            />
                           ) : (
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full ${
-                              producto.stock === 0
-                                ? 'bg-red-100 text-red-800'
-                                : producto.stock <= producto.stock_umbral
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-green-100 text-green-800'
-                            }`}>
+                            <button
+                              onClick={() => setInlineEdit({ id: producto.id, campo: 'stock', valor: String(producto.stock) })}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full hover:ring-2 hover:ring-accent/40 transition-all cursor-pointer ${
+                                producto.stock === 0
+                                  ? 'bg-red-100 text-red-800'
+                                  : producto.stock <= producto.stock_umbral
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-green-100 text-green-800'
+                              }`}
+                              title="Clic para editar stock"
+                            >
                               {producto.stock} uds
-                            </span>
+                              <Edit className="w-2.5 h-2.5 opacity-50" />
+                            </button>
                           )}
                         </td>
                         <td className="px-6 py-4">
@@ -567,6 +618,7 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
   const [atributos, setAtributos] = useState<StoreProductoAtributo[]>([]);
   const [newAtributoNombre, setNewAtributoNombre] = useState('');
   const [newOpcionValues, setNewOpcionValues] = useState<Record<string, string>>({});
+  const [newOpcionPrices, setNewOpcionPrices] = useState<Record<string, string>>({});
   useEffect(() => {
     if (producto?.id) loadCostosExtras();
     if (producto?.id) loadAtributos();
@@ -652,9 +704,11 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
     if (!valor) return;
     const atributo = atributos.find(a => a.id === atributoId);
     const orden = atributo?.opciones?.length || 0;
+    const precioRaw = (newOpcionPrices[atributoId] || '').trim();
+    const precio = precioRaw ? parseFloat(precioRaw) : null;
     const { data, error } = await supabase
       .from('store_producto_atributo_opciones')
-      .insert({ atributo_id: atributoId, valor, orden })
+      .insert({ atributo_id: atributoId, valor, orden, ...(precio != null && !isNaN(precio) ? { precio } : {}) })
       .select()
       .single();
     if (!error && data) {
@@ -664,6 +718,7 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
           : a
       ));
       setNewOpcionValues(prev => ({ ...prev, [atributoId]: '' }));
+      setNewOpcionPrices(prev => ({ ...prev, [atributoId]: '' }));
     }
   }
 
@@ -1048,6 +1103,9 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
                       {(attr.opciones || []).map(opt => (
                         <span key={opt.id} className="inline-flex items-center gap-1 bg-white dark:bg-white/10 border border-neutral-200 dark:border-white/15 rounded-full px-2.5 py-1 text-xs font-medium text-neutral-700 dark:text-white/70">
                           {opt.valor}
+                          {opt.precio != null && (
+                            <span className="text-accent font-semibold ml-0.5">${opt.precio.toLocaleString('es-MX', { minimumFractionDigits: 0 })}</span>
+                          )}
                           <button onClick={() => removeOpcion(attr.id, opt.id)} className="text-neutral-400 hover:text-red-500 ml-0.5">
                             <X className="w-3 h-3" />
                           </button>
@@ -1062,6 +1120,15 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
                         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addOpcion(attr.id); } }}
                         placeholder="Nueva opcion..."
                         className="flex-1 px-2.5 py-1.5 text-xs border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white"
+                      />
+                      <input
+                        type="number"
+                        value={newOpcionPrices[attr.id] || ''}
+                        onChange={e => setNewOpcionPrices(prev => ({ ...prev, [attr.id]: e.target.value }))}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addOpcion(attr.id); } }}
+                        placeholder="Precio"
+                        min="0"
+                        className="w-20 px-2.5 py-1.5 text-xs border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white"
                       />
                       <button
                         onClick={() => addOpcion(attr.id)}
