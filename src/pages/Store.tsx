@@ -7,7 +7,8 @@ import {
   obtenerProductos,
   obtenerCategorias,
   agregarAlCarrito,
-  obtenerCarrito
+  obtenerCarrito,
+  tieneAccesoEquipoStore
 } from '../lib/storeUtils';
 import type { StoreProducto, StoreCategoria, TipoItem } from '../lib/storeTypes';
 import { ProductoCard } from '../components/store/ProductoCard';
@@ -23,8 +24,15 @@ export default function Store() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
 
-  const isAdmin = tienePermisoAdminEnModulo(usuario, MODULOS.STORE);
+  const tienePermisoAdmin = tienePermisoAdminEnModulo(usuario, MODULOS.STORE);
+  const [tieneAccesoEquipo, setTieneAccesoEquipo] = useState(false);
+  const isAdmin = tienePermisoAdmin || tieneAccesoEquipo;
   const storeAttentionCount = useStoreAttentionCount(usuario?.id);
+
+  useEffect(() => {
+    if (!usuario?.id || tienePermisoAdmin) return;
+    tieneAccesoEquipoStore(usuario.id).then(setTieneAccesoEquipo);
+  }, [usuario?.id, tienePermisoAdmin]);
   const [productos, setProductos] = useState<StoreProducto[]>([]);
   const [categorias, setCategorias] = useState<StoreCategoria[]>([]);
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<string>('');
