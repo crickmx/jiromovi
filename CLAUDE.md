@@ -1,5 +1,25 @@
 # jiromovi — instrucciones para Claude Code
 
+## ⏳ PENDIENTE PARA LA PRÓXIMA SESIÓN — Habilitación de tipos de trámite por equipo (rediseño)
+
+**Pedido explícito del usuario (2026-07-04), NO implementar sin retomar el plan primero:**
+
+**Comportamiento actual (no deseado):** al crear un tipo de trámite nuevo, queda habilitado automáticamente para **todos** los equipos del área correspondiente.
+
+**Comportamiento deseado:**
+1. Por default, un tipo de trámite nuevo debe quedar **deshabilitado para todos los equipos**.
+2. El Admin lo habilita **manualmente** equipo por equipo.
+3. Además de la vista actual (parada en el equipo, viendo todos los tipos), agregar la **vista inversa**: desde la configuración del tipo de trámite (no desde el equipo), poder elegir **qué equipos lo van a tener habilitado para atenderlo** (atender, no crear — la creación de trámites es un tema distinto, no tocar).
+4. La UI de selección debe ser un **dropdown de selección múltiple** (multi-select), no lo que existe hoy.
+
+**Dónde está el intento actual (confuso, según el usuario):**
+- Tabla `tramite_team_tipo_config` (`team_id`, `tipo_id`, `habilitado`) — parada **en el equipo**: `src/components/tramites/GestionGruposVisualizacion.tsx` (~línea 275-446) carga todos los tipos del área y muestra un toggle habilitado/deshabilitado por tipo, con upsert en `handleToggle` (~436).
+- Se consume embebido en la tab "Equipos" de `src/pages/AdminTramites.tsx`.
+- **Ojo:** no se encontró ningún otro archivo que LEA `tramite_team_tipo_config` para filtrar qué tipos puede atender un equipo — hay que confirmar si el toggle actual tiene efecto real en algún lado (ej. al listar/asignar trámites) o si es otro caso de "tabla que no hace nada" como pasó antes con `tramite_equipo_tipo_permisos`/`usuario_team_permisos` (ver sección RESUELTO abajo). Si no tiene efecto real, el rediseño debe también conectarlo a donde se decide qué equipo atiende un trámite (`get_grupo_para_ticket`, `tramites_grupos_reglas`) — no solo cambiar la UI.
+- Existe tabla hermana `tramite_equipo_tipo_permisos` (ver/crear/editar por equipo × tipo, con tri-toggle null/✓/✗) de la tab "Visibilidad" de `AdminTramites.tsx` — **esa tab está OCULTA** desde 2026-07-02 porque no tenía efecto real. Antes de construir la vista inversa nueva, decidir si se reutiliza esta tabla/tab (ya tiene la forma equipo×tipo) o se hace desde cero — puede ser la misma raíz del "intento actual" que el usuario encuentra confuso.
+
+**Primer paso al retomar:** confirmar con el usuario si "deshabilitado por default" aplica también a tipos ya existentes (backfill) o solo a los nuevos de aquí en adelante, y trazar el plan antes de tocar código (así lo pidió para features de este tipo — ver "Cómo trabajar con Ricardo").
+
 ## Cómo trabajar con Ricardo (usuario / responsable técnico JIRO)
 - Responde siempre en español.
 - Cuando crees o referencies una migración, da la ruta completa de una vez: `C:\Users\medau\Desktop\jiromovi-main\supabase\migrations\<archivo>.sql` — la pide en cada sesión.
