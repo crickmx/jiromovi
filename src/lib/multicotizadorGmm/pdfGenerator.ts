@@ -9,24 +9,24 @@ import { COVERAGE_PDF_TEXTS } from '../gmmCoverageHelp';
 // Utilities
 // ─────────────────────────────────────────────
 
-function formatCurrency(value: number | null | undefined): string {
-  const numValue = typeof value === 'number' && !isNaN(value) ? value : 0;
+function fmt(value: number | null | undefined): string {
+  const n = typeof value === 'number' && !isNaN(value) ? value : 0;
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
     currency: 'MXN',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(numValue);
+  }).format(n);
 }
 
-function formatDate(date: string | Date): string {
+function fmtDate(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   return d.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
-function safeNumber(value: any, defaultValue: number = 0): number {
-  const num = typeof value === 'number' ? value : parseFloat(value);
-  return !isNaN(num) && isFinite(num) ? num : defaultValue;
+function safe(value: any, def = 0): number {
+  const n = typeof value === 'number' ? value : parseFloat(value);
+  return !isNaN(n) && isFinite(n) ? n : def;
 }
 
 interface MultiGmmOption {
@@ -36,347 +36,275 @@ interface MultiGmmOption {
   input: BxplusQuoteInput | BnvQuoteInput | BnpQuoteInput;
 }
 
-async function loadImageAsBase64(url: string): Promise<string | null> {
+async function toBase64(url: string): Promise<string | null> {
   try {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return new Promise(r => {
+      const fr = new FileReader();
+      fr.onloadend = () => r(fr.result as string);
+      fr.onerror = () => r(null);
+      fr.readAsDataURL(blob);
     });
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 function hexToRgb(hex: string): [number, number, number] {
-  const cleaned = hex.replace('#', '');
-  const r = parseInt(cleaned.substring(0, 2), 16);
-  const g = parseInt(cleaned.substring(2, 4), 16);
-  const b = parseInt(cleaned.substring(4, 6), 16);
+  const c = hex.replace('#', '');
+  const r = parseInt(c.substring(0, 2), 16);
+  const g = parseInt(c.substring(2, 4), 16);
+  const b = parseInt(c.substring(4, 6), 16);
   return [isNaN(r) ? 14 : r, isNaN(g) ? 35 : g, isNaN(b) ? 226 : b];
 }
 
-function lightenColor(rgb: [number, number, number], amount: number): [number, number, number] {
+function lighten(rgb: [number, number, number], a: number): [number, number, number] {
   return [
-    Math.min(255, rgb[0] + Math.round((255 - rgb[0]) * amount)),
-    Math.min(255, rgb[1] + Math.round((255 - rgb[1]) * amount)),
-    Math.min(255, rgb[2] + Math.round((255 - rgb[2]) * amount)),
+    Math.min(255, rgb[0] + Math.round((255 - rgb[0]) * a)),
+    Math.min(255, rgb[1] + Math.round((255 - rgb[1]) * a)),
+    Math.min(255, rgb[2] + Math.round((255 - rgb[2]) * a)),
   ];
 }
 
-function darkenColor(rgb: [number, number, number], amount: number): [number, number, number] {
+function darken(rgb: [number, number, number], a: number): [number, number, number] {
   return [
-    Math.max(0, rgb[0] - Math.round(rgb[0] * amount)),
-    Math.max(0, rgb[1] - Math.round(rgb[1] * amount)),
-    Math.max(0, rgb[2] - Math.round(rgb[2] * amount)),
+    Math.max(0, rgb[0] - Math.round(rgb[0] * a)),
+    Math.max(0, rgb[1] - Math.round(rgb[1] * a)),
+    Math.max(0, rgb[2] - Math.round(rgb[2] * a)),
   ];
 }
 
 // ─────────────────────────────────────────────
-// Drawing helpers
+// Low-level draw primitives
 // ─────────────────────────────────────────────
 
-function drawRoundedRect(
-  doc: jsPDF,
-  x: number, y: number, w: number, h: number,
-  r: number,
-  style: 'S' | 'F' | 'FD' = 'FD'
-) {
+function rrect(doc: jsPDF, x: number, y: number, w: number, h: number, r: number, style: 'S'|'F'|'FD' = 'FD') {
   doc.roundedRect(x, y, w, h, r, r, style);
 }
 
-function drawCard(
+/** White card with subtle drop shadow */
+function card(
   doc: jsPDF,
   x: number, y: number, w: number, h: number,
-  opts?: {
-    fillColor?: [number, number, number];
-    borderColor?: [number, number, number];
-    radius?: number;
-    shadow?: boolean;
-    lineWidth?: number;
-  }
+  opts?: { fill?: [number,number,number]; border?: [number,number,number]; r?: number; lw?: number; shadow?: boolean }
 ) {
-  const r = opts?.radius ?? 3;
-  const shadow = opts?.shadow ?? true;
-  if (shadow) {
-    doc.setFillColor(215, 215, 220);
-    doc.setDrawColor(215, 215, 220);
-    drawRoundedRect(doc, x + 0.4, y + 0.4, w, h, r, 'F');
+  const r = opts?.r ?? 3;
+  if (opts?.shadow !== false) {
+    doc.setFillColor(210, 212, 220);
+    rrect(doc, x + 0.5, y + 0.5, w, h, r, 'F');
   }
-  doc.setFillColor(...(opts?.fillColor || [255, 255, 255]));
-  doc.setDrawColor(...(opts?.borderColor || [220, 220, 228]));
-  doc.setLineWidth(opts?.lineWidth ?? 0.2);
-  drawRoundedRect(doc, x, y, w, h, r, 'FD');
+  doc.setFillColor(...(opts?.fill ?? [255, 255, 255]));
+  doc.setDrawColor(...(opts?.border ?? [218, 220, 230]));
+  doc.setLineWidth(opts?.lw ?? 0.2);
+  rrect(doc, x, y, w, h, r, 'FD');
 }
 
-function drawBadge(
+/** Filled pill badge; returns badge width */
+function badge(
   doc: jsPDF,
   x: number, y: number,
   text: string,
-  bgColor: [number, number, number],
-  textColor: [number, number, number],
-  fontSize = 5
+  bg: [number,number,number],
+  fg: [number,number,number],
+  fs = 4.8
 ): number {
   const prev = doc.getFontSize();
-  doc.setFontSize(fontSize);
+  doc.setFontSize(fs);
   const tw = doc.getTextWidth(text);
-  const bw = tw + 5;
-  const bh = fontSize * 0.55 + 2;
-  doc.setFillColor(...bgColor);
-  drawRoundedRect(doc, x, y, bw, bh, bh / 2, 'F');
-  doc.setFontSize(fontSize);
+  const bw = tw + 5; const bh = fs * 0.54 + 2.2;
+  doc.setFillColor(...bg);
+  rrect(doc, x, y, bw, bh, bh / 2, 'F');
   doc.setFont(undefined, 'bold');
-  doc.setTextColor(...textColor);
+  doc.setTextColor(...fg);
   doc.text(text, x + 2.5, y + bh - 1.1);
   doc.setFontSize(prev);
   return bw;
 }
 
-function drawAccentLine(
-  doc: jsPDF,
-  x: number, y: number, w: number,
-  color: [number, number, number],
-  thickness = 0.8
-) {
-  doc.setDrawColor(...color);
-  doc.setLineWidth(thickness);
-  doc.line(x, y, x + w, y);
-}
-
-function drawSectionLabel(
-  doc: jsPDF,
-  label: string,
-  x: number, y: number,
-  accent: [number, number, number]
-) {
-  // Left accent bar
+/** Left-accented section label */
+function sectionLabel(doc: jsPDF, label: string, x: number, y: number, accent: [number,number,number]) {
   doc.setFillColor(...accent);
-  doc.rect(x, y - 3, 1.5, 5.5, 'F');
-
+  doc.rect(x, y - 3.2, 1.8, 6, 'F');
   doc.setFontSize(7.5);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(...accent);
-  doc.text(label.toUpperCase(), x + 4, y + 1.5);
+  doc.text(label.toUpperCase(), x + 4.5, y + 1.5);
+}
+
+/** Thin horizontal rule */
+function rule(doc: jsPDF, x: number, y: number, w: number, color: [number,number,number] = [220,222,230]) {
+  doc.setDrawColor(...color);
+  doc.setLineWidth(0.15);
+  doc.line(x, y, x + w, y);
 }
 
 // ─────────────────────────────────────────────
 // Business logic helpers
 // ─────────────────────────────────────────────
 
-const COBERTURAS_ADICIONALES = [
-  { key: 'reconocimiento_antiguedad', label: 'Reconocimiento de antiguedad' },
-  { key: 'medicamentos_fuera', label: 'Medicamentos ambulatorios' },
-  { key: 'complicaciones_no_amparadas', label: 'Complicaciones no amparadas' },
-  { key: 'padecimientos_preexistentes', label: 'Padecimientos preexistentes' },
+const COBERTURAS = [
+  { key: 'reconocimiento_antiguedad',     label: 'Reconocimiento de antiguedad' },
+  { key: 'medicamentos_fuera',            label: 'Medicamentos ambulatorios' },
+  { key: 'complicaciones_no_amparadas',   label: 'Complicaciones no amparadas' },
+  { key: 'padecimientos_preexistentes',   label: 'Padecimientos preexistentes' },
   { key: 'eliminacion_deducible_accidente', label: 'Sin deducible por accidente' },
-  { key: 'multiregion', label: 'Multiregion' },
-  { key: 'vip', label: 'Beneficio VIP' },
-  { key: 'emergencia_medica_extranjero', label: 'Emergencias en extranjero' },
+  { key: 'multiregion',                   label: 'Multiregion' },
+  { key: 'vip',                           label: 'Beneficio VIP' },
+  { key: 'emergencia_medica_extranjero',  label: 'Emergencias en el extranjero' },
   { key: 'enfermedades_graves_extranjero', label: 'Enf. graves en extranjero' },
-  { key: 'cobertura_internacional', label: 'Cobertura internacional' },
-  { key: 'ampliacion_servicios', label: 'Ampliacion de servicios' },
-  { key: 'ayuda_diaria', label: 'Ayuda diaria hospitalizacion' },
-  { key: 'indemnizacion_eg', label: 'Indemnizacion enf. graves' },
-  { key: 'maternidad', label: 'Maternidad' },
-  { key: 'xtensuz', label: 'Xtensuz' },
+  { key: 'cobertura_internacional',       label: 'Cobertura internacional' },
+  { key: 'ampliacion_servicios',          label: 'Ampliacion de servicios' },
+  { key: 'ayuda_diaria',                  label: 'Ayuda diaria hospitalizacion' },
+  { key: 'indemnizacion_eg',              label: 'Indemnizacion enf. graves' },
+  { key: 'maternidad',                    label: 'Maternidad' },
+  { key: 'xtensuz',                       label: 'Xtensuz' },
 ];
 
-const NIVEL_DISPLAY_MAP: Record<string, string> = {
-  'Alto': 'Elite',
-  'Medio': 'Plus',
-  'Basico': 'Estandar',
-};
+const NIVEL_MAP: Record<string, string> = { Alto: 'Elite', Medio: 'Plus', Basico: 'Estandar' };
 
-function formatSumaMDP(val: number): string {
-  if (!val) return '-';
-  return formatCurrency(val * 1_000_000);
-}
-
-function formatDeducibleMiles(val: number): string {
-  if (!val) return '-';
-  return formatCurrency(val * 1_000);
-}
-
-function formatTopeCoaseguro(val: number): string {
-  if (!val) return 'Sin tope';
-  return formatCurrency(val);
-}
-
-function formatCoaseguroDisplay(val: string): string {
+function fmtSA(val: number) { return val ? fmt(val * 1_000_000) : '-'; }
+function fmtDed(val: number) { return val ? fmt(val * 1_000) : '-'; }
+function fmtTope(val: number) { return val ? fmt(val) : 'Sin tope'; }
+function fmtCoas(val: string) {
   if (!val || val === '-') return '-';
   if (val.includes('%')) return val;
-  const num = parseFloat(val);
-  if (!isNaN(num) && num < 1) return `${(num * 100).toFixed(0)}%`;
-  if (!isNaN(num)) return `${num}%`;
+  const n = parseFloat(val);
+  if (!isNaN(n) && n < 1) return `${(n * 100).toFixed(0)}%`;
+  if (!isNaN(n)) return `${n}%`;
   return val;
 }
-
-function formatAmountDisplay(val: string): string {
+function fmtAmt(val: string) {
   if (!val || val === '-') return '-';
   if (val.includes('$')) return val;
-  const num = parseFloat(val.replace(/,/g, ''));
-  if (!isNaN(num)) return formatCurrency(num);
-  return val;
+  const n = parseFloat(val.replace(/,/g, ''));
+  return !isNaN(n) ? fmt(n) : val;
 }
 
-function getOptionPlanInfo(opt: OptionResult, def?: MultiGmmOption): Record<string, string> {
-  const input = def?.input;
-  if (!input) return {};
-
+function planInfo(opt: OptionResult, def?: MultiGmmOption): Record<string, string> {
+  const inp = def?.input;
+  if (!inp) return {};
   if (opt.product_id === 'BXPLUS') {
-    const bx = input as BxplusQuoteInput;
+    const bx = inp as BxplusQuoteInput;
     return {
       producto: 'BX+ Unikuz',
       estado: bx.estado || '-',
-      nivel: NIVEL_DISPLAY_MAP[bx.nivel_hospitalario] || bx.nivel_hospitalario || '-',
+      nivel: NIVEL_MAP[bx.nivel_hospitalario] || bx.nivel_hospitalario || '-',
       tabulador: bx.tabulador || '-',
       suma_asegurada: bx.suma_asegurada || '-',
       deducible: bx.deducible || '-',
       coaseguro: bx.coaseguro || '-',
-      tope_coaseguro: bx.tope_coaseguro_seleccionado ? formatCurrency(bx.tope_coaseguro_seleccionado) : '-',
+      tope_coaseguro: bx.tope_coaseguro_seleccionado ? fmt(bx.tope_coaseguro_seleccionado) : '-',
     };
   } else if (opt.product_id === 'BNV') {
-    const bnv = input as BnvQuoteInput;
+    const b = inp as BnvQuoteInput;
     return {
       producto: 'Bupa Nacional Vital',
-      region: bnv.region_zone || '-',
-      suma_asegurada: formatSumaMDP(bnv.suma_asegurada),
-      deducible: formatDeducibleMiles(bnv.deducible),
-      coaseguro: `${bnv.coaseguro || 0}%`,
-      tope_coaseguro: formatTopeCoaseguro(bnv.tope_coaseguro),
+      region: b.region_zone || '-',
+      suma_asegurada: fmtSA(b.suma_asegurada),
+      deducible: fmtDed(b.deducible),
+      coaseguro: `${b.coaseguro || 0}%`,
+      tope_coaseguro: fmtTope(b.tope_coaseguro),
     };
   } else {
-    const bnp = input as BnpQuoteInput;
+    const b = inp as BnpQuoteInput;
     return {
       producto: 'Bupa Nacional Plus',
-      region: bnp.region_zone || '-',
-      suma_asegurada: formatSumaMDP(bnp.suma_asegurada),
-      deducible: formatDeducibleMiles(bnp.deducible),
-      coaseguro: `${bnp.coaseguro || 0}%`,
+      region: b.region_zone || '-',
+      suma_asegurada: fmtSA(b.suma_asegurada),
+      deducible: fmtDed(b.deducible),
+      coaseguro: `${b.coaseguro || 0}%`,
     };
   }
 }
 
-function getOptionCoverages(opt: OptionResult, def?: MultiGmmOption): Record<string, boolean> {
+function optionCoverages(opt: OptionResult, def?: MultiGmmOption): Record<string, boolean> {
   if (opt.product_id === 'BXPLUS' && def) {
-    const bx = def.input as BxplusQuoteInput;
-    return (bx.coverages || {}) as Record<string, boolean>;
+    return ((def.input as BxplusQuoteInput).coverages || {}) as Record<string, boolean>;
   }
   return {};
 }
 
-function getPersonPrima(opt: OptionResult, idx: number): number {
-  const pr = opt.result.people_results[idx];
+function personPrima(opt: OptionResult, i: number): number {
+  const pr = opt.result.people_results[i];
   if (!pr) return 0;
-  if ('prima_total' in pr) return (pr as any).prima_total || 0;
+  if ('prima_total'    in pr) return (pr as any).prima_total    || 0;
   if ('discounted_rate' in pr) return (pr as any).discounted_rate || 0;
-  if ('annual_premium' in pr) return (pr as any).annual_premium || 0;
+  if ('annual_premium' in pr) return (pr as any).annual_premium  || 0;
   return 0;
 }
 
 // ─────────────────────────────────────────────
-// Footer (applied to every page at the end)
+// Footer — applied to every page at the end
 // ─────────────────────────────────────────────
 
 function applyFooters(
   doc: jsPDF,
-  accent: [number, number, number],
+  accent: [number,number,number],
   webSlug: string,
-  totalPages: number
+  total: number
 ) {
   const PW = doc.internal.pageSize.getWidth();
   const PH = doc.internal.pageSize.getHeight();
-  const margin = 10;
-  const cw = PW - margin * 2;
+  const M = 10;
 
-  for (let p = 1; p <= totalPages; p++) {
+  for (let p = 1; p <= total; p++) {
     doc.setPage(p);
 
-    // Thin separator
-    doc.setDrawColor(210, 210, 218);
+    // Separator line
+    doc.setDrawColor(208, 210, 220);
     doc.setLineWidth(0.15);
-    doc.line(margin, PH - 14, PW - margin, PH - 14);
+    doc.line(M, PH - 13.5, PW - M, PH - 13.5);
 
     // Legal note
-    doc.setFontSize(4.2);
+    doc.setFontSize(4.0);
     doc.setFont(undefined, 'normal');
-    doc.setTextColor(155, 155, 160);
+    doc.setTextColor(155, 158, 168);
     const nota = 'Cotizacion valida 15 dias naturales. Aceptacion sujeta a politicas de suscripcion de cada aseguradora. Coberturas conforme a Condiciones Generales CNSF. Documento ilustrativo, no contractual.';
-    const noteLines = doc.splitTextToSize(nota, cw - 28);
-    let ny = PH - 11.5;
-    for (const line of noteLines) {
-      doc.text(line, margin, ny);
-      ny += 2.3;
-    }
+    const lines = doc.splitTextToSize(nota, PW - M * 2 - 26);
+    let ny = PH - 11;
+    for (const l of lines) { doc.text(l, M, ny); ny += 2.2; }
 
     // Page number
-    doc.setFontSize(5);
-    doc.setTextColor(170, 170, 175);
-    doc.text(`${p} / ${totalPages}`, PW - margin, PH - 10, { align: 'right' });
+    doc.setFontSize(4.8);
+    doc.setTextColor(168, 170, 180);
+    doc.text(`Pag. ${p} / ${total}`, PW - M, PH - 9.8, { align: 'right' });
 
-    // Web slug
+    // Web slug (accent color, right side)
     if (webSlug) {
       doc.setFontSize(5);
       doc.setFont(undefined, 'bold');
       doc.setTextColor(...accent);
-      doc.text(`agentedeseguros.website/${webSlug}`, PW - margin, PH - 6, { align: 'right' });
+      doc.text(`agentedeseguros.website/${webSlug}`, PW - M, PH - 6.2, { align: 'right' });
     }
 
-    // Bottom accent bar
+    // Thin bottom accent bar
     doc.setFillColor(...accent);
-    doc.rect(0, PH - 1.5, PW, 1.5, 'F');
+    doc.rect(0, PH - 1.8, PW, 1.8, 'F');
   }
 }
 
 // ─────────────────────────────────────────────
-// PAGE HEADER (accent band + logo + folio)
+// Repeating mini-header (pages 2+)
 // ─────────────────────────────────────────────
 
-function drawPageHeader(
+function miniHeader(
   doc: jsPDF,
-  accent: [number, number, number],
-  logoBase64: string | null,
-  title: string,
-  subtitle: string
+  accent: [number,number,number],
+  subtitle: string,
+  clientName: string
 ): number {
   const PW = doc.internal.pageSize.getWidth();
-  const headerH = 18;
-
-  // Gradient-like header: fill + slightly lighter right portion
   doc.setFillColor(...accent);
-  doc.rect(0, 0, PW, headerH, 'F');
-
-  // Subtle right fade strip
-  const lighter = lightenColor(accent, 0.18);
-  doc.setFillColor(...lighter);
-  doc.rect(PW * 0.55, 0, PW * 0.45, headerH, 'F');
-
-  // Logo
-  if (logoBase64) {
-    try {
-      doc.addImage(logoBase64, 'PNG', 10, 2.5, 24, 13);
-    } catch { /* skip */ }
-  }
-
-  // Title
-  doc.setFontSize(11.5);
+  doc.rect(0, 0, PW, 7.5, 'F');
+  doc.setFontSize(6.5);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(255, 255, 255);
-  const titleX = logoBase64 ? 38 : 10;
-  doc.text(title, titleX, 9);
-
-  // Subtitle
-  doc.setFontSize(6.5);
-  doc.setFont(undefined, 'normal');
-  doc.setTextColor(255, 255, 255);
-  doc.setGState(new (doc as any).GState({ opacity: 0.85 }));
-  doc.text(subtitle, titleX, 14.5);
-  doc.setGState(new (doc as any).GState({ opacity: 1 }));
-
-  return headerH;
+  doc.text(subtitle, 10, 5.2);
+  if (clientName) {
+    doc.setFontSize(5.8);
+    doc.setFont(undefined, 'normal');
+    doc.text(clientName, PW - 10, 5.2, { align: 'right' });
+  }
+  return 11;
 }
 
 // ─────────────────────────────────────────────
@@ -395,742 +323,689 @@ export async function generateMultiGmmPdf(
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const PW = doc.internal.pageSize.getWidth();
   const PH = doc.internal.pageSize.getHeight();
-  const M = 10;          // margin
-  const CW = PW - M * 2; // content width
-  const FOOTER_RESERVE = 16;
+  const M = 10;
+  const CW = PW - M * 2;
+  const FTR = 16; // footer reserve
 
-  const validOptions = results.filter(r => !r.result.error);
-  const N = Math.min(validOptions.length, 4);
-
+  const valid = results.filter(r => !r.result.error);
+  const N = Math.min(valid.length, 4);
   if (N === 0) {
     doc.setFontSize(11);
     doc.text('No hay opciones validas para generar PDF.', M, 30);
     return doc.output('blob');
   }
 
-  // Branding colors
+  // ── Branding palette
   const accentHex = usuario?.oficina?.accent_color || '#0E23E2';
-  const accent = hexToRgb(accentHex);
-  const accentLight = lightenColor(accent, 0.92);
-  const accentMid = lightenColor(accent, 0.72);
-  const accentDark = darkenColor(accent, 0.12);
+  const A = hexToRgb(accentHex);               // accent full
+  const AL = lighten(A, 0.91);                 // accent super light bg
+  const AM = lighten(A, 0.72);                 // accent mid border
+  const AD = darken(A, 0.10);                  // accent dark
+  const DARK: [number,number,number] = [28,30,40];
+  const MID: [number,number,number]  = [72,75,90];
+  const SUB: [number,number,number]  = [120,124,138];
+  const BG1: [number,number,number]  = [250,250,254]; // subtle page bg for cards
+  const GREEN: [number,number,number]= [22,163,74];
+  const RED: [number,number,number]  = [205,55,55];
+  const AMBER: [number,number,number]= [180,90,0];
+  const TEAL: [number,number,number] = [14,116,144];
 
-  // Load logo
-  const logoBase64 = logoUrl ? await loadImageAsBase64(logoUrl) : null;
+  // ── Load images
+  const logoB64   = logoUrl ? await toBase64(logoUrl) : null;
+  const photoB64  = usuario?.imagen_perfil_url ? await toBase64(usuario.imagen_perfil_url) : null;
 
-  // Asesor data
-  const asesorNombre = usuario?.nombre_publico || usuario?.nombre || 'Tu Asesor';
-  const asesorCelular = usuario?.celular_laboral || usuario?.celular || '';
-  const asesorEmail = usuario?.email_laboral || usuario?.email || '';
+  // ── Advisor data
+  const asesorNombre  = usuario?.nombre_publico || usuario?.nombre || 'Tu Asesor';
+  const asesorTel     = usuario?.celular_laboral || usuario?.celular || '';
+  const asesorEmail   = usuario?.email_laboral   || usuario?.email  || '';
   const asesorWebSlug = usuario?.web_slug || '';
 
-  // Load advisor profile image
-  const profileBase64 = usuario?.imagen_perfil_url
-    ? await loadImageAsBase64(usuario.imagen_perfil_url)
-    : null;
-
-  // Best option: lowest annual total
-  const bestIdx = validOptions.reduce((minI, opt, i) => {
-    const cur = safeNumber(opt.result.totals?.['Anual']?.total);
-    const best = safeNumber(validOptions[minI]?.result.totals?.['Anual']?.total);
-    return cur > 0 && (best <= 0 || cur < best) ? i : minI;
+  // ── Best option index (lowest annual total)
+  const bestIdx = valid.reduce((mi, o, i) => {
+    const cur  = safe(o.result.totals?.['Anual']?.total);
+    const best = safe(valid[mi]?.result.totals?.['Anual']?.total);
+    return cur > 0 && (best <= 0 || cur < best) ? i : mi;
   }, 0);
 
-  // Highest suma asegurada option
-  const highestSAIdx = (() => {
-    let maxSA = -1, idx = -1;
+  // ── Highest SA index
+  const highSAIdx = (() => {
+    let mx = -1, idx = -1;
     for (let i = 0; i < N; i++) {
-      const def = optionDefs?.find(d => d.id === validOptions[i].option_id);
-      const info = getOptionPlanInfo(validOptions[i], def);
+      const def = optionDefs?.find(d => d.id === valid[i].option_id);
+      const info = planInfo(valid[i], def);
       const raw = info.suma_asegurada || '-';
-      let num = 0;
-      if (raw.includes('$')) {
-        num = parseFloat(raw.replace(/[$,\s]/g, ''));
-      } else {
-        num = parseFloat(raw.replace(/,/g, '')) || 0;
-      }
-      if (num > maxSA) { maxSA = num; idx = i; }
+      const n = parseFloat(raw.replace(/[$,\s]/g, '')) || 0;
+      if (n > mx) { mx = n; idx = i; }
     }
     return idx;
   })();
 
-  // Card gap + width utility
-  const cardGap = 3;
-  const cardW = (CW - cardGap * (N - 1)) / N;
+  const GAP = 3;                              // gap between option cards
+  const CW_OPT = (CW - GAP * (N - 1)) / N;  // option card width
 
-  // ══════════════════════════════════════════════════
-  // PAGE 1 — Executive Cover
-  // ══════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════
+  // PAGE 1  —  Portada comercial + resumen ejecutivo
+  // ════════════════════════════════════════════════════════
 
-  const subtitleP1Parts: string[] = [];
-  if (folio) subtitleP1Parts.push(`Folio ${folio}`);
-  subtitleP1Parts.push(formatDate(new Date()));
-  subtitleP1Parts.push('Vigencia 15 dias');
+  // ── Full-bleed header gradient band
+  const HDR_H = 20;
+  doc.setFillColor(...A);
+  doc.rect(0, 0, PW, HDR_H, 'F');
+  // lighter right wash
+  doc.setFillColor(...lighten(A, 0.2));
+  doc.rect(PW * 0.5, 0, PW * 0.5, HDR_H, 'F');
 
-  let yPos = drawPageHeader(
-    doc, accent, logoBase64,
-    'Propuesta Comercial · Gastos Medicos Mayores',
-    subtitleP1Parts.join('  ·  ')
-  );
-  yPos += 5;
-
-  // ── Client info strip
-  drawCard(doc, M, yPos, CW, 11, {
-    fillColor: accentLight,
-    borderColor: accentMid,
-    radius: 3,
-    shadow: false,
-  });
-  doc.setFontSize(6.5);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(...accent);
-  doc.text('CLIENTE', M + 4, yPos + 4.5);
-  doc.setFontSize(9);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(22, 22, 30);
-  doc.text(clientName || 'Sin nombre', M + 22, yPos + 4.8);
-
-  if (people.length > 0) {
-    doc.setFontSize(5.5);
-    doc.setFont(undefined, 'normal');
-    doc.setTextColor(90, 90, 100);
-    const personSummary = people.map(p => `${p.name} (${p.age} a.)`).join(' · ');
-    doc.text(personSummary, M + 22, yPos + 8.8);
+  // logo
+  if (logoB64) {
+    try { doc.addImage(logoB64, 'PNG', M, 3, 25, 14); } catch { /* skip */ }
   }
-  yPos += 15;
 
-  // ── Option cards (per option)
-  const optCardH = 34;
+  // title block
+  const titleX = logoB64 ? 40 : M;
+  doc.setFontSize(12);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(255, 255, 255);
+  doc.text('Propuesta Comercial', titleX, 9);
+  doc.setFontSize(8);
+  doc.setFont(undefined, 'normal');
+  doc.text('Gastos Medicos Mayores', titleX, 14);
 
+  // folio + date right side
+  const metaX = PW - M;
+  doc.setFontSize(6);
+  doc.setTextColor(255, 255, 255);
+  const metaParts: string[] = [];
+  if (folio) metaParts.push(`Folio ${folio}`);
+  metaParts.push(fmtDate(new Date()));
+  metaParts.push('Vigencia 15 dias');
+  doc.text(metaParts.join('  ·  '), metaX, 9, { align: 'right' });
+
+  let Y = HDR_H + 4;
+
+  // ── Client strip
+  card(doc, M, Y, CW, 11, { fill: AL, border: AM, r: 3, shadow: false, lw: 0.3 });
+  // left accent bar
+  doc.setFillColor(...A);
+  doc.roundedRect(M, Y, 2, 11, 1, 1, 'F');
+  doc.setFontSize(6);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(...A);
+  doc.text('CLIENTE', M + 5.5, Y + 4.5);
+  doc.setFontSize(9.5);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(...DARK);
+  doc.text(clientName || 'Sin nombre', M + 5.5, Y + 9.2);
+  // insured summary right side
+  if (people.length) {
+    doc.setFontSize(5.2);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(...MID);
+    const ps = people.map(p => `${p.name}${p.name ? ' (' : ''}${p.age} a.${p.name ? ')' : ''}`).join('  ·  ');
+    doc.text(ps, PW - M - 2, Y + 6.5, { align: 'right' });
+  }
+  Y += 15;
+
+  // ── Option cards — premium visual cards
+  const OPT_H = 36;
   for (let i = 0; i < N; i++) {
-    const opt = validOptions[i];
+    const opt = valid[i];
     const def = optionDefs?.find(d => d.id === opt.option_id);
-    const info = getOptionPlanInfo(opt, def);
-    const cx = M + i * (cardW + cardGap);
+    const info = planInfo(opt, def);
+    const cx = M + i * (CW_OPT + GAP);
     const isBest = i === bestIdx;
-    const isHighSA = i === highestSAIdx && highestSAIdx !== bestIdx;
+    const isHighSA = i === highSAIdx && highSAIdx !== bestIdx;
 
-    const fillBg: [number, number, number] = isBest ? accentLight : [252, 252, 255];
-    const borderC: [number, number, number] = isBest ? accent : [210, 215, 225];
-
-    drawCard(doc, cx, yPos, cardW, optCardH, {
-      fillColor: fillBg, borderColor: borderC, radius: 4,
-      lineWidth: isBest ? 0.5 : 0.2,
+    // Card body
+    card(doc, cx, Y, CW_OPT, OPT_H, {
+      fill: isBest ? AL : [255, 255, 255],
+      border: isBest ? A : [218, 220, 232],
+      r: 4,
+      lw: isBest ? 0.5 : 0.2,
     });
 
     // Top accent stripe on best card
     if (isBest) {
-      doc.setFillColor(...accent);
-      doc.roundedRect(cx, yPos, cardW, 3, 4, 4, 'F');
-      doc.rect(cx, yPos + 1.5, cardW, 1.5, 'F');
+      doc.setFillColor(...A);
+      doc.roundedRect(cx, Y, CW_OPT, 3.5, 4, 4, 'F');
+      doc.rect(cx, Y + 1.8, CW_OPT, 1.8, 'F');
     }
 
-    let textY = yPos + (isBest ? 6 : 4.5);
-    const textX = cx + 4;
+    const TX = cx + 3.5;
+    let TY = Y + (isBest ? 7 : 5);
 
     // Option label
     doc.setFontSize(7.5);
     doc.setFont(undefined, 'bold');
-    doc.setTextColor(22, 22, 30);
-    doc.text(opt.option_label, textX, textY);
-    textY += 4.5;
+    doc.setTextColor(...DARK);
+    doc.text(opt.option_label, TX, TY);
+    TY += 4.2;
 
     // Product badge
-    drawBadge(doc, textX, textY, PRODUCT_LABELS[opt.product_id] || opt.product_id, accent, [255, 255, 255], 4.8);
-    textY += 5;
+    badge(doc, TX, TY, PRODUCT_LABELS[opt.product_id] || opt.product_id, A, [255,255,255], 4.5);
+    TY += 5.2;
 
-    // Status badges
+    // Status badge
     if (isBest) {
-      drawBadge(doc, textX, textY, '★ MEJOR PRECIO', [22, 163, 74], [255, 255, 255], 4.8);
-      textY += 5;
+      badge(doc, TX, TY, '★  MEJOR PRECIO', GREEN, [255,255,255], 4.5);
+      TY += 5.2;
     } else if (isHighSA) {
-      drawBadge(doc, textX, textY, '↑ MAYOR COBERTURA', [14, 116, 144], [255, 255, 255], 4.8);
-      textY += 5;
+      badge(doc, TX, TY, '↑  MAYOR COBERTURA', TEAL, [255,255,255], 4.5);
+      TY += 5.2;
     } else if (N >= 3 && i === Math.floor(N / 2) && !isBest) {
-      drawBadge(doc, textX, textY, '✦ RECOMENDADA', [180, 80, 0], [255, 255, 255], 4.8);
-      textY += 5;
+      badge(doc, TX, TY, '✦  RECOMENDADA', AMBER, [255,255,255], 4.5);
+      TY += 5.2;
     }
 
-    // Key plan specs
+    // Specs: SA / Deducible / Coaseguro
     const specs: [string, string][] = [
-      ['SA', formatAmountDisplay(info.suma_asegurada || '-')],
-      ['Deducible', formatAmountDisplay(info.deducible || '-')],
-      ['Coaseguro', formatCoaseguroDisplay(info.coaseguro || '-')],
+      ['SA', fmtAmt(info.suma_asegurada || '-')],
+      ['Ded.', fmtAmt(info.deducible || '-')],
+      ['Coas.', fmtCoas(info.coaseguro || '-')],
     ];
     if (info.nivel && info.nivel !== '-') specs.push(['Nivel', info.nivel]);
     if (info.region && info.region !== '-') specs.push(['Region', info.region]);
 
-    doc.setFontSize(5.3);
-    for (const [label, val] of specs) {
-      if (textY > yPos + optCardH - 9) break;
+    doc.setFontSize(5.0);
+    for (const [lbl, val] of specs) {
+      if (TY > Y + OPT_H - 9) break;
       doc.setFont(undefined, 'normal');
-      doc.setTextColor(110, 110, 120);
-      doc.text(`${label}:`, textX, textY);
+      doc.setTextColor(...SUB);
+      doc.text(`${lbl}:`, TX, TY);
       doc.setFont(undefined, 'bold');
-      doc.setTextColor(30, 30, 40);
-      doc.text(val, textX + 16, textY);
-      textY += 3.3;
+      doc.setTextColor(...DARK);
+      const labelW = doc.getTextWidth(`${lbl}:`) + 1.5;
+      doc.text(val, TX + labelW, TY);
+      TY += 3.2;
     }
 
-    // Annual total (prominent)
-    const total = safeNumber(opt.result.totals?.['Anual']?.total);
-    const totalStr = formatCurrency(total);
-    doc.setFontSize(9.5);
+    // Annual total — prominent bottom
+    const total = safe(opt.result.totals?.['Anual']?.total);
+    const totalStr = fmt(total);
+    doc.setFontSize(9);
     doc.setFont(undefined, 'bold');
-    doc.setTextColor(...(isBest ? accent : accentDark));
-    doc.text(totalStr, textX, yPos + optCardH - 3);
-    const totalW = doc.getTextWidth(totalStr);
-    doc.setFontSize(5);
+    doc.setTextColor(...(isBest ? A : AD));
+    doc.text(totalStr, TX, Y + OPT_H - 3.5);
+    const tw = doc.getTextWidth(totalStr);
+    doc.setFontSize(4.5);
     doc.setFont(undefined, 'normal');
-    doc.setTextColor(130, 130, 140);
-    doc.text('/ anual', textX + totalW + 1, yPos + optCardH - 3);
+    doc.setTextColor(...SUB);
+    doc.text('/ anual', TX + tw + 1, Y + OPT_H - 3.5);
   }
 
-  yPos += optCardH + 6;
+  Y += OPT_H + 6;
 
-  // ── Resumen rapido (quick-glance annualized comparison)
-  drawSectionLabel(doc, 'Resumen Rapido', M, yPos + 2, accent);
-  yPos += 7;
+  // ── RESUMEN RAPIDO — 4 mini KPI stat cards
+  sectionLabel(doc, 'Resumen Rapido', M, Y + 2, A);
+  Y += 7;
 
-  const summaryHead = ['', ...validOptions.slice(0, N).map(o => o.option_label)];
-  const summaryRows: string[][] = [
-    ['Prima neta anual', ...validOptions.slice(0, N).map(o => formatCurrency(safeNumber(o.result.totals?.['Anual']?.prima_neta)))],
-    ['IVA', ...validOptions.slice(0, N).map(o => formatCurrency(safeNumber(o.result.totals?.['Anual']?.iva)))],
-    ['Total anual', ...validOptions.slice(0, N).map(o => formatCurrency(safeNumber(o.result.totals?.['Anual']?.total)))],
-    ['Mensual aprox.', ...validOptions.slice(0, N).map(o => {
-      const t = o.result.totals?.['Mensual'];
-      return t ? formatCurrency(safeNumber((t as any).primer_pago || t.total)) : '-';
-    })],
+  const kpiGap = 3;
+  const kpiW = (CW - kpiGap * 3) / 4;
+  const kpiH = 15;
+
+  // Gather KPI values
+  const bestOpt     = valid[bestIdx];
+  const bestTotal   = safe(bestOpt?.result.totals?.['Anual']?.total);
+  const lowestDed   = (() => {
+    let min = Infinity, opt = '';
+    for (let i = 0; i < N; i++) {
+      const def = optionDefs?.find(d => d.id === valid[i].option_id);
+      const info = planInfo(valid[i], def);
+      const raw = info.deducible || '-';
+      const n = parseFloat(raw.replace(/[$,\s]/g, '')) || Infinity;
+      if (n < min) { min = n; opt = valid[i].option_label; }
+    }
+    return { val: min === Infinity ? '-' : fmt(min), label: opt };
+  })();
+  const highSA = (() => {
+    let mx = -1, lbl = '';
+    for (let i = 0; i < N; i++) {
+      const def = optionDefs?.find(d => d.id === valid[i].option_id);
+      const info = planInfo(valid[i], def);
+      const n = parseFloat((info.suma_asegurada || '-').replace(/[$,\s]/g, '')) || 0;
+      if (n > mx) { mx = n; lbl = valid[i].option_label; }
+    }
+    return { val: mx > 0 ? fmt(mx) : '-', label: lbl };
+  })();
+
+  const kpis: { title: string; value: string; sub: string; accent: [number,number,number] }[] = [
+    { title: 'Mejor Precio',       value: fmt(bestTotal),    sub: bestOpt?.option_label || '-',    accent: GREEN },
+    { title: 'Menor Deducible',    value: lowestDed.val,     sub: lowestDed.label,                 accent: TEAL },
+    { title: 'Mayor Cobertura',    value: highSA.val,        sub: highSA.label,                    accent: A },
+    { title: 'Recomendada',        value: bestOpt?.option_label || '-', sub: PRODUCT_LABELS[bestOpt?.product_id] || '-', accent: AMBER },
   ];
 
-  autoTable(doc, {
-    startY: yPos,
-    head: [summaryHead],
-    body: summaryRows,
-    theme: 'plain',
-    styles: { fontSize: 6, cellPadding: 2.2, lineColor: [225, 225, 232], lineWidth: 0.12, valign: 'middle' },
-    headStyles: { fillColor: [38, 38, 48], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 5.8, halign: 'center' },
-    alternateRowStyles: { fillColor: [247, 247, 252] },
-    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 32, textColor: [60, 60, 70] } },
-    margin: { left: M, right: M },
-    didParseCell(data) {
-      if (data.section === 'body' && data.column.index > 0) {
-        data.cell.styles.halign = 'right';
-        if (data.row.index === 2) {
-          data.cell.styles.fontStyle = 'bold';
-          data.cell.styles.fontSize = 7;
-          data.cell.styles.textColor = accent as any;
-          data.cell.styles.fillColor = accentLight;
-        }
-        if (data.row.index === 3) {
-          data.cell.styles.textColor = [80, 80, 90] as any;
-          data.cell.styles.fontStyle = 'italic';
-        }
-      }
-      if (data.section === 'head' && data.column.index > 0 && data.column.index - 1 === bestIdx) {
-        data.cell.styles.fillColor = accent as any;
-        data.cell.styles.textColor = [255, 255, 255] as any;
-      }
-    },
-  });
+  for (let i = 0; i < 4; i++) {
+    const kx = M + i * (kpiW + kpiGap);
+    const kpi = kpis[i];
+    card(doc, kx, Y, kpiW, kpiH, { fill: lighten(kpi.accent, 0.93), border: lighten(kpi.accent, 0.70), r: 3, shadow: false });
+    // top micro bar
+    doc.setFillColor(...kpi.accent);
+    doc.roundedRect(kx, Y, kpiW, 2, 3, 3, 'F');
+    doc.rect(kx, Y + 1, kpiW, 1, 'F');
 
-  yPos = (doc as any).lastAutoTable.finalY + 5;
+    doc.setFontSize(4.8);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...kpi.accent);
+    doc.text(kpi.title.toUpperCase(), kx + 3, Y + 5.5);
 
-  // ── Insured persons compact table
-  if (people.length > 0) {
-    if (yPos > PH - FOOTER_RESERVE - 30) {
-      doc.addPage();
-      yPos = M + 2;
-    }
+    doc.setFontSize(7);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...darken(kpi.accent, 0.08));
+    const lines = doc.splitTextToSize(kpi.value, kpiW - 6);
+    doc.text(lines[0] || kpi.value, kx + 3, Y + 10);
 
-    drawSectionLabel(doc, 'Asegurados', M, yPos + 2, accent);
-    yPos += 7;
+    doc.setFontSize(4.2);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(...SUB);
+    doc.text(kpi.sub, kx + 3, Y + 13.5);
+  }
 
-    const personHead = ['Nombre', 'Parentesco', 'Genero', 'Edad', ...validOptions.slice(0, N).map(o => o.option_label)];
-    const personRows: any[][] = people.map((p, pi) => [
+  Y += kpiH + 5;
+
+  // ── Insured persons
+  if (people.length > 0 && Y < PH - FTR - 28) {
+    sectionLabel(doc, 'Asegurados', M, Y + 2, A);
+    Y += 7;
+
+    const pHead = ['Nombre', 'Parentesco', 'Genero', 'Edad', ...valid.slice(0, N).map(o => o.option_label)];
+    const pRows = people.map((p, pi) => [
       p.name || `Asegurado ${pi + 1}`,
-      p.relation,
-      p.gender,
-      `${p.age} a.`,
-      ...validOptions.slice(0, N).map(o => formatCurrency(getPersonPrima(o, pi))),
+      p.relation, p.gender, `${p.age} a.`,
+      ...valid.slice(0, N).map(o => fmt(personPrima(o, pi))),
     ]);
 
     autoTable(doc, {
-      startY: yPos,
-      head: [personHead],
-      body: personRows,
+      startY: Y,
+      head: [pHead],
+      body: pRows,
       theme: 'plain',
-      styles: { fontSize: 5.8, cellPadding: 2, lineColor: [225, 225, 232], lineWidth: 0.12, valign: 'middle' },
-      headStyles: { fillColor: accent as any, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 5.5 },
-      alternateRowStyles: { fillColor: [248, 248, 252] },
-      columnStyles: {
-        0: { fontStyle: 'bold', cellWidth: 34 },
-        3: { halign: 'center', cellWidth: 10 },
-      },
+      styles: { fontSize: 5.5, cellPadding: 1.8, lineColor: [222, 224, 234], lineWidth: 0.1, valign: 'middle' },
+      headStyles: { fillColor: A as any, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 5.2 },
+      alternateRowStyles: { fillColor: BG1 },
+      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 32 }, 3: { halign: 'center', cellWidth: 10 } },
       margin: { left: M, right: M },
-      didParseCell(data) {
-        if (data.section === 'body' && data.column.index >= 4) {
-          data.cell.styles.halign = 'right';
-          data.cell.styles.fontStyle = 'bold';
-          data.cell.styles.textColor = accent as any;
+      didParseCell(d) {
+        if (d.section === 'body' && d.column.index >= 4) {
+          d.cell.styles.halign = 'right';
+          d.cell.styles.fontStyle = 'bold';
+          d.cell.styles.textColor = A as any;
         }
       },
     });
-
-    yPos = (doc as any).lastAutoTable.finalY + 5;
+    Y = (doc as any).lastAutoTable.finalY + 4;
   }
 
-  // ══════════════════════════════════════════════════
-  // PAGE 2 — Plan Details & Coverages
-  // ══════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════
+  // PAGE 2  —  Comparativa de planes y coberturas
+  // ════════════════════════════════════════════════════════
 
   doc.addPage();
-  yPos = M;
+  Y = miniHeader(doc, A, 'Comparativa de Planes  ·  Gastos Medicos Mayores', clientName);
 
-  // Minimal repeating header
-  doc.setFillColor(...accent);
-  doc.rect(0, 0, PW, 8, 'F');
-  doc.setFontSize(7);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(255, 255, 255);
-  doc.text('Comparativa de Planes  ·  Gastos Medicos Mayores', M, 5.5);
-  if (clientName) {
-    doc.setFontSize(6);
-    doc.setFont(undefined, 'normal');
-    doc.text(clientName, PW - M, 5.5, { align: 'right' });
-  }
-  yPos = 13;
+  // ── Plan characteristics table
+  sectionLabel(doc, 'Caracteristicas del Plan', M, Y + 2, A);
+  Y += 7;
 
-  // ── Plan characteristics comparison
-  drawSectionLabel(doc, 'Caracteristicas del Plan', M, yPos + 2, accent);
-  yPos += 7;
-
-  const planFields: { label: string; getter: (opt: OptionResult) => string }[] = [
-    { label: 'Producto', getter: o => PRODUCT_LABELS[o.product_id] || o.product_id },
-    {
-      label: 'Estado / Region',
-      getter: o => {
-        const d = optionDefs?.find(dd => dd.id === o.option_id);
-        const info = getOptionPlanInfo(o, d);
-        return info.estado || info.region || '-';
-      },
-    },
-    {
-      label: 'Nivel Hospitalario',
-      getter: o => {
-        const d = optionDefs?.find(dd => dd.id === o.option_id);
-        return getOptionPlanInfo(o, d).nivel || '-';
-      },
-    },
-    {
-      label: 'Suma Asegurada',
-      getter: o => {
-        const d = optionDefs?.find(dd => dd.id === o.option_id);
-        return formatAmountDisplay(getOptionPlanInfo(o, d).suma_asegurada || '-');
-      },
-    },
-    {
-      label: 'Deducible',
-      getter: o => {
-        const d = optionDefs?.find(dd => dd.id === o.option_id);
-        return formatAmountDisplay(getOptionPlanInfo(o, d).deducible || '-');
-      },
-    },
-    {
-      label: 'Coaseguro',
-      getter: o => {
-        const d = optionDefs?.find(dd => dd.id === o.option_id);
-        return formatCoaseguroDisplay(getOptionPlanInfo(o, d).coaseguro || '-');
-      },
-    },
-    {
-      label: 'Tope Coaseguro',
-      getter: o => {
-        const d = optionDefs?.find(dd => dd.id === o.option_id);
-        return getOptionPlanInfo(o, d).tope_coaseguro || '-';
-      },
-    },
+  const planFields: { label: string; get: (o: OptionResult) => string }[] = [
+    { label: 'Producto',           get: o => PRODUCT_LABELS[o.product_id] || o.product_id },
+    { label: 'Estado / Region',    get: o => { const i = planInfo(o, optionDefs?.find(d=>d.id===o.option_id)); return i.estado || i.region || '-'; } },
+    { label: 'Nivel Hospitalario', get: o => planInfo(o, optionDefs?.find(d=>d.id===o.option_id)).nivel || '-' },
+    { label: 'Suma Asegurada',     get: o => fmtAmt(planInfo(o, optionDefs?.find(d=>d.id===o.option_id)).suma_asegurada || '-') },
+    { label: 'Deducible',          get: o => fmtAmt(planInfo(o, optionDefs?.find(d=>d.id===o.option_id)).deducible || '-') },
+    { label: 'Coaseguro',          get: o => fmtCoas(planInfo(o, optionDefs?.find(d=>d.id===o.option_id)).coaseguro || '-') },
+    { label: 'Tope Coaseguro',     get: o => planInfo(o, optionDefs?.find(d=>d.id===o.option_id)).tope_coaseguro || '-' },
   ];
 
-  const planHead = ['Caracteristica', ...validOptions.slice(0, N).map(o => o.option_label)];
-  const planBody = planFields.map(f => [f.label, ...validOptions.slice(0, N).map(o => f.getter(o))]);
+  autoTable(doc, {
+    startY: Y,
+    head: [['Caracteristica', ...valid.slice(0, N).map(o => o.option_label)]],
+    body: planFields.map(f => [f.label, ...valid.slice(0, N).map(o => f.get(o))]),
+    theme: 'striped',
+    styles: { fontSize: 5.8, cellPadding: 2.0, lineColor: [222, 224, 234], lineWidth: 0.1, valign: 'middle' },
+    headStyles: { fillColor: [30, 32, 44] as any, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 5.5, halign: 'center' },
+    alternateRowStyles: { fillColor: BG1 },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 36, textColor: MID as any } },
+    margin: { left: M, right: M },
+    didParseCell(d) {
+      if (d.section === 'body' && d.column.index > 0) d.cell.styles.halign = 'center';
+      if (d.section === 'head' && d.column.index === bestIdx + 1) d.cell.styles.fillColor = A as any;
+    },
+  });
+  Y = (doc as any).lastAutoTable.finalY + 6;
+
+  // ── Coverage comparison
+  sectionLabel(doc, 'Coberturas Adicionales', M, Y + 2, A);
+  Y += 7;
+
+  const covBody = COBERTURAS.map(c => {
+    const row: string[] = [c.label];
+    for (let i = 0; i < N; i++) {
+      const def = optionDefs?.find(d => d.id === valid[i].option_id);
+      const covs = optionCoverages(valid[i], def);
+      if (valid[i].product_id !== 'BXPLUS') row.push('—');
+      else row.push(covs[c.key] === true ? '✓' : '✗');
+    }
+    return row;
+  });
 
   autoTable(doc, {
-    startY: yPos,
-    head: [planHead],
-    body: planBody,
-    theme: 'striped',
-    styles: { fontSize: 6, cellPadding: 2.2, lineColor: [225, 225, 232], lineWidth: 0.12, valign: 'middle' },
-    headStyles: { fillColor: [32, 32, 44], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 5.8, halign: 'center' },
-    alternateRowStyles: { fillColor: [247, 247, 253] },
-    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 38, textColor: [50, 50, 60] } },
+    startY: Y,
+    head: [['Cobertura', ...valid.slice(0, N).map(o => o.option_label)]],
+    body: covBody,
+    theme: 'plain',
+    styles: { fontSize: 5.5, cellPadding: 1.6, lineColor: [225, 227, 236], lineWidth: 0.1, valign: 'middle' },
+    headStyles: { fillColor: A as any, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 5.2, halign: 'center' },
+    alternateRowStyles: { fillColor: BG1 },
+    columnStyles: { 0: { cellWidth: 50, fontSize: 5.5, textColor: MID as any } },
     margin: { left: M, right: M },
-    didParseCell(data) {
-      if (data.section === 'body' && data.column.index > 0) {
-        data.cell.styles.halign = 'center';
-      }
-      // Highlight best option column header
-      if (data.section === 'head' && data.column.index > 0 && data.column.index - 1 === bestIdx) {
-        data.cell.styles.fillColor = accent as any;
+    didParseCell(d) {
+      if (d.section === 'body' && d.column.index > 0) {
+        d.cell.styles.halign = 'center';
+        const v = String(d.cell.raw);
+        if (v === '✓') {
+          d.cell.styles.textColor = GREEN as any;
+          d.cell.styles.fontStyle = 'bold';
+          d.cell.styles.fontSize = 8;
+        } else if (v === '✗') {
+          d.cell.styles.textColor = RED as any;
+          d.cell.styles.fontSize = 7;
+        } else {
+          d.cell.styles.textColor = [190, 192, 202] as any;
+          d.cell.styles.fontSize = 5.5;
+        }
       }
     },
   });
+  Y = (doc as any).lastAutoTable.finalY + 6;
 
-  yPos = (doc as any).lastAutoTable.finalY + 6;
+  // ── Glossary
+  if (Y < PH - FTR - 26) {
+    sectionLabel(doc, 'Glosario de Terminos', M, Y + 2, A);
+    Y += 7;
 
-  // ── BX+ Additional coverages
-  drawSectionLabel(doc, 'Coberturas Adicionales', M, yPos + 2, accent);
-  yPos += 7;
+    const glossary: [string, string][] = [
+      ['Suma Asegurada',   'Limite maximo que cubre la aseguradora por evento o anualidad.'],
+      ['Deducible',        'Cantidad a cargo del asegurado antes de que opere la cobertura.'],
+      ['Coaseguro',        'Porcentaje del gasto cubierto que paga el asegurado despues del deducible.'],
+      ['Tope Coaseguro',   'Monto maximo de coaseguro que pagara el asegurado por evento.'],
+    ];
 
-  const covHead = ['Cobertura', ...validOptions.slice(0, N).map(o => o.option_label)];
-  const covBody: any[][] = COBERTURAS_ADICIONALES.map(cob => {
-    const row: string[] = [cob.label];
+    // Two-column layout
+    const gcw = (CW - 5) / 2;
+    let gx = M; let gy = Y;
+    for (let gi = 0; gi < glossary.length; gi++) {
+      const [term, def] = glossary[gi];
+      if (gi === 2) { gx = M + gcw + 5; gy = Y; }
+      doc.setFontSize(5.3);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(...DARK);
+      doc.text(`${term}:`, gx + 2, gy);
+      doc.setFont(undefined, 'normal');
+      doc.setTextColor(...SUB);
+      const dlines = doc.splitTextToSize(def, gcw - 6);
+      for (const dl of dlines) {
+        gy += 3.3;
+        doc.text(dl, gx + 2, gy);
+      }
+      gy += 4;
+    }
+  }
+
+  // ════════════════════════════════════════════════════════
+  // PAGE 3  —  Formas de pago, recomendacion, asesor
+  // ════════════════════════════════════════════════════════
+
+  doc.addPage();
+  Y = miniHeader(doc, A, 'Formas de Pago y Recomendacion  ·  Gastos Medicos Mayores', clientName);
+
+  // ── Payment forms — visual cards per forma de pago
+  sectionLabel(doc, 'Formas de Pago', M, Y + 2, A);
+  Y += 7;
+
+  const FORMAS: FormaPago[] = ['Anual', 'Semestral', 'Trimestral', 'Mensual'];
+  const FORMA_SUB: Record<FormaPago, string> = { Anual: '1 pago al año', Semestral: '2 pagos / año', Trimestral: '4 pagos / año', Mensual: '12 pagos / año' };
+
+  // Per-forma-de-pago mini cards row
+  const fpGap = 3;
+  const fpW = (CW - fpGap * (FORMAS.length - 1)) / FORMAS.length;
+  const fpH = 10;
+
+  for (let fi = 0; fi < FORMAS.length; fi++) {
+    const fp = FORMAS[fi];
+    const isAnual = fp === 'Anual';
+    const fx = M + fi * (fpW + fpGap);
+    card(doc, fx, Y, fpW, fpH, {
+      fill: isAnual ? AL : [255, 255, 255],
+      border: isAnual ? A : [218, 220, 232],
+      r: 3,
+      lw: isAnual ? 0.4 : 0.15,
+      shadow: false,
+    });
+    if (isAnual) {
+      doc.setFillColor(...A);
+      doc.roundedRect(fx, Y, fpW, 2, 3, 3, 'F');
+      doc.rect(fx, Y + 1, fpW, 1, 'F');
+    }
+    doc.setFontSize(5.8);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...(isAnual ? A : DARK));
+    doc.text(fp, fx + fpW / 2, Y + (isAnual ? 6.2 : 5.5), { align: 'center' });
+    doc.setFontSize(4.3);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(...SUB);
+    doc.text(FORMA_SUB[fp], fx + fpW / 2, Y + fpH - 2, { align: 'center' });
+  }
+  Y += fpH + 3;
+
+  // Payment breakdown table
+  const payHead = ['Forma de Pago', ...valid.slice(0, N).map(o => o.option_label)];
+  const payBody: string[][] = FORMAS.map(fp => {
+    const row = [`${fp} (${FORMA_SUB[fp]})`];
     for (let i = 0; i < N; i++) {
-      const def = optionDefs?.find(d => d.id === validOptions[i].option_id);
-      const covs = getOptionCoverages(validOptions[i], def);
-      if (validOptions[i].product_id !== 'BXPLUS') {
-        row.push('—');
+      const t = valid[i].result.totals?.[fp];
+      if (!t) { row.push('-'); continue; }
+      const nr = (t as any).num_recibos || 1;
+      if (nr > 1) {
+        const p1 = (t as any).primer_pago || t.total;
+        const ps = (t as any).pagos_subsecuentes || t.total;
+        row.push(`${fmt(t.total)}\n1er: ${fmt(p1)}  Sub: ${fmt(ps)}`);
       } else {
-        row.push(covs[cob.key] === true ? '✓' : '·');
+        row.push(fmt(t.total));
       }
     }
     return row;
   });
 
   autoTable(doc, {
-    startY: yPos,
-    head: [covHead],
-    body: covBody,
-    theme: 'plain',
-    styles: { fontSize: 5.8, cellPadding: 1.8, lineColor: [228, 228, 235], lineWidth: 0.1, valign: 'middle' },
-    headStyles: { fillColor: accent as any, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 5.5, halign: 'center' },
-    alternateRowStyles: { fillColor: [250, 250, 255] },
-    columnStyles: { 0: { cellWidth: 50, fontSize: 5.8, textColor: [55, 55, 65] } },
-    margin: { left: M, right: M },
-    didParseCell(data) {
-      if (data.section === 'body' && data.column.index > 0) {
-        data.cell.styles.halign = 'center';
-        data.cell.styles.fontSize = 7.5;
-        const v = String(data.cell.raw);
-        if (v === '✓') {
-          data.cell.styles.textColor = [22, 163, 74] as any;
-          data.cell.styles.fontStyle = 'bold';
-        } else if (v === '·') {
-          data.cell.styles.textColor = [200, 55, 55] as any;
-          data.cell.styles.fontSize = 10;
-        } else {
-          data.cell.styles.textColor = [185, 185, 195] as any;
-          data.cell.styles.fontSize = 6;
-        }
-      }
-    },
-  });
-
-  yPos = (doc as any).lastAutoTable.finalY + 6;
-
-  // ── Glossary microcopy (compact)
-  if (yPos < PH - FOOTER_RESERVE - 30) {
-    drawSectionLabel(doc, 'Glosario', M, yPos + 2, accent);
-    yPos += 7;
-
-    const glossary = [
-      ['Suma Asegurada', 'Limite maximo que la aseguradora cubre por evento o anualidad.'],
-      ['Deducible', 'Cantidad a cargo del asegurado antes de que inicie la cobertura.'],
-      ['Coaseguro', 'Porcentaje del gasto medico que corre a cargo del asegurado despues del deducible.'],
-      ['Tope de Coaseguro', 'Monto maximo de coaseguro que pagara el asegurado por evento.'],
-      ['Derecho de Poliza', 'Costo fijo administrativo que se suma a la prima.'],
-    ];
-
-    doc.setFontSize(5.3);
-    let glossY = yPos;
-    for (const [term, def] of glossary) {
-      if (glossY > PH - FOOTER_RESERVE - 8) break;
-      doc.setFont(undefined, 'bold');
-      doc.setTextColor(40, 40, 50);
-      doc.text(`${term}:`, M + 2, glossY);
-      const termW = doc.getTextWidth(`${term}:`);
-      doc.setFont(undefined, 'normal');
-      doc.setTextColor(90, 90, 100);
-      const defLines = doc.splitTextToSize(def, CW - termW - 8);
-      doc.text(defLines[0] || '', M + 2 + termW + 2, glossY);
-      glossY += 3.5;
-    }
-    yPos = glossY + 2;
-  }
-
-  // ══════════════════════════════════════════════════
-  // PAGE 3 — Payment Forms, Recommendation, Advisor
-  // ══════════════════════════════════════════════════
-
-  doc.addPage();
-  yPos = M;
-
-  // Minimal repeating header
-  doc.setFillColor(...accent);
-  doc.rect(0, 0, PW, 8, 'F');
-  doc.setFontSize(7);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(255, 255, 255);
-  doc.text('Formas de Pago & Recomendacion  ·  Gastos Medicos Mayores', M, 5.5);
-  if (clientName) {
-    doc.setFontSize(6);
-    doc.setFont(undefined, 'normal');
-    doc.text(clientName, PW - M, 5.5, { align: 'right' });
-  }
-  yPos = 13;
-
-  // ── Payment breakdown cards
-  drawSectionLabel(doc, 'Formas de Pago', M, yPos + 2, accent);
-  yPos += 7;
-
-  const formas: FormaPago[] = ['Anual', 'Semestral', 'Trimestral', 'Mensual'];
-  const formaIcons: Record<FormaPago, string> = {
-    Anual: '1 pago',
-    Semestral: '2 pagos',
-    Trimestral: '4 pagos',
-    Mensual: '12 pagos',
-  };
-
-  const payHead = ['Forma de Pago', ...validOptions.slice(0, N).map(o => o.option_label)];
-  const payBody: string[][] = formas.map(fp => {
-    const fpLabel = `${fp} (${formaIcons[fp]})`;
-    const cols = validOptions.slice(0, N).map(o => {
-      const t = o.result.totals?.[fp];
-      if (!t) return '-';
-      const nr = (t as any).num_recibos || 1;
-      if (nr > 1) {
-        const p1 = (t as any).primer_pago || t.total;
-        const ps = (t as any).pagos_subsecuentes || t.total;
-        return `Total: ${formatCurrency(t.total)}\n1er pago: ${formatCurrency(p1)}\nSubsec.: ${formatCurrency(ps)}`;
-      }
-      return formatCurrency(t.total);
-    });
-    return [fpLabel, ...cols];
-  });
-
-  autoTable(doc, {
-    startY: yPos,
+    startY: Y,
     head: [payHead],
     body: payBody,
     theme: 'grid',
-    styles: { fontSize: 6, cellPadding: 2.5, lineColor: [212, 215, 224], lineWidth: 0.15, valign: 'middle', overflow: 'linebreak' },
-    headStyles: { fillColor: [32, 32, 44], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 5.8, halign: 'center' },
-    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 32, textColor: [50, 50, 60] } },
+    styles: { fontSize: 5.8, cellPadding: 2.2, lineColor: [210, 213, 224], lineWidth: 0.12, valign: 'middle', overflow: 'linebreak' },
+    headStyles: { fillColor: [28, 30, 44] as any, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 5.5, halign: 'center' },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 34, textColor: MID as any } },
     margin: { left: M, right: M },
-    didParseCell(data) {
-      if (data.section === 'body' && data.column.index > 0) {
-        data.cell.styles.halign = 'right';
+    didParseCell(d) {
+      if (d.section === 'body' && d.column.index > 0) d.cell.styles.halign = 'right';
+      // Highlight Anual row
+      if (d.section === 'body' && d.row.index === 0) {
+        d.cell.styles.fillColor = AL;
+        d.cell.styles.textColor = A as any;
+        d.cell.styles.fontStyle = 'bold';
+        d.cell.styles.fontSize = 6.2;
       }
-      // Anual row highlighted
-      if (data.section === 'body' && data.row.index === 0) {
-        data.cell.styles.fillColor = accentLight;
-        if (data.column.index === 0) {
-          data.cell.styles.textColor = accent as any;
-        } else {
-          data.cell.styles.textColor = accent as any;
-          data.cell.styles.fontStyle = 'bold';
-          data.cell.styles.fontSize = 6.5;
-        }
-      }
-      // Best column header
-      if (data.section === 'head' && data.column.index > 0 && data.column.index - 1 === bestIdx) {
-        data.cell.styles.fillColor = accent as any;
-      }
+      // Best option column header highlight
+      if (d.section === 'head' && d.column.index === bestIdx + 1) d.cell.styles.fillColor = A as any;
     },
   });
+  Y = (doc as any).lastAutoTable.finalY + 7;
 
-  yPos = (doc as any).lastAutoTable.finalY + 7;
+  // ── Nuestra Recomendacion — premium editorial block
+  if (Y < PH - FTR - 36) {
+    const recH = 30;
+    card(doc, M, Y, CW, recH, { fill: AL, border: AM, r: 4, shadow: false, lw: 0.3 });
 
-  // ── Nuestra Recomendacion block
-  if (yPos < PH - FOOTER_RESERVE - 45) {
-    const recCardH = 28;
-    drawCard(doc, M, yPos, CW, recCardH, {
-      fillColor: accentLight,
-      borderColor: accentMid,
-      radius: 4,
-      shadow: false,
-    });
+    // left accent bar
+    doc.setFillColor(...A);
+    doc.roundedRect(M, Y, 2.5, recH, 1, 1, 'F');
 
-    // Left bar
-    doc.setFillColor(...accent);
-    doc.roundedRect(M, yPos, 2.5, recCardH, 1, 1, 'F');
-
-    doc.setFontSize(7.5);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(...accent);
-    doc.text('NUESTRA RECOMENDACION', M + 7, yPos + 6);
-
-    // Recommended option name
-    const recOpt = validOptions[bestIdx];
-    const recTotal = safeNumber(recOpt?.result.totals?.['Anual']?.total);
-    doc.setFontSize(9);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(22, 22, 30);
-    doc.text(recOpt?.option_label || '-', M + 7, yPos + 12);
-
-    doc.setFontSize(6);
+    // star icon area
+    doc.setFontSize(13);
     doc.setFont(undefined, 'normal');
-    doc.setTextColor(70, 70, 80);
-    const recDef = optionDefs?.find(d => d.id === recOpt?.option_id);
-    const recInfo = getOptionPlanInfo(recOpt, recDef);
+    doc.setTextColor(...lighten(A, 0.4));
+    doc.text('★', M + 6, Y + 13);
 
-    const recText = `Con una suma asegurada de ${formatAmountDisplay(recInfo.suma_asegurada || '-')}, deducible de ${formatAmountDisplay(recInfo.deducible || '-')} y coaseguro del ${formatCoaseguroDisplay(recInfo.coaseguro || '-')}, esta opcion ofrece la mejor relacion precio-cobertura para ${clientName || 'su familia'}. Prima anual total: ${formatCurrency(recTotal)}.`;
-    const recLines = doc.splitTextToSize(recText, CW - 16);
-    let recY = yPos + 17;
-    for (const line of recLines) {
-      if (recY > yPos + recCardH - 3) break;
-      doc.text(line, M + 7, recY);
-      recY += 3.2;
+    doc.setFontSize(7);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...A);
+    doc.text('NUESTRA RECOMENDACION', M + 15, Y + 6);
+
+    const recOpt = valid[bestIdx];
+    const recDef = optionDefs?.find(d => d.id === recOpt?.option_id);
+    const recInfo = planInfo(recOpt, recDef);
+
+    doc.setFontSize(8.5);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...DARK);
+    doc.text(recOpt?.option_label || '-', M + 15, Y + 12);
+
+    doc.setFontSize(5.8);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(...MID);
+    const recText = `Recomendamos ${recOpt?.option_label || 'esta opcion'} porque ofrece la mejor relacion entre precio, suma asegurada y beneficios incluidos. Con una suma asegurada de ${fmtAmt(recInfo.suma_asegurada || '-')}, un deducible de ${fmtAmt(recInfo.deducible || '-')} y un coaseguro del ${fmtCoas(recInfo.coaseguro || '-')}, es una alternativa solida para proteger a ${clientName || 'tu familia'} con una prima anual de ${fmt(safe(recOpt?.result.totals?.['Anual']?.total))}. Una inversion razonable para una cobertura amplia y respaldo profesional.`;
+    const recLines = doc.splitTextToSize(recText, CW - 22);
+    let ry = Y + 17;
+    for (const rl of recLines) {
+      if (ry > Y + recH - 3) break;
+      doc.text(rl, M + 15, ry);
+      ry += 3.1;
     }
 
-    yPos += recCardH + 7;
+    Y += recH + 7;
   }
 
-  // ── Advisor card (CTA)
-  const advisorCardH = 22;
-  if (yPos > PH - FOOTER_RESERVE - advisorCardH - 5) {
-    doc.addPage();
-    yPos = M + 2;
-  }
+  // ── Advisor card — signature professional
+  const adH = 24;
+  if (Y > PH - FTR - adH - 5) { doc.addPage(); Y = M + 2; }
 
-  drawCard(doc, M, yPos, CW, advisorCardH, {
-    fillColor: [252, 252, 255],
-    borderColor: accentMid,
-    radius: 4,
-  });
+  card(doc, M, Y, CW, adH, { fill: [255, 255, 255], border: AM, r: 4, shadow: true, lw: 0.25 });
+  doc.setFillColor(...A);
+  doc.roundedRect(M, Y, 2.5, adH, 1, 1, 'F');
 
-  // Left accent bar
-  doc.setFillColor(...accent);
-  doc.roundedRect(M, yPos, 2.5, advisorCardH, 1, 1, 'F');
-
-  // Advisor photo
-  let photoX = M + CW - 18;
-  if (profileBase64) {
+  // Profile photo
+  let photoPlaced = false;
+  if (photoB64) {
     try {
-      const imgSize = 17;
-      doc.addImage(profileBase64, 'PNG', photoX, yPos + 2.5, imgSize, imgSize);
-      // Subtle circular border effect
-      doc.setDrawColor(...accentMid);
+      const ps = 18;
+      const px = M + CW - ps - 3;
+      const py = Y + (adH - ps) / 2;
+      doc.addImage(photoB64, 'PNG', px, py, ps, ps);
+      doc.setDrawColor(...AM);
       doc.setLineWidth(0.4);
-      doc.circle(photoX + imgSize / 2, yPos + 2.5 + imgSize / 2, imgSize / 2, 'S');
+      doc.circle(px + ps / 2, py + ps / 2, ps / 2, 'S');
+      photoPlaced = true;
     } catch { /* skip */ }
   }
 
+  const adTextW = photoPlaced ? CW - 26 : CW - 10;
   const adX = M + 7;
+
+  doc.setFontSize(5.2);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(...A);
+  doc.text('TU ASESOR DE CONFIANZA', adX, Y + 5.5);
+
+  doc.setFontSize(9.5);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(...DARK);
+  doc.text(asesorNombre, adX, Y + 12);
+
   doc.setFontSize(5.5);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(...accent);
-  doc.text('TU ASESOR DE CONFIANZA', adX, yPos + 5.5);
-
-  doc.setFontSize(9);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(18, 18, 26);
-  doc.text(asesorNombre, adX, yPos + 11.5);
-
-  doc.setFontSize(5.8);
   doc.setFont(undefined, 'normal');
-  doc.setTextColor(75, 75, 88);
-  let adY = yPos + 15.5;
-  if (asesorCelular) {
-    doc.text(`Tel: ${asesorCelular}`, adX, adY);
-    adY += 3;
-  }
-  if (asesorEmail) {
-    doc.text(asesorEmail, adX, adY);
-    adY += 3;
-  }
+  doc.setTextColor(...MID);
+  const adDetails: string[] = [];
+  if (asesorTel)     adDetails.push(`Tel: ${asesorTel}`);
+  if (asesorEmail)   adDetails.push(asesorEmail);
+  const adLine = adDetails.join('   |   ');
+  if (adLine) doc.text(adLine, adX, Y + 17);
+
   if (asesorWebSlug) {
     doc.setFont(undefined, 'bold');
-    doc.setTextColor(...accent);
-    doc.text(`agentedeseguros.website/${asesorWebSlug}`, adX, adY);
+    doc.setTextColor(...A);
+    doc.text(`agentedeseguros.website/${asesorWebSlug}`, adX, Y + 21.5);
   }
 
-  yPos += advisorCardH + 5;
+  Y += adH + 6;
 
-  // ── CTA strip
-  if (yPos < PH - FOOTER_RESERVE - 12) {
-    doc.setFillColor(...accent);
-    doc.roundedRect(M, yPos, CW, 10, 3, 3, 'F');
-    doc.setFontSize(8);
+  // ── CTA strip — call to action
+  if (Y < PH - FTR - 11) {
+    doc.setFillColor(...A);
+    doc.roundedRect(M, Y, CW, 11, 3, 3, 'F');
+    // subtle right shimmer
+    doc.setFillColor(...lighten(A, 0.2));
+    doc.roundedRect(M + CW * 0.5, Y, CW * 0.5, 11, 3, 3, 'F');
+
+    doc.setFontSize(8.5);
     doc.setFont(undefined, 'bold');
     doc.setTextColor(255, 255, 255);
-    doc.text('¿Listo para proteger a tu familia?  Contacta a tu asesor hoy mismo.', PW / 2, yPos + 6.5, { align: 'center' });
+    doc.text('¿Listo para proteger a tu familia?', PW / 2, Y + 5.5, { align: 'center' });
+    doc.setFontSize(6);
+    doc.setFont(undefined, 'normal');
+    doc.text('Contacta a tu asesor hoy mismo para contratar o resolver cualquier duda.', PW / 2, Y + 9, { align: 'center' });
+    Y += 11 + 5;
   }
 
-  // ─────────────────────────────────────────────
-  // BX+ Coverage descriptions (additional pages if needed)
-  // ─────────────────────────────────────────────
-  const hasBxplus = validOptions.some(o => o.product_id === 'BXPLUS');
-  if (hasBxplus) {
-    const allCovKeys = new Set<string>();
+  // ── BX+ coverage descriptions (extra page if needed)
+  const hasBX = valid.some(o => o.product_id === 'BXPLUS');
+  if (hasBX) {
+    const allKeys = new Set<string>();
     for (let i = 0; i < N; i++) {
-      if (validOptions[i].product_id === 'BXPLUS') {
-        const def = optionDefs?.find(d => d.id === validOptions[i].option_id);
-        const covs = getOptionCoverages(validOptions[i], def);
-        Object.entries(covs).forEach(([k, v]) => { if (v) allCovKeys.add(k); });
+      if (valid[i].product_id === 'BXPLUS') {
+        const def = optionDefs?.find(d => d.id === valid[i].option_id);
+        const covs = optionCoverages(valid[i], def);
+        Object.entries(covs).forEach(([k, v]) => { if (v) allKeys.add(k); });
       }
     }
 
-    if (allCovKeys.size > 0) {
+    if (allKeys.size > 0) {
       doc.addPage();
-      let cy = M;
-
-      doc.setFillColor(...accent);
-      doc.rect(0, 0, PW, 8, 'F');
-      doc.setFontSize(7);
-      doc.setFont(undefined, 'bold');
-      doc.setTextColor(255, 255, 255);
-      doc.text('Descripcion de Coberturas Adicionales BX+ Unikuz', M, 5.5);
-      cy = 13;
-
-      drawSectionLabel(doc, 'Coberturas Incluidas en su Cotizacion', M, cy + 2, accent);
+      let cy = miniHeader(doc, A, 'Coberturas Adicionales Incluidas  ·  BX+ Unikuz', clientName);
+      sectionLabel(doc, 'Descripcion de Coberturas', M, cy + 2, A);
       cy += 8;
 
-      for (const key of allCovKeys) {
-        const labelEntry = COBERTURAS_ADICIONALES.find(c => c.key === key);
-        const label = labelEntry?.label || key;
+      for (const key of allKeys) {
+        const lbl = COBERTURAS.find(c => c.key === key)?.label || key;
         const desc = COVERAGE_PDF_TEXTS[key] || 'Cobertura adicional conforme a condiciones de la poliza.';
 
-        if (cy > PH - FOOTER_RESERVE - 12) {
-          doc.addPage();
-          cy = M;
-        }
+        if (cy > PH - FTR - 14) { doc.addPage(); cy = M; }
 
-        // Coverage entry
-        drawCard(doc, M, cy, CW, 14, {
-          fillColor: accentLight,
-          borderColor: accentMid,
-          radius: 2,
-          shadow: false,
-          lineWidth: 0.15,
-        });
+        const ch = 15;
+        card(doc, M, cy, CW, ch, { fill: AL, border: AM, r: 2, shadow: false, lw: 0.15 });
+        doc.setFillColor(...A);
+        doc.rect(M, cy, 1.5, ch, 'F');
 
-        doc.setFillColor(...accent);
-        doc.rect(M, cy, 1.5, 14, 'F');
-
-        doc.setFontSize(6.5);
+        doc.setFontSize(6.2);
         doc.setFont(undefined, 'bold');
-        doc.setTextColor(22, 22, 30);
-        doc.text(label, M + 5, cy + 5);
+        doc.setTextColor(...DARK);
+        doc.text(lbl, M + 5, cy + 5.5);
 
-        doc.setFontSize(5.2);
+        doc.setFontSize(5.0);
         doc.setFont(undefined, 'normal');
-        doc.setTextColor(80, 80, 90);
-        const descLines = doc.splitTextToSize(desc, CW - 8);
-        let dy = cy + 9;
-        for (const line of descLines) {
-          if (dy > cy + 13) break;
-          doc.text(line, M + 5, dy);
+        doc.setTextColor(...MID);
+        const dlines = doc.splitTextToSize(desc, CW - 8);
+        let dy = cy + 9.5;
+        for (const dl of dlines) {
+          if (dy > cy + ch - 1.5) break;
+          doc.text(dl, M + 5, dy);
           dy += 2.5;
         }
-
-        cy += 16;
+        cy += ch + 3;
       }
     }
   }
 
-  // Apply footers to all pages
-  applyFooters(doc, accent, asesorWebSlug, doc.getNumberOfPages());
+  // ── Apply footers to all pages
+  applyFooters(doc, A, asesorWebSlug, doc.getNumberOfPages());
 
   return doc.output('blob');
 }
