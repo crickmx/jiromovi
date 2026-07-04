@@ -216,6 +216,16 @@ export default function StorePedidoDetalle() {
     if (!pedidoId || !isAdmin) return;
 
     const estatusSeleccionado = estatus.find(e => e.id === nuevoEstatusId);
+    if (estatusSeleccionado?.nombre === 'Confirmado' && pedido) {
+      const faltantes: string[] = [];
+      if (!pedido.responsable_pago_id) faltantes.push('Responsable de Pago');
+      if (!pedido.metodo_pago) faltantes.push('Método de Pago');
+      if (!pedido.forma_pago) faltantes.push('Forma de Pago');
+      if (faltantes.length > 0) {
+        alert(`No se puede marcar como Confirmado. Falta guardar en "Información de Pago": ${faltantes.join(', ')}.`);
+        return;
+      }
+    }
     if (estatusSeleccionado?.nombre === 'Liquidado') {
       const total = calcularTotal();
       const totalPagado = pagos.reduce((sum, p) => sum + p.monto, 0);
@@ -465,16 +475,19 @@ export default function StorePedidoDetalle() {
     if (!pedidoId || !isAdmin || !formaPago || !metodoPago) return;
     try {
       setGuardandoPago(true);
-      await supabase.from('store_pedidos').update({
+      const { error } = await supabase.from('store_pedidos').update({
         responsable_pago_id: responsablePagoId || null,
         forma_pago: formaPago,
         metodo_pago: metodoPago,
         metodo_pago_otro_detalle: metodoPago === 'Otro' ? metodoPagoOtroDetalle : null,
         observaciones_oc: observacionesOC || null,
       }).eq('id', pedidoId);
+      if (error) throw error;
       await cargarDatos();
-    } catch (error) {
+      showToast('Información de pago guardada correctamente.', 'success');
+    } catch (error: any) {
       console.error('Error guardando pago:', error);
+      showToast(`Error al guardar la información de pago: ${error?.message || 'error desconocido'}`, 'error');
     } finally {
       setGuardandoPago(false);
     }
