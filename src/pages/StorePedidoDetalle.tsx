@@ -247,7 +247,7 @@ export default function StorePedidoDetalle() {
     if (!pedidoId || !usuario?.id || !pedido) return;
     const { data: triggersRaw } = await supabase
       .from('store_tramite_triggers')
-      .select('*, ticket_tipos!inner(id, value, nombre)')
+      .select('*, ticket_tipos!inner(id, value, label)')
       .eq('estatus_destino_id', nuevoEstatusId)
       .eq('activo', true);
     // Filtrar por método/forma de pago del pedido si el trigger los restringe (null = cualquiera)
@@ -267,7 +267,7 @@ export default function StorePedidoDetalle() {
     const folio = pedido.folio_oc ?? pedidoId.slice(0, 8).toUpperCase();
     for (const trigger of triggers) {
       try {
-        const tipoInfo = trigger.ticket_tipos as { id: string; value: string; nombre: string };
+        const tipoInfo = trigger.ticket_tipos as { id: string; value: string; label: string };
         const descripcion = (trigger.descripcion_template as string)
           .replace(/\{\{folio\}\}/g, folio)
           .replace(/\{\{estatus\}\}/g, nombreEstatus);

@@ -1397,7 +1397,7 @@ function TriggersPanel() {
     const [triggersRes, estatusRes, tiposRes] = await Promise.all([
       supabase.from('store_tramite_triggers').select('*').order('created_at'),
       supabase.from('store_estatus_pedidos').select('id, nombre').eq('activo', true).order('orden'),
-      supabase.from('ticket_tipos').select('id, nombre, value').order('nombre'),
+      supabase.from('ticket_tipos').select('id, nombre:label, value').eq('activo', true).order('label'),
     ]);
     setTriggers(triggersRes.data ?? []);
     setEstatusList(estatusRes.data ?? []);
