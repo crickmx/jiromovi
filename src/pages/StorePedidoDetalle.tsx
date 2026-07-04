@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CircleCheck as CheckCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader as Loader2, Wallet, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
-import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus, obtenerPagosPedido, registrarPago, eliminarPago } from '../lib/storeUtils';
+import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus, obtenerPagosPedido, registrarPago, eliminarPago, tieneAccesoEquipoStore } from '../lib/storeUtils';
 import type { StorePedidoCompleto, StoreEstatusPedido, FormaPagoOC, MetodoPagoOC, StorePedidoGasto, StorePedidoDetalleGasto, StorePedidoPago } from '../lib/storeTypes';
 import { TIPO_GASTO_OPTIONS, METODO_PAGO_OPCIONES, getFormasPagoParaMetodo } from '../lib/storeTypes';
 import { format } from 'date-fns';
@@ -46,7 +46,9 @@ export default function StorePedidoDetalle() {
   const [savingCostoOverride, setSavingCostoOverride] = useState<Record<string, boolean>>({});
   const [costoOverrideSaved, setCostoOverrideSaved] = useState<Record<string, boolean>>({});
 
-  const isAdmin = usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente';
+  const esAdminOGerente = usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente';
+  const [tieneAccesoEquipo, setTieneAccesoEquipo] = useState(false);
+  const isAdmin = esAdminOGerente || tieneAccesoEquipo;
   const [savingPedidoGasto, setSavingPedidoGasto] = useState(false);
   const [gastoError, setGastoError] = useState<string | null>(null);
 
@@ -62,6 +64,11 @@ export default function StorePedidoDetalle() {
   useEffect(() => {
     if (pedidoId) cargarDatos();
   }, [pedidoId]);
+
+  useEffect(() => {
+    if (esAdminOGerente || !usuario) return;
+    tieneAccesoEquipoStore(usuario.id).then(setTieneAccesoEquipo);
+  }, [usuario, esAdminOGerente]);
 
   useEffect(() => {
     if (pedido) {
@@ -84,7 +91,7 @@ export default function StorePedidoDetalle() {
         setCostoOverrides(overrides);
       }
     }
-  }, [pedido]);
+  }, [pedido, isAdmin]);
 
   const cargarUsuariosOficina = async () => {
     if (!pedido?.usuario_id) return;
