@@ -5,7 +5,7 @@ import { type TipoCampo, type CampoTipo, type RolVisibilidad, CAMPO_TIPOS, slugi
 import { logHistorial } from './logHistorial';
 
 // Campos sistema que nunca se pueden mover ni eliminar
-export const LOCKED_SISTEMA_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion'];
+export const LOCKED_SISTEMA_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'creado_por'];
 
 // Defaults para re-agregar campos sistema configurables que el admin haya ocultado
 export const SISTEMA_CAMPO_DEFAULTS: Record<string, { label: string; tipo: string; key: string; config: Record<string, any> }> = {

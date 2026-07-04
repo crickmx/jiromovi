@@ -171,7 +171,7 @@ export function TramiteDetalle() {
   // dejaba "original" en null para cualquier campo no-json y el botón Guardar solo reaccionaba
   // a los campos tipo estatus/dropdown/seleccion_multiple.
   const TEXTO_TIPOS_DIRTY = ['texto_corto', 'texto_largo', 'area', 'equipo',
-    'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion',
+    'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion', 'creado_por',
     'aseguradora', 'ramo', 'email', 'telefono', 'rfc', 'curp'];
   const valorOriginalCampo = (campo: CampoDinamico, resp?: RespuestaDinamica) => {
     if (!resp) return null;
@@ -424,7 +424,7 @@ export function TramiteDetalle() {
         const campo = campos.find(c => c.id === r.campo_id);
         if (!campo) continue;
         const TEXTO_TIPOS = ['texto_corto', 'texto_largo', 'area', 'equipo',
-          'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion',
+          'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion', 'creado_por',
           'aseguradora', 'ramo', 'email', 'telefono', 'rfc', 'curp'];
         if (TEXTO_TIPOS.includes(campo.tipo)) vals[campo.id] = r.valor_texto;
         else if (['numerico', 'porcentaje'].includes(campo.tipo)) vals[campo.id] = r.valor_numerico;
@@ -833,7 +833,7 @@ export function TramiteDetalle() {
       // ── Fase 3: Motor de ejecución de triggers ──────────────────────
       if (_allTriggers.length > 0) {
         const TEXTO_TIPOS_TR = ['texto_corto', 'texto_largo', 'area', 'equipo',
-          'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion',
+          'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion', 'creado_por',
           'aseguradora', 'ramo', 'email', 'telefono', 'rfc', 'curp'];
 
         const { data: estatusIniciado } = await supabase

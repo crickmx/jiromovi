@@ -770,7 +770,7 @@ export function NuevoTramiteModal({
     }
 
     // Validar campos dinámicos requeridos (omitir campos sistema auto-fill)
-    const AUTO_FILL_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'oficina_jiro', 'agente_vendedor'];
+    const AUTO_FILL_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'oficina_jiro', 'agente_vendedor', 'creado_por'];
     for (const campo of camposDinamicos) {
       if (!campo.requerido) continue;
       if (!canSeeCampo(campo)) continue;
@@ -1164,6 +1164,13 @@ export function NuevoTramiteModal({
       <div key={campo.id}>
         <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">🔒 {campo.label}</label>
         <div className={violet}>{lock}{new Date().toLocaleString('es-MX')}</div>
+      </div>
+    );
+
+    if (campo.sistema_key === 'creado_por') return (
+      <div key={campo.id}>
+        <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">🔒 {campo.label}</label>
+        <div className={violet}>{lock}{usuario?.nombre_completo || usuario?.nombre || 'Usuario actual'}</div>
       </div>
     );
 
@@ -1579,6 +1586,8 @@ export function NuevoTramiteModal({
         if (areaCampo && tipoInfoGuardado?.area) autoSistema[areaCampo.id] = tipoInfoGuardado.area;
         const fechaCreCampo = camposDinamicos.find(c => c.sistema_key === 'fecha_creacion');
         if (fechaCreCampo) autoSistema[fechaCreCampo.id] = new Date().toISOString();
+        const creadoPorCampo = camposDinamicos.find(c => c.sistema_key === 'creado_por');
+        if (creadoPorCampo) autoSistema[creadoPorCampo.id] = usuario.nombre_completo || usuario.nombre || '';
         const equipoCampo = camposDinamicos.find(c => c.sistema_key === 'equipo');
         if (equipoCampo && grupoAsignadoId) {
           const { data: grupoData } = await supabase
@@ -1588,7 +1597,7 @@ export function NuevoTramiteModal({
         const respuestasMerged = { ...autoSistema, ...respuestasDinamicas };
 
         const TEXTO_TIPOS = ['texto_corto', 'texto_largo', 'area', 'equipo',
-          'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion',
+          'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion', 'creado_por',
           'aseguradora', 'ramo', 'email', 'telefono', 'rfc', 'curp'];
 
         const respuestas = camposDinamicos
