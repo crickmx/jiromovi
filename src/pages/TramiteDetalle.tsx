@@ -587,6 +587,18 @@ export function TramiteDetalle() {
       return;
     }
 
+    // Si el usuario ya cambió el estatus a mano (dropdown del encabezado), no hay
+    // nada que preguntar: saltar el modal y guardar directo con ese estatus.
+    const estatusYaCambio = estatusCampoDinamico
+      ? selectedEstatusSlug !== (respuestasOriginales.find(r => r.campo_id === estatusCampoDinamico.id)?.valor_json ?? '')
+      : selectedEstatus !== (tramite.estatus?.id ?? tramite.estatus_id);
+
+    if (estatusYaCambio) {
+      estatusOverrideRef.current = null;
+      await continuarGuardadoConEstatus(selectedEstatusSlug, selectedEstatus);
+      return;
+    }
+
     // Abrir modal de confirmación de estatus
     setModalKeepCurrent(true);
     setModalChosenSlug(selectedEstatusSlug);
@@ -615,6 +627,13 @@ export function TramiteDetalle() {
     }
 
     setEstatusModalOpen(false);
+    await continuarGuardadoConEstatus(chosenSlug, chosenId);
+  };
+
+  // Compartido entre handleSave (cuando el estatus ya se cambió a mano) y
+  // handleEstatusModalConfirm (cuando el usuario confirma el modal)
+  const continuarGuardadoConEstatus = async (chosenSlug: string, chosenId: string) => {
+    if (!tramite) return;
 
     // Re-validar campos requeridos que dependen del estatus elegido (la validación
     // en handleSave corría antes del modal, cuando el estatus aún era el anterior)
