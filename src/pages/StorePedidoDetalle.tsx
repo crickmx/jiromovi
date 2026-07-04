@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CircleCheck as CheckCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader as Loader2, Wallet, Trash2 } from 'lucide-react';
+import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CircleCheck as CheckCircle, Circle as XCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader as Loader2, Wallet, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus, obtenerPagosPedido, registrarPago, eliminarPago, tieneAccesoEquipoStore, obtenerMapeoCamposTrigger, resolverTemplatePedido, obtenerCamposTramiteTipo } from '../lib/storeUtils';
 import type { StorePedidoCompleto, StoreEstatusPedido, FormaPagoOC, MetodoPagoOC, StorePedidoGasto, StorePedidoDetalleGasto, StorePedidoPago } from '../lib/storeTypes';
@@ -21,6 +21,11 @@ export default function StorePedidoDetalle() {
   const [actualizandoEstatus, setActualizandoEstatus] = useState(false);
   const [nuevaNota, setNuevaNota] = useState('');
   const [agregandoNota, setAgregandoNota] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 5000);
+  }, []);
 
   // Payment fields
   const [responsablePagoId, setResponsablePagoId] = useState('');
@@ -233,11 +238,23 @@ export default function StorePedidoDetalle() {
       }
 
       // Disparar triggers: crear tramites automaticos vinculados al pedido
-      await dispararTriggersEstatus(nuevoEstatusId, nuevoEstatus?.nombre ?? '');
+      const resultadoTriggers = await dispararTriggersEstatus(nuevoEstatusId, nuevoEstatus?.nombre ?? '');
 
       await cargarDatos();
+
+      if (resultadoTriggers.creados.length > 0) {
+        const detalle = resultadoTriggers.creados.map(c => `${c.tipoLabel} (${c.folio})`).join(', ');
+        showToast(`Estatus actualizado. Trámite${resultadoTriggers.creados.length > 1 ? 's' : ''} creado${resultadoTriggers.creados.length > 1 ? 's' : ''}: ${detalle}`, 'success');
+      } else if (resultadoTriggers.errores.length > 0) {
+        showToast(`Estatus actualizado, pero falló la creación del trámite "${resultadoTriggers.errores[0].nombre}": ${resultadoTriggers.errores[0].error}`, 'error');
+      } else if (resultadoTriggers.totalTriggers > resultadoTriggers.triggersAplicados) {
+        showToast('Estatus actualizado. Ningún trigger aplicó: el método o forma de pago del pedido no coincide con lo configurado.', 'error');
+      } else {
+        showToast('Estatus actualizado correctamente.', 'success');
+      }
     } catch (error) {
       console.error('Error actualizando estatus:', error);
+      showToast('Error al actualizar el estatus del pedido.', 'error');
     } finally {
       setActualizandoEstatus(false);
     }
@@ -261,24 +278,27 @@ export default function StorePedidoDetalle() {
   });
 
   const dispararTriggersEstatus = async (nuevoEstatusId: string, nombreEstatus: string) => {
-    if (!pedidoId || !usuario?.id || !pedido) return;
+    const resultado = { creados: [] as { folio: string; tipoLabel: string }[], errores: [] as { nombre: string; error: string }[], totalTriggers: 0, triggersAplicados: 0 };
+    if (!pedidoId || !usuario?.id || !pedido) return resultado;
     const { data: triggersRaw } = await supabase
       .from('store_tramite_triggers')
       .select('*, ticket_tipos!inner(id, value, label, area)')
       .eq('estatus_destino_id', nuevoEstatusId)
       .eq('activo', true);
+    resultado.totalTriggers = triggersRaw?.length ?? 0;
     // Filtrar por método/forma de pago del pedido si el trigger los restringe (null = cualquiera)
     const triggers = (triggersRaw ?? []).filter(t =>
       (!t.metodo_pago_filtro || t.metodo_pago_filtro === pedido.metodo_pago) &&
       (!t.forma_pago_filtro || t.forma_pago_filtro === pedido.forma_pago)
     );
-    if (triggers.length === 0) return;
+    resultado.triggersAplicados = triggers.length;
+    if (triggers.length === 0) return resultado;
 
     const { data: estatusIniciado } = await supabase
       .from('ticket_estatus').select('id').eq('nombre', 'Iniciado').maybeSingle();
     if (!estatusIniciado) {
-      console.error('[Store] No se encontró el estatus "Iniciado" para crear el trámite del trigger');
-      return;
+      resultado.errores.push({ nombre: '(config)', error: 'No se encontró el estatus "Iniciado" en el sistema' });
+      return resultado;
     }
 
     const folio = pedido.folio_oc ?? pedidoId.slice(0, 8).toUpperCase();
@@ -386,10 +406,14 @@ export default function StorePedidoDetalle() {
             tamano: archivo.tamano,
           });
         }
-      } catch (err) {
+
+        resultado.creados.push({ folio: ticket.folio, tipoLabel: tipoInfo.label });
+      } catch (err: any) {
         console.error(`[Store] Error creando trámite del trigger "${trigger.nombre}":`, err);
+        resultado.errores.push({ nombre: trigger.nombre as string, error: err?.message || 'error desconocido' });
       }
     }
+    return resultado;
   };
 
   const activarPremiumSiAplica = async (pedidoData: StorePedidoCompleto) => {
@@ -652,6 +676,17 @@ export default function StorePedidoDetalle() {
 
   return (
     <>
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white text-sm font-medium max-w-md ${
+          toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
+        }`}>
+          {toast.type === 'success'
+            ? <CheckCircle className="w-4 h-4 flex-shrink-0" />
+            : <XCircle className="w-4 h-4 flex-shrink-0" />
+          }
+          {toast.message}
+        </div>
+      )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <PageHeader
           title="Detalle de Pedido"
