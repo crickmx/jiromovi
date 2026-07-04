@@ -952,6 +952,7 @@ export const PLACEHOLDERS_TRIGGER_PEDIDO: { key: string; label: string }[] = [
   { key: '{{fecha_pedido}}', label: 'Fecha del pedido' },
   { key: '{{metodo_pago}}', label: 'Método de pago' },
   { key: '{{forma_pago}}', label: 'Forma de pago' },
+  { key: '{{responsable_pago}}', label: 'Responsable de pago (si no hay, usa el cliente)' },
 ];
 
 // Reemplaza los placeholders de PLACEHOLDERS_TRIGGER_PEDIDO con datos reales del pedido
@@ -969,7 +970,10 @@ export function resolverTemplatePedido(template: string, pedido: StorePedidoComp
     .replace(/\{\{productos\}\}/g, productos || 'Sin productos')
     .replace(/\{\{fecha_pedido\}\}/g, new Date(pedido.created_at).toLocaleDateString('es-MX'))
     .replace(/\{\{metodo_pago\}\}/g, pedido.metodo_pago || 'N/A')
-    .replace(/\{\{forma_pago\}\}/g, pedido.forma_pago || 'N/A');
+    .replace(/\{\{forma_pago\}\}/g, pedido.forma_pago || 'N/A')
+    .replace(/\{\{responsable_pago\}\}/g,
+      pedido.responsable_pago?.nombre_completo || pedido.responsable_pago?.nombre
+        || pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A');
 }
 
 export async function obtenerCamposTramiteTipo(tramiteTipoId: string) {
