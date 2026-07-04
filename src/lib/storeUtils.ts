@@ -931,6 +931,83 @@ export async function eliminarPago(pagoId: string) {
 }
 
 // ============================================
+// TRIGGERS STORE -> TRAMITES: mapeo de campos
+// ============================================
+
+export interface StoreTramiteTriggerCampo {
+  id: string;
+  trigger_id: string;
+  campo_id: string;
+  fuente: 'vacio' | 'template' | 'adjunto_oc';
+  valor_template: string | null;
+}
+
+// Placeholders disponibles al armar una plantilla de texto para un campo del trámite
+export const PLACEHOLDERS_TRIGGER_PEDIDO: { key: string; label: string }[] = [
+  { key: '{{folio}}', label: 'Folio de la OC' },
+  { key: '{{cliente}}', label: 'Nombre del cliente' },
+  { key: '{{oficina}}', label: 'Oficina del cliente' },
+  { key: '{{monto_total}}', label: 'Monto total del pedido' },
+  { key: '{{productos}}', label: 'Lista de productos (cant. x nombre)' },
+  { key: '{{fecha_pedido}}', label: 'Fecha del pedido' },
+  { key: '{{metodo_pago}}', label: 'Método de pago' },
+  { key: '{{forma_pago}}', label: 'Forma de pago' },
+];
+
+// Reemplaza los placeholders de PLACEHOLDERS_TRIGGER_PEDIDO con datos reales del pedido
+export function resolverTemplatePedido(template: string, pedido: StorePedidoCompleto): string {
+  const totalMonto = pedido.detalle.reduce((sum, item) => sum + item.cantidad * item.precio_unitario, 0);
+  const productos = pedido.detalle
+    .map(item => `${item.cantidad} x ${item.producto?.titulo ?? 'Producto sin nombre'}`)
+    .join(', ');
+
+  return template
+    .replace(/\{\{folio\}\}/g, pedido.folio_oc || pedido.id.slice(0, 8).toUpperCase())
+    .replace(/\{\{cliente\}\}/g, pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A')
+    .replace(/\{\{oficina\}\}/g, pedido.usuario?.oficina || 'N/A')
+    .replace(/\{\{monto_total\}\}/g, `$${totalMonto.toFixed(2)}`)
+    .replace(/\{\{productos\}\}/g, productos || 'Sin productos')
+    .replace(/\{\{fecha_pedido\}\}/g, new Date(pedido.created_at).toLocaleDateString('es-MX'))
+    .replace(/\{\{metodo_pago\}\}/g, pedido.metodo_pago || 'N/A')
+    .replace(/\{\{forma_pago\}\}/g, pedido.forma_pago || 'N/A');
+}
+
+export async function obtenerCamposTramiteTipo(tramiteTipoId: string) {
+  const { data, error } = await supabase
+    .from('tramite_tipo_campos')
+    .select('*')
+    .eq('tramite_tipo_id', tramiteTipoId)
+    .eq('activo', true)
+    .order('display_order');
+
+  if (error) throw error;
+  return data;
+}
+
+export async function obtenerMapeoCamposTrigger(triggerId: string): Promise<StoreTramiteTriggerCampo[]> {
+  const { data, error } = await supabase
+    .from('store_tramite_trigger_campos')
+    .select('*')
+    .eq('trigger_id', triggerId);
+
+  if (error) throw error;
+  return data as StoreTramiteTriggerCampo[];
+}
+
+export async function guardarMapeoCampoTrigger(mapeo: {
+  trigger_id: string;
+  campo_id: string;
+  fuente: 'vacio' | 'template' | 'adjunto_oc';
+  valor_template?: string | null;
+}) {
+  const { error } = await supabase
+    .from('store_tramite_trigger_campos')
+    .upsert(mapeo, { onConflict: 'trigger_id,campo_id' });
+
+  if (error) throw error;
+}
+
+// ============================================
 // CARGA MASIVA - EXCEL
 // ============================================
 

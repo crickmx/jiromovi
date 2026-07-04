@@ -3,12 +3,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CircleCheck as CheckCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader as Loader2, Wallet, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
-import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus, obtenerPagosPedido, registrarPago, eliminarPago, tieneAccesoEquipoStore } from '../lib/storeUtils';
+import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus, obtenerPagosPedido, registrarPago, eliminarPago, tieneAccesoEquipoStore, obtenerMapeoCamposTrigger, resolverTemplatePedido } from '../lib/storeUtils';
 import type { StorePedidoCompleto, StoreEstatusPedido, FormaPagoOC, MetodoPagoOC, StorePedidoGasto, StorePedidoDetalleGasto, StorePedidoPago } from '../lib/storeTypes';
 import { TIPO_GASTO_OPTIONS, METODO_PAGO_OPCIONES, getFormasPagoParaMetodo } from '../lib/storeTypes';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { generarFolioOC, generarPDFOrdenCompra, validarDatosPagoCompletos } from '../lib/storePdfOrdenCompra';
+import { generarFolioOC, generarPDFOrdenCompra, subirPDFOrdenCompra, validarDatosPagoCompletos } from '../lib/storePdfOrdenCompra';
 import { supabase } from '../lib/supabase';
 
 export default function StorePedidoDetalle() {
@@ -244,30 +244,94 @@ export default function StorePedidoDetalle() {
   };
 
   const dispararTriggersEstatus = async (nuevoEstatusId: string, nombreEstatus: string) => {
-    if (!pedidoId || !usuario?.id) return;
-    const { data: triggers } = await supabase
+    if (!pedidoId || !usuario?.id || !pedido) return;
+    const { data: triggersRaw } = await supabase
       .from('store_tramite_triggers')
-      .select('*, ticket_tipos!inner(value, nombre)')
+      .select('*, ticket_tipos!inner(id, value, nombre)')
       .eq('estatus_destino_id', nuevoEstatusId)
       .eq('activo', true);
-    if (!triggers || triggers.length === 0) return;
+    // Filtrar por método/forma de pago del pedido si el trigger los restringe (null = cualquiera)
+    const triggers = (triggersRaw ?? []).filter(t =>
+      (!t.metodo_pago_filtro || t.metodo_pago_filtro === pedido.metodo_pago) &&
+      (!t.forma_pago_filtro || t.forma_pago_filtro === pedido.forma_pago)
+    );
+    if (triggers.length === 0) return;
 
-    const folio = pedido?.folio_oc ?? pedidoId.slice(0, 8).toUpperCase();
+    const { data: estatusIniciado } = await supabase
+      .from('ticket_estatus').select('id').eq('nombre', 'Iniciado').maybeSingle();
+    if (!estatusIniciado) {
+      console.error('[Store] No se encontró el estatus "Iniciado" para crear el trámite del trigger');
+      return;
+    }
+
+    const folio = pedido.folio_oc ?? pedidoId.slice(0, 8).toUpperCase();
     for (const trigger of triggers) {
-      const tipo = (trigger.ticket_tipos as { value: string; nombre: string }).value;
-      const descripcion = (trigger.descripcion_template as string)
-        .replace(/\{\{folio\}\}/g, folio)
-        .replace(/\{\{estatus\}\}/g, nombreEstatus);
-      await supabase.from('tickets').insert({
-        titulo: `${trigger.nombre} — Pedido ${folio}`,
-        descripcion,
-        tipo,
-        prioridad: 'Media',
-        estatus: 'Abierto',
-        creado_por: usuario.id,
-        oficina_id: usuario.oficina_id ?? null,
-        store_pedido_id: pedidoId,
-      });
+      try {
+        const tipoInfo = trigger.ticket_tipos as { id: string; value: string; nombre: string };
+        const descripcion = (trigger.descripcion_template as string)
+          .replace(/\{\{folio\}\}/g, folio)
+          .replace(/\{\{estatus\}\}/g, nombreEstatus);
+
+        const { data: grupoRow } = await supabase.rpc('get_grupo_para_ticket', {
+          p_agente_id: pedido.usuario_id,
+          p_tipo_tramite: tipoInfo.value,
+        });
+        const grupoResult = Array.isArray(grupoRow) && grupoRow.length > 0
+          ? grupoRow[0] as { grupo_id: string; ejecutivo_id: string | null }
+          : null;
+
+        const { data: ticket, error: ticketError } = await supabase.from('tickets').insert({
+          tipo_tramite: tipoInfo.value,
+          estatus_id: estatusIniciado.id,
+          prioridad: 'Media',
+          instrucciones: descripcion || `${trigger.nombre} — Pedido ${folio}`,
+          creado_por: usuario.id,
+          modificado_por: usuario.id,
+          agente_id: pedido.usuario_id,
+          assigned_to_user_id: grupoResult?.ejecutivo_id ?? null,
+          grupo_asignado_id: grupoResult?.grupo_id ?? null,
+          store_pedido_id: pedidoId,
+        }).select().single();
+        if (ticketError || !ticket) throw ticketError;
+
+        // Aplicar mapeo de campos configurado para este trigger
+        const mapeo = await obtenerMapeoCamposTrigger(trigger.id as string);
+        const respuestas = mapeo
+          .filter(m => m.fuente === 'template' && m.valor_template)
+          .map(m => ({
+            tramite_id: ticket.id,
+            campo_id: m.campo_id,
+            valor_texto: resolverTemplatePedido(m.valor_template as string, pedido),
+          }));
+        if (respuestas.length > 0) {
+          await supabase.from('tramite_respuestas').insert(respuestas);
+        }
+
+        // Adjuntar PDF de Orden de Compra si algún campo está mapeado a 'adjunto_oc'
+        const campoAdjuntoOC = mapeo.find(m => m.fuente === 'adjunto_oc');
+        if (campoAdjuntoOC) {
+          let folioOC = pedido.folio_oc;
+          if (!folioOC) {
+            folioOC = await generarFolioOC();
+            await supabase.from('store_pedidos').update({
+              folio_oc: folioOC,
+              oc_generada_por: usuario.id,
+              oc_generada_en: new Date().toISOString(),
+            }).eq('id', pedidoId);
+          }
+          const archivo = await subirPDFOrdenCompra({ ...pedido, folio_oc: folioOC }, ticket.id);
+          await supabase.from('ticket_archivos').insert({
+            ticket_id: ticket.id,
+            usuario_id: usuario.id,
+            nombre: archivo.nombre,
+            url: archivo.url,
+            tipo: archivo.tipo,
+            tamano: archivo.tamano,
+          });
+        }
+      } catch (err) {
+        console.error(`[Store] Error creando trámite del trigger "${trigger.nombre}":`, err);
+      }
     }
   };
 
