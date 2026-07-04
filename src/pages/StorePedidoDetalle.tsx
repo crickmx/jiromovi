@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CircleCheck as CheckCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader as Loader2, Wallet, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
-import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus, obtenerPagosPedido, registrarPago, eliminarPago, tieneAccesoEquipoStore, obtenerMapeoCamposTrigger, resolverTemplatePedido } from '../lib/storeUtils';
+import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus, obtenerPagosPedido, registrarPago, eliminarPago, tieneAccesoEquipoStore, obtenerMapeoCamposTrigger, resolverTemplatePedido, obtenerCamposTramiteTipo } from '../lib/storeUtils';
 import type { StorePedidoCompleto, StoreEstatusPedido, FormaPagoOC, MetodoPagoOC, StorePedidoGasto, StorePedidoDetalleGasto, StorePedidoPago } from '../lib/storeTypes';
 import { TIPO_GASTO_OPTIONS, METODO_PAGO_OPCIONES, getFormasPagoParaMetodo } from '../lib/storeTypes';
 import { format } from 'date-fns';
@@ -243,11 +243,28 @@ export default function StorePedidoDetalle() {
     }
   };
 
+  // Mismos "tipos de texto" que usa TramiteDetalle.tsx/NuevoTramiteModal.tsx para decidir en qué
+  // columna de tramite_respuestas vive el valor de cada campo del FormBuilder. Si no coincide con
+  // la columna que se lee al mostrar el campo, el campo aparece vacío aunque sí se haya guardado.
+  const TEXTO_TIPOS_TRIGGER = ['texto_corto', 'texto_largo', 'area', 'equipo',
+    'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion', 'creado_por',
+    'aseguradora', 'ramo', 'email', 'telefono', 'rfc', 'curp'];
+
+  const construirRespuesta = (tramiteId: string, campoId: string, tipoCampo: string, valor: unknown) => ({
+    tramite_id: tramiteId,
+    campo_id: campoId,
+    valor_texto: TEXTO_TIPOS_TRIGGER.includes(tipoCampo) ? String(valor) : null,
+    valor_numerico: ['numerico', 'porcentaje'].includes(tipoCampo) ? Number(valor) : null,
+    valor_fecha: tipoCampo === 'fecha' ? String(valor) : null,
+    valor_booleano: tipoCampo === 'booleano' ? Boolean(valor) : null,
+    valor_json: !TEXTO_TIPOS_TRIGGER.includes(tipoCampo) && !['numerico', 'porcentaje', 'fecha', 'booleano'].includes(tipoCampo) ? valor : null,
+  });
+
   const dispararTriggersEstatus = async (nuevoEstatusId: string, nombreEstatus: string) => {
     if (!pedidoId || !usuario?.id || !pedido) return;
     const { data: triggersRaw } = await supabase
       .from('store_tramite_triggers')
-      .select('*, ticket_tipos!inner(id, value, label)')
+      .select('*, ticket_tipos!inner(id, value, label, area)')
       .eq('estatus_destino_id', nuevoEstatusId)
       .eq('activo', true);
     // Filtrar por método/forma de pago del pedido si el trigger los restringe (null = cualquiera)
@@ -267,11 +284,12 @@ export default function StorePedidoDetalle() {
     const folio = pedido.folio_oc ?? pedidoId.slice(0, 8).toUpperCase();
     for (const trigger of triggers) {
       try {
-        const tipoInfo = trigger.ticket_tipos as { id: string; value: string; label: string };
-        const descripcion = (trigger.descripcion_template as string)
-          .replace(/\{\{folio\}\}/g, folio)
-          .replace(/\{\{estatus\}\}/g, nombreEstatus);
+        const tipoInfo = trigger.ticket_tipos as { id: string; value: string; label: string; area: string };
+        const camposDelTipo = await obtenerCamposTramiteTipo(tipoInfo.id);
+        const mapeo = await obtenerMapeoCamposTrigger(trigger.id as string);
 
+        // Equipo/ejecutivo según las reglas de asignación del tipo de trámite, usando al
+        // dueño del pedido como el "agente" que determina la regla (igual que Nuevo Trámite)
         const { data: grupoRow } = await supabase.rpc('get_grupo_para_ticket', {
           p_agente_id: pedido.usuario_id,
           p_tipo_tramite: tipoInfo.value,
@@ -280,11 +298,35 @@ export default function StorePedidoDetalle() {
           ? grupoRow[0] as { grupo_id: string; ejecutivo_id: string | null }
           : null;
 
+        let nombreGrupo: string | null = null;
+        if (grupoResult?.grupo_id) {
+          const { data: grupoData } = await supabase
+            .from('tramites_grupos_visualizacion').select('nombre').eq('id', grupoResult.grupo_id).single();
+          nombreGrupo = grupoData?.nombre ?? null;
+        }
+        let nombreEjecutivo: string | null = null;
+        if (grupoResult?.ejecutivo_id) {
+          const { data: ejecData } = await supabase
+            .from('usuarios').select('nombre_completo, nombre').eq('id', grupoResult.ejecutivo_id).maybeSingle();
+          nombreEjecutivo = ejecData?.nombre_completo || ejecData?.nombre || null;
+        }
+
+        // "Descripción / Notas" del FormBuilder tiene prioridad sobre la plantilla legacy del
+        // trigger si el admin la mapeó explícitamente en la sección de campos
+        const descripcionCampo = (camposDelTipo ?? []).find((c: any) => c.sistema_key === 'descripcion');
+        const mapeoDescripcion = descripcionCampo ? mapeo.find(m => m.campo_id === descripcionCampo.id) : undefined;
+        const descripcionLegacy = (trigger.descripcion_template as string || '')
+          .replace(/\{\{folio\}\}/g, folio)
+          .replace(/\{\{estatus\}\}/g, nombreEstatus);
+        const instrucciones = (mapeoDescripcion?.fuente === 'template' && mapeoDescripcion.valor_template)
+          ? resolverTemplatePedido(mapeoDescripcion.valor_template, pedido)
+          : (descripcionLegacy || `${trigger.nombre} — Pedido ${folio}`);
+
         const { data: ticket, error: ticketError } = await supabase.from('tickets').insert({
           tipo_tramite: tipoInfo.value,
           estatus_id: estatusIniciado.id,
           prioridad: 'Media',
-          instrucciones: descripcion || `${trigger.nombre} — Pedido ${folio}`,
+          instrucciones,
           creado_por: usuario.id,
           modificado_por: usuario.id,
           agente_id: pedido.usuario_id,
@@ -294,17 +336,32 @@ export default function StorePedidoDetalle() {
         }).select().single();
         if (ticketError || !ticket) throw ticketError;
 
-        // Aplicar mapeo de campos configurado para este trigger
-        const mapeo = await obtenerMapeoCamposTrigger(trigger.id as string);
-        const respuestas = mapeo
+        // Autofill de los campos fijos del FormBuilder (mismo criterio que "Nuevo Trámite"):
+        // Área viene del tipo de trámite, Equipo/Asignar a de las reglas de asignación,
+        // Creado Por es quien disparó el cambio de estatus (no el dueño del pedido)
+        const respuestasAuto: ReturnType<typeof construirRespuesta>[] = [];
+        const areaCampo = (camposDelTipo ?? []).find((c: any) => c.sistema_key === 'area');
+        if (areaCampo && tipoInfo.area) respuestasAuto.push(construirRespuesta(ticket.id, areaCampo.id, 'area', tipoInfo.area));
+        const equipoCampo = (camposDelTipo ?? []).find((c: any) => c.sistema_key === 'equipo');
+        if (equipoCampo && nombreGrupo) respuestasAuto.push(construirRespuesta(ticket.id, equipoCampo.id, 'equipo', nombreGrupo));
+        const creadoPorCampo = (camposDelTipo ?? []).find((c: any) => c.sistema_key === 'creado_por');
+        if (creadoPorCampo) respuestasAuto.push(construirRespuesta(ticket.id, creadoPorCampo.id, 'creado_por', usuario.nombre_completo || usuario.nombre || ''));
+        const asignadoACampo = (camposDelTipo ?? []).find((c: any) => c.sistema_key === 'asignado_a');
+        if (asignadoACampo && nombreEjecutivo) respuestasAuto.push(construirRespuesta(ticket.id, asignadoACampo.id, 'asignado_a', nombreEjecutivo));
+
+        // Mapeo manual del admin -- 'descripcion' también se guarda aquí (además de usarse arriba
+        // para instrucciones) para que "Información del Trámite" la muestre igual que los demás campos
+        const respuestasMapeo = mapeo
           .filter(m => m.fuente === 'template' && m.valor_template)
-          .map(m => ({
-            tramite_id: ticket.id,
-            campo_id: m.campo_id,
-            valor_texto: resolverTemplatePedido(m.valor_template as string, pedido),
-          }));
-        if (respuestas.length > 0) {
-          await supabase.from('tramite_respuestas').insert(respuestas);
+          .map(m => {
+            const campoInfo = (camposDelTipo ?? []).find((c: any) => c.id === m.campo_id);
+            const valor = resolverTemplatePedido(m.valor_template as string, pedido);
+            return construirRespuesta(ticket.id, m.campo_id, campoInfo?.tipo ?? 'texto_corto', valor);
+          });
+
+        const todasRespuestas = [...respuestasAuto, ...respuestasMapeo];
+        if (todasRespuestas.length > 0) {
+          await supabase.from('tramite_respuestas').insert(todasRespuestas);
         }
 
         // Adjuntar PDF de Orden de Compra si algún campo está mapeado a 'adjunto_oc'

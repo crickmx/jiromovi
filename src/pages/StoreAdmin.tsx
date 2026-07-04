@@ -1383,10 +1383,17 @@ function TriggersPanel() {
   const [camposTipo, setCamposTipo] = useState<{ id: string; label: string; tipo: string }[]>([]);
   const [mapeoCampos, setMapeoCampos] = useState<Record<string, { fuente: 'vacio' | 'template' | 'adjunto_oc'; valor_template: string }>>({});
 
+  // Campos que se autollenan solos (área/equipo por reglas de asignación, creado_por por quien
+  // dispara el estatus, estatus siempre inicia en "Iniciado", asignado_a por las reglas de equipo)
+  // -- no tiene sentido dejar que el admin los mapee manualmente aquí.
+  const SISTEMA_KEYS_AUTOMATICOS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'creado_por', 'estatus', 'asignado_a'];
+
   useEffect(() => {
     if (!ticketTipoId) { setCamposTipo([]); return; }
     obtenerCamposTramiteTipo(ticketTipoId).then(data => {
-      setCamposTipo((data ?? []).map((c: any) => ({ id: c.id, label: c.label, tipo: c.tipo })));
+      setCamposTipo((data ?? [])
+        .filter((c: any) => !SISTEMA_KEYS_AUTOMATICOS.includes(c.sistema_key ?? ''))
+        .map((c: any) => ({ id: c.id, label: c.label, tipo: c.tipo })));
     });
   }, [ticketTipoId]);
 
