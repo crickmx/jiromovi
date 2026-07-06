@@ -221,7 +221,7 @@ function BnvParams({ input, onChange }: { input: BnvQuoteInput; onChange: (p: Pa
       </Field>
       <Field label="Tope Coaseguro">
         <select value={input.tope_coaseguro} onChange={e => onChange({ tope_coaseguro: Number(e.target.value) })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {[0, 30000, 40000, 50000, 60000].map(v => <option key={v} value={v}>{v === 0 ? 'Sin tope' : `$${v.toLocaleString()}`}</option>)}
+          {[20000, 30000, 40000].map(v => <option key={v} value={v}>{`$${v.toLocaleString()}`}</option>)}
         </select>
       </Field>
     </div>

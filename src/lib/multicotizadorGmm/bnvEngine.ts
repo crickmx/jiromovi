@@ -28,14 +28,20 @@ interface ParsedPlan {
   suma: number;
   deducible: number;
   coaseguro: number;
+  topeCoaseguro: number | null;
 }
 
-const PLAN_REGEX = /^NVFS(\d+)D(\d+)C(\d+)/;
+const PLAN_REGEX = /^NVFS(\d+)D(\d+)C(\d+)(?:TC(\d+))?/;
 
 function parsePlanName(planName: string): ParsedPlan | null {
   const m = planName.match(PLAN_REGEX);
   if (!m) return null;
-  return { suma: Number(m[1]), deducible: Number(m[2]), coaseguro: Number(m[3]) };
+  return {
+    suma: Number(m[1]),
+    deducible: Number(m[2]),
+    coaseguro: Number(m[3]),
+    topeCoaseguro: m[4] != null ? Number(m[4]) : null,
+  };
 }
 
 function matchesRegion(region: string, zone: string): boolean {
@@ -43,10 +49,11 @@ function matchesRegion(region: string, zone: string): boolean {
   return region.toLowerCase().includes('region 2');
 }
 
-export function getBnvAvailableOptions(rates: BnvRateRecord[]): BnvAvailableOptions {
+export function getBnvAvailableOptions(rates: BnvRateRecord[]): BnvAvailableOptions & { topesCoaseguro: number[] } {
   const sumas = new Set<number>();
   const deds = new Set<number>();
   const coass = new Set<number>();
+  const topes = new Set<number>();
 
   for (const r of rates) {
     const parsed = parsePlanName(r.plan_name);
@@ -54,12 +61,14 @@ export function getBnvAvailableOptions(rates: BnvRateRecord[]): BnvAvailableOpti
     sumas.add(parsed.suma);
     deds.add(parsed.deducible);
     coass.add(parsed.coaseguro);
+    if (parsed.topeCoaseguro != null) topes.add(parsed.topeCoaseguro);
   }
 
   return {
     sumasAseguradas: [...sumas].sort((a, b) => a - b),
     deducibles: [...deds].sort((a, b) => a - b),
     coaseguros: [...coass].sort((a, b) => a - b),
+    topesCoaseguro: [...topes].sort((a, b) => a - b),
   };
 }
 
@@ -78,10 +87,11 @@ export function calculateBnv(
       };
     }
 
-    // Build a lookup: filter rates matching the requested S/D/C/region, index by age
+    // Build a lookup: filter rates matching the requested S/D/C/TC/region, index by age
     const targetSuma = input.suma_asegurada;
     const targetDed = input.deducible;
     const targetCoas = input.coaseguro;
+    const targetTopeK = input.tope_coaseguro ? Math.round(input.tope_coaseguro / 1000) : 0;
 
     const ratesByAge = new Map<number, number>();
 
@@ -91,6 +101,11 @@ export function calculateBnv(
       if (parsed.suma !== targetSuma) continue;
       if (parsed.deducible !== targetDed) continue;
       if (parsed.coaseguro !== targetCoas) continue;
+      // TC matching: when coaseguro > 0, plans include TC; match by tope_coaseguro
+      if (targetCoas > 0) {
+        if (parsed.topeCoaseguro == null) continue;
+        if (targetTopeK > 0 && parsed.topeCoaseguro !== targetTopeK) continue;
+      }
       if (!matchesRegion(r.region, input.region_zone)) continue;
       const rate = Number(r.rate);
       if (isNaN(rate) || rate <= 0) continue;
