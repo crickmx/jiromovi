@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
-import { type TipoCampo, type CampoTipo, type RolVisibilidad, CAMPO_TIPOS, slugify } from './types';
+import { type TipoCampo, type TramiteSeccion, type CampoTipo, type RolVisibilidad, CAMPO_TIPOS, slugify } from './types';
 import { logHistorial } from './logHistorial';
 
 // Campos sistema que nunca se pueden mover ni eliminar
@@ -37,9 +37,68 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
   const [editCampoAyuda, setEditCampoAyuda] = useState('');
   const [editCampoVisiblePara, setEditCampoVisiblePara] = useState<RolVisibilidad>('todos');
   const [editCampoEditablePara, setEditCampoEditablePara] = useState<RolVisibilidad>('todos');
+  const [editCampoSeccionId, setEditCampoSeccionId] = useState<string | null>(null);
   const [savingCampo, setSavingCampo] = useState(false);
   const [dragging, setDragging] = useState<number | null>(null);
   const dragIdx = useRef<number | null>(null);
+
+  // ── Secciones ─────────────────────────────────────────────────────────────
+  const [secciones, setSecciones] = useState<TramiteSeccion[]>([]);
+  const [loadingSecciones, setLoadingSecciones] = useState(false);
+  const [editingSeccion, setEditingSeccion] = useState<TramiteSeccion | null>(null);
+  const [showAddSeccion, setShowAddSeccion] = useState(false);
+
+  const loadSecciones = async () => {
+    setLoadingSecciones(true);
+    const { data } = await supabase
+      .from('tramite_tipo_secciones')
+      .select('*')
+      .eq('tramite_tipo_id', tipoId)
+      .eq('activo', true)
+      .order('orden');
+    if (data) setSecciones(data as TramiteSeccion[]);
+    setLoadingSecciones(false);
+  };
+
+  const handleSaveSeccion = async (form: { nombre: string; descripcion: string; opcional: boolean; depende_de_seccion_id: string | null }) => {
+    if (!form.nombre.trim()) return;
+    if (editingSeccion) {
+      const { error } = await supabase
+        .from('tramite_tipo_secciones')
+        .update({
+          nombre: form.nombre.trim(),
+          descripcion: form.descripcion.trim() || null,
+          opcional: form.opcional,
+          depende_de_seccion_id: form.depende_de_seccion_id,
+        })
+        .eq('id', editingSeccion.id);
+      if (error) { showToast('Error al guardar la sección: ' + error.message, 'error'); return; }
+      showToast('Sección actualizada');
+    } else {
+      const maxOrden = secciones.reduce((m, s) => Math.max(m, s.orden), 0);
+      const { error } = await supabase.from('tramite_tipo_secciones').insert({
+        tramite_tipo_id: tipoId,
+        nombre: form.nombre.trim(),
+        descripcion: form.descripcion.trim() || null,
+        opcional: form.opcional,
+        depende_de_seccion_id: form.depende_de_seccion_id,
+        orden: maxOrden + 1,
+      });
+      if (error) { showToast('Error al crear la sección: ' + error.message, 'error'); return; }
+      showToast('Sección creada');
+    }
+    setEditingSeccion(null);
+    setShowAddSeccion(false);
+    await loadSecciones();
+  };
+
+  const handleDeleteSeccion = async (seccion: TramiteSeccion) => {
+    if (!confirm(`¿Eliminar la sección "${seccion.nombre}"? Sus campos quedarán sin sección (no se eliminan).`)) return;
+    const { error } = await supabase.from('tramite_tipo_secciones').delete().eq('id', seccion.id);
+    if (error) { showToast('Error al eliminar la sección: ' + error.message, 'error'); return; }
+    showToast('Sección eliminada');
+    await Promise.all([loadSecciones(), loadCampos()]);
+  };
 
   const loadCampos = async () => {
     setLoadingCampos(true);
@@ -55,9 +114,12 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
 
   const reset = () => {
     setCampos([]);
+    setSecciones([]);
     setShowAddField(false);
     setShowPreview(false);
     setEditingCampo(null);
+    setEditingSeccion(null);
+    setShowAddSeccion(false);
   };
 
   const startEditCampo = (campo: TipoCampo) => {
@@ -68,6 +130,7 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     setEditCampoAyuda(campo.ayuda || '');
     setEditCampoVisiblePara((campo.visible_para_rol ?? 'todos') as RolVisibilidad);
     setEditCampoEditablePara((campo.editable_para_rol ?? 'todos') as RolVisibilidad);
+    setEditCampoSeccionId(campo.seccion_id ?? null);
     setShowAddField(false);
     setShowPreview(false);
   };
@@ -116,7 +179,11 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     setSavingCampo(true);
     const { error } = await supabase
       .from('tramite_tipo_campos')
-      .update({ label: editCampoLabel.trim(), requerido: editCampoReq, config: editCampoConfig, ayuda: editCampoAyuda.trim() || null, visible_para_rol: editCampoVisiblePara, editable_para_rol: editCampoEditablePara })
+      .update({
+        label: editCampoLabel.trim(), requerido: editCampoReq, config: editCampoConfig,
+        ayuda: editCampoAyuda.trim() || null, visible_para_rol: editCampoVisiblePara,
+        editable_para_rol: editCampoEditablePara, seccion_id: editCampoSeccionId,
+      })
       .eq('id', editingCampo.id);
 
     if (error) { showToast('Error al guardar campo', 'error'); setSavingCampo(false); return; }
@@ -128,7 +195,7 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     logHistorial(tipoId, 'campo_actualizado', cambiosCampo, usuario?.id, usuario?.nombre_completo);
     setCampos(prev => prev.map(c =>
       c.id === editingCampo.id
-        ? { ...c, label: editCampoLabel.trim(), requerido: editCampoReq, config: editCampoConfig, ayuda: editCampoAyuda || null, visible_para_rol: editCampoVisiblePara, editable_para_rol: editCampoEditablePara }
+        ? { ...c, label: editCampoLabel.trim(), requerido: editCampoReq, config: editCampoConfig, ayuda: editCampoAyuda || null, visible_para_rol: editCampoVisiblePara, editable_para_rol: editCampoEditablePara, seccion_id: editCampoSeccionId }
         : c
     ));
     setEditingCampo(null);
@@ -257,9 +324,15 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     editCampoAyuda, setEditCampoAyuda,
     editCampoVisiblePara, setEditCampoVisiblePara,
     editCampoEditablePara, setEditCampoEditablePara,
+    editCampoSeccionId, setEditCampoSeccionId,
     savingCampo,
     dragging,
     handleAddCampo, handleAddSistemaCampo, handleSaveCampo, handleDeleteCampo,
     handleDragStart, handleDragOver, handleDrop,
+    // Secciones
+    secciones, loadingSecciones, loadSecciones,
+    editingSeccion, setEditingSeccion,
+    showAddSeccion, setShowAddSeccion,
+    handleSaveSeccion, handleDeleteSeccion,
   };
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Save, Trash2, Settings, GripVertical, X, Eye, Lock, Zap } from 'lucide-react';
+import { Plus, Save, Trash2, Settings, GripVertical, X, Eye, Lock, Zap, Layers, ChevronDown, ChevronRight } from 'lucide-react';
 import { useFormBuilder, LOCKED_SISTEMA_KEYS, CONFIGURABLE_SISTEMA_KEYS, SISTEMA_CAMPO_DEFAULTS } from './useFormBuilder';
 import { FormPreview } from './FormPreview';
 import { CAMPO_TIPOS, SISTEMA_TIPO_META, MIME_OPTIONS, ROL_VISIBILIDAD_OPCIONES, slugify, type CampoTipo, type RolVisibilidad } from './types';
@@ -30,12 +30,33 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
     editCampoAyuda, setEditCampoAyuda,
     editCampoVisiblePara, setEditCampoVisiblePara,
     editCampoEditablePara, setEditCampoEditablePara,
+    editCampoSeccionId, setEditCampoSeccionId,
     savingCampo, dragging,
     handleAddCampo, handleAddSistemaCampo, handleSaveCampo, handleDeleteCampo,
     handleDragStart, handleDragOver, handleDrop,
+    secciones, loadingSecciones, loadSecciones,
+    editingSeccion, setEditingSeccion,
+    showAddSeccion, setShowAddSeccion,
+    handleSaveSeccion, handleDeleteSeccion,
   } = useFormBuilder(tipoId, showToast);
 
-  useEffect(() => { loadCampos(); }, [tipoId]);
+  const [seccionesOpen, setSeccionesOpen] = useState(true);
+  const [seccionForm, setSeccionForm] = useState({ nombre: '', descripcion: '', opcional: false, depende_de_seccion_id: null as string | null });
+
+  useEffect(() => { loadCampos(); loadSecciones(); }, [tipoId]);
+
+  useEffect(() => {
+    if (editingSeccion) {
+      setSeccionForm({
+        nombre: editingSeccion.nombre,
+        descripcion: editingSeccion.descripcion || '',
+        opcional: editingSeccion.opcional,
+        depende_de_seccion_id: editingSeccion.depende_de_seccion_id,
+      });
+    } else if (showAddSeccion) {
+      setSeccionForm({ nombre: '', descripcion: '', opcional: false, depende_de_seccion_id: null });
+    }
+  }, [editingSeccion, showAddSeccion]);
 
   // Campos fijos (area, equipo, fecha_creacion, fecha_finalizacion) — nunca movibles
   const lockedCampos   = campos.filter(c => c.is_sistema && LOCKED_SISTEMA_KEYS.includes(c.sistema_key ?? '')).sort((a, b) => a.display_order - b.display_order);
@@ -79,6 +100,59 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
               <FormPreview campos={campos} />
             ) : (
               <>
+                {/* ── Secciones ── */}
+                <div className="mb-4 border border-neutral-200 rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => setSeccionesOpen(v => !v)}
+                    className="w-full flex items-center justify-between px-3 py-2 bg-neutral-50 hover:bg-neutral-100 transition-colors"
+                  >
+                    <span className="flex items-center gap-1.5 text-[11px] font-bold text-neutral-500 uppercase tracking-wider">
+                      {seccionesOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                      <Layers className="w-3.5 h-3.5" />
+                      Secciones ({secciones.length})
+                    </span>
+                  </button>
+                  {seccionesOpen && (
+                    <div className="p-3 space-y-2">
+                      {loadingSecciones ? (
+                        <p className="text-xs text-neutral-400">Cargando...</p>
+                      ) : secciones.length === 0 ? (
+                        <p className="text-xs text-neutral-400">Sin secciones — todos los campos se muestran en un solo bloque.</p>
+                      ) : (
+                        secciones.map(seccion => {
+                          const dependeDe = secciones.find(s => s.id === seccion.depende_de_seccion_id);
+                          const nCampos = campos.filter(c => c.seccion_id === seccion.id).length;
+                          return (
+                            <div key={seccion.id} className="flex items-center gap-2 border border-neutral-200 rounded-lg p-2 bg-white">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-neutral-800 truncate">{seccion.nombre}</p>
+                                <p className="text-[10px] text-neutral-400">
+                                  {nCampos} campo{nCampos !== 1 ? 's' : ''}
+                                  {seccion.opcional && ' · Opcional'}
+                                  {dependeDe && ` · Depende de "${dependeDe.nombre}"`}
+                                </p>
+                              </div>
+                              <button onClick={() => { setEditingSeccion(seccion); setShowAddSeccion(false); }} className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-neutral-700">
+                                <Settings className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => handleDeleteSeccion(seccion)} className="p-1.5 hover:bg-red-50 rounded-lg text-neutral-300 hover:text-red-500">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          );
+                        })
+                      )}
+                      <button
+                        onClick={() => { setShowAddSeccion(true); setEditingSeccion(null); setEditingCampo(null); setShowAddField(false); }}
+                        className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-neutral-300 rounded-lg py-2 text-xs text-neutral-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Nueva sección
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 {/* ── Campos fijos del sistema (no movibles) ── */}
                 {lockedCampos.length > 0 && (
                   <div className="mb-4">
@@ -176,6 +250,12 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                         {campo.requerido && (
                           <span className="text-[10px] text-red-500 font-mono shrink-0">req</span>
                         )}
+                        {campo.seccion_id && (
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-teal-50 text-teal-600 border border-teal-200 shrink-0 flex items-center gap-0.5">
+                            <Layers className="w-2.5 h-2.5" />
+                            {secciones.find(s => s.id === campo.seccion_id)?.nombre ?? '—'}
+                          </span>
+                        )}
                         {(campo.visible_para_rol && campo.visible_para_rol !== 'todos') && (
                           <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0 flex items-center gap-0.5">
                             <Lock className="w-2.5 h-2.5" />
@@ -219,8 +299,73 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
       </div>
 
       {/* Right panel */}
-      {(showAddField || editingCampo) && (
+      {(showAddField || editingCampo || showAddSeccion || editingSeccion) && (
         <div className="w-64 border-l border-neutral-200 bg-neutral-50 p-4 overflow-auto shrink-0 animate-fade-in">
+          {(showAddSeccion || editingSeccion) && (
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                  {editingSeccion ? 'Editar sección' : 'Nueva sección'}
+                </p>
+                <button onClick={() => { setShowAddSeccion(false); setEditingSeccion(null); }} className="p-1 hover:bg-neutral-200 rounded">
+                  <X className="w-3.5 h-3.5 text-neutral-500" />
+                </button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-neutral-600 mb-1">Nombre *</label>
+                  <input
+                    type="text"
+                    value={seccionForm.nombre}
+                    onChange={(e) => setSeccionForm({ ...seccionForm, nombre: e.target.value })}
+                    placeholder="Ej: Datos de la póliza"
+                    className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-neutral-600 mb-1">Descripción</label>
+                  <textarea
+                    value={seccionForm.descripcion}
+                    onChange={(e) => setSeccionForm({ ...seccionForm, descripcion: e.target.value })}
+                    rows={2}
+                    className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                  />
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={seccionForm.opcional}
+                    onChange={(e) => setSeccionForm({ ...seccionForm, opcional: e.target.checked })}
+                    className="rounded"
+                  />
+                  <span className="text-sm text-neutral-700">Sección opcional (aparece colapsada)</span>
+                </label>
+                <div>
+                  <label className="block text-xs font-medium text-neutral-600 mb-1">Depende de (opcional)</label>
+                  <select
+                    value={seccionForm.depende_de_seccion_id ?? ''}
+                    onChange={(e) => setSeccionForm({ ...seccionForm, depende_de_seccion_id: e.target.value || null })}
+                    className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                  >
+                    <option value="">Ninguna — siempre visible</option>
+                    {secciones
+                      .filter(s => s.id !== editingSeccion?.id && s.depende_de_seccion_id !== editingSeccion?.id)
+                      .map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                  </select>
+                  <p className="text-[10px] text-neutral-400 mt-1">Se atenúa hasta que se completen los campos requeridos de la sección elegida.</p>
+                </div>
+                <button
+                  onClick={() => handleSaveSeccion(seccionForm)}
+                  disabled={!seccionForm.nombre.trim()}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  Guardar sección
+                </button>
+              </div>
+            </>
+          )}
+
           {showAddField && !editingCampo && (
             <>
               <div className="flex items-center justify-between mb-3">
@@ -307,6 +452,23 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
               )}
 
               <div className="space-y-3">
+                {/* Sección — aplica a cualquier tipo de campo, incluidos sistema/estatus */}
+                {secciones.length > 0 && (
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-600 mb-1 flex items-center gap-1">
+                      <Layers className="w-3 h-3" /> Sección
+                    </label>
+                    <select
+                      value={editCampoSeccionId ?? ''}
+                      onChange={(e) => setEditCampoSeccionId(e.target.value || null)}
+                      className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                    >
+                      <option value="">Sin sección</option>
+                      {secciones.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                    </select>
+                  </div>
+                )}
+
                 {/* Etiqueta + ayuda + requerido — solo para no-locked y no-estatus */}
                 {(!editingCampo.is_sistema || !LOCKED_SISTEMA_KEYS.includes(editingCampo.sistema_key ?? '')) && editingCampo.tipo !== 'estatus' && (
                   <>

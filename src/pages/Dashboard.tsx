@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Bell } from 'lucide-react';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
 import type { Usuario } from '../contexts/MoviAuthContext';
+import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { useModuleVisibility } from '@/lib/useModuleVisibility';
 import { obtenerComunicados } from '../lib/comunicadosUtils';
 import type { ComunicadoPublicacion } from '../lib/comunicadosTypes';
+import { SolicitudBetaModal } from '../components/dashboard/SolicitudBetaModal';
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -133,8 +135,6 @@ const BETA_FAVORITOS = [
   { label: 'Mi Perfil', emoji: '👤', route: '/perfil' },
 ] as const;
 
-const BETA_CONTACT_URL = 'mailto:hola@jiro.mx?subject=Solicitud%20Beta%20MOVI';
-
 // ── WelcomeHero ─────────────────────────────────────────────────────────
 
 function WelcomeHero({ usuario }: { usuario: Usuario }) {
@@ -232,22 +232,70 @@ function FavoritosGrid({ onNavigate }: { onNavigate: (route: string) => void }) 
 
 // ── JoinBetaCard ────────────────────────────────────────────────────────
 
-function JoinBetaCard() {
+type BetaEstado = 'cargando' | 'ya_beta' | 'pendiente' | 'sin_solicitar';
+
+function JoinBetaCard({ usuario }: { usuario: Usuario }) {
+  const [estado, setEstado] = useState<BetaEstado>('cargando');
+  const [showModal, setShowModal] = useState(false);
+
+  const cargarEstado = async () => {
+    const [{ data: beta }, { data: pendiente }] = await Promise.all([
+      supabase.from('usuarios_beta').select('id').eq('usuario_id', usuario.id).maybeSingle(),
+      supabase.from('tickets').select('id')
+        .eq('tipo_tramite', 'alta_usuario_beta')
+        .eq('creado_por', usuario.id)
+        .is('cerrado_en', null)
+        .maybeSingle(),
+    ]);
+    setEstado(beta ? 'ya_beta' : pendiente ? 'pendiente' : 'sin_solicitar');
+  };
+
+  useEffect(() => { cargarEstado(); }, [usuario.id]);
+
+  if (estado === 'ya_beta') {
+    return (
+      <div className="rounded-2xl p-4 relative overflow-hidden" style={{ background: 'linear-gradient(145deg, #E84F8A, #8E1A52)' }}>
+        <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full bg-white/10 pointer-events-none" />
+        <p className="text-xl mb-1">🎉</p>
+        <p className="text-sm font-bold text-white mb-1">Ya eres usuario Beta</p>
+        <p className="text-[10px] text-white/80 leading-relaxed">
+          Gracias por ayudarnos a mejorar.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="rounded-2xl p-4 relative overflow-hidden" style={{ background: 'linear-gradient(145deg, #E84F8A, #8E1A52)' }}>
-      <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full bg-white/10 pointer-events-none" />
-      <p className="text-xl mb-1">🚀</p>
-      <p className="text-sm font-bold text-white mb-1">Únete a la Beta</p>
-      <p className="text-[10px] text-white/80 mb-3 leading-relaxed">
-        Ayúdanos a probar las nuevas funciones de MOVI antes de que lleguen a todos.
-      </p>
-      <a
-        href={BETA_CONTACT_URL}
-        className="bg-white/20 border border-white/35 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg block text-center hover:bg-white/30 transition-colors"
-      >
-        Solicitar acceso
-      </a>
-    </div>
+    <>
+      <div className="rounded-2xl p-4 relative overflow-hidden" style={{ background: 'linear-gradient(145deg, #E84F8A, #8E1A52)' }}>
+        <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full bg-white/10 pointer-events-none" />
+        <p className="text-xl mb-1">🚀</p>
+        <p className="text-sm font-bold text-white mb-1">Únete a la Beta</p>
+        <p className="text-[10px] text-white/80 mb-3 leading-relaxed">
+          Ayúdanos a probar las nuevas funciones de MOVI antes de que lleguen a todos.
+        </p>
+        {estado === 'pendiente' ? (
+          <div className="bg-white/15 border border-white/25 text-white/90 text-[10px] font-semibold py-1.5 px-3 rounded-lg text-center">
+            Solicitud enviada, en revisión
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowModal(true)}
+            disabled={estado === 'cargando'}
+            className="w-full bg-white/20 border border-white/35 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg text-center hover:bg-white/30 transition-colors disabled:opacity-50"
+          >
+            Solicitar acceso
+          </button>
+        )}
+      </div>
+      {showModal && (
+        <SolicitudBetaModal
+          usuario={usuario}
+          onClose={() => setShowModal(false)}
+          onSuccess={() => { setShowModal(false); cargarEstado(); }}
+        />
+      )}
+    </>
   );
 }
 
@@ -323,7 +371,7 @@ export default function Dashboard() {
 
         <div className="space-y-6">
           <FavoritosGrid onNavigate={navigate} />
-          <JoinBetaCard />
+          <JoinBetaCard usuario={usuario} />
           <AvisosPanel onNavigate={navigate} />
         </div>
       </div>

@@ -19,7 +19,13 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (c: 
         ))}
       </div>
       <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-full border border-neutral-300 shrink-0" style={{ backgroundColor: value }} />
+        <input
+          type="color"
+          value={/^#[0-9a-fA-F]{6}$/.test(value) ? value : '#000000'}
+          onChange={(e) => onChange(e.target.value)}
+          title="Elegir color personalizado"
+          className="w-7 h-7 rounded-full border border-neutral-300 shrink-0 cursor-pointer p-0 bg-transparent [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-none"
+        />
         <input
           type="text"
           value={value}

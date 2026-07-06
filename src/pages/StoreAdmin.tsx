@@ -1424,8 +1424,8 @@ interface StoreTrigger {
   ticket_tipo_id: string;
   descripcion_template: string;
   activo: boolean;
-  metodo_pago_filtro: string | null;
-  forma_pago_filtro: string | null;
+  metodo_pago_filtro: string[] | null;
+  forma_pago_filtro: string[] | null;
 }
 const METODO_PAGO_OC_OPCIONES = ['Cargo a Oficina', 'Cargo a Bono de Agente', 'Pago Directo', 'Descuento de Comisiones', 'Cargo a Nómina', 'Otro'];
 const FORMA_PAGO_OC_OPCIONES = ['Contado', '2 Parcialidades', '12 Meses'];
@@ -1445,8 +1445,8 @@ function TriggersPanel() {
   const [ticketTipoId, setTicketTipoId] = useState('');
   const [descripcionTemplate, setDescripcionTemplate] = useState('');
   const [activoTrigger, setActivoTrigger] = useState(true);
-  const [metodoPagoFiltro, setMetodoPagoFiltro] = useState('');
-  const [formaPagoFiltro, setFormaPagoFiltro] = useState('');
+  const [metodoPagoFiltro, setMetodoPagoFiltro] = useState<string[]>([]);
+  const [formaPagoFiltro, setFormaPagoFiltro] = useState<string[]>([]);
   const [camposTipo, setCamposTipo] = useState<{ id: string; label: string; tipo: string }[]>([]);
   const [mapeoCampos, setMapeoCampos] = useState<Record<string, { fuente: 'vacio' | 'template' | 'adjunto_oc'; valor_template: string }>>({});
 
@@ -1486,8 +1486,8 @@ function TriggersPanel() {
     setTicketTipoId(tiposList[0]?.id ?? '');
     setDescripcionTemplate('Pedido {{folio}} cambio a {{estatus}} -- revisar y dar seguimiento.');
     setActivoTrigger(true);
-    setMetodoPagoFiltro('');
-    setFormaPagoFiltro('');
+    setMetodoPagoFiltro([]);
+    setFormaPagoFiltro([]);
     setMapeoCampos({});
     setShowForm(true);
   };
@@ -1499,8 +1499,8 @@ function TriggersPanel() {
     setTicketTipoId(t.ticket_tipo_id);
     setDescripcionTemplate(t.descripcion_template);
     setActivoTrigger(t.activo);
-    setMetodoPagoFiltro(t.metodo_pago_filtro ?? '');
-    setFormaPagoFiltro(t.forma_pago_filtro ?? '');
+    setMetodoPagoFiltro(t.metodo_pago_filtro ?? []);
+    setFormaPagoFiltro(t.forma_pago_filtro ?? []);
     const mapeoExistente = await obtenerMapeoCamposTrigger(t.id);
     const mapeoRecord: Record<string, { fuente: 'vacio' | 'template' | 'adjunto_oc'; valor_template: string }> = {};
     mapeoExistente.forEach((m: StoreTramiteTriggerCampo) => {
@@ -1519,8 +1519,8 @@ function TriggersPanel() {
       ticket_tipo_id: ticketTipoId,
       descripcion_template: descripcionTemplate,
       activo: activoTrigger,
-      metodo_pago_filtro: metodoPagoFiltro || null,
-      forma_pago_filtro: formaPagoFiltro || null,
+      metodo_pago_filtro: metodoPagoFiltro.length > 0 ? metodoPagoFiltro : null,
+      forma_pago_filtro: formaPagoFiltro.length > 0 ? formaPagoFiltro : null,
     };
     let triggerId = editando?.id ?? null;
     if (editando) {
@@ -1621,35 +1621,58 @@ function TriggersPanel() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">
-                  Y el método de pago es <span className="text-neutral-400 font-normal">(opcional)</span>
+                  Y el método de pago es <span className="text-neutral-400 font-normal">(opcional, elige varios)</span>
                 </label>
-                <select
-                  value={metodoPagoFiltro}
-                  onChange={e => setMetodoPagoFiltro(e.target.value)}
-                  className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
-                >
-                  <option value="">Cualquier método</option>
-                  {METODO_PAGO_OC_OPCIONES.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
+                <div className="flex flex-wrap gap-1.5">
+                  {METODO_PAGO_OC_OPCIONES.map(m => {
+                    const checked = metodoPagoFiltro.includes(m);
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setMetodoPagoFiltro(prev => checked ? prev.filter(x => x !== m) : [...prev, m])}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                          checked
+                            ? 'bg-accent text-white border-accent'
+                            : 'bg-white dark:bg-white/5 text-neutral-600 dark:text-white/60 border-neutral-300 dark:border-white/10 hover:border-accent'
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">
-                  Y la forma de pago es <span className="text-neutral-400 font-normal">(opcional)</span>
+                  Y la forma de pago es <span className="text-neutral-400 font-normal">(opcional, elige varias)</span>
                 </label>
-                <select
-                  value={formaPagoFiltro}
-                  onChange={e => setFormaPagoFiltro(e.target.value)}
-                  className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
-                >
-                  <option value="">Cualquier forma</option>
-                  {FORMA_PAGO_OC_OPCIONES.map(f => <option key={f} value={f}>{f}</option>)}
-                </select>
+                <div className="flex flex-wrap gap-1.5">
+                  {FORMA_PAGO_OC_OPCIONES.map(f => {
+                    const checked = formaPagoFiltro.includes(f);
+                    return (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => setFormaPagoFiltro(prev => checked ? prev.filter(x => x !== f) : [...prev, f])}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                          checked
+                            ? 'bg-accent text-white border-accent'
+                            : 'bg-white dark:bg-white/5 text-neutral-600 dark:text-white/60 border-neutral-300 dark:border-white/10 hover:border-accent'
+                        }`}
+                      >
+                        {f}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
             <p className="text-xs text-neutral-500 dark:text-white/50 -mt-2">
-              Deja "Cualquier método/forma" si este trigger debe dispararse sin importar el método o forma
-              de pago. Para casos como "Comisiones crea tipo A, Bonos crea tipo B" crea dos triggers
-              con el mismo estatus pero método de pago distinto.
+              Sin ninguno seleccionado = cualquier método/forma. Puedes marcar varios para que el mismo
+              trigger aplique a todos ellos, ej. "Descuento de Comisiones" y "Cargo a Bono de Agente"
+              disparando el mismo tipo de trámite. Para acciones distintas según el estatus, sigue
+              haciendo falta un trigger por estatus.
             </p>
 
             {camposTipo.length > 0 && (
@@ -1772,8 +1795,8 @@ function TriggersPanel() {
                 </div>
                 <div className="text-xs text-neutral-500 dark:text-white/50">
                   Estatus: <strong>{getNombreEstatus(trigger.estatus_destino_id)}</strong> &middot; Tramite: <strong>{getNombreTipo(trigger.ticket_tipo_id)}</strong>
-                  {trigger.metodo_pago_filtro && <> &middot; Método: <strong>{trigger.metodo_pago_filtro}</strong></>}
-                  {trigger.forma_pago_filtro && <> &middot; Forma: <strong>{trigger.forma_pago_filtro}</strong></>}
+                  {!!trigger.metodo_pago_filtro?.length && <> &middot; Método: <strong>{trigger.metodo_pago_filtro.join(', ')}</strong></>}
+                  {!!trigger.forma_pago_filtro?.length && <> &middot; Forma: <strong>{trigger.forma_pago_filtro.join(', ')}</strong></>}
                 </div>
               </div>
               <div className="flex items-center gap-2 ml-4 flex-shrink-0">
