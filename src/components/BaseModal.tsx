@@ -7,6 +7,8 @@ interface BaseModalProps {
   title: string;
   children: ReactNode;
   footer?: ReactNode;
+  /** Contenido extra pegado debajo del título, dentro del mismo header sticky (ej. barra de progreso). */
+  subHeader?: ReactNode;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | '7xl';
   showCloseButton?: boolean;
   closeOnEscape?: boolean;
@@ -18,6 +20,7 @@ export function BaseModal({
   title,
   children,
   footer,
+  subHeader,
   maxWidth = '2xl',
   showCloseButton = true,
   closeOnEscape = false,
@@ -73,6 +76,7 @@ export function BaseModal({
               </button>
             )}
           </div>
+          {subHeader && <div className="mt-3">{subHeader}</div>}
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">

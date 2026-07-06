@@ -65,6 +65,18 @@ export interface TipoCampo {
   sistema_key: string | null;
   visible_para_rol: RolVisibilidad;
   editable_para_rol: RolVisibilidad;
+  seccion_id: string | null;
+}
+
+export interface TramiteSeccion {
+  id: string;
+  tramite_tipo_id: string;
+  nombre: string;
+  descripcion: string | null;
+  orden: number;
+  opcional: boolean;
+  depende_de_seccion_id: string | null;
+  activo: boolean;
 }
 
 export type RolVisibilidad = 'todos' | 'Empleado' | 'Gerente' | 'Administrador';

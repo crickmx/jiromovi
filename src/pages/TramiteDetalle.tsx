@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList, Upload, Trash2, GitBranch, ArrowUpRight, Paperclip, MessageSquare } from 'lucide-react';
+import { Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList, Upload, Trash2, GitBranch, ArrowUpRight, Paperclip, MessageSquare, Lock, Layers } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
@@ -13,6 +13,8 @@ import { crearNotificacion } from '../lib/notificationHelpers';
 import { SearchableSelect } from '../components/tramites/catalogos/SearchableSelect';
 import { TriggerConfirmModal, type PendingTrigger, type ExistingChild } from '../components/tramites/TriggerConfirmModal';
 import { calcularDiasHabilesEntre } from '../lib/diasHabiles';
+import type { TramiteSeccion } from '../components/tramites/catalogos/types';
+import { seccionDesbloqueada, agruparCamposPorSeccion } from '../lib/tramiteSecciones';
 
 interface TramiteEstatus {
   id: string;
@@ -103,11 +105,14 @@ export function TramiteDetalle() {
     requerido: boolean; ayuda: string | null;
     is_sistema: boolean; sistema_key: string | null;
     config: { opciones?: CampoDinamicoOpt[]; max_length?: number; es_entero?: boolean; min_fecha?: string; max_fecha?: string };
+    seccion_id: string | null;
   }
   interface RespuestaDinamica { id?: string; campo_id: string; valor_texto: string | null; valor_numerico: number | null; valor_fecha: string | null; valor_booleano: boolean | null; valor_json: any }
   const [camposDinamicos, setCamposDinamicos] = useState<CampoDinamico[]>([]);
   const [respuestasDinamicas, setRespuestasDinamicas] = useState<Record<string, any>>({});
   const [respuestasOriginales, setRespuestasOriginales] = useState<RespuestaDinamica[]>([]);
+  const [secciones, setSecciones] = useState<TramiteSeccion[]>([]);
+  const [seccionesExpandidas, setSeccionesExpandidas] = useState<Set<string>>(new Set());
   const [catalogoRamos,     setCatalogoRamos]     = useState<{id: string; nombre: string}[]>([]);
   const [catalogoCompanias, setCatalogoCompanias] = useState<{id: string; nombre: string}[]>([]);
   const [combinaciones,     setCombinaciones]     = useState<{compania_id: string; ramo_id: string}[]>([]);
@@ -402,10 +407,18 @@ export function TramiteDetalle() {
 
     const { data: campos } = await supabase
       .from('tramite_tipo_campos')
-      .select('id, key, label, tipo, requerido, ayuda, config, is_sistema, sistema_key')
+      .select('id, key, label, tipo, requerido, ayuda, config, is_sistema, sistema_key, seccion_id')
       .eq('tramite_tipo_id', tipoData.id)
       .eq('activo', true)
       .order('display_order');
+
+    const { data: seccionesData } = await supabase
+      .from('tramite_tipo_secciones')
+      .select('id, tramite_tipo_id, nombre, descripcion, orden, opcional, depende_de_seccion_id, activo')
+      .eq('tramite_tipo_id', tipoData.id)
+      .eq('activo', true)
+      .order('orden');
+    setSecciones((seccionesData as TramiteSeccion[]) || []);
 
     if (!campos?.length) { setCamposDinamicos([]); return; }
     setCamposDinamicos(campos as CampoDinamico[]);
@@ -1479,15 +1492,15 @@ export function TramiteDetalle() {
               </div>
             )}
 
-            {/* Sección 2 — Campos dinámicos (excluye estatus y sistema) */}
-            {camposDinamicos.filter(c => !c.is_sistema && c.tipo !== 'estatus').length > 0 && (
-              <div className="mt-6 pt-6 border-t border-neutral-100 space-y-4">
-                <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Campos del trámite</p>
-                {camposDinamicos.filter(c => !c.is_sistema && c.tipo !== 'estatus' && esCampoVisible(c)).map(campo => {
-                  const val = respuestasDinamicas[campo.id];
-                  const set = (v: any) => setRespuestasDinamicas(prev => ({ ...prev, [campo.id]: v }));
-                  const editable = canEdit && !isCerrado;
-                  return (
+            {/* Sección 2 — Campos dinámicos (excluye estatus y sistema), agrupados por sección si el tipo las tiene */}
+            {camposDinamicos.filter(c => !c.is_sistema && c.tipo !== 'estatus').length > 0 && (() => {
+              const camposCustom = camposDinamicos.filter(c => !c.is_sistema && c.tipo !== 'estatus' && esCampoVisible(c));
+
+              const renderCampo = (campo: CampoDinamico) => {
+                const val = respuestasDinamicas[campo.id];
+                const set = (v: any) => setRespuestasDinamicas(prev => ({ ...prev, [campo.id]: v }));
+                const editable = canEdit && !isCerrado;
+                return (
                     <div key={campo.id}>
                       <label className="block text-sm font-medium text-neutral-700 mb-1">
                         {campo.label}{campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
@@ -1710,10 +1723,65 @@ export function TramiteDetalle() {
                         );
                       })()}
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                );
+              };
+
+              const grupos = agruparCamposPorSeccion(camposCustom, secciones);
+
+              return (
+                <div className="mt-6 pt-6 border-t border-neutral-100 space-y-4">
+                  <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Campos del trámite</p>
+                  {grupos.map(grupo => {
+                    if (!grupo.seccion) {
+                      return <div key="sin-seccion" className="space-y-4">{grupo.campos.map(renderCampo)}</div>;
+                    }
+                    const seccion = grupo.seccion;
+                    const desbloqueada = seccionDesbloqueada(seccion, secciones, camposDinamicos, respuestasDinamicas);
+                    const expandida = seccionesExpandidas.has(seccion.id);
+                    const mostrarCampos = desbloqueada && (!seccion.opcional || expandida);
+                    return (
+                      <div key={seccion.id} className={`border rounded-2xl overflow-hidden ${desbloqueada ? 'border-neutral-200' : 'border-neutral-100 bg-neutral-50/60'}`}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!desbloqueada || !seccion.opcional) return;
+                            setSeccionesExpandidas(prev => {
+                              const next = new Set(prev);
+                              if (next.has(seccion.id)) { next.delete(seccion.id); } else { next.add(seccion.id); }
+                              return next;
+                            });
+                          }}
+                          disabled={!desbloqueada || !seccion.opcional}
+                          className={`w-full flex items-center gap-2 px-4 py-3 text-left ${seccion.opcional && desbloqueada ? 'cursor-pointer hover:bg-neutral-50' : 'cursor-default'}`}
+                        >
+                          {!desbloqueada ? <Lock className="w-4 h-4 text-neutral-300 shrink-0" /> : <Layers className="w-4 h-4 text-accent shrink-0" />}
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-semibold ${desbloqueada ? 'text-neutral-800' : 'text-neutral-400'}`}>
+                              {seccion.opcional && !expandida && desbloqueada ? '+ ' : ''}{seccion.nombre}{seccion.opcional ? ' (opcional)' : ''}
+                            </p>
+                            {desbloqueada ? (
+                              seccion.descripcion && (!seccion.opcional || expandida) && (
+                                <p className="text-xs text-neutral-400 mt-0.5">{seccion.descripcion}</p>
+                              )
+                            ) : (
+                              <p className="text-xs text-neutral-400 mt-0.5">Completa la sección anterior para continuar</p>
+                            )}
+                          </div>
+                          {seccion.opcional && desbloqueada && (
+                            <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform shrink-0 ${expandida ? 'rotate-180' : ''}`} />
+                          )}
+                        </button>
+                        {mostrarCampos && (
+                          <div className="px-4 pb-4 space-y-4 border-t border-neutral-100 pt-4">
+                            {grupo.campos.map(renderCampo)}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </>
         )}
         {activeTab === 'comentarios' && <TramiteComentarios tramiteId={tramite.id} />}

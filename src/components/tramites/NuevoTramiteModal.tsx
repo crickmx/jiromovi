@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Upload, User, CircleAlert as AlertCircle, FileText, Package, DollarSign, Building2, Plus, Trash2, Calendar, Shield, Clock, CircleCheck as CheckCircle2, ChevronRight, Lock, RotateCcw } from 'lucide-react';
+import { X, Upload, User, CircleAlert as AlertCircle, FileText, Package, DollarSign, Building2, Plus, Trash2, Calendar, Shield, Clock, CircleCheck as CheckCircle2, ChevronRight, ChevronDown, Lock, RotateCcw, Star, Layers } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { crearNotificacion } from '../../lib/notificationHelpers';
 import { saveDraft, loadDraft, clearDraft } from '../../lib/formDraft';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseModal } from '../BaseModal';
+import type { TramiteSeccion } from './catalogos/types';
+import { seccionDesbloqueada, agruparCamposPorSeccion } from '../../lib/tramiteSecciones';
 import {
   canAccessRegistroActividades,
   getUsersByOffice,
@@ -180,6 +182,7 @@ export function NuevoTramiteModal({
     config: { opciones?: CampoDinamicoOption[]; max_length?: number; [k: string]: any };
     visible_para_rol?: string;
     editable_para_rol?: string;
+    seccion_id: string | null;
   }
 
   const ROL_NIVEL: Record<string, number> = { Agente: 0, Empleado: 1, Gerente: 2, Administrador: 3 };
@@ -195,6 +198,12 @@ export function NuevoTramiteModal({
   };
   const [camposDinamicos, setCamposDinamicos] = useState<CampoDinamico[]>([]);
   const [respuestasDinamicas, setRespuestasDinamicas] = useState<Record<string, any>>({});
+  // Secciones del FormBuilder — agrupan visualmente camposDinamicos, opcionalmente
+  // condicionadas a que otra sección se complete antes. Ver src/lib/tramiteSecciones.ts.
+  const [secciones, setSecciones] = useState<TramiteSeccion[]>([]);
+  const [seccionesExpandidas, setSeccionesExpandidas] = useState<Set<string>>(new Set());
+  const [mostroBadgeExtra, setMostroBadgeExtra] = useState(false);
+  const [showBadgeExtra, setShowBadgeExtra] = useState(false);
   const [agentesVendedor, setAgentesVendedor] = useState<{
     id: string; nombre: string; despacho_id: string;
     usuario_id?: string; usuario_nombre?: string;
@@ -339,7 +348,7 @@ export function NuevoTramiteModal({
     if (!tipoInfo?.id) { setCamposDinamicos([]); setRespuestasDinamicas({}); return; }
     supabase
       .from('tramite_tipo_campos')
-      .select('id, key, label, tipo, requerido, ayuda, display_order, config, is_sistema, sistema_key, visible_para_rol, editable_para_rol')
+      .select('id, key, label, tipo, requerido, ayuda, display_order, config, is_sistema, sistema_key, visible_para_rol, editable_para_rol, seccion_id')
       .eq('tramite_tipo_id', tipoInfo.id)
       .eq('activo', true)
       .order('display_order')
@@ -355,7 +364,33 @@ export function NuevoTramiteModal({
           setRespuestasDinamicas({});
         }
       });
+    supabase
+      .from('tramite_tipo_secciones')
+      .select('id, tramite_tipo_id, nombre, descripcion, orden, opcional, depende_de_seccion_id, activo')
+      .eq('tramite_tipo_id', tipoInfo.id)
+      .eq('activo', true)
+      .order('orden')
+      .then(({ data }) => {
+        setSecciones((data as TramiteSeccion[]) || []);
+        setSeccionesExpandidas(new Set());
+        setMostroBadgeExtra(false);
+      });
   }, [tipoTramite, tiposDb]);
+
+  // Badge de "información adicional": se dispara una sola vez por trámite, la primera
+  // vez que un campo NO requerido recibe respuesta (o se expande una sección opcional).
+  const dispararBadgeExtra = () => {
+    if (mostroBadgeExtra) return;
+    setMostroBadgeExtra(true);
+    setShowBadgeExtra(true);
+    setTimeout(() => setShowBadgeExtra(false), 4000);
+  };
+
+  useEffect(() => {
+    if (mostroBadgeExtra || camposDinamicos.length === 0) return;
+    const hayOpcionalRespondido = camposDinamicos.some(c => !c.requerido && isCampoRespondido(c));
+    if (hayOpcionalRespondido) dispararBadgeExtra();
+  }, [respuestasDinamicas, asignado, prioridad, descripcion, fechaPromesaEntrega, archivos, adjuntosTemporales]);
 
   // Cargar catálogos para campos sistema agente_vendedor / oficina_jiro
   useEffect(() => {
@@ -722,6 +757,28 @@ export function NuevoTramiteModal({
     ));
   };
 
+  // Sistema auto-fill: nunca se piden en el formulario, no cuentan para requerido/progreso.
+  const AUTO_FILL_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'oficina_jiro', 'agente_vendedor', 'creado_por'];
+
+  // Único punto de verdad de "¿este campo ya tiene respuesta?" — usado por validateForm()
+  // y por la barra de progreso (que necesita el mismo criterio sin lanzar errores).
+  const isCampoRespondido = (campo: CampoDinamico): boolean => {
+    if (campo.is_sistema && campo.sistema_key === 'asignado_a') {
+      if (asignado) return true;
+      const agCampo = camposDinamicos.find(c => c.sistema_key === 'agente_vendedor');
+      const agId = agCampo ? respuestasDinamicas[agCampo.id] : null;
+      const agSin = agId ? agentesVendedor.find(a => a.id === agId && !a.usuario_id) : null;
+      return !!agSin;
+    }
+    if (campo.is_sistema && campo.sistema_key === 'prioridad') return !!prioridad;
+    if (campo.is_sistema && campo.sistema_key === 'descripcion') return !!descripcion?.trim();
+    if (campo.is_sistema && campo.sistema_key === 'fecha_promesa_entrega') return !!fechaPromesaEntrega;
+    if (campo.is_sistema && campo.sistema_key === 'archivos_adjuntos') return archivos.length > 0;
+    if (campo.tipo === 'adjunto') return (adjuntosTemporales[campo.id]?.length ?? 0) > 0;
+    const val = respuestasDinamicas[campo.id];
+    return !(val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0));
+  };
+
   const validateForm = (): boolean => {
     if (isCommercialTicketType(tipoTramite)) {
       if (!comAgenteUserId) {
@@ -770,49 +827,11 @@ export function NuevoTramiteModal({
     }
 
     // Validar campos dinámicos requeridos (omitir campos sistema auto-fill)
-    const AUTO_FILL_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'oficina_jiro', 'agente_vendedor', 'creado_por'];
     for (const campo of camposDinamicos) {
       if (!campo.requerido) continue;
       if (!canSeeCampo(campo)) continue;
       if (campo.is_sistema && AUTO_FILL_KEYS.includes(campo.sistema_key || '')) continue;
-
-      // Validación de campos sistema configurables (usan estado propio, no respuestasDinamicas)
-      if (campo.is_sistema && campo.sistema_key === 'asignado_a') {
-        if (!asignado) {
-          const agCampo = camposDinamicos.find(c => c.sistema_key === 'agente_vendedor');
-          const agId = agCampo ? respuestasDinamicas[agCampo.id] : null;
-          const agSin = agId ? agentesVendedor.find(a => a.id === agId && !a.usuario_id) : null;
-          if (!agSin) { setError(`El campo "${campo.label}" es obligatorio`); return false; }
-        }
-        continue;
-      }
-      if (campo.is_sistema && campo.sistema_key === 'prioridad') {
-        if (!prioridad) { setError(`El campo "${campo.label}" es obligatorio`); return false; }
-        continue;
-      }
-      if (campo.is_sistema && campo.sistema_key === 'descripcion') {
-        if (!descripcion?.trim()) { setError(`El campo "${campo.label}" es obligatorio`); return false; }
-        continue;
-      }
-      if (campo.is_sistema && campo.sistema_key === 'fecha_promesa_entrega') {
-        if (!fechaPromesaEntrega) { setError(`El campo "${campo.label}" es obligatorio`); return false; }
-        continue;
-      }
-      if (campo.is_sistema && campo.sistema_key === 'archivos_adjuntos') {
-        if (archivos.length === 0) { setError(`El campo "${campo.label}" es obligatorio`); return false; }
-        continue;
-      }
-
-      if (campo.tipo === 'adjunto') {
-        if (!(adjuntosTemporales[campo.id]?.length > 0)) {
-          setError(`El campo "${campo.label}" es obligatorio`);
-          return false;
-        }
-        continue;
-      }
-      const val = respuestasDinamicas[campo.id];
-      const isEmpty = val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0);
-      if (isEmpty) {
+      if (!isCampoRespondido(campo)) {
         setError(`El campo "${campo.label}" es obligatorio`);
         return false;
       }
@@ -2026,12 +2045,44 @@ export function NuevoTramiteModal({
 
   const ceRamoNombre = catalogoRamos.find(r => r.id === ceRamoId)?.nombre ?? '';
 
+  // Barra de progreso — solo campos requeridos del FormBuilder (no incluye validaciones
+  // aparte como agente/lote de comisiones, que no vienen de camposDinamicos).
+  const camposRequeridosVisibles = camposDinamicos.filter(c =>
+    c.requerido && canSeeCampo(c) && !(c.is_sistema && AUTO_FILL_KEYS.includes(c.sistema_key || ''))
+  );
+  const camposRequeridosCompletos = camposRequeridosVisibles.filter(isCampoRespondido).length;
+  const progresoPct = camposRequeridosVisibles.length > 0
+    ? Math.round((camposRequeridosCompletos / camposRequeridosVisibles.length) * 100)
+    : 0;
+
   return (
     <BaseModal
       isOpen={isOpen}
       onClose={onClose}
       title={tipoTramite ? `Nuevo: ${tiposDb.find(t => t.value === tipoTramite)?.label ?? tipoTramite}` : 'Nuevo Trámite'}
       maxWidth="4xl"
+      subHeader={
+        camposRequeridosVisibles.length > 0 ? (
+          <div className="relative">
+            <div className="flex items-center justify-between text-[11px] font-medium text-neutral-500 mb-1">
+              <span>Campos requeridos</span>
+              <span>{camposRequeridosCompletos}/{camposRequeridosVisibles.length}</span>
+            </div>
+            <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-accent rounded-full transition-all duration-300"
+                style={{ width: `${progresoPct}%` }}
+              />
+            </div>
+            {showBadgeExtra && (
+              <div className="absolute -top-1 right-0 flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-semibold px-2.5 py-1 rounded-full shadow-sm animate-fade-in">
+                <Star className="w-3 h-3 fill-amber-400 text-amber-400 animate-bounce" />
+                ¡Gracias por ayudarnos a brindarte la mejor atención posible!
+              </div>
+            )}
+          </div>
+        ) : undefined
+      }
       footer={
         <>
           <button
@@ -2702,16 +2753,18 @@ export function NuevoTramiteModal({
           </div>
         )}
 
-        {/* Campos del formulario — unificados, ordenados por display_order configurado en el FormBuilder */}
-        {[...camposDinamicos]
-          .sort((a, b) => a.display_order - b.display_order)
-          .filter(campo => {
-            if (!canSeeCampo(campo)) return false;
-            // Ocultar área y equipo para Empleado/Agente — se asignan automáticamente
-            if (campo.is_sistema && ['area', 'equipo'].includes(campo.sistema_key ?? '') && isEmpleadoOAgente) return false;
-            return true;
-          })
-          .map(campo => {
+        {/* Campos del formulario — ordenados por display_order, agrupados por sección si el tipo las tiene configuradas */}
+        {(() => {
+          const camposVisibles = [...camposDinamicos]
+            .sort((a, b) => a.display_order - b.display_order)
+            .filter(campo => {
+              if (!canSeeCampo(campo)) return false;
+              // Ocultar área y equipo para Empleado/Agente — se asignan automáticamente
+              if (campo.is_sistema && ['area', 'equipo'].includes(campo.sistema_key ?? '') && isEmpleadoOAgente) return false;
+              return true;
+            });
+
+          const renderCampoConLock = (campo: CampoDinamico) => {
             const rendered = campo.is_sistema ? renderCampoSistema(campo) : renderCampoDinamico(campo);
             if (canEditCampo(campo)) return rendered;
             return (
@@ -2723,8 +2776,58 @@ export function NuevoTramiteModal({
                 </div>
               </div>
             );
-          })
-        }
+          };
+
+          return agruparCamposPorSeccion(camposVisibles, secciones).map(grupo => {
+            if (!grupo.seccion) {
+              return <div key="sin-seccion" className="space-y-6">{grupo.campos.map(renderCampoConLock)}</div>;
+            }
+            const seccion = grupo.seccion;
+            const desbloqueada = seccionDesbloqueada(seccion, secciones, camposDinamicos, respuestasDinamicas);
+            const expandida = seccionesExpandidas.has(seccion.id);
+            const mostrarCampos = desbloqueada && (!seccion.opcional || expandida);
+
+            return (
+              <div key={seccion.id} className={`border rounded-2xl overflow-hidden ${desbloqueada ? 'border-neutral-200' : 'border-neutral-100 bg-neutral-50/60'}`}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!desbloqueada || !seccion.opcional) return;
+                    setSeccionesExpandidas(prev => {
+                      const next = new Set(prev);
+                      if (next.has(seccion.id)) { next.delete(seccion.id); } else { next.add(seccion.id); dispararBadgeExtra(); }
+                      return next;
+                    });
+                  }}
+                  disabled={!desbloqueada || !seccion.opcional}
+                  className={`w-full flex items-center gap-2 px-4 py-3 text-left ${seccion.opcional && desbloqueada ? 'cursor-pointer hover:bg-neutral-50' : 'cursor-default'}`}
+                >
+                  {!desbloqueada ? <Lock className="w-4 h-4 text-neutral-300 shrink-0" /> : <Layers className="w-4 h-4 text-accent shrink-0" />}
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold ${desbloqueada ? 'text-neutral-800' : 'text-neutral-400'}`}>
+                      {seccion.opcional && !expandida && desbloqueada ? '+ ' : ''}{seccion.nombre}{seccion.opcional ? ' (opcional)' : ''}
+                    </p>
+                    {desbloqueada ? (
+                      seccion.descripcion && (!seccion.opcional || expandida) && (
+                        <p className="text-xs text-neutral-400 mt-0.5">{seccion.descripcion}</p>
+                      )
+                    ) : (
+                      <p className="text-xs text-neutral-400 mt-0.5">Completa la sección anterior para continuar</p>
+                    )}
+                  </div>
+                  {seccion.opcional && desbloqueada && (
+                    <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform shrink-0 ${expandida ? 'rotate-180' : ''}`} />
+                  )}
+                </button>
+                {mostrarCampos && (
+                  <div className="px-4 pb-4 space-y-6 border-t border-neutral-100 pt-4">
+                    {grupo.campos.map(renderCampoConLock)}
+                  </div>
+                )}
+              </div>
+            );
+          });
+        })()}
 
         {isEmpleadoOAgente && (
           <p className="text-xs text-neutral-400 text-center pt-2">El área y equipo se asignan automáticamente según tu perfil.</p>
