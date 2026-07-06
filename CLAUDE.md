@@ -1,5 +1,13 @@
 # jiromovi — instrucciones para Claude Code
 
+## ⏳ PENDIENTES para próximas sesiones (agregado 2026-07-06)
+Ninguno tiene código todavía — son ideas/requests de Ricardo para retomar:
+
+1. **Folio de trámites hijos (generados por trigger)**: hoy un trámite creado automáticamente por un trigger (Store→Trámites u otro) siempre saca un folio nuevo normal. Ricardo quiere poder elegir, desde la configuración del trigger, si el hijo usa: (a) folio completamente nuevo (como hoy), o (b) el folio del padre + un inciso — ej. padre `TK09672` → hijo `TK09672-A`. Ver `store_tramite_triggers` y el módulo "Store → Trámites" en este mismo archivo.
+2. **Reordenar Secciones del FormBuilder**: ahora mismo las secciones se crean con un `orden` fijo (secuencial al crearlas) pero no hay UI para reordenarlas después. Agregar esa capacidad (drag-and-drop o flechas arriba/abajo) en `FormBuilderTab.tsx`/`useFormBuilder.ts`.
+3. **Salto condicional de sección según respuesta de un campo** (estilo Google Forms): hoy una sección solo depende de "¿se completaron los campos requeridos de la sección X?" (`depende_de_seccion_id` en `tramite_tipo_secciones`). Ricardo quiere condicionar el salto según el VALOR de una respuesta específica (ej. si el campo "¿Tiene mascota?" = "No", saltar la sección "Datos de la mascota"). Revisar `src/lib/tramiteSecciones.ts` y el sistema de condición por campo ya existente (`condicion_activa`/`campo_fuente`/`condicion_operador`/`condicion_valor` en `tramite_tipo_campos.config`) — probablemente se pueda extender ese mismo mecanismo a nivel sección en vez de crear uno nuevo.
+4. **Panel de editar campo del FormBuilder no es sticky**: el panel derecho de "Configurar campo" en `FormBuilderTab.tsx` se queda arriba del todo — si el canvas de campos es largo, hay que hacer mucho scroll para volver a verlo/guardarlo. Hacerlo sticky (`sticky top-*`) dentro de su contenedor con scroll propio.
+
 ## ⚠️ Archivos huérfanos desde el rediseño del Dashboard (2026-07-06)
 El rediseño de `src/pages/Dashboard.tsx` (hero + módulos beta + favoritos + avisos) reemplazó por completo el Dashboard anterior. Los siguientes componentes ya **no los importa nadie en todo el repo** (confirmado con grep), pero se dejaron intactos a propósito — decisión explícita de Ricardo de no borrarlos todavía:
 - `src/components/dashboard/DashboardHero.tsx`
@@ -10,8 +18,9 @@ El rediseño de `src/pages/Dashboard.tsx` (hero + módulos beta + favoritos + av
 
 
 ## Cómo trabajar con Ricardo (usuario / responsable técnico JIRO)
+- **Estilo de comunicación: súper simple y directo, casi "cavernícola"** — respuestas cortas, sin rodeos, sin explicación técnica de más. Solo entra en detalle si él lo pide explícitamente (pregunta de aclaración, "explícame más", "por qué"). Esto aplica al texto que le escribes, no a la calidad del código/investigación de fondo.
 - Responde siempre en español.
-- Cuando crees o referencies una migración, da la ruta completa de una vez: `C:\Users\medau\Desktop\jiromovi-main\supabase\migrations\<archivo>.sql` — la pide en cada sesión.
+- Cuando crees o referencies una migración, da la ruta completa de una vez: `C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-produccion\supabase\migrations\<archivo>.sql` — la pide en cada sesión. También copiar el archivo a `C:\Users\RICARDO JIMENEZ\Desktop\jiromovi\supabase\migrations\` (carpeta de siempre, solo copia de archivo, sin commit ahí).
 - El SQL para correr en Supabase: pégalo en bloque de código directo, sin explicación extensa alrededor — lo copia tal cual al SQL Editor.
 - "¿Commit y push?" o confirmar tras preguntarlo = hazlo de inmediato, no vuelvas a confirmar.
 - "Continúa" = sigue con el siguiente paso en orden, sin preguntar.
