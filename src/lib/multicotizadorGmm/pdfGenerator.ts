@@ -18,21 +18,44 @@ import { PRODUCT_LABELS } from './types';
 
 // ─── Formatting ───────────────────────────────────────────────────────────────
 
-const mxn = new Intl.NumberFormat('es-MX', {
+const mxnFull = new Intl.NumberFormat('es-MX', {
   style: 'currency',
   currency: 'MXN',
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
 });
 
-function fmtMoney(n: number | null | undefined): string {
-  if (n == null || isNaN(n) || n === 0) return '-';
-  return mxn.format(n);
+// For tables — always 2 decimal places, never truncated
+function formatMoneyFull(n: number | null | undefined): string {
+  if (n == null || isNaN(n as number)) return '-';
+  return mxnFull.format(n as number);
+}
+
+// For cards/badges — compact: $50 M for millions, $35,000 for thousands
+function formatMoneyCompact(n: number | null | undefined): string {
+  if (n == null || isNaN(n as number) || (n as number) === 0) return '-';
+  const v = n as number;
+  if (v >= 1_000_000) {
+    const m = v / 1_000_000;
+    return `$${m % 1 === 0 ? m.toFixed(0) : m.toFixed(1)} M`;
+  }
+  if (v >= 1_000) {
+    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
+  }
+  return mxnFull.format(v);
+}
+
+// For nullable fields — 'No cotizado' when null/undefined/0
+function formatNullableMoney(n: number | null | undefined): string {
+  if (n == null || isNaN(n as number) || (n as number) === 0) return 'No cotizado';
+  return formatMoneyFull(n);
 }
 
 function formatPercent(n: number | null | undefined): string {
-  if (n == null || isNaN(n)) return '-';
-  const pct = n <= 1 ? n * 100 : n;
+  if (n == null || isNaN(n as number)) return '-';
+  const raw = n as number;
+  // Handle string-encoded percentages like "10%" already sanitized to number
+  const pct = raw > 0 && raw <= 1 ? raw * 100 : raw;
   return pct % 1 === 0 ? `${pct}%` : `${pct.toFixed(1)}%`;
 }
 
@@ -359,6 +382,7 @@ interface QuoteTemplateProps {
   agentEmail: string;
   agentPhone: string;
   agentWeb: string;
+  logoUrl: string | null;
   accentColor: string;
   people: QuotePerson[];
   plans: PlanSummary[];
@@ -378,7 +402,7 @@ function CoverageCell({ value, accentColor }: { value: boolean | null; accentCol
 
 function QuoteTemplate(props: QuoteTemplateProps) {
   const { clientName, folio, today, agentName, agentEmail, agentPhone, agentWeb,
-          accentColor, people, plans, results, bestIdx } = props;
+          logoUrl, accentColor, people, plans, results, bestIdx } = props;
 
   const best = plans[bestIdx];
   const formasPago: FormaPago[] = ['Anual', 'Semestral', 'Trimestral', 'Mensual'];
@@ -432,10 +456,15 @@ function QuoteTemplate(props: QuoteTemplateProps) {
       h('div', { style: { background: accentColor, padding: '22px 32px 18px', position: 'relative', overflow: 'hidden' } },
         h('div', { style: { position: 'absolute', top: 0, right: 0, width: '200px', height: '100%', background: 'rgba(255,255,255,0.06)', clipPath: 'polygon(40% 0, 100% 0, 100% 100%, 0% 100%)' } }),
         h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 } },
-          h('div', null,
-            h('div', { style: { fontSize: '10px', color: 'rgba(255,255,255,0.60)', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '3px' } }, agentWeb || 'Agente Autorizado'),
-            h('div', { style: { fontSize: '17px', color: '#ffffff', fontWeight: 700, lineHeight: 1.1 } }, agentName || 'Cotizacion GMM'),
-            agentEmail && h('div', { style: { fontSize: '10px', color: 'rgba(255,255,255,0.65)', marginTop: '3px' } }, agentEmail),
+          h('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px' } },
+            logoUrl
+              ? h('img', { src: logoUrl, alt: 'Logo', style: { maxWidth: '160px', maxHeight: '56px', objectFit: 'contain', display: 'block', marginBottom: '4px' } })
+              : h('div', { style: { background: 'rgba(255,255,255,0.15)', borderRadius: '5px', padding: '5px 10px', display: 'inline-block', marginBottom: '4px' } },
+                  h('div', { style: { fontSize: '12px', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.01em' } }, agentWeb || 'Agente Autorizado'),
+                ),
+            h('div', { style: { fontSize: '15px', color: '#ffffff', fontWeight: 700, lineHeight: 1.2 } }, agentName || 'Cotizacion GMM'),
+            agentEmail && h('div', { style: { fontSize: '9px', color: 'rgba(255,255,255,0.65)', marginTop: '1px' } }, agentEmail),
+            agentPhone && h('div', { style: { fontSize: '9px', color: 'rgba(255,255,255,0.55)' } }, agentPhone),
           ),
           h('div', { style: { textAlign: 'right' } },
             h('div', { style: { fontSize: '21px', color: '#ffffff', fontWeight: 800, letterSpacing: '-0.02em' } }, 'COTIZACION GMM'),
@@ -470,11 +499,11 @@ function QuoteTemplate(props: QuoteTemplateProps) {
           h('div', { style: { fontSize: '9px', color: 'rgba(255,255,255,0.60)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '2px' } }, 'Opcion recomendada'),
           h('div', { style: { fontSize: '14px', fontWeight: 700, color: '#ffffff' } }, best.nombre),
           h('div', { style: { fontSize: '10px', color: 'rgba(255,255,255,0.72)', marginTop: '3px' } },
-            `${best.aseguradora}  ·  SA: ${fmtMoney(best.suma_asegurada)}  ·  Ded: ${fmtMoney(best.deducible)}  ·  Coas: ${formatPercent(best.coaseguro)}`
+            `${best.aseguradora}  ·  SA: ${formatMoneyCompact(best.suma_asegurada)}  ·  Ded: ${formatMoneyCompact(best.deducible)}  ·  Coas: ${formatPercent(best.coaseguro)}`
           ),
         ),
         h('div', { style: { textAlign: 'right' } },
-          h('div', { style: { fontSize: '22px', fontWeight: 800, color: '#ffffff', lineHeight: 1 } }, fmtMoney(best.prima_anual)),
+          h('div', { style: { fontSize: '22px', fontWeight: 800, color: '#ffffff', lineHeight: 1 } }, formatMoneyCompact(best.prima_anual)),
           h('div', { style: { fontSize: '9px', color: 'rgba(255,255,255,0.60)', marginTop: '2px' } }, 'Prima anual con IVA'),
         ),
       ),
@@ -497,10 +526,10 @@ function QuoteTemplate(props: QuoteTemplateProps) {
               // Specs grid
               h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', marginBottom: '9px' } },
                 ...[
-                  ['SA', fmtMoney(plan.suma_asegurada)],
-                  ['Deducible', fmtMoney(plan.deducible)],
+                  ['SA', formatMoneyCompact(plan.suma_asegurada)],
+                  ['Deducible', formatMoneyCompact(plan.deducible)],
                   ['Coaseguro', formatPercent(plan.coaseguro)],
-                  ['Tope Coas.', plan.tope_coaseguro ? fmtMoney(plan.tope_coaseguro) : '-'],
+                  ['Tope Coas.', plan.tope_coaseguro ? formatMoneyCompact(plan.tope_coaseguro) : '-'],
                 ].map(([lbl, val]) =>
                   h('div', { key: lbl, style: { background: pl, borderRadius: '5px', padding: '4px 6px' } },
                     h('div', { style: { fontSize: '7px', color: '#6b7280', marginBottom: '1px' } }, lbl),
@@ -517,7 +546,7 @@ function QuoteTemplate(props: QuoteTemplateProps) {
               // Price
               h('div', { style: { borderTop: '1px solid #e8eaf0', paddingTop: '7px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' } },
                 h('div', { style: { fontSize: '7px', color: '#6b7280' } }, 'Prima anual c/IVA'),
-                h('div', { style: { fontSize: N <= 3 ? '17px' : '15px', fontWeight: 800, color: pc, lineHeight: 1 } }, fmtMoney(plan.prima_anual)),
+                h('div', { style: { fontSize: N <= 3 ? '17px' : '15px', fontWeight: 800, color: pc, lineHeight: 1 } }, formatMoneyCompact(plan.prima_anual)),
               ),
             ),
           );
@@ -529,8 +558,8 @@ function QuoteTemplate(props: QuoteTemplateProps) {
         ...[
           { lbl: 'Opciones cotizadas', val: String(N), color: accentColor },
           { lbl: 'Asegurados', val: String(people.length), color: '#0891b2' },
-          { lbl: 'Mejor precio anual', val: fmtMoney(best.prima_anual), color: '#10b981' },
-          { lbl: 'Menor deducible', val: fmtMoney(Math.min(...plans.filter(p => p.deducible > 0).map(p => p.deducible))), color: '#f59e0b' },
+          { lbl: 'Mejor precio anual', val: formatMoneyCompact(best.prima_anual), color: '#10b981' },
+          { lbl: 'Menor deducible', val: formatMoneyCompact(Math.min(...plans.filter(p => p.deducible > 0).map(p => p.deducible))), color: '#f59e0b' },
         ].map(k =>
           h('div', { key: k.lbl, style: { background: k.color + '12', border: `1px solid ${k.color}30`, borderRadius: '7px', padding: '9px 11px', borderLeft: `3px solid ${k.color}` } },
             h('div', { style: { fontSize: '8px', color: '#6b7280', marginBottom: '3px' } }, k.lbl),
@@ -560,7 +589,7 @@ function QuoteTemplate(props: QuoteTemplateProps) {
                 ...results.map((r2, ri) => {
                   const prima = personPrima(p, r2);
                   const isBestCol = ri === bestIdx;
-                  return h('td', { key: ri, style: { padding: tblPad, fontWeight: isBestCol ? 700 : 400, color: isBestCol ? accentColor : '#374151', background: isBestCol ? accentColor + '12' : 'transparent' } }, prima > 0 ? fmtMoney(prima) : '-');
+                  return h('td', { key: ri, style: { padding: tblPad, fontWeight: isBestCol ? 700 : 400, color: isBestCol ? accentColor : '#374151', background: isBestCol ? accentColor + '12' : 'transparent' } }, prima > 0 ? formatMoneyFull(prima) : 'No cotizado');
                 }),
               )
             ),
@@ -593,11 +622,11 @@ function QuoteTemplate(props: QuoteTemplateProps) {
                 ['Aseguradora',       (p: PlanSummary) => p.aseguradora],
                 ['Zona / Region',     (p: PlanSummary) => p.zona],
                 ['Nivel hospitalario',(p: PlanSummary) => p.nivel],
-                ['Suma Asegurada',    (p: PlanSummary) => fmtMoney(p.suma_asegurada)],
-                ['Deducible',         (p: PlanSummary) => fmtMoney(p.deducible)],
+                ['Suma Asegurada',    (p: PlanSummary) => formatNullableMoney(p.suma_asegurada)],
+                ['Deducible',         (p: PlanSummary) => formatNullableMoney(p.deducible)],
                 ['Coaseguro',         (p: PlanSummary) => formatPercent(p.coaseguro)],
-                ['Tope Coaseguro',    (p: PlanSummary) => p.tope_coaseguro ? fmtMoney(p.tope_coaseguro) : '-'],
-                ['Prima anual c/IVA', (p: PlanSummary) => fmtMoney(p.prima_anual)],
+                ['Tope Coaseguro',    (p: PlanSummary) => p.tope_coaseguro ? formatMoneyFull(p.tope_coaseguro) : '-'],
+                ['Prima anual c/IVA', (p: PlanSummary) => formatNullableMoney(p.prima_anual)],
               ].map(([lbl, fn], ri) =>
                 h('tr', { key: lbl as string, style: { background: ri % 2 === 0 ? '#f8f9fc' : '#ffffff', borderBottom: '1px solid #e8eaf0' } },
                   h('td', { style: { padding: tblPad, fontWeight: 600, color: '#374151', fontSize: `${tblFont}px` } }, lbl as string),
@@ -632,8 +661,8 @@ function QuoteTemplate(props: QuoteTemplateProps) {
                     const isBestCol = ci === bestIdx;
                     return h('td', { key: ci, style: { padding: tblPad, fontSize: `${tblFont}px`, fontWeight: isBestCol ? 700 : 400, color: isBestCol ? accentColor : '#1a1d2e', background: isBestCol ? accentColor + '12' : 'transparent' } },
                       t ? h('div', null,
-                        h('div', null, fmtMoney(t.total)),
-                        t.num_recibos > 1 && h('div', { style: { fontSize: '7.5px', color: '#9ca3af', marginTop: '1px' } }, `1er: ${fmtMoney(t.primer_pago)} + ${t.num_recibos - 1} x ${fmtMoney(t.pagos_sub)}`),
+                        h('div', null, formatMoneyFull(t.total)),
+                        t.num_recibos > 1 && h('div', { style: { fontSize: '7.5px', color: '#9ca3af', marginTop: '1px' } }, `1er: ${formatMoneyFull(t.primer_pago)} + ${t.num_recibos - 1} x ${formatMoneyFull(t.pagos_sub)}`),
                       ) : h('span', null, '-')
                     );
                   }),
@@ -667,15 +696,15 @@ function QuoteTemplate(props: QuoteTemplateProps) {
               h('div', { style: { fontSize: '12px', fontWeight: 700, color: '#1a1d2e', marginBottom: '5px' } }, best.nombre),
               h('div', { style: { fontSize: '8.5px', color: '#374151', lineHeight: 1.6 } },
                 `Recomendamos ${best.nombre} (${best.aseguradora}) para ${clientName}. ` +
-                `Suma asegurada de ${fmtMoney(best.suma_asegurada)}, deducible de ${fmtMoney(best.deducible)} y coaseguro de ${formatPercent(best.coaseguro)}. ` +
-                `Prima anual: ${fmtMoney(best.prima_anual)} con IVA incluido.`
+                `Suma asegurada de ${formatMoneyFull(best.suma_asegurada)}, deducible de ${formatMoneyFull(best.deducible)} y coaseguro de ${formatPercent(best.coaseguro)}. ` +
+                `Prima anual: ${formatMoneyFull(best.prima_anual)} con IVA incluido.`
               ),
               h('div', { style: { marginTop: '9px', display: 'flex', gap: '7px' } },
                 ...(['Anual', 'Mensual'] as FormaPago[]).filter(fp => best.totals[fp]).map(fp => {
                   const t = best.totals[fp]!;
                   return h('div', { key: fp, style: { background: '#ffffff', border: `1px solid ${accentColor}30`, borderRadius: '6px', padding: '5px 9px', textAlign: 'center' } },
                     h('div', { style: { fontSize: '7px', color: '#6b7280' } }, fp),
-                    h('div', { style: { fontSize: '11px', fontWeight: 700, color: accentColor } }, fmtMoney(t.total)),
+                    h('div', { style: { fontSize: '11px', fontWeight: 700, color: accentColor } }, formatMoneyFull(t.total)),
                   );
                 }),
               ),
@@ -822,7 +851,7 @@ export async function generateMultiGmmPdf(
   clientName: string,
   usuario: any,
   optionDefs?: MultiGmmOption[],
-  _logoUrl?: string,
+  logoUrl?: string,
   folio?: string
 ): Promise<Blob> {
 
@@ -848,6 +877,17 @@ export async function generateMultiGmmPdf(
   const agentEmail  = usuario?.email ?? '';
   const agentPhone  = usuario?.telefono ?? usuario?.phone ?? '';
   const agentWeb    = usuario?.oficina?.website ?? usuario?.oficina?.nombre ?? '';
+
+  // Logo priority chain: caller → agent → brand → office → office.brand → agency → defaultBrand
+  const resolvedLogo: string | null =
+    logoUrl ||
+    usuario?.logo_url ||
+    usuario?.brand?.logo_url ||
+    usuario?.oficina?.logo_url ||
+    usuario?.oficina?.brand?.logo_url ||
+    usuario?.agencia?.logo_url ||
+    usuario?.default_brand?.logo_url ||
+    null;
   const today = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
 
   const container = document.createElement('div');
@@ -867,6 +907,7 @@ export async function generateMultiGmmPdf(
           agentEmail,
           agentPhone,
           agentWeb,
+          logoUrl: resolvedLogo,
           accentColor,
           people,
           plans,
