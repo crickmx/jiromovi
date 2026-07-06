@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
+import { subscribeResilientChannel } from '../lib/resilientRealtime';
 import { useAuth } from './AuthContext';
 
 interface Notification {
@@ -108,15 +109,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const subscribeToNotifications = () => {
     if (!usuario) return;
 
-    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
-    let currentChannel: ReturnType<typeof supabase.channel> | null = null;
-    let cancelled = false;
-
-    const connect = () => {
-      if (cancelled) return;
-
-      const channel = supabase
-        .channel(`notificaciones-${usuario.id}-${Date.now()}`)
+    return subscribeResilientChannel({
+      channelName: `notificaciones-${usuario.id}`,
+      onReconnect: fetchNotifications,
+      configure: (channel) => channel
         .on(
           'postgres_changes',
           {
@@ -219,26 +215,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             const deletedId = payload.old.id;
             setNotifications((prev) => prev.filter((n) => n.id !== deletedId));
           }
-        )
-        .subscribe((status) => {
-          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            if (!cancelled) {
-              supabase.removeChannel(channel);
-              retryTimeout = setTimeout(connect, 3000);
-            }
-          }
-        });
-
-      currentChannel = channel;
-    };
-
-    connect();
-
-    return () => {
-      cancelled = true;
-      if (retryTimeout) clearTimeout(retryTimeout);
-      if (currentChannel) supabase.removeChannel(currentChannel);
-    };
+        ),
+    });
   };
 
   const showBrowserNotification = (notification: Notification) => {

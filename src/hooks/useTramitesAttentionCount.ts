@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { subscribeResilientChannel } from '../lib/resilientRealtime';
 import { useImpersonation } from '../contexts/ImpersonationContext';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -57,12 +58,14 @@ export function useTramitesAttentionCount(userId: string | null | undefined) {
 
     fetchCount();
 
-    const channel = supabase
-      .channel(channelName.current)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, fetchCount)
-      .subscribe();
+    const unsubscribe = subscribeResilientChannel({
+      channelName: channelName.current,
+      configure: (channel) =>
+        channel.on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, fetchCount),
+      onReconnect: fetchCount,
+    });
 
-    return () => { channel.unsubscribe(); };
+    return unsubscribe;
   }, [userId, isAdmin, isImpersonating, impersonatedUser?.id]);
 
   return count;

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { subscribeResilientChannel } from '../lib/resilientRealtime';
 import { useAuth } from '../contexts/AuthContext';
 import { tieneAccesoEquipoStore } from '../lib/storeUtils';
 
@@ -58,13 +59,16 @@ export function useStoreAttentionCount(userId: string | null | undefined) {
 
     fetchCount();
 
-    const channel = supabase
-      .channel(channelNameRef.current)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, fetchCount)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'store_pedidos' }, fetchCount)
-      .subscribe();
+    const unsubscribe = subscribeResilientChannel({
+      channelName: channelNameRef.current,
+      configure: (channel) =>
+        channel
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, fetchCount)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'store_pedidos' }, fetchCount),
+      onReconnect: fetchCount,
+    });
 
-    return () => { channel.unsubscribe(); };
+    return unsubscribe;
   }, [userId, isAdmin]);
 
   return count;
