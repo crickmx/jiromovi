@@ -219,8 +219,8 @@ function extractPlan(r: OptionResult): PlanSummary {
       aseguradora: 'Bupa Mexico',
       zona: inp?.region_zone ?? '-',
       nivel: '-',
-      suma_asegurada: inp?.suma_asegurada ?? 0,
-      deducible: inp?.deducible ?? 0,
+      suma_asegurada: (inp?.suma_asegurada ?? 0) * 1_000_000,
+      deducible: (inp?.deducible ?? 0) * 1_000,
       coaseguro: inp?.coaseguro ?? 0,
       tope_coaseguro: inp?.tope_coaseguro ?? null,
       prima_anual: bnv.prima_anual_total,
@@ -266,8 +266,8 @@ function extractPlan(r: OptionResult): PlanSummary {
     aseguradora: 'Bupa Mexico',
     zona: inp?.region_zone ?? '-',
     nivel: '-',
-    suma_asegurada: inp?.suma_asegurada ?? 0,
-    deducible: inp?.deducible ?? 0,
+    suma_asegurada: (inp?.suma_asegurada ?? 0) * 1_000_000,
+    deducible: (inp?.deducible ?? 0) * 1_000,
     coaseguro: inp?.coaseguro ?? 0,
     tope_coaseguro: null,
     prima_anual: bnp.prima_anual_total,
@@ -431,7 +431,10 @@ function QuoteTemplate(props: QuoteTemplateProps) {
   const pageFooter = (pg: number, total: number) =>
     h('div', { style: { position: 'absolute', bottom: 0, left: 0, right: 0, background: '#f4f6fb', borderTop: '1px solid #e2e6f0', padding: '7px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
       h('div', { style: { fontSize: '8px', color: '#9ca3af' } }, 'Cotizacion valida 15 dias naturales. Aceptacion sujeta a politicas de suscripcion. Documento ilustrativo, no contractual.'),
-      h('div', { style: { fontSize: '8px', color: '#6b7280', fontWeight: 600 } }, `Pagina ${pg} / ${total}`),
+      h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px' } },
+        agentWeb && h('div', { style: { fontSize: '8px', color: '#6b7280' } }, agentWeb),
+        h('div', { style: { fontSize: '8px', color: '#6b7280', fontWeight: 600 } }, `Pagina ${pg} / ${total}`),
+      ),
     );
 
   const totalPages = visibleCovRows.length > 0 ? 3 : 2;
@@ -715,9 +718,11 @@ function QuoteTemplate(props: QuoteTemplateProps) {
         // Advisor card
         h('div', { style: { background: '#1a1d2e', borderRadius: '10px', padding: '16px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
           h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px' } },
-            h('div', { style: { width: '42px', height: '42px', borderRadius: '50%', background: accentColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#fff', flexShrink: 0 } },
-              agentName.split(' ').filter(Boolean).slice(0, 2).map((w: string) => w[0] ?? '').join('').toUpperCase() || 'A'
-            ),
+            logoUrl
+              ? h('img', { src: logoUrl, alt: 'Logo', style: { maxWidth: '80px', maxHeight: '36px', objectFit: 'contain', borderRadius: '4px' } })
+              : h('div', { style: { width: '42px', height: '42px', borderRadius: '50%', background: accentColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#fff', flexShrink: 0 } },
+                  agentName.split(' ').filter(Boolean).slice(0, 2).map((w: string) => w[0] ?? '').join('').toUpperCase() || 'A'
+                ),
             h('div', null,
               h('div', { style: { fontSize: '13px', fontWeight: 700, color: '#ffffff' } }, agentName || 'Tu asesor'),
               agentEmail && h('div', { style: { fontSize: '9px', color: 'rgba(255,255,255,0.55)', marginTop: '2px' } }, agentEmail),
