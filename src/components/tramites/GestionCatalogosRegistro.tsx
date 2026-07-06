@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, Save, Tag, Pencil, ChevronLeft, ChevronDown, ChevronRight, Search } from 'lucide-react';
+import { Plus, Trash2, Save, Tag, Pencil, ChevronLeft, ChevronDown, ChevronRight, Search, Copy, Users, Clock, Palette } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { invalidateTiposTramiteCache } from '../../hooks/useTiposTramite';
-import { InsuranceTypesList } from './catalogos/InsuranceTypesList';
 import { FormBuilderTab } from './catalogos/FormBuilderTab';
 import { PermisosPanel } from './catalogos/PermisosPanel';
 import { HistorialPanel } from './catalogos/HistorialPanel';
@@ -40,13 +39,33 @@ export function GestionCatalogosRegistro() {
   const [showNewTipoForm, setShowNewTipoForm] = useState(false);
   const [newTipo, setNewTipo] = useState({ label: '', area: 'Comercial' as Area, color: '#0369a1' });
   const [searchTipo, setSearchTipo] = useState('');
-  const [sectionOpen, setSectionOpen] = useState({ seguros: true, tramites: true });
   const [areaOpen, setAreaOpen] = useState<Record<string, boolean>>({});
+  // "Tipos de Seguro" se ocultó (2026-07-06): reemplazado por el catálogo de ramos/subramos
+  // de la BD (maestro_ramos). InsuranceTypesList.tsx y la tabla insurance_types siguen
+  // intactas por si se retoma, solo se quitó del render.
+  const [tramitesOpen, setTramitesOpen] = useState(true);
 
   // ── Edit - Config tab ───────────────────────────────────────────────────
   const [editConfig, setEditConfig] = useState({ label: '', area: 'Comercial' as Area, color: '#0369a1', slaDias: '' });
   const [savingConfig, setSavingConfig] = useState(false);
   const [horasProductivasDia, setHorasProductivasDia] = useState(8);
+
+  // ── Quick-edit inline desde el listado (clonar, equipos, SLA, color) ──────
+  const [quickEdit, setQuickEdit] = useState<{ tipoId: string; field: 'clone' | 'equipos' | 'sla' | 'color' } | null>(null);
+  const [quickSla, setQuickSla] = useState('');
+  const [quickColor, setQuickColor] = useState('');
+  const [cloneLabel, setCloneLabel] = useState('');
+  const [savingQuick, setSavingQuick] = useState(false);
+  const quickEditRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!quickEdit) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (quickEditRef.current && !quickEditRef.current.contains(e.target as Node)) setQuickEdit(null);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [quickEdit]);
 
   const isAdmin = usuario?.rol === 'Administrador';
 
@@ -201,6 +220,107 @@ export function GestionCatalogosRegistro() {
     const { error } = await supabase.from('ticket_tipos').delete().eq('id', id);
     if (error) { showToast('Error: ' + error.message, 'error'); return; }
     showToast('Tipo eliminado');
+    invalidateTiposTramiteCache();
+    await loadTiposTramite();
+  };
+
+  // ── Quick-edit handlers ──────────────────────────────────────────────────
+
+  const openQuickEdit = (tipo: TicketTipo, field: 'clone' | 'equipos' | 'sla' | 'color') => {
+    setQuickEdit({ tipoId: tipo.id, field });
+    if (field === 'sla') setQuickSla(horasToDiasLabel(tipo.sla_horas));
+    if (field === 'color') setQuickColor(tipo.color);
+    if (field === 'clone') setCloneLabel(`${tipo.label} (copia)`);
+  };
+
+  // Mismo patrón que la migración manual 20260702000012_clonar_tipos_integrados_nuevo.sql:
+  // copia config básica + campos custom (no-sistema, el trigger de BD ya crea los de sistema)
+  // + permisos por rol. No copia equipos habilitados/triggers/reglas de asignación — son
+  // automatizaciones ligadas al tipo original, no "configuración de campos".
+  const handleCloneTipo = async (tipo: TicketTipo) => {
+    if (!cloneLabel.trim()) { showToast('El nombre es obligatorio', 'error'); return; }
+    const value = slugify(cloneLabel);
+    if (!value) { showToast('El nombre no genera un identificador válido', 'error'); return; }
+    setSavingQuick(true);
+    try {
+      const maxOrden = tiposTramite.reduce((m, t) => Math.max(m, t.orden), 0);
+      const { data: nuevoTipo, error: insError } = await supabase.from('ticket_tipos').insert({
+        value, label: cloneLabel.trim(), area: tipo.area, color: tipo.color,
+        sla_horas: tipo.sla_horas ?? null, activo: true, is_custom: true, orden: maxOrden + 1,
+      }).select().single();
+      if (insError) throw insError;
+
+      const { data: campos, error: camposError } = await supabase
+        .from('tramite_tipo_campos')
+        .select('key, label, tipo, requerido, ayuda, display_order, config, visible_para_rol, editable_para_rol')
+        .eq('tramite_tipo_id', tipo.id)
+        .eq('is_sistema', false)
+        .eq('activo', true)
+        .order('display_order');
+      if (camposError) throw camposError;
+
+      if (campos && campos.length > 0) {
+        const { error: insCamposError } = await supabase.from('tramite_tipo_campos').insert(
+          campos.map(c => ({
+            tramite_tipo_id: nuevoTipo.id,
+            key: c.key, label: c.label, tipo: c.tipo, requerido: c.requerido, ayuda: c.ayuda,
+            display_order: c.display_order, config: c.config, activo: true, is_sistema: false, sistema_key: null,
+            visible_para_rol: c.visible_para_rol ?? 'todos', editable_para_rol: c.editable_para_rol ?? 'todos',
+          }))
+        );
+        if (insCamposError) throw insCamposError;
+      }
+
+      const { data: permisosRol } = await supabase
+        .from('tramite_tipo_rol_permisos')
+        .select('rol, puede_ver, puede_crear, puede_editar')
+        .eq('tramite_tipo_id', tipo.id);
+      if (permisosRol && permisosRol.length > 0) {
+        await supabase.from('tramite_tipo_rol_permisos').insert(
+          permisosRol.map(p => ({
+            tramite_tipo_id: nuevoTipo.id, rol: p.rol,
+            puede_ver: p.puede_ver, puede_crear: p.puede_crear, puede_editar: p.puede_editar,
+          }))
+        );
+      }
+
+      logHistorial(nuevoTipo.id, 'tipo_creado', { label: cloneLabel.trim(), area: tipo.area, color: tipo.color, clonado_de: tipo.label }, usuario?.id, usuario?.nombre_completo);
+      showToast(`"${cloneLabel.trim()}" creado como copia de "${tipo.label}"`);
+      setQuickEdit(null);
+      invalidateTiposTramiteCache();
+      await loadTiposTramite();
+    } catch (err: any) {
+      showToast('Error al clonar: ' + err.message, 'error');
+    } finally {
+      setSavingQuick(false);
+    }
+  };
+
+  const handleQuickSaveSla = async (tipo: TicketTipo) => {
+    setSavingQuick(true);
+    const nuevoSlaHoras = diasToHoras(quickSla);
+    const { error } = await supabase.from('ticket_tipos').update({ sla_horas: nuevoSlaHoras }).eq('id', tipo.id);
+    setSavingQuick(false);
+    if (error) { showToast('Error: ' + error.message, 'error'); return; }
+    if (nuevoSlaHoras !== (tipo.sla_horas ?? null)) {
+      logHistorial(tipo.id, 'config_actualizada', { sla_horas_antes: tipo.sla_horas ?? null, sla_horas_despues: nuevoSlaHoras }, usuario?.id, usuario?.nombre_completo);
+    }
+    showToast('SLA actualizado');
+    setQuickEdit(null);
+    invalidateTiposTramiteCache();
+    await loadTiposTramite();
+  };
+
+  const handleQuickSaveColor = async (tipo: TicketTipo) => {
+    setSavingQuick(true);
+    const { error } = await supabase.from('ticket_tipos').update({ color: quickColor }).eq('id', tipo.id);
+    setSavingQuick(false);
+    if (error) { showToast('Error: ' + error.message, 'error'); return; }
+    if (quickColor !== tipo.color) {
+      logHistorial(tipo.id, 'config_actualizada', { color_antes: tipo.color, color_despues: quickColor }, usuario?.id, usuario?.nombre_completo);
+    }
+    showToast('Color actualizado');
+    setQuickEdit(null);
     invalidateTiposTramiteCache();
     await loadTiposTramite();
   };
@@ -364,20 +484,14 @@ export function GestionCatalogosRegistro() {
     <div className="space-y-10 p-6">
       {ToastEl}
 
-      <InsuranceTypesList
-        showToast={showToast}
-        collapsed={!sectionOpen.seguros}
-        onToggleCollapse={() => setSectionOpen(s => ({ ...s, seguros: !s.seguros }))}
-      />
-
       {/* ── Tipos de Trámite ── */}
       <section>
         <div className="flex items-center justify-between mb-4">
           <button
-            onClick={() => setSectionOpen(s => ({ ...s, tramites: !s.tramites }))}
+            onClick={() => setTramitesOpen(v => !v)}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left"
           >
-            {sectionOpen.tramites
+            {tramitesOpen
               ? <ChevronDown className="w-5 h-5 text-neutral-400 shrink-0" />
               : <ChevronRight className="w-5 h-5 text-neutral-400 shrink-0" />}
             <Tag className="w-6 h-6 text-blue-600 shrink-0" />
@@ -386,7 +500,7 @@ export function GestionCatalogosRegistro() {
                 Tipos de Trámite
                 <span className="ml-2 text-sm font-normal text-neutral-400">({tiposTramite.length})</span>
               </h2>
-              {sectionOpen.tramites && (
+              {tramitesOpen && (
                 <p className="text-xs text-neutral-500 mt-0.5">Haz clic en editar para configurar campos y permisos</p>
               )}
             </div>
@@ -400,7 +514,7 @@ export function GestionCatalogosRegistro() {
           </button>
         </div>
 
-        {sectionOpen.tramites && (
+        {tramitesOpen && (
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
             <input
@@ -413,7 +527,7 @@ export function GestionCatalogosRegistro() {
           </div>
         )}
 
-        {sectionOpen.tramites && showNewTipoForm && (
+        {tramitesOpen && showNewTipoForm && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-6 space-y-4">
             <h3 className="font-semibold text-blue-800 text-sm">Nuevo tipo de trámite</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -464,7 +578,7 @@ export function GestionCatalogosRegistro() {
           </div>
         )}
 
-        {sectionOpen.tramites && (filteredTipos.length === 0 ? (
+        {tramitesOpen && (filteredTipos.length === 0 ? (
           <p className="text-neutral-500 text-center py-8">
             {searchTipo ? 'Sin resultados para esa búsqueda' : 'No hay tipos de trámite registrados'}
           </p>
@@ -524,6 +638,123 @@ export function GestionCatalogosRegistro() {
                         })()}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
+                        <div className="relative">
+                          <button
+                            onClick={() => openQuickEdit(tipo, 'clone')}
+                            className="p-2 text-neutral-500 hover:bg-neutral-100 rounded-lg transition-colors"
+                            title="Clonar tipo"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </button>
+                          {quickEdit?.tipoId === tipo.id && quickEdit.field === 'clone' && (
+                            <div ref={quickEditRef} className="absolute z-20 top-full right-0 mt-1 w-72 bg-white border border-neutral-200 rounded-xl shadow-xl p-3 space-y-2">
+                              <label className="block text-xs font-medium text-neutral-600">Nombre del nuevo tipo</label>
+                              <input
+                                type="text"
+                                autoFocus
+                                value={cloneLabel}
+                                onChange={(e) => setCloneLabel(e.target.value)}
+                                className="w-full px-2 py-1.5 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                              />
+                              <p className="text-[10px] text-neutral-400">Copia campos del formulario y permisos por rol. No copia equipos habilitados ni triggers.</p>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleCloneTipo(tipo)}
+                                  disabled={savingQuick}
+                                  className="flex-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                >
+                                  {savingQuick ? 'Clonando...' : 'Clonar'}
+                                </button>
+                                <button onClick={() => setQuickEdit(null)} className="px-3 py-1.5 bg-neutral-100 rounded-lg text-xs hover:bg-neutral-200 transition-colors">
+                                  Cancelar
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="relative">
+                          <button
+                            onClick={() => openQuickEdit(tipo, 'equipos')}
+                            className="p-2 text-neutral-500 hover:bg-neutral-100 rounded-lg transition-colors"
+                            title="Equipos habilitados"
+                          >
+                            <Users className="w-4 h-4" />
+                          </button>
+                          {quickEdit?.tipoId === tipo.id && quickEdit.field === 'equipos' && (
+                            <div ref={quickEditRef} className="absolute z-20 top-full right-0 mt-1 w-80 bg-white border border-neutral-200 rounded-xl shadow-xl max-h-96 overflow-auto">
+                              <EquiposHabilitadosPanel tipoId={tipo.id} area={tipo.area} showToast={showToast} />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="relative">
+                          <button
+                            onClick={() => openQuickEdit(tipo, 'sla')}
+                            className="p-2 text-neutral-500 hover:bg-neutral-100 rounded-lg transition-colors"
+                            title="Tiempo de respuesta (SLA)"
+                          >
+                            <Clock className="w-4 h-4" />
+                          </button>
+                          {quickEdit?.tipoId === tipo.id && quickEdit.field === 'sla' && (
+                            <div ref={quickEditRef} className="absolute z-20 top-full right-0 mt-1 w-64 bg-white border border-neutral-200 rounded-xl shadow-xl p-3 space-y-2">
+                              <label className="block text-xs font-medium text-neutral-600">Tiempo de respuesta (SLA)</label>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.5"
+                                  autoFocus
+                                  value={quickSla}
+                                  onChange={(e) => setQuickSla(e.target.value)}
+                                  placeholder="Sin límite"
+                                  className="w-20 px-2 py-1.5 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                />
+                                <span className="text-xs text-neutral-500">días hábiles</span>
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleQuickSaveSla(tipo)}
+                                  disabled={savingQuick}
+                                  className="flex-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                >
+                                  Guardar
+                                </button>
+                                <button onClick={() => setQuickEdit(null)} className="px-3 py-1.5 bg-neutral-100 rounded-lg text-xs hover:bg-neutral-200 transition-colors">
+                                  Cancelar
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="relative">
+                          <button
+                            onClick={() => openQuickEdit(tipo, 'color')}
+                            className="p-2 text-neutral-500 hover:bg-neutral-100 rounded-lg transition-colors"
+                            title="Color"
+                          >
+                            <Palette className="w-4 h-4" />
+                          </button>
+                          {quickEdit?.tipoId === tipo.id && quickEdit.field === 'color' && (
+                            <div ref={quickEditRef} className="absolute z-20 top-full right-0 mt-1 w-64 bg-white border border-neutral-200 rounded-xl shadow-xl p-3 space-y-3">
+                              <ColorPicker value={quickColor} onChange={setQuickColor} />
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleQuickSaveColor(tipo)}
+                                  disabled={savingQuick}
+                                  className="flex-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                >
+                                  Guardar
+                                </button>
+                                <button onClick={() => setQuickEdit(null)} className="px-3 py-1.5 bg-neutral-100 rounded-lg text-xs hover:bg-neutral-200 transition-colors">
+                                  Cancelar
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
                         <button
                           onClick={() => openEditor(tipo)}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"

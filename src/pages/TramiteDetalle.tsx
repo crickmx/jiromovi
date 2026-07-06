@@ -1083,6 +1083,7 @@ export function TramiteDetalle() {
       });
     }
     await loadTramite();
+    showToast('Cambios guardados automáticamente');
   };
 
   const handleEquipoChange = async (grupoId: string | null) => {
@@ -1108,6 +1109,7 @@ export function TramiteDetalle() {
       }
     }
     await loadTramite();
+    showToast('Cambios guardados automáticamente');
   };
 
   const handleReabrir = async () => {
