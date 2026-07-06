@@ -1,13 +1,15 @@
-import { ShoppingCart, TriangleAlert as AlertTriangle, Sparkles, Wrench } from 'lucide-react';
+import { useState } from 'react';
+import { ShoppingCart, TriangleAlert as AlertTriangle, Sparkles, Wrench, Minus, Plus } from 'lucide-react';
 import type { StoreProducto } from '../../lib/storeTypes';
 
 interface Props {
   producto: StoreProducto;
-  onAgregar: (producto: StoreProducto) => void;
+  onAgregar: (producto: StoreProducto, cantidad?: number) => void;
   onVerDetalle: (producto: StoreProducto) => void;
 }
 
 export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
+  const [cantidad, setCantidad] = useState(1);
   const esPremium =
     producto.tipo === 'marketing_premium_mensual' || producto.tipo === 'marketing_premium_anual';
   const PLACEHOLDER_SVG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23f3f4f6'/%3E%3Cpath d='M80 120l20-30 20 30M110 120l15-20 15 20' stroke='%239ca3af' stroke-width='2' fill='none'/%3E%3Ccircle cx='90' cy='80' r='8' fill='%239ca3af'/%3E%3Crect x='60' y='60' width='80' height='80' rx='4' stroke='%239ca3af' stroke-width='2' fill='none'/%3E%3C/svg%3E";
@@ -99,18 +101,47 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
             ${producto.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
           </p>
 
-          <button
-            onClick={() => esPremium ? onVerDetalle(producto) : sinStock ? undefined : onAgregar(producto)}
-            disabled={!esPremium && sinStock}
-            className={`w-full sm:w-auto flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium text-sm sm:text-base transition-colors ${
-              !esPremium && sinStock
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-accent text-white hover:bg-accent-hover'
-            }`}
-          >
-            <ShoppingCart className="w-4 h-4" />
-            <span>{esPremium ? 'Ver Planes' : sinStock ? 'Agotado' : producto.tipo_item === 'servicio' ? 'Solicitar' : 'Agregar'}</span>
-          </button>
+          <div className="w-full sm:w-auto flex items-center gap-2">
+            {!esPremium && !sinStock && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setCantidad(c => Math.max(1, c - 1))}
+                  disabled={cantidad <= 1}
+                  className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center border border-gray-300 dark:border-white/20 rounded hover:bg-gray-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50 shrink-0"
+                >
+                  <Minus className="w-3 h-3 sm:w-4 sm:h-4" />
+                </button>
+                <span className="text-sm sm:text-base font-medium text-gray-900 dark:text-white w-5 sm:w-6 text-center">
+                  {cantidad}
+                </span>
+                <button
+                  onClick={() => setCantidad(c => Math.min(999, c + 1))}
+                  disabled={cantidad >= 999}
+                  className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center border border-gray-300 dark:border-white/20 rounded hover:bg-gray-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50 shrink-0"
+                >
+                  <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+                </button>
+              </div>
+            )}
+
+            <button
+              onClick={() => {
+                if (esPremium) { onVerDetalle(producto); return; }
+                if (sinStock) return;
+                onAgregar(producto, cantidad);
+                setCantidad(1);
+              }}
+              disabled={!esPremium && sinStock}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium text-sm sm:text-base transition-colors ${
+                !esPremium && sinStock
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-accent text-white hover:bg-accent-hover'
+              }`}
+            >
+              <ShoppingCart className="w-4 h-4" />
+              <span>{esPremium ? 'Ver Planes' : sinStock ? 'Agotado' : producto.tipo_item === 'servicio' ? 'Solicitar' : 'Agregar'}</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

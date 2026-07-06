@@ -307,7 +307,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
               </div>
 
               {/* Attribute selectors (solo para productos normales) */}
-              {!esPremium && !sinStock && atributosConOpciones.length > 0 && (
+              {!esPremium && !agotado && atributosConOpciones.length > 0 && (
                 <div className="mb-6 space-y-4">
                   {atributosConOpciones.map(attr => (
                     <div key={attr.id}>
@@ -343,7 +343,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
               )}
 
               {/* Cantidad (oculta para premium) */}
-              {!esPremium && !sinStock && (
+              {!esPremium && !agotado && (
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Cantidad {!esPorPedido && maxCantidad > 0 && <span className="text-gray-400 font-normal">(max: {maxCantidad})</span>}
@@ -405,7 +405,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                 </button>
               </div>
 
-              {(esPremium || !sinStock) && (
+              {(esPremium || !agotado) && (
                 <div className={`mt-6 p-4 rounded-lg ${esPremium && planSeleccionado === 'anual' ? 'bg-emerald-50 border border-emerald-200' : 'bg-primary-50'}`}>
                   <p className={`text-sm font-medium ${esPremium && planSeleccionado === 'anual' ? 'text-emerald-900' : 'text-primary-800'}`}>
                     <strong>{esPremium ? 'Total:' : 'Subtotal:'}</strong>{' '}
