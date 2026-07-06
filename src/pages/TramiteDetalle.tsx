@@ -828,6 +828,14 @@ export function TramiteDetalle() {
             cerrado_por: null,
           }).eq('id', snap.id);
         }
+
+        // "Alta Usuario Beta": el momento de aprobación es cuando llega a la
+        // clasificación 'terminacion' (opción "Alta Finalizada") — registrar al
+        // solicitante en usuarios_beta. Idempotente: si ya estaba, no hace nada.
+        if (hayTerminacion && snap.tipo_tramite === 'alta_usuario_beta') {
+          await supabase.from('usuarios_beta')
+            .upsert({ usuario_id: snap.creado_por, tramite_id: snap.id }, { onConflict: 'usuario_id', ignoreDuplicates: true });
+        }
       }
 
       // ── Fase 3: Motor de ejecución de triggers ──────────────────────
