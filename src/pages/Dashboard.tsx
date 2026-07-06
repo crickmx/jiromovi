@@ -1,31 +1,332 @@
-import { useEffect } from 'react';
+import { useEffect, useState, type ReactNode, type ElementType } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Bell } from 'lucide-react';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
-import { DashboardHero } from '../components/dashboard/DashboardHero';
-import { ChavaInsightsCard } from '../components/dashboard/ChavaInsightsCard';
-import { WidgetGrid } from '../components/dashboard/WidgetGrid';
-import { AccesosRapidosWidget } from '../components/dashboard/DashboardWidgets';
+import type { Usuario } from '../contexts/MoviAuthContext';
+import { cn } from '@/lib/utils';
+import { useModuleVisibility } from '@/lib/useModuleVisibility';
+import { obtenerComunicados } from '../lib/comunicadosUtils';
+import type { ComunicadoPublicacion } from '../lib/comunicadosTypes';
+
+// ── Helpers ─────────────────────────────────────────────────────────────
+
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Buenos días';
+  if (h < 19) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
+function getGreetingEmoji(): string {
+  const h = new Date().getHours();
+  if (h < 12) return '☀️';
+  if (h < 19) return '🌤️';
+  return '🌙';
+}
+
+function formatDate(): string {
+  const raw = new Date().toLocaleDateString('es-MX', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  });
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
+function getRelativeTime(iso: string): string {
+  const diffMin = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (diffMin < 1) return 'Justo ahora';
+  if (diffMin < 60) return `Hace ${diffMin} min`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `Hace ${diffH} h`;
+  const diffD = Math.floor(diffH / 24);
+  if (diffD < 7) return `Hace ${diffD} d`;
+  return new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+}
+
+function Sk({ className }: { className?: string }) {
+  return <div className={cn('animate-pulse rounded-lg bg-neutral-200 dark:bg-white/10', className)} />;
+}
+
+function SectionShell({
+  title, icon: Icon, onMore, children,
+}: { title: string; icon: ElementType; onMore?: () => void; children: ReactNode }) {
+  return (
+    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 rounded-2xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Icon className="w-4 h-4 text-neutral-400 dark:text-white/40" />
+          <h3 className="text-sm font-bold text-neutral-800 dark:text-white/90">{title}</h3>
+        </div>
+        {onMore && (
+          <button
+            onClick={onMore}
+            className="text-[11px] font-semibold text-neutral-400 dark:text-white/40 hover:text-neutral-700 dark:hover:text-white/70 transition-colors"
+          >
+            Ver más →
+          </button>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ── Datos estáticos de lanzamiento Beta ────────────────────────────────
+// Nota: las rutas se verificaron contra MoviFullRoutes.tsx / workspaceConfig.ts
+// (algunas del spec original no existían: /educacion -> /seguros-education,
+// /marketing -> /mercadotecnia/publicidad, /bonos -> /produccion,
+// /fotos-estudio -> /mercadotecnia/fotos-estudio, /chat -> /centro-contacto/chat).
+
+const BETA_MODULES = [
+  {
+    key: 'store',
+    label: 'MOVI Store',
+    desc: 'Pedidos y catálogo de productos',
+    route: '/store',
+    emoji: '🏬',
+    gradientFrom: '#E84F8A',
+    gradientTo: '#8E1A52',
+  },
+  {
+    key: 'educacion',
+    label: 'Seguros Education',
+    desc: 'Cursos y certificaciones',
+    route: '/seguros-education',
+    emoji: '🎓',
+    gradientFrom: '#5A6EC4',
+    gradientTo: '#333D90',
+  },
+  {
+    key: 'produccion',
+    label: 'Central de Producción',
+    desc: 'Pólizas, reportes y metas',
+    route: '/produccion',
+    emoji: '📊',
+    gradientFrom: '#8E1A52',
+    gradientTo: '#520E35',
+  },
+  {
+    key: 'marketing',
+    label: 'Mercadotecnia',
+    desc: 'Campañas y materiales de marca',
+    route: '/mercadotecnia/publicidad',
+    emoji: '📣',
+    gradientFrom: '#3DA88A',
+    gradientTo: '#236B58',
+  },
+  {
+    key: 'avisos',
+    label: 'Avisos',
+    desc: 'Comunicados y notificaciones',
+    route: '/comunicados',
+    emoji: '🔔',
+    gradientFrom: '#B87272',
+    gradientTo: '#7A4858',
+  },
+] as const;
+
+const BETA_FAVORITOS = [
+  { label: 'Nuevo Trámite', emoji: '📋', route: '/tramites' },
+  { label: 'Avisos', emoji: '🔔', route: '/comunicados' },
+  { label: 'Fotos Estudio', emoji: '📸', route: '/mercadotecnia/fotos-estudio' },
+  { label: 'Mis Metas', emoji: '🎯', route: '/produccion' },
+  { label: 'Chat', emoji: '💬', route: '/centro-contacto/chat' },
+  { label: 'Mi Perfil', emoji: '👤', route: '/perfil' },
+] as const;
+
+const BETA_CONTACT_URL = 'mailto:hola@jiro.mx?subject=Solicitud%20Beta%20MOVI';
+
+// ── WelcomeHero ─────────────────────────────────────────────────────────
+
+function WelcomeHero({ usuario }: { usuario: Usuario }) {
+  return (
+    <div
+      className="relative overflow-hidden rounded-2xl px-6 py-5 min-h-[90px] flex items-center justify-between gap-4"
+      style={{ background: 'linear-gradient(140deg, #2A1860 0%, #180E40 55%, #0D0B24 100%)' }}
+    >
+      <div
+        className="absolute top-0 right-0 w-64 h-64 pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(232,79,138,0.28), transparent 70%)' }}
+      />
+      <div
+        className="absolute bottom-0 left-1/2 -translate-x-1/2 w-72 h-40 pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(90,110,196,0.20), transparent 70%)' }}
+      />
+
+      <div className="relative z-10 min-w-0">
+        <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: '#F2A0C4' }}>
+          {getGreetingEmoji()} {getGreeting()}
+        </p>
+        <h1 className="text-xl sm:text-2xl font-bold text-white truncate">
+          {usuario.nombre} <span style={{ color: '#F2A0C4' }}>{usuario.apellidos}</span>
+        </h1>
+        <p className="text-xs text-white/60 mt-1 truncate">
+          {formatDate()}
+          {usuario.oficina?.nombre ? ` · ${usuario.oficina.nombre}` : ''}
+        </p>
+      </div>
+
+      <div className="relative z-10 shrink-0">
+        <span
+          className="px-3 py-1.5 rounded-full text-xs font-semibold text-white/90 border whitespace-nowrap"
+          style={{ backgroundColor: 'rgba(232,79,138,0.18)', borderColor: 'rgba(232,79,138,0.4)' }}
+        >
+          {usuario.rol}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── ModuleVCards ────────────────────────────────────────────────────────
+
+function ModuleVCards({
+  modules, onNavigate,
+}: { modules: typeof BETA_MODULES[number][]; onNavigate: (route: string) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {modules.map(m => (
+        <div
+          key={m.key}
+          onClick={() => onNavigate(m.route)}
+          className="rounded-2xl overflow-hidden relative cursor-pointer p-4 min-h-[100px] flex flex-col gap-2 transition hover:-translate-y-0.5"
+          style={{ background: `linear-gradient(145deg, ${m.gradientFrom}, ${m.gradientTo})` }}
+        >
+          <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full bg-white/8 pointer-events-none" />
+          <div className="relative z-10 w-[30px] h-[30px] bg-white/18 rounded-lg text-sm flex items-center justify-center">
+            {m.emoji}
+          </div>
+          <div className="relative z-10">
+            <p className="text-sm font-bold text-white">{m.label}</p>
+            <p className="text-[10px] text-white/80">{m.desc}</p>
+          </div>
+          <span className="absolute bottom-3 right-3 text-white/50">→</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── FavoritosGrid ───────────────────────────────────────────────────────
+
+function FavoritosGrid({ onNavigate }: { onNavigate: (route: string) => void }) {
+  return (
+    <div>
+      <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500 dark:text-white/40 mb-2">
+        ★ Mis Favoritos
+      </p>
+      <div className="grid grid-cols-2 gap-1.5">
+        {BETA_FAVORITOS.map(fav => (
+          <button
+            key={fav.route}
+            onClick={() => onNavigate(fav.route)}
+            className="bg-neutral-100 dark:bg-white/6 hover:bg-neutral-200 dark:hover:bg-white/10 border border-neutral-200 dark:border-white/8 rounded-xl p-2 flex flex-col items-center gap-1 text-center text-[9px] font-semibold text-neutral-600 dark:text-white/60 transition-colors cursor-pointer"
+          >
+            <span className="text-base">{fav.emoji}</span>
+            {fav.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── JoinBetaCard ────────────────────────────────────────────────────────
+
+function JoinBetaCard() {
+  return (
+    <div className="rounded-2xl p-4 relative overflow-hidden" style={{ background: 'linear-gradient(145deg, #E84F8A, #8E1A52)' }}>
+      <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full bg-white/10 pointer-events-none" />
+      <p className="text-xl mb-1">🚀</p>
+      <p className="text-sm font-bold text-white mb-1">Únete a la Beta</p>
+      <p className="text-[10px] text-white/80 mb-3 leading-relaxed">
+        Ayúdanos a probar las nuevas funciones de MOVI antes de que lleguen a todos.
+      </p>
+      <a
+        href={BETA_CONTACT_URL}
+        className="bg-white/20 border border-white/35 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg block text-center hover:bg-white/30 transition-colors"
+      >
+        Solicitar acceso
+      </a>
+    </div>
+  );
+}
+
+// ── AvisosPanel ─────────────────────────────────────────────────────────
+
+const AVISO_DOT_COLORS = ['#E84F8A', '#5A6EC4', '#3DA88A'];
+
+function AvisosPanel({ onNavigate }: { onNavigate: (route: string) => void }) {
+  const [avisos, setAvisos] = useState<ComunicadoPublicacion[] | 'loading' | 'error'>('loading');
+
+  useEffect(() => {
+    let active = true;
+    obtenerComunicados(3)
+      .then(data => { if (active) setAvisos(data); })
+      .catch(() => { if (active) setAvisos('error'); });
+    return () => { active = false; };
+  }, []);
+
+  return (
+    <SectionShell title="Avisos" icon={Bell} onMore={() => onNavigate('/comunicados')}>
+      {avisos === 'loading' && (
+        <>
+          <Sk className="h-10 mb-2" />
+          <Sk className="h-10 mb-2" />
+          <Sk className="h-10" />
+        </>
+      )}
+      {avisos === 'error' && (
+        <p className="text-xs text-neutral-400 dark:text-white/40 py-4 text-center">Error al cargar avisos</p>
+      )}
+      {Array.isArray(avisos) && avisos.length === 0 && (
+        <p className="text-xs text-neutral-400 dark:text-white/40 py-4 text-center">Sin avisos recientes</p>
+      )}
+      {Array.isArray(avisos) && avisos.map((aviso, i) => (
+        <div key={aviso.id} className="flex gap-2 items-start py-2 border-b last:border-0 border-neutral-100 dark:border-white/6">
+          <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: AVISO_DOT_COLORS[i % 3] }} />
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-medium text-neutral-800 dark:text-white/85 truncate">{aviso.titulo}</p>
+            <p className="text-[10px] text-neutral-400 dark:text-white/35">
+              {aviso.fecha_publicacion ? getRelativeTime(aviso.fecha_publicacion) : ''}
+            </p>
+          </div>
+        </div>
+      ))}
+    </SectionShell>
+  );
+}
+
+// ── Dashboard ───────────────────────────────────────────────────────────
 
 export default function Dashboard() {
   useEffect(() => { document.title = 'Dashboard · MOVI Digital'; }, []);
 
   const { usuario } = useMoviAuth();
+  const navigate = useNavigate();
+  const { isVisible } = useModuleVisibility();
 
   // MoviPrivateRoute already handles unauthenticated redirect
   if (!usuario) return null;
 
+  const enabledModules = BETA_MODULES.filter(m =>
+    isVisible(m.route, usuario.rol, usuario.oficina_id, usuario.id)
+  );
+
   return (
     <div className="space-y-6 pb-8">
-      {/* Hero: greeting, avatar, office */}
-      <DashboardHero usuario={usuario} />
+      <WelcomeHero usuario={usuario} />
 
-      {/* Chava AI Insights — admin only */}
-      {usuario.rol === 'Administrador' && <ChavaInsightsCard usuario={usuario} />}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <ModuleVCards modules={enabledModules} onNavigate={navigate} />
+        </div>
 
-      {/* Accesos Rápidos — always pinned after Chava */}
-      <AccesosRapidosWidget usuario={usuario} />
-
-      {/* Modular widget grid — skips chava_insights and accesos_rapidos */}
-      <WidgetGrid usuario={usuario} />
+        <div className="space-y-6">
+          <FavoritosGrid onNavigate={navigate} />
+          <JoinBetaCard />
+          <AvisosPanel onNavigate={navigate} />
+        </div>
+      </div>
     </div>
   );
 }
