@@ -14,6 +14,13 @@ Crea la tabla `tramites_reglas_por_tipo` (override manual agente+tipo) y reescri
 
 Siembra en `tramites_areas` cualquier área que ya esté en uso en `ticket_tipos.area` pero que no exista todavía como fila (ej. "Administración"/"Otro" si algún tipo personalizado los usa), y backfillea `ticket_tipos.area_id` donde quedó `NULL`. Ver sección "Áreas de Tipos de Trámite desconectadas de tramites_areas" más abajo. El frontend ya tiene un fallback ("Sin área reconocida") para que ningún tipo desaparezca del listado mientras esta migración no se corre, pero el dropdown de Área en "Nuevo Tipo"/"Configuración" solo mostrará las áreas que ya existan como fila en `tramites_areas` hasta entonces.
 
+## ⏳ PENDIENTE — correr en Supabase la migración de filtros de pago en triggers (2026-07-06)
+
+**No se ha corrido todavía.** Ruta completa:
+`C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-produccion\supabase\migrations\20260706000003_store_triggers_filtro_pago_array.sql`
+
+Convierte `store_tramite_triggers.metodo_pago_filtro`/`forma_pago_filtro` de `text` a `text[]` (preserva los valores existentes como arreglo de un solo elemento). Sin correr esta migración, `StoreAdmin.tsx` (que ya espera arreglos) y `StorePedidoDetalle.tsx` (que ya usa `.includes()`) van a fallar al leer/guardar estas columnas como texto plano. Ver sección "Triggers de Store: método/forma de pago ahora admiten varios valores" más abajo.
+
 ## ⚠️ Archivos huérfanos desde el rediseño del Dashboard (2026-07-06)
 El rediseño de `src/pages/Dashboard.tsx` (hero + módulos beta + favoritos + avisos) reemplazó por completo el Dashboard anterior. Los siguientes componentes ya **no los importa nadie en todo el repo** (confirmado con grep), pero se dejaron intactos a propósito — decisión explícita de Ricardo de no borrarlos todavía:
 - `src/components/dashboard/DashboardHero.tsx`
@@ -112,6 +119,9 @@ Es una simulación **solo de cliente**: `MoviAuthContext`/`ImpersonationContext`
 
 ## Campo sistema fijo "Trámite Creado Por" (agregado 2026-07-03)
 Nuevo `CampoTipo` fijo (`LOCKED_SISTEMA_KEYS`, no movible/ocultable), distinto de `agente_vendedor` (el solicitante). Se autollena con quien crea el trámite — `tickets.creado_por` ya existía desde siempre en la tabla, esto solo lo expone en el FormBuilder. Migración `20260703000005_campo_sistema_creado_por.sql` incluye backfill retroactivo del histórico completo. Se agrega en `create_all_sistema_campos()` (Postgres) para tipos futuros.
+
+## Triggers de Store: método/forma de pago ahora admiten varios valores (2026-07-06)
+Antes, `store_tramite_triggers.metodo_pago_filtro`/`forma_pago_filtro` eran un solo texto (o `NULL` = cualquiera) — para que la misma acción se disparara con, por ejemplo, "Descuento de Comisiones" **y** "Cargo a Bono de Agente", había que duplicar el trigger completo (mismo estatus, mismo tipo de trámite) solo para cambiar ese filtro. Ahora son `text[]`: `StoreAdmin.tsx` (`TriggersPanel`) los edita como pills de multi-selección en vez de un `<select>` de una sola opción, y `StorePedidoDetalle.tsx` (`dispararTriggersEstatus`) hace match con `.includes(pedido.metodo_pago)` en vez de igualdad exacta. Arreglo vacío o `NULL` sigue significando "cualquiera". **Lo que NO cambió:** un trigger sigue disparando un único tipo de trámite para un único estatus — si necesitas tipos de trámite distintos según el estatus, sigue haciendo falta un trigger por estatus (esto es un límite de diseño, no un pendiente).
 
 ## Módulo Store → Trámites (triggers automáticos) — reescrito 2026-07-03/04
 Cuando un pedido de MOVI Store cambia a un estatus configurado, se crea automáticamente un trámite vinculado (`tickets.store_pedido_id`). Antes de esta fecha el módulo estaba roto de fondo (insertaba columnas que no existen en `tickets`: `titulo`, `descripcion`, `tipo`, `estatus` — fallaba siempre en silencio). Estado actual:
