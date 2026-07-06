@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Plus, Trash2, Save, Tag, Pencil, ChevronLeft, ChevronDown, ChevronRight, Search, Copy, Users, Clock, Palette } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -13,6 +14,32 @@ import { type TicketTipo, slugify } from './catalogos/types';
 import { logHistorial } from './catalogos/logHistorial';
 
 interface TipoStats { tickets: number; campos: number }
+
+// ── QuickEditPopover ───────────────────────────────────────────────────────
+// Se renderiza en un portal a document.body con position:fixed, calculada desde
+// el botón que lo abre — así nunca lo recorta un contenedor ancestro con
+// overflow-hidden (como el borde redondeado de cada grupo de área) y siempre
+// queda por encima de todo, sin depender del z-index/stacking context local.
+
+function QuickEditPopover({
+  anchorRect, popoverRef, className, children,
+}: {
+  anchorRect: { top: number; left: number; right: number; bottom: number };
+  popoverRef: React.RefObject<HTMLDivElement | null>;
+  className: string;
+  children: React.ReactNode;
+}) {
+  return createPortal(
+    <div
+      ref={popoverRef}
+      className={`fixed z-[100] ${className}`}
+      style={{ top: anchorRect.bottom + 4, left: anchorRect.right, transform: 'translateX(-100%)' }}
+    >
+      {children}
+    </div>,
+    document.body
+  );
+}
 
 // ── Main Component ────────────────────────────────────────────────────────
 
@@ -55,6 +82,7 @@ export function GestionCatalogosRegistro() {
 
   // ── Quick-edit inline desde el listado (clonar, equipos, SLA, color) ──────
   const [quickEdit, setQuickEdit] = useState<{ tipoId: string; field: 'clone' | 'equipos' | 'sla' | 'color' } | null>(null);
+  const [popoverAnchor, setPopoverAnchor] = useState<{ top: number; left: number; right: number; bottom: number } | null>(null);
   const [quickSla, setQuickSla] = useState('');
   const [quickColor, setQuickColor] = useState('');
   const [cloneLabel, setCloneLabel] = useState('');
@@ -66,8 +94,17 @@ export function GestionCatalogosRegistro() {
     const handleClickOutside = (e: MouseEvent) => {
       if (quickEditRef.current && !quickEditRef.current.contains(e.target as Node)) setQuickEdit(null);
     };
+    // Cerrar en scroll (de la lista o de la página) para no dejar el popover
+    // flotando en una posición que ya no corresponde a su botón.
+    const handleScroll = () => setQuickEdit(null);
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('scroll', handleScroll, true);
+    window.addEventListener('resize', handleScroll);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('resize', handleScroll);
+    };
   }, [quickEdit]);
 
   const isAdmin = usuario?.rol === 'Administrador';
@@ -269,7 +306,9 @@ export function GestionCatalogosRegistro() {
 
   // ── Quick-edit handlers ──────────────────────────────────────────────────
 
-  const openQuickEdit = (tipo: TicketTipo, field: 'clone' | 'equipos' | 'sla' | 'color') => {
+  const openQuickEdit = (e: React.MouseEvent<HTMLButtonElement>, tipo: TicketTipo, field: 'clone' | 'equipos' | 'sla' | 'color') => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setPopoverAnchor({ top: rect.top, left: rect.left, right: rect.right, bottom: rect.bottom });
     setQuickEdit({ tipoId: tipo.id, field });
     if (field === 'sla') setQuickSla(horasToDiasLabel(tipo.sla_horas));
     if (field === 'color') setQuickColor(tipo.color);
@@ -698,14 +737,14 @@ export function GestionCatalogosRegistro() {
                       <div className="flex items-center gap-1 shrink-0">
                         <div className="relative">
                           <button
-                            onClick={() => openQuickEdit(tipo, 'clone')}
+                            onClick={(e) => openQuickEdit(e, tipo, 'clone')}
                             className="p-2 text-neutral-500 hover:bg-neutral-100 rounded-lg transition-colors"
                             title="Clonar tipo"
                           >
                             <Copy className="w-4 h-4" />
                           </button>
-                          {quickEdit?.tipoId === tipo.id && quickEdit.field === 'clone' && (
-                            <div ref={quickEditRef} className="absolute z-20 top-full right-0 mt-1 w-72 bg-white border border-neutral-200 rounded-xl shadow-xl p-3 space-y-2">
+                          {quickEdit?.tipoId === tipo.id && quickEdit.field === 'clone' && popoverAnchor && (
+                            <QuickEditPopover anchorRect={popoverAnchor} popoverRef={quickEditRef} className="w-72 bg-white border border-neutral-200 rounded-xl shadow-xl p-3 space-y-2">
                               <label className="block text-xs font-medium text-neutral-600">Nombre del nuevo tipo</label>
                               <input
                                 type="text"
@@ -727,35 +766,35 @@ export function GestionCatalogosRegistro() {
                                   Cancelar
                                 </button>
                               </div>
-                            </div>
+                            </QuickEditPopover>
                           )}
                         </div>
 
                         <div className="relative">
                           <button
-                            onClick={() => openQuickEdit(tipo, 'equipos')}
+                            onClick={(e) => openQuickEdit(e, tipo, 'equipos')}
                             className="p-2 text-neutral-500 hover:bg-neutral-100 rounded-lg transition-colors"
                             title="Equipos habilitados"
                           >
                             <Users className="w-4 h-4" />
                           </button>
-                          {quickEdit?.tipoId === tipo.id && quickEdit.field === 'equipos' && (
-                            <div ref={quickEditRef} className="absolute z-20 top-full right-0 mt-1 w-80 bg-white border border-neutral-200 rounded-xl shadow-xl max-h-96 overflow-auto">
+                          {quickEdit?.tipoId === tipo.id && quickEdit.field === 'equipos' && popoverAnchor && (
+                            <QuickEditPopover anchorRect={popoverAnchor} popoverRef={quickEditRef} className="w-80 bg-white border border-neutral-200 rounded-xl shadow-xl max-h-96 overflow-auto">
                               <EquiposHabilitadosPanel tipoId={tipo.id} area={tipo.area} showToast={showToast} />
-                            </div>
+                            </QuickEditPopover>
                           )}
                         </div>
 
                         <div className="relative">
                           <button
-                            onClick={() => openQuickEdit(tipo, 'sla')}
+                            onClick={(e) => openQuickEdit(e, tipo, 'sla')}
                             className="p-2 text-neutral-500 hover:bg-neutral-100 rounded-lg transition-colors"
                             title="Tiempo de respuesta (SLA)"
                           >
                             <Clock className="w-4 h-4" />
                           </button>
-                          {quickEdit?.tipoId === tipo.id && quickEdit.field === 'sla' && (
-                            <div ref={quickEditRef} className="absolute z-20 top-full right-0 mt-1 w-64 bg-white border border-neutral-200 rounded-xl shadow-xl p-3 space-y-2">
+                          {quickEdit?.tipoId === tipo.id && quickEdit.field === 'sla' && popoverAnchor && (
+                            <QuickEditPopover anchorRect={popoverAnchor} popoverRef={quickEditRef} className="w-64 bg-white border border-neutral-200 rounded-xl shadow-xl p-3 space-y-2">
                               <label className="block text-xs font-medium text-neutral-600">Tiempo de respuesta (SLA)</label>
                               <div className="flex items-center gap-2">
                                 <input
@@ -782,20 +821,20 @@ export function GestionCatalogosRegistro() {
                                   Cancelar
                                 </button>
                               </div>
-                            </div>
+                            </QuickEditPopover>
                           )}
                         </div>
 
                         <div className="relative">
                           <button
-                            onClick={() => openQuickEdit(tipo, 'color')}
+                            onClick={(e) => openQuickEdit(e, tipo, 'color')}
                             className="p-2 text-neutral-500 hover:bg-neutral-100 rounded-lg transition-colors"
                             title="Color"
                           >
                             <Palette className="w-4 h-4" />
                           </button>
-                          {quickEdit?.tipoId === tipo.id && quickEdit.field === 'color' && (
-                            <div ref={quickEditRef} className="absolute z-20 top-full right-0 mt-1 w-64 bg-white border border-neutral-200 rounded-xl shadow-xl p-3 space-y-3">
+                          {quickEdit?.tipoId === tipo.id && quickEdit.field === 'color' && popoverAnchor && (
+                            <QuickEditPopover anchorRect={popoverAnchor} popoverRef={quickEditRef} className="w-64 bg-white border border-neutral-200 rounded-xl shadow-xl p-3 space-y-3">
                               <ColorPicker value={quickColor} onChange={setQuickColor} />
                               <div className="flex gap-2">
                                 <button
@@ -809,7 +848,7 @@ export function GestionCatalogosRegistro() {
                                   Cancelar
                                 </button>
                               </div>
-                            </div>
+                            </QuickEditPopover>
                           )}
                         </div>
 
