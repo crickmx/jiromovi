@@ -321,7 +321,7 @@ export default function MulticotizadorGMM() {
       let logoUrl: string | undefined;
       if (usuario?.id) {
         const url = await getEffectiveUserLogo(usuario.id);
-        if (url && url !== '/logojiro.png') logoUrl = url;
+        if (url) logoUrl = url;
       }
 
       const blob = await generateMultiGmmPdf(
@@ -364,7 +364,7 @@ export default function MulticotizadorGMM() {
       let logoUrl: string | undefined;
       if (usuario?.id) {
         const url = await getEffectiveUserLogo(usuario.id);
-        if (url && url !== '/logojiro.png') logoUrl = url;
+        if (url) logoUrl = url;
       }
 
       const blob = await generateMultiGmmPdf(

@@ -883,16 +883,18 @@ export async function generateMultiGmmPdf(
   const agentPhone  = usuario?.telefono ?? usuario?.phone ?? '';
   const agentWeb    = usuario?.oficina?.website ?? usuario?.oficina?.nombre ?? '';
 
-  // Logo priority chain: caller → agent → brand → office → office.brand → agency → defaultBrand
-  const resolvedLogo: string | null =
+  // Logo priority chain: caller → user personal logo → office logo → default Jiro
+  let resolvedLogo: string | null =
     logoUrl ||
-    usuario?.logo_url ||
-    usuario?.brand?.logo_url ||
+    usuario?.mi_logotipo_url ||
     usuario?.oficina?.logo_url ||
-    usuario?.oficina?.brand?.logo_url ||
-    usuario?.agencia?.logo_url ||
-    usuario?.default_brand?.logo_url ||
     null;
+
+  // Resolve relative paths to absolute URLs so html2canvas can fetch them
+  if (resolvedLogo && resolvedLogo.startsWith('/')) {
+    resolvedLogo = `${window.location.origin}${resolvedLogo}`;
+  }
+
   const today = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
 
   const container = document.createElement('div');
@@ -921,8 +923,21 @@ export async function generateMultiGmmPdf(
         })
       )
     );
-    setTimeout(resolve, 250);
+    setTimeout(resolve, 100);
   });
+
+  // Wait for all images in the container to load before capturing
+  const images = container.querySelectorAll('img');
+  if (images.length > 0) {
+    await Promise.all(Array.from(images).map(img =>
+      img.complete ? Promise.resolve() : new Promise<void>(res => {
+        img.onload = () => res();
+        img.onerror = () => res();
+      })
+    ));
+  }
+  // Small extra delay for rendering to settle
+  await new Promise(r => setTimeout(r, 150));
 
   const page1El = container.querySelector('#gmm-page-1') as HTMLElement | null;
   const page2El = container.querySelector('#gmm-page-2') as HTMLElement | null;
