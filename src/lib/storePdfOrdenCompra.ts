@@ -26,9 +26,9 @@ export async function generarFolioOC(): Promise<string> {
 }
 
 /**
- * Genera el PDF de Orden de Compra para un pedido
+ * Construye el documento PDF de Orden de Compra para un pedido (sin descargarlo ni subirlo)
  */
-export async function generarPDFOrdenCompra(pedido: StorePedidoCompleto): Promise<void> {
+export function construirPDFOrdenCompra(pedido: StorePedidoCompleto): jsPDF {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   let yPos = 20;
@@ -296,9 +296,39 @@ export async function generarPDFOrdenCompra(pedido: StorePedidoCompleto): Promis
     { align: 'center' }
   );
 
-  // Descargar PDF
+  return doc;
+}
+
+/**
+ * Genera el PDF de Orden de Compra y lo descarga en el navegador (botón "Descargar OC")
+ */
+export function generarPDFOrdenCompra(pedido: StorePedidoCompleto): void {
+  const doc = construirPDFOrdenCompra(pedido);
   const filename = `Orden_Compra_${pedido.folio_oc || pedido.id.substring(0, 8)}.pdf`;
   doc.save(filename);
+}
+
+/**
+ * Genera el PDF de Orden de Compra y lo sube a Storage (bucket ticket-archivos),
+ * para adjuntarlo automáticamente al trámite creado por un trigger de estatus.
+ * No requiere que el admin haya dado clic en "Descargar OC".
+ */
+export async function subirPDFOrdenCompra(
+  pedido: StorePedidoCompleto,
+  ticketId: string
+): Promise<{ nombre: string; url: string; tipo: string; tamano: number }> {
+  const doc = construirPDFOrdenCompra(pedido);
+  const blob = doc.output('blob');
+  const nombre = `Orden_Compra_${pedido.folio_oc || pedido.id.substring(0, 8)}.pdf`;
+  const path = `${ticketId}/${Date.now()}-${Math.random().toString(36).substring(7)}.pdf`;
+
+  const { error: upErr } = await supabase.storage.from('ticket-archivos').upload(path, blob, {
+    contentType: 'application/pdf',
+  });
+  if (upErr) throw upErr;
+
+  const { data: { publicUrl } } = supabase.storage.from('ticket-archivos').getPublicUrl(path);
+  return { nombre, url: publicUrl, tipo: 'application/pdf', tamano: blob.size };
 }
 
 /**

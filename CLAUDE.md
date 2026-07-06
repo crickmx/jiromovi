@@ -1,5 +1,30 @@
 # jiromovi — instrucciones para Claude Code
 
+## ⏳ PENDIENTE — correr en Supabase la migración de "Asignación por Trámites" (2026-07-06)
+
+**No se ha corrido todavía.** Ruta completa:
+`C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-produccion\supabase\migrations\20260706000001_asignacion_por_tramite_reglas_y_rpc.sql`
+
+Crea la tabla `tramites_reglas_por_tipo` (override manual agente+tipo) y reescribe el RPC `get_grupo_para_ticket()` con las 4 capas de resolución — ver sección "Asignación por Trámites" más abajo para el detalle completo. Pegar el contenido del archivo tal cual en el SQL Editor de Supabase. Retrocompatible: hasta que no se marque algún equipo como habilitado en la tab "Equipos habilitados" de un tipo, todo sigue resolviendo exactamente igual que antes.
+
+## Cómo trabajar con Ricardo (usuario / responsable técnico JIRO)
+- Responde siempre en español.
+- Cuando crees o referencies una migración, da la ruta completa de una vez: `C:\Users\medau\Desktop\jiromovi-main\supabase\migrations\<archivo>.sql` — la pide en cada sesión.
+- El SQL para correr en Supabase: pégalo en bloque de código directo, sin explicación extensa alrededor — lo copia tal cual al SQL Editor.
+- "¿Commit y push?" o confirmar tras preguntarlo = hazlo de inmediato, no vuelvas a confirmar.
+- "Continúa" = sigue con el siguiente paso en orden, sin preguntar.
+- Antes de implementar algo nuevo o ambiguo (una feature, no un bug claro), suele pedir explícitamente "revisa cómo lo podemos hacer, traza el plan y hazme las preguntas pertinentes" — investiga el código real primero, preséntale un plan concreto y pregunta las decisiones de diseño abiertas (usar preguntas de opción múltiple cuando aplique) antes de tocar código.
+- Cuando reporta un bug, casi siempre es reproducible y describe el síntoma exacto con capturas — tiene acceso directo a producción y prueba en vivo. Toma sus capturas como fuente de verdad sobre el estado real, no solo sobre lo que "debería" pasar según el código.
+- Al final de sesión pide "actualiza el CLAUDE.md" — dejar esta bitácora completa y compacta para que la siguiente sesión (o un chat nuevo) arranque sin repetir contexto.
+
+## Patrón recurrente #1: "acceso por equipo" que solo llega a un lado (RLS o frontend, nunca ambos)
+Visto repetidamente: alguien agrega una tabla + política RLS para dar acceso a un equipo/grupo (`*_equipos_acceso`, `*_grupos_miembros`), pero solo la mitad del sistema se actualiza — o el frontend sigue chequeando `rol === 'Administrador'` mientras RLS ya lo permite (2026-07-02/03: permisos de trámites, líder de equipo, `store_equipos_acceso`), o al revés: el frontend ya deja pasar a un equipo pero RLS sigue en Admin-only y las escrituras/lecturas fallan en silencio (2026-07-03: `store_productos`, `store_categorias`, `store_pedidos_detalle`, `store_pedidos_notas`, `store_pedidos_historial`, `store_pedido_gastos`, `store_tramite_triggers` — todos tenían RLS Admin-only mientras `StoreAdmin.tsx`/`StorePedidoDetalle.tsx` ya usaban `tienePermisoAdminEnModulo(...) || tieneAccesoEquipoStore(...)`).
+**Antes de asumir "el fix de código está mal"**: buscar si existe una tabla de acceso-por-equipo y verificar con `grep` si el frontend Y las políticas RLS de CADA tabla involucrada (no solo la tabla principal — también las relacionadas: detalle, notas, historial, gastos) usan el mismo criterio de acceso.
+
+## Patrón recurrente #2: drift entre tipos ENUM de Postgres y las opciones del frontend
+2026-07-04: guardar "Forma de Pago = 2 Parcialidades" fallaba con `invalid input value for enum forma_pago_oc`. La columna `store_pedidos.forma_pago` es un `ENUM` creado el 2026-01-19 con valores `Contado/Mensual/Trimestral/Semestral`, pero `storeTypes.ts` (`FormaPagoOC`) usa `Contado/2 Parcialidades/12 Meses` desde hace tiempo — nadie sincronizó el enum cuando cambiaron las opciones en el frontend. Solo "Contado" coincidía por casualidad, por eso el resto fallaba.
+**Señal de este bug**: un guardado que funciona para un solo valor de un dropdown y falla para el resto, con error de Postgres tipo `invalid input value for enum X`. **Fix**: convertir la columna a `text` (quitar el enum) en vez de parchear el enum — evita que se repita si el frontend vuelve a cambiar las opciones. Ver `20260704000001_fix_forma_pago_enum_drift.sql`. `metodo_pago` (enum `metodo_pago_oc`) sí coincide con `MetodoPagoOC` — no tocar ese.
+
 ## Git / Deploy
 - **Siempre pushear a `origin/produccion`** — Plesk despliega desde esa rama.
 - Rama local activa: `FUSION!!!` (trackea `origin/main` por defecto — ignorar).
@@ -19,108 +44,115 @@ Hay dos sistemas de rol independientes que conviven en Trámites:
 | **Rol de sistema** (global) | `usuarios.rol` | Administrador, Gerente, Empleado, **Agente** | Toda la plataforma MOVI. `Agente` aquí = **cliente externo** — debe ver solo lo que él mismo solicitó. |
 | **Rol de equipo** (solo Trámites) | `tramites_grupos_miembros.rol_en_equipo` | **lider**, **ejecutivo**, miembro | Dentro de un equipo específico. Líder ve todo lo del equipo; Ejecutivo ve lo suyo + el pool sin asignar del equipo. |
 
-Son **ejes independientes**: cualquier combinación es válida (un Empleado o un Gerente pueden ser líder de un equipo). En código, las variables usan el prefijo `esRolSistema*` (`esRolSistemaAdmin/Gerente/Agente`) vs `esLiderDe*`/`rol_en_equipo` para distinguirlos a simple vista — ver `src/pages/Tramites.tsx` alrededor de `visibleTramites` para el patrón. **Nunca asumir que un chequeo de rol de sistema determina el rol de equipo, ni viceversa** — el bug de "líder no ve los trámites de su equipo" (2026-07-02) fue exactamente eso: el corte por rol de sistema `Agente` se evaluaba antes que el chequeo de líder de equipo.
+Son **ejes independientes**: cualquier combinación es válida (un Empleado o un Gerente pueden ser líder de un equipo). En código, las variables usan el prefijo `esRolSistema*` (`esRolSistemaAdmin/Gerente/Agente`) vs `esLiderDe*`/`rol_en_equipo` para distinguirlos a simple vista — ver `src/pages/Tramites.tsx` alrededor de `visibleTramites` para el patrón. **Nunca asumir que un chequeo de rol de sistema determina el rol de equipo, ni viceversa.**
+
+Hay además un tercer concepto que no es un "rol": **`creado_por`** (quién dio de alta el trámite en el sistema) es distinto del **`agente_vendedor`/solicitante** (a nombre de quién es el trámite). Un ejecutivo de Mercadotecnia puede crear un trámite dirigido a Mesa de Control donde el solicitante sea el agente "Juan Pérez" — son dos personas distintas, no confundir. Ver "Campo Trámite Creado Por" abajo.
 
 ## ⚠️ RLS de `tickets` puede estar DESINCRONIZADA de las migraciones del repo
-El 2026-07-03 se descubrió que la política activa en producción, **`tickets_select_v6`**, y su función auxiliar **`get_my_grupo_ids()`**, fueron creadas directamente en el SQL Editor de Supabase — **no existen en ningún archivo de `supabase/migrations/`**. Reemplazaron a `tickets_select_v4` (la última versión que sí estaba en el repo) y en el camino **eliminaron silenciosamente** la cláusula que dejaba a un líder de equipo ver todos los trámites asignados de su equipo (v6 solo dejaba ver el *pool sin asignar*, igual que cualquier miembro).
+El 2026-07-03 se descubrió que la política activa en producción, **`tickets_select_v6`**, y su función auxiliar **`get_my_grupo_ids()`**, fueron creadas directamente en el SQL Editor de Supabase — **no existen en ningún archivo de `supabase/migrations/`**. Reemplazaron a `tickets_select_v4` (la última versión que sí estaba en el repo) y en el camino **eliminaron silenciosamente** la cláusula que dejaba a un líder de equipo ver todos los trámites asignados de su equipo.
 
-**Lección**: si un fix de código para `Tramites.tsx`/visibilidad no funciona pese a que el código, los datos y la lógica se ven correctos, **verificar la política RLS real en producción antes que nada**:
+**Lección**: si un fix de código no funciona pese a que el código, los datos y la lógica se ven correctos, **verificar la política RLS real en producción antes que nada**:
 ```sql
 select policyname, cmd, qual from pg_policies where tablename = 'tickets' and cmd = 'SELECT';
 ```
-Si el nombre de la política (`tickets_select_vN`) es más alto que el de la última migración conocida en el repo, hay drift — alguien la editó fuera de control de versiones.
-
-**Fix aplicado**: migración `20260703000001_restore_lider_equipo_tickets_visibility.sql` — crea `get_my_grupos_lider_ids()` y reemplaza v6 por `tickets_select_v7`, agregando de vuelta la cláusula de líder sin tocar el resto de lo que v6 ya cubría. Diagnosticado en vivo inspeccionando el Network tab del navegador (petición a `tickets` regresaba `[]` para una líder con datos y permisos correctos) — **esta técnica (pedir al usuario el Response de la Network tab) es más rápida que adivinar desde las migraciones cuando el RLS real puede haber divergido del repo.** Confirmado resuelto (2026-07-03) con la usuaria real viendo sus 13 trámites tras el fix.
+Si el nombre de la política (`tickets_select_vN`) es más alto que el de la última migración conocida en el repo, hay drift. **Esta técnica (pedir al usuario el Response de la Network tab del navegador) es más rápida que adivinar desde las migraciones** cuando el RLS real puede haber divergido del repo.
 
 ## ⚠️ "Vista Admin — Viendo como" (impersonación) NO cambia la sesión real de Supabase
-Es una simulación **solo de cliente**: `MoviAuthContext`/`ImpersonationContext` cambian el objeto `usuario` que la UI usa para renderizar y para armar los filtros de las queries (por eso los `.eq()`/`.or()` sí llevan el ID del usuario impersonado), **pero el JWT real que viaja en `Authorization: Bearer` sigue siendo el del admin que inició sesión de verdad**. Confirmado decodificando el JWT de una petición de red: `sub` = el ID del admin real, no el del usuario impersonado.
-
-**Consecuencia crítica**: cualquier política RLS que dependa de `auth.uid()` (la enorme mayoría) se evalúa como el **admin real**, nunca como el usuario impersonado — sin importar lo que diga el banner naranja "Viendo como". Esto invalida cualquier prueba de RLS/permisos hecha vía impersonación. Ejemplo real (2026-07-03): un fix de RLS para "líder ve su equipo" parecía no funcionar probándolo con "Vista Admin"; al pedirle a la usuaria real que iniciara sesión con su propia cuenta, el fix sí funcionaba correctamente.
+Es una simulación **solo de cliente**: `MoviAuthContext`/`ImpersonationContext` cambian el objeto `usuario` que la UI usa para renderizar, **pero el JWT real que viaja en `Authorization: Bearer` sigue siendo el del admin que inició sesión de verdad**. Cualquier política RLS que dependa de `auth.uid()` se evalúa como el **admin real**, nunca como el usuario impersonado.
 
 **Cómo probar correctamente algo que depende de RLS**: pedirle al usuario real que inicie sesión con su propia cuenta — la impersonación solo sirve para verificar UI/UX, no permisos de base de datos.
 
 ## Reglas de arquitectura — CRÍTICAS
 - Tabla de tickets: `tickets` (NO `tramites`) — crítico para SQL y migraciones
-- Tipos de trámite: tabla `ticket_tipos`, columna `value` como slug
+- Tipos de trámite: tabla `ticket_tipos`, columna `value` como slug, **columna `label` para el nombre visible (NO `nombre` — esa columna no existe y falla en silencio vía PostgREST)**
 - `assignment_mode` eliminado de `ticket_tipos` el 2026-06-24 — no referenciar jamás
 - Campos del formulario por tipo: `tramite_tipo_campos` · Respuestas: `tramite_respuestas`
-- Adjunto de categorías: `adjunto_categorias` (tabla en Supabase)
+- `tramite_respuestas` guarda el valor en distinta columna según `campo.tipo` — **si no coincide con cómo se lee, el campo se guarda pero se muestra vacío**:
+  - `valor_texto`: texto_corto, texto_largo, area, equipo, agente_vendedor, oficina_jiro, fecha_creacion, fecha_finalizacion, creado_por, aseguradora, ramo, email, telefono, rfc, curp
+  - `valor_numerico`: numerico, porcentaje
+  - `valor_fecha`: fecha
+  - `valor_booleano`: booleano
+  - `valor_json`: todo lo demás (descripcion, asignado_a, prioridad, fecha_promesa_entrega, dropdown, seleccion_multiple, estatus, etc.)
+  - Esta lista vive duplicada en 3 archivos (`NuevoTramiteModal.tsx`, `TramiteDetalle.tsx`, `StorePedidoDetalle.tsx`) — si se agrega un campo tipo nuevo, actualizar los 3.
+- Adjunto de categorías: `maestro_adjunto_categorias` (tabla en Supabase), FK `ticket_archivos.categoria_id`
 
 ## Archivos más usados — leer primero al empezar
 
 | Archivo | Qué hace | Líneas clave |
 |---|---|---|
 | `src/pages/Tramites.tsx` | Lista kanban de trámites activos, filtros, KPI cards | KPI: ~920 · visibleTramites filter: ~645 · kanbanAtención: ~786 |
-| `src/pages/TramiteDetalle.tsx` | Detalle/edición de un trámite, triggers | Child ticket INSERT: ~812 |
-| `src/components/tramites/NuevoTramiteModal.tsx` | Modal crear trámite | renderCampoSistema: buscar función · validateForm: ~707 · render unificado: buscar "Campos del formulario" |
-| `src/components/tramites/GestionCatalogosRegistro.tsx` | CRUD de tipos de trámite (lista + edición) | Autocontenido, sin props |
-| `src/components/tramites/catalogos/FormBuilderTab.tsx` | UI del form builder por tipo | Canvas draggable, panel agregar/editar |
-| `src/components/tramites/catalogos/useFormBuilder.ts` | Hook lógica form builder | LOCKED_SISTEMA_KEYS, CONFIGURABLE_SISTEMA_KEYS, SISTEMA_CAMPO_DEFAULTS |
-| `src/components/tramites/catalogos/types.ts` | Tipos TS compartidos | CampoTipo union, SISTEMA_TIPO_META, TipoCampo interface |
-| `src/components/tramites/TriggerConfirmModal.tsx` | Modal de confirmación al disparar triggers | Default 'nuevo' cuando hay hijo existente |
-| `src/pages/AdminTramites.tsx` | /admin/tramites — Áreas, Tipos, Equipos, Permisos, Reglas | Tab render: ~779 |
-| `src/components/tramites/catalogos/PermisosTipoBulkTab.tsx` | Matriz masiva de permisos por tipo (Por Rol / Por Usuario) | Tab "Permisos", agregada 2026-07-02 |
+| `src/pages/TramiteDetalle.tsx` | Detalle/edición de un trámite, triggers | `handleSave`/`continuarGuardadoConEstatus`: ~577-708 · Sección readonly "Información del Trámite": ~1398 |
+| `src/components/tramites/NuevoTramiteModal.tsx` | Modal crear trámite | `resolveGrupoParaTicket` (RPC `get_grupo_para_ticket`): ~552 · `renderCampoSistema`: buscar función · `validateForm`: ~707 |
+| `src/components/tramites/catalogos/FormBuilderTab.tsx` | UI del form builder por tipo | Canvas draggable, panel agregar/editar, bloque "Acceso por rol": ~348 |
+| `src/components/tramites/catalogos/useFormBuilder.ts` | Hook lógica form builder | `LOCKED_SISTEMA_KEYS`, `CONFIGURABLE_SISTEMA_KEYS`, `SISTEMA_CAMPO_DEFAULTS` |
+| `src/components/tramites/catalogos/types.ts` | Tipos TS compartidos | `CampoTipo` union, `SISTEMA_TIPO_META`, `TipoCampo` interface |
+| `src/pages/AdminTramites.tsx` | /admin/tramites — Áreas, Tipos, Equipos, Permisos, Reglas, Asignación por Trámites | Tab render: ~782 |
+| `src/components/tramites/AsignacionPorTramite.tsx` | Tab "Asignación por Trámites" — override manual agente+tipo | `handleAgregar`/`handleQuitar`/`handleCambiarEjecutivo` |
+| `src/components/tramites/catalogos/EquiposHabilitadosPanel.tsx` | Sub-tab "Equipos habilitados" dentro de un tipo de trámite | `toggleEquipo`, `buscarConflicto` (validación de ambigüedad por oficina) |
+| `src/pages/StorePedidoDetalle.tsx` | Detalle de pedido de MOVI Store + disparo de triggers Store→Trámites | `dispararTriggersEstatus`: ~268 · `handleCambiarEstatus`: ~215 · `handleGuardarPago`: ~464 |
+| `src/pages/StoreAdmin.tsx` | Admin Tienda MOVI: Productos/Categorías/Equipos/Triggers | `TriggersPanel` (mapeo de campos + filtro método/forma de pago): ~1364 |
+| `src/lib/storeUtils.ts` | Utilidades de Store: pedidos, acceso por equipo, triggers | `resolverTemplatePedido`, `obtenerMapeoCamposTrigger`, `tieneAccesoEquipoStore` |
+| `src/lib/storePdfOrdenCompra.ts` | PDF de Orden de Compra | `construirPDFOrdenCompra` (builder) → `generarPDFOrdenCompra` (descarga) / `subirPDFOrdenCompra` (Storage, para adjuntar a trámites) |
 
-## Campos sistema configurables (Fase 8 — implementados 2026-07-01)
-Estos 5 campos ahora son configurables desde el FormBuilder (mostrar/ocultar, requerido, reordenable):
-- `asignado_a` · `prioridad` · `descripcion` · `fecha_promesa_entrega` · `archivos_adjuntos`
+## Campo sistema fijo "Trámite Creado Por" (agregado 2026-07-03)
+Nuevo `CampoTipo` fijo (`LOCKED_SISTEMA_KEYS`, no movible/ocultable), distinto de `agente_vendedor` (el solicitante). Se autollena con quien crea el trámite — `tickets.creado_por` ya existía desde siempre en la tabla, esto solo lo expone en el FormBuilder. Migración `20260703000005_campo_sistema_creado_por.sql` incluye backfill retroactivo del histórico completo. Se agrega en `create_all_sistema_campos()` (Postgres) para tipos futuros.
 
-Los campos sistema FIJOS (no movibles, no ocultables):
-- `area` · `equipo` · `fecha_creacion` · `fecha_finalizacion`
+## Módulo Store → Trámites (triggers automáticos) — reescrito 2026-07-03/04
+Cuando un pedido de MOVI Store cambia a un estatus configurado, se crea automáticamente un trámite vinculado (`tickets.store_pedido_id`). Antes de esta fecha el módulo estaba roto de fondo (insertaba columnas que no existen en `tickets`: `titulo`, `descripcion`, `tipo`, `estatus` — fallaba siempre en silencio). Estado actual:
 
-Migración aplicada: `supabase/migrations/20260701000001_fase8_campos_form_configurables.sql`
+- **`store_tramite_triggers`**: config por trigger — nombre, `estatus_destino_id`, `ticket_tipo_id`, `descripcion_template` (legacy, placeholders `{{folio}}`/`{{estatus}}`), y ahora también `metodo_pago_filtro`/`forma_pago_filtro` (nullable = cualquiera) para disparar tipos de trámite distintos según método de pago del pedido (ej. "Descuento de Comisiones" → tipo A, "Cargo a Bono de Agente" → tipo B).
+- **`store_tramite_trigger_campos`**: mapeo configurable por trigger — para cada campo del FormBuilder del tipo elegido, de dónde sale su valor: `vacio` | `template` (texto con placeholders del pedido: `{{folio}}`, `{{cliente}}`, `{{oficina}}`, `{{monto_total}}`, `{{productos}}`, `{{fecha_pedido}}`, `{{metodo_pago}}`, `{{forma_pago}}`, `{{responsable_pago}}`) | `adjunto_oc` (adjunta el PDF de Orden de Compra, generado y subido a Storage en el momento, sin necesitar el botón "Descargar OC").
+- **Campos que se autollenan solos y NO aparecen en el mapeo del admin** (`SISTEMA_KEYS_AUTOMATICOS` en `StoreAdmin.tsx`): `area` (del tipo de trámite), `equipo`/`asignado_a` (de `get_grupo_para_ticket()` usando al **dueño del pedido** como agente), `creado_por` (quien disparó el cambio de estatus, no el dueño del pedido), `fecha_creacion`/`fecha_finalizacion`, `estatus` (siempre inicia en "Iniciado").
+- **`descripcion`** tiene doble uso: si el admin la mapea con `template`, ese valor se usa tanto para `tickets.instrucciones` como para el `tramite_respuestas` del campo (para que se muestre en "Información del Trámite"); si no, usa el `descripcion_template` legacy.
+- **Toast de resultado**: `handleCambiarEstatus` ahora muestra qué pasó — trámite(s) creado(s) con folio, error específico, o aviso de que ningún trigger aplicó por método/forma de pago no coincidente. Antes fallaba 100% en silencio.
+- **Orden de trabajo esperado** (confirmado con el usuario): primero se llena y guarda "Información de Pago" (Responsable/Método/Forma), **después** se cambia el estatus a "Confirmado" — por eso `handleCambiarEstatus` bloquea el cambio a "Confirmado" si falta cualquiera de esos 3 campos guardados en el pedido.
+- **RLS**: todas las tablas involucradas (`store_productos`, `store_categorias`, `store_pedidos_detalle`, `store_pedidos_notas`, `store_pedidos_historial`, `store_pedido_gastos`, `store_pedido_detalle_gastos`, `store_tramite_triggers`, `store_tramite_trigger_campos`) ya extendidas para equipos con `store_equipos_acceso`, no solo Administrador.
 
-## RESUELTO 2026-07-02
-- Categoría de adjuntos no se asignaba al adjuntar desde FormBuilder → fix en commit `38947464`.
-- Sistemas huérfanos de permisos por equipo (`tramite_equipo_tipo_permisos`, `tramite_team_tipo_config`, `usuario_team_permisos`): no tenían ningún efecto real porque `NuevoTramiteModal.tsx` nunca los lee. Se ocultó la tab "Visibilidad" de `AdminTramites.tsx` y la sección "Permisos por Equipo" de `PermisosPanel.tsx`. Tablas y función SQL siguen intactas por si se retoma. Detalle completo en memoria del proyecto (`project_jiromovi.md`).
+## Asignación por Trámites — 3 capas de auto-asignación (agregado 2026-07-06)
 
-## BUG PENDIENTE #1 — Líder de equipo no ve trámites de su equipo (parcialmente resuelto 2026-07-02)
+Extiende la auto-asignación de trámites (antes solo "ASIGNACIÓN POR EQUIPOS": agente+área → equipo, vía `tramites_grupos_reglas`) con dos capas más específicas. Todo se resuelve en un único RPC, `get_grupo_para_ticket(p_agente_id, p_tipo_tramite)`, llamado desde `resolveGrupoParaTicket()` en `NuevoTramiteModal.tsx` — el frontend no cambió su forma de llamarlo, solo el RPC gano niveles. Prioridad de más a menos específica:
 
-**Causa #1 (CÓDIGO, ya arreglada):** en `src/pages/Tramites.tsx`, el chequeo `if (isAgente) return isDirectlyInvolved;` se ejecutaba **antes** del chequeo `isLiderOfGroup`, cortando el flujo para cualquier líder cuyo rol global (`usuarios.rol`) fuera `'Agente'` — el rol de líder es por equipo (`tramites_grupos_miembros.rol_en_equipo`), no por rol global, así que nunca se llegaba a evaluar. **Fix:** se movió el chequeo `isLiderOfGroup` para que se evalúe primero. Verificado con 3 agentes en paralelo: las políticas RLS de Supabase (`tickets_select_v4`) ya soportaban esto correctamente de forma independiente — no era un problema de RLS.
+1. **Override manual (agente + tipo de trámite específico)** — tabla `tramites_reglas_por_tipo` (`usuario_id, tipo_id, grupo_id, ejecutivo_id` nullable = pool, `activo`). Se edita desde la tab nueva **"Asignación por Trámites"** en Admin > Trámites (`AsignacionPorTramite.tsx`). Gana sobre todo lo demás.
+2. **Automático por oficina** — usa `tramite_team_tipo_config` (`team_id, tipo_id, habilitado` — **esta tabla ya existía pero antes nadie la leía**, ver "RESUELTO" abajo) cruzado con `tramites_grupos_oficinas`/`all_offices` (a qué oficinas sirve cada equipo, también ya existía). Se configura desde la sub-tab **"Equipos habilitados"** dentro de la edición de un tipo de trámite (`GestionCatalogosRegistro.tsx` → `EquiposHabilitadosPanel.tsx`), filtrada a equipos de la misma área que el tipo. Un equipo con oficina específica coincidente gana sobre uno marcado `all_offices` (catch-all).
+3. **Regla vieja agente + área** — `tramites_grupos_reglas`, sin cambios, sigue siendo el fallback cuando ningún tipo tiene equipos habilitados en el nivel 2 y no hay override en el nivel 1.
+4. **Sin match** — como antes, el trámite queda con `grupo_asignado_id = NULL`, visible solo a Admin/Gerente-de-la-oficina/quien lo creó. **Nuevo**: en este caso se notifica a todos los Administradores activos (`crearNotificacion`, mismo patrón que el bloque "agente sin cuenta MOVI" de `NuevoTramiteModal.tsx`) para que no se pierda de vista — antes no había ningún aviso.
 
-**Causa #2 (DATOS, en investigación):** `grupo_asignado_id` en `tickets` solo se asigna si existe una regla explícita en `tramites_grupos_reglas` para ese agente (por área específica o comodín `area IS NULL`) — resuelto vía RPC `get_grupo_para_ticket()`. Si el agente no tiene regla, o solo tiene regla para otra área, el campo queda `null` para siempre (no hay backfill ni trigger de respaldo). El trámite `TK599F9` de Yuri Aguilar tiene `grupo_asignado_id = null` — con el fix de código ya aplicado, este trámite específico **sigue sin verse** hasta que se resuelva esto.
+**Validación de ambigüedad**: al marcar un equipo como habilitado para un tipo en `EquiposHabilitadosPanel.tsx`, si otro equipo ya habilitado para ese mismo tipo comparte oficina (o alguno es `all_offices`), se muestra un `confirm()` de advertencia antes de guardar — decisión explícita de Ricardo de prevenir la ambigüedad en configuración en vez de resolverla en silencio en tiempo de asignación.
 
-**Nota de diseño confirmada con el usuario:** los trámites-hijo generados por triggers (`TramiteDetalle.tsx:812-824`) y la reasignación de "responsable" (`handleResponsableChange`) NO tocan `grupo_asignado_id` — esto es intencional, cada trámite debe resolver su propio grupo según su propio tipo/agente, no heredar. No tocar.
+**Retrocompatibilidad**: como hoy ningún tipo tiene filas en `tramite_team_tipo_config`, el nivel 2 nunca aplica todavía — todo sigue resolviendo exactamente igual que antes hasta que Ricardo empiece a habilitar equipos por tipo.
 
-**Consultas para retomar** (correr en el SQL Editor de Supabase — agente_id de Yuri ya conocido: `0a8f09a2-270b-4695-b559-8b3a45239b59`):
-```sql
--- Tipo de trámite y área de TK599F9
-select t.id, t.folio, t.tipo_tramite, tt.area, tt.activo as tipo_activo
-from tickets t
-left join ticket_tipos tt on tt.value = t.tipo_tramite
-where t.folio = 'TK599F9';
+**Migración pendiente de correr** (ver aviso al principio del archivo): `supabase/migrations/20260706000001_asignacion_por_tramite_reglas_y_rpc.sql`.
 
--- Reglas de asignación que tiene Yuri configuradas (¿existe alguna que matchee esa área, o wildcard?)
-select r.*, g.nombre as grupo_nombre, g.activo as grupo_activo
-from tramites_grupos_reglas r
-join tramites_grupos_visualizacion g on g.id = r.grupo_id
-where r.usuario_id = '0a8f09a2-270b-4695-b559-8b3a45239b59';
-
--- Confirmar MERCADOTECNIA como 'lider' del grupo "Comercial CAPITA" y que el grupo esté activo
-select gm.usuario_id, u.nombre_completo, u.rol as rol_global, gm.grupo_id, g.nombre as grupo, gm.rol_en_equipo, g.activo as grupo_activo
-from tramites_grupos_miembros gm
-join usuarios u on u.id = gm.usuario_id
-join tramites_grupos_visualizacion g on g.id = gm.grupo_id
-where g.nombre ilike '%capita%';
-```
-
-## BUG PENDIENTE #2 — Campo "Estatus" no tiene el toggle de "Acceso por rol"
-**Síntoma:** El admin quiere que el rol Agente no pueda editar el campo Estatus, pero el panel de edición de ese campo (FormBuilder) no muestra el selector "Visible para" / "Editable para" que sí tienen los demás campos.
-
-**Causa confirmada:** `src/components/tramites/catalogos/FormBuilderTab.tsx:297` excluye explícitamente `editingCampo.tipo !== 'estatus'` del bloque que renderiza "Acceso por rol" (líneas 332-361). El campo Estatus tiene su propio panel especial (nombre + opciones de estatus, línea 467+) que nunca recibió ese bloque cuando se agregó la función de acceso por rol (commit `bc414f23`).
-
-**El guardado ya soporta esto sin cambios**: `useFormBuilder.ts` (`handleSaveCampo`, `startEditCampo`) ya lee/escribe `visible_para_rol`/`editable_para_rol` para cualquier tipo de campo, incluido estatus. Solo falta agregar el mismo bloque JSX (líneas 332-361 de `FormBuilderTab.tsx`) dentro de la rama `editingCampo.tipo === 'estatus'`.
-
-**Gap adicional encontrado (más importante):** `src/pages/TramiteDetalle.tsx` (donde se cambia el estatus de un trámite YA CREADO) **no lee `editable_para_rol` en ningún lado** — solo `NuevoTramiteModal.tsx` lo respeta (función `canEditCampo`, línea ~191, usa jerarquía `ROL_NIVEL: Agente=0, Empleado=1, Gerente=2, Administrador=3`). Agregar el toggle a la UI no bloqueará que un Agente cambie el estatus después de creado el trámite — para eso hay que replicar `canEditCampo`/`ROL_NIVEL` en `TramiteDetalle.tsx` y aplicarlo al control de cambio de estatus ahí.
+## RESUELTO — historial compacto
+- **2026-07-02**: categoría de adjuntos no se asignaba al adjuntar desde FormBuilder (`38947464`). Sistemas huérfanos de permisos por equipo (`tramite_equipo_tipo_permisos`, `tramite_team_tipo_config`, `usuario_team_permisos`) sin efecto real — tabs ocultas en `AdminTramites.tsx`/`PermisosPanel.tsx`, tablas intactas por si se retoma.
+- **2026-07-02**: líder de equipo no veía trámites de su equipo — `isAgente` cortaba el flujo antes de `isLiderOfGroup` en `Tramites.tsx`. Estatus FormBuilder no se mostraba en kanban/tablero (2 de 3 lugares usaban el campo legacy en vez de `custom_estatus_label`).
+- **2026-07-02**: campo "Estatus" sin toggle "Acceso por rol" en FormBuilder — agregado el bloque JSX faltante en `FormBuilderTab.tsx`; replicado `canEditCampo`/`ROL_NIVEL` en `TramiteDetalle.tsx` para que también bloquee edición post-creación.
+- **2026-07-03**: RLS de `tickets` con drift (`tickets_select_v6` creada fuera de migraciones, sin cláusula de líder) — restaurada en `tickets_select_v7`.
+- **2026-07-03**: pedido de Store vacío para no-admin — la política de "dueño ve su detalle" en `store_pedidos_detalle` estaba intacta y correcta; el bug real reproducido fue de **acceso por equipo** (un miembro de equipo veía la cabecera del pedido pero no el detalle/productos/notas/historial/gastos porque esas tablas nunca tuvieron política de equipo) — ver "Patrón recurrente #1".
+- **2026-07-03**: modal "Antes de guardar..." aparecía aunque el estatus ya se hubiera cambiado a mano — `handleSave()` ahora calcula `estatusYaCambio` y salta el modal si es `true` (`continuarGuardadoConEstatus` compartida).
+- **2026-07-03**: nunca existió política `UPDATE` para `store_pedidos_detalle` — el campo "Costo unit." fallaba en silencio para todos, incluido Admin.
+- **2026-07-03/04**: módulo de triggers Store→Trámites roto de fondo + sin mapeo de campos + sin feedback — ver sección dedicada arriba.
+- **2026-07-04**: `handleGuardarPago` no revisaba el resultado del `UPDATE` — si fallaba, los campos de pago volvían a aparecer vacíos sin ningún aviso. `forma_pago_oc` (enum) no coincidía con las opciones reales del frontend — ver "Patrón recurrente #2".
+- **2026-07-06**: `tramite_team_tipo_config` (team_id, tipo_id, habilitado) ya existía desde antes pero ningún archivo la leía para tomar decisiones (era pura UI sin efecto, igual que `tramite_equipo_tipo_permisos`/`usuario_team_permisos` en su momento) — ahora sí tiene efecto real, ver "Asignación por Trámites" arriba.
 
 ## Patrones frecuentes
 
 **Agregar un campo sistema nuevo al FormBuilder:**
 1. Añadir tipo a `CampoTipo` union en `types.ts`
 2. Añadir metadata a `SISTEMA_TIPO_META` en `types.ts`
-3. Añadir defaults a `SISTEMA_CAMPO_DEFAULTS` en `useFormBuilder.ts`
-4. Agregar case en `renderCampoSistema()` en `NuevoTramiteModal.tsx`
-5. Migración SQL: extender CHECK constraint + backfill en tipos activos
+3. Si es fijo/no-movible: agregar a `LOCKED_SISTEMA_KEYS` en `useFormBuilder.ts`. Si es configurable: agregar a `SISTEMA_CAMPO_DEFAULTS`.
+4. Agregar case en `renderCampoSistema()` en `NuevoTramiteModal.tsx` (autofill al crear) y en las listas `TEXTO_TIPOS`/`AUTO_FILL_KEYS` si aplica
+5. Migración SQL: extender CHECK constraint de `tramite_tipo_campos.tipo` + `ensure_sistema_campo()`/`create_all_sistema_campos()` (Postgres) + backfill en tipos existentes
+
+**Toast de éxito/error (no hay componente compartido, cada página repite el patrón):**
+```tsx
+const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+  setToast({ message, type });
+  setTimeout(() => setToast(null), 5000);
+}, []);
+// JSX: {toast && <div className={`fixed bottom-6 right-6 z-50 ... ${toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'}`}>{toast.message}</div>}
+```
 
 **Push y deploy:**
 ```bash
@@ -136,4 +168,6 @@ npx tsc --noEmit -p tsconfig.app.json
 ```
 ⚠️ `npx tsc --noEmit` (sin `-p`) NO revisa nada — el `tsconfig.json` raíz es un archivo "solución" (`files: []`, solo `references`), así que corre en el vacío y siempre sale limpio aunque haya errores reales. Usar siempre `-p tsconfig.app.json`.
 
-**Cuidado con imports de tipos:** el proyecto tiene `verbatimModuleSyntax: true` — cualquier import de un `interface`/`type` que no use `import type { X }` (o `import { type X }`) compila pero **truena en el navegador en tiempo de ejecución** con `SyntaxError: does not provide an export named 'X'` (pasó con `InsuranceTypesList.tsx` el 2026-07-02, dejó `/tramites` en blanco en producción). El `tsc` con `-p tsconfig.app.json` sí detecta esto (error `TS1484`).
+**Cuidado con imports de tipos:** el proyecto tiene `verbatimModuleSyntax: true` — cualquier import de un `interface`/`type` que no use `import type { X }` compila pero **truena en el navegador en tiempo de ejecución**. El `tsc` con `-p tsconfig.app.json` sí detecta esto (error `TS1484`).
+
+**El proyecto ya tiene MUCHOS errores de TypeScript preexistentes** (tipos de `config` genéricos, `Usuario.nombre_completo` no declarado pero usado en runtime, etc.) — al correr `tsc`, filtrar por los archivos que realmente se tocaron (`grep -i nombre_archivo`) en vez de asumir que cualquier error listado es culpa del cambio actual.

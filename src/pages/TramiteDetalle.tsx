@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList, Upload, Trash2, GitBranch, ArrowUpRight, Paperclip } from 'lucide-react';
+import { Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList, Upload, Trash2, GitBranch, ArrowUpRight, Paperclip, MessageSquare } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
@@ -141,6 +141,10 @@ export function TramiteDetalle() {
   const [childTickets, setChildTickets] = useState<TicketRef[]>([]);
   const [parentTicket, setParentTicket] = useState<TicketRef | null>(null);
 
+  // Comentario con el que se creó el trámite — se muestra como resumen en la pestaña Detalles
+  interface ComentarioInicial { mensaje: string; fecha_hora: string; usuario: { nombre_completo: string } | null }
+  const [comentarioInicial, setComentarioInicial] = useState<ComentarioInicial | null>(null);
+
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
   const isOwner = tramite?.creado_por === usuario?.id;
@@ -162,12 +166,28 @@ export function TramiteDetalle() {
   const estatusCampoDinamico = camposDinamicos.find(c => c.tipo === 'estatus') ?? null;
   const selectedEstatusSlug = estatusCampoDinamico ? (respuestasDinamicas[estatusCampoDinamico.id] ?? '') : '';
 
+  // Debe leer la misma columna que loadCamposDinamicos usó para poblar respuestasDinamicas
+  // (texto/numerico/fecha/booleano/json según campo.tipo) — comparar siempre contra valor_json
+  // dejaba "original" en null para cualquier campo no-json y el botón Guardar solo reaccionaba
+  // a los campos tipo estatus/dropdown/seleccion_multiple.
+  const TEXTO_TIPOS_DIRTY = ['texto_corto', 'texto_largo', 'area', 'equipo',
+    'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion', 'creado_por',
+    'aseguradora', 'ramo', 'email', 'telefono', 'rfc', 'curp'];
+  const valorOriginalCampo = (campo: CampoDinamico, resp?: RespuestaDinamica) => {
+    if (!resp) return null;
+    if (TEXTO_TIPOS_DIRTY.includes(campo.tipo)) return resp.valor_texto;
+    if (['numerico', 'porcentaje'].includes(campo.tipo)) return resp.valor_numerico;
+    if (campo.tipo === 'fecha') return resp.valor_fecha;
+    if (campo.tipo === 'booleano') return resp.valor_booleano;
+    return resp.valor_json;
+  };
+
   const isDirty = !!tramite && (
     selectedEstatus !== (tramite.estatus?.id ?? tramite.estatus_id) ||
     selectedPrioridad !== tramite.prioridad ||
     fechaPromesaEntrega !== (tramite.fecha_promesa_entrega || '') ||
     camposDinamicos.some(campo => {
-      const original = respuestasOriginales.find(r => r.campo_id === campo.id)?.valor_json ?? null;
+      const original = valorOriginalCampo(campo, respuestasOriginales.find(r => r.campo_id === campo.id)) ?? null;
       const current = respuestasDinamicas[campo.id] ?? null;
       return JSON.stringify(original) !== JSON.stringify(current);
     })
@@ -358,6 +378,15 @@ export function TramiteDetalle() {
     }
     setChildTickets((childrenRes.data || []).map((t: any) => ({ ...t, tipo_label: tipoLabelMap[t.tipo_tramite] })));
     setParentTicket((parentRes.data as any) ? { ...(parentRes.data as any), tipo_label: tipoLabelMap[(parentRes.data as any).tipo_tramite] } : null);
+
+    const { data: primerComentario } = await supabase
+      .from('ticket_comentarios')
+      .select('mensaje, fecha_hora, usuario:usuario_id(nombre_completo)')
+      .eq('ticket_id', ticketData.id)
+      .order('fecha_hora', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    setComentarioInicial((primerComentario as any) ?? null);
   };
 
   const loadCamposDinamicos = async (tipoTramite: string, tramiteId: string) => {
@@ -395,7 +424,7 @@ export function TramiteDetalle() {
         const campo = campos.find(c => c.id === r.campo_id);
         if (!campo) continue;
         const TEXTO_TIPOS = ['texto_corto', 'texto_largo', 'area', 'equipo',
-          'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion',
+          'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion', 'creado_por',
           'aseguradora', 'ramo', 'email', 'telefono', 'rfc', 'curp'];
         if (TEXTO_TIPOS.includes(campo.tipo)) vals[campo.id] = r.valor_texto;
         else if (['numerico', 'porcentaje'].includes(campo.tipo)) vals[campo.id] = r.valor_numerico;
@@ -558,6 +587,18 @@ export function TramiteDetalle() {
       return;
     }
 
+    // Si el usuario ya cambió el estatus a mano (dropdown del encabezado), no hay
+    // nada que preguntar: saltar el modal y guardar directo con ese estatus.
+    const estatusYaCambio = estatusCampoDinamico
+      ? selectedEstatusSlug !== (respuestasOriginales.find(r => r.campo_id === estatusCampoDinamico.id)?.valor_json ?? '')
+      : selectedEstatus !== (tramite.estatus?.id ?? tramite.estatus_id);
+
+    if (estatusYaCambio) {
+      estatusOverrideRef.current = null;
+      await continuarGuardadoConEstatus(selectedEstatusSlug, selectedEstatus);
+      return;
+    }
+
     // Abrir modal de confirmación de estatus
     setModalKeepCurrent(true);
     setModalChosenSlug(selectedEstatusSlug);
@@ -586,6 +627,13 @@ export function TramiteDetalle() {
     }
 
     setEstatusModalOpen(false);
+    await continuarGuardadoConEstatus(chosenSlug, chosenId);
+  };
+
+  // Compartido entre handleSave (cuando el estatus ya se cambió a mano) y
+  // handleEstatusModalConfirm (cuando el usuario confirma el modal)
+  const continuarGuardadoConEstatus = async (chosenSlug: string, chosenId: string) => {
+    if (!tramite) return;
 
     // Re-validar campos requeridos que dependen del estatus elegido (la validación
     // en handleSave corría antes del modal, cuando el estatus aún era el anterior)
@@ -785,7 +833,7 @@ export function TramiteDetalle() {
       // ── Fase 3: Motor de ejecución de triggers ──────────────────────
       if (_allTriggers.length > 0) {
         const TEXTO_TIPOS_TR = ['texto_corto', 'texto_largo', 'area', 'equipo',
-          'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion',
+          'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion', 'creado_por',
           'aseguradora', 'ramo', 'email', 'telefono', 'rfc', 'curp'];
 
         const { data: estatusIniciado } = await supabase
@@ -1141,7 +1189,7 @@ export function TramiteDetalle() {
               {(() => {
                 const label = tramite.custom_estatus_label ?? tramite.estatus?.nombre;
                 const color = tramite.custom_estatus_color ?? tramite.estatus?.color;
-                return label ? (
+                const staticBadge = label ? (
                   <span
                     className="px-3 py-1 rounded-full text-sm font-semibold"
                     style={{
@@ -1154,6 +1202,32 @@ export function TramiteDetalle() {
                     {label}
                   </span>
                 ) : null;
+
+                if (!estatusCampoDinamico || !canEdit || isCerrado) return staticBadge;
+
+                const opciones = estatusCampoDinamico.config.opciones || [];
+                const actual = opciones.find(o => o.slug === selectedEstatusSlug);
+                const getColorEstatusDinamico = (clasificacion?: string | null) =>
+                  clasificacion === 'inicio' ? '#3B82F6'
+                  : clasificacion === 'terminacion' ? '#059669'
+                  : clasificacion === 'en_espera' ? '#F59E0B'
+                  : '#6B7280';
+                const selColor = getColorEstatusDinamico(actual?.clasificacion);
+                return (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-neutral-500 dark:text-white/50 uppercase tracking-wide">Estatus</span>
+                    <select
+                      value={selectedEstatusSlug}
+                      onChange={(e) => setRespuestasDinamicas(prev => ({ ...prev, [estatusCampoDinamico.id]: e.target.value }))}
+                      className="pl-3 pr-7 py-1.5 rounded-full text-sm font-semibold border-2 cursor-pointer focus:outline-none"
+                      style={{ borderColor: selColor, color: selColor, backgroundColor: selColor + '10' }}
+                    >
+                      {opciones.map(opt => (
+                        <option key={opt.slug} value={opt.slug}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                );
               })()}
               {isCerrado && (
                 <span className="text-sm text-neutral-500 dark:text-white/50">
@@ -1270,6 +1344,22 @@ export function TramiteDetalle() {
       <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-6">
         {activeTab === 'detalles' && (
           <>
+            {comentarioInicial && (
+              <div className="mb-6 p-4 rounded-2xl border border-blue-200 bg-blue-50">
+                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  Comentario inicial{comentarioInicial.usuario?.nombre_completo ? ` — ${comentarioInicial.usuario.nombre_completo}` : ''}
+                </p>
+                <p className="text-sm text-blue-900 whitespace-pre-wrap">{comentarioInicial.mensaje}</p>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('comentarios')}
+                  className="mt-2 text-xs font-semibold text-blue-600 hover:underline"
+                >
+                  Ver todos los comentarios →
+                </button>
+              </div>
+            )}
             <TramiteDetalles
               tramite={tramite}
               estatusList={estatusList}
@@ -1285,7 +1375,6 @@ export function TramiteDetalle() {
               onEquipoChange={handleEquipoChange}
               estatusCampoDinamico={estatusCampoDinamico}
               selectedEstatusSlug={selectedEstatusSlug}
-              onEstatusSlugChange={(slug) => estatusCampoDinamico && setRespuestasDinamicas(prev => ({ ...prev, [estatusCampoDinamico.id]: slug }))}
             />
 
             {/* Fecha Promesa de Entrega — solo líderes, gerentes y admins */}

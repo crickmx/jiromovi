@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CircleCheck as CheckCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader as Loader2, Wallet, Trash2 } from 'lucide-react';
+import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CircleCheck as CheckCircle, Circle as XCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader as Loader2, Wallet, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
-import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus, obtenerPagosPedido, registrarPago, eliminarPago } from '../lib/storeUtils';
+import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus, obtenerPagosPedido, registrarPago, eliminarPago, tieneAccesoEquipoStore, obtenerMapeoCamposTrigger, resolverTemplatePedido, obtenerCamposTramiteTipo } from '../lib/storeUtils';
 import type { StorePedidoCompleto, StoreEstatusPedido, FormaPagoOC, MetodoPagoOC, StorePedidoGasto, StorePedidoDetalleGasto, StorePedidoPago } from '../lib/storeTypes';
 import { TIPO_GASTO_OPTIONS, METODO_PAGO_OPCIONES, getFormasPagoParaMetodo } from '../lib/storeTypes';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { generarFolioOC, generarPDFOrdenCompra, validarDatosPagoCompletos } from '../lib/storePdfOrdenCompra';
+import { generarFolioOC, generarPDFOrdenCompra, subirPDFOrdenCompra, validarDatosPagoCompletos } from '../lib/storePdfOrdenCompra';
 import { supabase } from '../lib/supabase';
 
 export default function StorePedidoDetalle() {
@@ -21,6 +21,11 @@ export default function StorePedidoDetalle() {
   const [actualizandoEstatus, setActualizandoEstatus] = useState(false);
   const [nuevaNota, setNuevaNota] = useState('');
   const [agregandoNota, setAgregandoNota] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 5000);
+  }, []);
 
   // Payment fields
   const [responsablePagoId, setResponsablePagoId] = useState('');
@@ -46,7 +51,9 @@ export default function StorePedidoDetalle() {
   const [savingCostoOverride, setSavingCostoOverride] = useState<Record<string, boolean>>({});
   const [costoOverrideSaved, setCostoOverrideSaved] = useState<Record<string, boolean>>({});
 
-  const isAdmin = usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente';
+  const esAdminOGerente = usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente';
+  const [tieneAccesoEquipo, setTieneAccesoEquipo] = useState(false);
+  const isAdmin = esAdminOGerente || tieneAccesoEquipo;
   const [savingPedidoGasto, setSavingPedidoGasto] = useState(false);
   const [gastoError, setGastoError] = useState<string | null>(null);
 
@@ -62,6 +69,11 @@ export default function StorePedidoDetalle() {
   useEffect(() => {
     if (pedidoId) cargarDatos();
   }, [pedidoId]);
+
+  useEffect(() => {
+    if (esAdminOGerente || !usuario) return;
+    tieneAccesoEquipoStore(usuario.id).then(setTieneAccesoEquipo);
+  }, [usuario, esAdminOGerente]);
 
   useEffect(() => {
     if (pedido) {
@@ -84,7 +96,7 @@ export default function StorePedidoDetalle() {
         setCostoOverrides(overrides);
       }
     }
-  }, [pedido]);
+  }, [pedido, isAdmin]);
 
   const cargarUsuariosOficina = async () => {
     if (!pedido?.usuario_id) return;
@@ -204,6 +216,16 @@ export default function StorePedidoDetalle() {
     if (!pedidoId || !isAdmin) return;
 
     const estatusSeleccionado = estatus.find(e => e.id === nuevoEstatusId);
+    if (estatusSeleccionado?.nombre === 'Confirmado' && pedido) {
+      const faltantes: string[] = [];
+      if (!pedido.responsable_pago_id) faltantes.push('Responsable de Pago');
+      if (!pedido.metodo_pago) faltantes.push('Método de Pago');
+      if (!pedido.forma_pago) faltantes.push('Forma de Pago');
+      if (faltantes.length > 0) {
+        alert(`No se puede marcar como Confirmado. Falta guardar en "Información de Pago": ${faltantes.join(', ')}.`);
+        return;
+      }
+    }
     if (estatusSeleccionado?.nombre === 'Liquidado') {
       const total = calcularTotal();
       const totalPagado = pagos.reduce((sum, p) => sum + p.monto, 0);
@@ -226,42 +248,182 @@ export default function StorePedidoDetalle() {
       }
 
       // Disparar triggers: crear tramites automaticos vinculados al pedido
-      await dispararTriggersEstatus(nuevoEstatusId, nuevoEstatus?.nombre ?? '');
+      const resultadoTriggers = await dispararTriggersEstatus(nuevoEstatusId, nuevoEstatus?.nombre ?? '');
 
       await cargarDatos();
+
+      if (resultadoTriggers.creados.length > 0) {
+        const detalle = resultadoTriggers.creados.map(c => `${c.tipoLabel} (${c.folio})`).join(', ');
+        showToast(`Estatus actualizado. Trámite${resultadoTriggers.creados.length > 1 ? 's' : ''} creado${resultadoTriggers.creados.length > 1 ? 's' : ''}: ${detalle}`, 'success');
+      } else if (resultadoTriggers.errores.length > 0) {
+        showToast(`Estatus actualizado, pero falló la creación del trámite "${resultadoTriggers.errores[0].nombre}": ${resultadoTriggers.errores[0].error}`, 'error');
+      } else if (resultadoTriggers.totalTriggers > resultadoTriggers.triggersAplicados) {
+        showToast('Estatus actualizado. Ningún trigger aplicó: el método o forma de pago del pedido no coincide con lo configurado.', 'error');
+      } else {
+        showToast('Estatus actualizado correctamente.', 'success');
+      }
     } catch (error) {
       console.error('Error actualizando estatus:', error);
+      showToast('Error al actualizar el estatus del pedido.', 'error');
     } finally {
       setActualizandoEstatus(false);
     }
   };
 
+  // Mismos "tipos de texto" que usa TramiteDetalle.tsx/NuevoTramiteModal.tsx para decidir en qué
+  // columna de tramite_respuestas vive el valor de cada campo del FormBuilder. Si no coincide con
+  // la columna que se lee al mostrar el campo, el campo aparece vacío aunque sí se haya guardado.
+  const TEXTO_TIPOS_TRIGGER = ['texto_corto', 'texto_largo', 'area', 'equipo',
+    'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion', 'creado_por',
+    'aseguradora', 'ramo', 'email', 'telefono', 'rfc', 'curp'];
+
+  const construirRespuesta = (tramiteId: string, campoId: string, tipoCampo: string, valor: unknown) => ({
+    tramite_id: tramiteId,
+    campo_id: campoId,
+    valor_texto: TEXTO_TIPOS_TRIGGER.includes(tipoCampo) ? String(valor) : null,
+    valor_numerico: ['numerico', 'porcentaje'].includes(tipoCampo) ? Number(valor) : null,
+    valor_fecha: tipoCampo === 'fecha' ? String(valor) : null,
+    valor_booleano: tipoCampo === 'booleano' ? Boolean(valor) : null,
+    valor_json: !TEXTO_TIPOS_TRIGGER.includes(tipoCampo) && !['numerico', 'porcentaje', 'fecha', 'booleano'].includes(tipoCampo) ? valor : null,
+  });
+
   const dispararTriggersEstatus = async (nuevoEstatusId: string, nombreEstatus: string) => {
-    if (!pedidoId || !usuario?.id) return;
-    const { data: triggers } = await supabase
+    const resultado = { creados: [] as { folio: string; tipoLabel: string }[], errores: [] as { nombre: string; error: string }[], totalTriggers: 0, triggersAplicados: 0 };
+    if (!pedidoId || !usuario?.id || !pedido) return resultado;
+    const { data: triggersRaw } = await supabase
       .from('store_tramite_triggers')
-      .select('*, ticket_tipos!inner(value, nombre)')
+      .select('*, ticket_tipos!inner(id, value, label, area)')
       .eq('estatus_destino_id', nuevoEstatusId)
       .eq('activo', true);
-    if (!triggers || triggers.length === 0) return;
+    resultado.totalTriggers = triggersRaw?.length ?? 0;
+    // Filtrar por método/forma de pago del pedido si el trigger los restringe (null = cualquiera)
+    const triggers = (triggersRaw ?? []).filter(t =>
+      (!t.metodo_pago_filtro || t.metodo_pago_filtro === pedido.metodo_pago) &&
+      (!t.forma_pago_filtro || t.forma_pago_filtro === pedido.forma_pago)
+    );
+    resultado.triggersAplicados = triggers.length;
+    if (triggers.length === 0) return resultado;
 
-    const folio = pedido?.folio_oc ?? pedidoId.slice(0, 8).toUpperCase();
-    for (const trigger of triggers) {
-      const tipo = (trigger.ticket_tipos as { value: string; nombre: string }).value;
-      const descripcion = (trigger.descripcion_template as string)
-        .replace(/\{\{folio\}\}/g, folio)
-        .replace(/\{\{estatus\}\}/g, nombreEstatus);
-      await supabase.from('tickets').insert({
-        titulo: `${trigger.nombre} — Pedido ${folio}`,
-        descripcion,
-        tipo,
-        prioridad: 'Media',
-        estatus: 'Abierto',
-        creado_por: usuario.id,
-        oficina_id: usuario.oficina_id ?? null,
-        store_pedido_id: pedidoId,
-      });
+    const { data: estatusIniciado } = await supabase
+      .from('ticket_estatus').select('id').eq('nombre', 'Iniciado').maybeSingle();
+    if (!estatusIniciado) {
+      resultado.errores.push({ nombre: '(config)', error: 'No se encontró el estatus "Iniciado" en el sistema' });
+      return resultado;
     }
+
+    const folio = pedido.folio_oc ?? pedidoId.slice(0, 8).toUpperCase();
+    for (const trigger of triggers) {
+      try {
+        const tipoInfo = trigger.ticket_tipos as { id: string; value: string; label: string; area: string };
+        const camposDelTipo = await obtenerCamposTramiteTipo(tipoInfo.id);
+        const mapeo = await obtenerMapeoCamposTrigger(trigger.id as string);
+
+        // Equipo/ejecutivo según las reglas de asignación del tipo de trámite, usando al
+        // dueño del pedido como el "agente" que determina la regla (igual que Nuevo Trámite)
+        const { data: grupoRow } = await supabase.rpc('get_grupo_para_ticket', {
+          p_agente_id: pedido.usuario_id,
+          p_tipo_tramite: tipoInfo.value,
+        });
+        const grupoResult = Array.isArray(grupoRow) && grupoRow.length > 0
+          ? grupoRow[0] as { grupo_id: string; ejecutivo_id: string | null }
+          : null;
+
+        let nombreGrupo: string | null = null;
+        if (grupoResult?.grupo_id) {
+          const { data: grupoData } = await supabase
+            .from('tramites_grupos_visualizacion').select('nombre').eq('id', grupoResult.grupo_id).single();
+          nombreGrupo = grupoData?.nombre ?? null;
+        }
+        let nombreEjecutivo: string | null = null;
+        if (grupoResult?.ejecutivo_id) {
+          const { data: ejecData } = await supabase
+            .from('usuarios').select('nombre_completo, nombre').eq('id', grupoResult.ejecutivo_id).maybeSingle();
+          nombreEjecutivo = ejecData?.nombre_completo || ejecData?.nombre || null;
+        }
+
+        // "Descripción / Notas" del FormBuilder tiene prioridad sobre la plantilla legacy del
+        // trigger si el admin la mapeó explícitamente en la sección de campos
+        const descripcionCampo = (camposDelTipo ?? []).find((c: any) => c.sistema_key === 'descripcion');
+        const mapeoDescripcion = descripcionCampo ? mapeo.find(m => m.campo_id === descripcionCampo.id) : undefined;
+        const descripcionLegacy = (trigger.descripcion_template as string || '')
+          .replace(/\{\{folio\}\}/g, folio)
+          .replace(/\{\{estatus\}\}/g, nombreEstatus);
+        const instrucciones = (mapeoDescripcion?.fuente === 'template' && mapeoDescripcion.valor_template)
+          ? resolverTemplatePedido(mapeoDescripcion.valor_template, pedido)
+          : (descripcionLegacy || `${trigger.nombre} — Pedido ${folio}`);
+
+        const { data: ticket, error: ticketError } = await supabase.from('tickets').insert({
+          tipo_tramite: tipoInfo.value,
+          estatus_id: estatusIniciado.id,
+          prioridad: 'Media',
+          instrucciones,
+          creado_por: usuario.id,
+          modificado_por: usuario.id,
+          agente_id: pedido.usuario_id,
+          assigned_to_user_id: grupoResult?.ejecutivo_id ?? null,
+          grupo_asignado_id: grupoResult?.grupo_id ?? null,
+          store_pedido_id: pedidoId,
+        }).select().single();
+        if (ticketError || !ticket) throw ticketError;
+
+        // Autofill de los campos fijos del FormBuilder (mismo criterio que "Nuevo Trámite"):
+        // Área viene del tipo de trámite, Equipo/Asignar a de las reglas de asignación,
+        // Creado Por es quien disparó el cambio de estatus (no el dueño del pedido)
+        const respuestasAuto: ReturnType<typeof construirRespuesta>[] = [];
+        const areaCampo = (camposDelTipo ?? []).find((c: any) => c.sistema_key === 'area');
+        if (areaCampo && tipoInfo.area) respuestasAuto.push(construirRespuesta(ticket.id, areaCampo.id, 'area', tipoInfo.area));
+        const equipoCampo = (camposDelTipo ?? []).find((c: any) => c.sistema_key === 'equipo');
+        if (equipoCampo && nombreGrupo) respuestasAuto.push(construirRespuesta(ticket.id, equipoCampo.id, 'equipo', nombreGrupo));
+        const creadoPorCampo = (camposDelTipo ?? []).find((c: any) => c.sistema_key === 'creado_por');
+        if (creadoPorCampo) respuestasAuto.push(construirRespuesta(ticket.id, creadoPorCampo.id, 'creado_por', usuario.nombre_completo || usuario.nombre || ''));
+        const asignadoACampo = (camposDelTipo ?? []).find((c: any) => c.sistema_key === 'asignado_a');
+        if (asignadoACampo && nombreEjecutivo) respuestasAuto.push(construirRespuesta(ticket.id, asignadoACampo.id, 'asignado_a', nombreEjecutivo));
+
+        // Mapeo manual del admin -- 'descripcion' también se guarda aquí (además de usarse arriba
+        // para instrucciones) para que "Información del Trámite" la muestre igual que los demás campos
+        const respuestasMapeo = mapeo
+          .filter(m => m.fuente === 'template' && m.valor_template)
+          .map(m => {
+            const campoInfo = (camposDelTipo ?? []).find((c: any) => c.id === m.campo_id);
+            const valor = resolverTemplatePedido(m.valor_template as string, pedido);
+            return construirRespuesta(ticket.id, m.campo_id, campoInfo?.tipo ?? 'texto_corto', valor);
+          });
+
+        const todasRespuestas = [...respuestasAuto, ...respuestasMapeo];
+        if (todasRespuestas.length > 0) {
+          await supabase.from('tramite_respuestas').insert(todasRespuestas);
+        }
+
+        // Adjuntar PDF de Orden de Compra si algún campo está mapeado a 'adjunto_oc'
+        const campoAdjuntoOC = mapeo.find(m => m.fuente === 'adjunto_oc');
+        if (campoAdjuntoOC) {
+          let folioOC = pedido.folio_oc;
+          if (!folioOC) {
+            folioOC = await generarFolioOC();
+            await supabase.from('store_pedidos').update({
+              folio_oc: folioOC,
+              oc_generada_por: usuario.id,
+              oc_generada_en: new Date().toISOString(),
+            }).eq('id', pedidoId);
+          }
+          const archivo = await subirPDFOrdenCompra({ ...pedido, folio_oc: folioOC }, ticket.id);
+          await supabase.from('ticket_archivos').insert({
+            ticket_id: ticket.id,
+            usuario_id: usuario.id,
+            nombre: archivo.nombre,
+            url: archivo.url,
+            tipo: archivo.tipo,
+            tamano: archivo.tamano,
+          });
+        }
+
+        resultado.creados.push({ folio: ticket.folio, tipoLabel: tipoInfo.label });
+      } catch (err: any) {
+        console.error(`[Store] Error creando trámite del trigger "${trigger.nombre}":`, err);
+        resultado.errores.push({ nombre: trigger.nombre as string, error: err?.message || 'error desconocido' });
+      }
+    }
+    return resultado;
   };
 
   const activarPremiumSiAplica = async (pedidoData: StorePedidoCompleto) => {
@@ -313,16 +475,19 @@ export default function StorePedidoDetalle() {
     if (!pedidoId || !isAdmin || !formaPago || !metodoPago) return;
     try {
       setGuardandoPago(true);
-      await supabase.from('store_pedidos').update({
+      const { error } = await supabase.from('store_pedidos').update({
         responsable_pago_id: responsablePagoId || null,
         forma_pago: formaPago,
         metodo_pago: metodoPago,
         metodo_pago_otro_detalle: metodoPago === 'Otro' ? metodoPagoOtroDetalle : null,
         observaciones_oc: observacionesOC || null,
       }).eq('id', pedidoId);
+      if (error) throw error;
       await cargarDatos();
-    } catch (error) {
+      showToast('Información de pago guardada correctamente.', 'success');
+    } catch (error: any) {
       console.error('Error guardando pago:', error);
+      showToast(`Error al guardar la información de pago: ${error?.message || 'error desconocido'}`, 'error');
     } finally {
       setGuardandoPago(false);
     }
@@ -524,6 +689,17 @@ export default function StorePedidoDetalle() {
 
   return (
     <>
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white text-sm font-medium max-w-md ${
+          toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
+        }`}>
+          {toast.type === 'success'
+            ? <CheckCircle className="w-4 h-4 flex-shrink-0" />
+            : <XCircle className="w-4 h-4 flex-shrink-0" />
+          }
+          {toast.message}
+        </div>
+      )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <PageHeader
           title="Detalle de Pedido"

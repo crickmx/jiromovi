@@ -27,7 +27,7 @@ export type CampoTipo =
   | 'telefono' | 'email' | 'curp' | 'porcentaje'
   // ── Campos Sistema fijos (no movibles) ─────────────────────────────────────
   | 'area' | 'equipo' | 'agente_vendedor' | 'oficina_jiro'
-  | 'fecha_creacion' | 'fecha_finalizacion'
+  | 'fecha_creacion' | 'fecha_finalizacion' | 'creado_por'
   // ── Campos Sistema configurables (reordenables, ocultables, obligatorios) ──
   | 'asignado_a' | 'prioridad' | 'descripcion'
   | 'fecha_promesa_entrega' | 'archivos_adjuntos';
@@ -41,6 +41,7 @@ export const SISTEMA_TIPO_META: Partial<Record<CampoTipo, { icon: string; desc: 
   oficina_jiro:         { icon: 'OJ', desc: 'Oficina/despacho JIRO, filtrada por agente seleccionado',      badge: 'Catálogo' },
   fecha_creacion:       { icon: 'FC', desc: 'Fecha y hora de creación, auto-capturada al crear',            badge: 'Autofill' },
   fecha_finalizacion:   { icon: 'FF', desc: 'Fecha y hora de cierre, auto-capturada al terminar',           badge: 'Autofill' },
+  creado_por:           { icon: 'CR', desc: 'Usuario que creó el trámite (puede ser distinto al solicitante)', badge: 'Autofill' },
   // Configurables
   asignado_a:           { icon: 'U',  desc: 'Usuario responsable/asignado al trámite',                      badge: 'Configurable' },
   prioridad:            { icon: 'P',  desc: 'Prioridad del trámite (Baja / Media / Alta)',                  badge: 'Configurable' },

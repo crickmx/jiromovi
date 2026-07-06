@@ -173,6 +173,12 @@ export function FormPreview({ campos }: { campos: TipoCampo[] }) {
               <span className="text-[10px] text-violet-400 shrink-0">Al cerrar</span>
             </div>
           )}
+          {campo.tipo === 'creado_por' && (
+            <div className="w-full px-3 py-2 border border-violet-200 rounded-lg bg-violet-50 text-sm text-violet-500 flex items-center gap-2">
+              <span className="font-mono text-xs bg-violet-100 px-1.5 py-0.5 rounded">Auto</span>
+              Usuario que crea el trámite
+            </div>
+          )}
         </div>
       ))}
     </div>

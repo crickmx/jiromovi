@@ -15,9 +15,12 @@ import {
   eliminarCategoria,
   exportarProductosExcel,
   importarProductosExcel,
-  setupMarketingPremiumProductos
+  setupMarketingPremiumProductos,
+  tieneAccesoEquipoStore
 } from '../lib/storeUtils';
 import type { ResultadoCargaMasiva } from '../lib/storeUtils';
+import { obtenerCamposTramiteTipo, obtenerMapeoCamposTrigger, guardarMapeoCampoTrigger, PLACEHOLDERS_TRIGGER_PEDIDO } from '../lib/storeUtils';
+import type { StoreTramiteTriggerCampo } from '../lib/storeUtils';
 import { supabase } from '../lib/supabase';
 import type { StoreProducto, StoreCategoria, StoreProductoCostoExtra, StoreProductoAtributo, StoreProductoAtributoOpcion, TipoItem, Disponibilidad } from '../lib/storeTypes';
 import { TIPO_GASTO_OPTIONS } from '../lib/storeTypes';
@@ -59,12 +62,13 @@ export default function StoreAdmin() {
   };
 
   useEffect(() => {
-    if (!tienePermisoAdminEnModulo(usuario, MODULOS.STORE)) {
-      navigate('/store');
-      return;
-    }
-    cargarDatos();
-    setupMarketingPremiumProductos().catch(() => {});
+    (async () => {
+      if (!usuario) return;
+      const tieneAcceso = tienePermisoAdminEnModulo(usuario, MODULOS.STORE) || await tieneAccesoEquipoStore(usuario.id);
+      if (!tieneAcceso) { navigate('/store'); return; }
+      cargarDatos();
+      setupMarketingPremiumProductos().catch(() => {});
+    })();
   }, [usuario]);
 
   const cargarDatos = async () => {
@@ -237,17 +241,19 @@ export default function StoreAdmin() {
             Categorías
           </button>
 
-          <button
-            onClick={() => setVistaActual('equipos')}
-            className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-              vistaActual === 'equipos'
-                ? 'bg-accent text-white'
-                : 'bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/15'
-            }`}
-          >
-            <Users className="w-5 h-5 inline mr-2" />
-            Equipos
-          </button>
+          {tienePermisoAdminEnModulo(usuario, MODULOS.STORE) && (
+            <button
+              onClick={() => setVistaActual('equipos')}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                vistaActual === 'equipos'
+                  ? 'bg-accent text-white'
+                  : 'bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/15'
+              }`}
+            >
+              <Users className="w-5 h-5 inline mr-2" />
+              Equipos
+            </button>
+          )}
 
           <button
             onClick={() => setVistaActual('triggers')}
@@ -1418,7 +1424,11 @@ interface StoreTrigger {
   ticket_tipo_id: string;
   descripcion_template: string;
   activo: boolean;
+  metodo_pago_filtro: string | null;
+  forma_pago_filtro: string | null;
 }
+const METODO_PAGO_OC_OPCIONES = ['Cargo a Oficina', 'Cargo a Bono de Agente', 'Pago Directo', 'Descuento de Comisiones', 'Cargo a Nómina', 'Otro'];
+const FORMA_PAGO_OC_OPCIONES = ['Contado', '2 Parcialidades', '12 Meses'];
 interface StoreEstatusRow { id: string; nombre: string; }
 interface TicketTipoRow { id: string; nombre: string; value: string; }
 
@@ -1435,6 +1445,24 @@ function TriggersPanel() {
   const [ticketTipoId, setTicketTipoId] = useState('');
   const [descripcionTemplate, setDescripcionTemplate] = useState('');
   const [activoTrigger, setActivoTrigger] = useState(true);
+  const [metodoPagoFiltro, setMetodoPagoFiltro] = useState('');
+  const [formaPagoFiltro, setFormaPagoFiltro] = useState('');
+  const [camposTipo, setCamposTipo] = useState<{ id: string; label: string; tipo: string }[]>([]);
+  const [mapeoCampos, setMapeoCampos] = useState<Record<string, { fuente: 'vacio' | 'template' | 'adjunto_oc'; valor_template: string }>>({});
+
+  // Campos que se autollenan solos (área/equipo por reglas de asignación, creado_por por quien
+  // dispara el estatus, estatus siempre inicia en "Iniciado", asignado_a por las reglas de equipo)
+  // -- no tiene sentido dejar que el admin los mapee manualmente aquí.
+  const SISTEMA_KEYS_AUTOMATICOS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'creado_por', 'estatus', 'asignado_a'];
+
+  useEffect(() => {
+    if (!ticketTipoId) { setCamposTipo([]); return; }
+    obtenerCamposTramiteTipo(ticketTipoId).then(data => {
+      setCamposTipo((data ?? [])
+        .filter((c: any) => !SISTEMA_KEYS_AUTOMATICOS.includes(c.sistema_key ?? ''))
+        .map((c: any) => ({ id: c.id, label: c.label, tipo: c.tipo })));
+    });
+  }, [ticketTipoId]);
 
   useEffect(() => { cargar(); }, []);
 
@@ -1443,7 +1471,7 @@ function TriggersPanel() {
     const [triggersRes, estatusRes, tiposRes] = await Promise.all([
       supabase.from('store_tramite_triggers').select('*').order('created_at'),
       supabase.from('store_estatus_pedidos').select('id, nombre').eq('activo', true).order('orden'),
-      supabase.from('ticket_tipos').select('id, nombre, value').order('nombre'),
+      supabase.from('ticket_tipos').select('id, nombre:label, value').eq('activo', true).order('label'),
     ]);
     setTriggers(triggersRes.data ?? []);
     setEstatusList(estatusRes.data ?? []);
@@ -1458,16 +1486,27 @@ function TriggersPanel() {
     setTicketTipoId(tiposList[0]?.id ?? '');
     setDescripcionTemplate('Pedido {{folio}} cambio a {{estatus}} -- revisar y dar seguimiento.');
     setActivoTrigger(true);
+    setMetodoPagoFiltro('');
+    setFormaPagoFiltro('');
+    setMapeoCampos({});
     setShowForm(true);
   };
 
-  const abrirFormEditar = (t: StoreTrigger) => {
+  const abrirFormEditar = async (t: StoreTrigger) => {
     setEditando(t);
     setNombre(t.nombre);
     setEstatusDestinoId(t.estatus_destino_id);
     setTicketTipoId(t.ticket_tipo_id);
     setDescripcionTemplate(t.descripcion_template);
     setActivoTrigger(t.activo);
+    setMetodoPagoFiltro(t.metodo_pago_filtro ?? '');
+    setFormaPagoFiltro(t.forma_pago_filtro ?? '');
+    const mapeoExistente = await obtenerMapeoCamposTrigger(t.id);
+    const mapeoRecord: Record<string, { fuente: 'vacio' | 'template' | 'adjunto_oc'; valor_template: string }> = {};
+    mapeoExistente.forEach((m: StoreTramiteTriggerCampo) => {
+      mapeoRecord[m.campo_id] = { fuente: m.fuente, valor_template: m.valor_template ?? '' };
+    });
+    setMapeoCampos(mapeoRecord);
     setShowForm(true);
   };
 
@@ -1480,11 +1519,26 @@ function TriggersPanel() {
       ticket_tipo_id: ticketTipoId,
       descripcion_template: descripcionTemplate,
       activo: activoTrigger,
+      metodo_pago_filtro: metodoPagoFiltro || null,
+      forma_pago_filtro: formaPagoFiltro || null,
     };
+    let triggerId = editando?.id ?? null;
     if (editando) {
       await supabase.from('store_tramite_triggers').update(payload).eq('id', editando.id);
     } else {
-      await supabase.from('store_tramite_triggers').insert(payload);
+      const { data: nuevoTrigger } = await supabase.from('store_tramite_triggers').insert(payload).select().single();
+      triggerId = nuevoTrigger?.id ?? null;
+    }
+    if (triggerId) {
+      for (const campo of camposTipo) {
+        const m = mapeoCampos[campo.id];
+        await guardarMapeoCampoTrigger({
+          trigger_id: triggerId,
+          campo_id: campo.id,
+          fuente: m?.fuente ?? 'vacio',
+          valor_template: m?.valor_template || null,
+        });
+      }
     }
     setGuardando(false);
     setShowForm(false);
@@ -1564,6 +1618,103 @@ function TriggersPanel() {
                 </select>
               </div>
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">
+                  Y el método de pago es <span className="text-neutral-400 font-normal">(opcional)</span>
+                </label>
+                <select
+                  value={metodoPagoFiltro}
+                  onChange={e => setMetodoPagoFiltro(e.target.value)}
+                  className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
+                >
+                  <option value="">Cualquier método</option>
+                  {METODO_PAGO_OC_OPCIONES.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">
+                  Y la forma de pago es <span className="text-neutral-400 font-normal">(opcional)</span>
+                </label>
+                <select
+                  value={formaPagoFiltro}
+                  onChange={e => setFormaPagoFiltro(e.target.value)}
+                  className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
+                >
+                  <option value="">Cualquier forma</option>
+                  {FORMA_PAGO_OC_OPCIONES.map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </div>
+            </div>
+            <p className="text-xs text-neutral-500 dark:text-white/50 -mt-2">
+              Deja "Cualquier método/forma" si este trigger debe dispararse sin importar el método o forma
+              de pago. Para casos como "Comisiones crea tipo A, Bonos crea tipo B" crea dos triggers
+              con el mismo estatus pero método de pago distinto.
+            </p>
+
+            {camposTipo.length > 0 && (
+              <div className="border border-neutral-200 dark:border-white/10 rounded-lg p-4 space-y-3">
+                <p className="text-sm font-medium text-neutral-700 dark:text-white/70">
+                  Autollenado de campos del formulario
+                </p>
+                <p className="text-xs text-neutral-500 dark:text-white/50">
+                  Elige de donde sale el valor de cada campo al crearse el tramite. Los campos sin
+                  autollenado quedan vacios para que el equipo los complete manualmente.
+                </p>
+                {camposTipo.map(campo => {
+                  const esAdjunto = campo.tipo === 'adjunto' || campo.tipo === 'archivos_adjuntos';
+                  const m = mapeoCampos[campo.id] ?? { fuente: 'vacio' as const, valor_template: '' };
+                  return (
+                    <div key={campo.id} className="border-t border-neutral-100 dark:border-white/5 pt-3 first:border-t-0 first:pt-0">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-neutral-800 dark:text-white/80 flex-1 min-w-0 truncate">{campo.label}</span>
+                        <select
+                          value={m.fuente}
+                          onChange={e => setMapeoCampos(prev => ({
+                            ...prev,
+                            [campo.id]: { fuente: e.target.value as 'vacio' | 'template' | 'adjunto_oc', valor_template: prev[campo.id]?.valor_template ?? '' },
+                          }))}
+                          className="px-2.5 py-1.5 text-xs border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white shrink-0"
+                        >
+                          <option value="vacio">No autollenar</option>
+                          {esAdjunto
+                            ? <option value="adjunto_oc">Adjuntar PDF de Orden de Compra</option>
+                            : <option value="template">Plantilla de texto</option>}
+                        </select>
+                      </div>
+                      {m.fuente === 'template' && (
+                        <div className="mt-2 space-y-1.5">
+                          <input
+                            type="text"
+                            value={m.valor_template}
+                            onChange={e => setMapeoCampos(prev => ({ ...prev, [campo.id]: { fuente: 'template', valor_template: e.target.value } }))}
+                            placeholder="Ej: Pedido {{folio}} de {{cliente}} por {{monto_total}}"
+                            className="w-full px-2.5 py-1.5 text-xs border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+                          />
+                          <div className="flex flex-wrap gap-1">
+                            {PLACEHOLDERS_TRIGGER_PEDIDO.map(p => (
+                              <button
+                                key={p.key}
+                                type="button"
+                                title={p.label}
+                                onClick={() => setMapeoCampos(prev => ({
+                                  ...prev,
+                                  [campo.id]: { fuente: 'template', valor_template: `${prev[campo.id]?.valor_template ?? ''}${p.key}` },
+                                }))}
+                                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-white/60 hover:bg-neutral-200 dark:hover:bg-white/20"
+                              >
+                                {p.key}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">Plantilla de descripcion</label>
               <textarea
@@ -1621,6 +1772,8 @@ function TriggersPanel() {
                 </div>
                 <div className="text-xs text-neutral-500 dark:text-white/50">
                   Estatus: <strong>{getNombreEstatus(trigger.estatus_destino_id)}</strong> &middot; Tramite: <strong>{getNombreTipo(trigger.ticket_tipo_id)}</strong>
+                  {trigger.metodo_pago_filtro && <> &middot; Método: <strong>{trigger.metodo_pago_filtro}</strong></>}
+                  {trigger.forma_pago_filtro && <> &middot; Forma: <strong>{trigger.forma_pago_filtro}</strong></>}
                 </div>
               </div>
               <div className="flex items-center gap-2 ml-4 flex-shrink-0">

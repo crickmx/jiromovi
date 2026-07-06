@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Settings2, MapPin, Users, Eye, Shuffle, Plus, Pencil, Trash2,
   Check, X, Loader2, AlertTriangle, RefreshCw, ArrowRight,
-  ToggleLeft, ToggleRight, ChevronDown, FileText, Lock,
+  ToggleLeft, ToggleRight, ChevronDown, FileText, Lock, Route,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,10 +10,11 @@ import { supabase } from '../lib/supabase';
 import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
 import { PermisosTipoBulkTab } from '../components/tramites/catalogos/PermisosTipoBulkTab';
+import { AsignacionPorTramite } from '../components/tramites/AsignacionPorTramite';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type TabId = 'areas' | 'tipos' | 'equipos' | 'permisos' | 'reglas';
+type TabId = 'areas' | 'tipos' | 'equipos' | 'permisos' | 'reglas' | 'asignacion';
 
 interface Area {
   id: string; nombre: string; slug: string; color_hex: string; activa: boolean;
@@ -77,6 +78,7 @@ const TABS: { id: TabId; label: string; icon: React.ElementType; desc: string }[
   { id: 'equipos',     label: 'Equipos',     icon: Users,     desc: 'Grupos de trabajo' },
   { id: 'permisos',    label: 'Permisos',    icon: Lock,      desc: 'Quién crea cada tipo' },
   { id: 'reglas',      label: 'Reglas',      icon: Shuffle,   desc: 'Asignación automática' },
+  { id: 'asignacion',  label: 'Asignación por Trámites', icon: Route, desc: 'Override manual agente + tipo' },
 ];
 
 // ─── TriToggle ────────────────────────────────────────────────────────────────
@@ -785,6 +787,7 @@ export default function AdminTramites() {
         {tab === 'equipos'     && <GestionGruposVisualizacion />}
         {tab === 'permisos'    && <PermisosTipoBulkTab />}
         {tab === 'reglas'      && <ReglasTab onGoToEquipos={() => setTab('equipos')} />}
+        {tab === 'asignacion'  && <AsignacionPorTramite />}
       </div>
     </div>
   );

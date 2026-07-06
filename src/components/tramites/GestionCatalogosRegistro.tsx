@@ -8,6 +8,7 @@ import { FormBuilderTab } from './catalogos/FormBuilderTab';
 import { PermisosPanel } from './catalogos/PermisosPanel';
 import { HistorialPanel } from './catalogos/HistorialPanel';
 import { TriggersTab } from './catalogos/TriggersTab';
+import { EquiposHabilitadosPanel } from './catalogos/EquiposHabilitadosPanel';
 import { ColorPicker } from './catalogos/ColorPicker';
 import { type TicketTipo, AREAS, type Area, slugify } from './catalogos/types';
 import { logHistorial } from './catalogos/logHistorial';
@@ -31,7 +32,7 @@ export function GestionCatalogosRegistro() {
   // ── Navigation ──────────────────────────────────────────────────────────
   const [view, setView] = useState<'list' | 'edit'>('list');
   const [activeTipo, setActiveTipo] = useState<TicketTipo | null>(null);
-  const [activeTab, setActiveTab] = useState<'config' | 'campos' | 'permisos' | 'triggers' | 'historial'>('config');
+  const [activeTab, setActiveTab] = useState<'config' | 'campos' | 'permisos' | 'equipos' | 'triggers' | 'historial'>('config');
 
   // ── Ticket tipos ────────────────────────────────────────────────────────
   const [tiposTramite, setTiposTramite] = useState<TicketTipo[]>([]);
@@ -124,7 +125,7 @@ export function GestionCatalogosRegistro() {
     setActiveTipo(null);
   };
 
-  const switchTab = (tab: 'config' | 'campos' | 'permisos' | 'triggers' | 'historial') => {
+  const switchTab = (tab: 'config' | 'campos' | 'permisos' | 'equipos' | 'triggers' | 'historial') => {
     if (activeTab === 'config' && isDirty && !confirm('Tienes cambios sin guardar en Configuración. ¿Continuar sin guardar?')) return;
     setActiveTab(tab);
   };
@@ -250,6 +251,7 @@ export function GestionCatalogosRegistro() {
             { id: 'config',    label: 'Configuración' },
             { id: 'campos',    label: 'Campos del formulario' },
             { id: 'permisos',  label: 'Permisos' },
+            { id: 'equipos',   label: 'Equipos habilitados' },
             { id: 'triggers',  label: 'Triggers de Estatus' },
             { id: 'historial', label: 'Historial' },
           ].map(tab => (
@@ -337,6 +339,11 @@ export function GestionCatalogosRegistro() {
         {/* Tab: Permisos */}
         {activeTab === 'permisos' && (
           <PermisosPanel tipoId={activeTipo.id} usuarioId={usuario?.id} showToast={showToast} />
+        )}
+
+        {/* Tab: Equipos habilitados */}
+        {activeTab === 'equipos' && (
+          <EquiposHabilitadosPanel tipoId={activeTipo.id} area={activeTipo.area} showToast={showToast} />
         )}
 
         {/* Tab: Triggers */}

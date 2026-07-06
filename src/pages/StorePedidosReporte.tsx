@@ -5,6 +5,7 @@ import { TrendingUp, TrendingDown, DollarSign, Package, Receipt, Target, Plus, T
 import { PageHeader } from '@/components/ui/page-header';
 import { supabase } from '../lib/supabase';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
+import { esLiderDeEquipoConAccesoStore } from '../lib/storeUtils';
 import type { StoreGastoGeneral, StoreMetaUtilidad } from '../lib/storeTypes';
 import { TIPO_GASTO_OPTIONS } from '../lib/storeTypes';
 import { format, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear } from 'date-fns';
@@ -66,11 +67,15 @@ export default function StorePedidosReporte() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!tienePermisoAdminEnModulo(usuario, MODULOS.STORE)) {
-      navigate('/store');
-      return;
-    }
-    actualizarFechasPorPeriodo(periodo);
+    (async () => {
+      if (!usuario) return;
+      // Reporte financiero: solo Admin/Gerente-elevado o el lider de un equipo con
+      // acceso al store (no cualquier miembro/ejecutivo) -- es informacion sensible
+      // de ingresos, costos y margen, distinta a solo gestionar pedidos/productos.
+      const tieneAcceso = tienePermisoAdminEnModulo(usuario, MODULOS.STORE) || await esLiderDeEquipoConAccesoStore(usuario.id);
+      if (!tieneAcceso) { navigate('/store'); return; }
+      actualizarFechasPorPeriodo(periodo);
+    })();
   }, [usuario]);
 
   useEffect(() => {

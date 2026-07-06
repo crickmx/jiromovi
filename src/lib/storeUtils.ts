@@ -12,6 +12,51 @@ import type {
   StorePedidoPago
 } from './storeTypes';
 
+// ── Acceso al store por equipo (Admin > Tienda MOVI > Equipos con acceso) ──
+// Un usuario tiene acceso de equipo si pertenece a algún grupo de trámites
+// registrado en store_equipos_acceso. Independiente de tienePermisoAdminEnModulo
+// (esa función solo cubre Administrador / Gerente con elevación).
+
+export async function obtenerGruposConAccesoStore(): Promise<string[]> {
+  const { data } = await supabase.from('store_equipos_acceso').select('grupo_id');
+  return (data ?? []).map(r => r.grupo_id);
+}
+
+export async function tieneAccesoEquipoStore(userId: string | null | undefined): Promise<boolean> {
+  if (!userId) return false;
+  const gruposConAcceso = await obtenerGruposConAccesoStore();
+  if (gruposConAcceso.length === 0) return false;
+  const { count } = await supabase
+    .from('tramites_grupos_miembros')
+    .select('grupo_id', { count: 'exact', head: true })
+    .eq('usuario_id', userId)
+    .in('grupo_id', gruposConAcceso);
+  return (count ?? 0) > 0;
+}
+
+export async function esLiderDeEquipoConAccesoStore(userId: string | null | undefined): Promise<boolean> {
+  if (!userId) return false;
+  const gruposConAcceso = await obtenerGruposConAccesoStore();
+  if (gruposConAcceso.length === 0) return false;
+  const { count } = await supabase
+    .from('tramites_grupos_miembros')
+    .select('grupo_id', { count: 'exact', head: true })
+    .eq('usuario_id', userId)
+    .eq('rol_en_equipo', 'lider')
+    .in('grupo_id', gruposConAcceso);
+  return (count ?? 0) > 0;
+}
+
+export async function obtenerMiembrosConAccesoStore(): Promise<string[]> {
+  const gruposConAcceso = await obtenerGruposConAccesoStore();
+  if (gruposConAcceso.length === 0) return [];
+  const { data } = await supabase
+    .from('tramites_grupos_miembros')
+    .select('usuario_id')
+    .in('grupo_id', gruposConAcceso);
+  return [...new Set((data ?? []).map(r => r.usuario_id))];
+}
+
 // ============================================
 // CATEGORÍAS
 // ============================================
@@ -785,17 +830,17 @@ export async function crearPedido(
 
   const nombreUsuario = usuario?.nombre_completo || usuario?.nombre || 'Usuario';
 
-  // Obtener todos los administradores
-  const { data: administradores } = await supabase
-    .from('usuarios')
-    .select('id')
-    .eq('rol', 'Administrador')
-    .eq('estado', 'Activo');
+  // Obtener administradores + miembros de equipos con acceso al store (Admin > Tienda MOVI > Equipos con acceso)
+  const [{ data: administradores }, miembrosEquipo] = await Promise.all([
+    supabase.from('usuarios').select('id').eq('rol', 'Administrador').eq('estado', 'Activo'),
+    obtenerMiembrosConAccesoStore(),
+  ]);
+  const destinatarios = [...new Set([...(administradores ?? []).map(a => a.id), ...miembrosEquipo])];
 
-  // Crear notificación para cada administrador
-  if (administradores && administradores.length > 0) {
-    const notificaciones = administradores.map(admin => ({
-      usuario_id: admin.id,
+  // Crear notificación para cada destinatario
+  if (destinatarios.length > 0) {
+    const notificaciones = destinatarios.map(usuarioId => ({
+      usuario_id: usuarioId,
       titulo: 'Nuevo pedido en Store',
       mensaje: `${nombreUsuario} realizó un nuevo pedido en Store.`,
       modulo: 'Store',
@@ -904,6 +949,87 @@ export async function eliminarPago(pagoId: string) {
     .from('store_pedido_pagos')
     .delete()
     .eq('id', pagoId);
+
+  if (error) throw error;
+}
+
+// ============================================
+// TRIGGERS STORE -> TRAMITES: mapeo de campos
+// ============================================
+
+export interface StoreTramiteTriggerCampo {
+  id: string;
+  trigger_id: string;
+  campo_id: string;
+  fuente: 'vacio' | 'template' | 'adjunto_oc';
+  valor_template: string | null;
+}
+
+// Placeholders disponibles al armar una plantilla de texto para un campo del trámite
+export const PLACEHOLDERS_TRIGGER_PEDIDO: { key: string; label: string }[] = [
+  { key: '{{folio}}', label: 'Folio de la OC' },
+  { key: '{{cliente}}', label: 'Nombre del cliente' },
+  { key: '{{oficina}}', label: 'Oficina del cliente' },
+  { key: '{{monto_total}}', label: 'Monto total del pedido' },
+  { key: '{{productos}}', label: 'Lista de productos (cant. x nombre)' },
+  { key: '{{fecha_pedido}}', label: 'Fecha del pedido' },
+  { key: '{{metodo_pago}}', label: 'Método de pago' },
+  { key: '{{forma_pago}}', label: 'Forma de pago' },
+  { key: '{{responsable_pago}}', label: 'Responsable de pago (si no hay, usa el cliente)' },
+];
+
+// Reemplaza los placeholders de PLACEHOLDERS_TRIGGER_PEDIDO con datos reales del pedido
+export function resolverTemplatePedido(template: string, pedido: StorePedidoCompleto): string {
+  const totalMonto = pedido.detalle.reduce((sum, item) => sum + item.cantidad * item.precio_unitario, 0);
+  const productos = pedido.detalle
+    .map(item => `${item.cantidad} x ${item.producto?.titulo ?? 'Producto sin nombre'}`)
+    .join(', ');
+
+  return template
+    .replace(/\{\{folio\}\}/g, pedido.folio_oc || pedido.id.slice(0, 8).toUpperCase())
+    .replace(/\{\{cliente\}\}/g, pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A')
+    .replace(/\{\{oficina\}\}/g, pedido.usuario?.oficina || 'N/A')
+    .replace(/\{\{monto_total\}\}/g, `$${totalMonto.toFixed(2)}`)
+    .replace(/\{\{productos\}\}/g, productos || 'Sin productos')
+    .replace(/\{\{fecha_pedido\}\}/g, new Date(pedido.created_at).toLocaleDateString('es-MX'))
+    .replace(/\{\{metodo_pago\}\}/g, pedido.metodo_pago || 'N/A')
+    .replace(/\{\{forma_pago\}\}/g, pedido.forma_pago || 'N/A')
+    .replace(/\{\{responsable_pago\}\}/g,
+      pedido.responsable_pago?.nombre_completo || pedido.responsable_pago?.nombre
+        || pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A');
+}
+
+export async function obtenerCamposTramiteTipo(tramiteTipoId: string) {
+  const { data, error } = await supabase
+    .from('tramite_tipo_campos')
+    .select('*')
+    .eq('tramite_tipo_id', tramiteTipoId)
+    .eq('activo', true)
+    .order('display_order');
+
+  if (error) throw error;
+  return data;
+}
+
+export async function obtenerMapeoCamposTrigger(triggerId: string): Promise<StoreTramiteTriggerCampo[]> {
+  const { data, error } = await supabase
+    .from('store_tramite_trigger_campos')
+    .select('*')
+    .eq('trigger_id', triggerId);
+
+  if (error) throw error;
+  return data as StoreTramiteTriggerCampo[];
+}
+
+export async function guardarMapeoCampoTrigger(mapeo: {
+  trigger_id: string;
+  campo_id: string;
+  fuente: 'vacio' | 'template' | 'adjunto_oc';
+  valor_template?: string | null;
+}) {
+  const { error } = await supabase
+    .from('store_tramite_trigger_campos')
+    .upsert(mapeo, { onConflict: 'trigger_id,campo_id' });
 
   if (error) throw error;
 }

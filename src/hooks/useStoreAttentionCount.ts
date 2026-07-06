@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { tieneAccesoEquipoStore } from '../lib/storeUtils';
 
 export function useStoreAttentionCount(userId: string | null | undefined) {
   const [count, setCount] = useState(0);
@@ -16,22 +17,34 @@ export function useStoreAttentionCount(userId: string | null | undefined) {
     if (!userId) { setCount(0); return; }
 
     const fetchCount = async () => {
-      if (isAdmin) {
-        // Admin: tickets del store abiertos donde el agente fue el último en actuar
-        // (el cliente/equipo necesita responder)
-        const { count: c } = await supabase
+      // Admin, o miembro de un equipo con acceso al store (Admin > Tienda MOVI > Equipos
+      // con acceso): ve todos los pedidos, igual cuenta todo lo pendiente de respuesta.
+      const tieneAccesoAmplio = isAdmin || await tieneAccesoEquipoStore(userId);
+
+      if (tieneAccesoAmplio) {
+        // Tickets del store con conversación pendiente de respuesta (se crean solo
+        // cuando el pedido cambia a un estatus con trigger configurado, no al crearse).
+        const ticketsQuery = supabase
           .from('tickets')
           .select('*', { count: 'exact', head: true })
           .not('store_pedido_id', 'is', null)
           .is('eliminado_at', null)
           .is('cerrado_en', null)
           .or(`ultima_accion_por.is.null,ultima_accion_por.neq.${userId}`);
-        setCount(c ?? 0);
+
+        // Pedidos recién creados en estatus "Pendiente": no generan ticket hasta que
+        // alguien cambia su estatus, así que sin esto un pedido nuevo no cuenta en el globo.
+        const pedidosQuery = supabase
+          .from('store_pedidos')
+          .select('id, estatus:store_estatus_pedidos!inner(nombre)', { count: 'exact', head: true })
+          .eq('estatus.nombre', 'Pendiente');
+
+        const [{ count: cTickets }, { count: cPedidos }] = await Promise.all([ticketsQuery, pedidosQuery]);
+        setCount((cTickets ?? 0) + (cPedidos ?? 0));
         return;
       }
 
-      // Miembro de equipo con acceso al store: tickets del store asignados a este usuario
-      // pendientes de su acción
+      // Sin acceso de equipo: solo tickets del store asignados directamente a este usuario
       const { count: c } = await supabase
         .from('tickets')
         .select('*', { count: 'exact', head: true })

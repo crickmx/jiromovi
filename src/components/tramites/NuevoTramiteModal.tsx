@@ -770,7 +770,7 @@ export function NuevoTramiteModal({
     }
 
     // Validar campos dinámicos requeridos (omitir campos sistema auto-fill)
-    const AUTO_FILL_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'oficina_jiro', 'agente_vendedor'];
+    const AUTO_FILL_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'oficina_jiro', 'agente_vendedor', 'creado_por'];
     for (const campo of camposDinamicos) {
       if (!campo.requerido) continue;
       if (!canSeeCampo(campo)) continue;
@@ -1167,6 +1167,13 @@ export function NuevoTramiteModal({
       </div>
     );
 
+    if (campo.sistema_key === 'creado_por') return (
+      <div key={campo.id}>
+        <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">🔒 {campo.label}</label>
+        <div className={violet}>{lock}{usuario?.nombre_completo || usuario?.nombre || 'Usuario actual'}</div>
+      </div>
+    );
+
     if (campo.sistema_key === 'fecha_finalizacion') return (
       <div key={campo.id}>
         <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">🔒 {campo.label}</label>
@@ -1445,6 +1452,22 @@ export function NuevoTramiteModal({
         if (Object.keys(postUpdates).length > 0) {
           await supabase.from('tickets').update(postUpdates).eq('id', ticket.id);
         }
+
+        if (!grupoAsignadoId && !effectiveAttendingId) {
+          const { data: adminsSinEquipo } = await supabase.from('usuarios').select('id')
+            .eq('rol', 'Administrador').eq('activo', true);
+          for (const adm of (adminsSinEquipo ?? [])) {
+            await crearNotificacion({
+              user_id: adm.id,
+              titulo: 'Trámite sin equipo asignado',
+              mensaje: `El trámite ${ticket.folio} (Cotización / Emisión) no se pudo asignar automáticamente a ningún equipo. Requiere asignación manual.`,
+              modulo: 'Tramites',
+              icono: 'alert-triangle',
+              accion_url: `/tramites/${ticket.id}`,
+              accion_texto: 'Ver trámite',
+            });
+          }
+        }
       }
       if (ticket?.id && archivos.length > 0) {
         for (const archivo of archivos) {
@@ -1558,6 +1581,18 @@ export function NuevoTramiteModal({
 
       if (ticketError) throw ticketError;
 
+      // Guardar el texto de creación como primer comentario, para que quede en el
+      // historial de la conversación (antes solo se guardaba en tickets.instrucciones
+      // y la pestaña Comentarios arrancaba vacía).
+      const comentarioInicial = (ticketData.instrucciones as string)?.trim();
+      if (comentarioInicial && comentarioInicial !== 'Sin descripción') {
+        await supabase.from('ticket_comentarios').insert({
+          ticket_id: ticket.id,
+          usuario_id: usuario.id,
+          mensaje: comentarioInicial,
+        });
+      }
+
       // Guardar respuestas de campos dinámicos (sistema + custom)
       if (camposDinamicos.length > 0) {
         // Auto-poblar campos sistema antes de guardar
@@ -1567,6 +1602,8 @@ export function NuevoTramiteModal({
         if (areaCampo && tipoInfoGuardado?.area) autoSistema[areaCampo.id] = tipoInfoGuardado.area;
         const fechaCreCampo = camposDinamicos.find(c => c.sistema_key === 'fecha_creacion');
         if (fechaCreCampo) autoSistema[fechaCreCampo.id] = new Date().toISOString();
+        const creadoPorCampo = camposDinamicos.find(c => c.sistema_key === 'creado_por');
+        if (creadoPorCampo) autoSistema[creadoPorCampo.id] = usuario.nombre_completo || usuario.nombre || '';
         const equipoCampo = camposDinamicos.find(c => c.sistema_key === 'equipo');
         if (equipoCampo && grupoAsignadoId) {
           const { data: grupoData } = await supabase
@@ -1576,7 +1613,7 @@ export function NuevoTramiteModal({
         const respuestasMerged = { ...autoSistema, ...respuestasDinamicas };
 
         const TEXTO_TIPOS = ['texto_corto', 'texto_largo', 'area', 'equipo',
-          'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion',
+          'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion', 'creado_por',
           'aseguradora', 'ramo', 'email', 'telefono', 'rfc', 'curp'];
 
         const respuestas = camposDinamicos
@@ -1729,6 +1766,22 @@ export function NuevoTramiteModal({
             mensaje: `Nuevo trámite ${ticket.folio} asignado a tu equipo (${tiposDb.find(t => t.value === tipoTramite)?.label || tipoTramite}).`,
             modulo: 'Tramites',
             icono: 'clipboard-list',
+            accion_url: `/tramites/${ticket.id}`,
+            accion_texto: 'Ver trámite',
+          });
+        }
+      } else {
+        // Ni responsable ni equipo: la auto-asignación (override, oficina, o regla de
+        // área) no resolvió nada. Avisar a Admin para que no se pierda de vista.
+        const { data: adminsSinEquipo } = await supabase.from('usuarios').select('id')
+          .eq('rol', 'Administrador').eq('activo', true);
+        for (const adm of (adminsSinEquipo ?? [])) {
+          await crearNotificacion({
+            user_id: adm.id,
+            titulo: 'Trámite sin equipo asignado',
+            mensaje: `El trámite ${ticket.folio} (${tiposDb.find(t => t.value === tipoTramite)?.label || tipoTramite}) no se pudo asignar automáticamente a ningún equipo. Requiere asignación manual.`,
+            modulo: 'Tramites',
+            icono: 'alert-triangle',
             accion_url: `/tramites/${ticket.id}`,
             accion_texto: 'Ver trámite',
           });
