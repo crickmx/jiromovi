@@ -296,10 +296,12 @@ export default function StorePedidoDetalle() {
       .eq('estatus_destino_id', nuevoEstatusId)
       .eq('activo', true);
     resultado.totalTriggers = triggersRaw?.length ?? 0;
-    // Filtrar por método/forma de pago del pedido si el trigger los restringe (null = cualquiera)
+    // Filtrar por método/forma de pago del pedido si el trigger los restringe
+    // (null o arreglo vacío = cualquiera; ahora son arreglos, un trigger puede
+    // aplicar a varios métodos/formas a la vez)
     const triggers = (triggersRaw ?? []).filter(t =>
-      (!t.metodo_pago_filtro || t.metodo_pago_filtro === pedido.metodo_pago) &&
-      (!t.forma_pago_filtro || t.forma_pago_filtro === pedido.forma_pago)
+      (!t.metodo_pago_filtro?.length || t.metodo_pago_filtro.includes(pedido.metodo_pago)) &&
+      (!t.forma_pago_filtro?.length || t.forma_pago_filtro.includes(pedido.forma_pago))
     );
     resultado.triggersAplicados = triggers.length;
     if (triggers.length === 0) return resultado;
