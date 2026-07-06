@@ -1452,6 +1452,22 @@ export function NuevoTramiteModal({
         if (Object.keys(postUpdates).length > 0) {
           await supabase.from('tickets').update(postUpdates).eq('id', ticket.id);
         }
+
+        if (!grupoAsignadoId && !effectiveAttendingId) {
+          const { data: adminsSinEquipo } = await supabase.from('usuarios').select('id')
+            .eq('rol', 'Administrador').eq('activo', true);
+          for (const adm of (adminsSinEquipo ?? [])) {
+            await crearNotificacion({
+              user_id: adm.id,
+              titulo: 'Trámite sin equipo asignado',
+              mensaje: `El trámite ${ticket.folio} (Cotización / Emisión) no se pudo asignar automáticamente a ningún equipo. Requiere asignación manual.`,
+              modulo: 'Tramites',
+              icono: 'alert-triangle',
+              accion_url: `/tramites/${ticket.id}`,
+              accion_texto: 'Ver trámite',
+            });
+          }
+        }
       }
       if (ticket?.id && archivos.length > 0) {
         for (const archivo of archivos) {
@@ -1750,6 +1766,22 @@ export function NuevoTramiteModal({
             mensaje: `Nuevo trámite ${ticket.folio} asignado a tu equipo (${tiposDb.find(t => t.value === tipoTramite)?.label || tipoTramite}).`,
             modulo: 'Tramites',
             icono: 'clipboard-list',
+            accion_url: `/tramites/${ticket.id}`,
+            accion_texto: 'Ver trámite',
+          });
+        }
+      } else {
+        // Ni responsable ni equipo: la auto-asignación (override, oficina, o regla de
+        // área) no resolvió nada. Avisar a Admin para que no se pierda de vista.
+        const { data: adminsSinEquipo } = await supabase.from('usuarios').select('id')
+          .eq('rol', 'Administrador').eq('activo', true);
+        for (const adm of (adminsSinEquipo ?? [])) {
+          await crearNotificacion({
+            user_id: adm.id,
+            titulo: 'Trámite sin equipo asignado',
+            mensaje: `El trámite ${ticket.folio} (${tiposDb.find(t => t.value === tipoTramite)?.label || tipoTramite}) no se pudo asignar automáticamente a ningún equipo. Requiere asignación manual.`,
+            modulo: 'Tramites',
+            icono: 'alert-triangle',
             accion_url: `/tramites/${ticket.id}`,
             accion_texto: 'Ver trámite',
           });
