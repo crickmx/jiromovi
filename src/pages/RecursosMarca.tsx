@@ -1,275 +1,294 @@
 import { useState, useEffect, useRef } from 'react';
-import { Upload, Trash2, Download, X, Image, FileText, FileArchive, File, Search, AlertTriangle, Loader2, CheckCircle2, ZoomIn } from 'lucide-react';
+import { Upload, Download, AlertTriangle, Loader2, CheckCircle2, Type, Palette, Image as ImageIcon, Bookmark } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { LoadingState } from '@/components/ui/loading-state';
-import { EmptyState } from '@/components/ui/empty-state';
 
 const BUCKET = 'recursos-marca';
 
-const CARPETAS = [
-  { key: '', label: 'Todos' },
-  { key: 'logos/', label: 'Logos' },
-  { key: 'plantillas/', label: 'Plantillas' },
-  { key: 'guias/', label: 'Guías' },
-  { key: 'otros/', label: 'Otros' },
+const LOGO_FAMILIES = [
+  { key: 'horizontal',     label: 'Horizontal',     description: 'Versión principal — montaña + texto' },
+  { key: 'vertical',       label: 'Vertical',       description: 'Montaña arriba, texto abajo' },
+  { key: 'isotype',        label: 'Isotipo',        description: 'Solo la montaña' },
+  { key: 'wordmark',       label: 'Wordmark',       description: 'Solo el texto "JIRO Seguros"' },
+  { key: 'aniversario-50', label: '50 Aniversario', description: 'Solo campañas de aniversario' },
 ];
 
-interface Recurso {
-  name: string;
-  fullPath: string;
-  size: number;
-  url: string;
-  mimeGuess: string;
+const LOGO_COLORS = [
+  { key: 'navy',    label: 'Navy',      hex: '#121A2D', previewBg: '#E2E1CC' },
+  { key: 'white',   label: 'Blanco',    hex: '#FFFFFF', previewBg: '#121A2D' },
+  { key: 'black',   label: 'Negro',     hex: '#000000', previewBg: '#E2E1CC' },
+  { key: 'ink',     label: 'Ink',       hex: '#1A2035', previewBg: '#E2E1CC' },
+  { key: 'cream',   label: 'Crema',     hex: '#E2E1CC', previewBg: '#164281' },
+  { key: 'pale',    label: 'Pale',      hex: '#C8C7B3', previewBg: '#4A5C72' },
+  { key: 'yellow',  label: 'Amarillo',  hex: '#FFD62B', previewBg: '#121A2D' },
+  { key: 'mustard', label: 'Mostaza',   hex: '#F4AD0F', previewBg: '#121A2D' },
+  { key: 'green',   label: 'Verde',     hex: '#93C01F', previewBg: '#121A2D' },
+  { key: 'sage',    label: 'Sage',      hex: '#7A9E78', previewBg: '#121A2D' },
+];
+
+type Section = 'logos' | 'iconos' | 'fuentes' | 'paleta';
+
+const SECTIONS: { key: Section; label: string; icon: typeof Bookmark }[] = [
+  { key: 'logos',   label: 'Logos',      icon: Bookmark },
+  { key: 'iconos',  label: 'Iconos',     icon: ImageIcon },
+  { key: 'fuentes', label: 'Tipografía', icon: Type },
+  { key: 'paleta',  label: 'Paleta',     icon: Palette },
+];
+
+const UPLOAD_FOLDERS = [
+  { key: 'logos/',   label: 'Logos' },
+  { key: 'iconos/',  label: 'Iconos' },
+  { key: 'fuentes/', label: 'Fuentes' },
+  { key: 'otros/',   label: 'Otros' },
+];
+
+interface BrandFile { name: string; url: string; size: number }
+
+function parseLogoName(name: string): { family: string; color: string } | null {
+  const base = name.replace(/\.(png|jpg|jpeg|svg|webp)$/i, '');
+  for (const { key } of LOGO_FAMILIES) {
+    if (base.startsWith(`${key}-`)) {
+      const color = base.slice(key.length + 1);
+      if (LOGO_COLORS.some(c => c.key === color)) return { family: key, color };
+    }
+  }
+  return null;
 }
 
-function guessMime(name: string) {
-  const ext = name.split('.').pop()?.toLowerCase() ?? '';
-  if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(ext)) return 'image';
-  if (ext === 'pdf') return 'pdf';
-  if (['zip', 'rar', '7z'].includes(ext)) return 'archive';
-  return 'file';
+async function dl(url: string, filename: string) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl; a.download = filename; a.click();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+  } catch {
+    window.open(url, '_blank');
+  }
 }
 
-function formatBytes(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+function fmtBytes(n: number) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1048576) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1048576).toFixed(1)} MB`;
 }
-
-function FileIcon({ tipo, className }: { tipo: string; className?: string }) {
-  if (tipo === 'image') return <Image className={className} />;
-  if (tipo === 'pdf') return <FileText className={className} />;
-  if (tipo === 'archive') return <FileArchive className={className} />;
-  return <File className={className} />;
-}
-
-const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
 export default function RecursosMarca() {
   const { usuario } = useAuth();
   const isAdmin = usuario?.rol === 'Administrador';
-  const [recursos, setRecursos] = useState<Recurso[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [bucketError, setBucketError] = useState(false);
-  const [carpeta, setCarpeta] = useState('');
-  const [busqueda, setBusqueda] = useState('');
-  const [subiendo, setSubiendo] = useState(false);
-  const [eliminando, setEliminando] = useState<string | null>(null);
-  const [ampliado, setAmpliado] = useState<Recurso | null>(null);
+
+  // Core state
+  const [loading, setLoading]             = useState(true);
+  const [bucketError, setBucketError]     = useState(false);
+  const [section, setSection]             = useState<Section>('logos');
+  const [loadingSection, setLoadingSection] = useState(false);
+  const [loaded, setLoaded]               = useState<Set<Section>>(new Set());
+
+  // Data
+  const [logoUrls, setLogoUrls]   = useState<Record<string, Record<string, string>>>({});
+  const [iconFiles, setIconFiles] = useState<BrandFile[]>([]);
+  const [fontFiles, setFontFiles] = useState<BrandFile[]>([]);
+  const [paletaUrl, setPaletaUrl] = useState<string | null>(null);
+
+  // Per-family selected color
+  const [selectedColors, setSelectedColors] = useState<Record<string, string>>(
+    () => Object.fromEntries(LOGO_FAMILIES.map(f => [f.key, 'navy']))
+  );
+
+  // Admin upload
+  const [subiendo, setSubiendo]         = useState(false);
+  const [uploadError, setUploadError]   = useState<string | null>(null);
   const [carpetaUpload, setCarpetaUpload] = useState('logos/');
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const [configurando, setConfigurando] = useState(false);
-  const [configError, setConfigError] = useState<string | null>(null);
+  const [configError, setConfigError]   = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { cargar(); }, [carpeta]);
+  useEffect(() => { cargarLogos(); }, []);
 
-  async function cargar() {
+  useEffect(() => {
+    if (bucketError || loaded.has(section)) return;
+    if (section === 'iconos')  cargarFolder('iconos/',  setIconFiles);
+    if (section === 'fuentes') cargarFolder('fuentes/', setFontFiles);
+    if (section === 'paleta')  cargarPaleta();
+  }, [section, bucketError]);
+
+  async function cargarLogos() {
     setLoading(true);
     setBucketError(false);
 
-    // Si hay carpeta seleccionada, listar solo esa; si no, listar todas
-    const prefijos = carpeta ? [carpeta] : CARPETAS.filter(c => c.key).map(c => c.key);
+    const { data, error } = await supabase.storage.from(BUCKET).list('logos', { limit: 200 });
 
-    const resultados: Recurso[] = [];
-
-    for (const prefijo of prefijos) {
-      const { data, error } = await supabase.storage
-        .from(BUCKET)
-        .list(prefijo.replace(/\/$/, ''), { limit: 500, sortBy: { column: 'name', order: 'asc' } });
-
-      if (error) {
-        const msg = (error.message ?? '').toLowerCase();
-        if (msg.includes('not found') || msg.includes('bucket') || msg.includes('does not exist')) {
-          setBucketError(true);
-          setLoading(false);
-          return;
-        }
-        continue;
+    if (error) {
+      const msg = (error.message ?? '').toLowerCase();
+      if (msg.includes('not found') || msg.includes('bucket') || msg.includes('does not exist')) {
+        setBucketError(true);
       }
+      setLoading(false);
+      return;
+    }
 
-      for (const archivo of data ?? []) {
-        if (archivo.id === null) continue; // carpeta vacía
-        const fullPath = `${prefijo}${archivo.name}`;
-        const { data: signedData } = await supabase.storage
+    const files = (data ?? []).filter(f => f.id !== null && f.name !== '.emptyFolderPlaceholder');
+
+    if (files.length > 0) {
+      const { data: signed } = await supabase.storage
+        .from(BUCKET)
+        .createSignedUrls(files.map(f => `logos/${f.name}`), 7200);
+
+      const map: Record<string, Record<string, string>> = {};
+      for (const s of signed ?? []) {
+        if (!s.signedUrl || s.error) continue;
+        const fname = s.path.split('/').pop() ?? '';
+        const parsed = parseLogoName(fname);
+        if (parsed) {
+          (map[parsed.family] ??= {})[parsed.color] = s.signedUrl;
+        }
+      }
+      setLogoUrls(map);
+    }
+
+    setLoaded(prev => new Set(prev).add('logos'));
+    setLoading(false);
+  }
+
+  async function cargarFolder(folder: string, setFn: (files: BrandFile[]) => void) {
+    setLoadingSection(true);
+    const name = folder.slice(0, -1);
+    const { data, error } = await supabase.storage.from(BUCKET).list(name, { limit: 200 });
+
+    if (!error && data) {
+      const files = data.filter(f => f.id !== null && f.name !== '.emptyFolderPlaceholder');
+      if (files.length > 0) {
+        const sizeMap = Object.fromEntries(files.map(f => [f.name, f.metadata?.size ?? 0]));
+        const { data: signed } = await supabase.storage
           .from(BUCKET)
-          .createSignedUrl(fullPath, 3600);
+          .createSignedUrls(files.map(f => `${folder}${f.name}`), 7200);
 
-        resultados.push({
-          name: archivo.name,
-          fullPath,
-          size: archivo.metadata?.size ?? 0,
-          url: signedData?.signedUrl ?? '',
-          mimeGuess: guessMime(archivo.name),
-        });
+        setFn((signed ?? [])
+          .filter(s => s.signedUrl && !s.error)
+          .map(s => {
+            const fname = s.path.split('/').pop() ?? s.path;
+            return { name: fname, url: s.signedUrl, size: sizeMap[fname] ?? 0 };
+          })
+        );
       }
     }
 
-    setRecursos(resultados);
-    setLoading(false);
+    const sectionKey = folder.slice(0, -1) as Section;
+    setLoaded(prev => new Set(prev).add(sectionKey));
+    setLoadingSection(false);
+  }
+
+  async function cargarPaleta() {
+    const { data } = await supabase.storage
+      .from(BUCKET)
+      .createSignedUrl('otros/paleta-original.png', 7200);
+    if (data?.signedUrl) setPaletaUrl(data.signedUrl);
+    setLoaded(prev => new Set(prev).add('paleta'));
   }
 
   async function subir(files: FileList | null) {
     if (!files?.length || !isAdmin) return;
-    setSubiendo(true);
-    setUploadError(null);
-
+    setSubiendo(true); setUploadError(null);
     const errores: string[] = [];
     for (const file of Array.from(files)) {
       const path = `${carpetaUpload}${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
-      const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false });
+      const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true });
       if (error) errores.push(`${file.name}: ${error.message}`);
     }
-
     if (errores.length) setUploadError(errores.join(' · '));
-    await cargar();
+    // Reload affected section
+    if (carpetaUpload === 'logos/') {
+      setLoaded(prev => { const s = new Set(prev); s.delete('logos'); return s; });
+      await cargarLogos();
+    } else {
+      const sec = carpetaUpload.slice(0, -1) as Section;
+      setLoaded(prev => { const s = new Set(prev); s.delete(sec); return s; });
+      if (sec === 'iconos') setIconFiles([]);
+      if (sec === 'fuentes') setFontFiles([]);
+    }
     setSubiendo(false);
-  }
-
-  async function eliminar(recurso: Recurso) {
-    if (!isAdmin) return;
-    setEliminando(recurso.fullPath);
-    await supabase.storage.from(BUCKET).remove([recurso.fullPath]);
-    setRecursos(prev => prev.filter(r => r.fullPath !== recurso.fullPath));
-    if (ampliado?.fullPath === recurso.fullPath) setAmpliado(null);
-    setEliminando(null);
   }
 
   async function configurarBucket() {
     if (!isAdmin) return;
-    setConfigurando(true);
-    setConfigError(null);
+    setConfigurando(true); setConfigError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/setup-recursos-marca`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session?.access_token}`,
-            'Content-Type': 'application/json',
-          },
-        }
+        { method: 'POST', headers: { Authorization: `Bearer ${session?.access_token}`, 'Content-Type': 'application/json' } }
       );
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Error desconocido');
-      await cargar();
+      await cargarLogos();
     } catch (e) {
       setConfigError(e instanceof Error ? e.message : 'Error al configurar');
-    } finally {
-      setConfigurando(false);
-    }
+    } finally { setConfigurando(false); }
   }
-
-  function descargar(recurso: Recurso) {
-    const a = document.createElement('a');
-    a.href = recurso.url;
-    a.download = recurso.name;
-    a.target = '_blank';
-    a.click();
-  }
-
-  const filtrados = recursos.filter(r =>
-    busqueda === '' || norm(r.name).includes(norm(busqueda))
-  );
 
   if (!usuario) return null;
 
-  if (bucketError) {
-    return (
-      <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 p-8 flex flex-col items-center text-center gap-4">
-        <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center">
-          <AlertTriangle className="w-7 h-7 text-amber-500" />
-        </div>
-        <div>
-          <p className="text-base font-semibold text-neutral-800 dark:text-white">Brand Kit no configurado</p>
-          <p className="text-sm text-neutral-500 dark:text-white/50 mt-1 max-w-sm">
-            El almacenamiento de archivos aún no está activo.
-            {isAdmin ? ' Haz clic en el botón para configurarlo automáticamente.' : ' Pide a un administrador que lo configure.'}
-          </p>
-        </div>
-        {isAdmin && (
-          <div className="flex flex-col items-center gap-2">
-            <button
-              onClick={configurarBucket}
-              disabled={configurando}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition disabled:opacity-60"
-            >
-              {configurando ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-              {configurando ? 'Configurando…' : 'Configurar Brand Kit'}
-            </button>
-            {configError && (
-              <p className="text-xs text-red-600 dark:text-red-400">{configError}</p>
-            )}
-          </div>
-        )}
+  // ── Bucket no configurado ──────────────────────────────────────────────────
+  if (bucketError) return (
+    <div className="rounded-2xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10 p-10 flex flex-col items-center text-center gap-4">
+      <AlertTriangle className="w-8 h-8 text-amber-500" />
+      <div>
+        <p className="font-semibold text-neutral-800 dark:text-white">Brand Kit no configurado</p>
+        <p className="text-sm text-neutral-500 dark:text-white/50 mt-1 max-w-sm">
+          {isAdmin
+            ? 'Haz clic para configurar el almacenamiento automáticamente.'
+            : 'Pide a un administrador que active el Brand Kit.'}
+        </p>
       </div>
-    );
-  }
+      {isAdmin && (
+        <div className="flex flex-col items-center gap-2">
+          <button onClick={configurarBucket} disabled={configurando}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition disabled:opacity-60">
+            {configurando ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+            {configurando ? 'Configurando…' : 'Configurar Brand Kit'}
+          </button>
+          {configError && <p className="text-xs text-red-600 dark:text-red-400">{configError}</p>}
+        </div>
+      )}
+    </div>
+  );
 
+  // ── Main UI ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-5">
 
-      {/* Barra de herramientas */}
-      <div className="flex flex-wrap items-center gap-3">
-        {/* Filtro por carpeta */}
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-1 flex-wrap">
-          {CARPETAS.map(c => (
-            <button
-              key={c.key}
-              onClick={() => setCarpeta(c.key)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition ${
-                carpeta === c.key
+          {SECTIONS.map(s => {
+            const Icon = s.icon;
+            const active = section === s.key;
+            return (
+              <button key={s.key} onClick={() => setSection(s.key)}
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium transition ${active
                   ? 'bg-accent text-white'
-                  : 'bg-neutral-100 dark:bg-white/8 text-neutral-600 dark:text-white/60 hover:bg-neutral-200 dark:hover:bg-white/12'
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
+                  : 'bg-neutral-100 dark:bg-white/8 text-neutral-600 dark:text-white/60 hover:bg-neutral-200 dark:hover:bg-white/12'}`}>
+                <Icon className="w-3.5 h-3.5" />{s.label}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Búsqueda */}
-        <div className="relative flex-1 min-w-[180px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
-          <input
-            type="text"
-            placeholder="Buscar archivo…"
-            value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 text-sm rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-accent"
-          />
-        </div>
-
-        {/* Upload (solo admins) */}
         {isAdmin && (
           <div className="flex items-center gap-2">
-            <select
-              value={carpetaUpload}
-              onChange={e => setCarpetaUpload(e.target.value)}
-              className="text-xs px-2 py-1.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-700 dark:text-white focus:outline-none"
-            >
-              {CARPETAS.filter(c => c.key).map(c => (
-                <option key={c.key} value={c.key}>{c.label}</option>
-              ))}
+            <select value={carpetaUpload} onChange={e => setCarpetaUpload(e.target.value)}
+              className="text-xs px-2 py-1.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-700 dark:text-white focus:outline-none">
+              {UPLOAD_FOLDERS.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
             </select>
-            <button
-              onClick={() => inputRef.current?.click()}
-              disabled={subiendo}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accent text-white text-xs font-semibold hover:bg-accent-hover transition disabled:opacity-60"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              {subiendo ? 'Subiendo…' : 'Subir'}
+            <button onClick={() => inputRef.current?.click()} disabled={subiendo}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accent text-white text-xs font-semibold hover:bg-accent-hover transition disabled:opacity-60">
+              <Upload className="w-3.5 h-3.5" />{subiendo ? 'Subiendo…' : 'Subir'}
             </button>
-            <input
-              ref={inputRef}
-              type="file"
-              multiple
-              accept="image/*,.pdf,.zip,.svg"
-              className="hidden"
-              onChange={e => subir(e.target.files)}
-            />
+            <input ref={inputRef} type="file" multiple accept="image/*,.pdf,.zip,.svg,.ttf,.otf" className="hidden"
+              onChange={e => subir(e.target.files)} />
           </div>
         )}
       </div>
@@ -280,110 +299,141 @@ export default function RecursosMarca() {
         </p>
       )}
 
-      {/* Contenido */}
-      {loading ? (
-        <LoadingState text="Cargando recursos…" compact />
-      ) : filtrados.length === 0 ? (
-        <EmptyState
-          icon={Image}
-          title="Sin archivos"
-          description={busqueda ? 'No hay archivos que coincidan con la búsqueda.' : 'Aún no se han subido recursos de marca.'}
-          compact
-        />
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-          {filtrados.map(recurso => (
-            <div
-              key={recurso.fullPath}
-              className="group relative bg-white dark:bg-white/3 border border-neutral-200 dark:border-white/8 rounded-2xl overflow-hidden hover:shadow-md transition"
-            >
-              {/* Thumbnail o ícono */}
-              <div
-                className="aspect-square bg-neutral-50 dark:bg-white/5 flex items-center justify-center cursor-pointer overflow-hidden"
-                onClick={() => recurso.mimeGuess === 'image' && setAmpliado(recurso)}
-              >
-                {recurso.mimeGuess === 'image' ? (
-                  <img
-                    src={recurso.url}
-                    alt={recurso.name}
-                    className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300"
-                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
-                ) : (
-                  <FileIcon
-                    tipo={recurso.mimeGuess}
-                    className="w-10 h-10 text-neutral-300 dark:text-white/20"
-                  />
-                )}
-                {recurso.mimeGuess === 'image' && (
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <ZoomIn className="w-6 h-6 text-white drop-shadow" />
+      {/* ── LOGOS ─────────────────────────────────────────────────────────── */}
+      {section === 'logos' && (
+        loading
+          ? <LoadingState text="Cargando logos…" compact />
+          : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {LOGO_FAMILIES.map(family => {
+                const selColor = selectedColors[family.key] ?? 'navy';
+                const colorDef = LOGO_COLORS.find(c => c.key === selColor)!;
+                const logoUrl  = logoUrls[family.key]?.[selColor];
+                const darkBg   = ['#121A2D', '#164281', '#4A5C72'].includes(colorDef.previewBg);
+
+                return (
+                  <div key={family.key}
+                    className="rounded-2xl border border-neutral-200 dark:border-white/8 bg-white dark:bg-white/3 overflow-hidden flex flex-col">
+
+                    {/* Preview */}
+                    <div className="aspect-video flex items-center justify-center p-8 transition-colors duration-300"
+                      style={{ backgroundColor: colorDef.previewBg }}>
+                      {logoUrl
+                        ? <img src={logoUrl} alt={`${family.label} ${selColor}`} className="max-h-16 max-w-full object-contain" />
+                        : <span className="text-xs opacity-25" style={{ color: darkBg ? '#fff' : '#333' }}>Sin archivo</span>
+                      }
+                    </div>
+
+                    {/* Controls */}
+                    <div className="p-4 flex flex-col gap-3 flex-1">
+                      <div>
+                        <p className="font-semibold text-sm text-neutral-800 dark:text-white">{family.label}</p>
+                        <p className="text-xs text-neutral-400 dark:text-white/40">{family.description}</p>
+                      </div>
+
+                      {/* Color swatches */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {LOGO_COLORS.map(color => (
+                          <button key={color.key} title={color.label}
+                            onClick={() => setSelectedColors(prev => ({ ...prev, [family.key]: color.key }))}
+                            className={`w-5 h-5 rounded-full transition-transform ${
+                              selColor === color.key
+                                ? 'ring-2 ring-offset-1 ring-accent dark:ring-offset-neutral-900 scale-125'
+                                : 'hover:scale-110'
+                            }`}
+                            style={{
+                              backgroundColor: color.hex,
+                              border: color.hex === '#FFFFFF' ? '1px solid #d1d5db' : 'none',
+                            }}
+                          />
+                        ))}
+                        <span className="text-xs text-neutral-400 dark:text-white/40 ml-1">{colorDef.label}</span>
+                      </div>
+
+                      {/* Download */}
+                      <button
+                        onClick={() => logoUrl && dl(logoUrl, `jiro-${family.key}-${selColor}.png`)}
+                        disabled={!logoUrl}
+                        className="mt-auto flex items-center justify-center gap-2 w-full px-3 py-2 rounded-xl bg-neutral-100 dark:bg-white/8 text-sm font-medium text-neutral-700 dark:text-white/80 hover:bg-neutral-200 dark:hover:bg-white/12 transition disabled:opacity-30 disabled:cursor-not-allowed">
+                        <Download className="w-3.5 h-3.5" />
+                        Descargar {colorDef.label.toLowerCase()}
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
-
-              {/* Info */}
-              <div className="p-2">
-                <p className="text-xs font-medium text-neutral-700 dark:text-white/80 truncate" title={recurso.name}>
-                  {recurso.name}
-                </p>
-                <p className="text-[10px] text-neutral-400 mt-0.5">{formatBytes(recurso.size)}</p>
-              </div>
-
-              {/* Acciones */}
-              <div className="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                <button
-                  onClick={() => descargar(recurso)}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-white dark:bg-neutral-800 shadow text-neutral-600 dark:text-white/70 hover:text-accent transition"
-                  title="Descargar"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                </button>
-                {isAdmin && (
-                  <button
-                    onClick={() => eliminar(recurso)}
-                    disabled={eliminando === recurso.fullPath}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-white dark:bg-neutral-800 shadow text-neutral-600 dark:text-white/70 hover:text-red-500 transition disabled:opacity-50"
-                    title="Eliminar"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
+          )
       )}
 
-      {/* Lightbox */}
-      {ampliado && (
-        <div
-          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-          onClick={() => setAmpliado(null)}
-        >
-          <button
-            className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition"
-            onClick={() => setAmpliado(null)}
-          >
-            <X className="w-5 h-5" />
-          </button>
-          <img
-            src={ampliado.url}
-            alt={ampliado.name}
-            className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          />
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3">
-            <span className="text-white/80 text-sm">{ampliado.name}</span>
-            <button
-              onClick={e => { e.stopPropagation(); descargar(ampliado); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 text-white text-xs font-medium hover:bg-white/20 transition"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Descargar
-            </button>
-          </div>
-        </div>
+      {/* ── ICONOS ────────────────────────────────────────────────────────── */}
+      {section === 'iconos' && (
+        loadingSection
+          ? <LoadingState text="Cargando iconos…" compact />
+          : !iconFiles.length
+            ? <p className="text-sm text-neutral-400 dark:text-white/40 text-center py-10">Sin iconos disponibles</p>
+            : (
+              <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-9 gap-3">
+                {iconFiles.map(f => (
+                  <button key={f.name} onClick={() => dl(f.url, f.name)}
+                    className="group flex flex-col items-center gap-2 p-3 rounded-2xl border border-neutral-200 dark:border-white/8 bg-white dark:bg-white/3 hover:border-accent/40 hover:bg-accent/5 transition">
+                    <div className="w-10 h-10 flex items-center justify-center">
+                      <img src={f.url} alt={f.name} className="max-w-full max-h-full object-contain dark:invert" />
+                    </div>
+                    <p className="text-[10px] text-neutral-400 dark:text-white/40 text-center truncate w-full">
+                      {f.name.replace('.png', '')}
+                    </p>
+                    <Download className="w-3 h-3 text-neutral-300 dark:text-white/20 group-hover:text-accent transition" />
+                  </button>
+                ))}
+              </div>
+            )
+      )}
+
+      {/* ── FUENTES ───────────────────────────────────────────────────────── */}
+      {section === 'fuentes' && (
+        loadingSection
+          ? <LoadingState text="Cargando tipografías…" compact />
+          : !fontFiles.length
+            ? <p className="text-sm text-neutral-400 dark:text-white/40 text-center py-10">Sin archivos disponibles</p>
+            : (
+              <div className="rounded-2xl border border-neutral-200 dark:border-white/8 overflow-hidden divide-y divide-neutral-100 dark:divide-white/5">
+                {fontFiles.map(f => (
+                  <div key={f.name}
+                    className="flex items-center justify-between px-5 py-3.5 bg-white dark:bg-white/3 hover:bg-neutral-50 dark:hover:bg-white/5 transition">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-white/8 flex items-center justify-center shrink-0">
+                        <Type className="w-4 h-4 text-neutral-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-neutral-800 dark:text-white">{f.name}</p>
+                        {f.size > 0 && <p className="text-xs text-neutral-400">{fmtBytes(f.size)}</p>}
+                      </div>
+                    </div>
+                    <button onClick={() => dl(f.url, f.name)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-white/8 text-neutral-700 dark:text-white/70 text-xs font-medium hover:bg-neutral-200 dark:hover:bg-white/12 transition">
+                      <Download className="w-3.5 h-3.5" />Descargar
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )
+      )}
+
+      {/* ── PALETA ────────────────────────────────────────────────────────── */}
+      {section === 'paleta' && (
+        !paletaUrl
+          ? <p className="text-sm text-neutral-400 dark:text-white/40 text-center py-10">Paleta no disponible</p>
+          : (
+            <div className="flex flex-col items-center gap-4">
+              <img src={paletaUrl} alt="Paleta de color JIRO"
+                className="max-w-2xl w-full rounded-2xl border border-neutral-200 dark:border-white/8 shadow-sm" />
+              <button onClick={() => dl(paletaUrl, 'jiro-paleta-color.png')}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-neutral-100 dark:bg-white/8 text-sm font-medium text-neutral-700 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/12 transition">
+                <Download className="w-4 h-4" />Descargar paleta
+              </button>
+            </div>
+          )
       )}
     </div>
   );
