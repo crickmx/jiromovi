@@ -7,6 +7,13 @@
 
 Crea la tabla `tramites_reglas_por_tipo` (override manual agente+tipo) y reescribe el RPC `get_grupo_para_ticket()` con las 4 capas de resolución — ver sección "Asignación por Trámites" más abajo para el detalle completo. Pegar el contenido del archivo tal cual en el SQL Editor de Supabase. Retrocompatible: hasta que no se marque algún equipo como habilitado en la tab "Equipos habilitados" de un tipo, todo sigue resolviendo exactamente igual que antes.
 
+## ⏳ PENDIENTE — correr en Supabase la migración de sincronización de áreas (2026-07-06)
+
+**No se ha corrido todavía.** Ruta completa:
+`C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-produccion\supabase\migrations\20260706000002_sync_ticket_tipos_area_id.sql`
+
+Siembra en `tramites_areas` cualquier área que ya esté en uso en `ticket_tipos.area` pero que no exista todavía como fila (ej. "Administración"/"Otro" si algún tipo personalizado los usa), y backfillea `ticket_tipos.area_id` donde quedó `NULL`. Ver sección "Áreas de Tipos de Trámite desconectadas de tramites_areas" más abajo. El frontend ya tiene un fallback ("Sin área reconocida") para que ningún tipo desaparezca del listado mientras esta migración no se corre, pero el dropdown de Área en "Nuevo Tipo"/"Configuración" solo mostrará las áreas que ya existan como fila en `tramites_areas` hasta entonces.
+
 ## ⚠️ Archivos huérfanos desde el rediseño del Dashboard (2026-07-06)
 El rediseño de `src/pages/Dashboard.tsx` (hero + módulos beta + favoritos + avisos) reemplazó por completo el Dashboard anterior. Los siguientes componentes ya **no los importa nadie en todo el repo** (confirmado con grep), pero se dejaron intactos a propósito — decisión explícita de Ricardo de no borrarlos todavía:
 - `src/components/dashboard/DashboardHero.tsx`
@@ -116,6 +123,13 @@ Cuando un pedido de MOVI Store cambia a un estatus configurado, se crea automát
 - **Toast de resultado**: `handleCambiarEstatus` ahora muestra qué pasó — trámite(s) creado(s) con folio, error específico, o aviso de que ningún trigger aplicó por método/forma de pago no coincidente. Antes fallaba 100% en silencio.
 - **Orden de trabajo esperado** (confirmado con el usuario): primero se llena y guarda "Información de Pago" (Responsable/Método/Forma), **después** se cambia el estatus a "Confirmado" — por eso `handleCambiarEstatus` bloquea el cambio a "Confirmado" si falta cualquiera de esos 3 campos guardados en el pedido.
 - **RLS**: todas las tablas involucradas (`store_productos`, `store_categorias`, `store_pedidos_detalle`, `store_pedidos_notas`, `store_pedidos_historial`, `store_pedido_gastos`, `store_pedido_detalle_gastos`, `store_tramite_triggers`, `store_tramite_trigger_campos`) ya extendidas para equipos con `store_equipos_acceso`, no solo Administrador.
+
+## Áreas de Tipos de Trámite desconectadas de `tramites_areas` (encontrado y corregido 2026-07-06)
+`GestionCatalogosRegistro.tsx` (tab "Tipos" de Admin > Trámites) leía las opciones de "Área" de una constante hardcodeada (`AREAS` en `catalogos/types.ts`: Comercial/Operaciones/Mercadotecnia/Administración/Otro), completamente desconectada de la tabla `tramites_areas` — la misma tabla que sí usan correctamente la tab "Áreas" (`AreasTab` en `AdminTramites.tsx`) y el panel de "Equipo" (`GestionGruposVisualizacion.tsx`, `areasDisponibles`/`formAreaId`). Síntomas: un tipo de trámite podía guardarse con un área que nunca existía como fila real en `tramites_areas`, y esa área nunca aparecía como opción al crear/editar un equipo; áreas nuevas creadas desde el panel de Equipo tampoco llegaban nunca al formulario de Tipos (porque ese formulario nunca releía la tabla).
+
+**Fix:** `GestionCatalogosRegistro.tsx` ahora carga `tramites_areas` en vivo (`loadAreas()`, mismo patrón que `GestionGruposVisualizacion.tsx`) y la usa en los dos `<select>` de Área ("Nuevo Tipo" y "Configuración"), con una opción "+ Crear nueva área..." que inserta en `tramites_areas` igual que ya hacía el panel de Equipo. Al guardar un tipo (crear, editar o clonar) ahora también se sincroniza `ticket_tipos.area_id`, que antes se quedaba en `NULL` para cualquier tipo personalizado creado desde esta UI. El listado agrupa por las áreas reales de la tabla, con un grupo de respaldo "Sin área reconocida" para que ningún tipo quede invisible mientras la migración de backfill no se haya corrido.
+**Why:** tres pantallas distintas (Áreas, Equipos, Tipos) deben compartir la MISMA fuente de verdad para "qué áreas existen" — es el mismo patrón de "tabla vs. UI desconectada" ya visto varias veces en este proyecto, solo que aquí el desajuste estaba en el frontend (una constante hardcodeada) y no en RLS.
+**How to apply:** si se agrega una nueva pantalla que necesite listar áreas, siempre leer `tramites_areas` (id, nombre, activa) — nunca hardcodear la lista ni asumir que `ticket_tipos.area`/`tramites_grupos_visualizacion.area_categoria` (columnas de texto libre, por compatibilidad) son la fuente de verdad.
 
 ## Asignación por Trámites — 3 capas de auto-asignación (agregado 2026-07-06)
 
