@@ -45,7 +45,7 @@ Deno.serve(async (req: Request) => {
     if (userError || !usuario) {
       return jsonError("User not found in system", 403);
     }
-    if (usuario.rol !== "Administrador") {
+    if (!['admin', 'administrador'].includes(usuario.rol?.toLowerCase())) {
       return jsonError("Insufficient permissions", 403);
     }
 
