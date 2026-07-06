@@ -1,25 +1,15 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTE — correr en Supabase la migración de "Asignación por Trámites" (2026-07-06)
+## ⏳ PENDIENTES — migraciones sin correr en Supabase (2026-07-06)
 
-**No se ha corrido todavía.** Ruta completa:
-`C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-produccion\supabase\migrations\20260706000001_asignacion_por_tramite_reglas_y_rpc.sql`
+Ninguna de estas se ha confirmado como corrida todavía. Pegar el contenido de cada archivo tal cual en el SQL Editor de Supabase, en este orden (no son excluyentes entre sí):
 
-Crea la tabla `tramites_reglas_por_tipo` (override manual agente+tipo) y reescribe el RPC `get_grupo_para_ticket()` con las 4 capas de resolución — ver sección "Asignación por Trámites" más abajo para el detalle completo. Pegar el contenido del archivo tal cual en el SQL Editor de Supabase. Retrocompatible: hasta que no se marque algún equipo como habilitado en la tab "Equipos habilitados" de un tipo, todo sigue resolviendo exactamente igual que antes.
+1. `supabase\migrations\20260706000001_asignacion_por_tramite_reglas_y_rpc.sql` — crea `tramites_reglas_por_tipo` (override manual agente+tipo) y reescribe el RPC `get_grupo_para_ticket()` con las 4 capas de resolución. Ver "Asignación por Trámites" más abajo. Retrocompatible.
+2. `supabase\migrations\20260706000002_sync_ticket_tipos_area_id.sql` — siembra en `tramites_areas` cualquier área en uso en `ticket_tipos.area` sin fila todavía, y backfillea `ticket_tipos.area_id`. Ver "Áreas de Tipos de Trámite desconectadas de tramites_areas". El frontend ya tiene fallback ("Sin área reconocida") mientras tanto.
+3. `supabase\migrations\20260706000003_store_triggers_filtro_pago_array.sql` — convierte `store_tramite_triggers.metodo_pago_filtro`/`forma_pago_filtro` de `text` a `text[]`. **Sin correrla, `StoreAdmin.tsx`/`StorePedidoDetalle.tsx` (que ya esperan arreglos) van a fallar al leer/guardar estas columnas.** Ver "Triggers de Store: método/forma de pago ahora admiten varios valores".
+4. `supabase\migrations\20260706000004_usuarios_beta.sql` — crea la tabla `usuarios_beta`. **Sin correrla, aprobar un trámite "Alta Usuario Beta" va a fallar al hacer el upsert.** Ver "Solicitud de acceso Beta desde el Dashboard".
 
-## ⏳ PENDIENTE — correr en Supabase la migración de sincronización de áreas (2026-07-06)
-
-**No se ha corrido todavía.** Ruta completa:
-`C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-produccion\supabase\migrations\20260706000002_sync_ticket_tipos_area_id.sql`
-
-Siembra en `tramites_areas` cualquier área que ya esté en uso en `ticket_tipos.area` pero que no exista todavía como fila (ej. "Administración"/"Otro" si algún tipo personalizado los usa), y backfillea `ticket_tipos.area_id` donde quedó `NULL`. Ver sección "Áreas de Tipos de Trámite desconectadas de tramites_areas" más abajo. El frontend ya tiene un fallback ("Sin área reconocida") para que ningún tipo desaparezca del listado mientras esta migración no se corre, pero el dropdown de Área en "Nuevo Tipo"/"Configuración" solo mostrará las áreas que ya existan como fila en `tramites_areas` hasta entonces.
-
-## ⏳ PENDIENTE — correr en Supabase la migración de filtros de pago en triggers (2026-07-06)
-
-**No se ha corrido todavía.** Ruta completa:
-`C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-produccion\supabase\migrations\20260706000003_store_triggers_filtro_pago_array.sql`
-
-Convierte `store_tramite_triggers.metodo_pago_filtro`/`forma_pago_filtro` de `text` a `text[]` (preserva los valores existentes como arreglo de un solo elemento). Sin correr esta migración, `StoreAdmin.tsx` (que ya espera arreglos) y `StorePedidoDetalle.tsx` (que ya usa `.includes()`) van a fallar al leer/guardar estas columnas como texto plano. Ver sección "Triggers de Store: método/forma de pago ahora admiten varios valores" más abajo.
+Ruta completa: `C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-produccion\` + cada ruta de arriba.
 
 ## ⚠️ Archivos huérfanos desde el rediseño del Dashboard (2026-07-06)
 El rediseño de `src/pages/Dashboard.tsx` (hero + módulos beta + favoritos + avisos) reemplazó por completo el Dashboard anterior. Los siguientes componentes ya **no los importa nadie en todo el repo** (confirmado con grep), pero se dejaron intactos a propósito — decisión explícita de Ricardo de no borrarlos todavía:
@@ -140,6 +130,15 @@ Cuando un pedido de MOVI Store cambia a un estatus configurado, se crea automát
 **Fix:** `GestionCatalogosRegistro.tsx` ahora carga `tramites_areas` en vivo (`loadAreas()`, mismo patrón que `GestionGruposVisualizacion.tsx`) y la usa en los dos `<select>` de Área ("Nuevo Tipo" y "Configuración"), con una opción "+ Crear nueva área..." que inserta en `tramites_areas` igual que ya hacía el panel de Equipo. Al guardar un tipo (crear, editar o clonar) ahora también se sincroniza `ticket_tipos.area_id`, que antes se quedaba en `NULL` para cualquier tipo personalizado creado desde esta UI. El listado agrupa por las áreas reales de la tabla, con un grupo de respaldo "Sin área reconocida" para que ningún tipo quede invisible mientras la migración de backfill no se haya corrido.
 **Why:** tres pantallas distintas (Áreas, Equipos, Tipos) deben compartir la MISMA fuente de verdad para "qué áreas existen" — es el mismo patrón de "tabla vs. UI desconectada" ya visto varias veces en este proyecto, solo que aquí el desajuste estaba en el frontend (una constante hardcodeada) y no en RLS.
 **How to apply:** si se agrega una nueva pantalla que necesite listar áreas, siempre leer `tramites_areas` (id, nombre, activa) — nunca hardcodear la lista ni asumir que `ticket_tipos.area`/`tramites_grupos_visualizacion.area_categoria` (columnas de texto libre, por compatibilidad) son la fuente de verdad.
+
+## Solicitud de acceso Beta desde el Dashboard (agregado 2026-07-06)
+La card "Únete a la Beta" del Dashboard (`src/pages/Dashboard.tsx`, `JoinBetaCard`) ya no abre un `mailto:` — abre `src/components/dashboard/SolicitudBetaModal.tsx`, un modal ligero hecho a medida (no reutiliza `NuevoTramiteModal.tsx`, que hoy no soporta precargar campos personalizados del FormBuilder). Crea un trámite real de tipo `alta_usuario_beta` (área Administración) autocompletando sus campos sistema (área, fecha, creado_por, oficina, equipo vía RPC `get_grupo_para_ticket`) — el único campo real que pide al usuario es un comentario opcional (`texto_corto_13`, no obligatorio).
+
+**El alta como usuario Beta NO ocurre al solicitar** — el tipo tiene su propio campo de Estatus del FormBuilder con 3 opciones (`iniciado`/inicio, `en_proceso_de_alta`/sin clasificación, `alta_finalizada`/**terminación**). Cuando un Admin cierra el trámite eligiendo "Alta Finalizada", se dispara el mismo mecanismo genérico que `TramiteDetalle.tsx` ya usa para auto-cerrar cualquier trámite al llegar a un estatus con `clasificacion='terminacion'` — justo ahí (`proceedWithSave`, bloque `hayTerminacion`) se agregó un `upsert` a la tabla nueva `usuarios_beta` (`usuario_id` único, `tramite_id`, `fecha_alta`), gateado a `tipo_tramite === 'alta_usuario_beta'`. No se construyó un motor de triggers nuevo — es el mismo patrón hardcodeado por tipo que ya usan `OPERATIONAL_TYPES`/`ESTATUS_FINALES_COTIZACION` en ese mismo archivo.
+
+`JoinBetaCard` consulta `usuarios_beta` y `tickets` (trámite propio sin cerrar) al montar para mostrar uno de 3 estados: botón "Solicitar acceso" (sin_solicitar), "Solicitud enviada, en revisión" (pendiente, evita duplicados) o "Ya eres usuario Beta, gracias por ayudarnos a mejorar" (ya_beta).
+
+**Decisión de diseño**: el campo "Agente / Vendedor" (sistema_key `agente_vendedor`) del tipo no se autocompleta con una respuesta real — no aplica a un flujo interno de autoservicio (no hay un `maestro_agentes` real detrás) y se deja mostrando "Sin registrar" (ya soportado por `TramiteDetalle.tsx`). Sí se guarda `tickets.agente_id = usuario.id` para que el solicitante vea su propio trámite en la lista de Trámites.
 
 ## Asignación por Trámites — 3 capas de auto-asignación (agregado 2026-07-06)
 
