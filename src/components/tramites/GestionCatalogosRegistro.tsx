@@ -9,7 +9,7 @@ import { HistorialPanel } from './catalogos/HistorialPanel';
 import { TriggersTab } from './catalogos/TriggersTab';
 import { EquiposHabilitadosPanel } from './catalogos/EquiposHabilitadosPanel';
 import { ColorPicker } from './catalogos/ColorPicker';
-import { type TicketTipo, AREAS, type Area, slugify } from './catalogos/types';
+import { type TicketTipo, slugify } from './catalogos/types';
 import { logHistorial } from './catalogos/logHistorial';
 
 interface TipoStats { tickets: number; campos: number }
@@ -37,8 +37,11 @@ export function GestionCatalogosRegistro() {
   const [tiposTramite, setTiposTramite] = useState<TicketTipo[]>([]);
   const [tiposStats, setTiposStats] = useState<Map<string, TipoStats>>(new Map());
   const [showNewTipoForm, setShowNewTipoForm] = useState(false);
-  const [newTipo, setNewTipo] = useState({ label: '', area: 'Comercial' as Area, color: '#0369a1' });
+  const [newTipo, setNewTipo] = useState({ label: '', area: '', color: '#0369a1' });
   const [searchTipo, setSearchTipo] = useState('');
+  // Áreas: misma tabla maestra que usan la tab "Áreas" y el panel de Equipo — antes este
+  // formulario usaba una lista hardcodeada (AREAS en types.ts) desconectada de la BD.
+  const [areasDisponibles, setAreasDisponibles] = useState<{ id: string; nombre: string }[]>([]);
   const [areaOpen, setAreaOpen] = useState<Record<string, boolean>>({});
   // "Tipos de Seguro" se ocultó (2026-07-06): reemplazado por el catálogo de ramos/subramos
   // de la BD (maestro_ramos). InsuranceTypesList.tsx y la tabla insurance_types siguen
@@ -46,7 +49,7 @@ export function GestionCatalogosRegistro() {
   const [tramitesOpen, setTramitesOpen] = useState(true);
 
   // ── Edit - Config tab ───────────────────────────────────────────────────
-  const [editConfig, setEditConfig] = useState({ label: '', area: 'Comercial' as Area, color: '#0369a1', slaDias: '' });
+  const [editConfig, setEditConfig] = useState({ label: '', area: '', color: '#0369a1', slaDias: '' });
   const [savingConfig, setSavingConfig] = useState(false);
   const [horasProductivasDia, setHorasProductivasDia] = useState(8);
 
@@ -74,6 +77,35 @@ export function GestionCatalogosRegistro() {
     supabase.from('configuracion_jornada').select('horas_productivas_dia').limit(1).single()
       .then(({ data }) => { if (data?.horas_productivas_dia) setHorasProductivasDia(data.horas_productivas_dia); });
   }, []);
+  useEffect(() => { loadAreas(); }, []);
+
+  const loadAreas = async () => {
+    const { data } = await supabase.from('tramites_areas').select('id, nombre').eq('activa', true).order('nombre');
+    const areas = (data || []) as { id: string; nombre: string }[];
+    setAreasDisponibles(areas);
+    if (areas.length > 0) {
+      setNewTipo(prev => prev.area ? prev : { ...prev, area: areas[0].nombre });
+    }
+  };
+
+  // Sentinel para la opción "+ Crear nueva área..." en los <select> de Área
+  const NUEVA_AREA_OPTION = '__nueva_area__';
+
+  const handleCrearAreaInline = async (onCreated: (nombre: string) => void) => {
+    const name = prompt('Nombre de la nueva área:')?.trim();
+    if (!name) return;
+    const existing = areasDisponibles.find(a => a.nombre.toLowerCase() === name.toLowerCase());
+    if (existing) { onCreated(existing.nombre); return; }
+    const slug = name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '_');
+    const { data, error } = await supabase
+      .from('tramites_areas')
+      .insert({ nombre: name, slug, color_hex: '#94a3b8', activa: true })
+      .select('id, nombre')
+      .single();
+    if (error) { showToast('Error al crear el área: ' + error.message, 'error'); return; }
+    setAreasDisponibles(prev => [...prev, data].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+    onCreated(data.nombre);
+  };
 
   const loadTiposTramite = async () => {
     const { data } = await supabase.from('ticket_tipos').select('*').order('orden');
@@ -122,10 +154,16 @@ export function GestionCatalogosRegistro() {
       )
     : tiposTramite;
 
-  const tiposGrouped = AREAS.map(area => ({
-    area,
-    items: filteredTipos.filter(t => t.area === area),
-  })).filter(g => g.items.length > 0);
+  const tiposGrouped = [
+    ...areasDisponibles.map(a => ({
+      area: a.nombre,
+      items: filteredTipos.filter(t => t.area === a.nombre),
+    })),
+    // Tipos cuya área ya no existe/está inactiva en tramites_areas — no deben quedar
+    // invisibles solo porque el área se desactivó o aún no se sincronizó (ver migración
+    // 20260706000002_sync_ticket_tipos_area_id.sql).
+    { area: 'Sin área reconocida', items: filteredTipos.filter(t => !areasDisponibles.some(a => a.nombre === t.area)) },
+  ].filter(g => g.items.length > 0);
 
   const isAreaOpen = (area: string) => areaOpen[area] !== false;
   const toggleArea = (area: string) => setAreaOpen(prev => ({ ...prev, [area]: !isAreaOpen(area) }));
@@ -134,7 +172,7 @@ export function GestionCatalogosRegistro() {
 
   const openEditor = (tipo: TicketTipo) => {
     setActiveTipo(tipo);
-    setEditConfig({ label: tipo.label, area: tipo.area as Area, color: tipo.color, slaDias: horasToDiasLabel(tipo.sla_horas) });
+    setEditConfig({ label: tipo.label, area: tipo.area, color: tipo.color, slaDias: horasToDiasLabel(tipo.sla_horas) });
     setActiveTab('config');
     setView('edit');
   };
@@ -156,7 +194,10 @@ export function GestionCatalogosRegistro() {
     setSavingConfig(true);
     const nuevoSlaHoras = diasToHoras(editConfig.slaDias);
     const payload: Record<string, any> = { label: editConfig.label.trim(), color: editConfig.color, sla_horas: nuevoSlaHoras };
-    if (activeTipo.is_custom) payload.area = editConfig.area;
+    if (activeTipo.is_custom) {
+      payload.area = editConfig.area;
+      payload.area_id = areasDisponibles.find(a => a.nombre === editConfig.area)?.id ?? null;
+    }
     const { error } = await supabase.from('ticket_tipos').update(payload).eq('id', activeTipo.id);
     if (error) { showToast('Error: ' + error.message, 'error'); }
     else {
@@ -178,12 +219,14 @@ export function GestionCatalogosRegistro() {
 
   const handleCreateTipo = async () => {
     if (!newTipo.label.trim()) { showToast('El nombre es obligatorio', 'error'); return; }
+    if (!newTipo.area) { showToast('Selecciona un área', 'error'); return; }
     const value = slugify(newTipo.label);
     if (!value) { showToast('El nombre no genera un identificador válido', 'error'); return; }
     setLoading(true);
     const maxOrden = tiposTramite.reduce((m, t) => Math.max(m, t.orden), 0);
+    const areaId = areasDisponibles.find(a => a.nombre === newTipo.area)?.id ?? null;
     const { data: newData, error } = await supabase.from('ticket_tipos').insert({
-      value, label: newTipo.label.trim(), area: newTipo.area, color: newTipo.color,
+      value, label: newTipo.label.trim(), area: newTipo.area, area_id: areaId, color: newTipo.color,
       activo: true, is_custom: true, orden: maxOrden + 1,
     }).select().single();
     setLoading(false);
@@ -193,7 +236,7 @@ export function GestionCatalogosRegistro() {
     }
     if (newData) logHistorial(newData.id, 'tipo_creado', { label: newTipo.label.trim(), area: newTipo.area, color: newTipo.color }, usuario?.id, usuario?.nombre_completo);
     showToast('Tipo de trámite creado');
-    setNewTipo({ label: '', area: 'Comercial', color: '#0369a1' });
+    setNewTipo({ label: '', area: areasDisponibles[0]?.nombre ?? '', color: '#0369a1' });
     setShowNewTipoForm(false);
     invalidateTiposTramiteCache();
     await loadTiposTramite();
@@ -244,8 +287,9 @@ export function GestionCatalogosRegistro() {
     setSavingQuick(true);
     try {
       const maxOrden = tiposTramite.reduce((m, t) => Math.max(m, t.orden), 0);
+      const areaId = areasDisponibles.find(a => a.nombre === tipo.area)?.id ?? null;
       const { data: nuevoTipo, error: insError } = await supabase.from('ticket_tipos').insert({
-        value, label: cloneLabel.trim(), area: tipo.area, color: tipo.color,
+        value, label: cloneLabel.trim(), area: tipo.area, area_id: areaId, color: tipo.color,
         sla_horas: tipo.sla_horas ?? null, activo: true, is_custom: true, orden: maxOrden + 1,
       }).select().single();
       if (insError) throw insError;
@@ -409,10 +453,17 @@ export function GestionCatalogosRegistro() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">Área</label>
                 <select
                   value={editConfig.area}
-                  onChange={(e) => setEditConfig({ ...editConfig, area: e.target.value as Area })}
+                  onChange={(e) => {
+                    if (e.target.value === NUEVA_AREA_OPTION) {
+                      handleCrearAreaInline((nombre) => setEditConfig(prev => ({ ...prev, area: nombre })));
+                      return;
+                    }
+                    setEditConfig({ ...editConfig, area: e.target.value });
+                  }}
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
                 >
-                  {AREAS.map(a => <option key={a} value={a}>{a}</option>)}
+                  {areasDisponibles.map(a => <option key={a.id} value={a.nombre}>{a.nombre}</option>)}
+                  <option value={NUEVA_AREA_OPTION}>+ Crear nueva área...</option>
                 </select>
               </div>
             )}
@@ -548,10 +599,17 @@ export function GestionCatalogosRegistro() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">Área</label>
                 <select
                   value={newTipo.area}
-                  onChange={(e) => setNewTipo({ ...newTipo, area: e.target.value as Area })}
+                  onChange={(e) => {
+                    if (e.target.value === NUEVA_AREA_OPTION) {
+                      handleCrearAreaInline((nombre) => setNewTipo(prev => ({ ...prev, area: nombre })));
+                      return;
+                    }
+                    setNewTipo({ ...newTipo, area: e.target.value });
+                  }}
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
                 >
-                  {AREAS.map(a => <option key={a} value={a}>{a}</option>)}
+                  {areasDisponibles.map(a => <option key={a.id} value={a.nombre}>{a.nombre}</option>)}
+                  <option value={NUEVA_AREA_OPTION}>+ Crear nueva área...</option>
                 </select>
               </div>
             </div>
