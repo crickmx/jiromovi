@@ -1,24 +1,11 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTE PARA LA PRÓXIMA SESIÓN — Habilitación de tipos de trámite por equipo (rediseño)
+## ⏳ PENDIENTE — correr en Supabase la migración de "Asignación por Trámites" (2026-07-06)
 
-**Pedido explícito del usuario (2026-07-04), NO implementar sin retomar el plan primero:**
+**No se ha corrido todavía.** Ruta completa:
+`C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-produccion\supabase\migrations\20260706000001_asignacion_por_tramite_reglas_y_rpc.sql`
 
-**Comportamiento actual (no deseado):** al crear un tipo de trámite nuevo, queda habilitado automáticamente para **todos** los equipos del área correspondiente.
-
-**Comportamiento deseado:**
-1. Por default, un tipo de trámite nuevo debe quedar **deshabilitado para todos los equipos**.
-2. El Admin lo habilita **manualmente** equipo por equipo.
-3. Además de la vista actual (parada en el equipo, viendo todos los tipos), agregar la **vista inversa**: desde la configuración del tipo de trámite (no desde el equipo), poder elegir **qué equipos lo van a tener habilitado para atenderlo** (atender, no crear — la creación de trámites es un tema distinto, no tocar).
-4. La UI de selección debe ser un **dropdown de selección múltiple** (multi-select), no lo que existe hoy.
-
-**Dónde está el intento actual (confuso, según el usuario):**
-- Tabla `tramite_team_tipo_config` (`team_id`, `tipo_id`, `habilitado`) — parada **en el equipo**: `src/components/tramites/GestionGruposVisualizacion.tsx` (~línea 275-446) carga todos los tipos del área y muestra un toggle habilitado/deshabilitado por tipo, con upsert en `handleToggle` (~436).
-- Se consume embebido en la tab "Equipos" de `src/pages/AdminTramites.tsx`.
-- **Ojo:** no se encontró ningún otro archivo que LEA `tramite_team_tipo_config` para filtrar qué tipos puede atender un equipo — hay que confirmar si el toggle actual tiene efecto real en algún lado (ej. al listar/asignar trámites) o si es otro caso de "tabla que no hace nada" como pasó antes con `tramite_equipo_tipo_permisos`/`usuario_team_permisos` (ver sección RESUELTO abajo). Si no tiene efecto real, el rediseño debe también conectarlo a donde se decide qué equipo atiende un trámite (`get_grupo_para_ticket`, `tramites_grupos_reglas`) — no solo cambiar la UI.
-- Existe tabla hermana `tramite_equipo_tipo_permisos` (ver/crear/editar por equipo × tipo, con tri-toggle null/✓/✗) de la tab "Visibilidad" de `AdminTramites.tsx` — **esa tab está OCULTA** desde 2026-07-02 porque no tenía efecto real. Antes de construir la vista inversa nueva, decidir si se reutiliza esta tabla/tab (ya tiene la forma equipo×tipo) o se hace desde cero — puede ser la misma raíz del "intento actual" que el usuario encuentra confuso.
-
-**Primer paso al retomar:** confirmar con el usuario si "deshabilitado por default" aplica también a tipos ya existentes (backfill) o solo a los nuevos de aquí en adelante, y trazar el plan antes de tocar código (así lo pidió para features de este tipo — ver "Cómo trabajar con Ricardo").
+Crea la tabla `tramites_reglas_por_tipo` (override manual agente+tipo) y reescribe el RPC `get_grupo_para_ticket()` con las 4 capas de resolución — ver sección "Asignación por Trámites" más abajo para el detalle completo. Pegar el contenido del archivo tal cual en el SQL Editor de Supabase. Retrocompatible: hasta que no se marque algún equipo como habilitado en la tab "Equipos habilitados" de un tipo, todo sigue resolviendo exactamente igual que antes.
 
 ## Cómo trabajar con Ricardo (usuario / responsable técnico JIRO)
 - Responde siempre en español.
@@ -99,7 +86,9 @@ Es una simulación **solo de cliente**: `MoviAuthContext`/`ImpersonationContext`
 | `src/components/tramites/catalogos/FormBuilderTab.tsx` | UI del form builder por tipo | Canvas draggable, panel agregar/editar, bloque "Acceso por rol": ~348 |
 | `src/components/tramites/catalogos/useFormBuilder.ts` | Hook lógica form builder | `LOCKED_SISTEMA_KEYS`, `CONFIGURABLE_SISTEMA_KEYS`, `SISTEMA_CAMPO_DEFAULTS` |
 | `src/components/tramites/catalogos/types.ts` | Tipos TS compartidos | `CampoTipo` union, `SISTEMA_TIPO_META`, `TipoCampo` interface |
-| `src/pages/AdminTramites.tsx` | /admin/tramites — Áreas, Tipos, Equipos, Permisos, Reglas | Tab render: ~779 |
+| `src/pages/AdminTramites.tsx` | /admin/tramites — Áreas, Tipos, Equipos, Permisos, Reglas, Asignación por Trámites | Tab render: ~782 |
+| `src/components/tramites/AsignacionPorTramite.tsx` | Tab "Asignación por Trámites" — override manual agente+tipo | `handleAgregar`/`handleQuitar`/`handleCambiarEjecutivo` |
+| `src/components/tramites/catalogos/EquiposHabilitadosPanel.tsx` | Sub-tab "Equipos habilitados" dentro de un tipo de trámite | `toggleEquipo`, `buscarConflicto` (validación de ambigüedad por oficina) |
 | `src/pages/StorePedidoDetalle.tsx` | Detalle de pedido de MOVI Store + disparo de triggers Store→Trámites | `dispararTriggersEstatus`: ~268 · `handleCambiarEstatus`: ~215 · `handleGuardarPago`: ~464 |
 | `src/pages/StoreAdmin.tsx` | Admin Tienda MOVI: Productos/Categorías/Equipos/Triggers | `TriggersPanel` (mapeo de campos + filtro método/forma de pago): ~1364 |
 | `src/lib/storeUtils.ts` | Utilidades de Store: pedidos, acceso por equipo, triggers | `resolverTemplatePedido`, `obtenerMapeoCamposTrigger`, `tieneAccesoEquipoStore` |
@@ -119,6 +108,21 @@ Cuando un pedido de MOVI Store cambia a un estatus configurado, se crea automát
 - **Orden de trabajo esperado** (confirmado con el usuario): primero se llena y guarda "Información de Pago" (Responsable/Método/Forma), **después** se cambia el estatus a "Confirmado" — por eso `handleCambiarEstatus` bloquea el cambio a "Confirmado" si falta cualquiera de esos 3 campos guardados en el pedido.
 - **RLS**: todas las tablas involucradas (`store_productos`, `store_categorias`, `store_pedidos_detalle`, `store_pedidos_notas`, `store_pedidos_historial`, `store_pedido_gastos`, `store_pedido_detalle_gastos`, `store_tramite_triggers`, `store_tramite_trigger_campos`) ya extendidas para equipos con `store_equipos_acceso`, no solo Administrador.
 
+## Asignación por Trámites — 3 capas de auto-asignación (agregado 2026-07-06)
+
+Extiende la auto-asignación de trámites (antes solo "ASIGNACIÓN POR EQUIPOS": agente+área → equipo, vía `tramites_grupos_reglas`) con dos capas más específicas. Todo se resuelve en un único RPC, `get_grupo_para_ticket(p_agente_id, p_tipo_tramite)`, llamado desde `resolveGrupoParaTicket()` en `NuevoTramiteModal.tsx` — el frontend no cambió su forma de llamarlo, solo el RPC gano niveles. Prioridad de más a menos específica:
+
+1. **Override manual (agente + tipo de trámite específico)** — tabla `tramites_reglas_por_tipo` (`usuario_id, tipo_id, grupo_id, ejecutivo_id` nullable = pool, `activo`). Se edita desde la tab nueva **"Asignación por Trámites"** en Admin > Trámites (`AsignacionPorTramite.tsx`). Gana sobre todo lo demás.
+2. **Automático por oficina** — usa `tramite_team_tipo_config` (`team_id, tipo_id, habilitado` — **esta tabla ya existía pero antes nadie la leía**, ver "RESUELTO" abajo) cruzado con `tramites_grupos_oficinas`/`all_offices` (a qué oficinas sirve cada equipo, también ya existía). Se configura desde la sub-tab **"Equipos habilitados"** dentro de la edición de un tipo de trámite (`GestionCatalogosRegistro.tsx` → `EquiposHabilitadosPanel.tsx`), filtrada a equipos de la misma área que el tipo. Un equipo con oficina específica coincidente gana sobre uno marcado `all_offices` (catch-all).
+3. **Regla vieja agente + área** — `tramites_grupos_reglas`, sin cambios, sigue siendo el fallback cuando ningún tipo tiene equipos habilitados en el nivel 2 y no hay override en el nivel 1.
+4. **Sin match** — como antes, el trámite queda con `grupo_asignado_id = NULL`, visible solo a Admin/Gerente-de-la-oficina/quien lo creó. **Nuevo**: en este caso se notifica a todos los Administradores activos (`crearNotificacion`, mismo patrón que el bloque "agente sin cuenta MOVI" de `NuevoTramiteModal.tsx`) para que no se pierda de vista — antes no había ningún aviso.
+
+**Validación de ambigüedad**: al marcar un equipo como habilitado para un tipo en `EquiposHabilitadosPanel.tsx`, si otro equipo ya habilitado para ese mismo tipo comparte oficina (o alguno es `all_offices`), se muestra un `confirm()` de advertencia antes de guardar — decisión explícita de Ricardo de prevenir la ambigüedad en configuración en vez de resolverla en silencio en tiempo de asignación.
+
+**Retrocompatibilidad**: como hoy ningún tipo tiene filas en `tramite_team_tipo_config`, el nivel 2 nunca aplica todavía — todo sigue resolviendo exactamente igual que antes hasta que Ricardo empiece a habilitar equipos por tipo.
+
+**Migración pendiente de correr** (ver aviso al principio del archivo): `supabase/migrations/20260706000001_asignacion_por_tramite_reglas_y_rpc.sql`.
+
 ## RESUELTO — historial compacto
 - **2026-07-02**: categoría de adjuntos no se asignaba al adjuntar desde FormBuilder (`38947464`). Sistemas huérfanos de permisos por equipo (`tramite_equipo_tipo_permisos`, `tramite_team_tipo_config`, `usuario_team_permisos`) sin efecto real — tabs ocultas en `AdminTramites.tsx`/`PermisosPanel.tsx`, tablas intactas por si se retoma.
 - **2026-07-02**: líder de equipo no veía trámites de su equipo — `isAgente` cortaba el flujo antes de `isLiderOfGroup` en `Tramites.tsx`. Estatus FormBuilder no se mostraba en kanban/tablero (2 de 3 lugares usaban el campo legacy en vez de `custom_estatus_label`).
@@ -129,6 +133,7 @@ Cuando un pedido de MOVI Store cambia a un estatus configurado, se crea automát
 - **2026-07-03**: nunca existió política `UPDATE` para `store_pedidos_detalle` — el campo "Costo unit." fallaba en silencio para todos, incluido Admin.
 - **2026-07-03/04**: módulo de triggers Store→Trámites roto de fondo + sin mapeo de campos + sin feedback — ver sección dedicada arriba.
 - **2026-07-04**: `handleGuardarPago` no revisaba el resultado del `UPDATE` — si fallaba, los campos de pago volvían a aparecer vacíos sin ningún aviso. `forma_pago_oc` (enum) no coincidía con las opciones reales del frontend — ver "Patrón recurrente #2".
+- **2026-07-06**: `tramite_team_tipo_config` (team_id, tipo_id, habilitado) ya existía desde antes pero ningún archivo la leía para tomar decisiones (era pura UI sin efecto, igual que `tramite_equipo_tipo_permisos`/`usuario_team_permisos` en su momento) — ahora sí tiene efecto real, ver "Asignación por Trámites" arriba.
 
 ## Patrones frecuentes
 
