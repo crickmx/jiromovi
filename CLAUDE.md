@@ -1,17 +1,5 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES — migraciones sin correr en Supabase (2026-07-06)
-
-Ninguna de estas se ha confirmado como corrida todavía. Pegar el contenido de cada archivo tal cual en el SQL Editor de Supabase, en este orden (no son excluyentes entre sí):
-
-1. `supabase\migrations\20260706000001_asignacion_por_tramite_reglas_y_rpc.sql` — crea `tramites_reglas_por_tipo` (override manual agente+tipo) y reescribe el RPC `get_grupo_para_ticket()` con las 4 capas de resolución. Ver "Asignación por Trámites" más abajo. Retrocompatible.
-2. `supabase\migrations\20260706000002_sync_ticket_tipos_area_id.sql` — siembra en `tramites_areas` cualquier área en uso en `ticket_tipos.area` sin fila todavía, y backfillea `ticket_tipos.area_id`. Ver "Áreas de Tipos de Trámite desconectadas de tramites_areas". El frontend ya tiene fallback ("Sin área reconocida") mientras tanto.
-3. `supabase\migrations\20260706000003_store_triggers_filtro_pago_array.sql` — convierte `store_tramite_triggers.metodo_pago_filtro`/`forma_pago_filtro` de `text` a `text[]`. **Sin correrla, `StoreAdmin.tsx`/`StorePedidoDetalle.tsx` (que ya esperan arreglos) van a fallar al leer/guardar estas columnas.** Ver "Triggers de Store: método/forma de pago ahora admiten varios valores".
-4. `supabase\migrations\20260706000004_usuarios_beta.sql` — crea la tabla `usuarios_beta`. **Sin correrla, aprobar un trámite "Alta Usuario Beta" va a fallar al hacer el upsert.** Ver "Solicitud de acceso Beta desde el Dashboard".
-5. `supabase\migrations\20260706000005_tramite_tipo_secciones.sql` — crea `tramite_tipo_secciones` y agrega `seccion_id` a `tramite_tipo_campos`. Retrocompatible: sin secciones creadas, todo se ve igual que hoy. Ver "Secciones del FormBuilder".
-
-Ruta completa: `C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-produccion\` + cada ruta de arriba.
-
 ## ⚠️ Archivos huérfanos desde el rediseño del Dashboard (2026-07-06)
 El rediseño de `src/pages/Dashboard.tsx` (hero + módulos beta + favoritos + avisos) reemplazó por completo el Dashboard anterior. Los siguientes componentes ya **no los importa nadie en todo el repo** (confirmado con grep), pero se dejaron intactos a propósito — decisión explícita de Ricardo de no borrarlos todavía:
 - `src/components/dashboard/DashboardHero.tsx`
@@ -180,6 +168,7 @@ Extiende la auto-asignación de trámites (antes solo "ASIGNACIÓN POR EQUIPOS":
 - **2026-07-04**: `handleGuardarPago` no revisaba el resultado del `UPDATE` — si fallaba, los campos de pago volvían a aparecer vacíos sin ningún aviso. `forma_pago_oc` (enum) no coincidía con las opciones reales del frontend — ver "Patrón recurrente #2".
 - **2026-07-06**: `tramite_team_tipo_config` (team_id, tipo_id, habilitado) ya existía desde antes pero ningún archivo la leía para tomar decisiones (era pura UI sin efecto, igual que `tramite_equipo_tipo_permisos`/`usuario_team_permisos` en su momento) — ahora sí tiene efecto real, ver "Asignación por Trámites" arriba.
 - **2026-07-06**: ejecutivo de equipo con acceso a Store no podía cambiar el Estatus de un pedido ajeno ni se disparaban sus triggers — la migración `20260703000004_store_pedido_admin_secciones_equipo_acceso.sql` (políticas de equipo para `store_pedidos_historial`, `store_pedidos_notas`, `store_pedido_gastos`, `store_pedido_detalle_gastos`, `store_pedidos_detalle` UPDATE) estaba en el repo desde el 3 de julio pero nunca se había corrido en Supabase — confirmado con `select policyname, cmd from pg_policies where tablename = 'store_pedidos_historial'` (faltaban las políticas `_equipo_*`). Se corrió manualmente y quedó resuelto.
+- **2026-07-06**: migraciones `20260706000001` a `20260706000005` (asignación por trámites — `tramites_reglas_por_tipo` + RPC de 4 capas; sincronización de `ticket_tipos.area_id` con `tramites_areas`; filtros de pago en triggers de Store convertidos a array; tabla `usuarios_beta`; secciones del FormBuilder — `tramite_tipo_secciones` + `tramite_tipo_campos.seccion_id`) confirmadas corridas en Supabase.
 
 ## Patrones frecuentes
 
