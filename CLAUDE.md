@@ -7,6 +7,27 @@
 
 Crea la tabla `tramites_reglas_por_tipo` (override manual agente+tipo) y reescribe el RPC `get_grupo_para_ticket()` con las 4 capas de resolución — ver sección "Asignación por Trámites" más abajo para el detalle completo. Pegar el contenido del archivo tal cual en el SQL Editor de Supabase. Retrocompatible: hasta que no se marque algún equipo como habilitado en la tab "Equipos habilitados" de un tipo, todo sigue resolviendo exactamente igual que antes.
 
+## ⚠️ Archivos huérfanos desde el rediseño del Dashboard (2026-07-06)
+El rediseño de `src/pages/Dashboard.tsx` (hero + módulos beta + favoritos + avisos) reemplazó por completo el Dashboard anterior. Los siguientes componentes ya **no los importa nadie en todo el repo** (confirmado con grep), pero se dejaron intactos a propósito — decisión explícita de Ricardo de no borrarlos todavía:
+- `src/components/dashboard/DashboardHero.tsx`
+- `src/components/dashboard/ChavaInsightsCard.tsx`
+- `src/components/dashboard/WidgetGrid.tsx`
+- `AccesosRapidosWidget` (export dentro de `src/components/dashboard/DashboardWidgets.tsx` — el resto del archivo puede seguir en uso, verificar antes de tocarlo)
+**How to apply:** si se retoma esta limpieza, volver a confirmar con `grep` que siguen sin uso (por si "otro chat" los reconectó) antes de borrar.
+
+## ⏳ PENDIENTE — verificar si la migración de equipo-en-Store del 2026-07-03 ya corrió (2026-07-06)
+**Síntoma reportado:** un ejecutivo de un equipo con acceso a Store (ej. usuario Mercadotecnia, equipo Merca) ve el panel completo del pedido correctamente, pero al cambiar el Estatus sale el toast rojo "Error al actualizar el estatus del pedido." y **tampoco se disparan los triggers automáticos** configurados para ese cambio de estatus.
+
+**Diagnóstico (sin confirmar en vivo, no se tocó código):** `actualizarEstatusPedido()` en `storeUtils.ts:841` primero hace `UPDATE` a `store_pedidos` y LUEGO un `INSERT` a `store_pedidos_historial`; si cualquiera de los dos falla, lanza el error y `StorePedidoDetalle.tsx` nunca llega a `dispararTriggersEstatus()` (línea 251, después del `await` que falló) — un solo fallo explica ambos síntomas reportados.
+
+La política INSERT de `store_pedidos_historial` para equipos con acceso (`store_pedidos_historial_equipo_crear`) se creó en la migración `supabase/migrations/20260703000004_store_pedido_admin_secciones_equipo_acceso.sql` — **si esa migración no se corrió en Supabase todavía**, un ejecutivo que no es dueño del pedido ni Admin sigue bloqueado por la política vieja (`20251126222726`, solo dueño o Admin), y el `INSERT` falla exactamente como se describe.
+
+**Primer paso al retomar:** confirmar en el SQL Editor de Supabase si la política ya existe:
+```sql
+select policyname, cmd from pg_policies where tablename = 'store_pedidos_historial' order by cmd;
+```
+Si falta `store_pedidos_historial_equipo_crear`, correr el contenido completo de `20260703000004_store_pedido_admin_secciones_equipo_acceso.sql` (también cubre `store_pedidos_notas`, `store_pedido_gastos`, `store_pedido_detalle_gastos`, `store_pedidos_detalle` UPDATE). Si la política ya existe y el error persiste, revisar también la política UPDATE de `store_pedidos` (`store_pedidos_equipo_update`, de `20260702000010_store_equipos_triggers.sql`) con el mismo método.
+
 ## Cómo trabajar con Ricardo (usuario / responsable técnico JIRO)
 - Responde siempre en español.
 - Cuando crees o referencies una migración, da la ruta completa de una vez: `C:\Users\medau\Desktop\jiromovi-main\supabase\migrations\<archivo>.sql` — la pide en cada sesión.
