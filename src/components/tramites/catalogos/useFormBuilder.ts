@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 import { type TipoCampo, type TramiteSeccion, type CampoTipo, type RolVisibilidad, CAMPO_TIPOS, slugify } from './types';
@@ -123,6 +123,8 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
   };
 
   const startEditCampo = (campo: TipoCampo) => {
+    flushAutoSaveCampo();
+    skipNextAutoSaveRef.current = true;
     setEditingCampo(campo);
     setEditCampoLabel(campo.label);
     setEditCampoReq(campo.requerido);
@@ -198,10 +200,48 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
         ? { ...c, label: editCampoLabel.trim(), requerido: editCampoReq, config: editCampoConfig, ayuda: editCampoAyuda || null, visible_para_rol: editCampoVisiblePara, editable_para_rol: editCampoEditablePara, seccion_id: editCampoSeccionId }
         : c
     ));
-    setEditingCampo(null);
-    showToast('Campo guardado');
+    showToast('Cambios guardados automáticamente');
     setSavingCampo(false);
   };
+
+  // ── Autoguardado del campo en edición ───────────────────────────────────────
+  // Guarda solos con debounce mientras el admin edita, sin necesidad de un botón.
+  const handleSaveCampoRef = useRef(handleSaveCampo);
+  handleSaveCampoRef.current = handleSaveCampo;
+  const autoSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoSaveDirtyRef = useRef(false);
+  const skipNextAutoSaveRef = useRef(false);
+
+  const flushAutoSaveCampo = () => {
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+      autoSaveTimeoutRef.current = null;
+    }
+    if (autoSaveDirtyRef.current) {
+      autoSaveDirtyRef.current = false;
+      handleSaveCampoRef.current();
+    }
+  };
+
+  const closeCampoEditor = () => {
+    flushAutoSaveCampo();
+    setEditingCampo(null);
+  };
+
+  useEffect(() => {
+    if (!editingCampo) return;
+    if (skipNextAutoSaveRef.current) { skipNextAutoSaveRef.current = false; return; }
+    autoSaveDirtyRef.current = true;
+    if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      autoSaveDirtyRef.current = false;
+      autoSaveTimeoutRef.current = null;
+      handleSaveCampoRef.current();
+    }, 700);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editCampoLabel, editCampoReq, editCampoConfig, editCampoAyuda, editCampoVisiblePara, editCampoEditablePara, editCampoSeccionId]);
+
+  useEffect(() => () => flushAutoSaveCampo(), []);
 
   const handleDeleteCampo = async (campo: TipoCampo) => {
     // Campos fijos del sistema: nunca se pueden eliminar
@@ -313,11 +353,25 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     }
   };
 
+  const handleDropOnSeccion = async (e: React.DragEvent, seccionId: string | null) => {
+    e.preventDefault();
+    setDragging(null);
+    const idx = dragIdx.current;
+    dragIdx.current = null;
+    if (idx === null) return;
+    const campo = campos[idx];
+    if (!campo || isLocked(campo) || campo.seccion_id === seccionId) return;
+    setCampos(prev => prev.map(c => c.id === campo.id ? { ...c, seccion_id: seccionId } : c));
+    const { error } = await supabase.from('tramite_tipo_campos').update({ seccion_id: seccionId }).eq('id', campo.id);
+    if (error) { showToast('Error al asignar el campo a la sección: ' + error.message, 'error'); return; }
+    showToast(seccionId ? 'Campo asignado a la sección' : 'Campo removido de la sección');
+  };
+
   return {
     campos, loadingCampos, loadCampos, reset,
     showAddField, setShowAddField,
     showPreview, setShowPreview,
-    editingCampo, setEditingCampo, startEditCampo,
+    editingCampo, setEditingCampo, startEditCampo, closeCampoEditor,
     editCampoLabel, setEditCampoLabel,
     editCampoReq, setEditCampoReq,
     editCampoConfig, setEditCampoConfig,
@@ -328,7 +382,7 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     savingCampo,
     dragging,
     handleAddCampo, handleAddSistemaCampo, handleSaveCampo, handleDeleteCampo,
-    handleDragStart, handleDragOver, handleDrop,
+    handleDragStart, handleDragOver, handleDrop, handleDropOnSeccion,
     // Secciones
     secciones, loadingSecciones, loadSecciones,
     editingSeccion, setEditingSeccion,
