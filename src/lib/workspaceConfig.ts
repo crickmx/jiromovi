@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, HardDrive, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow, Clock, Camera, Sparkles, Bookmark } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, HardDrive, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow, Clock, Camera, Sparkles, Bookmark, PanelLeft } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
@@ -180,6 +180,7 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/admin/mascara', label: 'Mascara de Usuario', icon: UserCog, visibleTo: ADMIN_ONLY },
     { path: '/admin/telefonia', label: 'Telefonía', icon: Phone, visibleTo: ADMIN_ONLY },
     { path: '/admin/modulos', label: 'Control de Módulos', icon: LayoutGrid, visibleTo: ADMIN_ONLY },
+    { path: '/admin/sidebar-editor', label: 'Editor de Sidebar', icon: PanelLeft, visibleTo: ADMIN_ONLY },
     // Inteligencia Artificial
     { path: '/admin/chava-inteligencia', label: 'Dashboard IA', icon: BrainCircuit, visibleTo: ADMIN_ONLY },
     { path: '/admin/base-conocimiento', label: 'Base Conocimiento', icon: LibraryBig, visibleTo: ADMIN_ONLY },
@@ -214,6 +215,46 @@ export const NAV_ORDER: NavEntry[] = [
   { type: 'link', item: { path: '/store', label: 'MOVI Store', icon: ShoppingBag, visibleTo: ALL_ROLES } },
   { type: 'link', item: { path: '/comunicados', label: 'Comunicados', icon: Newspaper, visibleTo: ALL_ROLES, matchPrefix: true } },
 ];
+
+// ── Editor de Sidebar: orden/separadores/badges configurables desde Admin ──────
+// No cambia rutas ni permisos — solo decora/reordena los NavEntry de arriba.
+
+export interface SidebarConfigRow {
+  entry_key: string;
+  orden: number;
+  separador_antes: boolean;
+  badge_texto: string | null;
+  badge_color: string;
+}
+
+export interface ResolvedNavEntry {
+  entry: NavEntry;
+  orden: number;
+  separadorAntes: boolean;
+  badge: { texto: string; color: string } | null;
+}
+
+/** Identificador estable de un NavEntry: el path del link, o el id del workspace. */
+export function getEntryKey(entry: NavEntry): string {
+  return entry.type === 'link' ? entry.item.path : entry.workspace.id;
+}
+
+/** Combina el orden fijo de NAV_ORDER con la config editable (orden/separador/badge) guardada en BD. */
+export function resolveNavOrder(configRows: SidebarConfigRow[]): ResolvedNavEntry[] {
+  const configByKey = new Map(configRows.map(c => [c.entry_key, c]));
+  return NAV_ORDER
+    .map((entry, idx) => {
+      const key = getEntryKey(entry);
+      const cfg = configByKey.get(key);
+      return {
+        entry,
+        orden: cfg?.orden ?? idx,
+        separadorAntes: cfg?.separador_antes ?? false,
+        badge: cfg?.badge_texto ? { texto: cfg.badge_texto, color: cfg.badge_color } : null,
+      };
+    })
+    .sort((a, b) => a.orden - b.orden);
+}
 
 export function isWorkspaceVisible(ws: WorkspaceDefinition, userRole: UserRole): boolean {
   if (ws.visibleTo.length === 0) return true;

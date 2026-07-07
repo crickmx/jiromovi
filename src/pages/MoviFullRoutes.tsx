@@ -121,6 +121,7 @@ const AutomatizacionIA = lazy(() => import('./AutomatizacionIA'));
 const MascaraAdmin = lazy(() => import('./MascaraAdmin'));
 const TelefoniaAdmin = lazy(() => import('./TelefoniaAdmin'));
 const ModulosAdmin = lazy(() => import('./ModulosAdmin'));
+const SidebarEditorAdmin = lazy(() => import('./SidebarEditorAdmin'));
 const BaseDatosMaestrosAdmin = lazy(() => import('./BaseDatosMaestrosAdmin'));
 const AdminTramites = lazy(() => import('./AdminTramites'));
 const DiasNoHabiles = lazy(() => import('./admin/DiasNoHabiles'));
@@ -294,6 +295,7 @@ export default function MoviFullRoutes() {
           <Route path="/admin/gamificacion" element={<ProtectedRoute requireAdmin><GamificacionAdmin /></ProtectedRoute>} />
           <Route path="/admin/automatizacion-ia" element={<ProtectedRoute requireAdmin><AutomatizacionIA /></ProtectedRoute>} />
           <Route path="/admin/modulos" element={<ProtectedRoute requireAdmin><ModulosAdmin /></ProtectedRoute>} />
+          <Route path="/admin/sidebar-editor" element={<ProtectedRoute requireAdmin><SidebarEditorAdmin /></ProtectedRoute>} />
           <Route path="/admin/base-datos" element={<ProtectedRoute requireAdmin><BaseDatosMaestrosAdmin /></ProtectedRoute>} />
           <Route path="/admin/tramites" element={<ProtectedRoute requireAdmin><AdminTramites /></ProtectedRoute>} />
           <Route path="/admin/dias-no-habiles" element={<ProtectedRoute requireAdmin><DiasNoHabiles /></ProtectedRoute>} />

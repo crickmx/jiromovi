@@ -1,13 +1,23 @@
+import { Fragment } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LogOut, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { NAV_ORDER, isWorkspaceVisible, isTopLevelItemVisible } from '@/lib/workspaceConfig';
+import { isWorkspaceVisible, isTopLevelItemVisible } from '@/lib/workspaceConfig';
 import type { WorkspaceId, UserRole } from '@/lib/workspaceConfig';
+import { useSidebarConfig } from '../../hooks/useSidebarConfig';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { NotificationBell } from '../NotificationBell';
 import { ThemeToggle } from '../ThemeToggle';
 import { ChavaOrbIcon } from '../chava/ChavaOrbIcon';
+
+const BADGE_COLORS: Record<string, string> = {
+  amber: 'bg-amber-500 text-white',
+  green: 'bg-green-500 text-white',
+  blue: 'bg-blue-500 text-white',
+  red: 'bg-red-500 text-white',
+  purple: 'bg-purple-500 text-white',
+};
 
 interface Props {
   activeWorkspaceId: WorkspaceId | null;
@@ -27,6 +37,7 @@ const TOOLTIP_CLS = "text-xs font-semibold bg-slate-900 text-white border-slate-
 export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut, mobileMode, onMobileClose, isModuleVisible, oficinaId, workspaceBadges, topLevelBadges }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { resolved } = useSidebarConfig();
 
   const getInitials = () => {
     const n = usuario?.nombre?.[0] || '';
@@ -76,7 +87,22 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
 
         {/* Navigation */}
         <div className="flex-1 flex flex-col items-center gap-1.5 py-2 overflow-y-auto w-full px-2.5">
-          {NAV_ORDER.map((entry, idx) => {
+          {resolved.map(({ entry, separadorAntes, badge }, idx) => {
+            const separatorEl = separadorAntes ? (
+              <div key={`sep-${idx}`} className="sidebar-rail-sep w-8 h-px my-1" />
+            ) : null;
+
+            const customBadgeEl = badge ? (
+              <span
+                className={cn(
+                  'absolute -bottom-1 -right-1 px-1 py-[1px] rounded-full text-[7px] font-bold leading-none whitespace-nowrap',
+                  BADGE_COLORS[badge.color] ?? BADGE_COLORS.amber
+                )}
+              >
+                {badge.texto}
+              </span>
+            ) : null;
+
             if (entry.type === 'link') {
               const item = entry.item;
               if (!isTopLevelItemVisible(item, userRole)) return null;
@@ -99,33 +125,40 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
 
               if (mobileMode) {
                 return (
-                  <button
-                    key={`link-${idx}`}
-                    onClick={() => handleNav(item.path)}
-                    className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90 relative', isActive && 'active')}
-                    title={item.label}
-                  >
-                    <Icon className="w-[18px] h-[18px]" />
-                    {tlBadgeEl}
-                  </button>
+                  <Fragment key={`link-${idx}`}>
+                    {separatorEl}
+                    <button
+                      onClick={() => handleNav(item.path)}
+                      className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90 relative', isActive && 'active')}
+                      title={badge ? `${item.label} · ${badge.texto}` : item.label}
+                    >
+                      <Icon className="w-[18px] h-[18px]" />
+                      {tlBadgeEl}
+                      {customBadgeEl}
+                    </button>
+                  </Fragment>
                 );
               }
 
               return (
-                <Tooltip key={`link-${idx}`}>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => handleNav(item.path)}
-                      className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90 relative', isActive && 'active')}
-                    >
-                      <Icon className="w-[18px] h-[18px]" />
-                      {tlBadgeEl}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={10} className={TOOLTIP_CLS}>
-                    {item.label}
-                  </TooltipContent>
-                </Tooltip>
+                <Fragment key={`link-${idx}`}>
+                  {separatorEl}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => handleNav(item.path)}
+                        className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90 relative', isActive && 'active')}
+                      >
+                        <Icon className="w-[18px] h-[18px]" />
+                        {tlBadgeEl}
+                        {customBadgeEl}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={10} className={TOOLTIP_CLS}>
+                      {badge ? `${item.label} · ${badge.texto}` : item.label}
+                    </TooltipContent>
+                  </Tooltip>
+                </Fragment>
               );
             }
 
@@ -151,7 +184,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
               <button
                 onClick={() => handleNav(firstPath)}
                 className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90 relative', isActive && 'active')}
-                title={mobileMode ? ws.label : undefined}
+                title={mobileMode ? (badge ? `${ws.label} · ${badge.texto}` : ws.label) : undefined}
               >
                 <Icon className="w-[18px] h-[18px]" />
                 {wsBadge > 0 && (
@@ -165,22 +198,26 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                     </span>
                   </span>
                 )}
+                {customBadgeEl}
               </button>
             );
 
             if (mobileMode) {
-              return <div key={ws.id}>{wsButton}</div>;
+              return <Fragment key={ws.id}>{separatorEl}<div>{wsButton}</div></Fragment>;
             }
 
             return (
-              <Tooltip key={ws.id}>
-                <TooltipTrigger asChild>
-                  {wsButton}
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={10} className={TOOLTIP_CLS}>
-                  {ws.label}
-                </TooltipContent>
-              </Tooltip>
+              <Fragment key={ws.id}>
+                {separatorEl}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {wsButton}
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={10} className={TOOLTIP_CLS}>
+                    {badge ? `${ws.label} · ${badge.texto}` : ws.label}
+                  </TooltipContent>
+                </Tooltip>
+              </Fragment>
             );
           })}
         </div>

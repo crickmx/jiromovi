@@ -157,6 +157,15 @@ Extiende la auto-asignación de trámites (antes solo "ASIGNACIÓN POR EQUIPOS":
 
 **Migración pendiente de correr** (ver aviso al principio del archivo): `supabase/migrations/20260706000001_asignacion_por_tramite_reglas_y_rpc.sql`.
 
+## Editor de Sidebar (agregado 2026-07-06)
+Nueva pantalla `/admin/sidebar-editor` (Admin > Editor de Sidebar, solo Administrador) para reordenar los ~12 íconos de la barra angosta izquierda (`PrimarySidebar.tsx`), agregar líneas separadoras entre grupos, y ponerle un badge de texto (ej. "BETA", "NUEVO") a cualquier ícono. Un solo diseño para todos los usuarios — no es personalizable por persona.
+
+**No cambia rutas, permisos ni crea páginas nuevas** — `workspaceConfig.ts` (`NAV_ORDER`/`WORKSPACES`/`TOP_LEVEL_ITEMS`, con sus `visibleTo`/`matchPrefix`/`excludePrefixes`) sigue siendo la fuente de verdad de QUÉ existe y quién lo puede ver. Lo nuevo es puramente de presentación:
+- Tabla `sidebar_config` (`entry_key` único = path del link o id del workspace, `orden`, `separador_antes`, `badge_texto`, `badge_color`) — migración `20260706000009_sidebar_config.sql`. RLS: lectura para cualquier autenticado, escritura solo Administrador.
+- `workspaceConfig.ts` → `getEntryKey()` (identifica un NavEntry) y `resolveNavOrder(configRows)` (combina el `NAV_ORDER` fijo con la config editable — si un entry no tiene fila en `sidebar_config`, usa su posición original, retrocompatible con tablero vacío).
+- `useSidebarConfig()` (`src/hooks/`) — carga `sidebar_config` y expone la lista ya resuelta/ordenada.
+- `PrimarySidebar.tsx` reemplazó su `NAV_ORDER.map(...)` directo por `useSidebarConfig().resolved.map(...)`, agregando el separador (línea) y el badge de texto (pill pequeño en la esquina del ícono, distinto del badge rojo de notificaciones que ya existía) por cada entry. Como el mismo componente sirve versión desktop y mobile (`mobileMode` prop), el fix cubre ambas automáticamente.
+
 ## RESUELTO — historial compacto
 - **2026-07-06**: 4 pendientes del FormBuilder resueltos juntos:
   1. **Reordenar Secciones**: flechas subir/bajar en cada sección (`FormBuilderTab.tsx`/`useFormBuilder.ts` → `handleMoveSeccion`, swap de `orden` en BD).
