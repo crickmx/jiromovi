@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getCached, setCached, invalidateCacheByPrefix } from '../lib/sessionCache';
 import { useTiposTramite } from '../hooks/useTiposTramite';
 import { supabase } from '../lib/supabase';
+import { subscribeResilientChannel } from '../lib/resilientRealtime';
 import { useAuth } from '../contexts/AuthContext';
 import { useImpersonation } from '../contexts/ImpersonationContext';
 import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound, LayoutList, LayoutGrid, ChevronDown, ArrowUpDown, Flag, UserMinus, Activity, Copy } from 'lucide-react';
@@ -245,7 +246,7 @@ export function Tramites() {
     );
   }, [selectedTipos, estatusList]);
 
-  const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const unsubscribeRealtimeRef = useRef<(() => void) | null>(null);
   const { tiposMap: tiposDb, loading: tiposLoading } = useTiposTramite();
 
   useEffect(() => {
@@ -267,18 +268,20 @@ export function Tramites() {
   useEffect(() => {
     if (!userAreaLoaded) return;
 
-    realtimeChannelRef.current = supabase
-      .channel('tramites_list_changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'tickets' },
-        () => { loadTramites(true); } // bypass cache on realtime change
-      )
-      .subscribe();
+    unsubscribeRealtimeRef.current = subscribeResilientChannel({
+      channelName: 'tramites_list_changes',
+      configure: (channel) =>
+        channel.on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'tickets' },
+          () => { loadTramites(true); } // bypass cache on realtime change
+        ),
+      onReconnect: () => loadTramites(true),
+    });
 
     return () => {
-      realtimeChannelRef.current?.unsubscribe();
-      realtimeChannelRef.current = null;
+      unsubscribeRealtimeRef.current?.();
+      unsubscribeRealtimeRef.current = null;
     };
   }, [userAreaLoaded, activeTab]);
 
