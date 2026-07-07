@@ -539,3 +539,12 @@ export async function generateBulkSyncPreview(): Promise<BulkSyncPreviewItem[]> 
 
   return preview;
 }
+
+// Sync extension_telefonica field in usuarios table
+export async function updateUserExtensionTelefonica(userId: string, extension: string | null): Promise<void> {
+  const { error } = await supabase
+    .from('usuarios')
+    .update({ extension_telefonica: extension })
+    .eq('id', userId);
+  if (error) throw error;
+}
