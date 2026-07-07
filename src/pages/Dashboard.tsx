@@ -182,13 +182,17 @@ function WelcomeHero({ usuario }: { usuario: Usuario }) {
 function ModuleVCards({
   modules, onNavigate,
 }: { modules: typeof BETA_MODULES[number][]; onNavigate: (route: string) => void }) {
+  const isOddLast = (i: number) => modules.length % 2 === 1 && i === modules.length - 1;
   return (
     <div className="grid grid-cols-2 gap-3">
-      {modules.map(m => (
+      {modules.map((m, i) => (
         <div
           key={m.key}
           onClick={() => onNavigate(m.route)}
-          className="rounded-2xl overflow-hidden relative cursor-pointer p-4 min-h-[100px] flex flex-col gap-2 transition hover:-translate-y-0.5"
+          className={cn(
+            'rounded-2xl overflow-hidden relative cursor-pointer p-4 min-h-[100px] flex flex-col gap-2 transition hover:-translate-y-0.5',
+            isOddLast(i) && 'col-span-2'
+          )}
           style={{ background: `linear-gradient(145deg, ${m.gradientFrom}, ${m.gradientTo})` }}
         >
           <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full bg-white/8 pointer-events-none" />
@@ -267,26 +271,35 @@ function JoinBetaCard({ usuario }: { usuario: Usuario }) {
 
   return (
     <>
-      <div className="rounded-2xl p-4 relative overflow-hidden" style={{ background: 'linear-gradient(145deg, #E84F8A, #8E1A52)' }}>
-        <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full bg-white/10 pointer-events-none" />
-        <p className="text-xl mb-1">🚀</p>
-        <p className="text-sm font-bold text-white mb-1">Únete a la Beta</p>
-        <p className="text-[10px] text-white/80 mb-3 leading-relaxed">
-          Ayúdanos a probar las nuevas funciones de MOVI antes de que lleguen a todos.
-        </p>
-        {estado === 'pendiente' ? (
-          <div className="bg-white/15 border border-white/25 text-white/90 text-[10px] font-semibold py-1.5 px-3 rounded-lg text-center">
-            Solicitud enviada, en revisión
-          </div>
-        ) : (
-          <button
-            onClick={() => setShowModal(true)}
-            disabled={estado === 'cargando'}
-            className="w-full bg-white/20 border border-white/35 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg text-center hover:bg-white/30 transition-colors disabled:opacity-50"
-          >
-            Solicitar acceso
-          </button>
-        )}
+      <div className="relative">
+        <div
+          className="absolute -inset-0.5 rounded-2xl opacity-75 blur-sm animate-pulse pointer-events-none"
+          style={{ background: 'linear-gradient(145deg, #FFD166, #E84F8A, #8E1A52)', animationDuration: '2.5s' }}
+        />
+        <div className="rounded-2xl p-4 relative overflow-hidden" style={{ background: 'linear-gradient(145deg, #E84F8A, #8E1A52)' }}>
+          <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full bg-white/10 pointer-events-none" />
+          <span className="absolute top-3 right-3 text-[8px] font-bold uppercase tracking-wider bg-[#FFD166] text-[#5A3300] px-1.5 py-0.5 rounded-full">
+            Nuevo
+          </span>
+          <p className="text-xl mb-1">🚀</p>
+          <p className="text-sm font-bold text-white mb-1">Únete a la Beta</p>
+          <p className="text-[10px] text-white/80 mb-3 leading-relaxed">
+            Ayúdanos a probar las nuevas funciones de MOVI antes de que lleguen a todos.
+          </p>
+          {estado === 'pendiente' ? (
+            <div className="bg-white/15 border border-white/25 text-white/90 text-[10px] font-semibold py-1.5 px-3 rounded-lg text-center">
+              Solicitud enviada, en revisión
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowModal(true)}
+              disabled={estado === 'cargando'}
+              className="w-full bg-white text-[#8E1A52] text-[10px] font-bold py-1.5 px-3 rounded-lg text-center hover:bg-white/90 hover:scale-[1.02] transition-all shadow-md disabled:opacity-50"
+            >
+              Solicitar acceso →
+            </button>
+          )}
+        </div>
       </div>
       {showModal && (
         <SolicitudBetaModal
@@ -369,7 +382,7 @@ export default function Dashboard() {
           <ModuleVCards modules={enabledModules} onNavigate={navigate} />
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-8">
           <FavoritosGrid onNavigate={navigate} />
           <JoinBetaCard usuario={usuario} />
           <AvisosPanel onNavigate={navigate} />
