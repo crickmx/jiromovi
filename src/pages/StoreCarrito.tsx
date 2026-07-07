@@ -74,7 +74,8 @@ export default function StoreCarrito() {
       navigate('/store/mis-pedidos');
     } catch (error) {
       console.error('Error creando pedido:', error);
-      alert('Error al crear el pedido. Por favor intenta de nuevo.');
+      const detalle = error instanceof Error ? error.message : String(error);
+      alert(`Error al crear el pedido: ${detalle}\n\nPor favor intenta de nuevo o avisa a soporte con este mensaje.`);
     } finally {
       setProcesando(false);
     }

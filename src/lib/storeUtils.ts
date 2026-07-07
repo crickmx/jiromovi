@@ -762,7 +762,7 @@ export async function crearPedido(
   if (!estatusId) throw new Error('No se encontró el estatus "Pendiente"');
 
   const { data: folioData, error: folioError } = await supabase.rpc('generar_folio_oc');
-  if (folioError) throw folioError;
+  if (folioError) throw new Error(`No se pudo generar el folio: ${folioError.message}`);
 
   const { data: pedido, error: pedidoError } = await supabase
     .from('store_pedidos')
@@ -778,7 +778,7 @@ export async function crearPedido(
     .select()
     .single();
 
-  if (pedidoError) throw pedidoError;
+  if (pedidoError) throw new Error(`No se pudo crear el pedido: ${pedidoError.message}`);
 
   const detalle = itemsCarrito.map(item => {
     const attrs = { ...(item.atributos_seleccionados || {}) };
@@ -797,15 +797,16 @@ export async function crearPedido(
     .from('store_pedidos_detalle')
     .insert(detalle);
 
-  if (detalleError) throw detalleError;
+  if (detalleError) throw new Error(`No se pudieron guardar los productos del pedido: ${detalleError.message}`);
 
   // Descontar stock solo de productos por existencia
   for (const item of itemsCarrito) {
     if (item.producto?.disponibilidad === 'por_existencia') {
-      await supabase.rpc('decrementar_stock', {
+      const { error: stockError } = await supabase.rpc('decrementar_stock', {
         p_producto_id: item.producto_id,
         p_cantidad: item.cantidad
       });
+      if (stockError) throw new Error(`No se pudo descontar el stock de "${item.producto.titulo}": ${stockError.message}`);
     }
   }
 
@@ -817,7 +818,7 @@ export async function crearPedido(
       cambiado_por: usuarioId
     });
 
-  if (historialError) throw historialError;
+  if (historialError) throw new Error(`El pedido se creó pero falló el historial: ${historialError.message}`);
 
   await vaciarCarrito(usuarioId);
 

@@ -29,6 +29,9 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
   const esPorPedido = producto.disponibilidad === 'por_pedido';
   const sinStock = !esPorPedido && producto.stock === 0;
   const pocasExistencias = !esPorPedido && producto.stock > 0 && producto.stock <= producto.stock_umbral;
+  // Si tiene variantes (color/talla/etc), "Agregar" no puede saltarse la elección —
+  // se manda al modal de detalle, que es el único lugar que sabe pedirlas.
+  const tieneVariantes = (producto.atributos || []).some(a => (a.opciones || []).length > 0);
 
   return (
     <div className={`bg-white dark:bg-white/5 rounded-xl shadow-sm border border-gray-200 dark:border-white/10 overflow-hidden hover:shadow-md transition-shadow ${sinStock ? 'opacity-75' : ''}`}>
@@ -102,7 +105,7 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
           </p>
 
           <div className="w-full sm:w-auto flex items-center gap-2">
-            {!esPremium && !sinStock && (
+            {!esPremium && !sinStock && !tieneVariantes && (
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setCantidad(c => Math.max(1, c - 1))}
@@ -126,7 +129,7 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
 
             <button
               onClick={() => {
-                if (esPremium) { onVerDetalle(producto); return; }
+                if (esPremium || tieneVariantes) { onVerDetalle(producto); return; }
                 if (sinStock) return;
                 onAgregar(producto, cantidad);
                 setCantidad(1);
@@ -139,7 +142,7 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
               }`}
             >
               <ShoppingCart className="w-4 h-4" />
-              <span>{esPremium ? 'Ver Planes' : sinStock ? 'Agotado' : producto.tipo_item === 'servicio' ? 'Solicitar' : 'Agregar'}</span>
+              <span>{esPremium ? 'Ver Planes' : sinStock ? 'Agotado' : tieneVariantes ? 'Elegir opciones' : producto.tipo_item === 'servicio' ? 'Solicitar' : 'Agregar'}</span>
             </button>
           </div>
         </div>
