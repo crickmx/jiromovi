@@ -1,8 +1,18 @@
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ChevronLeft, PanelLeftOpen } from 'lucide-react';
+import { ChevronLeft, ChevronDown, ChevronRight, PanelLeftOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isItemVisible } from '@/lib/workspaceConfig';
 import type { WorkspaceDefinition, WorkspaceNavItem, UserRole } from '@/lib/workspaceConfig';
+import { useSidebarItemsConfig } from '../../hooks/useSidebarItemsConfig';
+
+const BADGE_COLORS: Record<string, string> = {
+  amber: 'bg-amber-500 text-white',
+  green: 'bg-green-500 text-white',
+  blue: 'bg-blue-500 text-white',
+  red: 'bg-red-500 text-white',
+  purple: 'bg-purple-500 text-white',
+};
 
 interface Props {
   workspace: WorkspaceDefinition;
@@ -20,11 +30,24 @@ interface Props {
 export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, onToggleCollapse, mobileMode, onMobileItemClick, isModuleVisible, oficinaId, badgeCounts }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { getResolvedItems } = useSidebarItemsConfig();
+  const [gruposColapsados, setGruposColapsados] = useState<Record<string, boolean>>({});
 
-  const visibleItems = workspace.items.filter(item =>
-    isItemVisible(item, userRole) &&
-    (isModuleVisible ? isModuleVisible(item.path, userRole, oficinaId) : true)
-  );
+  const gruposResueltos = getResolvedItems(workspace)
+    .map(g => ({
+      ...g,
+      items: g.items.filter(({ item }) =>
+        isItemVisible(item, userRole) &&
+        (isModuleVisible ? isModuleVisible(item.path, userRole, oficinaId) : true)
+      ),
+    }))
+    .filter(g => g.items.length > 0);
+
+  const isGrupoColapsado = (grupoId: string, defaultColapsado: boolean) =>
+    gruposColapsados[grupoId] ?? defaultColapsado;
+
+  const toggleGrupo = (grupoId: string, defaultColapsado: boolean) =>
+    setGruposColapsados(prev => ({ ...prev, [grupoId]: !isGrupoColapsado(grupoId, defaultColapsado) }));
 
   const isActive = (item: WorkspaceNavItem) => {
     if (location.pathname === item.path) return true;
@@ -97,45 +120,67 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
         )}
       </div>
 
-      {/* Nav items — text only, no icon repetition */}
+      {/* Nav items — text only, no icon repetition — agrupados según el Editor de Sidebar */}
       <nav className="flex-1 overflow-y-auto py-3 px-2.5 space-y-0.5">
-        {visibleItems.map((item) => {
-          const active = isActive(item);
-          const badge = badgeCounts?.[item.path] ?? 0;
-
+        {gruposResueltos.map(({ grupo, items }) => {
+          const colapsado = grupo ? isGrupoColapsado(grupo.id, grupo.colapsado_default) : false;
           return (
-            <button
-              key={item.path}
-              onClick={() => handleNav(item.path)}
-              className={cn(
-                "w-full flex items-center gap-2.5 px-3 rounded-xl text-[13px] font-medium transition-all duration-200",
-                mobileMode ? "py-3.5" : "py-2.5",
-                "active:scale-[0.97] text-left",
-                active
-                  ? "bg-accent/10 text-accent dark:bg-accent/15 font-semibold"
-                  : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/[0.07] hover:text-neutral-900 dark:hover:text-white"
+            <div key={grupo?.id ?? '_sin_grupo'} className={grupo ? 'pt-2 first:pt-0' : ''}>
+              {grupo && (
+                <button
+                  onClick={() => toggleGrupo(grupo.id, grupo.colapsado_default)}
+                  className="w-full flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-white/40 hover:text-neutral-600 dark:hover:text-white/60 transition-colors"
+                >
+                  {colapsado ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  <span className="truncate">{grupo.nombre}</span>
+                </button>
               )}
-            >
-              {/* Active indicator dot */}
-              <span className={cn(
-                "flex-shrink-0 w-1.5 h-1.5 rounded-full transition-all",
-                active ? "bg-accent" : "bg-neutral-300 dark:bg-neutral-600"
-              )} />
-              <span className="truncate">{item.label}</span>
+              {!colapsado && items.map(({ item, badge: customBadge }) => {
+                const active = isActive(item);
+                const badge = badgeCounts?.[item.path] ?? 0;
 
-              {/* Attention badge */}
-              {badge > 0 && (
-                <span className="ml-auto relative flex-shrink-0 flex items-center justify-center">
-                  <span
-                    className="absolute inset-0 rounded-full bg-red-400 opacity-60 animate-ping"
-                    style={{ animationDuration: '2s' }}
-                  />
-                  <span className="relative min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
-                    {badge > 99 ? '99+' : badge}
-                  </span>
-                </span>
-              )}
-            </button>
+                return (
+                  <button
+                    key={item.path}
+                    onClick={() => handleNav(item.path)}
+                    className={cn(
+                      "w-full flex items-center gap-2.5 px-3 rounded-xl text-[13px] font-medium transition-all duration-200",
+                      mobileMode ? "py-3.5" : "py-2.5",
+                      "active:scale-[0.97] text-left",
+                      active
+                        ? "bg-accent/10 text-accent dark:bg-accent/15 font-semibold"
+                        : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/[0.07] hover:text-neutral-900 dark:hover:text-white"
+                    )}
+                  >
+                    {/* Active indicator dot */}
+                    <span className={cn(
+                      "flex-shrink-0 w-1.5 h-1.5 rounded-full transition-all",
+                      active ? "bg-accent" : "bg-neutral-300 dark:bg-neutral-600"
+                    )} />
+                    <span className="truncate">{item.label}</span>
+
+                    {customBadge && (
+                      <span className={cn('ml-auto shrink-0 px-1.5 py-[1px] rounded-full text-[9px] font-bold leading-none whitespace-nowrap', BADGE_COLORS[customBadge.color] ?? BADGE_COLORS.amber)}>
+                        {customBadge.texto}
+                      </span>
+                    )}
+
+                    {/* Attention badge */}
+                    {badge > 0 && (
+                      <span className="ml-auto relative flex-shrink-0 flex items-center justify-center">
+                        <span
+                          className="absolute inset-0 rounded-full bg-red-400 opacity-60 animate-ping"
+                          style={{ animationDuration: '2s' }}
+                        />
+                        <span className="relative min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                          {badge > 99 ? '99+' : badge}
+                        </span>
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           );
         })}
       </nav>

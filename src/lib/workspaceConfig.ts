@@ -256,6 +256,69 @@ export function resolveNavOrder(configRows: SidebarConfigRow[]): ResolvedNavEntr
     .sort((a, b) => a.orden - b.orden);
 }
 
+// ── Editor de Sidebar: grupos colapsables + orden/badge de items del panel blanco ──
+
+export interface SidebarGrupo {
+  id: string;
+  workspace_id: string;
+  nombre: string;
+  orden: number;
+  colapsado_default: boolean;
+}
+
+export interface SidebarItemConfigRow {
+  item_path: string;
+  orden: number;
+  grupo_id: string | null;
+  badge_texto: string | null;
+  badge_color: string;
+}
+
+export interface ResolvedWorkspaceItem {
+  item: WorkspaceNavItem;
+  badge: { texto: string; color: string } | null;
+}
+
+export interface ResolvedItemGroup {
+  grupo: SidebarGrupo | null; // null = sin grupo (se muestran primero, sin encabezado)
+  items: ResolvedWorkspaceItem[];
+}
+
+/** Agrupa y ordena los items de UN workspace según la config editable — retrocompatible: sin config, todo queda "sin grupo" en su orden original. */
+export function resolveWorkspaceItems(
+  workspace: WorkspaceDefinition,
+  grupos: SidebarGrupo[],
+  itemConfigs: SidebarItemConfigRow[]
+): ResolvedItemGroup[] {
+  const configByPath = new Map(itemConfigs.map(c => [c.item_path, c]));
+  const gruposDeEsteWorkspace = grupos
+    .filter(g => g.workspace_id === workspace.id)
+    .sort((a, b) => a.orden - b.orden);
+  const gruposIds = new Set(gruposDeEsteWorkspace.map(g => g.id));
+
+  const itemsConMeta = workspace.items.map((item, idx) => {
+    const cfg = configByPath.get(item.path);
+    const grupoId = cfg?.grupo_id && gruposIds.has(cfg.grupo_id) ? cfg.grupo_id : null;
+    return {
+      item,
+      orden: cfg?.orden ?? idx,
+      grupoId,
+      badge: cfg?.badge_texto ? { texto: cfg.badge_texto, color: cfg.badge_color } : null,
+    };
+  }).sort((a, b) => a.orden - b.orden);
+
+  const resultado: ResolvedItemGroup[] = [];
+  const sinGrupo = itemsConMeta.filter(m => !m.grupoId);
+  if (sinGrupo.length > 0) {
+    resultado.push({ grupo: null, items: sinGrupo.map(m => ({ item: m.item, badge: m.badge })) });
+  }
+  for (const g of gruposDeEsteWorkspace) {
+    const items = itemsConMeta.filter(m => m.grupoId === g.id);
+    resultado.push({ grupo: g, items: items.map(m => ({ item: m.item, badge: m.badge })) });
+  }
+  return resultado;
+}
+
 export function isWorkspaceVisible(ws: WorkspaceDefinition, userRole: UserRole): boolean {
   if (ws.visibleTo.length === 0) return true;
   return ws.visibleTo.includes(userRole);

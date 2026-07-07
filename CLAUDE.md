@@ -166,6 +166,15 @@ Nueva pantalla `/admin/sidebar-editor` (Admin > Editor de Sidebar, solo Administ
 - `useSidebarConfig()` (`src/hooks/`) — carga `sidebar_config` y expone la lista ya resuelta/ordenada.
 - `PrimarySidebar.tsx` reemplazó su `NAV_ORDER.map(...)` directo por `useSidebarConfig().resolved.map(...)`, agregando el separador (línea) y el badge de texto (pill pequeño en la esquina del ícono, distinto del badge rojo de notificaciones que ya existía) por cada entry. Como el mismo componente sirve versión desktop y mobile (`mobileMode` prop), el fix cubre ambas automáticamente.
 
+**Extendido 2026-07-06 (mismo día) al panel blanco (`SecondarySidebar.tsx`)** — los items que aparecen al hacer clic en una sección ahora se pueden agrupar en encabezados colapsables (ej. separar "Usuarios y Accesos" de "Comisiones" dentro de Admin, que tiene 26 items sueltos), reordenar con drag & drop, y también llevan badge:
+- Tablas nuevas `sidebar_grupos` (workspace_id, nombre, orden, colapsado_default) y `sidebar_item_config` (item_path único, orden, grupo_id, badge_texto, badge_color) — migración `20260706000010_sidebar_item_groups.sql`. Mismo RLS (lectura todos, escritura Admin).
+- `workspaceConfig.ts` → `resolveWorkspaceItems(workspace, grupos, itemConfigs)` — agrupa y ordena los items de UN workspace; sin config, todo queda "sin grupo" en su orden original (retrocompatible).
+- `useSidebarItemsConfig()` (`src/hooks/`) — carga todos los grupos + config de items de una vez, expone `getResolvedItems(workspace)`.
+- `SecondarySidebar.tsx` ahora renderiza por grupo (encabezado con chevron expandir/colapsar, estado de colapso por sesión del usuario, iniciado en `colapsado_default`) en vez de una lista plana.
+- Editor (`SidebarEditorAdmin.tsx`, sección "Menú de cada sección"): selector de workspace, crear/eliminar grupo, drag & drop para reordenar items O soltarlos sobre un grupo para moverlos ahí (mismo patrón que "Secciones" del FormBuilder).
+- **Fix de UX en el mismo commit**: el input de texto del badge tenía glitches al escribir rápido (perdía tecleo, saltaba) porque cada tecla disparaba un guardado + recarga completa de la lista. Ahora usa estado local propio con debounce de 600ms (`BadgeTextInput`), y el ícono de "guardando" vive en un slot de ancho fijo para no correr el layout al aparecer/desaparecer. También se agregó un toast de confirmación ("Cambios guardados") que antes no existía — no había forma de saber si algo se había guardado.
+- **Pendiente/gap conocido**: `MobileDrawer.tsx` (menú hamburguesa en celular) tiene su propia implementación independiente de `NAV_ORDER`/`workspace.items` — no reutiliza `PrimarySidebar`/`SecondarySidebar`, así que el drag&drop/grupos/badges de esta feature NO le aplican todavía ahí. No se tocó por estar fuera del pedido original ("panel blanco" = SecondarySidebar). Retomar si Ricardo lo pide.
+
 ## RESUELTO — historial compacto
 - **2026-07-06**: 4 pendientes del FormBuilder resueltos juntos:
   1. **Reordenar Secciones**: flechas subir/bajar en cada sección (`FormBuilderTab.tsx`/`useFormBuilder.ts` → `handleMoveSeccion`, swap de `orden` en BD).
