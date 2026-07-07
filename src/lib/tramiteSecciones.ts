@@ -11,12 +11,29 @@ export interface SeccionMinima {
   orden: number;
   opcional: boolean;
   depende_de_seccion_id: string | null;
+  condicion_campo_id?: string | null;
+  condicion_operador?: 'igual_a' | 'distinto_a' | 'tiene_valor' | null;
+  condicion_valor?: string | null;
 }
 
 export interface CampoConSeccion {
   id: string;
   requerido: boolean;
   seccion_id?: string | null;
+}
+
+/** ¿La respuesta actual cumple la condición configurada? Mismo vocabulario que la condición por campo. */
+function condicionCumplida(
+  operador: 'igual_a' | 'distinto_a' | 'tiene_valor',
+  valorEsperado: string | null | undefined,
+  valorActual: any
+): boolean {
+  if (operador === 'tiene_valor') {
+    return valorActual !== undefined && valorActual !== null && valorActual !== '' && !(Array.isArray(valorActual) && valorActual.length === 0);
+  }
+  const actuales = Array.isArray(valorActual) ? valorActual : [valorActual];
+  const coincide = actuales.some(v => String(v) === String(valorEsperado));
+  return operador === 'igual_a' ? coincide : !coincide;
 }
 
 /** ¿Todos los campos requeridos de esta sección ya tienen respuesta? */
@@ -39,6 +56,10 @@ export function seccionDesbloqueada(
   campos: CampoConSeccion[],
   respuestas: Record<string, any>
 ): boolean {
+  // Prioridad: condición por valor de campo (estilo Google Forms) sobre "sección anterior completa".
+  if (seccion.condicion_campo_id && seccion.condicion_operador) {
+    return condicionCumplida(seccion.condicion_operador, seccion.condicion_valor, respuestas[seccion.condicion_campo_id]);
+  }
   if (!seccion.depende_de_seccion_id) return true;
   const origen = secciones.find(s => s.id === seccion.depende_de_seccion_id);
   if (!origen) return true; // referencia rota — no bloquear

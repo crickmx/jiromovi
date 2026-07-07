@@ -60,8 +60,16 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     setLoadingSecciones(false);
   };
 
-  const handleSaveSeccion = async (form: { nombre: string; descripcion: string; opcional: boolean; depende_de_seccion_id: string | null }) => {
+  const handleSaveSeccion = async (form: {
+    nombre: string; descripcion: string; opcional: boolean;
+    depende_de_seccion_id: string | null;
+    condicion_campo_id: string | null;
+    condicion_operador: 'igual_a' | 'distinto_a' | 'tiene_valor' | null;
+    condicion_valor: string | null;
+  }) => {
     if (!form.nombre.trim()) return;
+    // Mutuamente excluyentes: si hay condición por campo, no depende de otra sección.
+    const dependeDeSeccion = form.condicion_campo_id ? null : form.depende_de_seccion_id;
     if (editingSeccion) {
       const { error } = await supabase
         .from('tramite_tipo_secciones')
@@ -69,7 +77,10 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
           nombre: form.nombre.trim(),
           descripcion: form.descripcion.trim() || null,
           opcional: form.opcional,
-          depende_de_seccion_id: form.depende_de_seccion_id,
+          depende_de_seccion_id: dependeDeSeccion,
+          condicion_campo_id: form.condicion_campo_id,
+          condicion_operador: form.condicion_campo_id ? form.condicion_operador : null,
+          condicion_valor: form.condicion_campo_id ? form.condicion_valor : null,
         })
         .eq('id', editingSeccion.id);
       if (error) { showToast('Error al guardar la sección: ' + error.message, 'error'); return; }
@@ -81,7 +92,10 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
         nombre: form.nombre.trim(),
         descripcion: form.descripcion.trim() || null,
         opcional: form.opcional,
-        depende_de_seccion_id: form.depende_de_seccion_id,
+        depende_de_seccion_id: dependeDeSeccion,
+        condicion_campo_id: form.condicion_campo_id,
+        condicion_operador: form.condicion_campo_id ? form.condicion_operador : null,
+        condicion_valor: form.condicion_campo_id ? form.condicion_valor : null,
         orden: maxOrden + 1,
       });
       if (error) { showToast('Error al crear la sección: ' + error.message, 'error'); return; }
@@ -90,6 +104,26 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     setEditingSeccion(null);
     setShowAddSeccion(false);
     await loadSecciones();
+  };
+
+  const handleMoveSeccion = async (seccion: TramiteSeccion, direccion: 'arriba' | 'abajo') => {
+    const idx = secciones.findIndex(s => s.id === seccion.id);
+    const vecinoIdx = direccion === 'arriba' ? idx - 1 : idx + 1;
+    if (idx === -1 || vecinoIdx < 0 || vecinoIdx >= secciones.length) return;
+    const vecino = secciones[vecinoIdx];
+
+    // Swap de orden — optimista en UI, persistido en BD
+    const reordenadas = [...secciones];
+    reordenadas[idx] = { ...vecino, orden: seccion.orden };
+    reordenadas[vecinoIdx] = { ...seccion, orden: vecino.orden };
+    reordenadas.sort((a, b) => a.orden - b.orden);
+    setSecciones(reordenadas);
+
+    const [{ error: e1 }, { error: e2 }] = await Promise.all([
+      supabase.from('tramite_tipo_secciones').update({ orden: vecino.orden }).eq('id', seccion.id),
+      supabase.from('tramite_tipo_secciones').update({ orden: seccion.orden }).eq('id', vecino.id),
+    ]);
+    if (e1 || e2) { showToast('Error al reordenar: ' + (e1 || e2)?.message, 'error'); await loadSecciones(); }
   };
 
   const handleDeleteSeccion = async (seccion: TramiteSeccion) => {
@@ -387,6 +421,6 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     secciones, loadingSecciones, loadSecciones,
     editingSeccion, setEditingSeccion,
     showAddSeccion, setShowAddSeccion,
-    handleSaveSeccion, handleDeleteSeccion,
+    handleSaveSeccion, handleDeleteSeccion, handleMoveSeccion,
   };
 }

@@ -453,7 +453,6 @@ export function GestionCatalogosRegistro() {
           {[
             { id: 'config',    label: 'Configuración' },
             { id: 'campos',    label: 'Campos del formulario' },
-            { id: 'permisos',  label: 'Permisos' },
             { id: 'equipos',   label: 'Equipos habilitados' },
             { id: 'triggers',  label: 'Triggers de Estatus' },
             { id: 'historial', label: 'Historial' },
@@ -546,10 +545,10 @@ export function GestionCatalogosRegistro() {
           <FormBuilderTab tipoId={activeTipo.id} showToast={showToast} onGoToTriggers={() => switchTab('triggers')} />
         )}
 
-        {/* Tab: Permisos */}
-        {activeTab === 'permisos' && (
-          <PermisosPanel tipoId={activeTipo.id} usuarioId={usuario?.id} showToast={showToast} />
-        )}
+        {/* Tab: Permisos — oculta 2026-07-06, ver CLAUDE.md "Sección Permisos del FormBuilder".
+            Ya no se usa: "Editar" por Rol/Usuario se agregó al tab dedicado Admin > Trámites > Permisos
+            (PermisosTipoBulkTab.tsx), que ya cubría Ver/Crear. No se borró PermisosPanel.tsx ni las
+            tablas por si se necesita reactivar. */}
 
         {/* Tab: Equipos habilitados */}
         {activeTab === 'equipos' && (

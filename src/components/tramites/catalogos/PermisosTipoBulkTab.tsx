@@ -27,6 +27,7 @@ interface RolPermisoRow {
   rol: string;
   puede_ver: boolean;
   puede_crear: boolean;
+  puede_editar: boolean;
 }
 
 interface OverrideRow {
@@ -34,6 +35,7 @@ interface OverrideRow {
   user_id: string;
   puede_ver: boolean | null;
   puede_crear: boolean | null;
+  puede_editar: boolean | null;
 }
 
 interface UsuarioLite {
@@ -43,7 +45,9 @@ interface UsuarioLite {
   rol: string;
 }
 
-type Field = 'puede_ver' | 'puede_crear';
+type Field = 'puede_ver' | 'puede_crear' | 'puede_editar';
+const FIELDS: readonly Field[] = ['puede_ver', 'puede_crear', 'puede_editar'];
+const FIELD_LABEL: Record<Field, string> = { puede_ver: 'Ver', puede_crear: 'Crear', puede_editar: 'Editar' };
 type DraftValue = 'permitir' | 'bloquear' | 'hereda';
 
 function rolKey(tipoId: string, rol: string) { return `${tipoId}::${rol}`; }
@@ -64,8 +68,8 @@ export function PermisosTipoBulkTab() {
     setLoading(true);
     const [{ data: tiposData }, { data: rolData }, { data: overData }, { data: usersData }] = await Promise.all([
       supabase.from('ticket_tipos').select('id, value, label, area').eq('activo', true).order('area').order('orden'),
-      supabase.from('tramite_tipo_rol_permisos').select('tramite_tipo_id, rol, puede_ver, puede_crear'),
-      supabase.from('tramite_tipo_usuario_override').select('tramite_tipo_id, user_id, puede_ver, puede_crear'),
+      supabase.from('tramite_tipo_rol_permisos').select('tramite_tipo_id, rol, puede_ver, puede_crear, puede_editar'),
+      supabase.from('tramite_tipo_usuario_override').select('tramite_tipo_id, user_id, puede_ver, puede_crear, puede_editar'),
       supabase.from('usuarios').select('id, nombre, apellidos, rol').eq('activo', true).in('rol', ROLES_CONFIGURABLES as unknown as string[]).order('nombre'),
     ]);
     const tp = (tiposData ?? []) as TipoRow[];
@@ -108,6 +112,7 @@ export function PermisosTipoBulkTab() {
     <div className="space-y-4">
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
         <strong>Ver</strong> = aparece como opción al crear un trámite nuevo. <strong>Crear</strong> = puede efectivamente crearlo.
+        <strong> Editar</strong> = puede modificar un trámite de este tipo después de creado.
         Administrador y Gerente siempre tienen acceso total, sin importar esta configuración.
       </div>
 
@@ -179,7 +184,7 @@ function RolMatrixTab({ tiposByArea, expandedAreas, toggleArea, rolPermisos, set
         const nextMap = new Map(prev);
         const existing = nextMap.get(rolKey(tipoId, rol));
         nextMap.set(rolKey(tipoId, rol), {
-          tramite_tipo_id: tipoId, rol, puede_ver: true, puede_crear: true, ...existing, [field]: next,
+          tramite_tipo_id: tipoId, rol, puede_ver: true, puede_crear: true, puede_editar: true, ...existing, [field]: next,
         });
         return nextMap;
       });
@@ -210,7 +215,7 @@ function RolMatrixTab({ tiposByArea, expandedAreas, toggleArea, rolPermisos, set
                     <tr>
                       <th className="text-left px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider" rowSpan={2}>Tipo</th>
                       {ROLES_CONFIGURABLES.map(rol => (
-                        <th key={rol} colSpan={2} className="px-4 py-1.5 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider text-center border-l border-neutral-100">
+                        <th key={rol} colSpan={3} className="px-4 py-1.5 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider text-center border-l border-neutral-100">
                           {rol}
                         </th>
                       ))}
@@ -218,8 +223,11 @@ function RolMatrixTab({ tiposByArea, expandedAreas, toggleArea, rolPermisos, set
                     <tr>
                       {ROLES_CONFIGURABLES.map(rol => (
                         <Fragment key={rol}>
-                          <th className="px-2 py-1 text-[10px] font-medium text-neutral-400 border-l border-neutral-100">Ver</th>
-                          <th className="px-2 py-1 text-[10px] font-medium text-neutral-400">Crear</th>
+                          {FIELDS.map((f, i) => (
+                            <th key={f} className={`px-2 py-1 text-[10px] font-medium text-neutral-400 ${i === 0 ? 'border-l border-neutral-100' : ''}`}>
+                              {FIELD_LABEL[f]}
+                            </th>
+                          ))}
                         </Fragment>
                       ))}
                     </tr>
@@ -230,7 +238,7 @@ function RolMatrixTab({ tiposByArea, expandedAreas, toggleArea, rolPermisos, set
                         <td className="px-4 py-2 text-sm text-neutral-800">{tipo.label}</td>
                         {ROLES_CONFIGURABLES.map(rol => (
                           <Fragment key={rol}>
-                            {(['puede_ver', 'puede_crear'] as const).map(field => {
+                            {FIELDS.map(field => {
                               const cellId = `${rolKey(tipo.id, rol)}::${field}`;
                               const active = getValue(tipo.id, rol, field);
                               const isSaving = saving === cellId;
@@ -244,7 +252,7 @@ function RolMatrixTab({ tiposByArea, expandedAreas, toggleArea, rolPermisos, set
                                   ) : (
                                     <button
                                       onClick={() => toggle(tipo.id, rol, field)}
-                                      title={field === 'puede_ver' ? 'Puede ver este tipo al crear' : 'Puede crear este tipo'}
+                                      title={field === 'puede_ver' ? 'Puede ver este tipo al crear' : field === 'puede_crear' ? 'Puede crear este tipo' : 'Puede editar un trámite de este tipo después de creado'}
                                       className={[
                                         'w-6 h-6 rounded-md border-2 transition-colors mx-auto flex items-center justify-center text-xs',
                                         active
@@ -318,7 +326,7 @@ function UsuarioBulkPermisosTab({ tiposByArea, expandedAreas, toggleArea, overri
 
   const changesList = useMemo(() => Array.from(draft.entries()).map(([k, action]) => {
     const [tipoId, field] = k.split('::') as [string, Field];
-    return { tipoId, field, action, label: `${tipoLabelById.get(tipoId) ?? tipoId} — ${field === 'puede_ver' ? 'Ver' : 'Crear'}` };
+    return { tipoId, field, action, label: `${tipoLabelById.get(tipoId) ?? tipoId} — ${FIELD_LABEL[field]}` };
   }), [draft, tipoLabelById]);
 
   const userOptions = useMemo(
@@ -401,15 +409,16 @@ function UsuarioBulkPermisosTab({ tiposByArea, expandedAreas, toggleArea, overri
                         <thead className="bg-neutral-50">
                           <tr>
                             <th className="text-left px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">Tipo</th>
-                            <th className="px-3 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider text-center">Ver</th>
-                            <th className="px-3 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider text-center">Crear</th>
+                            {FIELDS.map(f => (
+                              <th key={f} className="px-3 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider text-center">{FIELD_LABEL[f]}</th>
+                            ))}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-neutral-100">
                           {items.map(tipo => (
                             <tr key={tipo.id} className="hover:bg-neutral-50">
                               <td className="px-4 py-2 text-sm text-neutral-800">{tipo.label}</td>
-                              {(['puede_ver', 'puede_crear'] as const).map(field => (
+                              {FIELDS.map(field => (
                                 <td key={field} className="px-3 py-2 text-center">
                                   <DraftPermButton
                                     value={draft.get(draftKey(tipo.id, field)) ?? null}

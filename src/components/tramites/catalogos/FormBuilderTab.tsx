@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Save, Trash2, Settings, GripVertical, X, Eye, Lock, Zap, Layers, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Save, Trash2, Settings, GripVertical, X, Eye, Lock, Zap, Layers, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
 import { useFormBuilder, LOCKED_SISTEMA_KEYS, CONFIGURABLE_SISTEMA_KEYS, SISTEMA_CAMPO_DEFAULTS } from './useFormBuilder';
 import { FormPreview } from './FormPreview';
 import { CAMPO_TIPOS, SISTEMA_TIPO_META, MIME_OPTIONS, ROL_VISIBILIDAD_OPCIONES, slugify, type CampoTipo, type RolVisibilidad } from './types';
@@ -37,11 +37,19 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
     secciones, loadingSecciones, loadSecciones,
     editingSeccion, setEditingSeccion,
     showAddSeccion, setShowAddSeccion,
-    handleSaveSeccion, handleDeleteSeccion,
+    handleSaveSeccion, handleDeleteSeccion, handleMoveSeccion,
   } = useFormBuilder(tipoId, showToast);
 
   const [seccionesOpen, setSeccionesOpen] = useState(true);
-  const [seccionForm, setSeccionForm] = useState({ nombre: '', descripcion: '', opcional: false, depende_de_seccion_id: null as string | null });
+  const [seccionForm, setSeccionForm] = useState({
+    nombre: '', descripcion: '', opcional: false,
+    depende_de_seccion_id: null as string | null,
+    condicion_campo_id: null as string | null,
+    condicion_operador: 'igual_a' as 'igual_a' | 'distinto_a' | 'tiene_valor',
+    condicion_valor: '' as string,
+  });
+  // Modo de desbloqueo: mutuamente excluyentes en la UI (aunque coexistan en BD)
+  const [seccionModo, setSeccionModo] = useState<'ninguno' | 'seccion' | 'campo'>('ninguno');
   const [dragOverSeccionId, setDragOverSeccionId] = useState<string | null>(null);
   const [dragOverSinSeccion, setDragOverSinSeccion] = useState(false);
 
@@ -57,9 +65,18 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
         descripcion: editingSeccion.descripcion || '',
         opcional: editingSeccion.opcional,
         depende_de_seccion_id: editingSeccion.depende_de_seccion_id,
+        condicion_campo_id: editingSeccion.condicion_campo_id,
+        condicion_operador: editingSeccion.condicion_operador ?? 'igual_a',
+        condicion_valor: editingSeccion.condicion_valor ?? '',
       });
+      setSeccionModo(editingSeccion.condicion_campo_id ? 'campo' : editingSeccion.depende_de_seccion_id ? 'seccion' : 'ninguno');
     } else if (showAddSeccion) {
-      setSeccionForm({ nombre: '', descripcion: '', opcional: false, depende_de_seccion_id: null });
+      setSeccionForm({
+        nombre: '', descripcion: '', opcional: false,
+        depende_de_seccion_id: null, condicion_campo_id: null,
+        condicion_operador: 'igual_a', condicion_valor: '',
+      });
+      setSeccionModo('ninguno');
     }
   }, [editingSeccion, showAddSeccion]);
 
@@ -126,7 +143,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                       ) : (
                         <>
                           <p className="text-[10px] text-neutral-400 -mt-0.5">Arrastra un campo de la lista de abajo y suéltalo sobre una sección para asignarlo.</p>
-                          {secciones.map(seccion => {
+                          {secciones.map((seccion, i) => {
                             const dependeDe = secciones.find(s => s.id === seccion.depende_de_seccion_id);
                             const nCampos = campos.filter(c => c.seccion_id === seccion.id).length;
                             const isDragOver = dragOverSeccionId === seccion.id;
@@ -140,12 +157,31 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                                   isDragOver ? 'border-blue-400 ring-2 ring-blue-200 bg-blue-50' : 'border-neutral-200 bg-white'
                                 }`}
                               >
+                                <div className="flex flex-col shrink-0">
+                                  <button
+                                    onClick={() => handleMoveSeccion(seccion, 'arriba')}
+                                    disabled={i === 0}
+                                    className="p-0.5 text-neutral-400 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed"
+                                    title="Subir"
+                                  >
+                                    <ChevronUp className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleMoveSeccion(seccion, 'abajo')}
+                                    disabled={i === secciones.length - 1}
+                                    className="p-0.5 text-neutral-400 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed"
+                                    title="Bajar"
+                                  >
+                                    <ChevronDown className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium text-neutral-800 truncate">{seccion.nombre}</p>
                                   <p className="text-[10px] text-neutral-400">
                                     {nCampos} campo{nCampos !== 1 ? 's' : ''}
                                     {seccion.opcional && ' · Opcional'}
                                     {dependeDe && ` · Depende de "${dependeDe.nombre}"`}
+                                    {seccion.condicion_campo_id && ` · Condicionada a "${campos.find(c => c.id === seccion.condicion_campo_id)?.label ?? '—'}"`}
                                   </p>
                                 </div>
                                 <button onClick={() => { setEditingSeccion(seccion); setShowAddSeccion(false); }} className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-neutral-700">
@@ -327,7 +363,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
 
       {/* Right panel */}
       {(showAddField || editingCampo || showAddSeccion || editingSeccion) && (
-        <div className="w-64 border-l border-neutral-200 bg-neutral-50 p-4 overflow-auto shrink-0 animate-fade-in">
+        <div className="w-64 border-l border-neutral-200 bg-neutral-50 p-4 shrink-0 animate-fade-in sticky top-0 max-h-screen overflow-y-auto">
           {(showAddSeccion || editingSeccion) && (
             <>
               <div className="flex items-center justify-between mb-3">
@@ -368,19 +404,97 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                   <span className="text-sm text-neutral-700">Sección opcional (aparece colapsada)</span>
                 </label>
                 <div>
-                  <label className="block text-xs font-medium text-neutral-600 mb-1">Depende de (opcional)</label>
+                  <label className="block text-xs font-medium text-neutral-600 mb-1">Se desbloquea cuando…</label>
                   <select
-                    value={seccionForm.depende_de_seccion_id ?? ''}
-                    onChange={(e) => setSeccionForm({ ...seccionForm, depende_de_seccion_id: e.target.value || null })}
+                    value={seccionModo}
+                    onChange={(e) => {
+                      const modo = e.target.value as typeof seccionModo;
+                      setSeccionModo(modo);
+                      setSeccionForm({
+                        ...seccionForm,
+                        depende_de_seccion_id: modo === 'seccion' ? seccionForm.depende_de_seccion_id : null,
+                        condicion_campo_id: modo === 'campo' ? seccionForm.condicion_campo_id : null,
+                      });
+                    }}
                     className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
                   >
-                    <option value="">Ninguna — siempre visible</option>
-                    {secciones
-                      .filter(s => s.id !== editingSeccion?.id && s.depende_de_seccion_id !== editingSeccion?.id)
-                      .map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                    <option value="ninguno">Siempre visible</option>
+                    <option value="seccion">Otra sección se completa</option>
+                    <option value="campo">Un campo tiene cierto valor (estilo Google Forms)</option>
                   </select>
-                  <p className="text-[10px] text-neutral-400 mt-1">Se atenúa hasta que se completen los campos requeridos de la sección elegida.</p>
                 </div>
+
+                {seccionModo === 'seccion' && (
+                  <div>
+                    <select
+                      value={seccionForm.depende_de_seccion_id ?? ''}
+                      onChange={(e) => setSeccionForm({ ...seccionForm, depende_de_seccion_id: e.target.value || null })}
+                      className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                    >
+                      <option value="">Seleccionar sección…</option>
+                      {secciones
+                        .filter(s => s.id !== editingSeccion?.id && s.depende_de_seccion_id !== editingSeccion?.id)
+                        .map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                    </select>
+                    <p className="text-[10px] text-neutral-400 mt-1">Se atenúa hasta que se completen los campos requeridos de la sección elegida.</p>
+                  </div>
+                )}
+
+                {seccionModo === 'campo' && (() => {
+                  const camposConOpciones = campos.filter(c => c.id !== undefined);
+                  const fuenteCampo = campos.find(c => c.id === seccionForm.condicion_campo_id);
+                  const fuenteOpciones: { label: string; slug: string }[] = (fuenteCampo as any)?.config?.opciones || [];
+                  return (
+                    <div className="space-y-2 pl-3 border-l-2 border-amber-300">
+                      <div>
+                        <label className="block text-[11px] text-neutral-500 mb-0.5">Si el campo…</label>
+                        <select
+                          value={seccionForm.condicion_campo_id ?? ''}
+                          onChange={(e) => setSeccionForm({ ...seccionForm, condicion_campo_id: e.target.value || null })}
+                          className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg"
+                        >
+                          <option value="">Selecciona campo…</option>
+                          {camposConOpciones.map(c => (
+                            <option key={c.id} value={c.id}>{c.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <select
+                        value={seccionForm.condicion_operador}
+                        onChange={(e) => setSeccionForm({ ...seccionForm, condicion_operador: e.target.value as typeof seccionForm.condicion_operador })}
+                        className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg"
+                      >
+                        <option value="igual_a">es igual a</option>
+                        <option value="distinto_a">es distinto de</option>
+                        <option value="tiene_valor">tiene algún valor</option>
+                      </select>
+                      {seccionForm.condicion_operador !== 'tiene_valor' && (
+                        fuenteOpciones.length > 0 ? (
+                          <select
+                            value={seccionForm.condicion_valor}
+                            onChange={(e) => setSeccionForm({ ...seccionForm, condicion_valor: e.target.value })}
+                            className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg bg-white"
+                          >
+                            <option value="">Selecciona opción…</option>
+                            {fuenteOpciones.map(opt => (
+                              <option key={opt.slug} value={opt.slug}>{opt.label}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            value={seccionForm.condicion_valor}
+                            onChange={(e) => setSeccionForm({ ...seccionForm, condicion_valor: e.target.value })}
+                            placeholder="valor esperado…"
+                            className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg"
+                          />
+                        )
+                      )}
+                      <p className="text-[10px] text-neutral-400">La sección se atenúa hasta que la respuesta cumpla esta condición.</p>
+                    </div>
+                  );
+                })()}
+
                 <button
                   onClick={() => handleSaveSeccion(seccionForm)}
                   disabled={!seccionForm.nombre.trim()}

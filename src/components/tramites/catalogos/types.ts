@@ -76,6 +76,9 @@ export interface TramiteSeccion {
   orden: number;
   opcional: boolean;
   depende_de_seccion_id: string | null;
+  condicion_campo_id: string | null;
+  condicion_operador: 'igual_a' | 'distinto_a' | 'tiene_valor' | null;
+  condicion_valor: string | null;
   activo: boolean;
 }
 
