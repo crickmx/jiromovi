@@ -79,8 +79,13 @@ function buildModuleList(): ModuleRow[] {
 
 const ALL_MODULES = buildModuleList();
 
-// Map workspace label -> its own module_key (used to toggle the whole section at once)
-const WORKSPACE_SECTION_KEY = new Map<string, string>(WORKSPACES.map(ws => [ws.label, ws.id]));
+// Prefijo para la llave de borrador de "Toda la sección" — nunca choca con un module_key
+// real (esos siempre empiezan con "/"). Antes esto escribía module_key = ws.id (ej.
+// "produccion"), pero el lado de lectura (isModuleVisible) SIEMPRE consulta item.path
+// (ej. "/produccion") — esa fila nunca se leía, por eso "Toda la sección" no tenía efecto.
+// Ahora "toda la sección" se resuelve aplicando el cambio a cada item real de esa sección.
+const SECTION_PREFIX = '__section__:';
+const sectionDraftKey = (workspace: string) => `${SECTION_PREFIX}${workspace}`;
 
 // ─── RuleMap helpers ─────────────────────────────────────────────────────────
 
@@ -157,6 +162,45 @@ export default function ModulosAdmin() {
       setTimeout(() => setSaveResult(null), 2000);
     } else {
       setSaveResult({ key: k, ok: false });
+      setTimeout(() => setSaveResult(null), 3000);
+    }
+    setSaving(null);
+  };
+
+  // ── Toggle binario de TODA una sección a la vez (aplica a cada item real) ──
+
+  const toggleSectionRule = async (groupKey: string, moduleKeys: string[], targetType: TargetType, targetValue: string, currentlyVisible: boolean) => {
+    const newVisible = !currentlyVisible;
+    setSaving(groupKey);
+    setSaveResult(null);
+
+    const rows = moduleKeys.map(mk => ({
+      module_key: mk,
+      target_type: targetType,
+      target_value: targetValue,
+      visible: newVisible,
+      updated_by: usuario?.id,
+      updated_at: new Date().toISOString(),
+    }));
+    const { error } = await supabase
+      .from('module_visibility')
+      .upsert(rows, { onConflict: 'module_key,target_type,target_value' });
+
+    if (!error) {
+      setRules(prev => {
+        const next = new Map(prev);
+        for (const mk of moduleKeys) {
+          const k = ruleKey(mk, targetType, targetValue);
+          const existing = next.get(k);
+          next.set(k, { ...(existing ?? { module_key: mk, target_type: targetType, target_value: targetValue }), visible: newVisible });
+        }
+        return next;
+      });
+      invalidateModuleVisibilityCache();
+      setSaveResult({ key: groupKey, ok: true });
+      setTimeout(() => setSaveResult(null), 2000);
+    } else {
+      setSaveResult({ key: groupKey, ok: false });
       setTimeout(() => setSaveResult(null), 3000);
     }
     setSaving(null);
@@ -299,6 +343,7 @@ export default function ModulosAdmin() {
           toggleWorkspace={toggleWorkspace}
           getVisible={getVisible}
           toggleRule={toggleRule}
+          toggleSectionRule={toggleSectionRule}
           saving={saving}
           saveResult={saveResult}
         />
@@ -339,16 +384,17 @@ interface RolesTabProps {
   toggleWorkspace: (ws: string) => void;
   getVisible: (key: string, type: TargetType, value: string) => boolean;
   toggleRule: (key: string, type: TargetType, value: string, currentlyVisible: boolean) => Promise<void>;
+  toggleSectionRule: (groupKey: string, moduleKeys: string[], type: TargetType, value: string, currentlyVisible: boolean) => Promise<void>;
   saving: string | null;
   saveResult: { key: string; ok: boolean } | null;
 }
 
-function RolesTab({ modulesByWorkspace, expandedWorkspaces, toggleWorkspace, getVisible, toggleRule, saving, saveResult }: RolesTabProps) {
+function RolesTab({ modulesByWorkspace, expandedWorkspaces, toggleWorkspace, getVisible, toggleRule, toggleSectionRule, saving, saveResult }: RolesTabProps) {
   return (
     <div className="space-y-3">
       {modulesByWorkspace.map(({ workspace, modules }) => {
         const expanded = expandedWorkspaces.has(workspace);
-        const sectionKey = WORKSPACE_SECTION_KEY.get(workspace);
+        const moduleKeys = modules.map(m => m.key);
         return (
           <WorkspaceSection
             key={workspace}
@@ -372,19 +418,19 @@ function RolesTab({ modulesByWorkspace, expandedWorkspaces, toggleWorkspace, get
                 />
               );
             }}
-            renderSectionCell={sectionKey ? (role) => {
-              const k = ruleKey(sectionKey, 'role', role);
-              const visible = getVisible(sectionKey, 'role', role);
+            renderSectionCell={(role) => {
+              const groupKey = `section::${workspace}::role::${role}`;
+              const visible = moduleKeys.every(mk => getVisible(mk, 'role', role));
               return (
                 <ToggleCell
                   compact
                   visible={visible}
-                  isSaving={saving === k}
-                  saveResult={saveResult?.key === k ? saveResult : null}
-                  onToggle={() => toggleRule(sectionKey, 'role', role, visible)}
+                  isSaving={saving === groupKey}
+                  saveResult={saveResult?.key === groupKey ? saveResult : null}
+                  onToggle={() => toggleSectionRule(groupKey, moduleKeys, 'role', role, visible)}
                 />
               );
-            } : undefined}
+            }}
           />
         );
       })}
@@ -431,24 +477,44 @@ function BulkTargetEditor({
   const moduleLabelByKey = useMemo(() => {
     const m = new Map<string, string>();
     for (const { workspace, modules } of modulesByWorkspace) {
-      const sectionKey = WORKSPACE_SECTION_KEY.get(workspace);
-      if (sectionKey) m.set(sectionKey, `${workspace} (sección completa)`);
+      m.set(sectionDraftKey(workspace), `${workspace} (sección completa)`);
       for (const mod of modules) m.set(mod.key, `${workspace} · ${mod.label}`);
     }
     return m;
   }, [modulesByWorkspace]);
 
+  // Lista para MOSTRAR en el modal de confirmación — compacta, sin expandir "sección completa".
   const changesList = useMemo(
     () => Array.from(draft.entries()).map(([moduleKey, action]) => ({ moduleKey, action, moduleLabel: moduleLabelByKey.get(moduleKey) ?? moduleKey })),
     [draft, moduleLabelByKey]
   );
+
+  // Lista real a GUARDAR — expande "sección completa" a cada item real de esa sección
+  // (si además hay un cambio explícito para un item puntual, ese gana sobre el de la sección).
+  const buildChangesToSave = (): BulkChange[] => {
+    const itemLevelKeys = new Set(Array.from(draft.keys()).filter(k => !k.startsWith(SECTION_PREFIX)));
+    const result: BulkChange[] = [];
+    for (const [moduleKey, action] of draft.entries()) {
+      if (moduleKey.startsWith(SECTION_PREFIX)) {
+        const workspace = moduleKey.slice(SECTION_PREFIX.length);
+        const wsModules = modulesByWorkspace.find(w => w.workspace === workspace)?.modules ?? [];
+        for (const mod of wsModules) {
+          if (itemLevelKeys.has(mod.key)) continue;
+          result.push({ moduleKey: mod.key, action });
+        }
+      } else {
+        result.push({ moduleKey, action });
+      }
+    }
+    return result;
+  };
 
   const targetLabels = selected.map(id => targetOptions.find(o => o.id === id)?.label ?? id);
 
   const handleConfirm = async () => {
     setSaving(true);
     setErrorMsg(null);
-    const result = await onSave(selected, changesList.map(({ moduleKey, action }) => ({ moduleKey, action })));
+    const result = await onSave(selected, buildChangesToSave());
     setSaving(false);
     if (result.ok) {
       setDraft(new Map());
@@ -484,7 +550,7 @@ function BulkTargetEditor({
           <div className="space-y-3 pb-16">
             {modulesByWorkspace.map(({ workspace, modules }) => {
               const expanded = expandedWorkspaces.has(workspace);
-              const sectionKey = WORKSPACE_SECTION_KEY.get(workspace);
+              const sectionKey = sectionDraftKey(workspace);
               return (
                 <WorkspaceSection
                   key={workspace}
@@ -501,14 +567,14 @@ function BulkTargetEditor({
                       onChange={(next) => setDraftValue(module.key, next)}
                     />
                   )}
-                  renderSectionCell={sectionKey ? () => (
+                  renderSectionCell={() => (
                     <DraftToggle
                       compact
                       value={draft.get(sectionKey) ?? null}
-                      current={selected.length === 1 ? getCurrent(sectionKey, selected[0]) : null}
+                      current={null}
                       onChange={(next) => setDraftValue(sectionKey, next)}
                     />
-                  ) : undefined}
+                  )}
                 />
               );
             })}
