@@ -9,6 +9,7 @@ export interface PendingTrigger {
   initial_status: string;
   prioridad_hijo: 'heredar' | 'Alta' | 'Media' | 'Baja';
   requiere_confirmacion: boolean;
+  folio_mode: 'nuevo' | 'heredar_incisos';
   target_tipo?: { label: string; color: string } | null;
 }
 

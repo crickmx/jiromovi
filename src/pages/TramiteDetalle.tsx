@@ -882,10 +882,27 @@ export function TramiteDetalle() {
               ? snap.prioridad
               : (trigger.prioridad_hijo as 'Alta' | 'Media' | 'Baja');
 
+            // 2b. Folio: nuevo (default, lo asigna el trigger de BD) o heredado del padre + inciso.
+            // El inciso se calcula sobre TODOS los hermanos ya creados para este padre (no solo
+            // los de este trigger), tomando la siguiente letra libre en orden alfabético.
+            let folioHijo: string | undefined;
+            if (trigger.folio_mode === 'heredar_incisos') {
+              const { data: hermanos } = await supabase
+                .from('tickets').select('folio').eq('parent_ticket_id', snap.id);
+              const prefijo = `${snap.folio}-`;
+              const letrasUsadas = (hermanos || [])
+                .map(h => h.folio?.startsWith(prefijo) ? h.folio.slice(prefijo.length) : null)
+                .filter((l): l is string => !!l && /^[A-Z]$/.test(l));
+              let letra = 'A';
+              while (letrasUsadas.includes(letra)) letra = String.fromCharCode(letra.charCodeAt(0) + 1);
+              folioHijo = `${snap.folio}-${letra}`;
+            }
+
             // 3. Crear trámite hijo
             const { data: childTicket, error: childErr } = await supabase
               .from('tickets')
               .insert({
+                ...(folioHijo ? { folio: folioHijo } : {}),
                 tipo_tramite: targetTipo.value,
                 estatus_id: estatusIniciado?.id ?? null,
                 prioridad: prioHijo,

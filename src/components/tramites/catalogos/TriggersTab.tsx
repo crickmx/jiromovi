@@ -22,6 +22,7 @@ interface StatusTrigger {
   requiere_confirmacion: boolean;
   adjunto_categorias_ids: string[];
   activo: boolean;
+  folio_mode: 'nuevo' | 'heredar_incisos';
   created_at: string;
   target_tipo?: { label: string; color: string } | null;
 }
@@ -47,6 +48,7 @@ interface TriggerFormState {
   requiere_confirmacion: boolean;
   adjunto_categorias_ids: string[];
   activo: boolean;
+  folio_mode: 'nuevo' | 'heredar_incisos';
 }
 
 type ShowToast = (msg: string, type?: 'success' | 'error') => void;
@@ -93,7 +95,7 @@ export function TriggersTab({ tipoId, showToast }: { tipoId: string; showToast: 
   const [form, setForm] = useState<TriggerFormState>({
     nombre: '', from_status: '', target_tipo_id: '', initial_status: '',
     prioridad_hijo: 'heredar', requiere_confirmacion: true,
-    adjunto_categorias_ids: [], activo: true,
+    adjunto_categorias_ids: [], activo: true, folio_mode: 'nuevo',
   });
 
   useEffect(() => { loadAll(); }, [tipoId]);
@@ -159,7 +161,7 @@ export function TriggersTab({ tipoId, showToast }: { tipoId: string; showToast: 
   const BLANK_FORM: TriggerFormState = {
     nombre: '', from_status: '', target_tipo_id: '', initial_status: '',
     prioridad_hijo: 'heredar', requiere_confirmacion: true,
-    adjunto_categorias_ids: [], activo: true,
+    adjunto_categorias_ids: [], activo: true, folio_mode: 'nuevo',
   };
 
   const openNew = () => {
@@ -176,7 +178,7 @@ export function TriggersTab({ tipoId, showToast }: { tipoId: string; showToast: 
       target_tipo_id: t.target_tipo_id, initial_status: t.initial_status,
       prioridad_hijo: t.prioridad_hijo, requiere_confirmacion: t.requiere_confirmacion,
       adjunto_categorias_ids: t.adjunto_categorias_ids ?? [],
-      activo: t.activo,
+      activo: t.activo, folio_mode: t.folio_mode ?? 'nuevo',
     });
     resolveTargetStatuses(t.target_tipo_id);
     setShowForm(true);
@@ -221,6 +223,7 @@ export function TriggersTab({ tipoId, showToast }: { tipoId: string; showToast: 
       requiere_confirmacion: form.requiere_confirmacion,
       adjunto_categorias_ids: form.adjunto_categorias_ids,
       activo: form.activo,
+      folio_mode: form.folio_mode,
       created_by: usuario?.id,
     };
 
@@ -512,6 +515,22 @@ function TriggerForm({
         </div>
       </div>
 
+      {/* Folio del hijo */}
+      <div>
+        <label className={labelCls}>Folio del trámite hijo</label>
+        <select
+          value={form.folio_mode}
+          onChange={e => onFormChange({ folio_mode: e.target.value as TriggerFormState['folio_mode'] })}
+          className={inputCls}
+        >
+          <option value="nuevo">Folio nuevo (normal)</option>
+          <option value="heredar_incisos">Folio del padre + inciso (ej. TK09672-A)</option>
+        </select>
+        <p className="text-[10px] text-neutral-400 mt-1">
+          Con inciso, el hijo usa el mismo folio del padre agregando -A, -B, -C… según cuántos hijos ya existan.
+        </p>
+      </div>
+
       {/* Adjuntos */}
       {adjuntoCats.length > 0 && (
         <div>
@@ -634,6 +653,11 @@ function TriggerRow({
             {trigger.requiere_confirmacion && (
               <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
                 con confirmación
+              </span>
+            )}
+            {trigger.folio_mode === 'heredar_incisos' && (
+              <span className="text-[10px] text-teal-600 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-mono">
+                folio-A/B/C…
               </span>
             )}
           </div>
