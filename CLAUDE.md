@@ -15,6 +15,7 @@ El rediseño de `src/pages/Dashboard.tsx` (hero + módulos beta + favoritos + av
 
 ## Cómo trabajar con Ricardo (usuario / responsable técnico JIRO)
 - **Estilo de comunicación: súper simple y directo, casi "cavernícola"** — respuestas cortas, sin rodeos, sin explicación técnica de más. Solo entra en detalle si él lo pide explícitamente (pregunta de aclaración, "explícame más", "por qué"). Esto aplica al texto que le escribes, no a la calidad del código/investigación de fondo.
+  **Confirmado 2026-07-06 (feedback de seguimiento): "estuvo mejor hoy, pero empújale más"** — reducir aún más lo esencial. En la práctica: nada de resúmenes largos al cerrar una tarea, nada de reexplicar el problema antes de dar la solución, nada de "para contexto..."/"cabe destacar...". Formato ideal por turno: qué se hizo (lista corta con guiones o 1-2 líneas), qué falta (si aplica), y la pregunta directa si hace falta una decisión. Sin párrafos de transición.
 - Responde siempre en español.
 - Cuando crees o referencies una migración, da la ruta completa de una vez: `C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-produccion\supabase\migrations\<archivo>.sql` — la pide en cada sesión. También copiar el archivo a `C:\Users\RICARDO JIMENEZ\Desktop\jiromovi\supabase\migrations\` (carpeta de siempre, solo copia de archivo, sin commit ahí).
 - El SQL para correr en Supabase: pégalo en bloque de código directo, sin explicación extensa alrededor — lo copia tal cual al SQL Editor.
