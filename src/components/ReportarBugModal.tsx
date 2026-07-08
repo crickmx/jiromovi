@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { getBugReportSnapshot } from '../lib/bugReportCapture';
 import { resolverTemplateBugReport, construirRespuestaBugReport } from '../lib/bugReportTemplate';
+import { crearNotificacion } from '../lib/notificationHelpers';
 
 const CATEGORIA_CAPTURA_NOMBRE = 'Captura de pantalla (Reporte de bug)';
 
@@ -69,6 +70,48 @@ export function ReportarBugModal({ screenshot, onClose }: Props) {
         .select()
         .single();
       if (ticketError) throw ticketError;
+
+      // Mismo criterio de aviso que NuevoTramiteModal.tsx: al responsable directo, si no al
+      // líder del equipo asignado, y si no hay ni equipo a todos los Administradores.
+      if (responsableId) {
+        await crearNotificacion({
+          user_id: responsableId,
+          titulo: 'Nuevo reporte de bug asignado',
+          mensaje: `Se te asignó el reporte de bug ${ticket.folio}.`,
+          modulo: 'Tramites',
+          icono: 'clipboard-list',
+          accion_url: `/tramites/${ticket.id}`,
+          accion_texto: 'Ver reporte',
+        });
+      } else if (grupoAsignadoId) {
+        const { data: miembros } = await supabase.rpc('get_grupo_miembros_ejecutivos', { p_grupo_id: grupoAsignadoId });
+        const lider = (miembros as Array<{ id: string; nombre_completo: string }>)?.[0];
+        if (lider) {
+          await crearNotificacion({
+            user_id: lider.id,
+            titulo: 'Nuevo reporte de bug en tu equipo',
+            mensaje: `Nuevo reporte de bug ${ticket.folio} asignado a tu equipo.`,
+            modulo: 'Tramites',
+            icono: 'clipboard-list',
+            accion_url: `/tramites/${ticket.id}`,
+            accion_texto: 'Ver reporte',
+          });
+        }
+      } else {
+        const { data: adminsSinEquipo } = await supabase.from('usuarios').select('id')
+          .eq('rol', 'Administrador').eq('activo', true);
+        for (const adm of (adminsSinEquipo ?? [])) {
+          await crearNotificacion({
+            user_id: adm.id,
+            titulo: 'Reporte de bug sin equipo asignado',
+            mensaje: `El reporte de bug ${ticket.folio} no se pudo asignar automáticamente a ningún equipo. Requiere asignación manual.`,
+            modulo: 'Tramites',
+            icono: 'alert-triangle',
+            accion_url: `/tramites/${ticket.id}`,
+            accion_texto: 'Ver reporte',
+          });
+        }
+      }
 
       const { data: campos } = await supabase
         .from('tramite_tipo_campos')

@@ -275,21 +275,28 @@ export interface SidebarItemConfigRow {
   badge_color: string;
 }
 
-export interface ResolvedWorkspaceItem {
-  item: WorkspaceNavItem;
-  badge: { texto: string; color: string } | null;
+export interface SidebarSeparadorRow {
+  id: string;
+  workspace_id: string;
+  grupo_id: string | null;
+  orden: number;
 }
+
+export type ResolvedSidebarEntry =
+  | { kind: 'item'; item: WorkspaceNavItem; badge: { texto: string; color: string } | null }
+  | { kind: 'separador'; id: string };
 
 export interface ResolvedItemGroup {
   grupo: SidebarGrupo | null; // null = sin grupo (se muestran primero, sin encabezado)
-  items: ResolvedWorkspaceItem[];
+  items: ResolvedSidebarEntry[];
 }
 
-/** Agrupa y ordena los items de UN workspace según la config editable — retrocompatible: sin config, todo queda "sin grupo" en su orden original. */
+/** Agrupa y ordena los items (+ separadores independientes) de UN workspace según la config editable — retrocompatible: sin config, todo queda "sin grupo" en su orden original. */
 export function resolveWorkspaceItems(
   workspace: WorkspaceDefinition,
   grupos: SidebarGrupo[],
-  itemConfigs: SidebarItemConfigRow[]
+  itemConfigs: SidebarItemConfigRow[],
+  separadores: SidebarSeparadorRow[] = []
 ): ResolvedItemGroup[] {
   const configByPath = new Map(itemConfigs.map(c => [c.item_path, c]));
   const gruposDeEsteWorkspace = grupos
@@ -297,25 +304,43 @@ export function resolveWorkspaceItems(
     .sort((a, b) => a.orden - b.orden);
   const gruposIds = new Set(gruposDeEsteWorkspace.map(g => g.id));
 
-  const itemsConMeta = workspace.items.map((item, idx) => {
+  type Entrada =
+    | { kind: 'item'; orden: number; grupoId: string | null; item: WorkspaceNavItem; badge: { texto: string; color: string } | null }
+    | { kind: 'separador'; orden: number; grupoId: string | null; id: string };
+
+  const itemsConMeta: Entrada[] = workspace.items.map((item, idx) => {
     const cfg = configByPath.get(item.path);
     const grupoId = cfg?.grupo_id && gruposIds.has(cfg.grupo_id) ? cfg.grupo_id : null;
     return {
+      kind: 'item',
       item,
       orden: cfg?.orden ?? idx,
       grupoId,
       badge: cfg?.badge_texto ? { texto: cfg.badge_texto, color: cfg.badge_color } : null,
     };
-  }).sort((a, b) => a.orden - b.orden);
+  });
+
+  const separadoresConMeta: Entrada[] = separadores
+    .filter(s => s.workspace_id === workspace.id)
+    .map(s => ({
+      kind: 'separador',
+      id: s.id,
+      orden: s.orden,
+      grupoId: s.grupo_id && gruposIds.has(s.grupo_id) ? s.grupo_id : null,
+    }));
+
+  const todas = [...itemsConMeta, ...separadoresConMeta].sort((a, b) => a.orden - b.orden);
+  const toResolved = (e: Entrada): ResolvedSidebarEntry =>
+    e.kind === 'item' ? { kind: 'item', item: e.item, badge: e.badge } : { kind: 'separador', id: e.id };
 
   const resultado: ResolvedItemGroup[] = [];
-  const sinGrupo = itemsConMeta.filter(m => !m.grupoId);
+  const sinGrupo = todas.filter(e => !e.grupoId);
   if (sinGrupo.length > 0) {
-    resultado.push({ grupo: null, items: sinGrupo.map(m => ({ item: m.item, badge: m.badge })) });
+    resultado.push({ grupo: null, items: sinGrupo.map(toResolved) });
   }
   for (const g of gruposDeEsteWorkspace) {
-    const items = itemsConMeta.filter(m => m.grupoId === g.id);
-    resultado.push({ grupo: g, items: items.map(m => ({ item: m.item, badge: m.badge })) });
+    const items = todas.filter(e => e.grupoId === g.id);
+    resultado.push({ grupo: g, items: items.map(toResolved) });
   }
   return resultado;
 }

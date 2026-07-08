@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { PanelLeft, GripVertical, Loader as Loader2, Minus, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useSidebarConfig } from '../hooks/useSidebarConfig';
 import { useSidebarItemsConfig } from '../hooks/useSidebarItemsConfig';
-import { getEntryKey, WORKSPACES, type NavEntry, type ResolvedNavEntry, type WorkspaceId } from '../lib/workspaceConfig';
+import { getEntryKey, WORKSPACES, type NavEntry, type ResolvedNavEntry, type WorkspaceId, type WorkspaceNavItem } from '../lib/workspaceConfig';
 
 const BADGE_COLOR_OPTIONS: { key: string; label: string; cls: string }[] = [
   { key: 'amber', label: 'Ámbar', cls: 'bg-amber-500' },
@@ -251,23 +251,32 @@ function IconosEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m:
 
 // ── Sección 2: items del panel blanco (por sección) ──────────────────────────
 
+interface FlatItemEntry { kind: 'item'; key: string; item: WorkspaceNavItem; badge: { texto: string; color: string } | null; grupoId: string | null }
+interface FlatSeparadorEntry { kind: 'separador'; key: string; id: string; grupoId: string | null }
+type FlatEntry = FlatItemEntry | FlatSeparadorEntry;
+
 function ItemsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m: string, t?: 'success' | 'error') => void }) {
   const [selectedWs, setSelectedWs] = useState<WorkspaceId>('administracion');
   const { getResolvedItems, loading, reload } = useSidebarItemsConfig();
-  const [savingPath, setSavingPath] = useState<string | null>(null);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
   const [nuevoGrupoNombre, setNuevoGrupoNombre] = useState('');
-  const dragPath = useRef<string | null>(null);
+  const dragKey = useRef<string | null>(null);
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
 
   const workspace = WORKSPACES.find(w => w.id === selectedWs)!;
   const grupos = getResolvedItems(workspace);
-  // Lista plana en el orden visual actual, para poder reordenar por posición.
-  const flat = grupos.flatMap(g => g.items.map(it => ({ ...it, grupoId: g.grupo?.id ?? null })));
+  // Lista plana en el orden visual actual, para poder reordenar por posición. Los separadores
+  // son entradas propias (no atadas a ningún item) para poder colocarlos en cualquier posición.
+  const flat: FlatEntry[] = grupos.flatMap(g => g.items.map((entry): FlatEntry =>
+    entry.kind === 'item'
+      ? { kind: 'item', key: entry.item.path, item: entry.item, badge: entry.badge, grupoId: g.grupo?.id ?? null }
+      : { kind: 'separador', key: `sep-${entry.id}`, id: entry.id, grupoId: g.grupo?.id ?? null }
+  ));
 
   const persistItem = async (itemPath: string, patch: Partial<{ orden: number; grupo_id: string | null; badge_texto: string | null; badge_color: string }>) => {
-    const current = flat.find(f => f.item.path === itemPath);
-    const currentIdx = flat.findIndex(f => f.item.path === itemPath);
-    setSavingPath(itemPath);
+    const current = flat.find((f): f is FlatItemEntry => f.kind === 'item' && f.item.path === itemPath);
+    const currentIdx = flat.findIndex(f => f.kind === 'item' && f.item.path === itemPath);
+    setSavingKey(itemPath);
     const { error } = await supabase.from('sidebar_item_config').upsert({
       item_path: itemPath,
       orden: patch.orden ?? currentIdx,
@@ -276,44 +285,89 @@ function ItemsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m: 
       badge_color: patch.badge_color ?? (current?.badge?.color ?? 'amber'),
       updated_by: usuarioId,
     }, { onConflict: 'item_path' });
-    if (error) { onToast('Error al guardar: ' + error.message, 'error'); setSavingPath(null); return; }
+    if (error) { onToast('Error al guardar: ' + error.message, 'error'); setSavingKey(null); return; }
     await reload();
     onToast('Cambios guardados');
-    setSavingPath(null);
+    setSavingKey(null);
+  };
+
+  const guardarOrdenCompleto = async (reordered: FlatEntry[]) => {
+    const itemRows = reordered
+      .map((f, i) => ({ f, i }))
+      .filter((x): x is { f: FlatItemEntry; i: number } => x.f.kind === 'item')
+      .map(({ f, i }) => ({
+        item_path: f.item.path,
+        orden: i,
+        grupo_id: f.grupoId,
+        badge_texto: f.badge?.texto ?? null,
+        badge_color: f.badge?.color ?? 'amber',
+        updated_by: usuarioId,
+      }));
+    const sepRows = reordered
+      .map((f, i) => ({ f, i }))
+      .filter((x): x is { f: FlatSeparadorEntry; i: number } => x.f.kind === 'separador')
+      .map(({ f, i }) => ({ id: f.id, orden: i, grupo_id: f.grupoId }));
+
+    const [itemResult, sepResult] = await Promise.all([
+      itemRows.length ? supabase.from('sidebar_item_config').upsert(itemRows, { onConflict: 'item_path' }) : Promise.resolve({ error: null }),
+      sepRows.length ? supabase.from('sidebar_separadores').upsert(sepRows, { onConflict: 'id' }) : Promise.resolve({ error: null }),
+    ]);
+    return itemResult.error || sepResult.error;
   };
 
   const reorderTo = async (dropIdx: number) => {
     setDragOverKey(null);
-    const fromPath = dragPath.current;
-    dragPath.current = null;
-    if (!fromPath) return;
-    const fromIdx = flat.findIndex(f => f.item.path === fromPath);
+    const fromKey = dragKey.current;
+    dragKey.current = null;
+    if (!fromKey) return;
+    const fromIdx = flat.findIndex(f => f.key === fromKey);
     if (fromIdx === -1 || fromIdx === dropIdx) return;
     const reordered = [...flat];
     const [moved] = reordered.splice(fromIdx, 1);
     reordered.splice(dropIdx, 0, moved);
-    setSavingPath(fromPath);
-    const rows = reordered.map((f, i) => ({
-      item_path: f.item.path,
-      orden: i,
-      grupo_id: f.grupoId,
-      badge_texto: f.badge?.texto ?? null,
-      badge_color: f.badge?.color ?? 'amber',
-      updated_by: usuarioId,
-    }));
-    const { error } = await supabase.from('sidebar_item_config').upsert(rows, { onConflict: 'item_path' });
-    if (error) { onToast('Error al reordenar: ' + error.message, 'error'); setSavingPath(null); return; }
+    setSavingKey(fromKey);
+    const error = await guardarOrdenCompleto(reordered);
+    if (error) { onToast('Error al reordenar: ' + error.message, 'error'); setSavingKey(null); return; }
     await reload();
     onToast('Cambios guardados');
-    setSavingPath(null);
+    setSavingKey(null);
   };
 
   const dropOnGrupo = async (grupoId: string | null) => {
     setDragOverKey(null);
-    const fromPath = dragPath.current;
-    dragPath.current = null;
-    if (!fromPath) return;
-    await persistItem(fromPath, { grupo_id: grupoId });
+    const fromKey = dragKey.current;
+    dragKey.current = null;
+    if (!fromKey) return;
+    const entry = flat.find(f => f.key === fromKey);
+    if (!entry) return;
+    if (entry.kind === 'item') {
+      await persistItem(entry.item.path, { grupo_id: grupoId });
+      return;
+    }
+    setSavingKey(fromKey);
+    const { error } = await supabase.from('sidebar_separadores').update({ grupo_id: grupoId }).eq('id', entry.id);
+    if (error) { onToast('Error: ' + error.message, 'error'); setSavingKey(null); return; }
+    await reload();
+    onToast('Cambios guardados');
+    setSavingKey(null);
+  };
+
+  const crearSeparador = async (grupoId: string | null) => {
+    const { error } = await supabase.from('sidebar_separadores').insert({
+      workspace_id: selectedWs,
+      grupo_id: grupoId,
+      orden: flat.length,
+    });
+    if (error) { onToast('Error al agregar separador: ' + error.message, 'error'); return; }
+    await reload();
+    onToast('Separador agregado');
+  };
+
+  const eliminarSeparador = async (id: string) => {
+    const { error } = await supabase.from('sidebar_separadores').delete().eq('id', id);
+    if (error) { onToast('Error al eliminar: ' + error.message, 'error'); return; }
+    await reload();
+    onToast('Separador eliminado');
   };
 
   const crearGrupo = async () => {
@@ -365,7 +419,7 @@ function ItemsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m: 
         </select>
       </div>
 
-      <p className="text-xs text-neutral-400 mb-3 px-1">Arrastra un item para reordenarlo, o suéltalo sobre un grupo para moverlo ahí.</p>
+      <p className="text-xs text-neutral-400 mb-3 px-1">Arrastra un item o separador para reordenarlo, o suéltalo sobre un grupo para moverlo ahí.</p>
 
       <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/3 overflow-hidden">
         {grupos.map(({ grupo, items }) => (
@@ -385,10 +439,17 @@ function ItemsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m: 
                   {grupo.colapsado_default ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                   {grupo.nombre}
                 </button>
-                <span className="text-[10px] text-neutral-400">({items.length})</span>
+                <span className="text-[10px] text-neutral-400">({items.filter(i => i.kind === 'item').length})</span>
+                <button
+                  onClick={() => crearSeparador(grupo.id)}
+                  className="ml-auto p-1 text-neutral-300 hover:text-neutral-600 dark:hover:text-white/70 transition-colors"
+                  title="Agregar separador en este grupo"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
                 <button
                   onClick={() => eliminarGrupo(grupo.id, grupo.nombre)}
-                  className="ml-auto p-1 text-neutral-300 hover:text-red-500 transition-colors"
+                  className="p-1 text-neutral-300 hover:text-red-500 transition-colors"
                   title="Eliminar grupo"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -399,24 +460,63 @@ function ItemsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m: 
                 onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverKey('g-null'); }}
                 onDragLeave={() => setDragOverKey(prev => (prev === 'g-null' ? null : prev))}
                 onDrop={(e) => { e.preventDefault(); dropOnGrupo(null); }}
-                className={`px-4 py-1.5 text-[10px] text-neutral-400 ${dragOverKey === 'g-null' ? 'bg-blue-50 dark:bg-blue-500/10' : ''}`}
+                className={`flex items-center gap-2 px-4 py-1.5 text-[10px] text-neutral-400 ${dragOverKey === 'g-null' ? 'bg-blue-50 dark:bg-blue-500/10' : ''}`}
               >
-                Sin grupo — suelta aquí para sacar un item de su grupo
+                <span className="flex-1">Sin grupo — suelta aquí para sacar un item de su grupo</span>
+                <button
+                  onClick={() => crearSeparador(null)}
+                  className="p-1 text-neutral-300 hover:text-neutral-600 dark:hover:text-white/70 transition-colors"
+                  title="Agregar separador aquí"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
               </div>
             )}
 
-            {items.map(({ item, badge }) => {
-              const flatIdx = flat.findIndex(f => f.item.path === item.path);
-              const isSaving = savingPath === item.path;
-              const isDragOver = dragOverKey === `i-${item.path}`;
+            {items.map((entry) => {
+              const key = entry.kind === 'item' ? entry.item.path : `sep-${entry.id}`;
+              const flatIdx = flat.findIndex(f => f.key === key);
+              const isSaving = savingKey === key;
+              const isDragOver = dragOverKey === `i-${key}`;
+
+              if (entry.kind === 'separador') {
+                return (
+                  <div
+                    key={key}
+                    draggable
+                    onDragStart={() => { dragKey.current = key; }}
+                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverKey(`i-${key}`); }}
+                    onDragLeave={() => setDragOverKey(prev => (prev === `i-${key}` ? null : prev))}
+                    onDrop={(e) => { e.preventDefault(); reorderTo(flatIdx); }}
+                    className={`flex items-center gap-3 px-4 py-1.5 border-b border-neutral-50 dark:border-white/5 last:border-b-0 transition-colors ${isDragOver ? 'bg-blue-50 dark:bg-blue-500/10' : ''}`}
+                  >
+                    <div className="cursor-grab text-neutral-300 hover:text-neutral-500 shrink-0">
+                      <GripVertical className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 border-t-2 border-dashed border-neutral-300 dark:border-white/20" />
+                    <span className="text-[10px] text-neutral-400 shrink-0">Separador</span>
+                    <button
+                      onClick={() => eliminarSeparador(entry.id)}
+                      disabled={isSaving}
+                      className="p-1 text-neutral-300 hover:text-red-500 transition-colors shrink-0"
+                      title="Eliminar separador"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    <SavingSlot saving={isSaving} />
+                  </div>
+                );
+              }
+
+              const { item, badge } = entry;
               const Icon = item.icon;
               return (
                 <div
-                  key={item.path}
+                  key={key}
                   draggable
-                  onDragStart={() => { dragPath.current = item.path; }}
-                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverKey(`i-${item.path}`); }}
-                  onDragLeave={() => setDragOverKey(prev => (prev === `i-${item.path}` ? null : prev))}
+                  onDragStart={() => { dragKey.current = key; }}
+                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverKey(`i-${key}`); }}
+                  onDragLeave={() => setDragOverKey(prev => (prev === `i-${key}` ? null : prev))}
                   onDrop={(e) => { e.preventDefault(); reorderTo(flatIdx); }}
                   className={`flex items-center gap-3 px-4 py-2.5 border-b border-neutral-50 dark:border-white/5 last:border-b-0 transition-colors ${isDragOver ? 'bg-blue-50 dark:bg-blue-500/10' : ''}`}
                 >

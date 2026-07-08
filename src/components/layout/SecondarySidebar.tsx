@@ -36,12 +36,13 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
   const gruposResueltos = getResolvedItems(workspace)
     .map(g => ({
       ...g,
-      items: g.items.filter(({ item }) =>
-        isItemVisible(item, userRole) &&
-        (isModuleVisible ? isModuleVisible(item.path, userRole, oficinaId) : true)
+      items: g.items.filter(entry =>
+        entry.kind === 'separador' ||
+        (isItemVisible(entry.item, userRole) &&
+          (isModuleVisible ? isModuleVisible(entry.item.path, userRole, oficinaId) : true))
       ),
     }))
-    .filter(g => g.items.length > 0);
+    .filter(g => g.items.some(entry => entry.kind === 'item'));
 
   const isGrupoColapsado = (grupoId: string, defaultColapsado: boolean) =>
     gruposColapsados[grupoId] ?? defaultColapsado;
@@ -135,7 +136,11 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
                   <span className="truncate">{grupo.nombre}</span>
                 </button>
               )}
-              {!colapsado && items.map(({ item, badge: customBadge }) => {
+              {!colapsado && items.map((entry) => {
+                if (entry.kind === 'separador') {
+                  return <div key={`sep-${entry.id}`} className="my-1.5 border-t border-neutral-200 dark:border-white/10" />;
+                }
+                const { item, badge: customBadge } = entry;
                 const active = isActive(item);
                 const badge = badgeCounts?.[item.path] ?? 0;
 
