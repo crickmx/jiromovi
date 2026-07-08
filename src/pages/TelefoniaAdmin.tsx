@@ -718,7 +718,8 @@ function AsignacionesTab() {
                   {a.last_synced_at ? new Date(a.last_synced_at).toLocaleString('es-MX') : 'Nunca'}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <button onClick={() => handleUnassign(a.id, a.extension)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg">
+                  <button onClick={() => setViewingUser(a)} className="mr-1 p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg" title="Ver perfil">Ver</button>
+<button onClick={() => handleUnassign(a.id, a.extension)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg">
                     <X className="w-4 h-4" />
                   </button>
                 </td>
