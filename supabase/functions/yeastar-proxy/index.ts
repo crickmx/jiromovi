@@ -59,20 +59,52 @@ Deno.serve(async (req: Request) => {
     const apiMode = configRow?.api_mode || "mock";
     const pbxUrl = configRow?.pbx_url || Deno.env.get("YEASTAR_PBX_URL");
 
-    if (!pbxUrl) {
-      return jsonError("PBX URL not configured", 500);
-    }
-
     const body = await req.json();
     const { action, endpoint, method, payload } = body;
 
-    if (action === "probe_api_versions") {
-      const results = await probeApiVersions(pbxUrl);
-      return jsonOk({ results });
+    // --- Action-based routing (frontend uses action field) ---
+
+    if (action === "test_connection") {
+      return await handleTestConnection(pbxUrl, apiMode, adminClient, configRow);
     }
 
+    if (action === "probe_api_versions") {
+      if (!pbxUrl) return jsonError("PBX URL not configured", 500);
+      const results = await probeApiVersions(pbxUrl);
+      return jsonOk({ success: true, results });
+    }
+
+    if (action === "diagnose_connection") {
+      return await handleDiagnoseConnection(pbxUrl, apiMode);
+    }
+
+    if (action === "get_pbx_info") {
+      return await handleGetPbxInfo(pbxUrl, apiMode, adminClient, configRow);
+    }
+
+    if (action === "probe_endpoints") {
+      return await handleProbeEndpoints(pbxUrl, apiMode, adminClient, configRow);
+    }
+
+    if (action === "list_extensions") {
+      return await handleListExtensions(pbxUrl, apiMode, adminClient, configRow);
+    }
+
+    if (action === "create_extension" || action === "update_extension") {
+      return await handleManageExtension(action, pbxUrl, apiMode, adminClient, configRow, payload);
+    }
+
+    if (action === "delete_extension") {
+      return await handleDeleteExtension(pbxUrl, apiMode, adminClient, configRow, payload);
+    }
+
+    // --- Endpoint-based routing (raw proxy mode) ---
     if (!endpoint) {
-      return jsonError("Missing endpoint", 400);
+      return jsonError(`Unknown action: ${action || "(none)"}`, 400);
+    }
+
+    if (!pbxUrl) {
+      return jsonError("PBX URL not configured", 500);
     }
 
     if (apiMode === "mock") {
@@ -126,6 +158,239 @@ Deno.serve(async (req: Request) => {
     return jsonError(err.message || "Internal error", 500);
   }
 });
+
+// ── Action Handlers ──────────────────────────────────────────────────────────
+
+async function handleTestConnection(
+  pbxUrl: string | undefined,
+  apiMode: string,
+  adminClient: any,
+  configRow: any
+) {
+  if (!pbxUrl) {
+    return jsonOk({ success: false, message: "PBX URL not configured" });
+  }
+
+  if (apiMode === "mock") {
+    return jsonOk({ success: true, message: "[MOCK] Connection successful" });
+  }
+
+  const username = Deno.env.get("YEASTAR_USERNAME");
+  const password = Deno.env.get("YEASTAR_PASSWORD");
+
+  if (!username || !password) {
+    return jsonOk({ success: false, message: "PBX credentials not configured" });
+  }
+
+  try {
+    const token = await getCachedPbxToken(adminClient, pbxUrl, username, password, configRow);
+    return jsonOk({ success: true, message: "Connection successful", token_obtained: !!token });
+  } catch (e: any) {
+    return jsonOk({ success: false, message: e.message });
+  }
+}
+
+async function handleDiagnoseConnection(pbxUrl: string | undefined, apiMode: string) {
+  if (!pbxUrl) {
+    return jsonOk({ success: false, reachable: false, message: "PBX URL not configured", timestamp: new Date().toISOString() });
+  }
+
+  if (apiMode === "mock") {
+    return jsonOk({ success: true, reachable: true, message: "[MOCK] PBX reachable", timestamp: new Date().toISOString() });
+  }
+
+  try {
+    const res = await pbxFetch(pbxUrl, { method: "GET" });
+    return jsonOk({
+      success: true,
+      reachable: true,
+      http_status: res.status,
+      message: `PBX responded with HTTP ${res.status}`,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (e: any) {
+    return jsonOk({
+      success: false,
+      reachable: false,
+      message: e.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+}
+
+async function handleGetPbxInfo(
+  pbxUrl: string | undefined,
+  apiMode: string,
+  adminClient: any,
+  configRow: any
+) {
+  if (!pbxUrl) return jsonOk({ success: false, message: "PBX URL not configured" });
+
+  if (apiMode === "mock") {
+    return jsonOk({ success: true, mock: true, info: { model: "Mock PBX", firmware: "1.0.0" } });
+  }
+
+  const username = Deno.env.get("YEASTAR_USERNAME");
+  const password = Deno.env.get("YEASTAR_PASSWORD");
+  if (!username || !password) return jsonOk({ success: false, message: "PBX credentials not configured" });
+
+  try {
+    const token = await getCachedPbxToken(adminClient, pbxUrl, username, password, configRow);
+    const res = await pbxFetch(`${pbxUrl}/api/v2.0.0/system/get`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Access-token": token },
+      body: JSON.stringify({}),
+    });
+    const data = await res.json().catch(() => ({}));
+    return jsonOk({ success: res.ok, info: data });
+  } catch (e: any) {
+    return jsonOk({ success: false, message: e.message });
+  }
+}
+
+async function handleProbeEndpoints(
+  pbxUrl: string | undefined,
+  apiMode: string,
+  adminClient: any,
+  configRow: any
+) {
+  if (!pbxUrl) return jsonOk({ success: false, endpoints: [], summary: { total: 0, available: 0, unavailable: 0 } });
+
+  if (apiMode === "mock") {
+    return jsonOk({
+      success: true,
+      endpoints: [{ endpoint: "/api/v2.0.0/extension/list", status: 200, available: true }],
+      summary: { total: 1, available: 1, unavailable: 0 },
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  const username = Deno.env.get("YEASTAR_USERNAME");
+  const password = Deno.env.get("YEASTAR_PASSWORD");
+  if (!username || !password) return jsonOk({ success: false, message: "Credentials not configured" });
+
+  const token = await getCachedPbxToken(adminClient, pbxUrl, username, password, configRow);
+
+  const endpointsList = [
+    "/api/v2.0.0/extension/list",
+    "/api/v2.0.0/extension/query",
+    "/api/v2.0.0/system/get",
+    "/api/v2.0.0/cdr/get",
+  ];
+
+  const results = [];
+  for (const ep of endpointsList) {
+    try {
+      const res = await pbxFetch(`${pbxUrl}${ep}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Access-token": token },
+        body: JSON.stringify({}),
+      });
+      results.push({ endpoint: ep, status: res.status, available: res.status < 500 });
+    } catch (e: any) {
+      results.push({ endpoint: ep, status: null, available: false, error: e.message });
+    }
+  }
+
+  const available = results.filter((r) => r.available).length;
+  return jsonOk({
+    success: true,
+    endpoints: results,
+    summary: { total: results.length, available, unavailable: results.length - available },
+    timestamp: new Date().toISOString(),
+  });
+}
+
+async function handleListExtensions(
+  pbxUrl: string | undefined,
+  apiMode: string,
+  adminClient: any,
+  configRow: any
+) {
+  if (!pbxUrl) return jsonOk({ success: false, message: "PBX URL not configured" });
+
+  if (apiMode === "mock") {
+    return jsonOk({ success: true, mock: true, extensions: [] });
+  }
+
+  const username = Deno.env.get("YEASTAR_USERNAME");
+  const password = Deno.env.get("YEASTAR_PASSWORD");
+  if (!username || !password) return jsonOk({ success: false, message: "Credentials not configured" });
+
+  try {
+    const token = await getCachedPbxToken(adminClient, pbxUrl, username, password, configRow);
+    const res = await pbxFetch(`${pbxUrl}/api/v2.0.0/extension/list`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Access-token": token },
+      body: JSON.stringify({}),
+    });
+    const data = await res.json().catch(() => ({}));
+    return jsonOk({ success: res.ok, extensions: data.data || data.extension_list || [], raw: data });
+  } catch (e: any) {
+    return jsonOk({ success: false, message: e.message });
+  }
+}
+
+async function handleManageExtension(
+  action: string,
+  pbxUrl: string | undefined,
+  apiMode: string,
+  adminClient: any,
+  configRow: any,
+  payload: any
+) {
+  if (!pbxUrl) return jsonOk({ success: false, message: "PBX URL not configured" });
+
+  if (apiMode === "mock") {
+    return jsonOk({ success: true, mock: true, message: `[MOCK] ${action} completed` });
+  }
+
+  const username = Deno.env.get("YEASTAR_USERNAME");
+  const password = Deno.env.get("YEASTAR_PASSWORD");
+  if (!username || !password) return jsonOk({ success: false, message: "Credentials not configured" });
+
+  const token = await getCachedPbxToken(adminClient, pbxUrl, username, password, configRow);
+  const ep = action === "create_extension"
+    ? "/api/v2.0.0/extension/create"
+    : "/api/v2.0.0/extension/update";
+
+  const res = await pbxFetch(`${pbxUrl}${ep}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Access-token": token },
+    body: JSON.stringify(payload || {}),
+  });
+  const data = await res.json().catch(() => ({}));
+  return jsonOk({ success: res.ok, message: res.ok ? `${action} successful` : `Failed: ${res.status}`, data });
+}
+
+async function handleDeleteExtension(
+  pbxUrl: string | undefined,
+  apiMode: string,
+  adminClient: any,
+  configRow: any,
+  payload: any
+) {
+  if (!pbxUrl) return jsonOk({ success: false, message: "PBX URL not configured" });
+
+  if (apiMode === "mock") {
+    return jsonOk({ success: true, mock: true, message: "[MOCK] Extension deleted" });
+  }
+
+  const username = Deno.env.get("YEASTAR_USERNAME");
+  const password = Deno.env.get("YEASTAR_PASSWORD");
+  if (!username || !password) return jsonOk({ success: false, message: "Credentials not configured" });
+
+  const token = await getCachedPbxToken(adminClient, pbxUrl, username, password, configRow);
+  const res = await pbxFetch(`${pbxUrl}/api/v2.0.0/extension/delete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Access-token": token },
+    body: JSON.stringify(payload || {}),
+  });
+  const data = await res.json().catch(() => ({}));
+  return jsonOk({ success: res.ok, message: res.ok ? "Extension deleted" : `Failed: ${res.status}`, data });
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 async function probeApiVersions(pbxUrl: string) {
   const endpoints = [
