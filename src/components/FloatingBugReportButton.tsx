@@ -124,6 +124,9 @@ export function FloatingBugReportButton() {
     draggingRef.current = false;
   };
 
+  // Hacia qué lado hay espacio para que el globo de texto crezca sin salirse de pantalla.
+  const expandRight = pos.left + HIT_SIZE + 200 < window.innerWidth;
+
   return (
     <>
       <div className="fixed z-[9999]" style={{ top: pos.top, left: pos.left, width: HIT_SIZE, height: HIT_SIZE }}>
@@ -134,7 +137,7 @@ export function FloatingBugReportButton() {
           onPointerUp={handlePointerUp}
           disabled={capturing}
           style={{ touchAction: 'none' }}
-          className="w-full h-full rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing select-none transition-transform duration-150 ease-out disabled:opacity-70"
+          className="relative w-full h-full rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing select-none transition-transform duration-150 ease-out disabled:opacity-70"
           aria-label="Reportar un problema o error — arrastra para moverlo"
         >
           {/* Placeholder: aquí va una imagen/gif cuando esté listo, en vez del "!" */}
@@ -153,6 +156,20 @@ export function FloatingBugReportButton() {
             ) : (
               <span className="font-black text-lg leading-none">!</span>
             )}
+          </span>
+
+          {/* Globo de texto: elemento propio que crece hacia el lado con espacio, sin cambiar
+              el tamaño del área de clic/arrastre (esa era la causa del parpadeo anterior). */}
+          <span
+            className={`
+              absolute top-1/2 -translate-y-1/2 h-8 rounded-full bg-neutral-900 text-white shadow-lg
+              flex items-center overflow-hidden whitespace-nowrap pointer-events-none
+              transition-all duration-300 ease-out
+              ${isNear ? 'max-w-[180px] px-3 opacity-100' : 'max-w-0 px-0 opacity-0'}
+            `}
+            style={expandRight ? { left: '100%', marginLeft: 10 } : { right: '100%', marginRight: 10 }}
+          >
+            <span className="text-xs font-semibold">Reportar un problema</span>
           </span>
         </button>
       </div>

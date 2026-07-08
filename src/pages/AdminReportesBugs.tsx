@@ -9,6 +9,13 @@ interface ConfigRow {
   boton_activo: boolean;
   ia_automatica_activo: boolean;
   tipo_tramite_id: string | null;
+  estatus_inicial_slug: string | null;
+  estatus_post_diagnostico_slug: string | null;
+}
+
+interface EstatusOpcion {
+  slug: string;
+  label: string;
 }
 
 interface TipoOption {
@@ -47,6 +54,7 @@ export function AdminReportesBugs() {
   const [tipos, setTipos] = useState<TipoOption[]>([]);
   const [camposTipo, setCamposTipo] = useState<CampoTipo[]>([]);
   const [mapeoCampos, setMapeoCampos] = useState<Record<string, Mapeo>>({});
+  const [estatusOpciones, setEstatusOpciones] = useState<EstatusOpcion[]>([]);
   const [guardandoMapeo, setGuardandoMapeo] = useState(false);
   const [reportes, setReportes] = useState<ReporteRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,11 +63,15 @@ export function AdminReportesBugs() {
   const cargarCamposYMapeo = async (tipoId: string) => {
     const { data: campos } = await supabase
       .from('tramite_tipo_campos')
-      .select('id, label, tipo, sistema_key')
+      .select('id, label, tipo, sistema_key, config')
       .eq('tramite_tipo_id', tipoId)
       .eq('activo', true)
       .order('orden');
-    const camposFiltrados = (campos || []).filter((c: any) => !BUG_REPORT_SISTEMA_AUTOMATICO.includes(c.sistema_key ?? ''));
+
+    const estatusCampo = (campos || []).find((c: any) => c.tipo === 'estatus');
+    setEstatusOpciones((estatusCampo?.config?.opciones || []).map((o: any) => ({ slug: o.slug, label: o.label })));
+
+    const camposFiltrados = (campos || []).filter((c: any) => !BUG_REPORT_SISTEMA_AUTOMATICO.includes(c.sistema_key ?? '') && c.tipo !== 'estatus');
     setCamposTipo(camposFiltrados);
 
     if (camposFiltrados.length === 0) { setMapeoCampos({}); return; }
@@ -75,7 +87,7 @@ export function AdminReportesBugs() {
   const cargar = async () => {
     setLoading(true);
     const [{ data: configData }, { data: tiposData }, { data: reportesData }] = await Promise.all([
-      supabase.from('bug_report_config').select('boton_activo, ia_automatica_activo, tipo_tramite_id').eq('id', 1).maybeSingle(),
+      supabase.from('bug_report_config').select('boton_activo, ia_automatica_activo, tipo_tramite_id, estatus_inicial_slug, estatus_post_diagnostico_slug').eq('id', 1).maybeSingle(),
       supabase.from('ticket_tipos').select('id, label, value').eq('activo', true).order('label'),
       supabase
         .from('bug_reportes')
@@ -83,7 +95,7 @@ export function AdminReportesBugs() {
         .order('created_at', { ascending: false })
         .limit(500),
     ]);
-    const configRow = configData ?? { boton_activo: false, ia_automatica_activo: false, tipo_tramite_id: null };
+    const configRow = configData ?? { boton_activo: false, ia_automatica_activo: false, tipo_tramite_id: null, estatus_inicial_slug: null, estatus_post_diagnostico_slug: null };
     setConfig(configRow);
     setTipos(tiposData || []);
     setReportes(
@@ -118,10 +130,23 @@ export function AdminReportesBugs() {
   const handleTipoChange = async (nuevoTipoId: string) => {
     if (!config) return;
     const valorFinal = nuevoTipoId || null;
-    setConfig({ ...config, tipo_tramite_id: valorFinal });
-    await supabase.from('bug_report_config').update({ tipo_tramite_id: valorFinal }).eq('id', 1);
+    // Al cambiar de tipo, los slugs de estatus del tipo anterior ya no aplican.
+    const nuevoConfig = { ...config, tipo_tramite_id: valorFinal, estatus_inicial_slug: null, estatus_post_diagnostico_slug: null };
+    setConfig(nuevoConfig);
+    await supabase.from('bug_report_config').update({
+      tipo_tramite_id: valorFinal,
+      estatus_inicial_slug: null,
+      estatus_post_diagnostico_slug: null,
+    }).eq('id', 1);
     if (valorFinal) await cargarCamposYMapeo(valorFinal);
-    else { setCamposTipo([]); setMapeoCampos({}); }
+    else { setCamposTipo([]); setMapeoCampos({}); setEstatusOpciones([]); }
+  };
+
+  const handleEstatusConfigChange = async (campo: 'estatus_inicial_slug' | 'estatus_post_diagnostico_slug', slug: string) => {
+    if (!config) return;
+    const valorFinal = slug || null;
+    setConfig({ ...config, [campo]: valorFinal });
+    await supabase.from('bug_report_config').update({ [campo]: valorFinal }).eq('id', 1);
   };
 
   const handleGuardarMapeo = async () => {
@@ -262,6 +287,33 @@ ${secciones}`;
             La asignación a equipo (¿quién atiende los reportes?) se configura como cualquier otro tipo de trámite, desde Admin › Trámites → Equipos habilitados / Asignación por Trámites, para el tipo elegido aquí.
           </p>
         </div>
+
+        {config?.tipo_tramite_id && estatusOpciones.length > 0 && (
+          <div className="pt-4 border-t border-neutral-100 grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Estatus con el que se crea</label>
+              <select
+                value={config.estatus_inicial_slug ?? ''}
+                onChange={e => handleEstatusConfigChange('estatus_inicial_slug', e.target.value)}
+                className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              >
+                <option value="">Usar el primero definido en el tipo</option>
+                {estatusOpciones.map(o => <option key={o.slug} value={o.slug}>{o.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Estatus tras el diagnóstico IA</label>
+              <select
+                value={config.estatus_post_diagnostico_slug ?? ''}
+                onChange={e => handleEstatusConfigChange('estatus_post_diagnostico_slug', e.target.value)}
+                className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              >
+                <option value="">No cambiar de estatus</option>
+                {estatusOpciones.map(o => <option key={o.slug} value={o.slug}>{o.label}</option>)}
+              </select>
+            </div>
+          </div>
+        )}
 
         {config?.tipo_tramite_id && (
           <div className="pt-4 border-t border-neutral-100 space-y-3">

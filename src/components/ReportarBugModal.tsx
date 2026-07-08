@@ -30,7 +30,7 @@ export function ReportarBugModal({ screenshot, onClose }: Props) {
     try {
       const { data: bugConfig } = await supabase
         .from('bug_report_config')
-        .select('tipo_tramite_id, ia_automatica_activo')
+        .select('tipo_tramite_id, ia_automatica_activo, estatus_inicial_slug')
         .eq('id', 1)
         .maybeSingle();
       if (!bugConfig?.tipo_tramite_id) {
@@ -142,10 +142,15 @@ export function ReportarBugModal({ screenshot, onClose }: Props) {
 
       const estatusCampo = campos?.find(c => c.tipo === 'estatus');
       if (estatusCampo) {
-        respuestas.push(construirRespuestaBugReport(ticket.id, estatusCampo.id, 'estatus', 'iniciado'));
-        const opcion = (estatusCampo.config?.opciones || []).find((o: { slug: string }) => o.slug === 'iniciado');
+        const opciones = estatusCampo.config?.opciones || [];
+        const slugInicial = bugConfig.estatus_inicial_slug || opciones[0]?.slug;
+        const opcion = opciones.find((o: { slug: string }) => o.slug === slugInicial);
         if (opcion) {
-          const color = opcion.clasificacion === 'inicio' ? '#3B82F6' : opcion.clasificacion === 'terminacion' ? '#059669' : '#6B7280';
+          respuestas.push(construirRespuestaBugReport(ticket.id, estatusCampo.id, 'estatus', opcion.slug));
+          const color = opcion.clasificacion === 'inicio' ? '#3B82F6'
+            : opcion.clasificacion === 'terminacion' ? '#059669'
+            : opcion.clasificacion === 'en_espera' ? '#F59E0B'
+            : '#6B7280';
           await supabase.from('tickets').update({ custom_estatus_label: opcion.label, custom_estatus_color: color }).eq('id', ticket.id);
         }
       }

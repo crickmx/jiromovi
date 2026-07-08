@@ -306,7 +306,7 @@ function ItemsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m: 
     const sepRows = reordered
       .map((f, i) => ({ f, i }))
       .filter((x): x is { f: FlatSeparadorEntry; i: number } => x.f.kind === 'separador')
-      .map(({ f, i }) => ({ id: f.id, orden: i, grupo_id: f.grupoId }));
+      .map(({ f, i }) => ({ id: f.id, orden: i, grupo_id: f.grupoId, workspace_id: selectedWs }));
 
     const [itemResult, sepResult] = await Promise.all([
       itemRows.length ? supabase.from('sidebar_item_config').upsert(itemRows, { onConflict: 'item_path' }) : Promise.resolve({ error: null }),
@@ -442,14 +442,15 @@ function ItemsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m: 
                 <span className="text-[10px] text-neutral-400">({items.filter(i => i.kind === 'item').length})</span>
                 <button
                   onClick={() => crearSeparador(grupo.id)}
-                  className="ml-auto p-1 text-neutral-300 hover:text-neutral-600 dark:hover:text-white/70 transition-colors"
-                  title="Agregar separador en este grupo"
+                  className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-neutral-200 dark:border-white/15 text-neutral-500 dark:text-white/60 hover:border-neutral-400 hover:text-neutral-700 dark:hover:text-white transition-colors"
+                  title="Agregar un separador visual en este grupo"
                 >
                   <Minus className="w-3.5 h-3.5" />
+                  Separador
                 </button>
                 <button
                   onClick={() => eliminarGrupo(grupo.id, grupo.nombre)}
-                  className="p-1 text-neutral-300 hover:text-red-500 transition-colors"
+                  className="p-1.5 text-neutral-300 hover:text-red-500 transition-colors"
                   title="Eliminar grupo"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -465,10 +466,11 @@ function ItemsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m: 
                 <span className="flex-1">Sin grupo — suelta aquí para sacar un item de su grupo</span>
                 <button
                   onClick={() => crearSeparador(null)}
-                  className="p-1 text-neutral-300 hover:text-neutral-600 dark:hover:text-white/70 transition-colors"
-                  title="Agregar separador aquí"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-neutral-200 dark:border-white/15 text-neutral-500 dark:text-white/60 hover:border-neutral-400 hover:text-neutral-700 dark:hover:text-white transition-colors"
+                  title="Agregar un separador visual aquí"
                 >
                   <Minus className="w-3.5 h-3.5" />
+                  Separador
                 </button>
               </div>
             )}
