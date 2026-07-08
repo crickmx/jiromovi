@@ -56,7 +56,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: configRow } = await adminClient
       .from("telefonia_config")
-      .select("api_mode")
+      .select("api_mode, oauth_token, oauth_token_expires_at")
       .limit(1)
       .maybeSingle();
 
@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const token = await authenticatePbx(pbxUrl, pbxUsername, pbxPassword);
+    const token = await getCachedPbxToken(adminClient, pbxUrl, pbxUsername, pbxPassword, configRow);
     const result = await executePbxAction(pbxUrl, token, action, payload);
     return jsonOk(result);
   } catch (err: any) {
@@ -85,13 +85,25 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-// ── PBX Authentication ──────────────────────────────────────────────────────
+// ── PBX Authentication (cached) ────────────────────────────────────────────
 
-async function authenticatePbx(
+async function getCachedPbxToken(
+  adminClient: any,
   url: string,
   username: string,
-  password: string
+  password: string,
+  configRow: any
 ): Promise<string> {
+  const now = new Date();
+  const bufferMs = 60_000;
+
+  if (configRow?.oauth_token && configRow?.oauth_token_expires_at) {
+    const expiresAt = new Date(configRow.oauth_token_expires_at);
+    if (expiresAt.getTime() - bufferMs > now.getTime()) {
+      return configRow.oauth_token;
+    }
+  }
+
   const res = await fetch(`${url}/api/v2.0.0/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -106,6 +118,18 @@ async function authenticatePbx(
   if (!data.token) {
     throw new Error("PBX authentication failed: no token returned");
   }
+
+  const expiresInSeconds = data.expires_in || 1800;
+  const expiresAt = new Date(now.getTime() + expiresInSeconds * 1000);
+
+  await adminClient
+    .from("telefonia_config")
+    .update({
+      oauth_token: data.token,
+      oauth_token_expires_at: expiresAt.toISOString(),
+    })
+    .not("id", "is", null);
+
   return data.token;
 }
 
