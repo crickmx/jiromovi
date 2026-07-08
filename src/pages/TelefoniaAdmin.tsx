@@ -660,9 +660,9 @@ function AsignacionesTab() {
 <div className="bg-white rounded-xl p-6 max-w-sm w-full m-4 shadow-xl" onClick={e=>e.stopPropagation()}>
 <h3 className="text-lg font-semibold mb-4 text-gray-900">Perfil del Usuario</h3>
 <div className="space-y-2 text-sm text-gray-700">
-<p><b>Nombre:</b> {viewingUser.nombre} {viewingUser.apellido}</p>
-<p><b>Email:</b> {viewingUser.email}</p>
-{viewingUser.extension_telefonica&&<p><b>Extensión:</b> {viewingUser.extension_telefonica}</p>}
+<p><b>Nombre:</b> {viewingUser.usuario?.nombre} {viewingUser.usuario?.apellido}</p>
+<p><b>Email:</b> {viewingUser.usuario?.email}</p>
+{viewingUser.usuario?.extension_telefonica&&<p><b>Extensión:</b> {viewingUser.usuario?.extension_telefonica}</p>}
 </div>
 <button onClick={() => setViewingUser(null)} className="mt-5 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium">Cerrar</button>
 </div></div>
