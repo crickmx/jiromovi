@@ -621,7 +621,7 @@ function AsignacionesTab() {
       await telefoniaService.assignExtension(assignForm);
       await telefoniaService.updateUserExtensionTelefonica(assignForm.usuario_id, assignForm.extension);
       setShowAssign(false);
-      setAssignForm({ usuario_id: '', extension: '' });
+      setAssignForm({ usuario_id: '', extension: presetExtension || '' });
       loadData();
     } catch (err: any) {
       alert('Error: ' + err.message);
