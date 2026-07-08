@@ -66,14 +66,25 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const systemPrompt = `Eres un ingeniero de soporte técnico de una plataforma web interna (React + TypeScript + Supabase) usada por una aseguradora en México. Un usuario reportó un problema. Con el reporte del usuario y el log técnico capturado por el navegador, da un diagnóstico preliminar breve y en español. No inventes causas si el log no da suficiente evidencia — en ese caso dilo claramente. Responde en JSON estricto: {"diagnostico": "..."}. El campo diagnostico debe incluir: 1) Hipótesis de la causa probable, 2) Qué archivo/área del sistema revisar primero si es identificable por la ruta visitada, 3) Nivel de confianza (alto/medio/bajo). Máximo 800 caracteres.`;
+    const systemPrompt = `Eres un ingeniero de soporte técnico de una plataforma web interna (React + TypeScript + Supabase) usada por una aseguradora en México. Un usuario reportó un problema. Tienes: su descripción, los errores de consola del navegador, las peticiones de red que fallaron (incluyendo el mensaje de error real que devolvió el backend, no solo el código de status), y las rutas que visitó antes del error.
+
+Da un diagnóstico preliminar priorizando el mensaje de error real del backend sobre cualquier otra pista — es la evidencia más confiable. No inventes causas si no hay evidencia suficiente; en ese caso dilo así de claro.
+
+Estilo obligatorio: lenguaje súper simple, directo, sin rodeos ni relleno — como un reporte seco de una máquina, pero que cualquier persona (no solo un programador) lo entienda. Nada de "cabe destacar", "es importante notar", ni frases de transición. Oraciones cortas.
+
+Responde en JSON estricto: {"diagnostico": "..."}. El campo diagnostico debe tener, en este orden:
+1) Qué pasó (una oración, en español simple).
+2) Causa probable (basada en el mensaje de error real si existe).
+3) Qué revisar primero (archivo/área si se puede identificar por la ruta).
+4) Confianza: alto/medio/bajo.
+Máximo 800 caracteres.`;
 
     const userPrompt = `Descripción del usuario: ${ticket.instrucciones}
 
 Ruta donde ocurrió: ${bugReporte?.rutas_visitadas?.[bugReporte.rutas_visitadas.length - 1]?.ruta || "desconocida"}
 Rutas visitadas antes (más reciente al final): ${JSON.stringify(bugReporte?.rutas_visitadas || [])}
 Errores de consola: ${JSON.stringify(bugReporte?.errores_consola || [])}
-Peticiones de red fallidas: ${JSON.stringify(bugReporte?.peticiones_fallidas || [])}
+Peticiones de red fallidas (con el mensaje real del backend en "mensaje", no solo el status): ${JSON.stringify(bugReporte?.peticiones_fallidas || [])}
 Navegador: ${bugReporte?.user_agent || "desconocido"}
 Viewport: ${bugReporte?.viewport || "desconocido"}`;
 

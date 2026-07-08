@@ -16,6 +16,7 @@ interface NetworkErrorEntry {
   metodo: string;
   ruta: string;
   status: number | null;
+  mensaje: string | null;
   timestamp: string;
 }
 
@@ -53,6 +54,23 @@ function rutaSegura(url: string): string {
     return parsed.pathname;
   } catch {
     return url.slice(0, 200);
+  }
+}
+
+// El mensaje real de error del backend (ej. de Postgres/PostgREST vía Supabase) es lo que
+// de verdad ayuda a diagnosticar — un status 400/500 solo no dice nada por sí mismo.
+async function mensajeDeRespuesta(response: Response): Promise<string | null> {
+  try {
+    const texto = await response.clone().text();
+    if (!texto) return null;
+    try {
+      const json = JSON.parse(texto);
+      return safeStringify([json.message || json.error || json.hint || json]);
+    } catch {
+      return texto.slice(0, 400);
+    }
+  } catch {
+    return null;
   }
 }
 
@@ -94,11 +112,13 @@ export function initBugReportCapture() {
     try {
       const response = await originalFetch(...args);
       if (!response.ok) {
-        pushCapped(networkErrors, { metodo, ruta: rutaSegura(url), status: response.status, timestamp: new Date().toISOString() }, MAX_NETWORK_ERRORS);
+        const mensaje = await mensajeDeRespuesta(response);
+        pushCapped(networkErrors, { metodo, ruta: rutaSegura(url), status: response.status, mensaje, timestamp: new Date().toISOString() }, MAX_NETWORK_ERRORS);
       }
       return response;
     } catch (err) {
-      pushCapped(networkErrors, { metodo, ruta: rutaSegura(url), status: null, timestamp: new Date().toISOString() }, MAX_NETWORK_ERRORS);
+      const mensaje = err instanceof Error ? err.message : null;
+      pushCapped(networkErrors, { metodo, ruta: rutaSegura(url), status: null, mensaje, timestamp: new Date().toISOString() }, MAX_NETWORK_ERRORS);
       throw err;
     }
   };
