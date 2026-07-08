@@ -8,6 +8,19 @@ const corsHeaders = {
     "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+// Skip TLS verification for self-signed PBX certificate
+// @ts-ignore Deno unstable API
+const unsafeHttpClient = Deno.createHttpClient({
+  caCerts: [],
+  // @ts-ignore required for self-signed cert on PBX IP
+  unsafelyIgnoreCertificateErrors: true,
+});
+
+function pbxFetch(url: string, init?: RequestInit): Promise<Response> {
+  return fetch(url, { ...init, // @ts-ignore Deno client option
+    client: unsafeHttpClient } as RequestInit);
+}
+
 interface ManageExtensionPayload {
   action: "create" | "update";
   usuario_id: string;
@@ -108,7 +121,7 @@ Deno.serve(async (req: Request) => {
         ? `${pbxUrl}/openapi/v1.0/extension/add`
         : `${pbxUrl}/openapi/v1.0/extension/edit`;
 
-      const res = await fetch(endpoint, {
+      const res = await pbxFetch(endpoint, {
         method: payload.action === "create" ? "POST" : "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -132,7 +145,6 @@ Deno.serve(async (req: Request) => {
       };
     }
 
-    // Upsert telefonia_usuarios
     const { data: existingAssignment } = await adminClient
       .from("telefonia_usuarios")
       .select("id")
@@ -161,7 +173,6 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Update telefonia_extensiones state
     await adminClient
       .from("telefonia_extensiones")
       .update({
@@ -171,7 +182,6 @@ Deno.serve(async (req: Request) => {
       })
       .eq("extension", payload.extension);
 
-    // Update usuarios.extension_telefonica
     await adminClient
       .from("usuarios")
       .update({ extension_telefonica: payload.extension })
@@ -195,7 +205,7 @@ async function getCachedOAuthToken(
   configRow: any
 ): Promise<string> {
   const now = new Date();
-  const bufferMs = 60_000; // 1 minute buffer before expiry
+  const bufferMs = 60_000;
 
   if (configRow?.oauth_token && configRow?.oauth_token_expires_at) {
     const expiresAt = new Date(configRow.oauth_token_expires_at);
@@ -204,7 +214,7 @@ async function getCachedOAuthToken(
     }
   }
 
-  const res = await fetch(`${pbxUrl}/openapi/v1.0/get_token`, {
+  const res = await pbxFetch(`${pbxUrl}/openapi/v1.0/get_token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
