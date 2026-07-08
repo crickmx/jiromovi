@@ -35,8 +35,8 @@ export function useTramitesAttentionCount(userId: string | null | undefined) {
         .select('*', { count: 'exact', head: true })
         .is('eliminado_at', null)
         .is('cerrado_en', null)
-        // null (sin acción) O alguien más fue el último en actuar
-        .or(`ultima_accion_por.is.null,ultima_accion_por.neq.${effectiveId}`);
+        // null (sin acción) O alguien más fue el último en actuar O se marcó a mano
+        .or(`ultima_accion_por.is.null,ultima_accion_por.neq.${effectiveId},requiere_atencion_manual.eq.true`);
 
       // En Vista Admin impersonando un agente: RLS devuelve todos los tickets del sistema.
       // Restringir solo a los tickets que el usuario impersonado puede ver.

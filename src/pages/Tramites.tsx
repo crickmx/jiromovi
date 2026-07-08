@@ -13,6 +13,7 @@ import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogo
 import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
 import { PanelLider } from '../components/tramites/PanelLider';
 import { AgenteDashboard } from '../components/tramites/AgenteDashboard';
+import { ConfirmarMovimientoKanbanModal } from '../components/tramites/ConfirmarMovimientoKanbanModal';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/ui/loading-state';
@@ -46,6 +47,7 @@ interface TramiteItem {
   eliminado_at: string | null;
   eliminado_por: string | null;
   ultima_accion_por: string | null;
+  requiere_atencion_manual: boolean;
   agente_id: string | null;
   agente_usuario_id: string | null;
   creado_por: string | null;
@@ -186,6 +188,8 @@ export function Tramites() {
   const [activeTab, setActiveTab] = useState<'activos' | 'cerrados' | 'papelera'>('activos');
   const [tramites, setTramites] = useState<TramiteItem[]>([]);
   const [tramitesPapelera, setTramitesPapelera] = useState<TramiteItem[]>([]);
+  const [pendingMove, setPendingMove] = useState<{ tramiteId: string; folio: string; destino: 'atencion' | 'proceso' } | null>(null);
+  const dragTramiteId = useRef<string | null>(null);
   const [estatusList, setEstatusList] = useState<TramiteEstatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -718,6 +722,7 @@ export function Tramites() {
 
   // ── Kanban helpers ────────────────────────────────────────────────────────
   const needsAttentionFn = (t: TramiteItem) => {
+    if (t.requiere_atencion_manual) return true;
     if (esRolSistemaAdmin && !isImpersonating) {
       // Admin: solo cuando el agente fue el último en actuar (empleado necesita responder)
       if (!t.ultima_accion_por) return false;
@@ -729,6 +734,36 @@ export function Tramites() {
     // Ejecutivos / agentes: sin acción aún (null) también requiere atención
     const effectiveId = isImpersonating && impersonatedUser ? impersonatedUser.id : usuario?.id;
     return !t.ultima_accion_por || t.ultima_accion_por !== effectiveId;
+  };
+
+  // Mover a mano entre "En Proceso" y "Requiere Atención": solo Admin o el responsable asignado.
+  const puedeMoverAtencion = (t: TramiteItem) =>
+    esRolSistemaAdmin || (!!usuario && t.assigned_to_user_id === usuario.id);
+
+  const handleDropEnColumna = (destino: 'atencion' | 'proceso') => {
+    const id = dragTramiteId.current;
+    dragTramiteId.current = null;
+    if (!id) return;
+    const tramite = tramites.find(t => t.id === id);
+    if (!tramite) return;
+    const yaEstaAhi = destino === 'atencion' ? needsAttentionFn(tramite) : !needsAttentionFn(tramite);
+    if (yaEstaAhi || !puedeMoverAtencion(tramite)) return;
+    setPendingMove({ tramiteId: id, folio: tramite.folio, destino });
+  };
+
+  const confirmarMovimientoManual = async (comentario: string) => {
+    if (!pendingMove || !usuario) return;
+    const { tramiteId, destino } = pendingMove;
+    await supabase.from('ticket_comentarios').insert({
+      ticket_id: tramiteId,
+      usuario_id: usuario.id,
+      mensaje: comentario,
+    });
+    await supabase.from('tickets').update({ requiere_atencion_manual: destino === 'atencion' }).eq('id', tramiteId);
+    setTramites(prev => prev.map(t => t.id === tramiteId
+      ? { ...t, requiere_atencion_manual: destino === 'atencion', ultima_accion_por: usuario.id }
+      : t));
+    setPendingMove(null);
   };
 
   const filteredTramites = useMemo(() => {
@@ -1385,7 +1420,11 @@ export function Tramites() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
           {/* Columna 1: Requiere atención */}
-          <div className="flex flex-col gap-3">
+          <div
+            className="flex flex-col gap-3"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => { e.preventDefault(); handleDropEnColumna('atencion'); }}
+          >
             <div className="pb-2 border-b-2 border-orange-400">
               <div className="flex items-center gap-2">
                 <span className="relative flex h-3 w-3 shrink-0">
@@ -1414,7 +1453,13 @@ export function Tramites() {
               const estatusColor = tramite.custom_estatus_color ?? tramite.estatus?.color;
               const sla = getSlaInfo(tramite.fecha_creacion, tipoDb?.sla_horas);
               return (
-                <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex">
+                <div
+                  key={tramite.id}
+                  onClick={() => navigate(`/tramites/${tramite.id}`)}
+                  draggable={puedeMoverAtencion(tramite)}
+                  onDragStart={() => { dragTramiteId.current = tramite.id; }}
+                  className={`relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex ${puedeMoverAtencion(tramite) ? 'active:cursor-grabbing' : ''}`}
+                >
                   {!tramite.cerrado_en && (
                     <button onClick={(e) => handleMarkAsRead(e, tramite.id)} className="absolute -top-1.5 -right-1.5 z-10" title="Marcar como leído">
                       <span className="relative flex h-4 w-4">
@@ -1469,7 +1514,11 @@ export function Tramites() {
           </div>
 
           {/* Columna 2: En proceso */}
-          <div className="flex flex-col gap-3">
+          <div
+            className="flex flex-col gap-3"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => { e.preventDefault(); handleDropEnColumna('proceso'); }}
+          >
             <div className="pb-2 border-b-2 border-blue-400">
               <div className="flex items-center gap-2">
                 <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
@@ -1495,7 +1544,13 @@ export function Tramites() {
               const estatusColor = tramite.custom_estatus_color ?? tramite.estatus?.color;
               const sla = getSlaInfo(tramite.fecha_creacion, tipoDb?.sla_horas);
               return (
-                <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex">
+                <div
+                  key={tramite.id}
+                  onClick={() => navigate(`/tramites/${tramite.id}`)}
+                  draggable={puedeMoverAtencion(tramite)}
+                  onDragStart={() => { dragTramiteId.current = tramite.id; }}
+                  className={`relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex ${puedeMoverAtencion(tramite) ? 'active:cursor-grabbing' : ''}`}
+                >
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
                   <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
                     <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
@@ -1847,6 +1902,15 @@ export function Tramites() {
         estatusList={estatusList}
         preloadedData={duplicarPreload ?? undefined}
       />
+
+      {pendingMove && (
+        <ConfirmarMovimientoKanbanModal
+          destino={pendingMove.destino}
+          folio={pendingMove.folio}
+          onConfirm={confirmarMovimientoManual}
+          onClose={() => setPendingMove(null)}
+        />
+      )}
 
       {showCatalogosModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">

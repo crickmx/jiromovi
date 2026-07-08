@@ -54,7 +54,10 @@ export function ReportarBugModal({ screenshot, onClose }: Props) {
       const grupoAsignadoId = grupoRow?.grupo_id ?? null;
       const responsableId = grupoRow?.ejecutivo_id ?? null;
 
-      // Sin agente_id: el reporte no debe aparecer en "mis trámites" de quien lo levantó.
+      // agente_id sí se llena (a diferencia de un trámite oculto por completo) porque
+      // needsAttentionFn en Tramites.tsx lo necesita para clasificar "Requiere atención"
+      // del lado del Admin. Que el creador no vea su propio reporte lo resuelve el RLS
+      // (tickets_select_v9 excluye explícitamente los reportes de bug de esa cláusula).
       const { data: ticket, error: ticketError } = await supabase
         .from('tickets')
         .insert({
@@ -64,6 +67,7 @@ export function ReportarBugModal({ screenshot, onClose }: Props) {
           instrucciones: descripcion.trim() || 'Sin descripción adicional',
           creado_por: usuario.id,
           modificado_por: usuario.id,
+          agente_id: usuario.id,
           assigned_to_user_id: responsableId,
           grupo_asignado_id: grupoAsignadoId,
         })
@@ -134,6 +138,11 @@ export function ReportarBugModal({ screenshot, onClose }: Props) {
       const oficinaCampo = campoPorSistemaKey('oficina_jiro');
       if (oficinaCampo && usuario.oficina?.nombre) respuestas.push(construirRespuestaBugReport(ticket.id, oficinaCampo.id, 'oficina_jiro', usuario.oficina.nombre));
 
+      // El Agente de un reporte de bug siempre es quien lo reporta (no aplica un
+      // agente/vendedor real como en un trámite comercial).
+      const agenteCampo = campoPorSistemaKey('agente_vendedor');
+      if (agenteCampo) respuestas.push(construirRespuestaBugReport(ticket.id, agenteCampo.id, 'agente_vendedor', usuario.nombre_completo || usuario.nombre || ''));
+
       const equipoCampo = campoPorSistemaKey('equipo');
       if (equipoCampo && grupoAsignadoId) {
         const { data: grupo } = await supabase.from('tramites_grupos_visualizacion').select('nombre').eq('id', grupoAsignadoId).single();
@@ -157,6 +166,11 @@ export function ReportarBugModal({ screenshot, onClose }: Props) {
 
       const snapshot = getBugReportSnapshot();
 
+      // Campos que ya se autollenaron arriba — si el admin también configuró un mapeo
+      // para alguno de ellos, se ignora aquí (tramite_respuestas tiene UNIQUE por
+      // tramite_id+campo_id, insertar los dos rompería con un choque de duplicado).
+      const camposAutoRellenados = new Set(respuestas.map(r => r.campo_id));
+
       if (campos && campos.length > 0) {
         const { data: mapeo } = await supabase
           .from('bug_report_campo_mapeo')
@@ -164,7 +178,7 @@ export function ReportarBugModal({ screenshot, onClose }: Props) {
           .in('campo_id', campos.map(c => c.id));
 
         (mapeo ?? [])
-          .filter(m => m.fuente === 'template' && m.valor_template)
+          .filter(m => m.fuente === 'template' && m.valor_template && !camposAutoRellenados.has(m.campo_id))
           .forEach(m => {
             const campoInfo = campos.find(c => c.id === m.campo_id);
             const valor = resolverTemplateBugReport(m.valor_template as string, { descripcion: descripcion.trim(), snapshot });

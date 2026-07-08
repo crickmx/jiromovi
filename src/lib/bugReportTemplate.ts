@@ -2,7 +2,7 @@ import type { BugReportSnapshot } from './bugReportCapture';
 
 // Campos de sistema que siempre se autollenan solos (mismo criterio que
 // SISTEMA_KEYS_AUTOMATICOS en StoreAdmin.tsx) — no se ofrecen en el mapeo del admin.
-export const BUG_REPORT_SISTEMA_AUTOMATICO = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'creado_por', 'estatus', 'asignado_a'];
+export const BUG_REPORT_SISTEMA_AUTOMATICO = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'creado_por', 'estatus', 'asignado_a', 'agente_vendedor', 'oficina_jiro'];
 
 export const PLACEHOLDERS_BUG_REPORT = [
   { key: '{{descripcion}}', label: 'Descripción que escribió el usuario' },
