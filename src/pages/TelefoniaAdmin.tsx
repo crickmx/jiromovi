@@ -590,7 +590,7 @@ function AsignacionesTab() {
   const [usuarios, setUsuarios] = useState<{ id: string; nombre: string; apellido: string; email: string }[]>([]);
   const [availableExts, setAvailableExts] = useState<TelefoniaExtension[]>([]);
   const [assignForm, setAssignForm] = useState({ usuario_id: '', extension: '' });
-  const [viewingUser, setViewingUser] = useState(null);
+  const [viewingUser, setViewingUser] = useState<any>(null);
 
   useEffect(() => {
     loadData();
