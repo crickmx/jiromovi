@@ -86,14 +86,14 @@ Deno.serve(async (req: Request) => {
       };
     } else {
       const pbxUrl = Deno.env.get("YEASTAR_PBX_URL");
-      const pbxUsername = Deno.env.get("YEASTAR_PBX_USERNAME");
-      const pbxPassword = Deno.env.get("YEASTAR_PBX_PASSWORD");
+      const clientId = Deno.env.get("YEASTAR_CLIENT_ID");
+      const clientSecret = Deno.env.get("YEASTAR_CLIENT_SECRET");
 
-      if (!pbxUrl || !pbxUsername || !pbxPassword) {
+      if (!pbxUrl || !clientId || !clientSecret) {
         return jsonError("PBX credentials not configured", 500);
       }
 
-      const token = await authenticatePbx(pbxUrl, pbxUsername, pbxPassword);
+      const accessToken = await getOAuthToken(pbxUrl, clientId, clientSecret);
 
       const pbxPayload: Record<string, unknown> = {
         number: payload.extension,
@@ -105,14 +105,14 @@ Deno.serve(async (req: Request) => {
       if (payload.user_password) pbxPayload.user_password = payload.user_password;
 
       const endpoint = payload.action === "create"
-        ? `${pbxUrl}/api/v2.0.0/extension/create`
-        : `${pbxUrl}/api/v2.0.0/extension/update`;
+        ? `${pbxUrl}/openapi/v1.0/extension/add`
+        : `${pbxUrl}/openapi/v1.0/extension/edit`;
 
       const res = await fetch(endpoint, {
-        method: "POST",
+        method: payload.action === "create" ? "POST" : "PUT",
         headers: {
           "Content-Type": "application/json",
-          "X-Auth-Token": token,
+          "Authorization": `Bearer ${accessToken}`,
         },
         body: JSON.stringify(pbxPayload),
       });
@@ -187,26 +187,30 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-async function authenticatePbx(
-  url: string,
-  username: string,
-  password: string
+async function getOAuthToken(
+  pbxUrl: string,
+  clientId: string,
+  clientSecret: string
 ): Promise<string> {
-  const res = await fetch(`${url}/api/v2.0.0/login`, {
+  const res = await fetch(`${pbxUrl}/openapi/v1.0/get_token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: "client_credentials",
+    }),
   });
 
   if (!res.ok) {
-    throw new Error(`PBX authentication failed: HTTP ${res.status}`);
+    throw new Error(`PBX OAuth authentication failed: HTTP ${res.status}`);
   }
 
   const data = await res.json();
-  if (!data.token) {
-    throw new Error("PBX authentication failed: no token returned");
+  if (!data.access_token) {
+    throw new Error("PBX OAuth authentication failed: no access_token returned");
   }
-  return data.token;
+  return data.access_token;
 }
 
 function jsonOk(data: Record<string, unknown>): Response {
