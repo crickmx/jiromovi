@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: configRow } = await adminClient
       .from("telefonia_config")
-      .select("api_mode")
+      .select("api_mode, oauth_token, oauth_token_expires_at")
       .limit(1)
       .maybeSingle();
 
@@ -93,7 +93,7 @@ Deno.serve(async (req: Request) => {
         return jsonError("PBX credentials not configured", 500);
       }
 
-      const accessToken = await getOAuthToken(pbxUrl, clientId, clientSecret);
+      const accessToken = await getCachedOAuthToken(adminClient, pbxUrl, clientId, clientSecret, configRow);
 
       const pbxPayload: Record<string, unknown> = {
         number: payload.extension,
@@ -187,11 +187,23 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-async function getOAuthToken(
+async function getCachedOAuthToken(
+  adminClient: any,
   pbxUrl: string,
   clientId: string,
-  clientSecret: string
+  clientSecret: string,
+  configRow: any
 ): Promise<string> {
+  const now = new Date();
+  const bufferMs = 60_000; // 1 minute buffer before expiry
+
+  if (configRow?.oauth_token && configRow?.oauth_token_expires_at) {
+    const expiresAt = new Date(configRow.oauth_token_expires_at);
+    if (expiresAt.getTime() - bufferMs > now.getTime()) {
+      return configRow.oauth_token;
+    }
+  }
+
   const res = await fetch(`${pbxUrl}/openapi/v1.0/get_token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -210,6 +222,18 @@ async function getOAuthToken(
   if (!data.access_token) {
     throw new Error("PBX OAuth authentication failed: no access_token returned");
   }
+
+  const expiresInSeconds = data.expires_in || 1800;
+  const expiresAt = new Date(now.getTime() + expiresInSeconds * 1000);
+
+  await adminClient
+    .from("telefonia_config")
+    .update({
+      oauth_token: data.access_token,
+      oauth_token_expires_at: expiresAt.toISOString(),
+    })
+    .not("id", "is", null);
+
   return data.access_token;
 }
 
