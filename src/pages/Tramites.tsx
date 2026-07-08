@@ -12,7 +12,6 @@ import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
 import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
 import { PanelLider } from '../components/tramites/PanelLider';
-import { AgenteDashboard } from '../components/tramites/AgenteDashboard';
 import { ConfirmarMovimientoKanbanModal } from '../components/tramites/ConfirmarMovimientoKanbanModal';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -993,10 +992,8 @@ export function Tramites() {
         </div>
       </PageHeader>
 
-      {esRolSistemaAgente && <AgenteDashboard />}
-
-      {/* KPI Summary — métricas operativas */}
-      {!esRolSistemaAgente && activeTab !== 'papelera' && (
+      {/* KPI Summary — métricas operativas (mismo layout para todos los roles, incluido Agente) */}
+      {activeTab !== 'papelera' && (
         (() => {
           const today = new Date().toISOString().split('T')[0];
           const activos = visibleTramites.filter(t => !t.cerrado_en && !t.eliminado_at);
