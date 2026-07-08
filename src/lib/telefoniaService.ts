@@ -438,16 +438,16 @@ export interface LlamadaPerdida {
   created_at: string;
 }
 
-export async function getLlamadasPerdidas(): Promise<LlamadaPerdida[]> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
-
-  const { data, error } = await supabase
+export async function getLlamadasPerdidas(usuarioId?: string) {
+  const supabase = (await import('./supabaseClient')).supabase;
+  let query = supabase
     .from('llamadas_perdidas')
     .select('*')
-    .eq('usuario_id', user.id)
     .order('timestamp', { ascending: false });
-
+  if (usuarioId) {
+    query = query.eq('usuario_id', usuarioId);
+  }
+  const { data, error } = await query;
   if (error) throw error;
   return data || [];
 }

@@ -1,52 +1,50 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers":
-    "Content-Type, Authorization, X-Client-Info, Apikey, X-Yeastar-Token",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-yeastar-token",
 };
 
-Deno.serve(async (req: Request) => {
+serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
     const webhookSecret = Deno.env.get("YEASTAR_WEBHOOK_SECRET");
-    if (!webhookSecret) {
-      return jsonError("Webhook secret not configured", 500);
+    const tokenHeader = req.headers.get("X-Yeastar-Token");
+
+    if (webhookSecret && tokenHeader !== webhookSecret) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const token = req.headers.get("X-Yeastar-Token");
-    if (!token || token !== webhookSecret) {
-      return jsonError("Unauthorized", 401);
-    }
+    const body = await req.json();
+    console.log("Yeastar webhook received:", JSON.stringify(body));
 
-    const payload = await req.json();
-
-    if (!isMissedCallEvent(payload)) {
-      return jsonOk({ ignored: true, reason: "Not a missed call event" });
-    }
-
-    const extension = payload.callee?.number || payload.ext?.number || payload.extension;
-    const callerNumber = payload.caller?.number || payload.from || payload.caller_number || "Desconocido";
-    const timestamp = payload.timestamp || new Date().toISOString();
+    const extension = body.extension || body.callee || body.to;
+    const callerNumber = body.caller || body.from || body.callernum || "Desconocido";
+    const timestamp = body.timestamp ? new Date(body.timestamp * 1000).toISOString() : new Date().toISOString();
 
     if (!extension) {
-      return jsonError("No extension found in payload", 400);
+      return new Response(JSON.stringify({ error: "No extension in payload" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
     const { data: usuario } = await adminClient
       .from("usuarios")
-      .select("id, nombre, apellido")
+      .select("id, nombre")
       .eq("extension_telefonica", extension)
-      .maybeSingle();
+      .single();
 
     const usuarioId = usuario?.id || null;
 
@@ -60,49 +58,25 @@ Deno.serve(async (req: Request) => {
 
     if (usuarioId) {
       await adminClient.from("notificaciones").insert({
-        usuario_id: usuarioId,
         tipo: "llamada_perdida",
-        modulo: "Telefonia",
+        modulo: "telefonia",
         titulo: "Llamada perdida",
-        mensaje: `Llamada perdida de ${callerNumber}`,
+        cuerpo: `Llamada perdida de ${callerNumber}`,
         accion_url: "/admin/telefonia",
         leida: false,
+        usuario_id: usuarioId,
       });
     }
 
-    return jsonOk({
-      success: true,
-      usuario_found: !!usuarioId,
-      extension,
-      caller_number: callerNumber,
+    return new Response(JSON.stringify({ success: true, extension, caller: callerNumber }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err: any) {
-    return jsonError(err.message || "Internal error", 500);
+  } catch (error) {
+    console.error("Error:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
-
-function isMissedCallEvent(payload: any): boolean {
-  const eventType = payload.event || payload.type || payload.action || "";
-  const missedIndicators = ["missed", "missed_call", "CallMissed", "MISSED"];
-  if (missedIndicators.some((i) => eventType.toLowerCase().includes(i.toLowerCase()))) {
-    return true;
-  }
-  if (payload.status === "missed" || payload.call_status === "missed") {
-    return true;
-  }
-  return false;
-}
-
-function jsonOk(data: Record<string, unknown>): Response {
-  return new Response(JSON.stringify(data), {
-    status: 200,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
-
-function jsonError(message: string, status: number): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
