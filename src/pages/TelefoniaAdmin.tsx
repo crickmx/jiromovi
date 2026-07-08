@@ -561,8 +561,7 @@ function ExtensionesTab() {
                     {ext.usuario ? `${ext.usuario.nombre} ${ext.usuario.apellido}` : '—'}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {ext.estado==="disponible"&&<button onClick={() => openAssignModal(ext.extension)} className="mr-1 px-2 py-1 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg">Asignar</button>}
-<button onClick={() => handleDelete(ext.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg">
+                    <button onClick={() => handleDelete(ext.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </td>
@@ -590,7 +589,6 @@ function AsignacionesTab() {
   const [usuarios, setUsuarios] = useState<{ id: string; nombre: string; apellido: string; email: string }[]>([]);
   const [availableExts, setAvailableExts] = useState<TelefoniaExtension[]>([]);
   const [assignForm, setAssignForm] = useState({ usuario_id: '', extension: '' });
-  const [viewingUser, setViewingUser] = useState<any>(null);
 
   useEffect(() => {
     loadData();
@@ -621,9 +619,8 @@ function AsignacionesTab() {
     if (!assignForm.usuario_id || !assignForm.extension) return;
     try {
       await telefoniaService.assignExtension(assignForm);
-      await telefoniaService.updateUserExtensionTelefonica(assignForm.usuario_id, assignForm.extension);
       setShowAssign(false);
-      setAssignForm({ usuario_id: '', extension: presetExtension || '' });
+      setAssignForm({ usuario_id: '', extension: '' });
       loadData();
     } catch (err: any) {
       alert('Error: ' + err.message);
@@ -634,7 +631,6 @@ function AsignacionesTab() {
     if (!confirm('Desasignar extension?')) return;
     try {
       await telefoniaService.unassignExtension(id, extension);
-    await telefoniaService.updateUserExtensionTelefonica(id, null);
       loadData();
     } catch (err: any) {
       alert('Error: ' + err.message);
@@ -655,19 +651,7 @@ function AsignacionesTab() {
         </button>
       </div>
 
-      {viewingUser&&(
-<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setViewingUser(null)}>
-<div className="bg-white rounded-xl p-6 max-w-sm w-full m-4 shadow-xl" onClick={e=>e.stopPropagation()}>
-<h3 className="text-lg font-semibold mb-4 text-gray-900">Perfil del Usuario</h3>
-<div className="space-y-2 text-sm text-gray-700">
-<p><b>Nombre:</b> {viewingUser.usuario?.nombre} {viewingUser.usuario?.apellido}</p>
-<p><b>Email:</b> {viewingUser.usuario?.email}</p>
-{viewingUser.usuario?.extension_telefonica&&<p><b>Extensión:</b> {viewingUser.usuario?.extension_telefonica}</p>}
-</div>
-<button onClick={() => setViewingUser(null)} className="mt-5 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium">Cerrar</button>
-</div></div>
-)}
-{showAssign && (
+      {showAssign && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <select
@@ -730,8 +714,7 @@ function AsignacionesTab() {
                   {a.last_synced_at ? new Date(a.last_synced_at).toLocaleString('es-MX') : 'Nunca'}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <button onClick={() => setViewingUser(a)} className="mr-1 p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg" title="Ver perfil">Ver</button>
-<button onClick={() => handleUnassign(a.id, a.extension)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg">
+                  <button onClick={() => handleUnassign(a.id, a.extension)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg">
                     <X className="w-4 h-4" />
                   </button>
                 </td>
