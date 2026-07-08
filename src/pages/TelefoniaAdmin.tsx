@@ -561,7 +561,8 @@ function ExtensionesTab() {
                     {ext.usuario ? `${ext.usuario.nombre} ${ext.usuario.apellido}` : '—'}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button onClick={() => handleDelete(ext.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg">
+                    {ext.estado==="disponible"&&<button onClick={() => openAssignModal(ext.extension)} className="mr-1 px-2 py-1 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg">Asignar</button>}
+<button onClick={() => handleDelete(ext.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </td>
