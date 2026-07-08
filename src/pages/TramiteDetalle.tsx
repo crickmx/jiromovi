@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
 import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
+import { DiagnosticoBugReport } from '../components/tramites/DiagnosticoBugReport';
 import { TramiteHistorial } from '../components/tramites/TramiteHistorial';
 import { ComisionesPendientes } from '../components/tramites/ComisionesPendientes';
 import { crearNotificacion } from '../lib/notificationHelpers';
@@ -78,7 +79,8 @@ export function TramiteDetalle() {
 
   const [tramite, setTramite] = useState<TramiteData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'detalles' | 'comentarios' | 'archivos' | 'historial' | 'comisiones'>('detalles');
+  const [activeTab, setActiveTab] = useState<'detalles' | 'comentarios' | 'archivos' | 'historial' | 'comisiones' | 'diagnostico'>('detalles');
+  const [esReporteBug, setEsReporteBug] = useState(false);
 
   const [estatusList, setEstatusList] = useState<TramiteEstatus[]>([]);
   const [selectedEstatus, setSelectedEstatus] = useState('');
@@ -216,6 +218,15 @@ export function TramiteDetalle() {
       });
     }
   }, [usuario?.id]);
+
+  // El tipo que dispara "Reporte de bug" es configurable desde Admin > Reportes de Bugs
+  // (puede cambiar con el tiempo) — la existencia de una fila en bug_reportes es lo que
+  // realmente identifica a un trámite como un reporte de bug, no su tipo_tramite.
+  useEffect(() => {
+    if (!tramite?.id) { setEsReporteBug(false); return; }
+    supabase.from('bug_reportes').select('ticket_id').eq('ticket_id', tramite.id).maybeSingle()
+      .then(({ data }) => setEsReporteBug(!!data));
+  }, [tramite?.id]);
 
   // Cargar permiso de edición para el tipo de tramite actual
   useEffect(() => {
@@ -1378,6 +1389,18 @@ export function TramiteDetalle() {
               comisiones
             </button>
           )}
+          {esReporteBug && (
+            <button
+              onClick={() => setActiveTab('diagnostico')}
+              className={`px-6 py-3 font-semibold transition-all capitalize ${
+                activeTab === 'diagnostico'
+                  ? 'text-accent border-b-2 border-accent'
+                  : 'text-neutral-600 hover:text-neutral-900'
+              }`}
+            >
+              diagnóstico
+            </button>
+          )}
         </div>
       </div>
 
@@ -1805,6 +1828,9 @@ export function TramiteDetalle() {
         {activeTab === 'archivos' && <TramiteArchivos tramiteId={tramite.id} />}
         {activeTab === 'historial' && <TramiteHistorial tramiteId={tramite.id} />}
         {activeTab === 'comisiones' && <ComisionesPendientes tramiteId={tramite.id} />}
+        {activeTab === 'diagnostico' && (
+          <DiagnosticoBugReport ticketId={tramite.id} folio={tramite.folio} descripcionUsuario={tramite.instrucciones || ''} />
+        )}
       </div>
 
       {toast && (

@@ -12,6 +12,8 @@ import type { UserRole } from '../lib/workspaceConfig';
 import { useModuleVisibility } from '../lib/useModuleVisibility';
 import { useTramitesAttentionCount } from '../hooks/useTramitesAttentionCount';
 import { useStoreAttentionCount } from '../hooks/useStoreAttentionCount';
+import { useBugReportConfig } from '../hooks/useBugReportConfig';
+import { FloatingBugReportButton } from './FloatingBugReportButton';
 
 // Routes that need full-height layout (no padding, overflow-hidden)
 const FULL_HEIGHT_PREFIXES = [
@@ -44,6 +46,7 @@ export function Layout({ children }: LayoutProps) {
 
   const tramitesAttentionCount = useTramitesAttentionCount(usuario?.id);
   const storeAttentionCount = useStoreAttentionCount(usuario?.id);
+  const { botonActivo: bugReportActivo } = useBugReportConfig();
 
   const badgeCounts: Record<string, number> = {};
   if (tramitesAttentionCount > 0) badgeCounts['/tramites'] = tramitesAttentionCount;
@@ -125,6 +128,8 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Mobile bottom navigation */}
       <MobileNav onOpenDrawer={() => setMobileDrawerOpen(true)} />
+
+      {usuario && bugReportActivo && <FloatingBugReportButton />}
     </div>
   );
 }

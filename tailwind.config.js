@@ -67,6 +67,7 @@ export default {
         'fade-in':    'fade-in 0.2s ease-out both',
         'slide-up':   'slide-up 0.25s cubic-bezier(0.16,1,0.3,1) both',
         'shimmer':    'shimmer 1.6s infinite',
+        'gradient-shift': 'gradient-shift 4s ease-in-out infinite alternate',
       },
       keyframes: {
         'fade-in': {
@@ -80,6 +81,10 @@ export default {
         shimmer: {
           '0%':   { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
+        },
+        'gradient-shift': {
+          '0%':   { backgroundPosition: '0% 50%' },
+          '100%': { backgroundPosition: '100% 50%' },
         },
       },
     },
