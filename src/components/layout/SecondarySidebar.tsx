@@ -149,7 +149,7 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
                     key={item.path}
                     onClick={() => handleNav(item.path)}
                     className={cn(
-                      "w-full flex items-center gap-2.5 px-3 rounded-xl text-[13px] font-medium transition-all duration-200",
+                      "w-full flex flex-col gap-0.5 px-3 rounded-xl text-[13px] font-medium transition-all duration-200",
                       mobileMode ? "py-3.5" : "py-2.5",
                       "active:scale-[0.97] text-left",
                       active
@@ -157,29 +157,31 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
                         : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/[0.07] hover:text-neutral-900 dark:hover:text-white"
                     )}
                   >
-                    {/* Active indicator dot */}
-                    <span className={cn(
-                      "flex-shrink-0 w-1.5 h-1.5 rounded-full transition-all",
-                      active ? "bg-accent" : "bg-neutral-300 dark:bg-neutral-600"
-                    )} />
-                    <span className="truncate">{item.label}</span>
+                    <span className="w-full flex items-center gap-2.5">
+                      {/* Active indicator dot */}
+                      <span className={cn(
+                        "flex-shrink-0 w-1.5 h-1.5 rounded-full transition-all",
+                        active ? "bg-accent" : "bg-neutral-300 dark:bg-neutral-600"
+                      )} />
+                      <span className="truncate flex-1 min-w-0">{item.label}</span>
+
+                      {/* Attention badge */}
+                      {badge > 0 && (
+                        <span className="relative flex-shrink-0 flex items-center justify-center">
+                          <span
+                            className="absolute inset-0 rounded-full bg-red-400 opacity-60 animate-ping"
+                            style={{ animationDuration: '2s' }}
+                          />
+                          <span className="relative min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                            {badge > 99 ? '99+' : badge}
+                          </span>
+                        </span>
+                      )}
+                    </span>
 
                     {customBadge && (
-                      <span className={cn('ml-auto shrink-0 px-1.5 py-[1px] rounded-full text-[9px] font-bold leading-none whitespace-nowrap', BADGE_COLORS[customBadge.color] ?? BADGE_COLORS.amber)}>
+                      <span className={cn('ml-4 self-start shrink-0 px-1.5 py-[1px] rounded-full text-[9px] font-bold leading-none whitespace-nowrap', BADGE_COLORS[customBadge.color] ?? BADGE_COLORS.amber)}>
                         {customBadge.texto}
-                      </span>
-                    )}
-
-                    {/* Attention badge */}
-                    {badge > 0 && (
-                      <span className="ml-auto relative flex-shrink-0 flex items-center justify-center">
-                        <span
-                          className="absolute inset-0 rounded-full bg-red-400 opacity-60 animate-ping"
-                          style={{ animationDuration: '2s' }}
-                        />
-                        <span className="relative min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
-                          {badge > 99 ? '99+' : badge}
-                        </span>
                       </span>
                     )}
                   </button>
