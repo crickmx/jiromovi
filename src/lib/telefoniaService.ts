@@ -426,6 +426,32 @@ export async function probeEndpoints(): Promise<EndpointProbeResult> {
   return callYeastarProxy('probe_endpoints');
 }
 
+// ── Missed Calls ────────────────────────────────────────────────────────────
+
+export interface LlamadaPerdida {
+  id: string;
+  extension: string;
+  caller_number: string;
+  timestamp: string;
+  usuario_id: string | null;
+  estado: 'pendiente' | 'atendida' | 'descartada';
+  created_at: string;
+}
+
+export async function getLlamadasPerdidas(): Promise<LlamadaPerdida[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from('llamadas_perdidas')
+    .select('*')
+    .eq('usuario_id', user.id)
+    .order('timestamp', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
 // ── Auto-assign next available extension for an office ────────────────────────
 
 export async function getNextAvailableExtension(oficinaId: string): Promise<string | null> {
