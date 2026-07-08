@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Phone, Settings, Users, Building2, RefreshCw, Activity, Plus, Trash2, Pencil as Edit2, Check, X, Wifi, WifiOff, Download, ArrowUpDown, Search, CircleAlert as AlertCircle, CircleCheck as CheckCircle2, Clock, Loader as Loader2, Stethoscope } from 'lucide-react';
+import { Phone, Settings, Users, Building2, RefreshCw, Activity, Plus, Trash2, Pencil as Edit2, Check, X, Wifi, WifiOff, Download, ArrowUpDown, Search, CircleAlert as AlertCircle, CircleCheck as CheckCircle2, Clock, Loader as Loader2, Stethoscope, UserPlus, Eye, Save } from 'lucide-react';
 import * as telefoniaService from '../lib/telefoniaService';
 import type {
   TelefoniaConfig, TelefoniaOficinaConfig, TelefoniaExtension,
@@ -407,6 +407,7 @@ function ExtensionesTab() {
   const [genForm, setGenForm] = useState({ oficina_id: '', desde: 100, hasta: 199 });
   const [oficinas, setOficinas] = useState<{ id: string; nombre: string }[]>([]);
   const [generating, setGenerating] = useState(false);
+  const [quickAssignExt, setQuickAssignExt] = useState<TelefoniaExtension | null>(null);
 
   useEffect(() => {
     loadData();
@@ -458,6 +459,11 @@ function ExtensionesTab() {
     } catch (err: any) {
       alert('Error: ' + err.message);
     }
+  }
+
+  function handleQuickAssignDone() {
+    setQuickAssignExt(null);
+    loadData();
   }
 
   const filtered = extensiones.filter(e =>
@@ -560,7 +566,16 @@ function ExtensionesTab() {
                   <td className="px-4 py-3 text-neutral-700">
                     {ext.usuario ? `${ext.usuario.nombre} ${ext.usuario.apellido}` : '—'}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right flex items-center justify-end gap-1">
+                    {ext.estado === 'disponible' && (
+                      <button
+                        onClick={() => setQuickAssignExt(ext)}
+                        className="px-2.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 flex items-center gap-1.5"
+                      >
+                        <UserPlus className="w-3.5 h-3.5" />
+                        Asignar
+                      </button>
+                    )}
                     <button onClick={() => handleDelete(ext.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg">
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -576,6 +591,14 @@ function ExtensionesTab() {
           </div>
         )}
       </div>
+
+      {quickAssignExt && (
+        <QuickAssignModal
+          extension={quickAssignExt}
+          onClose={() => setQuickAssignExt(null)}
+          onAssigned={handleQuickAssignDone}
+        />
+      )}
     </div>
   );
 }
@@ -589,6 +612,7 @@ function AsignacionesTab() {
   const [usuarios, setUsuarios] = useState<{ id: string; nombre: string; apellido: string; email: string }[]>([]);
   const [availableExts, setAvailableExts] = useState<TelefoniaExtension[]>([]);
   const [assignForm, setAssignForm] = useState({ usuario_id: '', extension: '' });
+  const [profileUserId, setProfileUserId] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -713,7 +737,14 @@ function AsignacionesTab() {
                 <td className="px-4 py-3 text-neutral-500 text-xs">
                   {a.last_synced_at ? new Date(a.last_synced_at).toLocaleString('es-MX') : 'Nunca'}
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-3 text-right flex items-center justify-end gap-1">
+                  <button
+                    onClick={() => setProfileUserId(a.usuario_id)}
+                    className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg"
+                    title="Ver Perfil"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
                   <button onClick={() => handleUnassign(a.id, a.extension)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg">
                     <X className="w-4 h-4" />
                   </button>
@@ -723,6 +754,13 @@ function AsignacionesTab() {
           </tbody>
         </table>
       </div>
+
+      {profileUserId && (
+        <UserProfileModal
+          userId={profileUserId}
+          onClose={() => setProfileUserId(null)}
+        />
+      )}
     </div>
   );
 }
@@ -939,6 +977,306 @@ function SyncTab() {
               </div>
             ))}
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Quick Assign Modal ──────────────────────────────────────────────────────
+
+function QuickAssignModal({ extension, onClose, onAssigned }: {
+  extension: TelefoniaExtension;
+  onClose: () => void;
+  onAssigned: () => void;
+}) {
+  const [search, setSearch] = useState('');
+  const [usuarios, setUsuarios] = useState<{ id: string; nombre: string; apellido: string; email: string; celular_personal?: string }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<typeof usuarios[number] | null>(null);
+  const [extraFields, setExtraFields] = useState({ email: '', celular: '', password: '' });
+
+  useEffect(() => {
+    if (search.trim().length >= 2) {
+      const timer = setTimeout(() => searchUsers(search.trim()), 300);
+      return () => clearTimeout(timer);
+    } else {
+      setUsuarios([]);
+    }
+  }, [search]);
+
+  async function searchUsers(query: string) {
+    setLoading(true);
+    try {
+      const { data } = await supabase
+        .from('usuarios')
+        .select('id, nombre, apellido, email, celular_personal')
+        .eq('activo', true)
+        .or(`nombre.ilike.%${query}%,apellido.ilike.%${query}%,email.ilike.%${query}%`)
+        .limit(10);
+      setUsuarios(data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleSelectUser(u: typeof usuarios[number]) {
+    setSelectedUser(u);
+    setExtraFields({ email: u.email || '', celular: u.celular_personal || '', password: '' });
+  }
+
+  async function handleConfirmAssign() {
+    if (!selectedUser) return;
+    setAssigning(true);
+    try {
+      await telefoniaService.managePBXExtension({
+        action: 'create',
+        usuario_id: selectedUser.id,
+        extension: extension.extension,
+        first_name: selectedUser.nombre,
+        last_name: selectedUser.apellido,
+        email_addr: extraFields.email || undefined,
+        mobile_number: extraFields.celular || undefined,
+        user_password: extraFields.password || undefined,
+      });
+      onAssigned();
+    } catch (err: any) {
+      alert('Error al asignar: ' + err.message);
+    } finally {
+      setAssigning(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-neutral-900">Asignar Extension {extension.extension}</h3>
+            <p className="text-sm text-neutral-500 mt-0.5">
+              {selectedUser ? 'Configura datos para el PBX' : 'Buscar usuario por nombre o email'}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-lg">
+            <X className="w-5 h-5 text-neutral-500" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {!selectedUser ? (
+            <>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Escribe nombre o email..."
+                  autoFocus
+                  className="w-full pl-9 pr-3 py-2.5 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div className="max-h-64 overflow-y-auto space-y-1">
+                {loading && (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                  </div>
+                )}
+                {!loading && search.trim().length >= 2 && usuarios.length === 0 && (
+                  <p className="text-center text-sm text-neutral-400 py-6">No se encontraron usuarios</p>
+                )}
+                {!loading && usuarios.map(u => (
+                  <button
+                    key={u.id}
+                    onClick={() => handleSelectUser(u)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-blue-50 text-left transition-colors"
+                  >
+                    <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-semibold flex-shrink-0">
+                      {u.nombre[0]}{u.apellido[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-neutral-900 truncate">{u.nombre} {u.apellido}</div>
+                      <div className="text-xs text-neutral-500 truncate">{u.email}</div>
+                    </div>
+                    <UserPlus className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                  </button>
+                ))}
+                {!loading && search.trim().length < 2 && (
+                  <p className="text-center text-sm text-neutral-400 py-6">Escribe al menos 2 caracteres para buscar</p>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-semibold">
+                  {selectedUser.nombre[0]}{selectedUser.apellido[0]}
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-neutral-900">{selectedUser.nombre} {selectedUser.apellido}</div>
+                  <div className="text-xs text-neutral-500">{selectedUser.email}</div>
+                </div>
+                <button onClick={() => setSelectedUser(null)} className="p-1.5 hover:bg-blue-100 rounded-lg">
+                  <X className="w-4 h-4 text-blue-600" />
+                </button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-neutral-600 mb-1">Email (PBX)</label>
+                  <input
+                    type="email"
+                    value={extraFields.email}
+                    onChange={e => setExtraFields(f => ({ ...f, email: e.target.value }))}
+                    placeholder="email@empresa.com"
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-neutral-600 mb-1">Celular</label>
+                  <input
+                    type="text"
+                    value={extraFields.celular}
+                    onChange={e => setExtraFields(f => ({ ...f, celular: e.target.value }))}
+                    placeholder="5512345678"
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-neutral-600 mb-1">Password Extension (opcional)</label>
+                  <input
+                    type="text"
+                    value={extraFields.password}
+                    onChange={e => setExtraFields(f => ({ ...f, password: e.target.value }))}
+                    placeholder="Dejar vacio para auto-generar"
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={handleConfirmAssign}
+                disabled={assigning}
+                className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {assigning ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                Asignar y Crear en PBX
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── User Profile Modal ──────────────────────────────────────────────────────
+
+function UserProfileModal({ userId, onClose }: { userId: string; onClose: () => void }) {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ nombre: '', apellido: '', email: '', telefono: '' });
+
+  useEffect(() => {
+    loadUser();
+  }, [userId]);
+
+  async function loadUser() {
+    try {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('id, nombre, apellido, email, telefono, extension_telefonica, oficina:oficinas(nombre)')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error) throw error;
+      if (data) {
+        setUser(data);
+        setForm({ nombre: data.nombre || '', apellido: data.apellido || '', email: data.email || '', telefono: data.telefono || '' });
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('usuarios')
+        .update({ nombre: form.nombre, apellido: form.apellido, telefono: form.telefono })
+        .eq('id', userId);
+      if (error) throw error;
+      onClose();
+    } catch (err: any) {
+      alert('Error al guardar: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-neutral-900">Perfil del Usuario</h3>
+          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-lg">
+            <X className="w-5 h-5 text-neutral-500" />
+          </button>
+        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+          </div>
+        ) : user ? (
+          <div className="p-6 space-y-4">
+            <div className="flex items-center gap-3 pb-4 border-b border-neutral-100">
+              <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-lg font-semibold">
+                {user.nombre?.[0]}{user.apellido?.[0]}
+              </div>
+              <div>
+                <div className="font-medium text-neutral-900">{user.nombre} {user.apellido}</div>
+                <div className="text-sm text-neutral-500">{user.oficina?.nombre || 'Sin oficina'}</div>
+                {user.extension_telefonica && (
+                  <div className="text-xs text-blue-600 font-mono mt-0.5">Ext. {user.extension_telefonica}</div>
+                )}
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-neutral-600 mb-1">Nombre</label>
+                  <input type="text" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-neutral-600 mb-1">Apellido</label>
+                  <input type="text" value={form.apellido} onChange={e => setForm(f => ({ ...f, apellido: e.target.value }))} className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-neutral-600 mb-1">Email</label>
+                <input type="email" value={form.email} disabled className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm bg-neutral-50 text-neutral-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-neutral-600 mb-1">Telefono</label>
+                <input type="text" value={form.telefono} onChange={e => setForm(f => ({ ...f, telefono: e.target.value }))} className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Guardar
+              </button>
+              <button onClick={onClose} className="px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg text-sm font-medium hover:bg-neutral-200">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="p-6 text-center text-sm text-neutral-400">Usuario no encontrado</div>
         )}
       </div>
     </div>
