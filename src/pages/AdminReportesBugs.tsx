@@ -61,12 +61,13 @@ export function AdminReportesBugs() {
   const [descargando, setDescargando] = useState(false);
 
   const cargarCamposYMapeo = async (tipoId: string) => {
-    const { data: campos } = await supabase
+    const { data: campos, error } = await supabase
       .from('tramite_tipo_campos')
       .select('id, label, tipo, sistema_key, config')
       .eq('tramite_tipo_id', tipoId)
       .eq('activo', true)
-      .order('orden');
+      .order('display_order');
+    if (error) console.error('Error cargando campos del tipo:', error);
 
     const estatusCampo = (campos || []).find((c: any) => c.tipo === 'estatus');
     setEstatusOpciones((estatusCampo?.config?.opciones || []).map((o: any) => ({ slug: o.slug, label: o.label })));

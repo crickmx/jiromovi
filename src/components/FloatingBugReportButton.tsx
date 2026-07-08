@@ -145,6 +145,7 @@ export function FloatingBugReportButton() {
             style={{ width: VISUAL_SIZE, height: VISUAL_SIZE }}
             className={`
               rounded-full flex items-center justify-center text-white
+              ring-2 ring-white/70
               transition-all duration-300
               ${isNear
                 ? 'bg-red-600 shadow-2xl scale-110 -translate-y-0.5 animate-alerta-pulso'
