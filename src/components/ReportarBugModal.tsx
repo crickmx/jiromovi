@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, TriangleAlert, CircleCheck as CheckCircle2 } from 'lucide-react';
+import { X, TriangleAlert, Lightbulb, CircleCheck as CheckCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { getBugReportSnapshot } from '../lib/bugReportCapture';
@@ -18,6 +18,7 @@ interface Props {
 // flujo de un solo campo real, con captura/log que ese modal no maneja).
 export function ReportarBugModal({ screenshot, onClose }: Props) {
   const { usuario } = useMoviAuth();
+  const [tipoReporte, setTipoReporte] = useState<'error' | 'sugerencia'>('error');
   const [descripcion, setDescripcion] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -143,6 +144,9 @@ export function ReportarBugModal({ screenshot, onClose }: Props) {
       const agenteCampo = campoPorSistemaKey('agente_vendedor');
       if (agenteCampo) respuestas.push(construirRespuestaBugReport(ticket.id, agenteCampo.id, 'agente_vendedor', usuario.nombre_completo || usuario.nombre || ''));
 
+      const tipoReporteCampo = campos?.find(c => c.tipo === 'dropdown');
+      if (tipoReporteCampo) respuestas.push(construirRespuestaBugReport(ticket.id, tipoReporteCampo.id, 'dropdown', tipoReporte));
+
       const equipoCampo = campoPorSistemaKey('equipo');
       if (equipoCampo && grupoAsignadoId) {
         const { data: grupo } = await supabase.from('tramites_grupos_visualizacion').select('nombre').eq('id', grupoAsignadoId).single();
@@ -239,7 +243,9 @@ export function ReportarBugModal({ screenshot, onClose }: Props) {
         {enviado ? (
           <div className="p-6 text-center space-y-3">
             <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
-            <p className="text-base font-semibold text-neutral-900 dark:text-white">¡Gracias por tu reporte!</p>
+            <p className="text-base font-semibold text-neutral-900 dark:text-white">
+              {tipoReporte === 'sugerencia' ? '¡Gracias por tu sugerencia!' : '¡Gracias por tu reporte!'}
+            </p>
             <p className="text-sm text-neutral-500 dark:text-white/60">
               Nuestro equipo lo va a revisar.
             </p>
@@ -254,30 +260,53 @@ export function ReportarBugModal({ screenshot, onClose }: Props) {
           <>
             <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-neutral-100 dark:border-white/10">
               <div className="flex items-center gap-2">
-                <TriangleAlert className="w-5 h-5 text-amber-500" />
-                <p className="text-base font-semibold text-neutral-900 dark:text-white">Reportar un problema</p>
+                {tipoReporte === 'sugerencia' ? (
+                  <Lightbulb className="w-5 h-5 text-amber-500" />
+                ) : (
+                  <TriangleAlert className="w-5 h-5 text-amber-500" />
+                )}
+                <p className="text-base font-semibold text-neutral-900 dark:text-white">
+                  {tipoReporte === 'sugerencia' ? 'Sugerir una mejora' : 'Reportar un problema'}
+                </p>
               </div>
               <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/10 text-neutral-500">
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div className="p-5 space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">
+                  ¿Qué es esto?
+                </label>
+                <select
+                  value={tipoReporte}
+                  onChange={(e) => setTipoReporte(e.target.value as 'error' | 'sugerencia')}
+                  className="w-full px-3 py-2 border border-neutral-300 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-accent focus:outline-none bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+                >
+                  <option value="error">Un error / algo no funciona</option>
+                  <option value="sugerencia">Una sugerencia de mejora</option>
+                </select>
+              </div>
               <p className="text-sm text-neutral-500 dark:text-white/60">
-                Ya tomamos una captura de tu pantalla y datos técnicos. Solo cuéntanos qué intentabas hacer y qué pasó.
+                {tipoReporte === 'sugerencia'
+                  ? 'Ya tomamos una captura de tu pantalla. Cuéntanos qué te gustaría que mejoráramos.'
+                  : 'Ya tomamos una captura de tu pantalla y datos técnicos. Solo cuéntanos qué intentabas hacer y qué pasó.'}
               </p>
               {screenshot && (
                 <img src={screenshot} alt="Captura de pantalla" className="w-full rounded-lg border border-neutral-200 dark:border-white/10 max-h-40 object-cover object-top" />
               )}
               <div>
                 <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">
-                  ¿Qué pasó?
+                  {tipoReporte === 'sugerencia' ? '¿Qué propones?' : '¿Qué pasó?'}
                 </label>
                 <textarea
                   value={descripcion}
                   onChange={(e) => setDescripcion(e.target.value.slice(0, 500))}
                   rows={4}
                   maxLength={500}
-                  placeholder="Ej: Le di clic a Guardar en un trámite y la pantalla se puso en blanco."
+                  placeholder={tipoReporte === 'sugerencia'
+                    ? 'Ej: Sería útil poder filtrar los trámites por fecha de cierre.'
+                    : 'Ej: Le di clic a Guardar en un trámite y la pantalla se puso en blanco.'}
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-accent focus:outline-none resize-none bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
                 />
               </div>
@@ -287,7 +316,7 @@ export function ReportarBugModal({ screenshot, onClose }: Props) {
                 disabled={loading}
                 className="w-full px-4 py-2 bg-accent text-white rounded-xl text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
               >
-                {loading ? 'Enviando...' : 'Enviar reporte'}
+                {loading ? 'Enviando...' : tipoReporte === 'sugerencia' ? 'Enviar sugerencia' : 'Enviar reporte'}
               </button>
             </div>
           </>
