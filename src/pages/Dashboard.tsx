@@ -11,6 +11,8 @@ import { obtenerComunicados } from '../lib/comunicadosUtils';
 import type { ComunicadoPublicacion } from '../lib/comunicadosTypes';
 import { SolicitudBetaModal } from '../components/dashboard/SolicitudBetaModal';
 import { ProduccionResumenCard } from '../components/dashboard/ProduccionResumenCard';
+import { CampaniasActivasCard } from '../components/dashboard/CampaniasActivasCard';
+import { ConvencionCard } from '../components/dashboard/ConvencionCard';
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -318,6 +320,8 @@ function renderWidget(key: string, usuario: Usuario, navigate: (route: string) =
     case 'favoritos': return <FavoritosGrid key={key} onNavigate={navigate} />;
     case 'beta': return <JoinBetaCard key={key} usuario={usuario} />;
     case 'produccion_bonos': return <ProduccionResumenCard key={key} />;
+    case 'campanias': return <CampaniasActivasCard key={key} />;
+    case 'convencion': return <ConvencionCard key={key} />;
     case 'avisos': return <AvisosPanel key={key} onNavigate={navigate} />;
     default: return null;
   }

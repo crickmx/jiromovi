@@ -103,6 +103,8 @@ const DASHBOARD_WIDGET_LABELS: Record<string, string> = {
   favoritos: 'Mis Favoritos',
   beta: 'Únete a la Beta',
   produccion_bonos: 'Mi Producción',
+  campanias: 'Campañas Activas',
+  convencion: 'Convención',
   avisos: 'Avisos',
 };
 

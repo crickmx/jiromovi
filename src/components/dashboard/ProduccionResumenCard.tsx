@@ -1,39 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Target, RefreshCw, Trophy, TrendingUp, TrendingDown } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { Target, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const BONOS_URL = import.meta.env.VITE_BONOS_URL || 'http://localhost:8003';
-
-interface MiResumenData {
-  vinculado: boolean;
-  aplica?: boolean;
-  produccion?: {
-    prima_conv_actual: number;
-    prima_conv_anterior: number;
-    delta_pct: number | null;
-    num_polizas: number;
-    meta_monto: number | null;
-    meta_pct: number | null;
-  };
-  convencion?: {
-    nivel: string;
-    siguiente: string | null;
-    falta: number;
-  } | null;
-  renovaciones?: Array<{
-    numero_poliza: string;
-    asegurado: string;
-    ramo: string;
-    compania: string;
-    fecha_fin: string;
-  }>;
-  campanias?: Array<{
-    id: number;
-    nombre: string;
-    dias_restantes: number;
-  }>;
-}
+import { useMiResumen } from '@/lib/useMiResumen';
 
 function money(n: number): string {
   return n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 });
@@ -44,27 +11,7 @@ function Sk({ className }: { className?: string }) {
 }
 
 export function ProduccionResumenCard() {
-  const [data, setData] = useState<MiResumenData | 'loading' | 'error'>('loading');
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) { if (active) setData('error'); return; }
-      try {
-        const url = new URL('/accounts/api/mi-resumen/', BONOS_URL).toString();
-        const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        if (!res.ok) { if (active) setData('error'); return; }
-        const json = await res.json();
-        if (active) setData(json);
-      } catch {
-        if (active) setData('error');
-      }
-    })();
-    return () => { active = false; };
-  }, []);
+  const data = useMiResumen();
 
   if (data === 'loading') {
     return (
@@ -76,12 +23,12 @@ export function ProduccionResumenCard() {
     );
   }
 
-  // Error de red, usuario no vinculado a Bonos, privacidad apagada, o rol sin card personal.
+  // Error de red, usuario no vinculado a Bonos, o rol sin card personal.
   if (data === 'error' || !data.vinculado || data.aplica === false) {
     return null;
   }
 
-  const { produccion, convencion, renovaciones = [], campanias = [] } = data;
+  const { produccion, convencion, renovaciones = [] } = data;
 
   return (
     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 rounded-2xl p-4">
@@ -138,22 +85,6 @@ export function ProduccionResumenCard() {
           </div>
         )}
       </div>
-
-      {campanias.length > 0 && (
-        <div className="mb-4">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500 dark:text-white/40 mb-2 flex items-center gap-1">
-            <Trophy className="w-3 h-3" /> Campañas activas
-          </p>
-          <div className="space-y-1.5">
-            {campanias.map(c => (
-              <div key={c.id} className="flex items-center justify-between text-[11px] bg-neutral-50 dark:bg-white/5 rounded-lg px-3 py-2">
-                <span className="font-medium text-neutral-700 dark:text-white/80 truncate">{c.nombre}</span>
-                <span className="text-neutral-400 dark:text-white/40 shrink-0 ml-2">{c.dias_restantes}d restantes</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {renovaciones.length > 0 && (
         <div>
