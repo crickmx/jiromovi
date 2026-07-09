@@ -88,7 +88,9 @@ export default function BonosPage() {
   const ssoConfirmedRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const maxRetries = 2;
-  const SSO_TIMEOUT_MS = 8000;
+  const SSO_TIMEOUT_MS = 20000;
+  type ErrorReason = 'no_session' | 'timeout' | 'login_redirect' | null;
+  const [errorReason, setErrorReason] = useState<ErrorReason>(null);
 
   const clearSsoTimeout = useCallback(() => {
     if (timeoutRef.current) {
@@ -141,10 +143,11 @@ export default function BonosPage() {
   useEffect(() => {
     if (ssoConfirmedRef.current) return;
     setError(false);
+    setErrorReason(null);
     setSrc(null);
     clearSsoTimeout();
     buildSsoUrl(retryCount).then(url => {
-      if (!url) { setError(true); return; }
+      if (!url) { setError(true); setErrorReason('no_session'); return; }
       setSrc(url);
       timeoutRef.current = setTimeout(() => {
         if (!ssoConfirmedRef.current) {
@@ -152,6 +155,7 @@ export default function BonosPage() {
             setRetryCount(c => c + 1);
           } else {
             setError(true);
+            setErrorReason('timeout');
           }
         }
       }, SSO_TIMEOUT_MS);
@@ -188,6 +192,7 @@ export default function BonosPage() {
             setRetryCount(c => c + 1);
           } else {
             setError(true);
+            setErrorReason('login_redirect');
           }
           return;
         }
@@ -232,10 +237,16 @@ export default function BonosPage() {
   }
 
   if (error) {
+    const REASON_MESSAGES: Record<Exclude<ErrorReason, null>, string> = {
+      no_session: 'No se encontró una sesión activa de MOVI. Cierra sesión y vuelve a entrar, luego intenta de nuevo.',
+      timeout: `Central de Producción no respondió a tiempo (más de ${Math.round(SSO_TIMEOUT_MS / 1000)} segundos esperando confirmación). El servidor puede estar lento o temporalmente caído.`,
+      login_redirect: 'Central de Producción no reconoció la sesión y regresó a su pantalla de login — tu cuenta ahí puede no estar vinculada, o el navegador bloqueó la cookie de sesión dentro del iframe.',
+    };
+
     const diagItems = IS_LOCAL_BONOS
       ? ['CP local no está corriendo en localhost:8003', 'El usuario no existe en la BD local de CP']
       : [
-          'CP bloqueó el iframe por CSP (frame-ancestors) — agrega http://localhost:5174 a MOVI_ORIGIN en el .env de producción de CP',
+          'CP bloqueó el iframe por CSP (frame-ancestors) — agrega el origen de MOVI en Configuración del Sitio de CP',
           'El navegador bloqueó cookies de terceros — prueba abrir en nueva ventana',
           'Tu cuenta de admin no existe o no tiene rol admin en CP',
           isImpersonating ? `El usuario ${impersonatedUser?.email_laboral ?? '?'} no existe en CP` : null,
@@ -248,7 +259,10 @@ export default function BonosPage() {
           No se pudo conectar con Central de Produccion
         </p>
         <div className="text-sm text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 rounded-lg p-4 max-w-lg w-full space-y-1">
-          <p className="font-semibold text-neutral-600 dark:text-neutral-300 mb-2">Causas posibles:</p>
+          {errorReason && (
+            <p className="font-semibold text-red-500 dark:text-red-400 mb-3">{REASON_MESSAGES[errorReason]}</p>
+          )}
+          <p className="font-semibold text-neutral-600 dark:text-neutral-300 mb-2">Otras causas posibles:</p>
           {diagItems.map((item, i) => (
             <p key={i} className="flex gap-2"><span className="text-red-400 shrink-0">•</span>{item}</p>
           ))}
@@ -256,7 +270,7 @@ export default function BonosPage() {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => { setError(false); setRetryCount(0); setSsoConfirmed(false); ssoConfirmedRef.current = false; clearSsoCacheStorage(); }}
+            onClick={() => { setError(false); setErrorReason(null); setRetryCount(0); setSsoConfirmed(false); ssoConfirmedRef.current = false; clearSsoCacheStorage(); }}
             className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
           >
             Reintentar
