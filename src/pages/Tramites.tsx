@@ -378,17 +378,25 @@ export function Tramites() {
         .gte('cerrado_en', desde.toISOString())
         .order('cerrado_en', { ascending: false });
 
-      if (isImpersonating && impersonatedUser) {
-        const impersonatedRol = impersonatedUser.rol || '';
-        if (!['Administrador'].includes(impersonatedRol)) {
-          const uid = impersonatedUser.id;
-          const { data: gruposData } = await supabase
-            .from('tramites_grupos_miembros').select('grupo_id').eq('usuario_id', uid);
-          const grupIds = (gruposData || []).map(g => g.grupo_id);
-          let orFilter = `agente_id.eq.${uid},creado_por.eq.${uid},assigned_to_user_id.eq.${uid},agente_usuario_id.eq.${uid},attending_user_id.eq.${uid}`;
-          if (grupIds.length > 0) orFilter += `,and(assigned_to_user_id.is.null,attending_user_id.is.null,grupo_asignado_id.in.(${grupIds.join(',')}))`;
-          q = q.or(orFilter);
-        }
+      const effectiveId = isImpersonating && impersonatedUser ? impersonatedUser.id : usuario.id;
+      const effectiveRol = isImpersonating && impersonatedUser ? (impersonatedUser.rol || '') : (usuario.rol || '');
+
+      if (effectiveRol === 'Gerente') {
+        // RLS deja pasar TODOS los tickets a Gerente sin filtro de equipo — acotar aquí
+        // a sus propios equipos, tanto en sesión real como impersonada. Sin equipo, nada.
+        const { data: gruposData } = await supabase
+          .from('tramites_grupos_miembros').select('grupo_id').eq('usuario_id', effectiveId);
+        const grupIds = (gruposData || []).map(g => g.grupo_id);
+        if (grupIds.length === 0) { setTramitesCerrados20([]); return; }
+        q = q.in('grupo_asignado_id', grupIds);
+      } else if (isImpersonating && impersonatedUser && effectiveRol !== 'Administrador') {
+        const uid = impersonatedUser.id;
+        const { data: gruposData } = await supabase
+          .from('tramites_grupos_miembros').select('grupo_id').eq('usuario_id', uid);
+        const grupIds = (gruposData || []).map(g => g.grupo_id);
+        let orFilter = `agente_id.eq.${uid},creado_por.eq.${uid},assigned_to_user_id.eq.${uid},agente_usuario_id.eq.${uid},attending_user_id.eq.${uid}`;
+        if (grupIds.length > 0) orFilter += `,and(assigned_to_user_id.is.null,attending_user_id.is.null,grupo_asignado_id.in.(${grupIds.join(',')}))`;
+        q = q.or(orFilter);
       }
 
       const { data } = await q;
@@ -684,8 +692,6 @@ export function Tramites() {
   const visibleTramites = tramites.filter(tramite => {
     if (esRolSistemaAdmin) return true;
 
-    const tramiteOficinaId = tramite.agente?.oficina_id ?? null;
-
     const isDirectlyInvolved =
       tramite.creado_por === usuario?.id ||
       tramite.assigned_to_user_id === usuario?.id ||
@@ -700,9 +706,10 @@ export function Tramites() {
       !tramite.assigned_to_user_id &&
       isInMyGroup;
 
-    // Gerente: su oficina + sus equipos + directamente involucrado
+    // Gerente: solo trámites de sus equipos. Sin equipo asignado, no ve nada
+    // (decisión explícita: solo Administrador ve todo sin restricción de equipo).
     if (esRolSistemaGerente) {
-      return (tramiteOficinaId !== null && tramiteOficinaId === usuario?.oficina_id) || isInMyGroup || isDirectlyInvolved;
+      return isInMyGroup;
     }
 
     // Lider: todos los tramites de su grupo (asignados o no) — se evalúa antes que el
