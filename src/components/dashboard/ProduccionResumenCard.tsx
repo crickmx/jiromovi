@@ -7,7 +7,6 @@ const BONOS_URL = import.meta.env.VITE_BONOS_URL || 'http://localhost:8003';
 
 interface MiResumenData {
   vinculado: boolean;
-  mostrar_bonos?: boolean;
   aplica?: boolean;
   produccion?: {
     prima_conv_actual: number;
@@ -78,7 +77,7 @@ export function ProduccionResumenCard() {
   }
 
   // Error de red, usuario no vinculado a Bonos, privacidad apagada, o rol sin card personal.
-  if (data === 'error' || !data.vinculado || data.mostrar_bonos === false || data.aplica === false) {
+  if (data === 'error' || !data.vinculado || data.aplica === false) {
     return null;
   }
 
