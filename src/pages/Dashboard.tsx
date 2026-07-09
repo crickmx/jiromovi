@@ -9,6 +9,7 @@ import { useModuleVisibility } from '@/lib/useModuleVisibility';
 import { obtenerComunicados } from '../lib/comunicadosUtils';
 import type { ComunicadoPublicacion } from '../lib/comunicadosTypes';
 import { SolicitudBetaModal } from '../components/dashboard/SolicitudBetaModal';
+import { ProduccionResumenCard } from '../components/dashboard/ProduccionResumenCard';
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -372,14 +373,16 @@ export default function Dashboard() {
   const enabledModules = BETA_MODULES.filter(m =>
     isVisible(m.route, usuario.rol, usuario.oficina_id, usuario.id)
   );
+  const hasProduccionModule = enabledModules.some(m => m.key === 'produccion');
 
   return (
     <div className="space-y-6 pb-8">
       <WelcomeHero usuario={usuario} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
           <ModuleVCards modules={enabledModules} onNavigate={navigate} />
+          {hasProduccionModule && <ProduccionResumenCard />}
         </div>
 
         <div className="space-y-8">
