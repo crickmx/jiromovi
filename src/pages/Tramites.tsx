@@ -702,7 +702,7 @@ export function Tramites() {
 
     // Gerente: su oficina + sus equipos + directamente involucrado
     if (esRolSistemaGerente) {
-      return tramiteOficinaId === usuario?.oficina_id || isInMyGroup || isDirectlyInvolved;
+      return (tramiteOficinaId !== null && tramiteOficinaId === usuario?.oficina_id) || isInMyGroup || isDirectlyInvolved;
     }
 
     // Lider: todos los tramites de su grupo (asignados o no) — se evalúa antes que el

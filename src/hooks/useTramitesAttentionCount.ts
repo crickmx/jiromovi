@@ -27,8 +27,9 @@ export function useTramitesAttentionCount(userId: string | null | undefined) {
         return;
       }
 
-      // Determinar el ID efectivo para comparar (impersonado o real)
+      // Determinar ID y rol efectivos para comparar (impersonado o real)
       const effectiveId = isImpersonating && impersonatedUser ? impersonatedUser.id : userId;
+      const effectiveRol = isImpersonating && impersonatedUser ? impersonatedUser.rol : usuario?.rol;
 
       let query = supabase
         .from('tickets')
@@ -38,16 +39,16 @@ export function useTramitesAttentionCount(userId: string | null | undefined) {
         // null (sin acción) O alguien más fue el último en actuar O se marcó a mano
         .or(`ultima_accion_por.is.null,ultima_accion_por.neq.${effectiveId},requiere_atencion_manual.eq.true`);
 
-      // En Vista Admin impersonando un agente: RLS devuelve todos los tickets del sistema.
-      // Restringir solo a los tickets que el usuario impersonado puede ver.
-      if (isImpersonating && impersonatedUser && !['Administrador'].includes(impersonatedUser.rol || '')) {
-        const uid = impersonatedUser.id;
+      // La RLS de tickets deja pasar TODOS los tickets a Administrador/Gerente (sin filtro
+      // de equipo/oficina) — acotar aquí a lo que de verdad le pertenece, tanto en sesión
+      // real como impersonada. Solo Administrador de verdad debe contar el total del sistema.
+      if (effectiveRol !== 'Administrador') {
         const { data: gruposData } = await supabase
           .from('tramites_grupos_miembros')
           .select('grupo_id')
-          .eq('usuario_id', uid);
+          .eq('usuario_id', effectiveId);
         const grupIds = (gruposData || []).map((g: { grupo_id: string }) => g.grupo_id);
-        let orFilter = `agente_id.eq.${uid},creado_por.eq.${uid},assigned_to_user_id.eq.${uid},agente_usuario_id.eq.${uid},attending_user_id.eq.${uid}`;
+        let orFilter = `agente_id.eq.${effectiveId},creado_por.eq.${effectiveId},assigned_to_user_id.eq.${effectiveId},agente_usuario_id.eq.${effectiveId},attending_user_id.eq.${effectiveId}`;
         if (grupIds.length > 0) orFilter += `,and(assigned_to_user_id.is.null,attending_user_id.is.null,grupo_asignado_id.in.(${grupIds.join(',')}))`;
         query = query.or(orFilter);
       }
