@@ -24,10 +24,13 @@
           document.documentElement.classList.remove('dark');
         }
       })();
-      // Aggressive cache purge - runs before any module loads
+      // Unregister old caching service workers but keep push-sw.js
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(regs) {
-          regs.forEach(function(r) { r.unregister(); });
+          regs.forEach(function(r) {
+            if (r.active && r.active.scriptURL && r.active.scriptURL.includes('push-sw.js')) return;
+            r.unregister();
+          });
         });
       }
       if ('caches' in window) {

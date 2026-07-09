@@ -1,6 +1,19 @@
-import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
+
+const VAPID_PUBLIC_KEY = 'BJlDHzauV_reeetO1oXrgJh8QQqebKJmY8ZlOWBvGJ7lmi2qNGVWAiO9KXWLK4HVAKZSwTSxHD7cX41wQg-JGMw';
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 interface Notification {
   id: string;
@@ -52,8 +65,43 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       const granted = Notification.permission === 'granted';
       setPushEnabled(granted);
       pushEnabledRef.current = granted;
+      if (granted && usuario) {
+        registerPushSubscription();
+      }
     }
   };
+
+  const registerPushSubscription = useCallback(async () => {
+    if (!usuario || !('serviceWorker' in navigator)) return;
+    try {
+      const registration = await navigator.serviceWorker.register('/push-sw.js', { scope: '/' });
+      await navigator.serviceWorker.ready;
+
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        });
+      }
+
+      const subJson = subscription.toJSON();
+      if (!subJson.endpoint || !subJson.keys) return;
+
+      await supabase.from('push_subscriptions').upsert(
+        {
+          usuario_id: usuario.id,
+          endpoint: subJson.endpoint,
+          p256dh: subJson.keys.p256dh!,
+          auth_key: subJson.keys.auth!,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'usuario_id,endpoint' }
+      );
+    } catch (err) {
+      console.error('Push subscription failed:', err);
+    }
+  }, [usuario]);
 
   const fetchNotifications = async () => {
     if (!usuario) return;
@@ -276,11 +324,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     try {
       const permission = await Notification.requestPermission();
-      setPushEnabled(permission === 'granted');
-      pushEnabledRef.current = permission === 'granted';
+      const granted = permission === 'granted';
+      setPushEnabled(granted);
+      pushEnabledRef.current = granted;
 
-      if (permission === 'granted') {
-        showToast('Notificaciones activadas', 'success');
+      if (granted) {
+        await registerPushSubscription();
+        showToast('Notificaciones push activadas', 'success');
       }
     } catch (error) {
       console.error('Error requesting notification permission:', error);
