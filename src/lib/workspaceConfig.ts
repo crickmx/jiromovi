@@ -181,6 +181,7 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/admin/telefonia', label: 'Telefonía', icon: Phone, visibleTo: ADMIN_ONLY },
     { path: '/admin/modulos', label: 'Control de Módulos', icon: LayoutGrid, visibleTo: ADMIN_ONLY },
     { path: '/admin/sidebar-editor', label: 'Editor de Sidebar', icon: PanelLeft, visibleTo: ADMIN_ONLY },
+    { path: '/admin/dashboard-editor', label: 'Editor de Dashboard', icon: LayoutDashboard, visibleTo: ADMIN_ONLY },
     { path: '/admin/reportes-bugs', label: 'Reportes de Bugs', icon: Bug, visibleTo: ADMIN_ONLY },
     // Inteligencia Artificial
     { path: '/admin/chava-inteligencia', label: 'Dashboard IA', icon: BrainCircuit, visibleTo: ADMIN_ONLY },

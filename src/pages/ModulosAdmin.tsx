@@ -97,11 +97,21 @@ function ruleKey(moduleKey: string, targetType: TargetType, targetValue: string)
 
 type TabId = 'roles' | 'oficinas' | 'usuarios';
 
+// Widgets del Dashboard no tienen su propio label (son componentes fijos,
+// no tarjetas genéricas) — mismo mapa que usa DashboardEditorAdmin.tsx.
+const DASHBOARD_WIDGET_LABELS: Record<string, string> = {
+  favoritos: 'Mis Favoritos',
+  beta: 'Únete a la Beta',
+  produccion_bonos: 'Mi Producción',
+  avisos: 'Avisos',
+};
+
 export default function ModulosAdmin() {
   const { usuario } = useAuth();
   const [tab, setTab] = useState<TabId>('roles');
   const [rules, setRules] = useState<Map<string, VisibilityRule>>(new Map());
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
+  const [dashboardModules, setDashboardModules] = useState<ModuleRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null); // key being saved (solo tab Rol)
   const [saveResult, setSaveResult] = useState<{ key: string; ok: boolean } | null>(null);
@@ -111,9 +121,11 @@ export default function ModulosAdmin() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [{ data: rulesData }, { data: oficinasData }] = await Promise.all([
+    const [{ data: rulesData }, { data: oficinasData }, { data: vcardsData }, { data: widgetsData }] = await Promise.all([
       supabase.from('module_visibility').select('id, module_key, target_type, target_value, visible'),
       supabase.from('oficinas').select('id, nombre').eq('activa', true).order('nombre'),
+      supabase.from('dashboard_vcards').select('card_key, label').order('orden'),
+      supabase.from('dashboard_widgets').select('widget_key').order('orden'),
     ]);
 
     const map = new Map<string, VisibilityRule>();
@@ -122,6 +134,10 @@ export default function ModulosAdmin() {
     }
     setRules(map);
     setOficinas((oficinasData ?? []) as Oficina[]);
+    setDashboardModules([
+      ...(vcardsData ?? []).map(v => ({ key: `dashboard:vcard:${v.card_key}`, label: `Vcard: ${v.label}`, workspace: 'Dashboard' })),
+      ...(widgetsData ?? []).map(w => ({ key: `dashboard:widget:${w.widget_key}`, label: `Widget: ${DASHBOARD_WIDGET_LABELS[w.widget_key] ?? w.widget_key}`, workspace: 'Dashboard' })),
+    ]);
     setLoading(false);
   }, []);
 
@@ -265,7 +281,7 @@ export default function ModulosAdmin() {
 
   const modulesByWorkspace: { workspace: string; modules: ModuleRow[] }[] = [];
   const wsMap = new Map<string, ModuleRow[]>();
-  for (const m of ALL_MODULES) {
+  for (const m of [...ALL_MODULES, ...dashboardModules]) {
     if (!wsMap.has(m.workspace)) wsMap.set(m.workspace, []);
     wsMap.get(m.workspace)!.push(m);
   }

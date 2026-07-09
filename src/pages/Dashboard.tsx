@@ -6,6 +6,7 @@ import type { Usuario } from '../contexts/MoviAuthContext';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { useModuleVisibility } from '@/lib/useModuleVisibility';
+import { useDashboardConfig, type DashboardVcard } from '@/lib/useDashboardConfig';
 import { obtenerComunicados } from '../lib/comunicadosUtils';
 import type { ComunicadoPublicacion } from '../lib/comunicadosTypes';
 import { SolicitudBetaModal } from '../components/dashboard/SolicitudBetaModal';
@@ -73,59 +74,11 @@ function SectionShell({
   );
 }
 
-// ── Datos estáticos de lanzamiento Beta ────────────────────────────────
-// Nota: las rutas se verificaron contra MoviFullRoutes.tsx / workspaceConfig.ts
-// (algunas del spec original no existían: /educacion -> /seguros-education,
-// /marketing -> /mercadotecnia/publicidad, /bonos -> /produccion,
-// /fotos-estudio -> /mercadotecnia/fotos-estudio, /chat -> /centro-contacto/chat).
-
-const BETA_MODULES = [
-  {
-    key: 'store',
-    label: 'MOVI Store',
-    desc: 'Pedidos y catálogo de productos',
-    route: '/store',
-    emoji: '🏬',
-    gradientFrom: '#E84F8A',
-    gradientTo: '#8E1A52',
-  },
-  {
-    key: 'educacion',
-    label: 'Seguros Education',
-    desc: 'Cursos y certificaciones',
-    route: '/seguros-education',
-    emoji: '🎓',
-    gradientFrom: '#5A6EC4',
-    gradientTo: '#333D90',
-  },
-  {
-    key: 'produccion',
-    label: 'Central de Producción',
-    desc: 'Pólizas, reportes y metas',
-    route: '/produccion',
-    emoji: '📊',
-    gradientFrom: '#8E1A52',
-    gradientTo: '#520E35',
-  },
-  {
-    key: 'marketing',
-    label: 'Mercadotecnia',
-    desc: 'Campañas y materiales de marca',
-    route: '/mercadotecnia/publicidad',
-    emoji: '📣',
-    gradientFrom: '#3DA88A',
-    gradientTo: '#236B58',
-  },
-  {
-    key: 'avisos',
-    label: 'Avisos',
-    desc: 'Comunicados y notificaciones',
-    route: '/comunicados',
-    emoji: '🔔',
-    gradientFrom: '#B87272',
-    gradientTo: '#7A4858',
-  },
-] as const;
+// ── Datos estáticos ─────────────────────────────────────────────────────
+// Las Vcards de colores (antes BETA_MODULES) ahora viven en la tabla
+// dashboard_vcards (ver useDashboardConfig) — editables desde Admin >
+// Editor de Dashboard. BETA_FAVORITOS se queda fijo, no forma parte de ese
+// editor (son atajos, no tarjetas de módulo).
 
 const BETA_FAVORITOS = [
   { label: 'Nuevo Trámite', emoji: '📋', route: '/tramites' },
@@ -182,19 +135,19 @@ function WelcomeHero({ usuario }: { usuario: Usuario }) {
 
 function ModuleVCards({
   modules, onNavigate,
-}: { modules: typeof BETA_MODULES[number][]; onNavigate: (route: string) => void }) {
+}: { modules: DashboardVcard[]; onNavigate: (route: string) => void }) {
   const isOddLast = (i: number) => modules.length % 2 === 1 && i === modules.length - 1;
   return (
     <div className="grid grid-cols-2 gap-3">
       {modules.map((m, i) => (
         <div
-          key={m.key}
+          key={m.card_key}
           onClick={() => onNavigate(m.route)}
           className={cn(
             'rounded-2xl overflow-hidden relative cursor-pointer p-4 min-h-[100px] flex flex-col gap-2 transition hover:-translate-y-0.5',
             isOddLast(i) && 'col-span-2'
           )}
-          style={{ background: `linear-gradient(145deg, ${m.gradientFrom}, ${m.gradientTo})` }}
+          style={{ background: `linear-gradient(145deg, ${m.gradient_from}, ${m.gradient_to})` }}
         >
           <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full bg-white/8 pointer-events-none" />
           <div className="relative z-10 w-[30px] h-[30px] bg-white/18 rounded-lg text-sm flex items-center justify-center">
@@ -202,7 +155,7 @@ function ModuleVCards({
           </div>
           <div className="relative z-10">
             <p className="text-sm font-bold text-white">{m.label}</p>
-            <p className="text-[10px] text-white/80">{m.desc}</p>
+            <p className="text-[10px] text-white/80">{m.descripcion}</p>
           </div>
           <span className="absolute bottom-3 right-3 text-white/50">→</span>
         </div>
@@ -360,20 +313,41 @@ function AvisosPanel({ onNavigate }: { onNavigate: (route: string) => void }) {
 
 // ── Dashboard ───────────────────────────────────────────────────────────
 
+function renderWidget(key: string, usuario: Usuario, navigate: (route: string) => void): ReactNode {
+  switch (key) {
+    case 'favoritos': return <FavoritosGrid key={key} onNavigate={navigate} />;
+    case 'beta': return <JoinBetaCard key={key} usuario={usuario} />;
+    case 'produccion_bonos': return <ProduccionResumenCard key={key} />;
+    case 'avisos': return <AvisosPanel key={key} onNavigate={navigate} />;
+    default: return null;
+  }
+}
+
 export default function Dashboard() {
   useEffect(() => { document.title = 'Dashboard · MOVI Digital'; }, []);
 
   const { usuario } = useMoviAuth();
   const navigate = useNavigate();
   const { isVisible } = useModuleVisibility();
+  const { vcards, widgets } = useDashboardConfig();
 
   // MoviPrivateRoute already handles unauthenticated redirect
   if (!usuario) return null;
 
-  const enabledModules = BETA_MODULES.filter(m =>
-    isVisible(m.route, usuario.rol, usuario.oficina_id, usuario.id)
-  );
-  const hasProduccionModule = enabledModules.some(m => m.key === 'produccion');
+  const visibleFor = (moduleKey: string) =>
+    isVisible(moduleKey, usuario.rol, usuario.oficina_id, usuario.id);
+
+  const enabledVcards = vcards
+    .filter(v => v.activa)
+    .filter(v => visibleFor(`dashboard:vcard:${v.card_key}`))
+    .filter(v => visibleFor(v.route));
+
+  const enabledWidgets = widgets
+    .filter(w => w.activa)
+    .filter(w => visibleFor(`dashboard:widget:${w.widget_key}`));
+
+  const wideWidgets = enabledWidgets.filter(w => w.full_width);
+  const narrowWidgets = enabledWidgets.filter(w => !w.full_width);
 
   return (
     <div className="space-y-6 pb-8">
@@ -381,14 +355,12 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <ModuleVCards modules={enabledModules} onNavigate={navigate} />
-          {hasProduccionModule && <ProduccionResumenCard />}
+          <ModuleVCards modules={enabledVcards} onNavigate={navigate} />
+          {wideWidgets.map(w => renderWidget(w.widget_key, usuario, navigate))}
         </div>
 
         <div className="space-y-8">
-          <FavoritosGrid onNavigate={navigate} />
-          <JoinBetaCard usuario={usuario} />
-          <AvisosPanel onNavigate={navigate} />
+          {narrowWidgets.map(w => renderWidget(w.widget_key, usuario, navigate))}
         </div>
       </div>
     </div>
