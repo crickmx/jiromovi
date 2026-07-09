@@ -834,6 +834,37 @@ function QuoteTemplate(props: QuoteTemplateProps) {
   );
 }
 
+// ─── Image helpers ───────────────────────────────────────────────────────────
+
+async function imageToDataUrl(src: string): Promise<string | null> {
+  try {
+    // For relative/local paths, fetch directly
+    if (src.startsWith('/') || src.startsWith('data:')) {
+      if (src.startsWith('data:')) return src;
+      const resp = await fetch(src);
+      if (!resp.ok) return null;
+      const blob = await resp.blob();
+      return await blobToDataUrl(blob);
+    }
+    // For external URLs (Supabase storage), fetch and convert
+    const resp = await fetch(src, { mode: 'cors' });
+    if (!resp.ok) return null;
+    const blob = await resp.blob();
+    return await blobToDataUrl(blob);
+  } catch {
+    return null;
+  }
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 // ─── html2canvas capture ──────────────────────────────────────────────────────
 
 async function captureElement(el: HTMLElement): Promise<HTMLCanvasElement> {
@@ -888,11 +919,17 @@ export async function generateMultiGmmPdf(
     logoUrl ||
     usuario?.mi_logotipo_url ||
     usuario?.oficina?.logo_url ||
-    null;
+    '/logojiro.png';
 
-  // Resolve relative paths to absolute URLs so html2canvas can fetch them
+  // Convert to absolute URL for fetching
   if (resolvedLogo && resolvedLogo.startsWith('/')) {
     resolvedLogo = `${window.location.origin}${resolvedLogo}`;
+  }
+
+  // Pre-fetch and convert to data URL so html2canvas can always render it
+  if (resolvedLogo) {
+    const dataUrl = await imageToDataUrl(resolvedLogo);
+    resolvedLogo = dataUrl;
   }
 
   const today = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -926,18 +963,8 @@ export async function generateMultiGmmPdf(
     setTimeout(resolve, 100);
   });
 
-  // Wait for all images in the container to load before capturing
-  const images = container.querySelectorAll('img');
-  if (images.length > 0) {
-    await Promise.all(Array.from(images).map(img =>
-      img.complete ? Promise.resolve() : new Promise<void>(res => {
-        img.onload = () => res();
-        img.onerror = () => res();
-      })
-    ));
-  }
-  // Small extra delay for rendering to settle
-  await new Promise(r => setTimeout(r, 150));
+  // Allow rendering to settle (data URLs load synchronously so no image wait needed)
+  await new Promise(r => setTimeout(r, 200));
 
   const page1El = container.querySelector('#gmm-page-1') as HTMLElement | null;
   const page2El = container.querySelector('#gmm-page-2') as HTMLElement | null;

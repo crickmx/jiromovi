@@ -323,6 +323,37 @@ export async function deleteYeastarExtension(extensionNumber: string): Promise<{
   return callYeastarProxy('delete_extension', { number: extensionNumber });
 }
 
+export async function managePBXExtension(params: {
+  action: 'create' | 'update';
+  usuario_id: string;
+  extension: string;
+  first_name: string;
+  last_name: string;
+  email_addr?: string;
+  mobile_number?: string;
+  user_password?: string;
+}): Promise<{ success: boolean; message: string; yeastar_id?: string }> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('No hay sesion activa');
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const response = await fetch(`${supabaseUrl}/functions/v1/telefonia-manage-extension`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+    throw new Error(errData.error || `Error ${response.status}`);
+  }
+
+  return response.json();
+}
+
 export async function listYeastarExtensions(): Promise<{ success: boolean; extensions?: unknown[]; message?: string }> {
   return callYeastarProxy('list_extensions');
 }
@@ -393,6 +424,32 @@ export async function probeApiVersions(): Promise<ApiVersionsResult> {
 
 export async function probeEndpoints(): Promise<EndpointProbeResult> {
   return callYeastarProxy('probe_endpoints');
+}
+
+// ── Missed Calls ────────────────────────────────────────────────────────────
+
+export interface LlamadaPerdida {
+  id: string;
+  extension: string;
+  caller_number: string;
+  timestamp: string;
+  usuario_id: string | null;
+  estado: 'pendiente' | 'atendida' | 'descartada';
+  created_at: string;
+}
+
+export async function getLlamadasPerdidas(usuarioId?: string) {
+  const supabase = (await import('./supabaseClient')).supabase;
+  let query = supabase
+    .from('llamadas_perdidas')
+    .select('*')
+    .order('timestamp', { ascending: false });
+  if (usuarioId) {
+    query = query.eq('usuario_id', usuarioId);
+  }
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
 }
 
 // ── Auto-assign next available extension for an office ────────────────────────

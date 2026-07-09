@@ -3,6 +3,7 @@ import { Suspense, lazy } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import './index.css';
 import { MoviAuthProvider } from './contexts/MoviAuthContext';
+import { PushNotificationInit } from './components/PushNotificationInit';
 import { ImpersonationProvider } from './contexts/ImpersonationContext';
 import { LoadingProvider } from './contexts/LoadingContext';
 import { LoadingOverlay } from './components/loading/LoadingOverlay';
@@ -151,6 +152,7 @@ function SegurosEducationApp() {
       <BrowserRouter>
         <ImpersonationProvider>
           <MoviAuthProvider>
+      <PushNotificationInit />
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/*" element={<SegurosEducationLanding />} />
