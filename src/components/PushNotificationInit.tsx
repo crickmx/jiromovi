@@ -1,4 +1,5 @@
 // src/components/PushNotificationInit.tsx
+import { useEffect } from 'react';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 
@@ -8,6 +9,13 @@ import { usePushNotifications } from '../hooks/usePushNotifications';
  */
 export function PushNotificationInit() {
   const { usuario } = useMoviAuth();
-  usePushNotifications(usuario?.id ?? null);
+  const { subscribe, isSupported, isSwReady } = usePushNotifications(usuario?.id ?? null);
+
+  useEffect(() => {
+    if (isSupported && isSwReady && usuario?.id) {
+      subscribe();
+    }
+  }, [usuario?.id, isSupported, isSwReady]);
+
   return null;
 }
