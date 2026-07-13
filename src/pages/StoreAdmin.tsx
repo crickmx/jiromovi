@@ -15,7 +15,6 @@ import {
   eliminarCategoria,
   exportarProductosExcel,
   importarProductosExcel,
-  setupMarketingPremiumProductos,
   tieneAccesoEquipoStore
 } from '../lib/storeUtils';
 import type { ResultadoCargaMasiva } from '../lib/storeUtils';
@@ -67,7 +66,6 @@ export default function StoreAdmin() {
       const tieneAcceso = tienePermisoAdminEnModulo(usuario, MODULOS.STORE) || await tieneAccesoEquipoStore(usuario.id);
       if (!tieneAcceso) { navigate('/store'); return; }
       cargarDatos();
-      setupMarketingPremiumProductos().catch(() => {});
     })();
   }, [usuario]);
 

@@ -114,9 +114,14 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
                 >
                   <Minus className="w-3 h-3 sm:w-4 sm:h-4" />
                 </button>
-                <span className="text-sm sm:text-base font-medium text-gray-900 dark:text-white w-5 sm:w-6 text-center">
-                  {cantidad}
-                </span>
+                <input
+                  type="number"
+                  min="1"
+                  max="999"
+                  value={cantidad}
+                  onChange={e => setCantidad(Math.max(1, Math.min(999, parseInt(e.target.value) || 1)))}
+                  className="w-10 text-center text-sm font-medium text-gray-900 dark:text-white border border-gray-200 dark:border-white/15 rounded bg-transparent focus:outline-none focus:ring-1 focus:ring-accent"
+                />
                 <button
                   onClick={() => setCantidad(c => Math.min(999, c + 1))}
                   disabled={cantidad >= 999}
