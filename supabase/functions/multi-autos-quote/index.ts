@@ -216,6 +216,15 @@ function getCredentialStatus(insurerName: string, creds: ResolvedCredentials): s
 // SOAP Envelope Builders (WSDL-compliant)
 // ============================================================
 
+function escapeXml(value: string | number): string {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
 function buildQualitasSoap(
   creds: ResolvedCredentials["qualitas"],
   vehicle: VehicleRequest,
@@ -226,60 +235,72 @@ function buildQualitasSoap(
   // Qualitas requires the AMIS code for proper vehicle identification
   const claveAmis = catalogVehicle?.clave_amis || vehicle.claveAmis || "";
 
+  // Raiz real confirmada contra el WSDL de qa.qualitas.com.mx:
+  // <Movimientos><Movimiento TipoMovimiento="2" NoNegocio="..."> (2 = cotizacion),
+  // no <COTIZACION> como antes. El resto de <Movimiento> (Anexo 4 completo)
+  // sigue siendo best-effort -- ver MULTIAUTOS_CONFIGURACION_ENV.md.
   const xmlContent = [
-    "<COTIZACION>",
-    `<NEGOCIO>${creds.noNegocio}</NEGOCIO>`,
-    `<AGENTE>${creds.agente}</AGENTE>`,
-    `<TARIFA>${creds.tarifa}</TARIFA>`,
-    claveAmis ? `<CLAVE_AMIS>${claveAmis}</CLAVE_AMIS>` : "",
-    `<MARCA>${vehicle.marca}</MARCA>`,
-    `<ANIO>${vehicle.anio}</ANIO>`,
-    `<MODELO>${vehicle.modelo}</MODELO>`,
-    `<VERSION>${vehicle.version}</VERSION>`,
-    `<VALOR_VEHICULO>${vehicle.valorReferencia}</VALOR_VEHICULO>`,
-    `<CODIGO_POSTAL>${cp}</CODIGO_POSTAL>`,
-    `<PAQUETE>${paquete === "Amplia" ? "1" : paquete === "Limitada" ? "2" : "3"}</PAQUETE>`,
-    "<BONIFICACION_TECNICA>40</BONIFICACION_TECNICA>",
-    "</COTIZACION>",
+    "<Movimientos>",
+    `<Movimiento TipoMovimiento="2" NoNegocio="${creds.noNegocio}">`,
+    `<Agente>${creds.agente}</Agente>`,
+    `<Tarifa>${creds.tarifa}</Tarifa>`,
+    claveAmis ? `<ClaveAmis>${claveAmis}</ClaveAmis>` : "",
+    `<Marca>${vehicle.marca}</Marca>`,
+    `<Anio>${vehicle.anio}</Anio>`,
+    `<Modelo>${vehicle.modelo}</Modelo>`,
+    `<Version>${vehicle.version}</Version>`,
+    `<ValorVehiculo>${vehicle.valorReferencia}</ValorVehiculo>`,
+    `<CodigoPostal>${cp}</CodigoPostal>`,
+    `<Paquete>${paquete === "Amplia" ? "1" : paquete === "Limitada" ? "2" : "3"}</Paquete>`,
+    "<BonificacionTecnica>40</BonificacionTecnica>",
+    "</Movimiento>",
+    "</Movimientos>",
   ].join("");
 
+  // xmlEmision es un string plano segun el WSDL real -- se escapa con
+  // entidades en vez de envolver en CDATA.
   return `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tns="http://qualitas.com.mx/">
   <soap:Body>
     <tns:obtenerNuevaEmision>
-      <tns:xmlEmision><![CDATA[${xmlContent}]]></tns:xmlEmision>
+      <tns:xmlEmision>${escapeXml(xmlContent)}</tns:xmlEmision>
     </tns:obtenerNuevaEmision>
   </soap:Body>
 </soap:Envelope>`;
 }
 
-function buildGnpPayload(
+function buildGnpXml(
   creds: ResolvedCredentials["gnp"],
   vehicle: VehicleRequest,
   catalogVehicle: CatalogVehicle | null,
   edad: number,
   cp: string,
   formaPago: string
-): Record<string, unknown> {
+): string {
+  // GNP no publica WSDL (es un WS REST que recibe XML plano, no JSON) --
+  // schema tomado del Kit GNP - Multicotizador JIRO.xlsx.
   const meta = catalogVehicle?.metadata_aseguradoras || {};
-  return {
-    usuario: creds.usuario,
-    password: creds.password,
-    unidadOperable: creds.unidadOperable,
-    intermediario: creds.intermediario,
-    oficina: creds.oficina,
-    vehiculo: {
-      marca: meta.armadora_gnp || vehicle.marca,
-      anio: vehicle.anio,
-      modelo: vehicle.modelo,
-      version: meta.version_gnp || vehicle.version,
-      carroceria: meta.carroceria_gnp || catalogVehicle?.carroceria || "SEDAN",
-      valorVehiculo: vehicle.valorReferencia,
-    },
-    conductor: { edad, codigoPostal: cp },
-    paquete: vehicle.paquete,
-    formaPago,
-  };
+  return [
+    "<COTIZACION>",
+    `<UNIDAD_OPERABLE>${creds.unidadOperable}</UNIDAD_OPERABLE>`,
+    `<INTERMEDIARIO>${creds.intermediario}</INTERMEDIARIO>`,
+    `<OFICINA>${creds.oficina}</OFICINA>`,
+    "<VEHICULO>",
+    `<MARCA>${meta.armadora_gnp || vehicle.marca}</MARCA>`,
+    `<ANIO>${vehicle.anio}</ANIO>`,
+    `<MODELO>${vehicle.modelo}</MODELO>`,
+    `<VERSION>${meta.version_gnp || vehicle.version}</VERSION>`,
+    `<CARROCERIA>${meta.carroceria_gnp || catalogVehicle?.carroceria || "SEDAN"}</CARROCERIA>`,
+    `<VALOR_VEHICULO>${vehicle.valorReferencia}</VALOR_VEHICULO>`,
+    "</VEHICULO>",
+    "<CONDUCTOR>",
+    `<EDAD>${edad}</EDAD>`,
+    `<CODIGO_POSTAL>${cp}</CODIGO_POSTAL>`,
+    "</CONDUCTOR>",
+    `<PAQUETE>${vehicle.paquete}</PAQUETE>`,
+    `<FORMA_PAGO>${formaPago}</FORMA_PAGO>`,
+    "</COTIZACION>",
+  ].join("");
 }
 
 function buildAnaSoap(
@@ -332,6 +353,12 @@ function buildHdiSoap(
   const meta = catalogVehicle?.metadata_aseguradoras || {};
   const claveHdi = meta.clave_hdi || "";
 
+  // savequote no existe en el WSDL real de HDI (PublicServicesAutos.asmx) --
+  // el metodo real es ObtenerMultiPaquetesExpress. idMarca/idModelo/
+  // idTransmision/idZonaCirculacion/idTonelaje/idServicio/idRiesgoCarga son
+  // catalogos internos de HDI (no el codigo AMIS) -- van en 0 como placeholder
+  // hasta resolverlos via ObtenerMarcas/ObtenerModelos/ObtenerClaveVehiculo
+  // del mismo WSDL (ver MULTIAUTOS_CONFIGURACION_ENV.md, pendiente #6).
   return `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tns="http://hdi.com.mx/asmx/">
   <soap:Header>
@@ -341,18 +368,21 @@ function buildHdiSoap(
     </tns:AuthenticateHeader>
   </soap:Header>
   <soap:Body>
-    <tns:savequote>
+    <tns:ObtenerMultiPaquetesExpress>
       <tns:request>
         <tns:datosCotizacion>
           <tns:CaracteristicasVehiculo>
             <tns:idVehiculo>${claveHdi || "0"}</tns:idVehiculo>
             <tns:idMarca>0</tns:idMarca>
-            <tns:idModelo>${vehicle.anio}</tns:idModelo>
-            <tns:idTipo>0</tns:idTipo>
-            <tns:idVersion>0</tns:idVersion>
+            <tns:idModelo>0</tns:idModelo>
             <tns:idTransmision>0</tns:idTransmision>
+            <tns:idZonaCirculacion>0</tns:idZonaCirculacion>
+            <tns:idTonelaje>0</tns:idTonelaje>
+            <tns:idServicio>0</tns:idServicio>
+            <tns:idRiesgoCarga>0</tns:idRiesgoCarga>
             <tns:idUso>1</tns:idUso>
             <tns:tipoVehiculo>1</tns:tipoVehiculo>
+            <tns:anioVehiculo>${vehicle.anio}</tns:anioVehiculo>
             <tns:pasajeros>5</tns:pasajeros>
             <tns:valorVehiculo>${vehicle.valorReferencia}</tns:valorVehiculo>
             <tns:claveAmis>${catalogVehicle?.clave_amis || ""}</tns:claveAmis>
@@ -369,11 +399,14 @@ function buildHdiSoap(
         <tns:usuario>${creds.usuario}</tns:usuario>
         <tns:oficina>${creds.oficina}</tns:oficina>
       </tns:request>
-    </tns:savequote>
+    </tns:ObtenerMultiPaquetesExpress>
   </soap:Body>
 </soap:Envelope>`;
 }
 
+// DESACTIVADO: sin schema/endpoint real confirmado para Zurich (no hay WSDL
+// ni doc de credenciales validado) -- disponible=false en la BD, este builder
+// queda de referencia por si se retoma con documentacion real.
 function buildZurichSoap(
   creds: ResolvedCredentials["zurich"],
   vehicle: VehicleRequest,
@@ -416,6 +449,8 @@ function buildZurichSoap(
 </soap:Envelope>`;
 }
 
+// DESACTIVADO: sin schema/endpoint real confirmado para Chubb -- ver nota de
+// Zurich arriba, mismo motivo.
 function buildChubbSoap(
   creds: ResolvedCredentials["chubb"],
   vehicle: VehicleRequest,
@@ -447,6 +482,8 @@ function buildChubbSoap(
 </soap:Envelope>`;
 }
 
+// DESACTIVADO: sin schema/endpoint real confirmado para Potosi -- ver nota de
+// Zurich arriba, mismo motivo.
 function buildPotosiPayload(
   creds: ResolvedCredentials["potosi"],
   vehicle: VehicleRequest,
@@ -491,7 +528,7 @@ function extractResultString(xml: string): string {
   const patterns = [
     /<(?:\w+:)?obtenerNuevaEmisionResult[^>]*>([\s\S]*?)<\/(?:\w+:)?obtenerNuevaEmisionResult>/i,
     /<(?:\w+:)?TransaccionResult[^>]*>([\s\S]*?)<\/(?:\w+:)?TransaccionResult>/i,
-    /<(?:\w+:)?savequoteResult[^>]*>([\s\S]*?)<\/(?:\w+:)?savequoteResult>/i,
+    /<(?:\w+:)?ObtenerMultiPaquetesExpressResult[^>]*>([\s\S]*?)<\/(?:\w+:)?ObtenerMultiPaquetesExpressResult>/i,
     /<(?:\w+:)?CotizarAutoResult[^>]*>([\s\S]*?)<\/(?:\w+:)?CotizarAutoResult>/i,
     /<(?:\w+:)?CotizarVehiculoResult[^>]*>([\s\S]*?)<\/(?:\w+:)?CotizarVehiculoResult>/i,
   ];
@@ -568,6 +605,30 @@ async function callSoapInsurer(
     });
     const text = await response.text();
     if (!response.ok && !text.includes("Envelope")) {
+      throw new Error(`HTTP ${response.status}: ${text.substring(0, 300)}`);
+    }
+    return text;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function callXmlInsurer(
+  endpoint: string,
+  xmlBody: string,
+  headers?: Record<string, string>
+): Promise<string> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), WS_TIMEOUT_MS);
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "text/xml; charset=utf-8", ...(headers || {}) },
+      body: xmlBody,
+      signal: controller.signal,
+    });
+    const text = await response.text();
+    if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${text.substring(0, 300)}`);
     }
     return text;
@@ -660,21 +721,14 @@ async function quoteGnp(
   }
 
   try {
-    const payload = buildGnpPayload(creds.gnp, vehicle, catalogVehicle, edad, cp, formaPago);
+    const xmlBody = buildGnpXml(creds.gnp, vehicle, catalogVehicle, edad, cp, formaPago);
     const authHeader = { "Authorization": `Basic ${btoa(`${creds.gnp.usuario}:${creds.gnp.password}`)}` };
-    const data = await callRestInsurer(endpoint, payload, authHeader);
-    const primaNeta = (data.primaNeta || data.prima_neta || (data as any).resultado?.primaNeta || null) as number | null;
-    const primaTotal = (data.primaTotal || data.prima_total || (data as any).resultado?.primaTotal || null) as number | null;
-    const derechoPoliza = (data.derechoPoliza || data.derecho_poliza || Number(insurer.derecho_poliza)) as number;
-
-    if (primaNeta && primaNeta > 0) {
-      const dp = derechoPoliza || Number(insurer.derecho_poliza);
-      const iva = Math.round((primaNeta + dp) * IVA_RATE * 100) / 100;
-      const total = primaTotal || Math.round((primaNeta + dp + iva) * 100) / 100;
-      return makeSuccess(insurer, startTime, primaNeta, dp, iva, total, credStatus);
+    const xml = await callXmlInsurer(endpoint, xmlBody, authHeader);
+    const fault = extractSoapFault(xml);
+    if (fault) {
+      return makeError(insurer, startTime, `GNP: ${fault}`, credStatus);
     }
-
-    return makeError(insurer, startTime, `GNP: Sin datos de prima. Respuesta: ${JSON.stringify(data).substring(0, 200)}`, credStatus);
+    return parseQuoteResponse(insurer, xml, startTime, credStatus);
   } catch (err) {
     const msg = (err as Error).message;
     const isCredIssue = msg.includes("401") || msg.includes("403") || msg.toLowerCase().includes("unauthorized");
@@ -733,7 +787,7 @@ async function quoteHdi(
 
   try {
     const soapBody = buildHdiSoap(creds.hdi, vehicle, catalogVehicle, edad, cp, vehicle.paquete);
-    const xml = await callSoapInsurer(endpoint, soapBody, "http://hdi.com.mx/asmx/savequote");
+    const xml = await callSoapInsurer(endpoint, soapBody, "http://hdi.com.mx/asmx/ObtenerMultiPaquetesExpress");
 
     const credError = xml.match(/credenciales?\s+no\s+son\s+v[aá]lidas/i);
     if (credError) {
