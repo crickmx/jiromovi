@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Bell, Check, CheckCheck, X, Trash2, ListFilter as Filter, Mail, MessageSquare, Calendar, GraduationCap, MapPin, Palette, Users, Megaphone, ShoppingBag } from 'lucide-react';
+import { Bell, Check, CheckCheck, X, Trash2, ListFilter as Filter, Mail, MessageSquare, Calendar, GraduationCap, MapPin, Palette, Users, Megaphone, ShoppingBag, PhoneMissed } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
@@ -123,9 +123,9 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
     }
   };
 
-  const getModuleIcon = (modulo: string) => {
-    const IconComponent = moduleIcons[modulo] || Bell;
-    return IconComponent;
+  const getModuleIcon = (notification: any) => {
+    if (notification.tipo === 'llamada_perdida') return PhoneMissed;
+    return moduleIcons[notification.modulo] || Bell;
   };
 
   const buttonClass = compact
@@ -246,7 +246,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
             ) : (
               <div className="divide-y divide-neutral-100 dark:divide-white/5">
                 {filteredNotifications.map((notification) => {
-                  const IconComponent = getModuleIcon(notification.modulo);
+                  const IconComponent = getModuleIcon(notification);
 
                   return (
                     <div
@@ -299,6 +299,25 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                             </div>
 
                             <div className="flex items-center gap-1">
+                              {notification.tipo === 'llamada_perdida' && notification.metadata?.caller_number && (
+                                <>
+                                  <a
+                                    href={`/admin/whatsapp?nuevo=true&numero=${notification.metadata.caller_number}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="px-2 py-1 text-xs font-medium text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors"
+                                  >
+                                    WhatsApp
+                                  </a>
+                                  <a
+                                    href={`tel:${notification.metadata.caller_number}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                                  >
+                                    Llamar
+                                  </a>
+                                </>
+                              )}
+
                               {notification.accion_url && (
                                 <button
                                   onClick={() => handleNotificationClick(notification)}

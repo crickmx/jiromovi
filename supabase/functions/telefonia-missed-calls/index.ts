@@ -54,6 +54,44 @@ Deno.serve(async (req: Request) => {
 
     const usuarioId = usuarioRows?.[0]?.id || null;
 
+    // Reconocer al que llama contra usuarios MOVI y contactos del CRM
+    // (mismo criterio de match que wazzup-webhook: ultimos 10 digitos)
+    const last10 = callerNumber.replace(/\D/g, "").slice(-10);
+    let callerName: string | null = null;
+
+    if (last10.length === 10) {
+      const { data: usuarioMatch } = await adminClient
+        .from("usuarios")
+        .select("nombre_completo")
+        .or(`celular_laboral.ilike.%${last10},celular_personal.ilike.%${last10}`)
+        .limit(1);
+      callerName = usuarioMatch?.[0]?.nombre_completo || null;
+
+      if (!callerName) {
+        const { data: crmMatch } = await adminClient
+          .from("crm_contactos")
+          .select("nombre_completo")
+          .ilike("celular", `%${last10}`)
+          .limit(1);
+        callerName = crmMatch?.[0]?.nombre_completo || null;
+      }
+
+      if (!callerName) {
+        const { data: contactoMatch } = await adminClient
+          .from("contactos")
+          .select("nombre, apellido")
+          .ilike("celular", `%${last10}`)
+          .limit(1);
+        if (contactoMatch?.[0]) {
+          callerName = [contactoMatch[0].nombre, contactoMatch[0].apellido]
+            .filter(Boolean)
+            .join(" ") || null;
+        }
+      }
+    }
+
+    const callerLabel = callerName ? `${callerName} (${callerNumber})` : callerNumber;
+
     await adminClient.from("llamadas_perdidas").insert({
       extension,
       caller_number: callerNumber,
@@ -67,10 +105,11 @@ Deno.serve(async (req: Request) => {
         tipo: "llamada_perdida",
         modulo: "telefonia",
         titulo: "Llamada perdida",
-        mensaje: `Llamada perdida de ${callerNumber}`,
+        mensaje: `Llamada perdida de ${callerLabel}`,
         accion_url: "/admin/telefonia",
         leida: false,
         usuario_id: usuarioId,
+        metadata: { caller_number: callerNumber, caller_name: callerName },
       });
 
       if (notifError) {
@@ -88,7 +127,7 @@ Deno.serve(async (req: Request) => {
           body: JSON.stringify({
             usuario_id: usuarioId,
             title: "Llamada perdida",
-            body: `Llamada perdida de ${callerNumber}`,
+            body: `Llamada perdida de ${callerLabel}`,
             url: "/admin/telefonia",
             tag: "missed-call",
           }),
@@ -99,7 +138,7 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, extension, caller: callerNumber }),
+      JSON.stringify({ success: true, extension, caller: callerNumber, caller_name: callerName }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
