@@ -46,13 +46,13 @@ Deno.serve(async (req: Request) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    const { data: usuario } = await adminClient
+    const { data: usuarioRows } = await adminClient
       .from("usuarios")
       .select("id, nombre")
       .eq("extension_telefonica", extension)
-      .single();
+      .limit(1);
 
-    const usuarioId = usuario?.id || null;
+    const usuarioId = usuarioRows?.[0]?.id || null;
 
     await adminClient.from("llamadas_perdidas").insert({
       extension,
@@ -63,15 +63,19 @@ Deno.serve(async (req: Request) => {
     });
 
     if (usuarioId) {
-      await adminClient.from("notificaciones").insert({
+      const { error: notifError } = await adminClient.from("notificaciones").insert({
         tipo: "llamada_perdida",
         modulo: "telefonia",
         titulo: "Llamada perdida",
-        cuerpo: `Llamada perdida de ${callerNumber}`,
+        mensaje: `Llamada perdida de ${callerNumber}`,
         accion_url: "/admin/telefonia",
         leida: false,
         usuario_id: usuarioId,
       });
+
+      if (notifError) {
+        console.error("Error insertando notificacion:", notifError.message);
+      }
 
       // Send Web Push notification
       try {
