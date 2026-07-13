@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, ShoppingCart, Minus, Plus, TriangleAlert as AlertTriangle, CheckCircle, ArrowRight, Sparkles, Loader2, Wrench, Clock } from 'lucide-react';
 import type { StoreProducto } from '../../lib/storeTypes';
 import { supabase } from '../../lib/supabase';
-import { setupMarketingPremiumProductos } from '../../lib/storeUtils';
+import { setupMarketingPremiumProductos, parsearPersonalizacion } from '../../lib/storeUtils';
 
 // ── Contenido Marketing Premium ───────────────────────────────────────────────
 
@@ -119,7 +119,8 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
   const atributosConOpciones = (producto.atributos || []).filter(a => (a.opciones || []).length > 0);
   const todosAtributosSeleccionados = atributosConOpciones.length === 0 ||
     atributosConOpciones.every(a => atributosSeleccionados[a.nombre]);
-  const personalizacionOk = !producto.permite_personalizacion || personalizacion.trim().length > 0;
+  const { activo: permitePersonalizacion, label: labelPersonalizacion } = parsearPersonalizacion(producto.atributos);
+  const personalizacionOk = !permitePersonalizacion || personalizacion.trim().length > 0;
 
   // Precio efectivo: usa el precio de la opción seleccionada si tiene uno
   const precioVariante = (() => {
@@ -136,11 +137,11 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
   const handleAgregar = () => {
     if (!esPremium && (!todosAtributosSeleccionados || !personalizacionOk)) return;
     let attrs: Record<string, string> | undefined =
-      (atributosConOpciones.length > 0 || producto.permite_personalizacion)
+      (atributosConOpciones.length > 0 || permitePersonalizacion)
         ? { ...atributosSeleccionados }
         : undefined;
     if (attrs && precioVariante != null) attrs._precio = String(precioVariante);
-    if (producto.permite_personalizacion && personalizacion.trim()) {
+    if (permitePersonalizacion && personalizacion.trim()) {
       attrs ??= {};
       attrs._personalizacion = personalizacion.trim();
     }
@@ -352,11 +353,11 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
               )}
 
               {/* Personalización */}
-              {!esPremium && producto.permite_personalizacion && (
+              {!esPremium && permitePersonalizacion && (
                 <div className="mb-6">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    {producto.personalizacion_label || 'Personalización'}{' '}
-                    <span className="text-red-500">*</span>
+                    {labelPersonalizacion}
+                    {' '}<span className="text-red-500">*</span>
                   </label>
                   <textarea
                     rows={3}

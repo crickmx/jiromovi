@@ -15,7 +15,8 @@ import {
   eliminarCategoria,
   exportarProductosExcel,
   importarProductosExcel,
-  tieneAccesoEquipoStore
+  tieneAccesoEquipoStore,
+  PERSONALIZACION_KEY
 } from '../lib/storeUtils';
 import type { ResultadoCargaMasiva } from '../lib/storeUtils';
 import { obtenerCamposTramiteTipo, obtenerMapeoCamposTrigger, guardarMapeoCampoTrigger, PLACEHOLDERS_TRIGGER_PEDIDO } from '../lib/storeUtils';
@@ -609,8 +610,8 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
   const [stockUmbral, setStockUmbral] = useState(producto?.stock_umbral?.toString() || '5');
   const [activo, setActivo] = useState(producto?.activo ?? true);
   const [tipo, setTipo] = useState(producto?.tipo ?? '');
-  const [permitePersonalizacion, setPermitePersonalizacion] = useState(producto?.permite_personalizacion ?? false);
-  const [personalizacionLabel, setPersonalizacionLabel] = useState(producto?.personalizacion_label ?? 'Personalización');
+  const [permitePersonalizacion, setPermitePersonalizacion] = useState(false);
+  const [personalizacionLabel, setPersonalizacionLabel] = useState('Personalización');
   const [guardando, setGuardando] = useState(false);
 
   // Costos extras
@@ -680,6 +681,11 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
         opciones: (a.opciones || []).sort((x: any, y: any) => x.orden - y.orden)
       }));
       setAtributos(sorted as StoreProductoAtributo[]);
+      const pAttr = sorted.find((a: any) => a.nombre.startsWith(PERSONALIZACION_KEY));
+      if (pAttr) {
+        setPermitePersonalizacion(true);
+        setPersonalizacionLabel(pAttr.nombre.slice(PERSONALIZACION_KEY.length));
+      }
     }
   }
 
@@ -788,16 +794,31 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
         stock_umbral: disponibilidad === 'por_existencia' ? (parseInt(stockUmbral) || 5) : 0,
         activo,
         tipo: tipo || null,
-        permite_personalizacion: permitePersonalizacion,
-        personalizacion_label: personalizacionLabel || 'Personalización',
       };
 
+      let productoId: string;
       if (producto) {
         await actualizarProducto(producto.id, datos);
+        productoId = producto.id;
         alert('Producto actualizado exitosamente');
       } else {
-        await crearProducto(datos);
+        const nuevo = await crearProducto(datos);
+        productoId = nuevo.id;
         alert('Producto creado exitosamente');
+      }
+
+      // Guardar/borrar atributo de personalización
+      const atributoExistente = atributos.find(a => a.nombre.startsWith(PERSONALIZACION_KEY));
+      if (permitePersonalizacion) {
+        const nombre = `${PERSONALIZACION_KEY}${personalizacionLabel || 'Personalización'}`;
+        if (atributoExistente) {
+          if (atributoExistente.nombre !== nombre)
+            await supabase.from('store_producto_atributos').update({ nombre }).eq('id', atributoExistente.id);
+        } else {
+          await supabase.from('store_producto_atributos').insert({ producto_id: productoId, nombre, orden: 9999 });
+        }
+      } else if (atributoExistente) {
+        await supabase.from('store_producto_atributos').delete().eq('id', atributoExistente.id);
       }
 
       onGuardar();
