@@ -162,12 +162,21 @@ export default function StoreCarrito() {
                       )}
 
                       {item.atributos_seleccionados && Object.keys(item.atributos_seleccionados).length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mb-2">
-                          {Object.entries(item.atributos_seleccionados).map(([key, value]) => (
-                            <span key={key} className="inline-flex items-center gap-1 bg-primary-50 border border-primary-200 rounded-full px-2 py-0.5 text-xs font-medium text-primary-800">
-                              {key}: {value}
-                            </span>
-                          ))}
+                        <div className="mb-2 space-y-1">
+                          <div className="flex flex-wrap gap-1.5">
+                            {Object.entries(item.atributos_seleccionados)
+                              .filter(([key]) => !key.startsWith('_'))
+                              .map(([key, value]) => (
+                                <span key={key} className="inline-flex items-center gap-1 bg-primary-50 border border-primary-200 rounded-full px-2 py-0.5 text-xs font-medium text-primary-800">
+                                  {key}: {value}
+                                </span>
+                              ))}
+                          </div>
+                          {item.atributos_seleccionados._personalizacion && (
+                            <p className="text-xs text-neutral-500 italic">
+                              Personalización: {item.atributos_seleccionados._personalizacion}
+                            </p>
+                          )}
                         </div>
                       )}
 

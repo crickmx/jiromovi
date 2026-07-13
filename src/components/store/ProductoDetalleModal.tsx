@@ -59,6 +59,7 @@ interface Props {
 export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
   const [cantidad, setCantidad] = useState(1);
   const [atributosSeleccionados, setAtributosSeleccionados] = useState<Record<string, string>>({});
+  const [personalizacion, setPersonalizacion] = useState('');
 
   const esPremium = esProductoPremium(producto);
   const planInicial = producto.tipo === 'marketing_premium_anual' ? 'anual' : 'mensual';
@@ -118,6 +119,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
   const atributosConOpciones = (producto.atributos || []).filter(a => (a.opciones || []).length > 0);
   const todosAtributosSeleccionados = atributosConOpciones.length === 0 ||
     atributosConOpciones.every(a => atributosSeleccionados[a.nombre]);
+  const personalizacionOk = !producto.permite_personalizacion || personalizacion.trim().length > 0;
 
   // Precio efectivo: usa el precio de la opción seleccionada si tiene uno
   const precioVariante = (() => {
@@ -132,9 +134,16 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
   const precioMostrado = precioVariante ?? efectivo.precio;
 
   const handleAgregar = () => {
-    if (!esPremium && !todosAtributosSeleccionados) return;
-    let attrs: Record<string, string> | undefined = atributosConOpciones.length > 0 ? { ...atributosSeleccionados } : undefined;
+    if (!esPremium && (!todosAtributosSeleccionados || !personalizacionOk)) return;
+    let attrs: Record<string, string> | undefined =
+      (atributosConOpciones.length > 0 || producto.permite_personalizacion)
+        ? { ...atributosSeleccionados }
+        : undefined;
     if (attrs && precioVariante != null) attrs._precio = String(precioVariante);
+    if (producto.permite_personalizacion && personalizacion.trim()) {
+      attrs ??= {};
+      attrs._personalizacion = personalizacion.trim();
+    }
     onAgregar(efectivo, cantidad, attrs);
     onClose();
   };
@@ -342,6 +351,23 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                 </div>
               )}
 
+              {/* Personalización */}
+              {!esPremium && producto.permite_personalizacion && (
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    {producto.personalizacion_label || 'Personalización'}{' '}
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={personalizacion}
+                    onChange={e => setPersonalizacion(e.target.value)}
+                    placeholder="Describe cómo deseas personalizar este producto…"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  />
+                </div>
+              )}
+
               {/* Cantidad (oculta para premium) */}
               {!esPremium && !agotado && (
                 <div className="mb-6">
@@ -379,9 +405,9 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
               <div className="flex flex-col gap-3">
                 <button
                   onClick={handleAgregar}
-                  disabled={!todosAtributosSeleccionados}
+                  disabled={!todosAtributosSeleccionados || !personalizacionOk}
                   className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-lg transition-colors ${
-                    !todosAtributosSeleccionados
+                    !todosAtributosSeleccionados || !personalizacionOk
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-accent text-white hover:bg-accent-hover'
                   }`}
@@ -389,7 +415,9 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                   <ShoppingCart className="w-5 h-5" />
                   {!todosAtributosSeleccionados
                     ? 'Selecciona las opciones'
-                    : esPremium
+                    : !personalizacionOk
+                      ? 'Escribe la personalización'
+                      : esPremium
                       ? `Solicitar Plan ${planSeleccionado === 'mensual' ? 'Mensual' : 'Anual'}`
                       : esServicio
                         ? 'Solicitar Servicio'

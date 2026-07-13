@@ -611,6 +611,8 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
   const [stockUmbral, setStockUmbral] = useState(producto?.stock_umbral?.toString() || '5');
   const [activo, setActivo] = useState(producto?.activo ?? true);
   const [tipo, setTipo] = useState(producto?.tipo ?? '');
+  const [permitePersonalizacion, setPermitePersonalizacion] = useState(producto?.permite_personalizacion ?? false);
+  const [personalizacionLabel, setPersonalizacionLabel] = useState(producto?.personalizacion_label ?? 'Personalización');
   const [guardando, setGuardando] = useState(false);
 
   // Costos extras
@@ -788,6 +790,8 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
         stock_umbral: disponibilidad === 'por_existencia' ? (parseInt(stockUmbral) || 5) : 0,
         activo,
         tipo: tipo || null,
+        permite_personalizacion: permitePersonalizacion,
+        personalizacion_label: personalizacionLabel || 'Personalización',
       };
 
       if (producto) {
@@ -1188,6 +1192,36 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
             <p className="text-xs text-purple-600 dark:text-purple-400">
               Al marcar el pedido como "Entregado", se activará automáticamente el Plan MKT Premium del usuario.
             </p>
+          )}
+        </div>
+
+        {/* Personalización */}
+        <div className="space-y-3 rounded-xl border border-neutral-200 dark:border-white/10 p-4">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="permite_personalizacion"
+              checked={permitePersonalizacion}
+              onChange={e => setPermitePersonalizacion(e.target.checked)}
+              className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-blue-500"
+            />
+            <label htmlFor="permite_personalizacion" className="text-sm font-medium text-neutral-700 dark:text-white/70">
+              Permite personalización (el agente escribe qué quiere)
+            </label>
+          </div>
+          {permitePersonalizacion && (
+            <div>
+              <label className="block text-xs font-medium text-neutral-500 dark:text-white/50 mb-1">
+                Etiqueta del campo de personalización
+              </label>
+              <input
+                type="text"
+                value={personalizacionLabel}
+                onChange={e => setPersonalizacionLabel(e.target.value)}
+                placeholder="Personalización"
+                className="w-full px-3 py-2 text-sm border border-neutral-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
+              />
+            </div>
           )}
         </div>
 

@@ -23,6 +23,8 @@ export interface StoreProducto {
   tipo?: string | null;
   tipo_item: TipoItem;
   disponibilidad: Disponibilidad;
+  permite_personalizacion: boolean;
+  personalizacion_label: string;
   created_at: string;
   categoria?: StoreCategoria;
   costos_extras?: StoreProductoCostoExtra[];
