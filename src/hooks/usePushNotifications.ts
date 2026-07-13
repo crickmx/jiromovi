@@ -14,7 +14,8 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 export interface PushHookResult {
   isSupported: boolean;
   permission: NotificationPermission;
-  isSwReady: boolean; isSubscribed: boolean;
+  isSwReady: boolean;
+  isSubscribed: boolean;
   isLoading: boolean;
   error: string | null;
   subscribe: () => Promise<void>;
@@ -26,7 +27,8 @@ export function usePushNotifications(userId: string | null): PushHookResult {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isSwReady, setIsSwReady] = useState(false); const swRegRef = useRef<ServiceWorkerRegistration | null>(null);
+  const [isSwReady, setIsSwReady] = useState(false);
+  const swRegRef = useRef<ServiceWorkerRegistration | null>(null);
 
   const isSupported =
     typeof window !== 'undefined' &&
@@ -39,7 +41,8 @@ export function usePushNotifications(userId: string | null): PushHookResult {
     const init = async () => {
       try {
         const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-        swRegRef.current = reg; setIsSwReady(true);
+        swRegRef.current = reg;
+        setIsSwReady(true);
         setPermission(Notification.permission);
         const existing = await reg.pushManager.getSubscription();
         if (existing) setIsSubscribed(true);
