@@ -775,9 +775,8 @@ export async function crearPedido(
     .from('store_pedidos')
     .insert({
       usuario_id: usuarioId,
-      notas_usuario: notasUsuario,
+      notas_usuario: [areaEntrega ? `Área de entrega: ${areaEntrega}` : '', notasUsuario].filter(Boolean).join('\n') || null,
       direccion_entrega: direccionEntrega,
-      area_entrega: areaEntrega || null,
       estatus_id: estatusId,
       responsable_pago_id: responsablePagoId || null,
       folio_oc: folioData
