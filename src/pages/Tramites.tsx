@@ -736,6 +736,12 @@ export function Tramites() {
   const needsAttentionFn = (t: TramiteItem) => {
     if (t.requiere_atencion_manual) return true;
     if (esRolSistemaAdmin && !isImpersonating) {
+      // Si el Admin es también el agente del trámite (ej. reportó su propio bug), la
+      // comparación de abajo nunca se limpia — ultima_accion_por siempre coincide con
+      // agente_id porque son la misma persona. En ese caso solo manda la bandera manual.
+      if (t.agente_id === usuario?.id || (!!t.agente_usuario_id && t.agente_usuario_id === usuario?.id)) {
+        return false;
+      }
       // Admin: solo cuando el agente fue el último en actuar (empleado necesita responder)
       if (!t.ultima_accion_por) return false;
       return (
