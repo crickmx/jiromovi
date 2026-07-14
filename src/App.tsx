@@ -170,6 +170,7 @@ function MoviApp() {
     <BrowserRouter>
       <ImpersonationProvider>
         <MoviAuthProvider>
+          <PushNotificationInit />
           <LoadingProvider>
             <LoadingOverlay />
             <Suspense fallback={<PageLoader />}>
