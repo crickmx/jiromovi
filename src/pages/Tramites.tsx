@@ -584,8 +584,10 @@ export function Tramites() {
   const handleMarkAsRead = async (e: React.MouseEvent, tramiteId: string) => {
     e.stopPropagation();
     if (!usuario) return;
-    await supabase.from('tickets').update({ ultima_accion_por: usuario.id }).eq('id', tramiteId);
-    setTramites(prev => prev.map(t => t.id === tramiteId ? { ...t, ultima_accion_por: usuario.id } : t));
+    // requiere_atencion_manual también se apaga aquí — needsAttentionFn le da prioridad
+    // sobre ultima_accion_por, así que sin esto el trámite nunca salía de la columna.
+    await supabase.from('tickets').update({ ultima_accion_por: usuario.id, requiere_atencion_manual: false }).eq('id', tramiteId);
+    setTramites(prev => prev.map(t => t.id === tramiteId ? { ...t, ultima_accion_por: usuario.id, requiere_atencion_manual: false } : t));
   };
 
   const handleVaciarPapelera = async () => {
@@ -1685,7 +1687,7 @@ export function Tramites() {
             const dbColor = tipoDb?.color;
             const fallbackBarClass = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
             const hasArchivos = (tramite.ticket_archivos?.length ?? 0) > 0;
-            const needsAttention = !!tramite.ultima_accion_por && tramite.ultima_accion_por !== usuario?.id;
+            const needsAttention = tramite.requiere_atencion_manual || (!!tramite.ultima_accion_por && tramite.ultima_accion_por !== usuario?.id);
 
             return (
               <div
