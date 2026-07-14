@@ -14,8 +14,8 @@ export function BetaBanner() {
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-[9999] bg-violet-600 text-white shadow-md"
-      style={{ height: '36px' }}
+      className="fixed top-0 left-0 right-0 z-[9999] text-white shadow-md"
+      style={{ height: '36px', background: 'linear-gradient(135deg, #8E1A52, #6B1140)' }}
       role="status"
       aria-live="polite"
     >
@@ -29,7 +29,7 @@ export function BetaBanner() {
         <button
           onClick={handleVolver}
           disabled={saliendo}
-          className="shrink-0 px-2.5 py-1 bg-white text-violet-700 rounded text-xs font-bold hover:bg-violet-50 transition-colors disabled:opacity-60"
+          className="shrink-0 px-2.5 py-1 bg-white text-[#8E1A52] rounded text-xs font-bold hover:bg-pink-50 transition-colors disabled:opacity-60"
         >
           {saliendo ? 'Saliendo…' : 'Regresar a MOVI'}
         </button>

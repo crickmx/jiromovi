@@ -7,9 +7,17 @@
     <link rel="apple-touch-icon" href="/movirecurso_7.png" />
     <script>
       // Icono morado + badge solo en beta.movi.digital, para distinguir la pestaña.
+      // Reemplaza el <link> por completo (no solo el href) porque el original
+      // declara type="image/png" — dejarlo así hace que el navegador ignore el
+      // SVG nuevo. El "?v=" evita que sirva el favicon viejo desde caché.
       if (location.hostname === 'beta.movi.digital') {
-        var favicon = document.querySelector('link[rel="icon"]');
-        if (favicon) favicon.href = '/favicon-beta.svg';
+        var old = document.querySelector('link[rel="icon"]');
+        if (old) old.remove();
+        var link = document.createElement('link');
+        link.rel = 'icon';
+        link.type = 'image/svg+xml';
+        link.href = '/favicon-beta.svg?v=2';
+        document.head.appendChild(link);
       }
     </script>
     <link rel="manifest" href="/manifest.webmanifest" />

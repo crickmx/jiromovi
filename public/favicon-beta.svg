@@ -6,6 +6,6 @@
     </filter>
   </defs>
   <image href="/movirecurso_7.png" xlink:href="/movirecurso_7.png" x="0" y="0" width="64" height="64" filter="url(#purpleTint)" />
-  <circle cx="49" cy="49" r="14" fill="#7c3aed" stroke="#ffffff" stroke-width="2"/>
+  <circle cx="49" cy="49" r="14" fill="#8E1A52" stroke="#ffffff" stroke-width="2"/>
   <text x="49" y="54" font-size="15" font-weight="700" fill="#ffffff" text-anchor="middle" font-family="Arial, Helvetica, sans-serif">β</text>
 </svg>
