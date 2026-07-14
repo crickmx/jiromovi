@@ -6,7 +6,8 @@ INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 VALUES ('bug-reports-digest', 'bug-reports-digest', false, 10485760, ARRAY['text/markdown', 'text/plain'])
 ON CONFLICT (id) DO NOTHING;
 
-CREATE POLICY IF NOT EXISTS "Admins pueden leer el digest de reportes de bug"
+DROP POLICY IF EXISTS "Admins pueden leer el digest de reportes de bug" ON storage.objects;
+CREATE POLICY "Admins pueden leer el digest de reportes de bug"
   ON storage.objects FOR SELECT
   USING (
     bucket_id = 'bug-reports-digest' AND
@@ -15,14 +16,16 @@ CREATE POLICY IF NOT EXISTS "Admins pueden leer el digest de reportes de bug"
 
 -- El cron corre con service_role (bypassa RLS) - esta politica es solo por si un
 -- admin quisiera subir/reemplazar el archivo a mano desde el Storage de Supabase.
-CREATE POLICY IF NOT EXISTS "Admins pueden subir el digest de reportes de bug"
+DROP POLICY IF EXISTS "Admins pueden subir el digest de reportes de bug" ON storage.objects;
+CREATE POLICY "Admins pueden subir el digest de reportes de bug"
   ON storage.objects FOR INSERT
   WITH CHECK (
     bucket_id = 'bug-reports-digest' AND
     EXISTS (SELECT 1 FROM usuarios WHERE id = auth.uid() AND rol = 'Administrador')
   );
 
-CREATE POLICY IF NOT EXISTS "Admins pueden actualizar el digest de reportes de bug"
+DROP POLICY IF EXISTS "Admins pueden actualizar el digest de reportes de bug" ON storage.objects;
+CREATE POLICY "Admins pueden actualizar el digest de reportes de bug"
   ON storage.objects FOR UPDATE
   USING (
     bucket_id = 'bug-reports-digest' AND
