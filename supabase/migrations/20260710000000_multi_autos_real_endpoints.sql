@@ -5,9 +5,11 @@
 -- insurer.endpoint_url, asi que sin esto todas las cotizaciones fallaban con
 -- "Endpoint no configurado" sin importar si las credenciales estaban bien.
 
--- Qualitas: WSDL confirmado en vivo, ambiente QA.
+-- Qualitas: WSDL confirmado en vivo, ambiente QA. El puerto 8443 solo se usa
+-- para bajar el ?WSDL -- el soap:address real del WSDL apunta al puerto
+-- estandar 443 (confirmado leyendo el WSDL descargado).
 UPDATE multi_autos_aseguradoras
-SET endpoint_url = 'https://qa.qualitas.com.mx:8443/WsEmision/WsEmision.asmx'
+SET endpoint_url = 'https://qa.qualitas.com.mx/WsEmision/WsEmision.asmx'
 WHERE nombre = 'Qualitas';
 
 -- ANA Seguros: WSDL confirmado en vivo, ambiente de pruebas.
