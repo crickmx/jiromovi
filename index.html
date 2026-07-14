@@ -5,6 +5,13 @@
     <!-- Favicon — MOVI Digital -->
     <link rel="icon" type="image/png" href="/movirecurso_7.png" />
     <link rel="apple-touch-icon" href="/movirecurso_7.png" />
+    <script>
+      // Icono morado + badge solo en beta.movi.digital, para distinguir la pestaña.
+      if (location.hostname === 'beta.movi.digital') {
+        var favicon = document.querySelector('link[rel="icon"]');
+        if (favicon) favicon.href = '/favicon-beta.svg';
+      }
+    </script>
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#ffffff" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
