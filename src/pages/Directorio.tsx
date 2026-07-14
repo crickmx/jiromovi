@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, UserPlus, Pencil as Edit, Trash2, ToggleLeft, ToggleRight, Users, ListFilter as Filter, Send, CircleCheck as CheckCircle, Eye } from 'lucide-react';
+import { Search, UserPlus, Pencil as Edit, Trash2, ToggleLeft, ToggleRight, Users, ListFilter as Filter, Send, CircleCheck as CheckCircle, Eye, FlaskConical } from 'lucide-react';
 import { UserModal } from '../components/UserModal';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,8 @@ export function Directorio() {
   const [accessSentId, setAccessSentId] = useState<string | null>(null);
   const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [betaIds, setBetaIds] = useState<Set<string>>(new Set());
+  const [togglingBetaId, setTogglingBetaId] = useState<string | null>(null);
   const { startImpersonation } = useImpersonation();
 
   const isAdmin = currentUser?.rol === 'Administrador';
@@ -82,10 +84,13 @@ export function Directorio() {
         usersQuery.eq('oficina_id', currentUser.oficina_id);
       }
 
-      const [usuariosRes, oficinasRes] = await Promise.all([
+      const [usuariosRes, oficinasRes, betaRes] = await Promise.all([
         usersQuery,
         supabase.from('oficinas').select('id, nombre').eq('activa', true).order('nombre'),
+        supabase.from('usuarios_beta').select('usuario_id'),
       ]);
+
+      setBetaIds(new Set((betaRes.data || []).map((b: any) => b.usuario_id)));
 
       if (usuariosRes.error) {
         console.error('[DIRECTORIO] Query error:', usuariosRes.error);
@@ -226,6 +231,24 @@ export function Directorio() {
     }
   };
 
+
+  const handleToggleBeta = async (usuario: Usuario) => {
+    if (!isAdmin || togglingBetaId) return;
+    setTogglingBetaId(usuario.id);
+    try {
+      if (betaIds.has(usuario.id)) {
+        const { error } = await supabase.from('usuarios_beta').delete().eq('usuario_id', usuario.id);
+        if (error) { alert('Error al quitar de Beta: ' + error.message); return; }
+        setBetaIds(prev => { const next = new Set(prev); next.delete(usuario.id); return next; });
+      } else {
+        const { error } = await supabase.from('usuarios_beta').insert({ usuario_id: usuario.id });
+        if (error) { alert('Error al agregar a Beta: ' + error.message); return; }
+        setBetaIds(prev => new Set(prev).add(usuario.id));
+      }
+    } finally {
+      setTogglingBetaId(null);
+    }
+  };
 
   const normalize = (text: string) =>
     text
@@ -466,6 +489,24 @@ export function Directorio() {
                             ? <><span className="w-4 h-4 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" /></>
                             : <><Send className="w-4 h-4" /><span className="hidden lg:inline">Enviar acceso</span></>
                           }
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleToggleBeta(usuario)}
+                          disabled={togglingBetaId === usuario.id}
+                          className={`flex items-center gap-1.5 px-2 lg:px-3 py-2 rounded-lg text-sm font-medium transition disabled:opacity-60 ${
+                            betaIds.has(usuario.id)
+                              ? 'text-violet-700 bg-violet-50 hover:bg-violet-100'
+                              : 'text-slate-500 hover:text-violet-700 hover:bg-violet-50'
+                          }`}
+                          title={betaIds.has(usuario.id) ? 'Quitar de Beta' : 'Agregar a Beta'}
+                        >
+                          {togglingBetaId === usuario.id
+                            ? <span className="w-4 h-4 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
+                            : <FlaskConical className="w-4 h-4" />
+                          }
+                          <span className="hidden xl:inline">{betaIds.has(usuario.id) ? 'En Beta' : 'Agregar a Beta'}</span>
                         </button>
                       )}
                       {isAdmin && usuario.id !== currentUser?.id && usuario.rol !== 'Administrador' && (
