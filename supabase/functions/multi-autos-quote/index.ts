@@ -935,7 +935,8 @@ async function quoteAna(
   catalogVehicle: CatalogVehicle | null,
   creds: ResolvedCredentials,
   edad: number,
-  cp: string
+  cp: string,
+  supabase: ReturnType<typeof createClient>
 ): Promise<QuoteResult> {
   const startTime = Date.now();
   const endpoint = insurer.endpoint_url || "";
@@ -969,6 +970,28 @@ async function quoteAna(
           clave_ana: claveAna,
         },
       };
+
+      // Keep the homologation obtained from ANA's official catalog so future
+      // quotations do not need to resolve the same vehicle again.
+      if (catalogVehicle?.id && catalogVehicle.id !== "runtime") {
+        const { error: persistError } = await supabase
+          .from("multi_autos_catalogo_vehiculos")
+          .update({
+            metadata_aseguradoras: {
+              ...(catalogVehicle.metadata_aseguradoras || {}),
+              clave_ana: claveAna,
+              clave_ana_fuente: "webservice",
+              clave_ana_actualizada_en: new Date().toISOString(),
+            },
+          })
+          .eq("id", catalogVehicle.id);
+        if (persistError) {
+          console.warn("No se pudo persistir clave_ana", {
+            vehicleId: catalogVehicle.id,
+            message: persistError.message,
+          });
+        }
+      }
     }
     const soapBody = buildAnaSoap(creds.ana, vehicle, resolvedCatalogVehicle, edad, cp, vehicle.paquete);
     const xml = await callSoapInsurer(endpoint, soapBody, "http://tempuri.org/Transaccion");
@@ -978,9 +1001,11 @@ async function quoteAna(
     }
     const innerXml = extractResultString(xml);
     if (!innerXml || innerXml.trim().length < 10) {
-      return makeError(insurer, startTime, "ANA: Respuesta vacia - verifique credenciales (ANA_CLAVE)", "invalid");
+      return makeError(insurer, startTime, "ANA: Respuesta vacia del motor de cotizacion", "valid");
     }
-    return parseQuoteResponse(insurer, innerXml, startTime, credStatus);
+    // A catalog lookup and a Transaccion response prove that ANA accepted
+    // the credentials, even when its rating engine returns no premium.
+    return parseQuoteResponse(insurer, innerXml, startTime, "valid");
   } catch (err) {
     return makeError(insurer, startTime, `${(err as Error).message}`, credStatus);
   }
@@ -1006,7 +1031,7 @@ async function quoteHdi(
     const soapBody = buildHdiSoap(creds.hdi, vehicle, catalogVehicle, edad, cp, vehicle.paquete);
     const xml = await callSoapInsurer(endpoint, soapBody, "http://hdi.com.mx/asmx/ObtenerMultiPaquetesExpress");
 
-    const credError = xml.match(/credenciales?\s+no\s+son\s+v[aá]lidas/i);
+    const credError = xml.match(/credenciales?[\s\S]{0,80}no\s+son\s+v[aá]lidas/i);
     if (credError) {
       return makeError(insurer, startTime, "HDI: Credenciales no son validas - requiere renovacion (HDI_USUARIO/HDI_PASSWORD)", "expired");
     }
@@ -1208,7 +1233,8 @@ async function quoteInsurer(
   creds: ResolvedCredentials,
   formaPago: string,
   edad: number,
-  cp: string
+  cp: string,
+  supabase: ReturnType<typeof createClient>
 ): Promise<QuoteResult> {
   const endpoint = insurer.endpoint_url || insurer.configuracion?.api_url || "";
   if (!endpoint) {
@@ -1221,7 +1247,7 @@ async function quoteInsurer(
     case "GNP":
       return quoteGnp(insurer, vehicle, catalogVehicle, creds, edad, cp, formaPago);
     case "ANA Seguros":
-      return quoteAna(insurer, vehicle, catalogVehicle, creds, edad, cp);
+      return quoteAna(insurer, vehicle, catalogVehicle, creds, edad, cp, supabase);
     case "HDI Seguros":
       return quoteHdi(insurer, vehicle, catalogVehicle, creds, edad, cp);
     case "Zurich":
@@ -1263,8 +1289,14 @@ async function updateInsurerStatus(
         updateData.last_error = r.error?.substring(0, 500) || "Unknown error";
         if (r.credentialStatus === "expired" || r.credentialStatus === "invalid") {
           updateData.credential_status = r.credentialStatus;
+        } else if (r.credentialStatus === "valid") {
+          updateData.credential_status = "valid";
         } else if (r.credentialStatus === "missing") {
           updateData.credential_status = "missing";
+        } else if (r.credentialStatus === "configured") {
+          // The DB enum has no "configured" state. Do not retain a stale
+          // "missing" value after secrets have been installed.
+          updateData.credential_status = "unknown";
         }
         if (r.error?.includes("DNS") || r.error?.includes("alcanzable")) {
           updateData.endpoint_reachable = false;
@@ -1286,7 +1318,7 @@ function classifyErrorCategory(r: QuoteResult): string {
   if (r.credentialStatus === "missing" || err.includes("no configuradas")) return "CREDENTIAL_ERROR";
   if (r.credentialStatus === "expired" || r.credentialStatus === "invalid" || err.includes("no son validas")) return "CREDENTIAL_ERROR";
   if (err.includes("DNS") || err.includes("alcanzable") || err.includes("ENOTFOUND")) return "DNS_UNREACHABLE";
-  if (err.includes("AMIS") || err.includes("catalogo")) return "MISSING_AMIS";
+  if (err.includes("AMIS") || err.includes("catalogo") || err.includes("mapeo")) return "MISSING_AMIS";
   if (err.includes("SOAP Fault") || err.includes("faultstring")) return "SOAP_FAULT";
   if (err.includes("abort") || err.includes("timeout") || err.includes("Timeout")) return "TIMEOUT";
   return "UNKNOWN";
@@ -1345,7 +1377,7 @@ Deno.serve(async (req: Request) => {
         // Quote all insurers in parallel
         const vehicleResults = await Promise.all(
           insurers.map((insurer) =>
-            quoteInsurer(insurer as InsurerRow, vehicle, catalogVehicle, creds, formaPago, edad, codigoPostal)
+            quoteInsurer(insurer as InsurerRow, vehicle, catalogVehicle, creds, formaPago, edad, codigoPostal, supabase)
           )
         );
 
