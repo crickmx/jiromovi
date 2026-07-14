@@ -116,7 +116,7 @@ Instrucciones para el agente de IA: cada sección "## Reporte <folio>" es un bug
 ${secciones.map((s) => s.md).join("\n")}`;
 
     const fecha = new Date().toISOString().slice(0, 10);
-    const fileOptions = { upsert: true, contentType: "text/markdown; charset=utf-8" };
+    const fileOptions = { upsert: true, contentType: "text/markdown" };
 
     const [fechado, latest] = await Promise.all([
       supabase.storage.from("bug-reports-digest").upload(`reportes-bugs-${fecha}.md`, contenido, fileOptions),
