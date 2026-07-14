@@ -307,26 +307,40 @@ function buildAnaSoap(
   creds: ResolvedCredentials["ana"],
   vehicle: VehicleRequest,
   catalogVehicle: CatalogVehicle | null,
-  edad: number,
-  cp: string,
+  _edad: number,
+  _cp: string,
   paquete: string
 ): string {
   const meta = catalogVehicle?.metadata_aseguradoras || {};
   const claveAna = meta.clave_ana || catalogVehicle?.clave_amis || "";
+  const start = new Date();
+  const end = new Date(start);
+  end.setFullYear(end.getFullYear() + 1);
+  const formatDate = (date: Date) =>
+    `${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")}/${date.getFullYear()}`;
+  const plan = paquete.toLowerCase().includes("ampl") ? "1" : paquete.toLowerCase().includes("limit") ? "2" : "3";
 
+  // Schema real confirmado contra Entrada.xml / Salida.xml de ANA.
   const cotizacionXml = [
-    "<Cotizacion>",
-    `<NegocioRef>${creds.negocioRef}</NegocioRef>`,
-    claveAna ? `<ClaveVehiculo>${claveAna}</ClaveVehiculo>` : "",
-    `<Marca>${vehicle.marca}</Marca>`,
-    `<Anio>${vehicle.anio}</Anio>`,
-    `<Modelo>${vehicle.modelo}</Modelo>`,
-    `<Version>${vehicle.version}</Version>`,
-    `<ValorVehiculo>${vehicle.valorReferencia}</ValorVehiculo>`,
-    `<CodigoPostal>${cp}</CodigoPostal>`,
-    `<EdadConductor>${edad}</EdadConductor>`,
-    `<Paquete>${paquete}</Paquete>`,
-    "</Cotizacion>",
+    '<transacciones xmlns="">',
+    `<transaccion version="1" tipotransaccion="C" cotizacion="" negocio="${escapeXml(creds.negocioRef)}" tiponegocio="">`,
+    `<vehiculo id="1" amis="${escapeXml(claveAna)}" modelo="${vehicle.anio}" descripcion="${escapeXml(`${vehicle.marca} ${vehicle.modelo} ${vehicle.version}`)}" uso="1" servicio="1" plan="${plan}" motor="" serie="" repuve="" placas="" conductor="" conductorliciencia="" conductorfecnac="" conductorocupacion="" estado="09001" poblacion="" color="01" dispositivo="" fecdispositivo="" tipocarga="" tipocargadescripcion="">`,
+    '<cobertura id="02" desc="" sa="" tipo="3" ded="5" pma=""/>',
+    '<cobertura id="04" desc="" sa="" tipo="3" ded="10" pma=""/>',
+    '<cobertura id="06" desc="" sa="200000" tipo="" ded="" pma=""/>',
+    '<cobertura id="07" desc="" sa="" tipo="" ded="" pma=""/>',
+    '<cobertura id="10" desc="" sa="" tipo="B" ded="" pma=""/>',
+    '<cobertura id="25" desc="" sa="1000000" tipo="" ded="" pma=""/>',
+    '<cobertura id="26" desc="" sa="1000000" tipo="" ded="" pma=""/>',
+    '<cobertura id="34" desc="" sa="2000000" tipo="" ded="" pma=""/>',
+    "</vehiculo>",
+    '<asegurado id="" nombre="" paterno="" materno="" calle="" numerointerior="" numeroexterior="" colonia="" poblacion="" estado="09001" cp="" pais="" tipopersona=""/>',
+    `<poliza id="" tipo="A" endoso="" fecemision="" feciniciovig="${formatDate(start)}" fecterminovig="${formatDate(end)}" moneda="0" bonificacion="0" formapago="C" agente="${escapeXml(creds.usuario)}" tarifacuotas="2104" tarifavalores="2104" tarifaderechos="2104" beneficiario="" politicacancelacion="1"/>`,
+    '<prima primaneta="" derecho="" recargo="" impuesto="" primatotal="" comision=""/>',
+    '<recibo id="" feciniciovig="" fecterminovig="" primaneta="" derecho="" recargo="" impuesto="" primatotal="" comision="" cadenaoriginal="" sellodigital="" fecemision="" serie="" folio="" horaemision="" numeroaprobacion="" anoaprobacion="" numseriecertificado=""/>',
+    "<error/>",
+    "</transaccion>",
+    "</transacciones>",
   ].join("");
 
   return `<?xml version="1.0" encoding="utf-8"?>
@@ -521,6 +535,12 @@ function extractSoapFault(xml: string): string | null {
   if (descMatch) return descMatch[1];
   const msgMatch = xml.match(/<(?:\w+:)?Message[^>]*>([^<]+)/i);
   if (msgMatch) return msgMatch[1];
+  const errorTag = xml.match(/<(?:\w+:)?error\b([^>]*)>/i);
+  if (errorTag) {
+    const attributes = errorTag[1];
+    const attributeMessage = attributes.match(/\b(?:descripcion|mensaje|message|desc)=["']([^"']+)["']/i);
+    if (attributeMessage?.[1]) return attributeMessage[1];
+  }
   return null;
 }
 
@@ -549,6 +569,12 @@ function extractNumericValue(xml: string, fieldNames: string[]): number | null {
     const match = xml.match(pattern);
     if (match) {
       const val = parseFloat(match[1].replace(/,/g, ""));
+      if (!isNaN(val) && val > 0) return val;
+    }
+    const attributePattern = new RegExp(`\\b${name}=["']([^"']+)["']`, "i");
+    const attributeMatch = xml.match(attributePattern);
+    if (attributeMatch) {
+      const val = parseFloat(attributeMatch[1].replace(/,/g, ""));
       if (!isNaN(val) && val > 0) return val;
     }
   }
@@ -623,7 +649,7 @@ async function callXmlInsurer(
   try {
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "text/xml; charset=utf-8", ...(headers || {}) },
+      headers: { "Content-Type": "application/xml; charset=utf-8", ...(headers || {}) },
       body: xmlBody,
       signal: controller.signal,
     });
