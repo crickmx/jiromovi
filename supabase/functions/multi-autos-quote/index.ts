@@ -9,6 +9,7 @@ const corsHeaders = {
 
 const IVA_RATE = 0.16;
 const WS_TIMEOUT_MS = 20000;
+const ANA_ENDPOINT = "https://server.anaseguros.com.mx/ananetws/service.asmx";
 
 // ============================================================
 // Types
@@ -80,6 +81,19 @@ interface QuoteResult {
   credentialStatus?: string;
   debug?: string;
 }
+
+interface AnaCatalogVehicle {
+  categoria: string;
+  modelo: number;
+  cveArmadora: string;
+  armadora: string;
+  cveSubmarca: string;
+  submarca: string;
+  cveAmis: string;
+}
+
+const anaCatalogCache = new Map<string, Promise<AnaCatalogVehicle[]>>();
+const anaVersionCache = new Map<string, Promise<Array<{ code: string; description: string }>>>();
 
 // ============================================================
 // Vehicle Catalog Lookup
@@ -225,6 +239,119 @@ function escapeXml(value: string | number): string {
     .replace(/'/g, "&apos;");
 }
 
+function normalizeCatalogText(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim();
+}
+
+function parseXmlAttributes(source: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const match of source.matchAll(/([A-Za-z_][A-Za-z0-9_:.-]*)=["']([^"']*)["']/g)) {
+    result[match[1].toLowerCase()] = match[2];
+  }
+  return result;
+}
+
+async function loadAnaCatalogYear(
+  creds: ResolvedCredentials["ana"],
+  year: number,
+  categoria = 100,
+): Promise<AnaCatalogVehicle[]> {
+  const cacheKey = `${creds.negocioRef}:${year}:${categoria}`;
+  const cached = anaCatalogCache.get(cacheKey);
+  if (cached) return cached;
+
+  const request = (async () => {
+    const body = `<?xml version="1.0" encoding="utf-8"?>` +
+      `<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:t="http://tempuri.org/">` +
+      `<soap:Body><t:CatVeh><t:Negocio>${escapeXml(creds.negocioRef)}</t:Negocio>` +
+      `<t:ModeloMin>${year}</t:ModeloMin><t:ModeloMax>${year}</t:ModeloMax><t:Categ>${categoria}</t:Categ>` +
+      `<t:Usuario>${escapeXml(creds.usuario)}</t:Usuario><t:Clave>${escapeXml(creds.clave)}</t:Clave>` +
+      `</t:CatVeh></soap:Body></soap:Envelope>`;
+    const response = await callSoapInsurer(ANA_ENDPOINT, body, "http://tempuri.org/CatVeh");
+    const result = response.match(/<(?:\w+:)?CatVehResult[^>]*>([\s\S]*?)<\/(?:\w+:)?CatVehResult>/i)?.[1] || response;
+    const decoded = result.replace(/<!\[CDATA\[|\]\]>/g, "")
+      .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+    const vehicles: AnaCatalogVehicle[] = [];
+    for (const match of decoded.matchAll(/<vehiculo\b([^>]*)\/?\s*>/gi)) {
+      const attrs = parseXmlAttributes(match[1]);
+      const modelo = Number(attrs.modelo);
+      if (!attrs.cveamis || !modelo) continue;
+      vehicles.push({
+        categoria: attrs.categoria || String(categoria),
+        modelo,
+        cveArmadora: attrs.cvearmadora || "",
+        armadora: attrs.armadora || "",
+        cveSubmarca: attrs.cvesubmarca || "",
+        submarca: attrs.submarca || "",
+        cveAmis: attrs.cveamis,
+      });
+    }
+    if (!vehicles.length) {
+      const fault = extractSoapFault(decoded) || decoded.match(/<error[^>]*>([^<]+)/i)?.[1];
+      throw new Error(`ANA catalogo sin vehiculos${fault ? `: ${fault}` : ""}`);
+    }
+    return vehicles;
+  })();
+  anaCatalogCache.set(cacheKey, request);
+  try {
+    return await request;
+  } catch (error) {
+    anaCatalogCache.delete(cacheKey);
+    throw error;
+  }
+}
+
+async function resolveAnaVehicleCode(
+  creds: ResolvedCredentials["ana"],
+  vehicle: VehicleRequest,
+): Promise<string | null> {
+  const catalog = await loadAnaCatalogYear(creds, vehicle.anio);
+  const brand = normalizeCatalogText(vehicle.marca);
+  const wanted = normalizeCatalogText(`${vehicle.modelo} ${vehicle.version}`);
+  const wantedTokens = new Set(wanted.split(" ").filter((token) => token.length > 1));
+  const modelTokens = normalizeCatalogText(vehicle.modelo).split(" ").filter((token) => token.length > 1);
+  const groups = new Map<string, AnaCatalogVehicle>();
+  for (const item of catalog) {
+    const itemBrand = normalizeCatalogText(item.armadora);
+    const itemSubbrand = normalizeCatalogText(item.submarca);
+    if (!(itemBrand === brand || itemBrand.includes(brand) || brand.includes(itemBrand))) continue;
+    if (!modelTokens.some((token) => itemSubbrand.includes(token))) continue;
+    groups.set(`${item.cveArmadora}:${item.cveSubmarca}`, item);
+  }
+
+  let best: { code: string; score: number } | null = null;
+  for (const item of groups.values()) {
+    const cacheKey = `${creds.negocioRef}:${vehicle.anio}:${item.cveArmadora}:${item.cveSubmarca}`;
+    let versionsPromise = anaVersionCache.get(cacheKey);
+    if (!versionsPromise) {
+      versionsPromise = (async () => {
+        const body = `<?xml version="1.0" encoding="utf-8"?>` +
+          `<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:t="http://tempuri.org/">` +
+          `<soap:Body><t:Vehiculo><t:Negocio>${escapeXml(creds.negocioRef)}</t:Negocio>` +
+          `<t:Marca>${escapeXml(item.cveArmadora)}</t:Marca>` +
+          `<t:Submarca>${escapeXml(item.cveSubmarca)}</t:Submarca>` +
+          `<t:Modelo>${vehicle.anio}</t:Modelo><t:Usuario>${escapeXml(creds.usuario)}</t:Usuario>` +
+          `<t:Clave>${escapeXml(creds.clave)}</t:Clave></t:Vehiculo></soap:Body></soap:Envelope>`;
+        const response = await callSoapInsurer(ANA_ENDPOINT, body, "http://tempuri.org/Vehiculo");
+        const result = response.match(/<(?:\w+:)?VehiculoResult[^>]*>([\s\S]*?)<\/(?:\w+:)?VehiculoResult>/i)?.[1] || response;
+        const decoded = result.replace(/<!\[CDATA\[|\]\]>/g, "").replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+        return [...decoded.matchAll(/<vehiculo\b[^>]*clave=["']([^"']+)["'][^>]*>([^<]+)<\/vehiculo>/gi)]
+          .map((match) => ({ code: match[1], description: match[2] }));
+      })();
+      anaVersionCache.set(cacheKey, versionsPromise);
+    }
+    for (const version of await versionsPromise) {
+      const description = normalizeCatalogText(version.description);
+      let score = 0;
+      for (const token of wantedTokens) if (description.includes(token)) score += 1;
+      if (!best || score > best.score) best = { code: version.code, score };
+    }
+  }
+  return best && best.score >= Math.min(2, wantedTokens.size) ? best.code : null;
+}
+
 function buildQualitasSoap(
   creds: ResolvedCredentials["qualitas"],
   vehicle: VehicleRequest,
@@ -334,7 +461,7 @@ function buildAnaSoap(
   paquete: string
 ): string {
   const meta = catalogVehicle?.metadata_aseguradoras || {};
-  const claveAna = meta.clave_ana || catalogVehicle?.clave_amis || "";
+  const claveAna = meta.clave_ana || "";
   const start = new Date();
   const end = new Date(start);
   end.setFullYear(end.getFullYear() + 1);
@@ -346,15 +473,29 @@ function buildAnaSoap(
   const cotizacionXml = [
     '<transacciones xmlns="">',
     `<transaccion version="1" tipotransaccion="C" cotizacion="" negocio="${escapeXml(creds.negocioRef)}" tiponegocio="">`,
-    `<vehiculo id="1" amis="${escapeXml(claveAna)}" modelo="${vehicle.anio}" descripcion="${escapeXml(`${vehicle.marca} ${vehicle.modelo} ${vehicle.version}`)}" uso="1" servicio="1" plan="${plan}" motor="" serie="" repuve="" placas="" conductor="" conductorliciencia="" conductorfecnac="" conductorocupacion="" estado="09001" poblacion="" color="01" dispositivo="" fecdispositivo="" tipocarga="" tipocargadescripcion="">`,
+    `<vehiculo id="1" amis="${escapeXml(claveAna)}" modelo="${vehicle.anio}" descripcion="" uso="1" servicio="1" plan="${plan}" motor="" serie="" repuve="" placas="" conductor="" conductorliciencia="" conductorfecnac="" conductorocupacion="" estado="09001" poblacion="ALVARO OBREGON" color="01" dispositivo="" fecdispositivo="" tipocarga="" tipocargadescripcion="">`,
     '<cobertura id="02" desc="" sa="" tipo="3" ded="5" pma=""/>',
     '<cobertura id="04" desc="" sa="" tipo="3" ded="10" pma=""/>',
     '<cobertura id="06" desc="" sa="200000" tipo="" ded="" pma=""/>',
     '<cobertura id="07" desc="" sa="" tipo="" ded="" pma=""/>',
+    '<cobertura id="08" desc="" sa="" tipo="" ded="" pma=""/>',
+    '<cobertura id="09" desc="" sa="Auto Sustituto" tipo="" ded="" pma=""/>',
     '<cobertura id="10" desc="" sa="" tipo="B" ded="" pma=""/>',
+    '<cobertura id="12" desc="" sa="" tipo="" ded="" pma=""/>',
+    '<cobertura id="18" desc="" sa="" tipo="" ded="" pma=""/>',
+    '<cobertura id="23" desc="" sa="500000" tipo="" ded="" pma=""/>',
+    '<cobertura id="24" desc="" sa="" tipo="" ded="" pma=""/>',
     '<cobertura id="25" desc="" sa="1000000" tipo="" ded="" pma=""/>',
     '<cobertura id="26" desc="" sa="1000000" tipo="" ded="" pma=""/>',
+    '<cobertura id="27" desc="" sa="" tipo="" ded="" pma=""/>',
+    '<cobertura id="28" desc="" sa="" tipo="" ded="" pma=""/>',
+    '<cobertura id="29" desc="" sa="" tipo="" ded="" pma=""/>',
+    '<cobertura id="33" desc="" sa="30000" tipo="" ded="25" pma=""/>',
     '<cobertura id="34" desc="" sa="2000000" tipo="" ded="" pma=""/>',
+    '<cobertura id="35" desc="" sa="" tipo="" ded="" pma=""/>',
+    '<cobertura id="38" desc="" sa="" tipo="" ded="" pma=""/>',
+    '<cobertura id="39" desc="" sa="" tipo="" ded="" pma=""/>',
+    '<cobertura id="40" desc="" sa="" tipo="" ded="50" pma=""/>',
     "</vehiculo>",
     '<asegurado id="" nombre="" paterno="" materno="" calle="" numerointerior="" numeroexterior="" colonia="" poblacion="" estado="09001" cp="" pais="" tipopersona=""/>',
     `<poliza id="" tipo="A" endoso="" fecemision="" feciniciovig="${formatDate(start)}" fecterminovig="${formatDate(end)}" moneda="0" bonificacion="0" formapago="C" agente="${escapeXml(creds.usuario)}" tarifacuotas="2104" tarifavalores="2104" tarifaderechos="2104" beneficiario="" politicacancelacion="1"/>`,
@@ -803,12 +944,33 @@ async function quoteAna(
   if (!creds.ana.usuario || !creds.ana.clave) {
     return makeError(insurer, startTime, "Credenciales no configuradas (ANA_USUARIO, ANA_CLAVE). Configure las variables de entorno.", credStatus);
   }
-  if (!catalogVehicle?.metadata_aseguradoras?.clave_ana) {
-    return makeError(insurer, startTime, "Vehiculo sin mapeo ANA (clave_ana)", credStatus);
-  }
-
   try {
-    const soapBody = buildAnaSoap(creds.ana, vehicle, catalogVehicle, edad, cp, vehicle.paquete);
+    let resolvedCatalogVehicle = catalogVehicle;
+    if (!catalogVehicle?.metadata_aseguradoras?.clave_ana) {
+      const claveAna = await resolveAnaVehicleCode(creds.ana, vehicle);
+      if (!claveAna) {
+        return makeError(insurer, startTime, "Vehiculo no localizado en catalogo ANA", credStatus);
+      }
+      resolvedCatalogVehicle = {
+        ...(catalogVehicle || {
+          id: "runtime",
+          marca: vehicle.marca,
+          modelo: vehicle.modelo,
+          anio: vehicle.anio,
+          version: vehicle.version,
+          descripcion_completa: vehicle.descripcionCompleta || "",
+          clave_amis: vehicle.claveAmis || null,
+          valor_referencia: vehicle.valorReferencia,
+          carroceria: null,
+          metadata_aseguradoras: {},
+        }),
+        metadata_aseguradoras: {
+          ...(catalogVehicle?.metadata_aseguradoras || {}),
+          clave_ana: claveAna,
+        },
+      };
+    }
+    const soapBody = buildAnaSoap(creds.ana, vehicle, resolvedCatalogVehicle, edad, cp, vehicle.paquete);
     const xml = await callSoapInsurer(endpoint, soapBody, "http://tempuri.org/Transaccion");
     const fault = extractSoapFault(xml);
     if (fault) {
