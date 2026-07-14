@@ -277,28 +277,50 @@ function buildGnpXml(
   cp: string,
   formaPago: string
 ): string {
-  // GNP no publica WSDL (es un WS REST que recibe XML plano, no JSON) --
-  // schema tomado del Kit GNP - Multicotizador JIRO.xlsx.
   const meta = catalogVehicle?.metadata_aseguradoras || {};
+  const start = new Date();
+  const end = new Date(start);
+  end.setFullYear(end.getFullYear() + 1);
+  const birth = new Date(start);
+  birth.setFullYear(birth.getFullYear() - edad);
+  const ymd = (date: Date) =>
+    `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`;
+  const descripcionPaquete = vehicle.paquete.toLowerCase().includes("ampl")
+    ? "Amplia"
+    : vehicle.paquete.toLowerCase().includes("limit") ? "Limitada" : "RC";
+
+  // Schema real confirmado contra el ejemplo oficial
+  // "Cotización Auto Residente Persona Fisica.txt" de GNP.
   return [
     "<COTIZACION>",
-    `<UNIDAD_OPERABLE>${creds.unidadOperable}</UNIDAD_OPERABLE>`,
-    `<INTERMEDIARIO>${creds.intermediario}</INTERMEDIARIO>`,
-    `<OFICINA>${creds.oficina}</OFICINA>`,
+    "<SOLICITUD>",
+    `<USUARIO>${escapeXml(creds.usuario)}</USUARIO>`,
+    `<PASSWORD>${escapeXml(creds.password)}</PASSWORD>`,
+    `<ID_UNIDAD_OPERABLE>${escapeXml(creds.unidadOperable)}</ID_UNIDAD_OPERABLE>`,
+    `<FCH_INICIO_VIGENCIA>${ymd(start)}</FCH_INICIO_VIGENCIA>`,
+    `<FCH_FIN_VIGENCIA>${ymd(end)}</FCH_FIN_VIGENCIA>`,
+    `<VIA_PAGO>${formaPago.toLowerCase().includes("cont") ? "IN" : "FI"}</VIA_PAGO>`,
+    "<PERIODICIDAD>A</PERIODICIDAD>",
+    "<ELEMENTOS><ELEMENTO><NOMBRE>INTERMEDIARIO</NOMBRE>",
+    `<CLAVE>${escapeXml(creds.intermediario)}</CLAVE><VALOR>${escapeXml(creds.intermediario)}</VALOR>`,
+    "</ELEMENTO></ELEMENTOS>",
+    "</SOLICITUD>",
     "<VEHICULO>",
-    `<MARCA>${meta.armadora_gnp || vehicle.marca}</MARCA>`,
-    `<ANIO>${vehicle.anio}</ANIO>`,
-    `<MODELO>${vehicle.modelo}</MODELO>`,
-    `<VERSION>${meta.version_gnp || vehicle.version}</VERSION>`,
-    `<CARROCERIA>${meta.carroceria_gnp || catalogVehicle?.carroceria || "SEDAN"}</CARROCERIA>`,
-    `<VALOR_VEHICULO>${vehicle.valorReferencia}</VALOR_VEHICULO>`,
+    "<SUB_RAMO>01</SUB_RAMO><TIPO_VEHICULO>AUT</TIPO_VEHICULO>",
+    `<MODELO>${vehicle.anio}</MODELO>`,
+    `<ARMADORA>${escapeXml(meta.armadora_gnp)}</ARMADORA>`,
+    `<CARROCERIA>${escapeXml(meta.carroceria_gnp)}</CARROCERIA>`,
+    `<VERSION>${escapeXml(meta.version_gnp)}</VERSION>`,
+    "<USO>01</USO><FORMA_INDEMNIZACION>03</FORMA_INDEMNIZACION>",
+    `<VALOR_FACTURA>${vehicle.valorReferencia}</VALOR_FACTURA>`,
     "</VEHICULO>",
+    `<CONTRATANTE><TIPO_PERSONA>F</TIPO_PERSONA><CODIGO_POSTAL>${escapeXml(cp)}</CODIGO_POSTAL></CONTRATANTE>`,
     "<CONDUCTOR>",
-    `<EDAD>${edad}</EDAD>`,
+    `<FCH_NACIMIENTO>${ymd(birth)}</FCH_NACIMIENTO><SEXO>M</SEXO><EDAD>${edad}</EDAD>`,
     `<CODIGO_POSTAL>${cp}</CODIGO_POSTAL>`,
     "</CONDUCTOR>",
-    `<PAQUETE>${vehicle.paquete}</PAQUETE>`,
-    `<FORMA_PAGO>${formaPago}</FORMA_PAGO>`,
+    `<PAQUETES><PAQUETE><CVE_PAQUETE>${descripcionPaquete === "Amplia" ? "PRS0009355" : ""}</CVE_PAQUETE>`,
+    `<DESC_PAQUETE>${descripcionPaquete}</DESC_PAQUETE><COBERTURAS/></PAQUETE></PAQUETES>`,
     "</COTIZACION>",
   ].join("");
 }
@@ -745,6 +767,10 @@ async function quoteGnp(
   if (!creds.gnp.usuario || !creds.gnp.password) {
     return makeError(insurer, startTime, "Credenciales no configuradas (GNP_USUARIO, GNP_PASSWORD). Configure las variables de entorno.", credStatus);
   }
+  const gnpMeta = catalogVehicle?.metadata_aseguradoras || {};
+  if (!gnpMeta.armadora_gnp || !gnpMeta.carroceria_gnp || !gnpMeta.version_gnp) {
+    return makeError(insurer, startTime, "Vehiculo sin mapeo GNP (armadora_gnp, carroceria_gnp, version_gnp)", credStatus);
+  }
 
   try {
     const xmlBody = buildGnpXml(creds.gnp, vehicle, catalogVehicle, edad, cp, formaPago);
@@ -776,6 +802,9 @@ async function quoteAna(
 
   if (!creds.ana.usuario || !creds.ana.clave) {
     return makeError(insurer, startTime, "Credenciales no configuradas (ANA_USUARIO, ANA_CLAVE). Configure las variables de entorno.", credStatus);
+  }
+  if (!catalogVehicle?.metadata_aseguradoras?.clave_ana) {
+    return makeError(insurer, startTime, "Vehiculo sin mapeo ANA (clave_ana)", credStatus);
   }
 
   try {
