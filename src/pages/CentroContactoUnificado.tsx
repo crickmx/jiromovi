@@ -131,8 +131,8 @@ export default function CentroContactoUnificado() {
         const allPhoneVariants = [...new Set([...moviPhones, ...normalizedPhones])];
         const { data } = await supabase
           .from('crm_contactos')
-          .select('telefono, nombre, apellido')
-          .in('telefono', allPhoneVariants);
+          .select('celular, nombre_completo')
+          .in('celular', allPhoneVariants);
         crmContacts = data || [];
       }
       // Query usuarios by celular_laboral to resolve internal user names

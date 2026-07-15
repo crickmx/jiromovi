@@ -218,7 +218,7 @@ export function normalizeMexicanPhone(phone: string): string {
  * Priority: CRM > usuarios (celular_laboral) > WhatsApp pushName
  */
 export function buildContactNameMap(
-  crmContacts: { telefono?: string | null; nombre?: string | null; apellido?: string | null }[],
+  crmContacts: { celular?: string | null; nombre_completo?: string | null }[],
   messages: { contact_phone?: string | null; contact_name?: string | null; metadata?: any }[],
   usuarios?: { celular_laboral?: string | null; nombre?: string | null; apellidos?: string | null }[],
 ): Record<string, string> {
@@ -226,11 +226,10 @@ export function buildContactNameMap(
 
   // CRM contacts take highest priority
   for (const c of crmContacts) {
-    if (!c.telefono) continue;
-    const norm = normalizeMexicanPhone(c.telefono);
-    if (norm.length >= 10) {
-      const fullName = [c.nombre, c.apellido].filter(Boolean).join(' ').trim();
-      if (fullName) nameMap[norm] = fullName;
+    if (!c.celular) continue;
+    const norm = normalizeMexicanPhone(c.celular);
+    if (norm.length >= 10 && c.nombre_completo) {
+      nameMap[norm] = c.nombre_completo;
     }
   }
 
