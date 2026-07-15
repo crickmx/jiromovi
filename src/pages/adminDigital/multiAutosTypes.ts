@@ -55,6 +55,8 @@ export interface ResultadoAseguradora {
   tiempoRespuesta: number;
   disponible: boolean;
   error?: string;
+  credentialStatus?: string;
+  errorCategory?: string;
 }
 
 export interface FleetVehicleConfig {

@@ -104,6 +104,7 @@ interface WSQuoteResult {
   error: string | null;
   tiempoRespuesta: number;
   credentialStatus?: string;
+  errorCategory?: string;
 }
 
 interface WSResponse {
@@ -213,6 +214,8 @@ export async function callQuoteWebService(
           tiempoRespuesta: q.tiempoRespuesta,
           disponible: false,
           error: q.error || 'Sin respuesta del web service',
+          credentialStatus: q.credentialStatus,
+          errorCategory: q.errorCategory,
         });
         continue;
       }
@@ -271,6 +274,8 @@ export async function callQuoteWebService(
         coberturas: coverages,
         tiempoRespuesta: q.tiempoRespuesta,
         disponible: true,
+        credentialStatus: q.credentialStatus,
+        errorCategory: q.errorCategory,
       });
     }
 

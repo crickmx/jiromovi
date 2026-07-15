@@ -14,7 +14,7 @@ function getInsurerColor(name: string): string {
   return INSURERS_CONFIG.find((i) => i.nombre === name)?.color || '#666';
 }
 
-function BreakdownPanel({ breakdown, insurer }: { breakdown: QuoteBreakdown; insurer: string }) {
+function BreakdownPanel({ breakdown }: { breakdown: QuoteBreakdown }) {
   return (
     <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 space-y-2 text-sm">
       <div className="flex justify-between text-gray-600 dark:text-gray-400">
@@ -63,14 +63,17 @@ export function MultiAutosFleetDashboard({ results, formaPago, discountRate, onC
   const [expandedInsurer, setExpandedInsurer] = useState<string | null>(null);
 
   // Aggregate totals per insurer across all vehicles
-  const insurerTotals: Record<string, { total: number; available: number; totalVehicles: number; breakdowns: { vehiculo: Vehiculo; breakdown: QuoteBreakdown }[]; error?: string }> = {};
+  const insurerTotals: Record<string, { total: number; available: number; totalVehicles: number; totalResponseMs: number; breakdowns: { vehiculo: Vehiculo; breakdown: QuoteBreakdown }[]; error?: string; credentialStatus?: string; errorCategory?: string }> = {};
 
   for (const vResult of results) {
     for (const r of vResult.resultados) {
       if (!insurerTotals[r.aseguradora]) {
-        insurerTotals[r.aseguradora] = { total: 0, available: 0, totalVehicles: 0, breakdowns: [] };
+        insurerTotals[r.aseguradora] = { total: 0, available: 0, totalVehicles: 0, totalResponseMs: 0, breakdowns: [] };
       }
       insurerTotals[r.aseguradora].totalVehicles++;
+      insurerTotals[r.aseguradora].totalResponseMs += r.tiempoRespuesta;
+      insurerTotals[r.aseguradora].credentialStatus = r.credentialStatus;
+      insurerTotals[r.aseguradora].errorCategory = r.errorCategory;
       if (r.disponible) {
         insurerTotals[r.aseguradora].available++;
         insurerTotals[r.aseguradora].total += r.primaTotal;
@@ -85,7 +88,7 @@ export function MultiAutosFleetDashboard({ results, formaPago, discountRate, onC
   }
 
   const sortedInsurers = Object.entries(insurerTotals)
-    .filter(([_, data]) => data.available > 0)
+    .filter((entry) => entry[1].available > 0)
     .sort((a, b) => a[1].total - b[1].total);
 
   const cheapestTotal = sortedInsurers.length > 0 ? sortedInsurers[0][1].total : 0;
@@ -160,7 +163,7 @@ export function MultiAutosFleetDashboard({ results, formaPago, discountRate, onC
                   <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                     <span className="flex items-center gap-1"><Shield className="w-3 h-3" />{config?.tipoApi}</span>
                     <span className="flex items-center gap-1"><Receipt className="w-3 h-3" />Derecho: ${config?.derechoPoliza.toLocaleString()}</span>
-                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" />~{((800 + Math.random() * 2000) / 1000).toFixed(1)}s</span>
+                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{(data.totalResponseMs / Math.max(data.totalVehicles, 1) / 1000).toFixed(1)}s</span>
                   </div>
                 </div>
 
@@ -194,7 +197,7 @@ export function MultiAutosFleetDashboard({ results, formaPago, discountRate, onC
                           <span className="w-5 h-5 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
                           {item.vehiculo.descripcionCompleta}
                         </p>
-                        <BreakdownPanel breakdown={item.breakdown} insurer={insurer} />
+                        <BreakdownPanel breakdown={item.breakdown} />
                       </div>
                     ))}
                   </div>
@@ -225,25 +228,26 @@ export function MultiAutosFleetDashboard({ results, formaPago, discountRate, onC
       </div>
 
       {/* Unavailable insurers */}
-      {Object.entries(insurerTotals).filter(([_, d]) => d.available === 0).length > 0 && (
+      {Object.entries(insurerTotals).filter((entry) => entry[1].available === 0).length > 0 && (
         <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
           <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-500" /> Aseguradoras no disponibles
           </p>
           <div className="space-y-2.5">
-            {Object.entries(insurerTotals).filter(([_, d]) => d.available === 0).map(([name, d]) => {
+            {Object.entries(insurerTotals).filter((entry) => entry[1].available === 0).map(([name, d]) => {
               const error = d.error || '';
-              const isDns = error.includes('DNS') || error.includes('alcanzable');
-              const isCredMissing = error.includes('no configuradas') || error.includes('Configure las variables');
-              const isCredExpired = error.includes('no son validas') || error.includes('renovacion') || error.includes('expired');
-              const isAmis = error.includes('AMIS') || error.includes('catalogo');
+              const isDns = d.errorCategory === 'DNS_UNREACHABLE' || error.includes('DNS') || error.includes('alcanzable');
+              const isCredMissing = d.credentialStatus === 'missing';
+              const isCredExpired = d.credentialStatus === 'expired' || d.credentialStatus === 'invalid';
+              const isMapping = d.errorCategory === 'MISSING_AMIS' || error.includes('AMIS') || error.includes('catalogo') || error.includes('mapeo');
+              const isEndpoint = error.includes('HTTP 503') || error.includes('Incapsula');
 
               return (
                 <div key={name} className="flex items-start gap-3 bg-white dark:bg-gray-900/50 rounded-lg p-3 border border-gray-100 dark:border-gray-700">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: getInsurerColor(name) + '20' }}>
                     {isDns ? <WifiOff className="w-4 h-4 text-gray-500" /> :
                      isCredMissing || isCredExpired ? <KeyRound className="w-4 h-4 text-amber-500" /> :
-                     isAmis ? <AlertTriangle className="w-4 h-4 text-orange-500" /> :
+                     isMapping || isEndpoint ? <AlertTriangle className="w-4 h-4 text-orange-500" /> :
                      <X className="w-4 h-4 text-red-500" />}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -252,7 +256,8 @@ export function MultiAutosFleetDashboard({ results, formaPago, discountRate, onC
                       {isDns && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400">DNS</span>}
                       {isCredMissing && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">SIN CREDENCIALES</span>}
                       {isCredExpired && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">CREDENCIALES EXPIRADAS</span>}
-                      {isAmis && <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">SIN CLAVE AMIS</span>}
+                      {isMapping && <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">CATALOGO / HOMOLOGACION</span>}
+                      {isEndpoint && <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">ENDPOINT BLOQUEADO</span>}
                     </div>
                     {error && <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 leading-tight break-all">{error}</p>}
                   </div>

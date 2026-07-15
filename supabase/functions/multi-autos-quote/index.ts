@@ -79,6 +79,7 @@ interface QuoteResult {
   error: string | null;
   tiempoRespuesta: number;
   credentialStatus?: string;
+  errorCategory?: string;
   debug?: string;
 }
 
@@ -401,6 +402,7 @@ function buildGnpXml(
   vehicle: VehicleRequest,
   catalogVehicle: CatalogVehicle | null,
   edad: number,
+  genero: string,
   cp: string,
   formaPago: string
 ): string {
@@ -419,6 +421,16 @@ function buildGnpXml(
   const clavePaquete = descripcionPaquete === "Amplia"
     ? "PRS0009355"
     : descripcionPaquete === "Limitada" ? "PRS0009356" : "PRP0000289";
+  const formaPagoNormalizada = formaPago.toLowerCase();
+  const periodicidad = formaPagoNormalizada.includes("mens")
+    ? "M"
+    : formaPagoNormalizada.includes("trim")
+    ? "T"
+    : formaPagoNormalizada.includes("sem")
+    ? "S"
+    : "A";
+  const viaPago = periodicidad === "A" ? "IN" : "FI";
+  const sexo = genero.toLowerCase().startsWith("f") ? "F" : "M";
 
   // Schema real confirmado contra el ejemplo oficial
   // "Cotización Auto Residente Persona Fisica.txt" de GNP.
@@ -430,8 +442,8 @@ function buildGnpXml(
     `<ID_UNIDAD_OPERABLE>${escapeXml(creds.unidadOperable)}</ID_UNIDAD_OPERABLE>`,
     `<FCH_INICIO_VIGENCIA>${ymd(start)}</FCH_INICIO_VIGENCIA>`,
     `<FCH_FIN_VIGENCIA>${ymd(end)}</FCH_FIN_VIGENCIA>`,
-    `<VIA_PAGO>${formaPago.toLowerCase().includes("cont") ? "IN" : "FI"}</VIA_PAGO>`,
-    "<PERIODICIDAD>A</PERIODICIDAD>",
+    `<VIA_PAGO>${viaPago}</VIA_PAGO>`,
+    `<PERIODICIDAD>${periodicidad}</PERIODICIDAD>`,
     "<ELEMENTOS><ELEMENTO><NOMBRE>INTERMEDIARIO</NOMBRE>",
     `<CLAVE>${escapeXml(creds.intermediario)}</CLAVE><VALOR>${escapeXml(creds.intermediario)}</VALOR>`,
     "</ELEMENTO></ELEMENTOS>",
@@ -447,7 +459,7 @@ function buildGnpXml(
     "</VEHICULO>",
     `<CONTRATANTE><TIPO_PERSONA>F</TIPO_PERSONA><CODIGO_POSTAL>${escapeXml(cp)}</CODIGO_POSTAL></CONTRATANTE>`,
     "<CONDUCTOR>",
-    `<FCH_NACIMIENTO>${ymd(birth)}</FCH_NACIMIENTO><SEXO>M</SEXO><EDAD>${edad}</EDAD>`,
+    `<FCH_NACIMIENTO>${ymd(birth)}</FCH_NACIMIENTO><SEXO>${sexo}</SEXO><EDAD>${edad}</EDAD>`,
     `<CODIGO_POSTAL>${cp}</CODIGO_POSTAL>`,
     "</CONDUCTOR>",
     `<PAQUETES><PAQUETE><CVE_PAQUETE>${clavePaquete}</CVE_PAQUETE>`,
@@ -912,6 +924,7 @@ async function quoteGnp(
   catalogVehicle: CatalogVehicle | null,
   creds: ResolvedCredentials,
   edad: number,
+  genero: string,
   cp: string,
   formaPago: string
 ): Promise<QuoteResult> {
@@ -928,7 +941,7 @@ async function quoteGnp(
   }
 
   try {
-    const xmlBody = buildGnpXml(creds.gnp, vehicle, catalogVehicle, edad, cp, formaPago);
+    const xmlBody = buildGnpXml(creds.gnp, vehicle, catalogVehicle, edad, genero, cp, formaPago);
     const authHeader = { "Authorization": `Basic ${btoa(`${creds.gnp.usuario}:${creds.gnp.password}`)}` };
     const xml = await callXmlInsurer(endpoint, xmlBody, authHeader);
     const fault = extractSoapFault(xml);
@@ -1259,6 +1272,7 @@ async function quoteInsurer(
   creds: ResolvedCredentials,
   formaPago: string,
   edad: number,
+  genero: string,
   cp: string,
   supabase: ReturnType<typeof createClient>
 ): Promise<QuoteResult> {
@@ -1271,7 +1285,7 @@ async function quoteInsurer(
     case "Qualitas":
       return quoteQualitas(insurer, vehicle, catalogVehicle, creds, cp);
     case "GNP":
-      return quoteGnp(insurer, vehicle, catalogVehicle, creds, edad, cp, formaPago);
+      return quoteGnp(insurer, vehicle, catalogVehicle, creds, edad, genero, cp, formaPago);
     case "ANA Seguros":
       return quoteAna(insurer, vehicle, catalogVehicle, creds, edad, cp, supabase);
     case "HDI Seguros":
@@ -1365,7 +1379,7 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, serviceKey);
 
     const body: QuoteRequest = await req.json();
-    const { vehiculos, formaPago, edad, genero: _genero, codigoPostal } = body;
+    const { vehiculos, formaPago, edad, genero, codigoPostal } = body;
 
     if (!vehiculos?.length) {
       return new Response(JSON.stringify({ error: "No vehicles provided" }), {
@@ -1403,12 +1417,17 @@ Deno.serve(async (req: Request) => {
         // Quote all insurers in parallel
         const vehicleResults = await Promise.all(
           insurers.map((insurer) =>
-            quoteInsurer(insurer as InsurerRow, vehicle, catalogVehicle, creds, formaPago, edad, codigoPostal, supabase)
+            quoteInsurer(insurer as InsurerRow, vehicle, catalogVehicle, creds, formaPago, edad, genero, codigoPostal, supabase)
           )
         );
 
+        const diagnosedResults = vehicleResults.map((result) => ({
+          ...result,
+          errorCategory: classifyErrorCategory(result),
+        }));
+
         // Update status asynchronously
-        updateInsurerStatus(supabase, vehicleResults);
+        updateInsurerStatus(supabase, diagnosedResults);
 
         return {
           vehicleIndex: vIdx,
@@ -1417,7 +1436,7 @@ Deno.serve(async (req: Request) => {
             claveAmis: catalogVehicle.clave_amis,
             descripcion: catalogVehicle.descripcion_completa,
           } : null,
-          quotes: vehicleResults,
+          quotes: diagnosedResults,
         };
       })
     );
