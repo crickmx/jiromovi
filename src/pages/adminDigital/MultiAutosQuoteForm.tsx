@@ -348,7 +348,7 @@ export function MultiAutosQuoteForm({ onCalculate, isCalculating }: QuoteFormPro
                 </p>
                 {catalogStatus?.source_file_date && (
                   <p className="text-[11px] text-gray-400 mt-1">
-                    Fuente EMICAT: {catalogStatus.source_file_date} · sincronización automática diaria
+                    Fuente EMICAT: {catalogStatus.source_file_date} · {catalogStatus.status === 'awaiting_source' ? 'verificación diaria; esperando fuente vigente' : 'sincronización automática diaria'}
                   </p>
                 )}
               </div>
