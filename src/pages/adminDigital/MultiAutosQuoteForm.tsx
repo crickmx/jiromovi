@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { User, Car, ChevronRight, ChevronLeft, Plus, X, Truck, Loader2 } from 'lucide-react';
 import type { Cliente, Vehiculo, PaqueteCobertura, FormaPago, CoberturasPersonalizadasCliente, FleetVehicleConfig } from './multiAutosTypes';
-import { fetchMarcas, fetchAniosForMarca, fetchModelosForMarcaAnio, fetchVersiones } from './multiAutosCatalog';
+import { fetchMarcas, fetchAniosForMarca, fetchModelosForMarcaAnio, fetchVersiones, fetchCatalogSyncStatus, type CatalogSyncStatus } from './multiAutosCatalog';
 
 interface QuoteFormProps {
   onCalculate: (
@@ -129,7 +129,7 @@ function VehicleSelector({ state, onChange, onRemove, index, canRemove, allMarca
             className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
           >
             <option value="">{loadingVersiones ? 'Cargando...' : 'Version'}</option>
-            {versiones.map((v) => <option key={v.id} value={v.id}>{v.version} - ${v.valorReferencia.toLocaleString()}</option>)}
+            {versiones.map((v) => <option key={v.id} value={v.id}>{v.version}{v.valorReferencia > 0 ? ` - $${v.valorReferencia.toLocaleString()}` : ''}</option>)}
           </select>
           {loadingVersiones && <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin absolute right-8 top-1/2 -translate-y-1/2" />}
         </div>
@@ -168,10 +168,12 @@ export function MultiAutosQuoteForm({ onCalculate, isCalculating }: QuoteFormPro
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [marcas, setMarcas] = useState<string[]>([]);
   const [loadingMarcas, setLoadingMarcas] = useState(false);
+  const [catalogStatus, setCatalogStatus] = useState<CatalogSyncStatus | null>(null);
 
   useEffect(() => {
     setLoadingMarcas(true);
     fetchMarcas().then((m) => { setMarcas(m); setLoadingMarcas(false); });
+    fetchCatalogSyncStatus().then(setCatalogStatus);
   }, []);
 
   const validateStep1 = (): boolean => {
@@ -342,8 +344,13 @@ export function MultiAutosQuoteForm({ onCalculate, isCalculating }: QuoteFormPro
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Flota de Vehiculos</h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1.5">
                   <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  Catalogo Qualitas Web Service - {marcas.length} marcas disponibles
+                  Catálogo oficial Quálitas en base propia · {marcas.length} marcas · {catalogStatus?.row_count?.toLocaleString() || 0} versiones
                 </p>
+                {catalogStatus?.source_file_date && (
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Fuente EMICAT: {catalogStatus.source_file_date} · sincronización automática diaria
+                  </p>
+                )}
               </div>
               <button onClick={() => setStep(1)} className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium">
                 <ChevronLeft className="w-4 h-4" /> Volver
