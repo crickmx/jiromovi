@@ -415,6 +415,10 @@ function buildGnpXml(
   const descripcionPaquete = vehicle.paquete.toLowerCase().includes("ampl")
     ? "Amplia"
     : vehicle.paquete.toLowerCase().includes("limit") ? "Limitada" : "RC";
+  // Kit GNP - Multicotizador JIRO.xlsx, persona física, auto residente.
+  const clavePaquete = descripcionPaquete === "Amplia"
+    ? "PRS0009355"
+    : descripcionPaquete === "Limitada" ? "PRS0009356" : "PRP0000289";
 
   // Schema real confirmado contra el ejemplo oficial
   // "Cotización Auto Residente Persona Fisica.txt" de GNP.
@@ -446,7 +450,7 @@ function buildGnpXml(
     `<FCH_NACIMIENTO>${ymd(birth)}</FCH_NACIMIENTO><SEXO>M</SEXO><EDAD>${edad}</EDAD>`,
     `<CODIGO_POSTAL>${cp}</CODIGO_POSTAL>`,
     "</CONDUCTOR>",
-    `<PAQUETES><PAQUETE><CVE_PAQUETE>${descripcionPaquete === "Amplia" ? "PRS0009355" : ""}</CVE_PAQUETE>`,
+    `<PAQUETES><PAQUETE><CVE_PAQUETE>${clavePaquete}</CVE_PAQUETE>`,
     `<DESC_PAQUETE>${descripcionPaquete}</DESC_PAQUETE><COBERTURAS/></PAQUETE></PAQUETES>`,
     "</COTIZACION>",
   ].join("");
@@ -466,8 +470,18 @@ function buildAnaSoap(
   const end = new Date(start);
   end.setFullYear(end.getFullYear() + 1);
   const formatDate = (date: Date) =>
-    `${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")}/${date.getFullYear()}`;
-  const plan = paquete.toLowerCase().includes("ampl") ? "1" : paquete.toLowerCase().includes("limit") ? "2" : "3";
+    `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
+  // Manual ANA V7: 1 Amplia, 2 UPT, 3 Limitada, 4 RC, 5 RC Pura.
+  const paqueteNormalizado = paquete.toLowerCase();
+  const plan = paqueteNormalizado.includes("ampl")
+    ? "1"
+    : paqueteNormalizado.includes("upt")
+    ? "2"
+    : paqueteNormalizado.includes("limit")
+    ? "3"
+    : paqueteNormalizado.includes("pura")
+    ? "5"
+    : "4";
 
   // Schema real confirmado contra Entrada.xml / Salida.xml de ANA.
   const cotizacionXml = [
@@ -1005,7 +1019,19 @@ async function quoteAna(
     }
     // A catalog lookup and a Transaccion response prove that ANA accepted
     // the credentials, even when its rating engine returns no premium.
-    return parseQuoteResponse(insurer, innerXml, startTime, "valid");
+    const parsed = parseQuoteResponse(insurer, innerXml, startTime, "valid");
+    if (!parsed.disponible) {
+      const errorText = innerXml.match(/<error[^>]*>([^<]+)<\/error>/i)?.[1]?.trim();
+      const errorAttrs = innerXml.match(/<error\s+([^>]+)>/i)?.[1]
+        ?.replace(/\s+/g, " ").trim();
+      const cotizacion = innerXml.match(/\bcotizacion=["']([^"']*)["']/i)?.[1];
+      const detail = errorText || errorAttrs || (cotizacion ? `cotizacion ${cotizacion} sin prima` : "respuesta sin detalle de error");
+      parsed.error = `ANA: ${detail}`.substring(0, 500);
+      if (/credenciales?\s+(?:son\s+)?incorrectas?/i.test(detail)) {
+        parsed.credentialStatus = "invalid";
+      }
+    }
+    return parsed;
   } catch (err) {
     return makeError(insurer, startTime, `${(err as Error).message}`, credStatus);
   }
