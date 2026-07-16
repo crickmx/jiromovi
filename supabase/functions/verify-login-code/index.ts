@@ -1,19 +1,39 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2.49.1";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers":
-    "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-async function hashCode(code: string): Promise<string> {
+const MAX_ATTEMPTS = 5;
+
+async function sha256(text: string): Promise<string> {
   const encoder = new TextEncoder();
-  const data = encoder.encode(code);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const data = encoder.encode(text);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Returns a hashed_token the client can use with verifyOtp({ token_hash, type: 'magiclink' })
+async function generateHashedToken(userId: string, email: string, supabase: ReturnType<typeof createClient>): Promise<string | null> {
+  // Confirm email so GoTrue doesn't block the magic link generation
+  const { error: confirmErr } = await supabase.auth.admin.updateUserById(userId, { email_confirm: true });
+  if (confirmErr) {
+    console.error('updateUserById error (non-fatal):', JSON.stringify(confirmErr));
+  }
+
+  const { data, error } = await supabase.auth.admin.generateLink({
+    type: 'magiclink',
+    email,
+  });
+  if (error || !data?.properties?.hashed_token) {
+    console.error('admin.generateLink error:', JSON.stringify(error));
+    return null;
+  }
+  return data.properties.hashed_token;
 }
 
 Deno.serve(async (req: Request) => {
@@ -22,192 +42,172 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { email, code, magic_token, platform } = await req.json();
-
-    if (!email || (!code && !magic_token)) {
-      return new Response(
-        JSON.stringify({ error: "Email y código son requeridos" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
-
-    const targetPlatform = platform || "movi";
-
-    // Find the most recent valid token for this email + platform
-    const { data: token, error: tokenError } = await supabase
-      .from("passwordless_login_tokens")
-      .select("*")
-      .eq("email", email)
-      .eq("platform", targetPlatform)
-      .is("used_at", null)
-      .gt("expires_at", new Date().toISOString())
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (tokenError) {
-      return new Response(
-        JSON.stringify({ error: "Error al verificar código" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    if (!token) {
-      return new Response(
-        JSON.stringify({
-          error: "Código expirado o inválido. Solicita uno nuevo.",
-          error_code: "TOKEN_EXPIRED",
-        }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Check max attempts (5 max)
-    if (token.attempts >= 5) {
-      return new Response(
-        JSON.stringify({
-          error: "Demasiados intentos. Solicita un nuevo código.",
-          error_code: "MAX_ATTEMPTS",
-        }),
-        {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    let isValid = false;
-
-    if (magic_token) {
-      // Verify via magic token (auto-login from app)
-      const magicHash = await hashCode(magic_token);
-      isValid = magicHash === token.magic_token_hash;
-    } else {
-      // Verify via manual code entry
-      // CRITICAL FIX: Normalize code to UPPERCASE before hashing
-      // Codes are generated and sent in uppercase (e.g., "A4HQVG")
-      // but users might type lowercase on their keyboard
-      const normalizedCode = code.trim().toUpperCase();
-      const codeHash = await hashCode(normalizedCode);
-      isValid = codeHash === token.code_hash;
-    }
-
-    if (!isValid) {
-      // Increment attempts
-      await supabase
-        .from("passwordless_login_tokens")
-        .update({ attempts: token.attempts + 1 })
-        .eq("id", token.id);
-
-      return new Response(
-        JSON.stringify({
-          error: "Código incorrecto. Verifica e intenta de nuevo.",
-          error_code: "INVALID_CODE",
-          attempts_remaining: 4 - token.attempts,
-        }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Code is valid! Check if user can login
-    const { data: loginCheck } = await supabase.rpc("check_user_can_login", {
-      user_id_to_check: token.user_id,
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    if (loginCheck && !loginCheck.can_login) {
-      return new Response(
-        JSON.stringify({
-          error: loginCheck.error,
-          error_code: loginCheck.error_code,
-        }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
+    const body = await req.json() as {
+      email?: string;
+      code?: string;
+      magic_token?: string;
+      platform: 'movi' | 'seguwallet' | 'chava';
+    };
 
-    // Mark token as used
-    await supabase
-      .from("passwordless_login_tokens")
-      .update({ used_at: new Date().toISOString() })
-      .eq("id", token.id);
+    const { email, code, magic_token, platform } = body;
 
-    // Mark all previous tokens for this user+platform as used (cleanup)
-    await supabase
-      .from("passwordless_login_tokens")
-      .update({ used_at: new Date().toISOString() })
-      .eq("user_id", token.user_id)
-      .eq("platform", targetPlatform)
-      .is("used_at", null)
-      .neq("id", token.id);
-
-    // Get user email from auth to sign in
-    const { data: authUser } = await supabase.auth.admin.getUserById(
-      token.user_id
-    );
-
-    if (!authUser?.user?.email) {
-      return new Response(
-        JSON.stringify({ error: "Usuario no encontrado en auth" }),
-        {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Generate a session for the user using admin API
-    const { data: sessionData, error: sessionError } =
-      await supabase.auth.admin.generateLink({
-        type: "magiclink",
-        email: authUser.user.email,
+    if (!platform || (platform !== 'movi' && platform !== 'seguwallet' && platform !== 'chava')) {
+      return new Response(JSON.stringify({ error: 'Plataforma inválida.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
-
-    if (sessionError || !sessionData) {
-      return new Response(
-        JSON.stringify({ error: "Error al generar sesión" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
     }
 
-    return new Response(
-      JSON.stringify({
+    // ── Magic token (quick link) path ─────────────────────────────────────────
+    if (magic_token) {
+      const magicHash = await sha256(magic_token);
+      const { data: tokens } = await supabase
+        .from('passwordless_login_tokens')
+        .select('*')
+        .eq('magic_token_hash', magicHash)
+        .eq('platform', platform)
+        .is('used_at', null)
+        .limit(1);
+
+      const token = tokens?.[0] || null;
+
+      if (!token) {
+        return new Response(JSON.stringify({ error: 'Enlace inválido o ya utilizado.', code: 'INVALID' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (new Date(token.expires_at) < new Date()) {
+        await supabase.from('passwordless_login_tokens').update({ used_at: new Date().toISOString() }).eq('id', token.id);
+        return new Response(JSON.stringify({ error: 'Este enlace ha expirado. Solicita un nuevo código.', code: 'EXPIRED' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      await supabase.from('passwordless_login_tokens').update({ used_at: new Date().toISOString() }).eq('id', token.id);
+
+      const hashedToken = await generateHashedToken(token.user_id, token.email, supabase);
+      if (!hashedToken) {
+        return new Response(JSON.stringify({ error: 'Error al crear sesión. Intenta de nuevo.' }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      return new Response(JSON.stringify({
         success: true,
         user_id: token.user_id,
-        user_name: loginCheck?.user_name || "",
-        user_rol: loginCheck?.user_rol || "",
-        token_hash: sessionData.properties?.hashed_token || null,
-        verification_url: sessionData.properties?.action_link || null,
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+        platform,
+        hashed_token: hashedToken,
+        token_hash: hashedToken,
+        email: token.email,
+      }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // ── Code + email path ─────────────────────────────────────────────────────
+    if (!email || !code) {
+      return new Response(JSON.stringify({ error: 'Se requieren correo y código.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Resolve phone to email if needed (for MOVI platform)
+    let resolvedEmail = email.trim().toLowerCase();
+    const isPhone = /^\d+$/.test(resolvedEmail.replace(/[\s\-+()]/g, '')) && resolvedEmail.replace(/\D/g, '').length >= 10;
+    if (isPhone && platform === 'movi') {
+      const digits = resolvedEmail.replace(/\D/g, '');
+      let phone10 = digits;
+      if (digits.length === 12 && digits.startsWith('52')) phone10 = digits.slice(2);
+      else if (digits.length === 13 && digits.startsWith('521')) phone10 = digits.slice(3);
+      else if (digits.length > 10) phone10 = digits.slice(-10);
+
+      const { data: usr } = await supabase
+        .from('usuarios')
+        .select('email_laboral')
+        .or(`celular_laboral.ilike.%${phone10}%,celular_personal.ilike.%${phone10}%`)
+        .eq('estado', 'activo')
+        .is('deleted_at', null)
+        .limit(1)
+        .maybeSingle();
+      if (usr?.email_laboral) resolvedEmail = usr.email_laboral.toLowerCase();
+    }
+
+    const { data: tokens } = await supabase
+      .from('passwordless_login_tokens')
+      .select('*')
+      .eq('email', resolvedEmail)
+      .eq('platform', platform)
+      .is('used_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    const token = tokens?.[0] || null;
+
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'Código inválido o no encontrado. Solicita un nuevo código.', code: 'INVALID' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (new Date(token.expires_at) < new Date()) {
+      await supabase.from('passwordless_login_tokens').update({ used_at: new Date().toISOString() }).eq('id', token.id);
+      return new Response(JSON.stringify({ error: 'El código ha expirado. Solicita uno nuevo.', code: 'EXPIRED' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (token.attempts >= MAX_ATTEMPTS) {
+      return new Response(JSON.stringify({ error: 'Demasiados intentos fallidos. Solicita un nuevo código.', code: 'MAX_ATTEMPTS' }), {
+        status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const inputHash = await sha256(code.trim().toUpperCase());
+    if (inputHash !== token.code_hash) {
+      await supabase.from('passwordless_login_tokens').update({ attempts: token.attempts + 1 }).eq('id', token.id);
+      const remaining = MAX_ATTEMPTS - (token.attempts + 1);
+      return new Response(JSON.stringify({
+        error: remaining > 0
+          ? `Código incorrecto. Te quedan ${remaining} intentos.`
+          : 'Demasiados intentos fallidos. Solicita un nuevo código.',
+        code: remaining > 0 ? 'WRONG_CODE' : 'MAX_ATTEMPTS',
+        remaining_attempts: Math.max(0, remaining),
+      }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    await supabase.from('passwordless_login_tokens').update({ used_at: new Date().toISOString() }).eq('id', token.id);
+
+    if (!token.user_id) {
+      console.error('Token has no user_id for email:', email);
+      return new Response(JSON.stringify({ error: 'Usuario no encontrado. Contacta al administrador.' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const hashedToken = await generateHashedToken(token.user_id, token.email, supabase);
+    if (!hashedToken) {
+      return new Response(JSON.stringify({ error: 'Error al crear sesión. Intenta de nuevo.' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      user_id: token.user_id,
+      platform,
+      hashed_token: hashedToken,
+      token_hash: hashedToken,
+      email: token.email,
+    }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+  } catch (err: any) {
+    console.error('verify-login-code error:', err);
+    return new Response(JSON.stringify({ error: 'Error interno del servidor.' }), {
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
