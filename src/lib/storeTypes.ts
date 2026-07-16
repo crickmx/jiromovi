@@ -85,12 +85,25 @@ export interface StoreMetodoPago {
   activo: boolean;
 }
 
-export interface StoreFormaPago {
+export interface StoreParcialidad {
   id: string;
   cantidad: number;
-  frecuencia: string;
   orden: number;
   activo: boolean;
+}
+
+export interface StoreFrecuenciaPago {
+  id: string;
+  nombre: string;
+  orden: number;
+  activo: boolean;
+}
+
+export interface StoreMetodoPagoCombinacion {
+  id: string;
+  metodo_id: string;
+  parcialidad_id: string;
+  frecuencia_id: string;
 }
 
 export interface StorePedido {

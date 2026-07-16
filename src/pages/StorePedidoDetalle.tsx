@@ -5,7 +5,7 @@ import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditC
 import { BaseModal } from '../components/BaseModal';
 import { PageHeader } from '@/components/ui/page-header';
 import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus, obtenerPagosPedido, registrarPago, eliminarPago, tieneAccesoEquipoStore, obtenerMapeoCamposTrigger, resolverTemplatePedido, obtenerCamposTramiteTipo } from '../lib/storeUtils';
-import type { StorePedidoCompleto, StoreEstatusPedido, StoreMetodoPago, StoreFormaPago, StorePedidoGasto, StorePedidoDetalleGasto, StorePedidoPago } from '../lib/storeTypes';
+import type { StorePedidoCompleto, StoreEstatusPedido, StoreMetodoPago, StoreParcialidad, StoreFrecuenciaPago, StoreMetodoPagoCombinacion, StorePedidoGasto, StorePedidoDetalleGasto, StorePedidoPago } from '../lib/storeTypes';
 import { TIPO_GASTO_OPTIONS, METODO_PAGO_OPCIONES } from '../lib/storeTypes';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -37,9 +37,13 @@ export default function StorePedidoDetalle() {
   const [metodoPago, setMetodoPago] = useState('');
   const [metodoPagoOtroDetalle, setMetodoPagoOtroDetalle] = useState('');
   const [metodosPago, setMetodosPago] = useState<StoreMetodoPago[]>([]);
-  const [formasPago, setFormasPago] = useState<StoreFormaPago[]>([]);
-  const [metodoFormaIds, setMetodoFormaIds] = useState<Record<string, string[]>>({});
+  const [parcialidades, setParcialidades] = useState<StoreParcialidad[]>([]);
+  const [frecuenciasPago, setFrecuenciasPago] = useState<StoreFrecuenciaPago[]>([]);
+  const [combinaciones, setCombinaciones] = useState<StoreMetodoPagoCombinacion[]>([]);
   const [mostrarConfigCombinaciones, setMostrarConfigCombinaciones] = useState(false);
+  const [nuevaCombMetodo, setNuevaCombMetodo] = useState('');
+  const [nuevaCombParcialidad, setNuevaCombParcialidad] = useState('');
+  const [nuevaCombFrecuencia, setNuevaCombFrecuencia] = useState('');
   const [observacionesOC, setObservacionesOC] = useState('');
   const [guardandoPago, setGuardandoPago] = useState(false);
   const [generandoOC, setGenerandoOC] = useState(false);
@@ -106,42 +110,48 @@ export default function StorePedidoDetalle() {
   }, [pedido, isAdmin]);
 
   useEffect(() => {
-    const cargarMetodosYFormasPago = async () => {
-      const [{ data: metodos }, { data: formas }, { data: mapeo }] = await Promise.all([
+    const cargarMetodosYCombinacionesPago = async () => {
+      const [{ data: metodos }, { data: parcialidadesData }, { data: frecuenciasData }, { data: combos }] = await Promise.all([
         supabase.from('store_metodos_pago').select('id, nombre, orden, activo').eq('activo', true).order('orden'),
-        supabase.from('store_formas_pago').select('id, cantidad, frecuencia, orden, activo').eq('activo', true).order('orden'),
-        supabase.from('store_metodo_forma_pago').select('metodo_id, forma_id'),
+        supabase.from('store_parcialidades').select('id, cantidad, orden, activo').eq('activo', true).order('orden'),
+        supabase.from('store_frecuencias_pago').select('id, nombre, orden, activo').eq('activo', true).order('orden'),
+        supabase.from('store_metodo_pago_combinacion').select('id, metodo_id, parcialidad_id, frecuencia_id'),
       ]);
       if (metodos) setMetodosPago(metodos);
-      if (formas) setFormasPago(formas);
-      if (mapeo) {
-        const map: Record<string, string[]> = {};
-        mapeo.forEach(({ metodo_id, forma_id }) => {
-          (map[metodo_id] ??= []).push(forma_id);
-        });
-        setMetodoFormaIds(map);
-      }
+      if (parcialidadesData) setParcialidades(parcialidadesData);
+      if (frecuenciasData) setFrecuenciasPago(frecuenciasData);
+      if (combos) setCombinaciones(combos);
     };
-    cargarMetodosYFormasPago();
+    cargarMetodosYCombinacionesPago();
   }, []);
 
   const getFormasParaMetodo = (nombreMetodo: string): string[] => {
     const metodo = metodosPago.find(m => m.nombre === nombreMetodo);
     if (!metodo) return [];
-    const ids = metodoFormaIds[metodo.id] || [];
-    return formasPago.filter(f => ids.includes(f.id)).map(f => `${f.cantidad} ${f.frecuencia}`);
+    return combinaciones
+      .filter(c => c.metodo_id === metodo.id)
+      .map(c => {
+        const p = parcialidades.find(x => x.id === c.parcialidad_id);
+        const f = frecuenciasPago.find(x => x.id === c.frecuencia_id);
+        return p && f ? `${p.cantidad} ${f.nombre}` : null;
+      })
+      .filter((label): label is string => label !== null);
   };
 
-  const toggleCombinacionPago = async (metodoId: string, formaId: string, activar: boolean) => {
-    if (activar) {
-      const { error } = await supabase.from('store_metodo_forma_pago').insert({ metodo_id: metodoId, forma_id: formaId });
-      if (error) return;
-      setMetodoFormaIds(prev => ({ ...prev, [metodoId]: [...(prev[metodoId] || []), formaId] }));
-    } else {
-      const { error } = await supabase.from('store_metodo_forma_pago').delete().eq('metodo_id', metodoId).eq('forma_id', formaId);
-      if (error) return;
-      setMetodoFormaIds(prev => ({ ...prev, [metodoId]: (prev[metodoId] || []).filter(id => id !== formaId) }));
-    }
+  const agregarCombinacionPago = async () => {
+    if (!nuevaCombMetodo || !nuevaCombParcialidad || !nuevaCombFrecuencia) return;
+    const { data, error } = await supabase.from('store_metodo_pago_combinacion')
+      .insert({ metodo_id: nuevaCombMetodo, parcialidad_id: nuevaCombParcialidad, frecuencia_id: nuevaCombFrecuencia })
+      .select('id, metodo_id, parcialidad_id, frecuencia_id')
+      .single();
+    if (error || !data) return;
+    setCombinaciones(prev => [...prev, data]);
+  };
+
+  const eliminarCombinacionPago = async (id: string) => {
+    const { error } = await supabase.from('store_metodo_pago_combinacion').delete().eq('id', id);
+    if (error) return;
+    setCombinaciones(prev => prev.filter(c => c.id !== id));
   };
 
   const cargarUsuariosOficina = async () => {
@@ -1346,39 +1356,73 @@ export default function StorePedidoDetalle() {
       <BaseModal
         isOpen={mostrarConfigCombinaciones}
         onClose={() => setMostrarConfigCombinaciones(false)}
-        title="Combinaciones de Metodo/Forma de Pago"
-        maxWidth="3xl"
+        title="Combinaciones de Metodo/Parcialidades/Frecuencia"
+        maxWidth="2xl"
       >
         <p className="text-sm text-ios-gray-500 mb-4">
-          Marca qué Formas de Pago están disponibles para cada Método de Pago en la Orden de Compra.
+          Habilita combinaciones de Metodo + Parcialidades + Frecuencia disponibles en la Orden de Compra.
         </p>
+        <div className="flex items-end gap-2 mb-4">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-ios-gray-500 mb-1">Metodo</label>
+            <select value={nuevaCombMetodo} onChange={e => setNuevaCombMetodo(e.target.value)} className="w-full px-2 py-1.5 text-sm border border-ios-gray-300 rounded-lg">
+              <option value="">Seleccionar...</option>
+              {metodosPago.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+            </select>
+          </div>
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-ios-gray-500 mb-1">Parcialidades</label>
+            <select value={nuevaCombParcialidad} onChange={e => setNuevaCombParcialidad(e.target.value)} className="w-full px-2 py-1.5 text-sm border border-ios-gray-300 rounded-lg">
+              <option value="">Seleccionar...</option>
+              {parcialidades.map(p => <option key={p.id} value={p.id}>{p.cantidad}</option>)}
+            </select>
+          </div>
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-ios-gray-500 mb-1">Frecuencia</label>
+            <select value={nuevaCombFrecuencia} onChange={e => setNuevaCombFrecuencia(e.target.value)} className="w-full px-2 py-1.5 text-sm border border-ios-gray-300 rounded-lg">
+              <option value="">Seleccionar...</option>
+              {frecuenciasPago.map(f => <option key={f.id} value={f.id}>{f.nombre}</option>)}
+            </select>
+          </div>
+          <button
+            onClick={agregarCombinacionPago}
+            disabled={!nuevaCombMetodo || !nuevaCombParcialidad || !nuevaCombFrecuencia}
+            className="px-3 py-1.5 bg-accent text-white rounded-lg text-sm font-medium disabled:opacity-50"
+          >
+            Agregar
+          </button>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr>
                 <th className="text-left py-2 pr-3 border-b border-ios-gray-200/50">Metodo</th>
-                {formasPago.map(f => (
-                  <th key={f.id} className="text-center py-2 px-2 border-b border-ios-gray-200/50 whitespace-nowrap">
-                    {f.cantidad} {f.frecuencia}
-                  </th>
-                ))}
+                <th className="text-left py-2 px-2 border-b border-ios-gray-200/50">Parcialidades</th>
+                <th className="text-left py-2 px-2 border-b border-ios-gray-200/50">Frecuencia</th>
+                <th className="border-b border-ios-gray-200/50"></th>
               </tr>
             </thead>
             <tbody>
-              {metodosPago.map(m => (
-                <tr key={m.id}>
-                  <td className="py-2 pr-3 border-b border-ios-gray-100">{m.nombre}</td>
-                  {formasPago.map(f => (
-                    <td key={f.id} className="text-center py-2 px-2 border-b border-ios-gray-100">
-                      <input
-                        type="checkbox"
-                        checked={(metodoFormaIds[m.id] || []).includes(f.id)}
-                        onChange={e => toggleCombinacionPago(m.id, f.id, e.target.checked)}
-                      />
+              {combinaciones.map(c => {
+                const metodo = metodosPago.find(m => m.id === c.metodo_id);
+                const parcialidad = parcialidades.find(p => p.id === c.parcialidad_id);
+                const frecuencia = frecuenciasPago.find(f => f.id === c.frecuencia_id);
+                return (
+                  <tr key={c.id}>
+                    <td className="py-2 pr-3 border-b border-ios-gray-100">{metodo?.nombre}</td>
+                    <td className="py-2 px-2 border-b border-ios-gray-100">{parcialidad?.cantidad}</td>
+                    <td className="py-2 px-2 border-b border-ios-gray-100">{frecuencia?.nombre}</td>
+                    <td className="py-2 px-2 border-b border-ios-gray-100 text-right">
+                      <button onClick={() => eliminarCombinacionPago(c.id)} className="text-red-500 hover:text-red-700">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </td>
-                  ))}
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
+              {combinaciones.length === 0 && (
+                <tr><td colSpan={4} className="py-4 text-center text-ios-gray-400">Sin combinaciones habilitadas todavía.</td></tr>
+              )}
             </tbody>
           </table>
         </div>
