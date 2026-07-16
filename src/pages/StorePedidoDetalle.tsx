@@ -30,6 +30,8 @@ export default function StorePedidoDetalle() {
   // Payment fields
   const [responsablePagoId, setResponsablePagoId] = useState('');
   const [usuariosOficina, setUsuariosOficina] = useState<any[]>([]);
+  const [oficinasList, setOficinasList] = useState<{ id: string; nombre: string }[]>([]);
+  const [filtroOficinaId, setFiltroOficinaId] = useState('');
   const [formaPago, setFormaPago] = useState<FormaPagoOC | ''>('');
   const [metodoPago, setMetodoPago] = useState<MetodoPagoOC | ''>('');
   const [metodoPagoOtroDetalle, setMetodoPagoOtroDetalle] = useState('');
@@ -99,20 +101,15 @@ export default function StorePedidoDetalle() {
   }, [pedido, isAdmin]);
 
   const cargarUsuariosOficina = async () => {
-    if (!pedido?.usuario_id) return;
-    const { data: usuarioPedido } = await supabase
-      .from('usuarios')
-      .select('oficina_id')
-      .eq('id', pedido.usuario_id)
-      .maybeSingle();
-    if (!usuarioPedido?.oficina_id) return;
-    const { data: usuarios } = await supabase
-      .from('usuarios')
-      .select('id, nombre, apellidos, nombre_completo')
-      .eq('oficina_id', usuarioPedido.oficina_id)
-      .eq('estado', 'activo')
-      .order('nombre_completo');
+    // Quien da seguimiento a pedidos debe ver todos los usuarios/oficinas de MOVI,
+    // no solo los de la oficina del dueño del pedido.
+    const [{ data: usuarios }, { data: oficinas }] = await Promise.all([
+      supabase.from('usuarios').select('id, nombre, apellidos, nombre_completo, oficina_id')
+        .eq('estado', 'activo').order('nombre_completo'),
+      supabase.from('oficinas').select('id, nombre').eq('activa', true).order('nombre'),
+    ]);
     if (usuarios) setUsuariosOficina(usuarios);
+    if (oficinas) setOficinasList(oficinas);
   };
 
   const cargarGastosPedido = async () => {
@@ -1177,13 +1174,42 @@ export default function StorePedidoDetalle() {
                 )}
                 <div className="space-y-3 mb-4">
                   {usuariosOficina.length > 0 && (
-                    <div>
-                      <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Responsable de Pago</label>
-                      <select value={responsablePagoId} onChange={e => setResponsablePagoId(e.target.value)} className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg">
-                        <option value="">Seleccionar...</option>
-                        {usuariosOficina.map(u => <option key={u.id} value={u.id}>{u.nombre_completo || u.nombre}</option>)}
-                      </select>
-                    </div>
+                    <>
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Oficina Jiro</label>
+                        <select
+                          value={filtroOficinaId}
+                          onChange={e => {
+                            const nuevaOficina = e.target.value;
+                            setFiltroOficinaId(nuevaOficina);
+                            const respActual = usuariosOficina.find(u => u.id === responsablePagoId);
+                            if (nuevaOficina && respActual?.oficina_id !== nuevaOficina) setResponsablePagoId('');
+                          }}
+                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg"
+                        >
+                          <option value="">Todas las oficinas</option>
+                          {oficinasList.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Responsable de Pago</label>
+                        <select
+                          value={responsablePagoId}
+                          onChange={e => {
+                            const nuevoId = e.target.value;
+                            setResponsablePagoId(nuevoId);
+                            const u = usuariosOficina.find(u => u.id === nuevoId);
+                            if (u?.oficina_id) setFiltroOficinaId(u.oficina_id);
+                          }}
+                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg"
+                        >
+                          <option value="">Seleccionar...</option>
+                          {usuariosOficina
+                            .filter(u => !filtroOficinaId || u.oficina_id === filtroOficinaId)
+                            .map(u => <option key={u.id} value={u.id}>{u.nombre_completo || u.nombre}</option>)}
+                        </select>
+                      </div>
+                    </>
                   )}
                   <div>
                     <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Metodo de Pago *</label>
