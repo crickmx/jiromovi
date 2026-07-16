@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CircleCheck as CheckCircle, Circle as XCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader as Loader2, Wallet, Trash2 } from 'lucide-react';
+import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CircleCheck as CheckCircle, Circle as XCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader as Loader2, Wallet, Trash2, Settings } from 'lucide-react';
+import { BaseModal } from '../components/BaseModal';
 import { PageHeader } from '@/components/ui/page-header';
 import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus, obtenerPagosPedido, registrarPago, eliminarPago, tieneAccesoEquipoStore, obtenerMapeoCamposTrigger, resolverTemplatePedido, obtenerCamposTramiteTipo } from '../lib/storeUtils';
-import type { StorePedidoCompleto, StoreEstatusPedido, FormaPagoOC, MetodoPagoOC, StorePedidoGasto, StorePedidoDetalleGasto, StorePedidoPago } from '../lib/storeTypes';
-import { TIPO_GASTO_OPTIONS, METODO_PAGO_OPCIONES, getFormasPagoParaMetodo } from '../lib/storeTypes';
+import type { StorePedidoCompleto, StoreEstatusPedido, StoreMetodoPago, StoreFormaPago, StorePedidoGasto, StorePedidoDetalleGasto, StorePedidoPago } from '../lib/storeTypes';
+import { TIPO_GASTO_OPTIONS, METODO_PAGO_OPCIONES } from '../lib/storeTypes';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { generarFolioOC, generarPDFOrdenCompra, subirPDFOrdenCompra, validarDatosPagoCompletos } from '../lib/storePdfOrdenCompra';
@@ -30,9 +31,15 @@ export default function StorePedidoDetalle() {
   // Payment fields
   const [responsablePagoId, setResponsablePagoId] = useState('');
   const [usuariosOficina, setUsuariosOficina] = useState<any[]>([]);
-  const [formaPago, setFormaPago] = useState<FormaPagoOC | ''>('');
-  const [metodoPago, setMetodoPago] = useState<MetodoPagoOC | ''>('');
+  const [oficinasList, setOficinasList] = useState<{ id: string; nombre: string }[]>([]);
+  const [filtroOficinaId, setFiltroOficinaId] = useState('');
+  const [formaPago, setFormaPago] = useState('');
+  const [metodoPago, setMetodoPago] = useState('');
   const [metodoPagoOtroDetalle, setMetodoPagoOtroDetalle] = useState('');
+  const [metodosPago, setMetodosPago] = useState<StoreMetodoPago[]>([]);
+  const [formasPago, setFormasPago] = useState<StoreFormaPago[]>([]);
+  const [metodoFormaIds, setMetodoFormaIds] = useState<Record<string, string[]>>({});
+  const [mostrarConfigCombinaciones, setMostrarConfigCombinaciones] = useState(false);
   const [observacionesOC, setObservacionesOC] = useState('');
   const [guardandoPago, setGuardandoPago] = useState(false);
   const [generandoOC, setGenerandoOC] = useState(false);
@@ -98,21 +105,55 @@ export default function StorePedidoDetalle() {
     }
   }, [pedido, isAdmin]);
 
+  useEffect(() => {
+    const cargarMetodosYFormasPago = async () => {
+      const [{ data: metodos }, { data: formas }, { data: mapeo }] = await Promise.all([
+        supabase.from('store_metodos_pago').select('id, nombre, orden, activo').eq('activo', true).order('orden'),
+        supabase.from('store_formas_pago').select('id, cantidad, frecuencia, orden, activo').eq('activo', true).order('orden'),
+        supabase.from('store_metodo_forma_pago').select('metodo_id, forma_id'),
+      ]);
+      if (metodos) setMetodosPago(metodos);
+      if (formas) setFormasPago(formas);
+      if (mapeo) {
+        const map: Record<string, string[]> = {};
+        mapeo.forEach(({ metodo_id, forma_id }) => {
+          (map[metodo_id] ??= []).push(forma_id);
+        });
+        setMetodoFormaIds(map);
+      }
+    };
+    cargarMetodosYFormasPago();
+  }, []);
+
+  const getFormasParaMetodo = (nombreMetodo: string): string[] => {
+    const metodo = metodosPago.find(m => m.nombre === nombreMetodo);
+    if (!metodo) return [];
+    const ids = metodoFormaIds[metodo.id] || [];
+    return formasPago.filter(f => ids.includes(f.id)).map(f => `${f.cantidad} ${f.frecuencia}`);
+  };
+
+  const toggleCombinacionPago = async (metodoId: string, formaId: string, activar: boolean) => {
+    if (activar) {
+      const { error } = await supabase.from('store_metodo_forma_pago').insert({ metodo_id: metodoId, forma_id: formaId });
+      if (error) return;
+      setMetodoFormaIds(prev => ({ ...prev, [metodoId]: [...(prev[metodoId] || []), formaId] }));
+    } else {
+      const { error } = await supabase.from('store_metodo_forma_pago').delete().eq('metodo_id', metodoId).eq('forma_id', formaId);
+      if (error) return;
+      setMetodoFormaIds(prev => ({ ...prev, [metodoId]: (prev[metodoId] || []).filter(id => id !== formaId) }));
+    }
+  };
+
   const cargarUsuariosOficina = async () => {
-    if (!pedido?.usuario_id) return;
-    const { data: usuarioPedido } = await supabase
-      .from('usuarios')
-      .select('oficina_id')
-      .eq('id', pedido.usuario_id)
-      .maybeSingle();
-    if (!usuarioPedido?.oficina_id) return;
-    const { data: usuarios } = await supabase
-      .from('usuarios')
-      .select('id, nombre, apellidos, nombre_completo')
-      .eq('oficina_id', usuarioPedido.oficina_id)
-      .eq('estado', 'activo')
-      .order('nombre_completo');
+    // Quien da seguimiento a pedidos debe ver todos los usuarios/oficinas de MOVI,
+    // no solo los de la oficina del dueño del pedido.
+    const [{ data: usuarios }, { data: oficinas }] = await Promise.all([
+      supabase.from('usuarios').select('id, nombre, apellidos, nombre_completo, oficina_id')
+        .eq('estado', 'activo').order('nombre_completo'),
+      supabase.from('oficinas').select('id, nombre').eq('activa', true).order('nombre'),
+    ]);
     if (usuarios) setUsuariosOficina(usuarios);
+    if (oficinas) setOficinasList(oficinas);
   };
 
   const cargarGastosPedido = async () => {
@@ -1177,33 +1218,67 @@ export default function StorePedidoDetalle() {
                 )}
                 <div className="space-y-3 mb-4">
                   {usuariosOficina.length > 0 && (
-                    <div>
-                      <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Responsable de Pago</label>
-                      <select value={responsablePagoId} onChange={e => setResponsablePagoId(e.target.value)} className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg">
-                        <option value="">Seleccionar...</option>
-                        {usuariosOficina.map(u => <option key={u.id} value={u.id}>{u.nombre_completo || u.nombre}</option>)}
-                      </select>
-                    </div>
+                    <>
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Oficina Jiro</label>
+                        <select
+                          value={filtroOficinaId}
+                          onChange={e => {
+                            const nuevaOficina = e.target.value;
+                            setFiltroOficinaId(nuevaOficina);
+                            const respActual = usuariosOficina.find(u => u.id === responsablePagoId);
+                            if (nuevaOficina && respActual?.oficina_id !== nuevaOficina) setResponsablePagoId('');
+                          }}
+                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg"
+                        >
+                          <option value="">Todas las oficinas</option>
+                          {oficinasList.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Responsable de Pago</label>
+                        <select
+                          value={responsablePagoId}
+                          onChange={e => {
+                            const nuevoId = e.target.value;
+                            setResponsablePagoId(nuevoId);
+                            const u = usuariosOficina.find(u => u.id === nuevoId);
+                            if (u?.oficina_id) setFiltroOficinaId(u.oficina_id);
+                          }}
+                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg"
+                        >
+                          <option value="">Seleccionar...</option>
+                          {usuariosOficina
+                            .filter(u => !filtroOficinaId || u.oficina_id === filtroOficinaId)
+                            .map(u => <option key={u.id} value={u.id}>{u.nombre_completo || u.nombre}</option>)}
+                        </select>
+                      </div>
+                    </>
                   )}
                   <div>
-                    <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Metodo de Pago *</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-medium text-neutral-600 dark:text-white/60">Metodo de Pago *</label>
+                      <button
+                        type="button"
+                        onClick={() => setMostrarConfigCombinaciones(true)}
+                        title="Configurar combinaciones de Metodo/Forma de Pago"
+                        className="text-neutral-400 hover:text-neutral-700 dark:text-white/40 dark:hover:text-white"
+                      >
+                        <Settings className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                     <select value={metodoPago} onChange={e => {
-                      const nuevoMetodo = e.target.value as MetodoPagoOC;
+                      const nuevoMetodo = e.target.value;
                       setMetodoPago(nuevoMetodo);
-                      const formasDisponibles = getFormasPagoParaMetodo(nuevoMetodo);
+                      const formasDisponibles = getFormasParaMetodo(nuevoMetodo);
                       if (formasDisponibles.length === 1) {
                         setFormaPago(formasDisponibles[0]);
-                      } else if (formaPago && !formasDisponibles.includes(formaPago as FormaPagoOC)) {
+                      } else if (formaPago && !formasDisponibles.includes(formaPago)) {
                         setFormaPago('');
                       }
                     }} className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg">
                       <option value="">Seleccionar...</option>
-                      <option value="Cargo a Oficina">Cargo a Oficina</option>
-                      <option value="Cargo a Bono de Agente">Cargo a Bono de Agente</option>
-                      <option value="Pago Directo">Pago Directo</option>
-                      <option value="Descuento de Comisiones">Descuento de Comisiones</option>
-                      <option value="Cargo a Nómina">Cargo a Nomina</option>
-                      <option value="Otro">Otro</option>
+                      {metodosPago.map(m => <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
                     </select>
                   </div>
                   {metodoPago === 'Otro' && (
@@ -1213,12 +1288,12 @@ export default function StorePedidoDetalle() {
                     <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Forma de Pago *</label>
                     <select
                       value={formaPago}
-                      onChange={e => setFormaPago(e.target.value as FormaPagoOC)}
+                      onChange={e => setFormaPago(e.target.value)}
                       disabled={!metodoPago}
                       className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg disabled:opacity-50"
                     >
                       <option value="">Seleccionar...</option>
-                      {getFormasPagoParaMetodo(metodoPago).map(fp => (
+                      {getFormasParaMetodo(metodoPago).map(fp => (
                         <option key={fp} value={fp}>{fp}</option>
                       ))}
                     </select>
@@ -1267,6 +1342,47 @@ export default function StorePedidoDetalle() {
           </div>
         </div>
       </div>
+
+      <BaseModal
+        isOpen={mostrarConfigCombinaciones}
+        onClose={() => setMostrarConfigCombinaciones(false)}
+        title="Combinaciones de Metodo/Forma de Pago"
+        maxWidth="3xl"
+      >
+        <p className="text-sm text-ios-gray-500 mb-4">
+          Marca qué Formas de Pago están disponibles para cada Método de Pago en la Orden de Compra.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr>
+                <th className="text-left py-2 pr-3 border-b border-ios-gray-200/50">Metodo</th>
+                {formasPago.map(f => (
+                  <th key={f.id} className="text-center py-2 px-2 border-b border-ios-gray-200/50 whitespace-nowrap">
+                    {f.cantidad} {f.frecuencia}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {metodosPago.map(m => (
+                <tr key={m.id}>
+                  <td className="py-2 pr-3 border-b border-ios-gray-100">{m.nombre}</td>
+                  {formasPago.map(f => (
+                    <td key={f.id} className="text-center py-2 px-2 border-b border-ios-gray-100">
+                      <input
+                        type="checkbox"
+                        checked={(metodoFormaIds[m.id] || []).includes(f.id)}
+                        onChange={e => toggleCombinacionPago(m.id, f.id, e.target.checked)}
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </BaseModal>
     </>
   );
 }

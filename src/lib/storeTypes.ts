@@ -78,26 +78,20 @@ export interface StoreEstatusPedido {
   created_at: string;
 }
 
-export type FormaPagoOC = 'Contado' | '2 Parcialidades' | '12 Meses';
-
-export function getFormasPagoParaMetodo(metodo: MetodoPagoOC | ''): FormaPagoOC[] {
-  switch (metodo) {
-    case 'Descuento de Comisiones':
-      return ['Contado', '2 Parcialidades'];
-    case 'Cargo a Nómina':
-      return ['Contado', '12 Meses'];
-    default:
-      return ['Contado'];
-  }
+export interface StoreMetodoPago {
+  id: string;
+  nombre: string;
+  orden: number;
+  activo: boolean;
 }
 
-export type MetodoPagoOC =
-  | 'Cargo a Oficina'
-  | 'Cargo a Bono de Agente'
-  | 'Pago Directo'
-  | 'Descuento de Comisiones'
-  | 'Cargo a Nómina'
-  | 'Otro';
+export interface StoreFormaPago {
+  id: string;
+  cantidad: number;
+  frecuencia: string;
+  orden: number;
+  activo: boolean;
+}
 
 export interface StorePedido {
   id: string;
@@ -111,8 +105,8 @@ export interface StorePedido {
   total?: number;
   responsable_pago_id?: string;
   // Campos de Orden de Compra
-  forma_pago?: FormaPagoOC;
-  metodo_pago?: MetodoPagoOC;
+  forma_pago?: string;
+  metodo_pago?: string;
   metodo_pago_otro_detalle?: string;
   folio_oc?: string;
   observaciones_oc?: string;
