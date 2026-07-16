@@ -224,9 +224,9 @@ export function Tramites() {
   const canManageCatalogs = esRolSistemaAdmin || esRolSistemaGerente;
 
   // Assignment UI state
-  const [myOperacionesRole, setMyOperacionesRole] = useState<'lider' | 'ejecutivo' | 'miembro' | null>(null);
+  const [myOperacionesRole, setMyOperacionesRole] = useState<'lider' | 'supervisor' | 'director' | 'ejecutivo' | 'miembro' | null>(null);
   const [myGrupoRoles, setMyGrupoRoles] = useState<Map<string, string>>(new Map()); // grupo_id -> rol_en_equipo (rol de EQUIPO)
-  const esLiderDeAlgunEquipo = [...myGrupoRoles.values()].some(r => r === 'lider');
+  const esLiderDeAlgunEquipo = [...myGrupoRoles.values()].some(r => ['lider','supervisor','director'].includes(r));
   const [myGrupoIds, setMyGrupoIds] = useState<string[]>([]);
   const [assigningTramiteId, setAssigningTramiteId] = useState<string | null>(null);
   const [teamEjecutivos, setTeamEjecutivos] = useState<Array<{ id: string; nombre_completo: string }>>([]);
@@ -313,7 +313,7 @@ export function Tramites() {
             .from('tramites_grupos_miembros')
             .select('usuario_id')
             .eq('grupo_id', ticket.grupo_asignado_id)
-            .eq('rol_en_equipo', 'lider');
+            .in('rol_en_equipo', ['lider', 'supervisor', 'director']);
           (lideresData ?? []).forEach((l: { usuario_id: string }) => recipients.add(l.usuario_id));
         }
 
@@ -623,7 +623,7 @@ export function Tramites() {
       const allActive = (data as Row[]).filter(m => m.grupo?.activo);
       const opsEntries = allActive.filter(m => m.grupo?.area_categoria === 'Operaciones');
       const opsEntry = opsEntries[0] ?? null;
-      setMyOperacionesRole(opsEntry ? (opsEntry.rol_en_equipo as 'lider' | 'ejecutivo' | 'miembro') : null);
+      setMyOperacionesRole(opsEntry ? (opsEntry.rol_en_equipo as 'lider' | 'supervisor' | 'director' | 'ejecutivo' | 'miembro') : null);
       setMyGrupoIds(allActive.map(m => m.grupo_id)); // all areas, not just Operaciones
       const rolesMap = new Map<string, string>();
       for (const m of allActive) rolesMap.set(m.grupo_id, m.rol_en_equipo);
@@ -722,7 +722,7 @@ export function Tramites() {
     // corte de Agente, porque el rol de líder es por equipo, no por rol global del usuario
     const esLiderDeEsteEquipo =
       tramite.grupo_asignado_id !== null &&
-      myGrupoRoles.get(tramite.grupo_asignado_id) === 'lider';
+      ['lider', 'supervisor', 'director'].includes(myGrupoRoles.get(tramite.grupo_asignado_id) ?? '');
     if (esLiderDeEsteEquipo) return true;
 
     // Agente: solo sus propios trámites
