@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
-const VAPID_PUBLIC_KEY = 'fjaFkBA2HvLfQQC7huQ6L9dukThrwRb8aVXyA4f8y_U0kodIJ8xF0Xmu0sR8mRj9r_2QqFyvPW5jQqrqBz8awg';
+const VAPID_PUBLIC_KEY = 'BANI4vuzzwmVrJTIkGJiXLZgne4xiYfwwVm8bpmSXL80ZMLZX-5yczwvNPqUjhIyoG7YZPZ-iTAeZD1zyo6U3-c';
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -38,7 +38,7 @@ export function usePushNotifications(userId: string | null): PushHookResult {
     if (!isSupported || !userId) return;
     const init = async () => {
       try {
-        const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+        const reg = await navigator.serviceWorker.register('/push-sw.js', { scope: '/' });
         swRegRef.current = reg; setIsSwReady(true);
         setPermission(Notification.permission);
         const existing = await reg.pushManager.getSubscription();
@@ -77,10 +77,10 @@ export function usePushNotifications(userId: string | null): PushHookResult {
             usuario_id: userId,
             endpoint: subJson.endpoint,
             p256dh: subJson.keys?.p256dh,
-            auth: subJson.keys?.auth,
+            auth_key: subJson.keys?.auth,
             user_agent: navigator.userAgent.slice(0, 200),
           },
-          { onConflict: 'endpoint' }
+          { onConflict: 'usuario_id,endpoint' }
         );
       if (dbErr) throw dbErr;
       setIsSubscribed(true);
