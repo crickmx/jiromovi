@@ -1,0 +1,24 @@
+# Incluir dentro del server HTTPS que sirve MOVI. Roundcube permanece ligado
+# a 127.0.0.1 y no debe publicarse con otro dominio/puerto.
+location = /correo {
+    return 301 /correo/;
+}
+
+location /correo/ {
+    proxy_pass http://127.0.0.1:8080/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Prefix /correo;
+
+    proxy_hide_header X-Frame-Options;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header Content-Security-Policy "frame-ancestors 'self'; object-src 'none'; base-uri 'self'" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header X-Content-Type-Options "nosniff" always;
+
+    client_max_body_size 25m;
+    proxy_read_timeout 120s;
+}

@@ -1,0 +1,67 @@
+name: movi-roundcube
+
+services:
+  database:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${ROUNDCUBE_DB_NAME}
+      MARIADB_USER: ${ROUNDCUBE_DB_USER}
+      MARIADB_PASSWORD: ${ROUNDCUBE_DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${ROUNDCUBE_DB_ROOT_PASSWORD}
+    volumes:
+      - roundcube_database:/var/lib/mysql
+    networks:
+      - roundcube_internal
+    healthcheck:
+      test: ["CMD-SHELL", "healthcheck.sh --connect --innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+
+  roundcube:
+    image: ${ROUNDCUBE_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      ROUNDCUBEMAIL_DB_TYPE: mysql
+      ROUNDCUBEMAIL_DB_HOST: database
+      ROUNDCUBEMAIL_DB_PORT: 3306
+      ROUNDCUBEMAIL_DB_NAME: ${ROUNDCUBE_DB_NAME}
+      ROUNDCUBEMAIL_DB_USER: ${ROUNDCUBE_DB_USER}
+      ROUNDCUBEMAIL_DB_PASSWORD: ${ROUNDCUBE_DB_PASSWORD}
+      ROUNDCUBEMAIL_DEFAULT_HOST: ${IONOS_IMAP_HOST}
+      ROUNDCUBEMAIL_DEFAULT_PORT: ${IONOS_IMAP_PORT}
+      ROUNDCUBEMAIL_SMTP_SERVER: ${IONOS_SMTP_HOST}
+      ROUNDCUBEMAIL_SMTP_PORT: ${IONOS_SMTP_PORT}
+      ROUNDCUBEMAIL_REQUEST_PATH: ${ROUNDCUBE_REQUEST_PATH}
+      ROUNDCUBEMAIL_SKIN: elastic
+      ROUNDCUBEMAIL_PLUGINS: archive,zipdownload,newmail_notifier,markasjunk
+      ROUNDCUBEMAIL_UPLOAD_MAX_FILESIZE: ${ROUNDCUBE_UPLOAD_MAX_FILESIZE}
+      ROUNDCUBEMAIL_ASPELL_DICTS: es
+      ROUNDCUBE_DES_KEY: ${ROUNDCUBE_DES_KEY}
+    ports:
+      - "${ROUNDCUBE_BIND_ADDRESS}:${ROUNDCUBE_HTTP_PORT}:80"
+    volumes:
+      - ./config:/var/roundcube/config:ro
+      - ./php/zzz-movi.ini:/usr/local/etc/php/conf.d/zzz-movi.ini:ro
+      - roundcube_temp:/tmp/roundcube-temp
+    networks:
+      - roundcube_internal
+      - roundcube_proxy
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  roundcube_internal:
+    internal: true
+  roundcube_proxy:
+
+volumes:
+  roundcube_database:
+  roundcube_temp:
