@@ -255,7 +255,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const { usuario_id, title, body: notifBody, url, tag } = await req.json();
+    const { usuario_id, title, body: notifBody, url, tag, caller_number } = await req.json();
 
     if (!usuario_id || !title) {
       return new Response(
@@ -290,6 +290,7 @@ Deno.serve(async (req: Request) => {
       body: notifBody || "",
       url: url || "/admin/telefonia",
       tag: tag || "notification",
+      caller_number: caller_number || null,
       timestamp: Date.now(),
     };
 
