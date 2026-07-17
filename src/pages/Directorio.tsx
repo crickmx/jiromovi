@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, UserPlus, Pencil as Edit, Trash2, ToggleLeft, ToggleRight, Users, ListFilter as Filter, Send, CircleCheck as CheckCircle, Eye } from 'lucide-react';
+import { Search, UserPlus, Pencil as Edit, Trash2, ToggleLeft, ToggleRight, Users, ListFilter as Filter, Send, CircleCheck as CheckCircle, Eye, FlaskConical } from 'lucide-react';
 import { UserModal } from '../components/UserModal';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,8 @@ export function Directorio() {
   const [accessSentId, setAccessSentId] = useState<string | null>(null);
   const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [betaIds, setBetaIds] = useState<Set<string>>(new Set());
+  const [togglingBetaId, setTogglingBetaId] = useState<string | null>(null);
   const { startImpersonation } = useImpersonation();
 
   const isAdmin = currentUser?.rol === 'Administrador';
@@ -82,10 +84,13 @@ export function Directorio() {
         usersQuery.eq('oficina_id', currentUser.oficina_id);
       }
 
-      const [usuariosRes, oficinasRes] = await Promise.all([
+      const [usuariosRes, oficinasRes, betaRes] = await Promise.all([
         usersQuery,
         supabase.from('oficinas').select('id, nombre').eq('activa', true).order('nombre'),
+        supabase.from('usuarios_beta').select('usuario_id'),
       ]);
+
+      setBetaIds(new Set((betaRes.data || []).map((b: any) => b.usuario_id)));
 
       if (usuariosRes.error) {
         console.error('[DIRECTORIO] Query error:', usuariosRes.error);
@@ -227,6 +232,24 @@ export function Directorio() {
   };
 
 
+  const handleToggleBeta = async (usuario: Usuario) => {
+    if (!isAdmin || togglingBetaId) return;
+    setTogglingBetaId(usuario.id);
+    try {
+      if (betaIds.has(usuario.id)) {
+        const { error } = await supabase.from('usuarios_beta').delete().eq('usuario_id', usuario.id);
+        if (error) { alert('Error al quitar de Beta: ' + error.message); return; }
+        setBetaIds(prev => { const next = new Set(prev); next.delete(usuario.id); return next; });
+      } else {
+        const { error } = await supabase.from('usuarios_beta').insert({ usuario_id: usuario.id });
+        if (error) { alert('Error al agregar a Beta: ' + error.message); return; }
+        setBetaIds(prev => new Set(prev).add(usuario.id));
+      }
+    } finally {
+      setTogglingBetaId(null);
+    }
+  };
+
   const normalize = (text: string) =>
     text
       .normalize('NFD')
@@ -339,23 +362,23 @@ export function Directorio() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[800px]">
-            <thead className="bg-slate-50 border-b border-slate-200">
+        <div className="overflow-auto max-h-[65vh]">
+          <table className="w-full min-w-[760px]">
+            <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Usuario
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Rol
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Oficina
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Estado
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Acciones
                 </th>
               </tr>
@@ -363,7 +386,7 @@ export function Directorio() {
             <tbody className="bg-white divide-y divide-slate-200">
               {filteredUsuarios.map((usuario) => (
                 <tr key={usuario.id} className="hover:bg-slate-50 transition">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-3 whitespace-nowrap">
                     <div className="flex items-center">
                       {usuario.imagen_perfil_url ? (
                         <img
@@ -395,7 +418,7 @@ export function Directorio() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-3 whitespace-nowrap">
                     <span
                       className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                         usuario.rol === 'Administrador'
@@ -410,10 +433,10 @@ export function Directorio() {
                       {usuario.rol}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                  <td className="px-3 py-3 whitespace-nowrap text-sm text-slate-900">
                     {usuario.oficinas?.nombre || '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-3 whitespace-nowrap">
                     {isAdmin ? (
                       <button
                         onClick={() => handleToggleActive(usuario)}
@@ -447,13 +470,13 @@ export function Directorio() {
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end items-center space-x-2">
+                  <td className="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex justify-end items-center space-x-1">
                       {(isAdmin || isGerente) && usuario.estado === 'activo' && (
                         <button
                           onClick={() => handleSendAccess(usuario)}
                           disabled={sendingAccessId === usuario.id || accessSentId === usuario.id}
-                          className={`flex items-center gap-1.5 px-2 lg:px-3 py-2 rounded-lg text-sm font-medium transition disabled:opacity-60 ${
+                          className={`flex items-center p-2 rounded-lg transition disabled:opacity-60 ${
                             accessSentId === usuario.id
                               ? 'text-green-700 bg-green-50'
                               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -461,10 +484,27 @@ export function Directorio() {
                           title="Enviar código de acceso al correo y WhatsApp"
                         >
                           {accessSentId === usuario.id
-                            ? <><CheckCircle className="w-4 h-4" /><span className="hidden lg:inline">Enviado</span></>
+                            ? <CheckCircle className="w-4 h-4" />
                             : sendingAccessId === usuario.id
-                            ? <><span className="w-4 h-4 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" /></>
-                            : <><Send className="w-4 h-4" /><span className="hidden lg:inline">Enviar acceso</span></>
+                            ? <span className="w-4 h-4 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" />
+                            : <Send className="w-4 h-4" />
+                          }
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleToggleBeta(usuario)}
+                          disabled={togglingBetaId === usuario.id}
+                          className={`flex items-center p-2 rounded-lg transition disabled:opacity-60 ${
+                            betaIds.has(usuario.id)
+                              ? 'text-violet-700 bg-violet-50 hover:bg-violet-100'
+                              : 'text-slate-500 hover:text-violet-700 hover:bg-violet-50'
+                          }`}
+                          title={betaIds.has(usuario.id) ? 'Quitar de Beta' : 'Agregar a Beta'}
+                        >
+                          {togglingBetaId === usuario.id
+                            ? <span className="w-4 h-4 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
+                            : <FlaskConical className="w-4 h-4" />
                           }
                         </button>
                       )}
@@ -480,16 +520,13 @@ export function Directorio() {
                               setImpersonatingId(null);
                             }
                           }}
-                          className="flex items-center gap-1.5 px-2 lg:px-3 py-2 rounded-lg text-sm font-medium text-amber-700 hover:text-amber-900 hover:bg-amber-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex items-center p-2 rounded-lg text-amber-700 hover:text-amber-900 hover:bg-amber-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Ver como este usuario"
                         >
                           {impersonatingId === usuario.id
                             ? <span className="w-4 h-4 border-2 border-amber-400 border-t-amber-700 rounded-full animate-spin" />
                             : <Eye className="w-4 h-4" />
                           }
-                          <span className="hidden xl:inline">
-                            {impersonatingId === usuario.id ? 'Cargando...' : 'Ver como'}
-                          </span>
                         </button>
                       )}
                       <button
@@ -497,11 +534,10 @@ export function Directorio() {
                           setSelectedUser(usuario);
                           setModalOpen(true);
                         }}
-                        className="flex items-center space-x-1 text-accent hover:text-primary-900 px-2 lg:px-3 py-2 hover:bg-primary-50 rounded-lg transition"
+                        className="flex items-center p-2 text-accent hover:text-primary-900 hover:bg-primary-50 rounded-lg transition"
                         title={isReadOnly ? "Ver Usuario" : "Ver / Editar Usuario"}
                       >
                         <Edit className="w-4 h-4" />
-                        <span className="text-sm font-medium hidden lg:inline">{isReadOnly ? 'Ver' : 'Ver / Editar'}</span>
                       </button>
                       {isAdmin && (
                         <button

@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from './supabase';
+import { useMoviAuth } from '../contexts/MoviAuthContext';
+import { isBetaHost } from './betaAccess';
 
 export interface ModuleVisibilityRule {
   id: string;
   module_key: string;
-  target_type: 'role' | 'office' | 'user';
-  target_value: string; // role name, oficina_id, or usuario id
+  target_type: 'role' | 'office' | 'user' | 'beta_user';
+  target_value: string; // role name, oficina_id, usuario id, o (para beta_user) usuario id
   visible: boolean;
   updated_at: string;
 }
@@ -28,6 +30,8 @@ const CACHE_TTL = 60_000; // 1 min
 export function useModuleVisibility(): UseModuleVisibilityReturn {
   const [rules, setRules] = useState<ModuleVisibilityRule[]>(_cache ?? []);
   const [loading, setLoading] = useState(!_cache);
+  const { esUsuarioBeta } = useMoviAuth();
+  const betaOverrideEligible = isBetaHost() && esUsuarioBeta;
 
   const fetch = useCallback(async () => {
     const now = Date.now();
@@ -53,6 +57,13 @@ export function useModuleVisibility(): UseModuleVisibilityReturn {
     // Administradores siempre ven todo, sin importar las reglas configuradas
     if (userRole === 'Administrador') return true;
 
+    // Override Beta: solo SUMA visibilidad (nunca oculta), y solo aplica en
+    // beta.movi.digital para un usuario Beta específico — nunca en producción.
+    if (betaOverrideEligible && userId) {
+      const betaRule = rules.find(r => r.module_key === moduleKey && r.target_type === 'beta_user' && r.target_value === userId);
+      if (betaRule?.visible) return true;
+    }
+
     // La regla más específica presente gana: usuario > oficina > rol
     if (userId) {
       const userRule = rules.find(r => r.module_key === moduleKey && r.target_type === 'user' && r.target_value === userId);
@@ -68,7 +79,7 @@ export function useModuleVisibility(): UseModuleVisibilityReturn {
     if (roleRule) return roleRule.visible;
 
     return true;
-  }, [rules]);
+  }, [rules, betaOverrideEligible]);
 
   const reload = useCallback(async () => {
     _cache = null;

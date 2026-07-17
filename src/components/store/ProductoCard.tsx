@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ShoppingCart, TriangleAlert as AlertTriangle, Sparkles, Wrench, Minus, Plus } from 'lucide-react';
 import type { StoreProducto } from '../../lib/storeTypes';
+import { parsearPersonalizacion } from '../../lib/storeUtils';
 
 interface Props {
   producto: StoreProducto;
@@ -29,9 +30,10 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
   const esPorPedido = producto.disponibilidad === 'por_pedido';
   const sinStock = !esPorPedido && producto.stock === 0;
   const pocasExistencias = !esPorPedido && producto.stock > 0 && producto.stock <= producto.stock_umbral;
-  // Si tiene variantes (color/talla/etc), "Agregar" no puede saltarse la elección —
-  // se manda al modal de detalle, que es el único lugar que sabe pedirlas.
+  // Si tiene variantes o personalización libre, se manda al modal de detalle.
   const tieneVariantes = (producto.atributos || []).some(a => (a.opciones || []).length > 0);
+  const { activo: tienePersonalizacion } = parsearPersonalizacion(producto.atributos);
+  const requiereModal = tieneVariantes || tienePersonalizacion;
 
   return (
     <div className={`bg-white dark:bg-white/5 rounded-xl shadow-sm border border-gray-200 dark:border-white/10 overflow-hidden hover:shadow-md transition-shadow ${sinStock ? 'opacity-75' : ''}`}>
@@ -105,7 +107,7 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
           </p>
 
           <div className="w-full sm:w-auto flex items-center gap-2">
-            {!esPremium && !sinStock && !tieneVariantes && (
+            {!esPremium && !sinStock && !requiereModal && (
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setCantidad(c => Math.max(1, c - 1))}
@@ -114,9 +116,14 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
                 >
                   <Minus className="w-3 h-3 sm:w-4 sm:h-4" />
                 </button>
-                <span className="text-sm sm:text-base font-medium text-gray-900 dark:text-white w-5 sm:w-6 text-center">
-                  {cantidad}
-                </span>
+                <input
+                  type="number"
+                  min="1"
+                  max="999"
+                  value={cantidad}
+                  onChange={e => setCantidad(Math.max(1, Math.min(999, parseInt(e.target.value) || 1)))}
+                  className="w-10 text-center text-sm font-medium text-gray-900 dark:text-white border border-gray-200 dark:border-white/15 rounded bg-transparent focus:outline-none focus:ring-1 focus:ring-accent"
+                />
                 <button
                   onClick={() => setCantidad(c => Math.min(999, c + 1))}
                   disabled={cantidad >= 999}
@@ -129,7 +136,7 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
 
             <button
               onClick={() => {
-                if (esPremium || tieneVariantes) { onVerDetalle(producto); return; }
+                if (esPremium || requiereModal) { onVerDetalle(producto); return; }
                 if (sinStock) return;
                 onAgregar(producto, cantidad);
                 setCantidad(1);
@@ -142,7 +149,7 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
               }`}
             >
               <ShoppingCart className="w-4 h-4" />
-              <span>{esPremium ? 'Ver Planes' : sinStock ? 'Agotado' : tieneVariantes ? 'Elegir opciones' : producto.tipo_item === 'servicio' ? 'Solicitar' : 'Agregar'}</span>
+              <span>{esPremium ? 'Ver Planes' : sinStock ? 'Agotado' : requiereModal ? 'Elegir opciones' : producto.tipo_item === 'servicio' ? 'Solicitar' : 'Agregar'}</span>
             </button>
           </div>
         </div>
