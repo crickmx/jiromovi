@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { getIaMailboxPassword } from "../_shared/emailCredentials.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -103,7 +104,8 @@ async function fetchNewEmails(
   const host = cuenta.imap_host || "imap.ionos.mx";
   const port = cuenta.imap_port || 993;
   const email = cuenta.email;
-  const password = cuenta.password_encrypted;
+  const password = await getIaMailboxPassword(supabase, cuenta.id);
+  if (!password) throw new Error("No hay credencial de correo almacenada para esta cuenta.");
 
   const conn = await Deno.connectTls({ hostname: host, port });
   const decoder = new TextDecoder();

@@ -1801,32 +1801,40 @@ function CuentaForm({ cuenta, onSave, onCancel }: { cuenta: CuentaCorreo | null;
     if (!form.nombre || !form.email || (!cuenta && !form.password)) return;
     setSaving(true);
     const carpetas = form.carpetas_incluidas.split(',').map(s => s.trim()).filter(Boolean);
-    if (cuenta) {
-      const updateData: any = {
-        nombre: form.nombre,
-        email: form.email,
-        imap_host: form.imap_host,
-        imap_port: form.imap_port,
-        smtp_host: form.smtp_host,
-        smtp_port: form.smtp_port,
-        carpetas_incluidas: carpetas,
-      };
-      if (form.password) updateData.password_encrypted = form.password;
-      await supabase.from('ia_cuentas_correo').update(updateData).eq('id', cuenta.id);
-    } else {
-      await supabase.from('ia_cuentas_correo').insert({
-        nombre: form.nombre,
-        email: form.email,
-        password_encrypted: form.password,
-        imap_host: form.imap_host,
-        imap_port: form.imap_port,
-        smtp_host: form.smtp_host,
-        smtp_port: form.smtp_port,
-        carpetas_incluidas: carpetas,
+    try {
+      // La contraseña viaja solo en este request al edge function, que la
+      // cifra server-side antes de guardarla — nunca se escribe en texto
+      // plano desde el navegador (antes se guardaba directo en
+      // ia_cuentas_correo.password_encrypted vía supabase.from(...).insert/update).
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const res = await fetch(`${supabaseUrl}/functions/v1/ia-cuentas-correo-save`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          cuenta_id: cuenta?.id,
+          nombre: form.nombre,
+          email: form.email,
+          password: form.password || undefined,
+          imap_host: form.imap_host,
+          imap_port: form.imap_port,
+          smtp_host: form.smtp_host,
+          smtp_port: form.smtp_port,
+          carpetas_incluidas: carpetas,
+        }),
       });
+      const json = await res.json();
+      if (!res.ok || json.error) throw new Error(json.error || 'No se pudo guardar la cuenta.');
+    } catch (err: any) {
+      alert(err.message || 'No se pudo guardar la cuenta.');
+    } finally {
+      setSaving(false);
+      onSave();
     }
-    setSaving(false);
-    onSave();
   }
 
   return (
