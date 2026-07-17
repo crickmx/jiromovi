@@ -88,3 +88,54 @@ La Fase 2 añadirá tokens de un solo uso, autologin desde la sesión Supabase,
 expiración/revocación y cierre sincronizado. Las fases posteriores integrarán
 contactos, firmas, notificaciones y finalmente la vista en
 `/centro-contacto/email`.
+
+## Fase 2 — SSO
+
+El repositorio incluye:
+
+- `roundcube-sso-token`: valida el JWT del usuario y emite un token opaco de
+  60 segundos.
+- `roundcube-sso-redeem`: endpoint exclusivamente servidor-a-servidor que
+  consume el token y recupera la credencial cifrada.
+- `movi_sso`: plugin Roundcube que realiza el canje y el login IMAP.
+- `roundcube_sso_tokens`: almacena únicamente SHA-256 del token, con RLS y sin
+  acceso para clientes.
+
+Generar un secreto nuevo:
+
+```bash
+openssl rand -base64 48
+```
+
+El mismo valor debe configurarse como `ROUNDCUBE_SSO_SHARED_SECRET` en los
+secretos de Supabase y en el `.env` privado del contenedor. También configurar:
+
+```text
+MOVI_ALLOWED_ORIGINS=https://app.movi.digital,https://beta.movi.digital
+IONOS_IMAP_HOST=ssl://imap.ionos.mx
+```
+
+Aplicar la migración y desplegar:
+
+```bash
+supabase db push
+supabase functions deploy roundcube-sso-token
+supabase functions deploy roundcube-sso-redeem --no-verify-jwt
+```
+
+`roundcube-sso-redeem` desactiva la verificación JWT de plataforma porque
+Roundcube no usa un JWT de usuario. La función valida obligatoriamente el
+secreto compartido con comparación resistente a diferencias de tiempo. No debe
+exponerse sin ese secreto.
+
+En el frontend se puede definir `VITE_ROUNDCUBE_URL=/correo/`; ese es también
+el valor predeterminado. El cierre de sesión de MOVI intenta cerrar primero la
+sesión Roundcube y continúa aunque el servicio de correo no esté disponible.
+
+Antes de habilitar usuarios:
+
+- Confirmar que una URL de handoff solo funciona una vez.
+- Confirmar que el mismo token falla después de 60 segundos.
+- Confirmar que el endpoint de canje responde `401` sin el secreto.
+- Confirmar que Nginx no registra query strings.
+- Confirmar que cerrar MOVI elimina también la sesión Roundcube.

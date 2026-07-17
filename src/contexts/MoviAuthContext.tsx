@@ -5,6 +5,7 @@ import { applyTheme } from '../lib/themeUtils';
 import { useImpersonation } from './ImpersonationContext';
 import { isBetaHost, skipBetaRedirectActive, crossDomainUrl, consumeIncomingSession, BETA_ORIGIN } from '../lib/betaAccess';
 import type { Database } from '../lib/database.types';
+import { closeRoundcubeSession } from '../lib/roundcubeSso';
 
 type UsuarioRow = Database['public']['Tables']['usuarios']['Row'];
 
@@ -154,6 +155,7 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
   async function signOut() {
     console.log('[MoviAuth] signing out');
     setRealUser(null);
+    await closeRoundcubeSession();
     await supabase.auth.signOut();
   }
 
@@ -188,4 +190,3 @@ export function MoviAuthProvider({ children }: { children: ReactNode }) {
 }
 
 export const useMoviAuth = () => useContext(MoviAuthContext);
-
