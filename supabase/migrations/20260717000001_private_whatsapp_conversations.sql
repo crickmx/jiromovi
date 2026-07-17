@@ -163,4 +163,5 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION mark_contact_messages_read(uuid, uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION mark_contact_messages_read(uuid, uuid) FROM anon;
 GRANT EXECUTE ON FUNCTION mark_contact_messages_read(uuid, uuid) TO authenticated;
