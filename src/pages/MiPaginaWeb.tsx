@@ -37,6 +37,12 @@ interface FeaturedEntry {
   featured_order: number;
 }
 
+interface CalendarBlockOption {
+  id: string;
+  name: string;
+  calendar_name: string;
+}
+
 const DEFAULT_FEATURED_TYPES = [
   'auto_individual',
   'vida_individual',
@@ -59,6 +65,8 @@ export default function MiPaginaWeb() {
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
   const [featuredIds, setFeaturedIds] = useState<Set<string>>(new Set());
   const [featuredOrder, setFeaturedOrder] = useState<string[]>([]);
+  const [calendarOptions, setCalendarOptions] = useState<CalendarBlockOption[]>([]);
+  const [visibleCalendarIds, setVisibleCalendarIds] = useState<string[]>([]);
 
   const [config, setConfig] = useState<UserWebPageConfig>({
     primary_color: DEFAULT_COLORS.primary,
@@ -77,7 +85,7 @@ export default function MiPaginaWeb() {
     if (!user?.id) return;
 
     try {
-      const [insurersData, existingConfig, templatesData, featuredData, officeData] = await Promise.all([
+      const [insurersData, existingConfig, templatesData, featuredData, officeData, agendaData, blockData] = await Promise.all([
         getActiveInsurers(),
         getUserWebPageConfig(user.id),
         supabase
@@ -95,7 +103,18 @@ export default function MiPaginaWeb() {
           .from('usuarios')
           .select('oficina_id, oficinas(accent_color, secondary_color)')
           .eq('id', user.id)
-          .maybeSingle()
+          .maybeSingle(),
+        supabase
+          .from('agenda_event_types')
+          .select('id, name, agenda_calendars!inner(name, user_id)')
+          .eq('agenda_calendars.user_id', user.id)
+          .eq('is_active', true),
+        supabase
+          .from('website_calendar_blocks')
+          .select('event_type_id')
+          .eq('user_id', user.id)
+          .eq('is_visible', true)
+          .order('display_order')
       ]);
 
       setInsurers(insurersData);
@@ -119,6 +138,12 @@ export default function MiPaginaWeb() {
       setTemplates(allTemplates);
 
       const featured: FeaturedEntry[] = featuredData.data || [];
+      setCalendarOptions((agendaData.data || []).map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        calendar_name: Array.isArray(item.agenda_calendars) ? item.agenda_calendars[0]?.name : item.agenda_calendars?.name
+      })));
+      setVisibleCalendarIds((blockData.data || []).map(item => item.event_type_id));
 
       if (featured.length > 0) {
         const ids = new Set(featured.map(f => f.form_template_id));
@@ -170,6 +195,18 @@ export default function MiPaginaWeb() {
           .insert(rows);
       }
 
+      await supabase.from('website_calendar_blocks').delete().eq('user_id', user.id);
+      if (visibleCalendarIds.length) {
+        await supabase.from('website_calendar_blocks').insert(
+          visibleCalendarIds.map((eventTypeId, index) => ({
+            user_id: user.id,
+            event_type_id: eventTypeId,
+            is_visible: true,
+            display_order: index + 1
+          }))
+        );
+      }
+
       setSaveStatus('success');
       setSaveMessage('Configuracion guardada exitosamente');
       setTimeout(() => setSaveStatus('idle'), 3000);
@@ -203,6 +240,12 @@ export default function MiPaginaWeb() {
       }
       return next;
     });
+  }
+
+  function toggleCalendarBlock(eventTypeId: string) {
+    setVisibleCalendarIds(current => current.includes(eventTypeId)
+      ? current.filter(id => id !== eventTypeId)
+      : [...current, eventTypeId]);
   }
 
   function moveFeaturedUp(templateId: string) {
@@ -299,6 +342,20 @@ export default function MiPaginaWeb() {
                 </div>
               </div>
             )}
+          </Card>
+
+          <Card className="p-4">
+            <h2 className="text-base font-semibold mb-1">Mostrar mis calendarios</h2>
+            <p className="text-xs text-gray-500 mb-3">Elige qué tipos de cita aparecerán en tu página pública.</p>
+            <div className="space-y-2">
+              {calendarOptions.map(item => (
+                <label key={item.id} className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-gray-50">
+                  <input type="checkbox" checked={visibleCalendarIds.includes(item.id)} onChange={() => toggleCalendarBlock(item.id)} />
+                  <span className="text-sm"><strong>{item.name}</strong><span className="block text-xs text-gray-500">{item.calendar_name}</span></span>
+                </label>
+              ))}
+              {!calendarOptions.length && <p className="text-sm text-gray-500">Primero crea un tipo de cita en el módulo Agenda.</p>}
+            </div>
           </Card>
 
           <Card className="p-4">

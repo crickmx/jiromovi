@@ -5,6 +5,7 @@ import {
   ChevronLeft, ChevronRight, ArrowUp, Car, ExternalLink,
   Search, X, ChevronDown, Award, Smartphone, Globe, Menu,
   UserPlus, Download,
+  CalendarDays,
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { getPublicWebPageBySlug } from '../lib/webPagesUtils';
@@ -12,6 +13,7 @@ import type { PublicWebPageData, SharedFormLink } from '../lib/webPagesTypes';
 import { DEFAULT_TEXT } from '../lib/webPagesTypes';
 import { createColorVariant } from '../lib/animationUtils';
 import { type AgentVCardData, downloadVCard } from '../lib/vcardUtils';
+import { supabase } from '../lib/supabase';
 
 /* ─────────────────────────────────────────────
    TIPOS / METADATOS (sin cambios en lógica)
@@ -214,6 +216,7 @@ export default function PaginaPublicaAsesor() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [vcardLoading, setVcardLoading] = useState(false);
+  const [agendaBlocks, setAgendaBlocks] = useState<Array<{ id: string; name: string; description: string | null; duration_minutes: number }>>([]);
 
   useEffect(() => {
     if (!slug) { setNotFound(true); setLoading(false); return; }
@@ -256,7 +259,11 @@ export default function PaginaPublicaAsesor() {
       const pageData = await getPublicWebPageBySlug(slug);
       if (!pageData || !pageData.user) { setNotFound(true); }
       else if (pageData.config?.is_published === false) { setNotFound(true); }
-      else { setData(pageData); }
+      else {
+        setData(pageData);
+        const { data: blocks } = await supabase.rpc('get_public_website_calendar_blocks', { p_slug: slug });
+        setAgendaBlocks(blocks || []);
+      }
     } catch (error) {
       console.error('Error loading public page:', error);
       setNotFound(true);
@@ -1144,6 +1151,28 @@ export default function PaginaPublicaAsesor() {
               <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className={btnPrimary} style={{ backgroundColor: primaryColor }}>
                 <MessageCircle className="w-4 h-4" /> Contactame
               </a>
+            </div>
+          </section>
+        )}
+
+        {agendaBlocks.length > 0 && (
+          <section id="agenda" className="py-16 px-4 bg-gray-50">
+            <div className="max-w-5xl mx-auto">
+              <div className="text-center mb-9">
+                <CalendarDays className="w-9 h-9 mx-auto mb-3" style={{ color: primaryColor }} />
+                <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900">Agenda una cita</h2>
+                <p className="mt-2 text-gray-500">Elige la opción que mejor se adapte a ti.</p>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                {agendaBlocks.map(block => (
+                  <div key={block.id} className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                    <h3 className="text-lg font-bold text-gray-900">{block.name}</h3>
+                    <p className="mt-2 text-sm text-gray-500">{block.description}</p>
+                    <p className="mt-3 text-sm font-medium text-gray-700">{block.duration_minutes} minutos</p>
+                    <a href={`/agenda/${block.id}`} className={`${btnPrimary} mt-5`} style={{ backgroundColor: primaryColor }}>Ver horarios</a>
+                  </div>
+                ))}
+              </div>
             </div>
           </section>
         )}

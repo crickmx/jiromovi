@@ -134,6 +134,8 @@ const Perfil = lazy(() => import('./Perfil'));
 const Oficinas = lazy(() => import('./Oficinas'));
 const RegistroPersonal = lazy(() => import('./RegistroPersonal'));
 const PaginaPublicaAsesor = lazy(() => import('./PaginaPublicaAsesor'));
+const Agenda = lazy(() => import('./Agenda'));
+const AgendaPublica = lazy(() => import('./AgendaPublica'));
 
 function PageLoader() {
   return (
@@ -163,11 +165,13 @@ export default function MoviFullRoutes() {
         <Route path="/registro-personal" element={<RegistroPersonal />} />
         <Route path="/p/:slug" element={<PaginaPublicaAsesor />} />
         <Route path="/cotizar/formularios/:slug" element={<PublicQuoteForm />} />
+        <Route path="/agenda/:eventTypeId" element={<AgendaPublica />} />
 
         {/* All authenticated MOVI routes — wrapped in Layout + providers */}
         <Route element={<LayoutShell />}>
           <Route path="/dashboard" element={<ProtectedRoute><MoviDashboard /></ProtectedRoute>} />
           <Route path="/chava" element={<ProtectedRoute><Chava /></ProtectedRoute>} />
+          <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
           <Route path="/store" element={<ProtectedRoute><Store /></ProtectedRoute>} />
           <Route path="/store/carrito" element={<ProtectedRoute><StoreCarrito /></ProtectedRoute>} />
           <Route path="/store/admin" element={<ProtectedRoute><StoreAdmin /></ProtectedRoute>} />
