@@ -394,6 +394,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
           .from('contact_center_messages')
           .select('id, direction, body, created_at, status, metadata, attachment_urls, sender_type, sender_user_id, contact_name, contact_phone, read_at')
           .eq('channel', 'whatsapp')
+          .eq('agent_user_id', currentUserId)
           .order('created_at', { ascending: true });
 
         if (isPhone) q = q.or(`contact_phone.eq.${sourceId},metadata->>chat_id.eq.${sourceId}`);
@@ -438,7 +439,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
         }));
 
         // Mark as read
-        if (conversation.agentUserId) {
+        if (conversation.agentUserId === currentUserId) {
           try {
             await supabase.rpc('mark_contact_messages_read', {
               p_agent_user_id: conversation.agentUserId,

@@ -65,8 +65,6 @@ export default function CentroContactoUnificado() {
   // ── Templates state ──────────────────────────────────────────────
   const [templates, setTemplates] = useState<UserTemplate[]>([]);
 
-  const isAdmin = usuario?.rol === 'Administrador';
-  const isGerente = usuario?.rol === 'Gerente';
   const userId = usuario?.id;
 
   // ── Edge function helper ─────────────────────────────────────────
@@ -111,16 +109,10 @@ export default function CentroContactoUnificado() {
         moviQuery = moviQuery.or(`metadata->>channel_id.eq.${moviChannelId},metadata->>channel_id.is.null`);
       }
 
-      if (!isAdmin && usuario?.oficina_id) {
-        const { data: officeUsers } = await supabase
-          .from('usuarios')
-          .select('id')
-          .eq('oficina_id', usuario.oficina_id);
-        const ids = (officeUsers || []).map(u => u.id);
-        if (ids.length > 0) moviQuery = moviQuery.in('agent_user_id', ids);
-      } else if (!isAdmin) {
-        moviQuery = moviQuery.eq('agent_user_id', userId);
-      }
+      // Defense in depth: WA MOVI conversations are private to their owner.
+      // RLS enforces the same rule, but keeping the filter here also avoids
+      // accidentally mixing another user's rows if policies drift.
+      moviQuery = moviQuery.eq('agent_user_id', userId);
 
       const { data: moviMsgs } = await moviQuery.limit(500);
 
@@ -181,7 +173,7 @@ export default function CentroContactoUnificado() {
     } finally {
       setLoading(false);
     }
-  }, [userId, isAdmin, isGerente, usuario?.oficina_id]);
+  }, [userId]);
 
   // ── Load WA Personal session status ──────────────────────────────
   const loadConnectionStatus = useCallback(async () => {
