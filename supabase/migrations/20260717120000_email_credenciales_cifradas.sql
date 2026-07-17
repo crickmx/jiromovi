@@ -52,7 +52,7 @@ SET search_path = public
 AS $$
 BEGIN
   INSERT INTO email_credenciales (usuario_id, password_cifrada, updated_at)
-  VALUES (p_usuario_id, pgp_sym_encrypt(p_password, p_key), now())
+  VALUES (p_usuario_id, extensions.pgp_sym_encrypt(p_password, p_key), now())
   ON CONFLICT (usuario_id) DO UPDATE
     SET password_cifrada = excluded.password_cifrada, updated_at = now();
 END;
@@ -67,7 +67,7 @@ AS $$
 DECLARE
   v_result text;
 BEGIN
-  SELECT pgp_sym_decrypt(password_cifrada, p_key) INTO v_result
+  SELECT extensions.pgp_sym_decrypt(password_cifrada, p_key) INTO v_result
   FROM email_credenciales WHERE usuario_id = p_usuario_id;
   RETURN v_result;
 EXCEPTION WHEN OTHERS THEN
