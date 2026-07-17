@@ -135,6 +135,10 @@ export function TramiteDetalle() {
   const [silentTriggers, setSilentTriggers]     = useState<PendingTrigger[]>([]);
   const [existingChildren, setExistingChildren] = useState<Record<string, ExistingChild>>({});
 
+  // Escalation modal
+  const [escalacionModal, setEscalacionModal] = useState<{ destinatario: string; silentTriggers: PendingTrigger[] } | null>(null);
+  const [escalacionComentario, setEscalacionComentario] = useState('');
+
   // Modal "¿Cambiar estatus?" antes de guardar
   const [estatusModalOpen, setEstatusModalOpen] = useState(false);
   const [modalKeepCurrent, setModalKeepCurrent] = useState(true);
@@ -728,6 +732,26 @@ export function TramiteDetalle() {
       }
     }
 
+    // Escalation trigger check
+    if (estatusCampoDinamico && tipoUUID && chosenSlug && !tramite.parent_ticket_id) {
+      const originalSlug = respuestasOriginales.find(r => r.campo_id === estatusCampoDinamico.id)?.valor_json ?? '';
+      if (chosenSlug !== originalSlug) {
+        const { data: escData } = await supabase
+          .from('ticket_escalacion_triggers')
+          .select('destinatario')
+          .eq('ticket_tipo_id', tipoUUID)
+          .eq('from_status', chosenSlug)
+          .eq('activo', true)
+          .limit(1)
+          .maybeSingle();
+        if (escData) {
+          setEscalacionComentario('');
+          setEscalacionModal({ destinatario: escData.destinatario, silentTriggers: silent });
+          return;
+        }
+      }
+    }
+
     await proceedWithSave({}, silent);
   };
 
@@ -1025,6 +1049,31 @@ export function TramiteDetalle() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const confirmarEscalacion = async () => {
+    if (!escalacionModal || !tramite) return;
+    if (!escalacionComentario.trim()) { showToast('El comentario es obligatorio', 'error'); return; }
+
+    // Insert mandatory comment
+    await supabase.from('ticket_comentarios').insert({
+      ticket_id: tramite.id,
+      usuario_id: usuario!.id,
+      contenido: escalacionComentario.trim(),
+    });
+
+    // Mark as requires attention
+    await supabase.from('tickets').update({ requiere_atencion_manual: true }).eq('id', tramite.id);
+
+    // Notify supervisor/director
+    supabase.functions.invoke('escalar-tramite', {
+      body: { ticket_id: tramite.id, destinatario: escalacionModal.destinatario, comentario: escalacionComentario.trim() },
+    });
+
+    const silents = escalacionModal.silentTriggers;
+    setEscalacionModal(null);
+    setEscalacionComentario('');
+    await proceedWithSave({}, silents);
   };
 
   const closingStatusOptions = estatusList.filter(e => {
@@ -1983,6 +2032,48 @@ export function TramiteDetalle() {
           }}
           onCancel={() => setTriggerModalOpen(false)}
         />
+      )}
+
+      {/* Modal de escalación — comentario obligatorio */}
+      {escalacionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">🔔</span>
+              <div>
+                <h2 className="text-base font-bold text-neutral-900 dark:text-white">Escalación requerida</h2>
+                <p className="text-xs text-neutral-500 dark:text-white/50 mt-0.5">
+                  Este estatus notificará a{' '}
+                  {escalacionModal.destinatario === 'ambos' ? 'Supervisor y Director' : escalacionModal.destinatario === 'supervisor' ? 'el Supervisor' : 'el Director'}{' '}
+                  del equipo. Describe brevemente por qué necesitas apoyo.
+                </p>
+              </div>
+            </div>
+            <textarea
+              autoFocus
+              rows={4}
+              value={escalacionComentario}
+              onChange={e => setEscalacionComentario(e.target.value)}
+              placeholder="Ej: El cliente solicita condiciones especiales que requieren autorización..."
+              className="w-full px-3 py-2.5 text-sm border border-neutral-300 dark:border-white/20 rounded-xl bg-white dark:bg-neutral-800 text-neutral-800 dark:text-white placeholder-neutral-400 dark:placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => { setEscalacionModal(null); setEscalacionComentario(''); }}
+                className="px-4 py-2 text-sm text-neutral-600 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-xl transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarEscalacion}
+                disabled={!escalacionComentario.trim() || saving}
+                className="px-4 py-2 text-sm font-semibold bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-colors disabled:opacity-50"
+              >
+                {saving ? 'Guardando…' : 'Confirmar escalación'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Barra de guardado sticky — visible cuando hay cambios pendientes */}

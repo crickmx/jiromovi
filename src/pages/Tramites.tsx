@@ -70,10 +70,6 @@ interface TicketTipoDB {
   color: string;
 }
 
-const TRAMITE_OPTIONS_FOR_FILTER = TIPO_TRAMITE_OPTIONS.filter(
-  t => t.value !== 'cambio_bancario'
-);
-
 const PRIORIDADES = ['Alta', 'Media', 'Baja'] as const;
 
 function getSlaInfo(fechaCreacion: string, slaHoras: number | null | undefined) {
@@ -199,6 +195,7 @@ export function Tramites() {
   const [selectedOficinas, setSelectedOficinas] = useState<string[]>([]);
   const [selectedAgentes, setSelectedAgentes] = useState<string[]>([]);
   const [selectedEquipos, setSelectedEquipos] = useState<string[]>([]);
+  const [selectedResponsables, setSelectedResponsables] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<'fecha_creacion' | 'requiere_atencion' | 'prioridad' | 'ultima_modificacion'>('fecha_creacion');
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
   const [sortOpen, setSortOpen] = useState(false);
@@ -227,9 +224,9 @@ export function Tramites() {
   const canManageCatalogs = esRolSistemaAdmin || esRolSistemaGerente;
 
   // Assignment UI state
-  const [myOperacionesRole, setMyOperacionesRole] = useState<'lider' | 'ejecutivo' | 'miembro' | null>(null);
+  const [myOperacionesRole, setMyOperacionesRole] = useState<'lider' | 'supervisor' | 'director' | 'ejecutivo' | 'miembro' | null>(null);
   const [myGrupoRoles, setMyGrupoRoles] = useState<Map<string, string>>(new Map()); // grupo_id -> rol_en_equipo (rol de EQUIPO)
-  const esLiderDeAlgunEquipo = [...myGrupoRoles.values()].some(r => r === 'lider');
+  const esLiderDeAlgunEquipo = [...myGrupoRoles.values()].some(r => ['lider','supervisor','director'].includes(r));
   const [myGrupoIds, setMyGrupoIds] = useState<string[]>([]);
   const [assigningTramiteId, setAssigningTramiteId] = useState<string | null>(null);
   const [teamEjecutivos, setTeamEjecutivos] = useState<Array<{ id: string; nombre_completo: string }>>([]);
@@ -316,7 +313,7 @@ export function Tramites() {
             .from('tramites_grupos_miembros')
             .select('usuario_id')
             .eq('grupo_id', ticket.grupo_asignado_id)
-            .eq('rol_en_equipo', 'lider');
+            .in('rol_en_equipo', ['lider', 'supervisor', 'director']);
           (lideresData ?? []).forEach((l: { usuario_id: string }) => recipients.add(l.usuario_id));
         }
 
@@ -584,8 +581,17 @@ export function Tramites() {
   const handleMarkAsRead = async (e: React.MouseEvent, tramiteId: string) => {
     e.stopPropagation();
     if (!usuario) return;
-    await supabase.from('tickets').update({ ultima_accion_por: usuario.id }).eq('id', tramiteId);
-    setTramites(prev => prev.map(t => t.id === tramiteId ? { ...t, ultima_accion_por: usuario.id } : t));
+    // requiere_atencion_manual también se apaga aquí — needsAttentionFn le da prioridad
+    // sobre ultima_accion_por, así que sin esto el trámite nunca salía de la columna.
+    const { error } = await supabase.from('tickets').update({ ultima_accion_por: usuario.id, requiere_atencion_manual: false }).eq('id', tramiteId);
+    if (error) {
+      // Si esto falla en silencio (ej. RLS bloqueando el UPDATE), el estado local
+      // optimista de abajo haría ver la tarjeta como leída aunque en BD siga igual
+      // — vuelve a aparecer al recargar. Mejor avisar que "no pasó nada".
+      alert('No se pudo marcar como leído: ' + error.message);
+      return;
+    }
+    setTramites(prev => prev.map(t => t.id === tramiteId ? { ...t, ultima_accion_por: usuario.id, requiere_atencion_manual: false } : t));
   };
 
   const handleVaciarPapelera = async () => {
@@ -617,7 +623,7 @@ export function Tramites() {
       const allActive = (data as Row[]).filter(m => m.grupo?.activo);
       const opsEntries = allActive.filter(m => m.grupo?.area_categoria === 'Operaciones');
       const opsEntry = opsEntries[0] ?? null;
-      setMyOperacionesRole(opsEntry ? (opsEntry.rol_en_equipo as 'lider' | 'ejecutivo' | 'miembro') : null);
+      setMyOperacionesRole(opsEntry ? (opsEntry.rol_en_equipo as 'lider' | 'supervisor' | 'director' | 'ejecutivo' | 'miembro') : null);
       setMyGrupoIds(allActive.map(m => m.grupo_id)); // all areas, not just Operaciones
       const rolesMap = new Map<string, string>();
       for (const m of allActive) rolesMap.set(m.grupo_id, m.rol_en_equipo);
@@ -716,7 +722,7 @@ export function Tramites() {
     // corte de Agente, porque el rol de líder es por equipo, no por rol global del usuario
     const esLiderDeEsteEquipo =
       tramite.grupo_asignado_id !== null &&
-      myGrupoRoles.get(tramite.grupo_asignado_id) === 'lider';
+      ['lider', 'supervisor', 'director'].includes(myGrupoRoles.get(tramite.grupo_asignado_id) ?? '');
     if (esLiderDeEsteEquipo) return true;
 
     // Agente: solo sus propios trámites
@@ -730,6 +736,12 @@ export function Tramites() {
   const needsAttentionFn = (t: TramiteItem) => {
     if (t.requiere_atencion_manual) return true;
     if (esRolSistemaAdmin && !isImpersonating) {
+      // Si el Admin es también el agente del trámite (ej. reportó su propio bug), la
+      // comparación de abajo nunca se limpia — ultima_accion_por siempre coincide con
+      // agente_id porque son la misma persona. En ese caso solo manda la bandera manual.
+      if (t.agente_id === usuario?.id || (!!t.agente_usuario_id && t.agente_usuario_id === usuario?.id)) {
+        return false;
+      }
       // Admin: solo cuando el agente fue el último en actuar (empleado necesita responder)
       if (!t.ultima_accion_por) return false;
       return (
@@ -793,7 +805,8 @@ export function Tramites() {
       const matchOficinas  = selectedOficinas.length === 0 || (tramite.agente?.oficina_id != null && selectedOficinas.includes(tramite.agente.oficina_id));
       const matchAgentes   = selectedAgentes.length === 0 || (tramite.agente_id != null && selectedAgentes.includes(tramite.agente_id));
       const matchEquipos   = selectedEquipos.length === 0 || (tramite.grupo_asignado_id != null && selectedEquipos.includes(tramite.grupo_asignado_id));
-      return matchSearch && matchAreas && matchTipos && matchEstatuses && matchPrioridades && matchOficinas && matchAgentes && matchEquipos;
+      const matchResponsables = selectedResponsables.length === 0 || (tramite.assigned_to_user_id != null && selectedResponsables.includes(tramite.assigned_to_user_id));
+      return matchSearch && matchAreas && matchTipos && matchEstatuses && matchPrioridades && matchOficinas && matchAgentes && matchEquipos && matchResponsables;
     });
 
     result = [...result].sort((a, b) => {
@@ -812,7 +825,7 @@ export function Tramites() {
     });
 
     return result;
-  }, [visibleTramites, searchTerm, selectedAreas, selectedTipos, selectedEstatuses, selectedPrioridades, selectedOficinas, selectedAgentes, selectedEquipos, sortBy, sortDir]);
+  }, [visibleTramites, searchTerm, selectedAreas, selectedTipos, selectedEstatuses, selectedPrioridades, selectedOficinas, selectedAgentes, selectedEquipos, selectedResponsables, sortBy, sortDir]);
 
   // Derive available options for dropdowns from visibleTramites
   const oficinaOptions = useMemo(() => {
@@ -836,6 +849,30 @@ export function Tramites() {
     return grupos.filter(g => myGrupoIds.includes(g.id)).map(g => ({ value: g.id, label: g.nombre }));
   }, [grupos, esRolSistemaAdmin, myGrupoIds]);
 
+  const responsableOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const t of visibleTramites) {
+      if (t.assigned_to_user_id && t.responsable?.nombre_completo) map.set(t.assigned_to_user_id, t.responsable.nombre_completo);
+    }
+    return [...map.entries()].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [visibleTramites]);
+
+  // Tipo y Área del filtro salen del catálogo real (ticket_tipos vía useTiposTramite),
+  // no de la lista estática vieja de registroActividadesTypes.ts — esa lista no
+  // reflejaba tipos/áreas creados después desde Admin > Trámites.
+  const tipoOptionsFromDb = useMemo(
+    () => [...tiposDb.values()].map(t => ({ value: t.value, label: t.label })).sort((a, b) => a.label.localeCompare(b.label)),
+    [tiposDb]
+  );
+
+  const areaOptionsFromDb = useMemo(() => {
+    const areas = new Set<string>();
+    for (const t of tiposDb.values()) {
+      if (t.area) areas.add(t.area);
+    }
+    return [...areas].sort().map(a => ({ value: a, label: a }));
+  }, [tiposDb]);
+
   const getPrioridadColor = (prioridad: string) => {
     switch (prioridad) {
       case 'Alta': return 'bg-red-100 text-red-700 border-red-300';
@@ -854,7 +891,7 @@ export function Tramites() {
     }
   };
 
-  const hasActiveFilters = searchTerm !== '' || selectedAreas.length > 0 || selectedTipos.length > 0 || selectedEstatuses.length > 0 || selectedPrioridades.length > 0 || selectedOficinas.length > 0 || selectedAgentes.length > 0 || selectedEquipos.length > 0;
+  const hasActiveFilters = searchTerm !== '' || selectedAreas.length > 0 || selectedTipos.length > 0 || selectedEstatuses.length > 0 || selectedPrioridades.length > 0 || selectedOficinas.length > 0 || selectedAgentes.length > 0 || selectedEquipos.length > 0 || selectedResponsables.length > 0;
 
   const clearFilters = () => {
     setSearchTerm('');
@@ -865,6 +902,7 @@ export function Tramites() {
     setSelectedOficinas([]);
     setSelectedAgentes([]);
     setSelectedEquipos([]);
+    setSelectedResponsables([]);
   };
 
   const kanbanAtención = filteredTramites.filter(t => needsAttentionFn(t));
@@ -884,9 +922,10 @@ export function Tramites() {
       const matchOficinas   = selectedOficinas.length === 0 || (t.agente?.oficina_id != null && selectedOficinas.includes(t.agente.oficina_id));
       const matchAgentes    = selectedAgentes.length === 0 || (t.agente_id != null && selectedAgentes.includes(t.agente_id));
       const matchEquipos    = selectedEquipos.length === 0 || (t.grupo_asignado_id != null && selectedEquipos.includes(t.grupo_asignado_id));
-      return matchSearch && matchAreas && matchTipos && matchEstatuses && matchPrioridades && matchOficinas && matchAgentes && matchEquipos;
+      const matchResponsables = selectedResponsables.length === 0 || (t.assigned_to_user_id != null && selectedResponsables.includes(t.assigned_to_user_id));
+      return matchSearch && matchAreas && matchTipos && matchEstatuses && matchPrioridades && matchOficinas && matchAgentes && matchEquipos && matchResponsables;
     });
-  }, [tramitesCerrados20, searchTerm, selectedAreas, selectedTipos, selectedEstatuses, selectedPrioridades, selectedOficinas, selectedAgentes, selectedEquipos]);
+  }, [tramitesCerrados20, searchTerm, selectedAreas, selectedTipos, selectedEstatuses, selectedPrioridades, selectedOficinas, selectedAgentes, selectedEquipos, selectedResponsables]);
 
   return (
     <div className="space-y-5">
@@ -1160,13 +1199,13 @@ export function Tramites() {
             <div className="flex flex-wrap gap-2 items-center">
               <MultiSelectDropdown
                 label="Área"
-                options={[{ value: 'Comercial', label: 'Comercial' }, { value: 'Operaciones', label: 'Operaciones' }]}
+                options={areaOptionsFromDb}
                 selected={selectedAreas}
                 onChange={setSelectedAreas}
               />
               <MultiSelectDropdown
                 label="Tipo"
-                options={TRAMITE_OPTIONS_FOR_FILTER.map(o => ({ value: o.value, label: o.label }))}
+                options={tipoOptionsFromDb}
                 selected={selectedTipos}
                 onChange={setSelectedTipos}
               />
@@ -1204,6 +1243,14 @@ export function Tramites() {
                   options={grupoOptions}
                   selected={selectedEquipos}
                   onChange={setSelectedEquipos}
+                />
+              )}
+              {responsableOptions.length > 0 && (
+                <MultiSelectDropdown
+                  label="Responsable"
+                  options={responsableOptions}
+                  selected={selectedResponsables}
+                  onChange={setSelectedResponsables}
                 />
               )}
 
@@ -1270,7 +1317,7 @@ export function Tramites() {
                 ))}
                 {selectedTipos.map(v => (
                   <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-accent/10 text-accent">
-                    {TRAMITE_OPTIONS_FOR_FILTER.find(o => o.value === v)?.label ?? v}
+                    {tipoOptionsFromDb.find(o => o.value === v)?.label ?? v}
                     <button onClick={() => setSelectedTipos(prev => prev.filter(x => x !== v))}><X className="w-2.5 h-2.5" /></button>
                   </span>
                 ))}
@@ -1303,6 +1350,12 @@ export function Tramites() {
                   <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                     {grupoOptions.find(o => o.value === v)?.label ?? v}
                     <button onClick={() => setSelectedEquipos(prev => prev.filter(x => x !== v))}><X className="w-2.5 h-2.5" /></button>
+                  </span>
+                ))}
+                {selectedResponsables.map(v => (
+                  <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+                    {responsableOptions.find(o => o.value === v)?.label ?? v}
+                    <button onClick={() => setSelectedResponsables(prev => prev.filter(x => x !== v))}><X className="w-2.5 h-2.5" /></button>
                   </span>
                 ))}
               </div>
@@ -1685,7 +1738,7 @@ export function Tramites() {
             const dbColor = tipoDb?.color;
             const fallbackBarClass = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
             const hasArchivos = (tramite.ticket_archivos?.length ?? 0) > 0;
-            const needsAttention = !!tramite.ultima_accion_por && tramite.ultima_accion_por !== usuario?.id;
+            const needsAttention = tramite.requiere_atencion_manual || (!!tramite.ultima_accion_por && tramite.ultima_accion_por !== usuario?.id);
 
             return (
               <div

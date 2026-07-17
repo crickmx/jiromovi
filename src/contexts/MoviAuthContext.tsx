@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { cargarPermisosAdicionales } from '../lib/permisosUtils';
 import { applyTheme } from '../lib/themeUtils';
 import { useImpersonation } from './ImpersonationContext';
+import { isBetaHost, skipBetaRedirectActive, crossDomainUrl, consumeIncomingSession, BETA_ORIGIN } from '../lib/betaAccess';
 import type { Database } from '../lib/database.types';
 
 type UsuarioRow = Database['public']['Tables']['usuarios']['Row'];
@@ -29,6 +30,8 @@ interface MoviAuthCtx {
   signIn: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
   reloadUsuario: () => Promise<void>;
+  esUsuarioBeta: boolean;
+  redirigiendoABeta: boolean;
 }
 
 const MoviAuthContext = createContext<MoviAuthCtx>({} as MoviAuthCtx);
@@ -37,6 +40,8 @@ const MoviAuthContext = createContext<MoviAuthCtx>({} as MoviAuthCtx);
 function MoviAuthProviderInner({ children }: { children: ReactNode }) {
   const [realUser, setRealUser] = useState<Usuario | null>(null);
   const [loading, setLoading] = useState(true);
+  const [esUsuarioBeta, setEsUsuarioBeta] = useState(false);
+  const [redirigiendoABeta, setRedirigiendoABeta] = useState(false);
   const profileLoadedRef = useRef(false);
   const { isImpersonating, impersonatedUser } = useImpersonation();
 
@@ -68,6 +73,22 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
 
       if (u.oficina?.accent_color && !isImpersonating) applyTheme(u.oficina.accent_color);
 
+      // Usuarios Beta: en produccion (app.movi.digital) se les manda a beta.movi.digital
+      // conservando su sesion, salvo que ya hayan usado el boton de "Regresar a MOVI"
+      // en esta misma pestana (sessionStorage) - si no, es un ping-pong infinito.
+      if (!isBetaHost()) {
+        const { data: betaRow } = await supabase.from('usuarios_beta').select('id').eq('usuario_id', u.id).maybeSingle();
+        if (betaRow) {
+          if (!skipBetaRedirectActive()) {
+            setRedirigiendoABeta(true);
+            const url = await crossDomainUrl(BETA_ORIGIN);
+            window.location.href = url;
+            return;
+          }
+          setEsUsuarioBeta(true);
+        }
+      }
+
       console.log('[MoviAuth] Usuario loaded:', u.nombre, u.apellidos, 'rol=', u.rol);
       profileLoadedRef.current = true;
       setRealUser(u);
@@ -87,17 +108,19 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
   useEffect(() => {
     console.log('[MoviAuth] init');
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        console.log('[MoviAuth] initial session found, userId=', session.user.id);
-        loadProfile(session.user.id);
-      } else {
-        console.log('[MoviAuth] no initial session');
+    consumeIncomingSession().finally(() => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          console.log('[MoviAuth] initial session found, userId=', session.user.id);
+          loadProfile(session.user.id);
+        } else {
+          console.log('[MoviAuth] no initial session');
+          setLoading(false);
+        }
+      }).catch((err) => {
+        console.warn('[MoviAuth] getSession failed (network/refresh):', err?.message);
         setLoading(false);
-      }
-    }).catch((err) => {
-      console.warn('[MoviAuth] getSession failed (network/refresh):', err?.message);
-      setLoading(false);
+      });
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -148,6 +171,8 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
       signIn,
       signOut,
       reloadUsuario,
+      esUsuarioBeta,
+      redirigiendoABeta,
     }}>
       {children}
     </MoviAuthContext.Provider>
