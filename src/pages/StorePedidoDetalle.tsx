@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CircleCheck as CheckCircle, Circle as XCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader as Loader2, Wallet, Trash2 } from 'lucide-react';
+import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CircleCheck as CheckCircle, Circle as XCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader as Loader2, Wallet, Trash2, Settings } from 'lucide-react';
+import { BaseModal } from '../components/BaseModal';
 import { PageHeader } from '@/components/ui/page-header';
 import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus, obtenerPagosPedido, registrarPago, eliminarPago, tieneAccesoEquipoStore, obtenerMapeoCamposTrigger, resolverTemplatePedido, obtenerCamposTramiteTipo } from '../lib/storeUtils';
-import type { StorePedidoCompleto, StoreEstatusPedido, FormaPagoOC, MetodoPagoOC, StorePedidoGasto, StorePedidoDetalleGasto, StorePedidoPago } from '../lib/storeTypes';
-import { TIPO_GASTO_OPTIONS, METODO_PAGO_OPCIONES, getFormasPagoParaMetodo } from '../lib/storeTypes';
+import type { StorePedidoCompleto, StoreEstatusPedido, StoreMetodoPago, StoreParcialidad, StoreFrecuenciaPago, StoreMetodoPagoCombinacion, StorePedidoGasto, StorePedidoDetalleGasto, StorePedidoPago } from '../lib/storeTypes';
+import { TIPO_GASTO_OPTIONS, METODO_PAGO_OPCIONES } from '../lib/storeTypes';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { generarFolioOC, generarPDFOrdenCompra, subirPDFOrdenCompra, validarDatosPagoCompletos } from '../lib/storePdfOrdenCompra';
@@ -30,9 +31,19 @@ export default function StorePedidoDetalle() {
   // Payment fields
   const [responsablePagoId, setResponsablePagoId] = useState('');
   const [usuariosOficina, setUsuariosOficina] = useState<any[]>([]);
-  const [formaPago, setFormaPago] = useState<FormaPagoOC | ''>('');
-  const [metodoPago, setMetodoPago] = useState<MetodoPagoOC | ''>('');
+  const [oficinasList, setOficinasList] = useState<{ id: string; nombre: string }[]>([]);
+  const [filtroOficinaId, setFiltroOficinaId] = useState('');
+  const [formaPago, setFormaPago] = useState('');
+  const [metodoPago, setMetodoPago] = useState('');
   const [metodoPagoOtroDetalle, setMetodoPagoOtroDetalle] = useState('');
+  const [metodosPago, setMetodosPago] = useState<StoreMetodoPago[]>([]);
+  const [parcialidades, setParcialidades] = useState<StoreParcialidad[]>([]);
+  const [frecuenciasPago, setFrecuenciasPago] = useState<StoreFrecuenciaPago[]>([]);
+  const [combinaciones, setCombinaciones] = useState<StoreMetodoPagoCombinacion[]>([]);
+  const [mostrarConfigCombinaciones, setMostrarConfigCombinaciones] = useState(false);
+  const [nuevaCombMetodo, setNuevaCombMetodo] = useState('');
+  const [nuevaCombParcialidad, setNuevaCombParcialidad] = useState('');
+  const [nuevaCombFrecuencia, setNuevaCombFrecuencia] = useState('');
   const [observacionesOC, setObservacionesOC] = useState('');
   const [guardandoPago, setGuardandoPago] = useState(false);
   const [generandoOC, setGenerandoOC] = useState(false);
@@ -98,21 +109,61 @@ export default function StorePedidoDetalle() {
     }
   }, [pedido, isAdmin]);
 
+  useEffect(() => {
+    const cargarMetodosYCombinacionesPago = async () => {
+      const [{ data: metodos }, { data: parcialidadesData }, { data: frecuenciasData }, { data: combos }] = await Promise.all([
+        supabase.from('store_metodos_pago').select('id, nombre, orden, activo').eq('activo', true).order('orden'),
+        supabase.from('store_parcialidades').select('id, cantidad, orden, activo').eq('activo', true).order('orden'),
+        supabase.from('store_frecuencias_pago').select('id, nombre, orden, activo').eq('activo', true).order('orden'),
+        supabase.from('store_metodo_pago_combinacion').select('id, metodo_id, parcialidad_id, frecuencia_id'),
+      ]);
+      if (metodos) setMetodosPago(metodos);
+      if (parcialidadesData) setParcialidades(parcialidadesData);
+      if (frecuenciasData) setFrecuenciasPago(frecuenciasData);
+      if (combos) setCombinaciones(combos);
+    };
+    cargarMetodosYCombinacionesPago();
+  }, []);
+
+  const getFormasParaMetodo = (nombreMetodo: string): string[] => {
+    const metodo = metodosPago.find(m => m.nombre === nombreMetodo);
+    if (!metodo) return [];
+    return combinaciones
+      .filter(c => c.metodo_id === metodo.id)
+      .map(c => {
+        const p = parcialidades.find(x => x.id === c.parcialidad_id);
+        const f = frecuenciasPago.find(x => x.id === c.frecuencia_id);
+        return p && f ? `${p.cantidad} ${f.nombre}` : null;
+      })
+      .filter((label): label is string => label !== null);
+  };
+
+  const agregarCombinacionPago = async () => {
+    if (!nuevaCombMetodo || !nuevaCombParcialidad || !nuevaCombFrecuencia) return;
+    const { data, error } = await supabase.from('store_metodo_pago_combinacion')
+      .insert({ metodo_id: nuevaCombMetodo, parcialidad_id: nuevaCombParcialidad, frecuencia_id: nuevaCombFrecuencia })
+      .select('id, metodo_id, parcialidad_id, frecuencia_id')
+      .single();
+    if (error || !data) return;
+    setCombinaciones(prev => [...prev, data]);
+  };
+
+  const eliminarCombinacionPago = async (id: string) => {
+    const { error } = await supabase.from('store_metodo_pago_combinacion').delete().eq('id', id);
+    if (error) return;
+    setCombinaciones(prev => prev.filter(c => c.id !== id));
+  };
+
   const cargarUsuariosOficina = async () => {
-    if (!pedido?.usuario_id) return;
-    const { data: usuarioPedido } = await supabase
-      .from('usuarios')
-      .select('oficina_id')
-      .eq('id', pedido.usuario_id)
-      .maybeSingle();
-    if (!usuarioPedido?.oficina_id) return;
-    const { data: usuarios } = await supabase
-      .from('usuarios')
-      .select('id, nombre, apellidos, nombre_completo')
-      .eq('oficina_id', usuarioPedido.oficina_id)
-      .eq('estado', 'activo')
-      .order('nombre_completo');
+    // Quien da seguimiento a pedidos debe ver todos los usuarios/oficinas de MOVI,
+    // no solo los de la oficina del dueño del pedido.
+    const [{ data: usuarios }, { data: oficinas }] = await Promise.all([
+      supabase.from('usuarios').select('id, nombre, apellidos, nombre_completo, oficina_id')
+        .eq('estado', 'activo').order('nombre_completo'),
+      supabase.from('oficinas').select('id, nombre').eq('activa', true).order('nombre'),
+    ]);
     if (usuarios) setUsuariosOficina(usuarios);
+    if (oficinas) setOficinasList(oficinas);
   };
 
   const cargarGastosPedido = async () => {
@@ -768,12 +819,21 @@ export default function StorePedidoDetalle() {
                           <h3 className="font-semibold text-neutral-900 dark:text-white">{item.producto?.titulo}</h3>
                           <p className="text-sm text-neutral-600 dark:text-white/60 mt-0.5">Cantidad: {item.cantidad} x ${item.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
                           {item.atributos_seleccionados && Object.keys(item.atributos_seleccionados).length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mt-1">
-                              {Object.entries(item.atributos_seleccionados).map(([key, value]) => (
-                                <span key={key} className="inline-flex items-center gap-1 bg-primary-50 border border-primary-200 rounded-full px-2 py-0.5 text-xs font-medium text-primary-800">
-                                  {key}: {value}
-                                </span>
-                              ))}
+                            <div className="mt-1 space-y-1">
+                              <div className="flex flex-wrap gap-1.5">
+                                {Object.entries(item.atributos_seleccionados)
+                                  .filter(([key]) => !key.startsWith('_'))
+                                  .map(([key, value]) => (
+                                    <span key={key} className="inline-flex items-center gap-1 bg-primary-50 border border-primary-200 rounded-full px-2 py-0.5 text-xs font-medium text-primary-800">
+                                      {key}: {value}
+                                    </span>
+                                  ))}
+                              </div>
+                              {item.atributos_seleccionados._personalizacion && (
+                                <p className="text-xs text-neutral-500 dark:text-white/50 italic">
+                                  Personalización: {item.atributos_seleccionados._personalizacion}
+                                </p>
+                              )}
                             </div>
                           )}
                           {isAdmin && (
@@ -1168,33 +1228,67 @@ export default function StorePedidoDetalle() {
                 )}
                 <div className="space-y-3 mb-4">
                   {usuariosOficina.length > 0 && (
-                    <div>
-                      <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Responsable de Pago</label>
-                      <select value={responsablePagoId} onChange={e => setResponsablePagoId(e.target.value)} className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg">
-                        <option value="">Seleccionar...</option>
-                        {usuariosOficina.map(u => <option key={u.id} value={u.id}>{u.nombre_completo || u.nombre}</option>)}
-                      </select>
-                    </div>
+                    <>
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Oficina Jiro</label>
+                        <select
+                          value={filtroOficinaId}
+                          onChange={e => {
+                            const nuevaOficina = e.target.value;
+                            setFiltroOficinaId(nuevaOficina);
+                            const respActual = usuariosOficina.find(u => u.id === responsablePagoId);
+                            if (nuevaOficina && respActual?.oficina_id !== nuevaOficina) setResponsablePagoId('');
+                          }}
+                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg"
+                        >
+                          <option value="">Todas las oficinas</option>
+                          {oficinasList.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Responsable de Pago</label>
+                        <select
+                          value={responsablePagoId}
+                          onChange={e => {
+                            const nuevoId = e.target.value;
+                            setResponsablePagoId(nuevoId);
+                            const u = usuariosOficina.find(u => u.id === nuevoId);
+                            if (u?.oficina_id) setFiltroOficinaId(u.oficina_id);
+                          }}
+                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg"
+                        >
+                          <option value="">Seleccionar...</option>
+                          {usuariosOficina
+                            .filter(u => !filtroOficinaId || u.oficina_id === filtroOficinaId)
+                            .map(u => <option key={u.id} value={u.id}>{u.nombre_completo || u.nombre}</option>)}
+                        </select>
+                      </div>
+                    </>
                   )}
                   <div>
-                    <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Metodo de Pago *</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-medium text-neutral-600 dark:text-white/60">Metodo de Pago *</label>
+                      <button
+                        type="button"
+                        onClick={() => setMostrarConfigCombinaciones(true)}
+                        title="Configurar combinaciones de Metodo/Forma de Pago"
+                        className="text-neutral-400 hover:text-neutral-700 dark:text-white/40 dark:hover:text-white"
+                      >
+                        <Settings className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                     <select value={metodoPago} onChange={e => {
-                      const nuevoMetodo = e.target.value as MetodoPagoOC;
+                      const nuevoMetodo = e.target.value;
                       setMetodoPago(nuevoMetodo);
-                      const formasDisponibles = getFormasPagoParaMetodo(nuevoMetodo);
+                      const formasDisponibles = getFormasParaMetodo(nuevoMetodo);
                       if (formasDisponibles.length === 1) {
                         setFormaPago(formasDisponibles[0]);
-                      } else if (formaPago && !formasDisponibles.includes(formaPago as FormaPagoOC)) {
+                      } else if (formaPago && !formasDisponibles.includes(formaPago)) {
                         setFormaPago('');
                       }
                     }} className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg">
                       <option value="">Seleccionar...</option>
-                      <option value="Cargo a Oficina">Cargo a Oficina</option>
-                      <option value="Cargo a Bono de Agente">Cargo a Bono de Agente</option>
-                      <option value="Pago Directo">Pago Directo</option>
-                      <option value="Descuento de Comisiones">Descuento de Comisiones</option>
-                      <option value="Cargo a Nómina">Cargo a Nomina</option>
-                      <option value="Otro">Otro</option>
+                      {metodosPago.map(m => <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
                     </select>
                   </div>
                   {metodoPago === 'Otro' && (
@@ -1204,12 +1298,12 @@ export default function StorePedidoDetalle() {
                     <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Forma de Pago *</label>
                     <select
                       value={formaPago}
-                      onChange={e => setFormaPago(e.target.value as FormaPagoOC)}
+                      onChange={e => setFormaPago(e.target.value)}
                       disabled={!metodoPago}
                       className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg disabled:opacity-50"
                     >
                       <option value="">Seleccionar...</option>
-                      {getFormasPagoParaMetodo(metodoPago).map(fp => (
+                      {getFormasParaMetodo(metodoPago).map(fp => (
                         <option key={fp} value={fp}>{fp}</option>
                       ))}
                     </select>
@@ -1258,6 +1352,81 @@ export default function StorePedidoDetalle() {
           </div>
         </div>
       </div>
+
+      <BaseModal
+        isOpen={mostrarConfigCombinaciones}
+        onClose={() => setMostrarConfigCombinaciones(false)}
+        title="Combinaciones de Metodo/Parcialidades/Frecuencia"
+        maxWidth="2xl"
+      >
+        <p className="text-sm text-ios-gray-500 mb-4">
+          Habilita combinaciones de Metodo + Parcialidades + Frecuencia disponibles en la Orden de Compra.
+        </p>
+        <div className="flex items-end gap-2 mb-4">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-ios-gray-500 mb-1">Metodo</label>
+            <select value={nuevaCombMetodo} onChange={e => setNuevaCombMetodo(e.target.value)} className="w-full px-2 py-1.5 text-sm border border-ios-gray-300 rounded-lg">
+              <option value="">Seleccionar...</option>
+              {metodosPago.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+            </select>
+          </div>
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-ios-gray-500 mb-1">Parcialidades</label>
+            <select value={nuevaCombParcialidad} onChange={e => setNuevaCombParcialidad(e.target.value)} className="w-full px-2 py-1.5 text-sm border border-ios-gray-300 rounded-lg">
+              <option value="">Seleccionar...</option>
+              {parcialidades.map(p => <option key={p.id} value={p.id}>{p.cantidad}</option>)}
+            </select>
+          </div>
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-ios-gray-500 mb-1">Frecuencia</label>
+            <select value={nuevaCombFrecuencia} onChange={e => setNuevaCombFrecuencia(e.target.value)} className="w-full px-2 py-1.5 text-sm border border-ios-gray-300 rounded-lg">
+              <option value="">Seleccionar...</option>
+              {frecuenciasPago.map(f => <option key={f.id} value={f.id}>{f.nombre}</option>)}
+            </select>
+          </div>
+          <button
+            onClick={agregarCombinacionPago}
+            disabled={!nuevaCombMetodo || !nuevaCombParcialidad || !nuevaCombFrecuencia}
+            className="px-3 py-1.5 bg-accent text-white rounded-lg text-sm font-medium disabled:opacity-50"
+          >
+            Agregar
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr>
+                <th className="text-left py-2 pr-3 border-b border-ios-gray-200/50">Metodo</th>
+                <th className="text-left py-2 px-2 border-b border-ios-gray-200/50">Parcialidades</th>
+                <th className="text-left py-2 px-2 border-b border-ios-gray-200/50">Frecuencia</th>
+                <th className="border-b border-ios-gray-200/50"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {combinaciones.map(c => {
+                const metodo = metodosPago.find(m => m.id === c.metodo_id);
+                const parcialidad = parcialidades.find(p => p.id === c.parcialidad_id);
+                const frecuencia = frecuenciasPago.find(f => f.id === c.frecuencia_id);
+                return (
+                  <tr key={c.id}>
+                    <td className="py-2 pr-3 border-b border-ios-gray-100">{metodo?.nombre}</td>
+                    <td className="py-2 px-2 border-b border-ios-gray-100">{parcialidad?.cantidad}</td>
+                    <td className="py-2 px-2 border-b border-ios-gray-100">{frecuencia?.nombre}</td>
+                    <td className="py-2 px-2 border-b border-ios-gray-100 text-right">
+                      <button onClick={() => eliminarCombinacionPago(c.id)} className="text-red-500 hover:text-red-700">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {combinaciones.length === 0 && (
+                <tr><td colSpan={4} className="py-4 text-center text-ios-gray-400">Sin combinaciones habilitadas todavía.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </BaseModal>
     </>
   );
 }

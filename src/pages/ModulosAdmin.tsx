@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import {
   Layers, Building2, RefreshCw, CircleCheck as CheckCircle2, Circle as XCircle,
   Loader as Loader2, ChevronDown, ChevronUp, Eye, EyeOff, Info, UserRound, Search,
-  Undo2, AlertTriangle, Check,
+  Undo2, AlertTriangle, Check, FlaskConical,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TOP_LEVEL_ITEMS, WORKSPACES } from '@/lib/workspaceConfig';
@@ -20,7 +20,7 @@ interface ModuleRow {
   workspace: string;
 }
 
-type TargetType = 'role' | 'office' | 'user';
+type TargetType = 'role' | 'office' | 'user' | 'beta_user';
 
 interface VisibilityRule {
   id?: string;
@@ -95,7 +95,7 @@ function ruleKey(moduleKey: string, targetType: TargetType, targetValue: string)
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-type TabId = 'roles' | 'oficinas' | 'usuarios';
+type TabId = 'roles' | 'oficinas' | 'usuarios' | 'beta';
 
 // Widgets del Dashboard no tienen su propio label (son componentes fijos,
 // no tarjetas genéricas) — mismo mapa que usa DashboardEditorAdmin.tsx.
@@ -331,12 +331,13 @@ export default function ModulosAdmin() {
           Por defecto todo es <strong>visible</strong>. Cuando hay reglas en conflicto, gana la más específica:
           <strong> usuario &gt; oficina &gt; rol</strong>. Los Administradores siempre ven todo, sin excepción.
           En "Por Oficina" y "Por Usuario" puedes elegir varios a la vez y aplicar los cambios juntos con confirmación.
+          "Por Beta" es aparte: solo <strong>agrega</strong> visibilidad extra a usuarios Beta específicos, y solo cuenta cuando ven <strong>beta.movi.digital</strong> — nunca oculta nada ni afecta producción.
         </p>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 p-1 bg-neutral-100 dark:bg-white/[0.06] rounded-2xl w-fit">
-        {([['roles', 'Por Rol', Layers], ['oficinas', 'Por Oficina', Building2], ['usuarios', 'Por Usuario', UserRound]] as const).map(([id, label, Icon]) => (
+        {([['roles', 'Por Rol', Layers], ['oficinas', 'Por Oficina', Building2], ['usuarios', 'Por Usuario', UserRound], ['beta', 'Por Beta', FlaskConical]] as const).map(([id, label, Icon]) => (
           <button
             key={id}
             onClick={() => setTab(id)}
@@ -388,6 +389,15 @@ export default function ModulosAdmin() {
           oficinas={oficinas}
           getRuleRaw={getRuleRaw}
           onSave={(targetIds, changes) => applyBulkChanges('user', targetIds, changes)}
+        />
+      )}
+      {tab === 'beta' && (
+        <BetaUsuarioBulkTab
+          modulesByWorkspace={modulesByWorkspace}
+          expandedWorkspaces={expandedWorkspaces}
+          toggleWorkspace={toggleWorkspace}
+          getRuleRaw={getRuleRaw}
+          onSave={(targetIds, changes) => applyBulkChanges('beta_user', targetIds, changes)}
         />
       )}
     </div>
@@ -704,6 +714,68 @@ function UsuarioBulkTab({ modulesByWorkspace, expandedWorkspaces, toggleWorkspac
       nounSingular="usuario"
       nounPlural="usuarios"
       extraNote="Los administradores no aparecen aquí — siempre ven todo, sin importar las reglas."
+      modulesByWorkspace={modulesByWorkspace}
+      expandedWorkspaces={expandedWorkspaces}
+      toggleWorkspace={toggleWorkspace}
+      getCurrent={getCurrent}
+      onSave={onSave}
+    />
+  );
+}
+
+// ─── BetaUsuarioBulkTab (override que solo suma visibilidad, solo en beta.movi.digital) ──
+
+interface BetaUsuarioBulkTabProps {
+  modulesByWorkspace: { workspace: string; modules: ModuleRow[] }[];
+  expandedWorkspaces: Set<string>;
+  toggleWorkspace: (ws: string) => void;
+  getRuleRaw: (moduleKey: string, targetType: TargetType, targetValue: string) => boolean | null;
+  onSave: (targetIds: string[], changes: BulkChange[]) => Promise<{ ok: true } | { ok: false; message: string }>;
+}
+
+function BetaUsuarioBulkTab({ modulesByWorkspace, expandedWorkspaces, toggleWorkspace, getRuleRaw, onSave }: BetaUsuarioBulkTabProps) {
+  const [users, setUsers] = useState<UsuarioLite[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data: betaRows } = await supabase.from('usuarios_beta').select('usuario_id');
+      const betaIds = (betaRows ?? []).map((b: any) => b.usuario_id);
+      if (betaIds.length === 0) { setUsers([]); setLoading(false); return; }
+      const { data } = await supabase
+        .from('usuarios')
+        .select('id, nombre, apellidos, rol, oficina_id')
+        .in('id', betaIds)
+        .eq('activo', true)
+        .order('nombre');
+      setUsers((data ?? []) as UsuarioLite[]);
+      setLoading(false);
+    })();
+  }, []);
+
+  const targetOptions: TargetOption[] = useMemo(
+    () => users.map(u => ({ id: u.id, label: `${u.nombre} ${u.apellidos}`, sublabel: u.rol })),
+    [users]
+  );
+
+  const getCurrent = (moduleKey: string, userId: string): boolean | null => getRuleRaw(moduleKey, 'beta_user', userId);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-10">
+        <Loader2 className="w-6 h-6 animate-spin text-accent" />
+      </div>
+    );
+  }
+
+  return (
+    <BulkTargetEditor
+      targetOptions={targetOptions}
+      emptyTargetsMessage="No hay usuarios Beta registrados todavía (Admin > Usuarios → botón 'Agregar a Beta')."
+      pickerPlaceholder="Seleccionar usuarios Beta..."
+      nounSingular="usuario"
+      nounPlural="usuarios"
+      extraNote="Este override solo SUMA visibilidad (nunca oculta) y solo aplica cuando el usuario ve beta.movi.digital — en producción no tiene ningún efecto."
       modulesByWorkspace={modulesByWorkspace}
       expandedWorkspaces={expandedWorkspaces}
       toggleWorkspace={toggleWorkspace}

@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Bell, Check, CheckCheck, X, Trash2, ListFilter as Filter, Mail, MessageSquare, Calendar, GraduationCap, MapPin, Palette, Users, Megaphone, ShoppingBag, PhoneMissed, Phone, MessageCircle } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback, type MouseEvent } from 'react';
+import { Bell, Check, CheckCheck, X, Trash2, ListFilter as Filter, Mail, MessageSquare, Calendar, GraduationCap, MapPin, Palette, Users, Megaphone, ShoppingBag, Phone, MessageCircle } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
@@ -123,9 +123,32 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
     }
   };
 
-  const getNotificationIcon = (notification: any) => {
-    if (notification.tipo === 'llamada_perdida') return PhoneMissed;
-    return moduleIcons[notification.modulo] || Bell;
+  const getModuleIcon = (modulo: string) => {
+    const IconComponent = moduleIcons[modulo] || Bell;
+    return IconComponent;
+  };
+
+  // Llamada perdida del conmutador: extrae el numero a 10 digitos para callto/WhatsApp
+  const getMissedCallNumber = (notification: any): string | null => {
+    if (notification.tipo !== 'llamada_perdida') return null;
+    const raw = notification.metadata?.caller_number;
+    if (!raw) return null;
+    const digits = String(raw).replace(/\D/g, '');
+    if (digits.length < 10) return null;
+    return digits.slice(-10);
+  };
+
+  const handleLlamarClick = (e: MouseEvent, notification: any) => {
+    e.stopPropagation();
+    markAsRead(notification.id);
+  };
+
+  const handleWhatsappClick = (e: MouseEvent, notification: any, numero: string) => {
+    e.stopPropagation();
+    markAsRead(notification.id);
+    const nombre = notification.metadata?.caller_name || '';
+    navigate(`/centro-contacto/whatsapp?telefono=${numero}${nombre ? `&nombre=${encodeURIComponent(nombre)}` : ''}`);
+    setIsOpen(false);
   };
 
   const buttonClass = compact
@@ -246,10 +269,8 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
             ) : (
               <div className="divide-y divide-neutral-100 dark:divide-white/5">
                 {filteredNotifications.map((notification) => {
-                  const IconComponent = getNotificationIcon(notification);
-                  const isMissedCall = notification.tipo === 'llamada_perdida';
-                  const callerNumber = notification.metadata?.caller_number;
-                  const isRedIcon = isMissedCall;
+                  const IconComponent = getModuleIcon(notification.modulo);
+                  const numeroLlamada = getMissedCallNumber(notification);
 
                   return (
                     <div
@@ -261,11 +282,9 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                       <div className="flex items-start gap-3">
                         {/* Icon */}
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                          isRedIcon
-                            ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                            : !notification.leida
-                              ? 'bg-primary-100 dark:bg-primary-900/30 text-accent'
-                              : 'bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-neutral-400'
+                          !notification.leida
+                            ? 'bg-primary-100 dark:bg-primary-900/30 text-accent'
+                            : 'bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-neutral-400'
                         }`}>
                           <IconComponent className="w-5 h-5" />
                         </div>
@@ -289,38 +308,6 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                             {notification.mensaje}
                           </p>
 
-                          {/* Botones de acción para llamadas perdidas */}
-                          {isMissedCall && callerNumber && (
-                            <div className="flex items-center gap-1.5 mb-2">
-                              <a
-                                href={`/admin/whatsapp?nuevo=true&numero=${encodeURIComponent(callerNumber)}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  markAsRead(notification.id);
-                                  navigate(`/admin/whatsapp?nuevo=true&numero=${encodeURIComponent(callerNumber)}`);
-                                  setIsOpen(false);
-                                }}
-                                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 rounded transition-colors"
-                                title="Enviar WhatsApp"
-                              >
-                                <MessageCircle className="w-3.5 h-3.5" />
-                                WhatsApp
-                              </a>
-                              <a
-                                href={`tel:${callerNumber}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  markAsRead(notification.id);
-                                }}
-                                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded transition-colors"
-                                title="Llamar de regreso"
-                              >
-                                <Phone className="w-3.5 h-3.5" />
-                                Llamar
-                              </a>
-                            </div>
-                          )}
-
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-neutral-500 dark:text-neutral-500">
@@ -329,32 +316,37 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                                   locale: es,
                                 })}
                               </span>
-                              {notification.modulo && (
-                                <>
-                                  <span className="text-xs text-neutral-400 dark:text-neutral-600">•</span>
-                                  <span className="text-xs text-neutral-500 dark:text-neutral-500">
-                                    {notification.modulo}
-                                  </span>
-                                </>
-                              )}
+                              <span className="text-xs text-neutral-400 dark:text-neutral-600">•</span>
+                              <span className="text-xs text-neutral-500 dark:text-neutral-500">
+                                {notification.modulo}
+                              </span>
                             </div>
 
                             <div className="flex items-center gap-1">
-                              {!isMissedCall && notification.accion_url && (
+                              {numeroLlamada ? (
+                                <>
+                                  <a
+                                    href={`tel:${numeroLlamada}`}
+                                    onClick={(e) => handleLlamarClick(e, notification)}
+                                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-accent hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors"
+                                  >
+                                    <Phone className="w-3.5 h-3.5" />
+                                    Llamar
+                                  </a>
+                                  <button
+                                    onClick={(e) => handleWhatsappClick(e, notification, numeroLlamada)}
+                                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded transition-colors"
+                                  >
+                                    <MessageCircle className="w-3.5 h-3.5" />
+                                    WhatsApp
+                                  </button>
+                                </>
+                              ) : notification.accion_url && (
                                 <button
                                   onClick={() => handleNotificationClick(notification)}
                                   className="px-2 py-1 text-xs font-medium text-accent hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors"
                                 >
                                   {notification.accion_texto || 'Ver'}
-                                </button>
-                              )}
-
-                              {isMissedCall && (
-                                <button
-                                  onClick={() => handleNotificationClick(notification)}
-                                  className="px-2 py-1 text-xs font-medium text-accent hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors"
-                                >
-                                  Ver
                                 </button>
                               )}
 

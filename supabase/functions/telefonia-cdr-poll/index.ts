@@ -1,8 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-// ─── UCCPBX built-in CA cert (CN=PBX, valid until 2121-07-20) ────────────────
-// Yeastar P-Series fallback cert when configured cert fails to load.
-// SAN: DNS:www.UCCPBX.com — TCP to real IP, TLS SNI as "www.UCCPBX.com"
 const UCCPBX_CA = `-----BEGIN CERTIFICATE-----
 MIIFHjCCAwYCCQDigYY7NhwbazANBgkqhkiG9w0BAQsFADBQMQswCQYDVQQGEwJD
 TjEPMA0GA1UECAwGRnVKaWFuMQ8wDQYDVQQHDAZYaWFNZW4xETAPBgNVBAoMCFNv
@@ -36,16 +33,34 @@ x+jvOfAzyAdqFmBaP4JXDWxzTEiiCD2iDY4EbYMASLORbmnwLGFV6ES8cp5F5PHX
 
 const PBX_HOST = "74.208.52.157";
 const PBX_PORT = 8088;
-// User-Agent sent with every PBX request — the PBX validates this HTTP header
 const UA = "Mozilla/5.0 (compatible; MOVI-CDR/1.0)";
-
-// Fallback encoded password in case the secret has whitespace issues
-// btoa(md5hex("Marsella14$")) = "MGVlZjM5OGZkYWFjZmUxNjk4ODcyMmVkZTU5NjQzNGM="
 const ENCODED_FALLBACK = "MGVlZjM5OGZkYWFjZmUxNjk4ODcyMmVkZTU5NjQzNGM=";
 
+// Confirmed 2026-07-17 via the PBX web UI network trace: the front-end fetches
+// CDR from /api/v2.0/cdr/search (NOT v1.0, NOT cdr/list) using `time_begin` /
+// `time_end` (NOT start_time/end_time) formatted as MM/DD/YYYY HH:mm:ss.
+// v1.0 cdr/list and cdr/search both exist and return errcode 0 but ALWAYS
+// total_number: 0 no matter the params -- they are effectively dead/unused
+// endpoints on this deployment. v2.0 returned real data (162 records/30d)
+// matching the admin UI exactly.
+//
+// v2.0 CDR shape does not have a flat `disposition`/`status`/`timestamp`
+// field like the public v1.0 docs describe. Relevant fields actually present:
+//   call_type: "Inbound" | "Outbound"
+//   call_from_number: caller's number
+//   call_to_number: first routing target (often an IVR/AI-receptionist code
+//                   like 6200/7000/7003, NOT the human extension)
+//   second_participant_number: the human extension the call was routed to
+//                              (empty string if the call never left the IVR)
+//   last_participant_number: final destination extension (also set when
+//                            it's "Voicemail <name><ext>")
+//   last_status: "ANSWERED" | "VOICEMAIL" | "ABANDONED" | ... (this is the
+//                real disposition field for this API version)
+//   time: "MM/DD/YYYY HH:mm:ss" string (PBX display timezone, MX = UTC-6)
+
 const MISSED = new Set([
-  "NO ANSWERED", "NO ANSWER", "NOANSWER", "NO_ANSWER",
-  "VOICEMAIL", "BUSY", "FAILED", "CANCEL", "MISSED",
+  "VOICEMAIL", "ABANDONED", "NO ANSWER", "NO ANSWERED", "NOANSWER",
+  "NO_ANSWER", "BUSY", "FAILED", "CANCEL", "MISSED",
 ]);
 const IVR = new Set(["6200", "7000", "7001", "7002", "7003", "8000", "8001"]);
 
@@ -55,51 +70,32 @@ const cors = {
   "Access-Control-Allow-Headers": "Content-Type,Authorization,Apikey",
 };
 
-// Build a single contiguous HTTP/1.0 request packet (headers + body in one buffer)
-function buildRequest(
-  method: string,
-  path: string,
-  bodyStr: string,
-  extra: string[],
-): Uint8Array {
+function buildRequest(method: string, path: string, bodyStr: string, extra: string[]): Uint8Array {
   const bodyBytes = new TextEncoder().encode(bodyStr);
   const headers = [
     `${method} ${path} HTTP/1.0`,
     `Host: ${PBX_HOST}:${PBX_PORT}`,
-    `User-Agent: ${UA}`,          // ← required by Yeastar P-Series
+    `User-Agent: ${UA}`,
     `Content-Type: application/json`,
     `Content-Length: ${bodyBytes.length}`,
-    ...extra,
-    "",
-    "",
+    ...extra, "", "",
   ].join("\r\n");
   const hBytes = new TextEncoder().encode(headers);
   const out = new Uint8Array(hBytes.length + bodyBytes.length);
-  out.set(hBytes);
-  out.set(bodyBytes, hBytes.length);
+  out.set(hBytes); out.set(bodyBytes, hBytes.length);
   return out;
 }
 
-// TCP connect → startTls with UCCPBX CA (SNI = "www.UCCPBX.com")
-async function pbxRequest(
-  path: string,
-  opts: { method?: string; body?: string; websession?: string },
-): Promise<{ bodyText: string; setCookie?: string }> {
+async function pbxRequest(path: string, opts: { method?: string; body?: string; websession?: string }): Promise<{ bodyText: string; setCookie?: string }> {
   const method = (opts.method ?? "GET").toUpperCase();
   const extra: string[] = [];
   if (opts.websession) extra.push(`Cookie: websession=${opts.websession}`);
   const packet = buildRequest(method, path, opts.body ?? "", extra);
-
   const tcp = await Deno.connect({ hostname: PBX_HOST, port: PBX_PORT });
-  const tls = await Deno.startTls(tcp, {
-    hostname: "www.UCCPBX.com",
-    caCerts: [UCCPBX_CA],
-  });
-
+  const tls = await Deno.startTls(tcp, { hostname: "www.UCCPBX.com", caCerts: [UCCPBX_CA] });
   try {
     let sent = 0;
     while (sent < packet.length) sent += await tls.write(packet.subarray(sent));
-
     const chunks: Uint8Array[] = [];
     const buf = new Uint8Array(32768);
     while (true) {
@@ -108,46 +104,26 @@ async function pbxRequest(
       if (n === null) break;
       chunks.push(buf.slice(0, n));
     }
-
     const total = chunks.reduce((s, c) => s + c.length, 0);
     const all = new Uint8Array(total);
     let off = 0;
     for (const c of chunks) { all.set(c, off); off += c.length; }
-
     const text = new TextDecoder().decode(all);
     const sep = text.indexOf("\r\n\r\n");
     const rawHeaders = sep >= 0 ? text.slice(0, sep) : text;
     const bodyText = sep >= 0 ? text.slice(sep + 4) : "";
-
-    const cookieLine = rawHeaders.split("\r\n").find(
-      (l) => l.toLowerCase().startsWith("set-cookie:") && l.includes("websession="),
-    );
+    const cookieLine = rawHeaders.split("\r\n").find(l => l.toLowerCase().startsWith("set-cookie:") && l.includes("websession="));
     let setCookie: string | undefined;
-    if (cookieLine) {
-      const m = cookieLine.match(/websession=([^;]+)/i);
-      if (m) setCookie = m[1];
-    }
-
+    if (cookieLine) { const m = cookieLine.match(/websession=([^;]+)/i); if (m) setCookie = m[1]; }
     return { bodyText, setCookie };
-  } finally {
-    try { tls.close(); } catch { /* ignore */ }
-  }
+  } finally { try { tls.close(); } catch { /* ignore */ } }
 }
 
-// Login — password encoding: btoa(md5_hex(plaintext))
 async function pbxLogin(user: string, encodedPass: string): Promise<string> {
-  // Debug: log credentials info (not the actual value)
   console.log(`LOGIN: user="${user}" pass_len=${encodedPass.length} pass_match=${encodedPass === ENCODED_FALLBACK}`);
   const { bodyText, setCookie } = await pbxRequest("/api/v1.0/login", {
     method: "POST",
-    body: JSON.stringify({
-      username: user,
-      password: encodedPass,
-      language: "es",
-      supportcrx: true,
-      linkus_devicemark: "movi-cdr-poll",
-      login_link_type: "all",
-    }),
+    body: JSON.stringify({ username: user, password: encodedPass, language: "es", supportcrx: true, linkus_devicemark: "movi-cdr-poll", login_link_type: "all" }),
   });
   console.log(`LOGIN response: ${bodyText.slice(0, 200)}`);
   const data = JSON.parse(bodyText);
@@ -158,45 +134,42 @@ async function pbxLogin(user: string, encodedPass: string): Promise<string> {
 }
 
 async function pbxLogout(websession: string): Promise<void> {
-  try { await pbxRequest("/api/v1.0/logout", { method: "POST", websession }); }
-  catch (_) { /* ignore */ }
+  try { await pbxRequest("/api/v1.0/logout", { method: "POST", websession }); } catch (_) { /* ignore */ }
 }
 
-async function getCdr(
-  websession: string, start: string, end: string,
-): Promise<Record<string, unknown>[]> {
+function mxDate(d: Date): string {
+  // MM/DD/YYYY HH:mm:ss in Mexico City local time (UTC-6, no DST since 2022)
+  const l = new Date(d.getTime() - 6 * 3600000);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(l.getUTCMonth()+1)}/${p(l.getUTCDate())}/${l.getUTCFullYear()} ${p(l.getUTCHours())}:${p(l.getUTCMinutes())}:${p(l.getUTCSeconds())}`;
+}
+
+function parseMx(raw: string): string {
+  const m = raw.match(/(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})/); // MM/DD/YYYY HH:mm:ss
+  if (!m) return new Date().toISOString();
+  return new Date(Date.UTC(+m[3], +m[1]-1, +m[2], +m[4]+6, +m[5], +m[6])).toISOString();
+}
+
+async function getCdr(websession: string, startStr: string, endStr: string): Promise<Record<string, unknown>[]> {
   const all: Record<string, unknown>[] = [];
   let page = 1;
   while (true) {
     const qs = new URLSearchParams({
-      page: String(page), pagesize: "100",
-      start_time: start, end_time: end,
+      time_begin: startStr, time_end: endStr,
+      sort_by: "time", order_by: "desc",
+      page: String(page), page_size: "100",
     });
-    const { bodyText } = await pbxRequest(`/api/v1.0/cdr/list?${qs}`, { websession });
+    const { bodyText } = await pbxRequest(`/api/v2.0/cdr/search?${qs}`, { websession });
     let d: Record<string, unknown>;
     try { d = JSON.parse(bodyText); } catch { break; }
     console.log(`CDR page=${page} errcode=${d.errcode} total=${d.total_number}`);
-    if (d.errcode !== 0) { console.error("CDR err:", bodyText.slice(0, 200)); break; }
-    const recs = (d.cdr_list ?? d.data ?? []) as Record<string, unknown>[];
+    if (d.errcode !== 0) { console.error("CDR err:", bodyText.slice(0, 300)); break; }
+    const recs = (d.data ?? []) as Record<string, unknown>[];
     all.push(...recs);
     if (recs.length < 100 || all.length >= Number(d.total_number ?? 0)) break;
     page++;
   }
   return all;
-}
-
-// Mexico City permanently UTC-6 (no DST since 2023)
-function mxDate(d: Date): string {
-  const l = new Date(d.getTime() + -6 * 3600000);
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${l.getUTCFullYear()}-${p(l.getUTCMonth()+1)}-${p(l.getUTCDate())} ${p(l.getUTCHours())}:${p(l.getUTCMinutes())}:${p(l.getUTCSeconds())}`;
-}
-
-// PBX timestamps are MX local → UTC ISO
-function parseMx(raw: string): string {
-  const m = raw.match(/(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
-  if (!m) return new Date().toISOString();
-  return new Date(Date.UTC(+m[1], +m[2]-1, +m[3], +m[4]+6, +m[5], +m[6])).toISOString();
 }
 
 function norm(p: string): string { return (p || "").replace(/\D/g, ""); }
@@ -218,10 +191,9 @@ Deno.serve(async (req: Request) => {
 
   const pbxUser = (Deno.env.get("YEASTAR_PBX_USERNAME") || "").trim();
   const pbxPassRaw = (Deno.env.get("YEASTAR_PBX_PASSWORD_ENCODED") || "").trim();
-  // Use fallback if secret is missing or empty
   const pbxPass = pbxPassRaw || ENCODED_FALLBACK;
-  const sbUrl   = Deno.env.get("SUPABASE_URL") || "";
-  const sbKey   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  const sbUrl = Deno.env.get("SUPABASE_URL") || "";
+  const sbKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
   console.log(`INIT: user="${pbxUser}" pass_from_secret=${pbxPassRaw.length > 0} pass_len=${pbxPass.length}`);
 
@@ -234,6 +206,7 @@ Deno.serve(async (req: Request) => {
   let body: Record<string, unknown> = {};
   try { body = await req.json(); } catch (_) { /* no body */ }
   const mins = parseInt(String(body.lookback_minutes ?? 3), 10);
+  const dryRun = Boolean(body.dry_run); // when true: detect + report but never write to DB or push
 
   const db = createClient(sbUrl, sbKey);
   const results: unknown[] = [];
@@ -241,7 +214,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     session = await pbxLogin(pbxUser, pbxPass);
-    const now  = new Date();
+    const now = new Date();
     const from = new Date(now.getTime() - mins * 60000);
     const s = mxDate(from);
     const e = mxDate(now);
@@ -251,30 +224,31 @@ Deno.serve(async (req: Request) => {
     console.log(`CDR fetched: ${recs.length}`);
     if (recs.length > 0) {
       console.log("CDR keys:", Object.keys(recs[0]).join(","));
-      console.log("CDR[0]:", JSON.stringify(recs[0]).slice(0, 300));
     }
 
     for (const rec of recs) {
-      const caller = norm(String(
-        rec.call_from ?? rec.call_from_number ?? rec.callernum ?? rec.caller ?? rec.src ?? ""
-      )) || "Desconocido";
+      const callType = String(rec.call_type ?? "").trim();
+      if (callType.toLowerCase() === "outbound") { console.log("Skip outbound"); continue; }
+
+      const caller = norm(String(rec.call_from_number ?? rec.call_from ?? "")) || "Desconocido";
+
+      // The human extension is second_participant_number when the call left the
+      // IVR/AI-receptionist layer; otherwise fall back to last_participant_number
+      // or call_to_number (only useful if it's a direct-dial, non-IVR extension).
       const ext = norm(String(
-        rec.call_to ?? rec.call_to_number ?? rec.last_participant_number ??
-        rec.second_participant_number ?? rec.callee ?? ""
+        rec.second_participant_number || rec.last_participant_number || rec.call_to_number || ""
       ));
-      const status = String(
-        rec.call_status ?? rec.last_status ?? rec.status ?? rec.disposition ?? ""
-      ).toUpperCase().trim();
+
+      const status = String(rec.last_status ?? rec.disposition ?? rec.status ?? "").toUpperCase().trim();
 
       if (!MISSED.has(status)) { console.log(`Skip status=${status}`); continue; }
       if (!ext || !/^\d{3,4}$/.test(ext) || IVR.has(ext)) {
         console.log(`Skip IVR/invalid ext=${ext}`); continue;
       }
 
-      const tRaw = String(rec.start_time ?? rec.starttime ?? rec.time ?? "");
+      const tRaw = String(rec.time ?? "");
       const callTime = tRaw ? parseMx(tRaw) : now.toISOString();
 
-      // Dedup ±60s
       const ws = new Date(new Date(callTime).getTime() - 60000).toISOString();
       const we = new Date(new Date(callTime).getTime() + 60000).toISOString();
       const { data: ex } = await db.from("llamadas_perdidas").select("id")
@@ -287,13 +261,15 @@ Deno.serve(async (req: Request) => {
       const uid: string | null = (ur?.[0] as any)?.id ?? null;
 
       let callerName: string | null = null;
+      let callerUid: string | null = null;
       if (caller !== "Desconocido") {
         for (const v of variants(caller)) {
           const { data: um } = await db.from("usuarios")
-            .select("nombre_completo,nombre,apellido")
+            .select("id,nombre_completo,nombre,apellido")
             .or(`celular_laboral.eq.${v},celular_personal.eq.${v}`).limit(1);
           if (um?.[0]) {
             const u = um[0] as any;
+            callerUid = u.id ?? null;
             callerName = u.nombre_completo || [u.nombre, u.apellido].filter(Boolean).join(" ");
             break;
           }
@@ -312,39 +288,45 @@ Deno.serve(async (req: Request) => {
       }
 
       const disp = callerName ? `${callerName} (${caller})` : caller;
+      const msgBody = `Llamada perdida en tu extensión ${ext} de ${disp}`;
 
-      await db.from("llamadas_perdidas").insert({
-        extension: ext, caller_number: caller, call_time: callTime,
-        usuario_id: uid, notificado: false, leido: false,
-      });
-
-      if (uid) {
-        await db.from("notificaciones").insert({
-          tipo: "llamada_perdida", titulo: "Llamada perdida",
-          mensaje: `Llamada perdida de ${disp}`,
-          accion_url: "/admin/telefonia", leida: false, usuario_id: uid,
-          metadata: { caller_number: caller, caller_name: callerName, extension: ext },
+      if (!dryRun) {
+        await db.from("llamadas_perdidas").insert({
+          extension: ext, caller_number: caller, call_time: callTime,
+          usuario_id: uid, caller_nombre: callerName, caller_usuario_id: callerUid,
+          notificado: false, leido: false,
         });
-        try {
-          await fetch(`${sbUrl}/functions/v1/send-push-notification`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${sbKey}` },
-            body: JSON.stringify({
-              usuario_id: uid, title: "Llamada perdida",
-              body: `Llamada perdida de ${disp}`,
-              url: "/admin/telefonia", tag: "missed-call",
-            }),
+
+        if (uid) {
+          await db.from("notificaciones").insert({
+            tipo: "llamada_perdida", titulo: "Llamada perdida",
+            mensaje: msgBody,
+            accion_url: "/admin/telefonia", leida: false, usuario_id: uid,
+            metadata: { caller_number: caller, caller_name: callerName, extension: ext },
           });
-        } catch (pe) { console.error("Push:", (pe as Error).message); }
+          try {
+            await fetch(`${sbUrl}/functions/v1/send-push-notification`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${sbKey}` },
+              body: JSON.stringify({
+                usuario_id: uid, title: "Llamada perdida",
+                body: msgBody,
+                url: "/admin/telefonia", tag: "missed-call", caller_number: caller,
+              }),
+            });
+          } catch (pe) { console.error("Push:", (pe as Error).message); }
+        }
+        console.log(`Inserted: ${caller}→${ext} uid=${uid}`);
+      } else {
+        console.log(`[dry_run] Would insert: ${caller}→${ext} uid=${uid} status=${status}`);
       }
 
       results.push({ extension: ext, caller, callerName, status, callTime, uid });
-      console.log(`Inserted: ${caller}→${ext} uid=${uid}`);
     }
 
     await pbxLogout(session);
     return new Response(
-      JSON.stringify({ success: true, processed: results.length, results }),
+      JSON.stringify({ success: true, dry_run: dryRun, processed: results.length, results }),
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } },
     );
   } catch (err) {

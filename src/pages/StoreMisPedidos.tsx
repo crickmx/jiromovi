@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Package, Eye } from 'lucide-react';
+import { Package, Eye, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
-import { obtenerPedidosUsuario } from '../lib/storeUtils';
+import { obtenerPedidosUsuario, eliminarPedido } from '../lib/storeUtils';
 import type { StorePedido } from '../lib/storeTypes';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -13,10 +13,24 @@ export default function StoreMisPedidos() {
   const navigate = useNavigate();
   const [pedidos, setPedidos] = useState<StorePedido[]>([]);
   const [loading, setLoading] = useState(true);
+  const [eliminando, setEliminando] = useState<string | null>(null);
 
   useEffect(() => {
     cargarPedidos();
   }, []);
+
+  const handleEliminar = async (pedido: StorePedido) => {
+    if (!confirm(`¿Cancelar el pedido ${pedido.folio_oc ?? pedido.id.slice(0, 8)}? Esta acción no se puede deshacer.`)) return;
+    setEliminando(pedido.id);
+    try {
+      await eliminarPedido(pedido.id);
+      setPedidos(prev => prev.filter(p => p.id !== pedido.id));
+    } catch {
+      alert('No se pudo cancelar el pedido. Intenta de nuevo.');
+    } finally {
+      setEliminando(null);
+    }
+  };
 
   const cargarPedidos = async () => {
     if (!usuario?.id) return;
@@ -116,13 +130,25 @@ export default function StoreMisPedidos() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <button
-                          onClick={() => navigate(`/store/pedido/${pedido.id}`)}
-                          className="inline-flex items-center gap-2 text-accent hover:text-primary-800 font-medium"
-                        >
-                          <Eye className="w-4 h-4" />
-                          Ver Detalle
-                        </button>
+                        <div className="inline-flex items-center gap-3">
+                          <button
+                            onClick={() => navigate(`/store/pedido/${pedido.id}`)}
+                            className="inline-flex items-center gap-2 text-accent hover:text-primary-800 font-medium"
+                          >
+                            <Eye className="w-4 h-4" />
+                            Ver Detalle
+                          </button>
+                          {!pedido.folio_oc && (
+                            <button
+                              onClick={() => handleEliminar(pedido)}
+                              disabled={eliminando === pedido.id}
+                              className="inline-flex items-center gap-1.5 text-red-500 hover:text-red-700 font-medium text-sm disabled:opacity-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Cancelar
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
