@@ -880,24 +880,13 @@ function SetupScreen({ onSuccess }: { onSuccess: () => void }) {
     setVerifying(true);
     setError('');
     try {
-      await supabase
-        .from('email_configuraciones')
-        .upsert({
-          usuario_id: usuario!.id,
-          email,
-          password,
-          activa: true,
-        }, { onConflict: 'usuario_id' });
-
-      const result = await callWebmail('verify-connection');
-      if (result.success) {
-        setVerified(true);
-      } else {
-        throw new Error(result.error || 'Credenciales incorrectas');
-      }
+      // La contraseña viaja solo en este request al edge function, que la
+      // verifica contra IONOS y la cifra server-side antes de guardarla —
+      // nunca se escribe en texto plano desde el navegador.
+      await callWebmail('save-config', { email, password });
+      setVerified(true);
     } catch (err: any) {
-      setError(err.message);
-      await supabase.from('email_configuraciones').delete().eq('usuario_id', usuario!.id);
+      setError(err.message || 'Credenciales incorrectas');
     } finally {
       setVerifying(false);
     }
