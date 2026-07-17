@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
+import { getMailboxPassword, setMailboxPassword } from '../_shared/emailCredentials.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -553,10 +554,52 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: 'Token invalido' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    const body = await req.json();
+    const { action } = body;
+
+    // Guardar/verificar una cuenta nueva: la contraseña llega solo en este
+    // request (HTTPS), nunca se escribe en texto plano en ninguna tabla.
+    if (action === 'save-config') {
+      const { email, password, nombreRemitente } = body;
+      if (!email || !password) {
+        return new Response(JSON.stringify({ error: 'Correo y contrasena requeridos' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const conn = await imapConnect('imap.ionos.mx', 993);
+      let verified = false;
+      try {
+        verified = await imapLogin(conn, email, password);
+        await imapLogout(conn);
+      } catch (e: any) {
+        try { conn.close(); } catch { /* ignore */ }
+        return new Response(JSON.stringify({ error: 'Credenciales incorrectas', code: 'AUTH_FAILED' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      if (!verified) {
+        return new Response(JSON.stringify({ error: 'Credenciales incorrectas', code: 'AUTH_FAILED' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const { error: upsertError } = await supabase
+        .from('email_configuraciones')
+        .upsert({
+          usuario_id: user.id,
+          email,
+          nombre_remitente: nombreRemitente || null,
+          activa: true,
+          estado_conexion: 'conectado',
+        }, { onConflict: 'usuario_id' });
+      if (upsertError) {
+        return new Response(JSON.stringify({ error: upsertError.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      await setMailboxPassword(supabase, user.id, password);
+
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // Get user email config
     const { data: config } = await supabase
       .from('email_configuraciones')
-      .select('email, password, nombre_remitente')
+      .select('email, nombre_remitente')
       .eq('usuario_id', user.id)
       .eq('activa', true)
       .maybeSingle();
@@ -565,9 +608,12 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: 'NO_CONFIG', message: 'No hay cuenta de correo configurada' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const creds = { email: config.email, password: config.password, nombre: config.nombre_remitente || config.email };
-    const body = await req.json();
-    const { action } = body;
+    const mailboxPassword = await getMailboxPassword(supabase, user.id);
+    if (!mailboxPassword) {
+      return new Response(JSON.stringify({ error: 'NO_CREDENTIAL', message: 'No hay credencial de correo almacenada' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const creds = { email: config.email, password: mailboxPassword, nombre: config.nombre_remitente || config.email };
 
     let result: unknown;
 
