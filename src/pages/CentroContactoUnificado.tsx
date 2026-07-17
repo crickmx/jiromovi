@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Info, X, MessageSquare, QrCode, Zap, Wifi, WifiOff, CircleAlert as AlertCircle, RefreshCw, Settings, Plus, Star, Send, Copy, Trash2, Tag, Pencil as Edit3, Phone, ExternalLink, User, FileText, ClipboardList } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,6 +36,7 @@ interface UserTemplate {
 
 export default function CentroContactoUnificado() {
   const { usuario } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // ── Subtab state ─────────────────────────────────────────────────
   const [subTab, setSubTab] = useState<SubTab>('conversations');
@@ -131,8 +133,8 @@ export default function CentroContactoUnificado() {
         const allPhoneVariants = [...new Set([...moviPhones, ...normalizedPhones])];
         const { data } = await supabase
           .from('crm_contactos')
-          .select('telefono, nombre, apellido')
-          .in('telefono', allPhoneVariants);
+          .select('celular, nombre_completo')
+          .in('celular', allPhoneVariants);
         crmContacts = data || [];
       }
       // Query usuarios by celular_laboral to resolve internal user names
@@ -212,6 +214,41 @@ export default function CentroContactoUnificado() {
     loadConnectionStatus();
     loadTemplates();
   }, [loadAll, loadConnectionStatus, loadTemplates]);
+
+  // ── Deep link desde "Llamada perdida": ?telefono=&nombre= ────────
+  const deepLinkHandledRef = useRef(false);
+  useEffect(() => {
+    const telefono = searchParams.get('telefono');
+    if (!telefono || loading || deepLinkHandledRef.current || !userId) return;
+    deepLinkHandledRef.current = true;
+
+    const nombre = searchParams.get('nombre') || '';
+    const target = normalizeMexicanPhone(telefono);
+    const existing = conversations.find(c => c.contactPhone && normalizeMexicanPhone(c.contactPhone) === target);
+
+    setSubTab('conversations');
+    if (existing) {
+      setSelected(existing);
+    } else {
+      setSelected({
+        id: `wa_movi:${target}`,
+        channel: 'wa_movi',
+        sourceId: target,
+        contactName: nombre || target,
+        contactPhone: target,
+        avatarUrl: null,
+        lastMessage: null,
+        lastMessageAt: null,
+        unreadCount: 0,
+        status: 'open',
+        isGroup: false,
+        groupName: null,
+        agentUserId: userId,
+      });
+    }
+    setMobileView('thread');
+    setSearchParams({}, { replace: true });
+  }, [searchParams, loading, conversations, userId, setSearchParams]);
 
   // ── Realtime subscriptions ───────────────────────────────────────
   useEffect(() => {

@@ -27,6 +27,7 @@ interface Notification {
   created_at: string;
   tipo?: string;
   prioridad?: string;
+  metadata?: Record<string, any> | null;
 }
 
 interface NotificationContextType {

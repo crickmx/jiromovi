@@ -103,6 +103,7 @@ Deno.serve(async (req: Request) => {
         user_id: token.user_id,
         platform,
         hashed_token: hashedToken,
+        token_hash: hashedToken,
         email: token.email,
       }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -199,6 +200,7 @@ Deno.serve(async (req: Request) => {
       user_id: token.user_id,
       platform,
       hashed_token: hashedToken,
+      token_hash: hashedToken,
       email: token.email,
     }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
