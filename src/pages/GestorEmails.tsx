@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { getRenderedSignature, stripExistingSignature } from '../lib/emailSignatureUtils';
-import { Mail, Send, FileText, Trash2, CircleAlert as AlertCircle, Inbox, Search, RefreshCw, Paperclip, ChevronLeft, ChevronRight, Settings, Plus, Archive, MailOpen, Eye, EyeOff, FolderOpen, X, ArrowLeft, Reply, ReplyAll, Forward, Download, ChevronDown, ChevronUp, ClipboardList, ExternalLink } from 'lucide-react';
+import { Mail, Send, FileText, Trash2, CircleAlert as AlertCircle, Inbox, Search, RefreshCw, Paperclip, ChevronLeft, ChevronRight, Settings, Plus, Archive, MailOpen, Eye, EyeOff, FolderOpen, X, ArrowLeft, Reply, ReplyAll, Forward, Download, ChevronDown, ChevronUp, ClipboardList, LayoutList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { IniciarTramiteEmailModal } from '@/components/email/IniciarTramiteEmailModal';
 import { getRoundcubeHandoffUrl } from '../lib/roundcubeSso';
@@ -134,6 +134,9 @@ export function GestorEmails() {
   const [hasConfig, setHasConfig] = useState<boolean | null>(null);
   const [configEmail, setConfigEmail] = useState('');
   const [showSetup, setShowSetup] = useState(false);
+  const [mailView, setMailView] = useState<'roundcube' | 'legacy'>('roundcube');
+  const [roundcubeUrl, setRoundcubeUrl] = useState('');
+  const [roundcubeLoading, setRoundcubeLoading] = useState(false);
 
   const [folders, setFolders] = useState<ImapFolder[]>([]);
   const [currentFolder, setCurrentFolder] = useState('INBOX');
@@ -179,7 +182,8 @@ export function GestorEmails() {
     if (data) {
       setHasConfig(true);
       setConfigEmail(data.email);
-      loadFolders();
+      setInitialLoading(false);
+      openRoundcubeEmbedded();
     } else {
       setHasConfig(false);
       setShowSetup(true);
@@ -277,14 +281,30 @@ export function GestorEmails() {
     loadMessages(currentFolder, page);
   };
 
-  const handleOpenRoundcube = async () => {
+  const openRoundcubeEmbedded = async () => {
     setOpeningRoundcube(true);
+    setRoundcubeLoading(true);
     setError('');
     try {
-      window.location.assign(await getRoundcubeHandoffUrl());
+      setRoundcubeUrl(await getRoundcubeHandoffUrl());
     } catch (err: any) {
       setError(err.message || 'No se pudo abrir el correo completo');
+      setRoundcubeLoading(false);
+    } finally {
       setOpeningRoundcube(false);
+    }
+  };
+
+  const showRoundcube = () => {
+    setMailView('roundcube');
+    openRoundcubeEmbedded();
+  };
+
+  const showLegacyMail = () => {
+    setMailView('legacy');
+    if (folders.length === 0) {
+      setInitialLoading(true);
+      loadFolders();
     }
   };
 
@@ -304,6 +324,79 @@ export function GestorEmails() {
             <Mail className="w-5 h-5 text-accent" />
           </div>
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Conectando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (mailView === 'roundcube') {
+    return (
+      <div className="h-full flex flex-col bg-neutral-50 dark:bg-neutral-900 overflow-hidden">
+        <header className="bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 px-4 py-2.5 flex items-center gap-3 flex-shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+            <Mail className="w-4 h-4 text-accent" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm font-bold text-neutral-800 dark:text-white truncate">Mi E-Mail</h1>
+              <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
+                Correo MOVI
+              </span>
+            </div>
+            <p className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate">{configEmail}</p>
+          </div>
+
+          <button
+            onClick={openRoundcubeEmbedded}
+            disabled={roundcubeLoading || openingRoundcube}
+            className="p-2 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition disabled:opacity-40"
+            title="Actualizar correo"
+          >
+            <RefreshCw className={cn('w-4 h-4', (roundcubeLoading || openingRoundcube) && 'animate-spin')} />
+          </button>
+
+          <button
+            onClick={showLegacyMail}
+            className="flex items-center gap-1.5 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 px-3 py-1.5 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 transition font-medium text-xs"
+            title="Usar vista clásica"
+          >
+            <LayoutList className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Vista clásica</span>
+          </button>
+        </header>
+
+        {error && (
+          <div className="bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800/30 px-4 py-2 flex items-center gap-2 flex-shrink-0">
+            <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+            <span className="text-xs text-red-700 dark:text-red-300 flex-1">{error}</span>
+            <button onClick={openRoundcubeEmbedded} className="text-xs font-semibold text-red-700 dark:text-red-300">
+              Reintentar
+            </button>
+          </div>
+        )}
+
+        <div className="relative flex-1 min-h-0 bg-white dark:bg-neutral-900">
+          {roundcubeLoading && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/90 dark:bg-neutral-900/90">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                  <RefreshCw className="w-5 h-5 text-accent animate-spin" />
+                </div>
+                <p className="text-sm font-medium text-neutral-600 dark:text-neutral-300">Abriendo tu correo...</p>
+              </div>
+            </div>
+          )}
+
+          {roundcubeUrl && (
+            <iframe
+              key={roundcubeUrl}
+              src={roundcubeUrl}
+              title="Correo MOVI"
+              className="w-full h-full border-0 bg-white"
+              referrerPolicy="strict-origin-when-cross-origin"
+              onLoad={() => setRoundcubeLoading(false)}
+            />
+          )}
         </div>
       </div>
     );
@@ -395,14 +488,14 @@ export function GestorEmails() {
         </button>
 
         <button
-          onClick={handleOpenRoundcube}
+          onClick={showRoundcube}
           disabled={openingRoundcube}
           className="flex items-center gap-1.5 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 px-3 py-1.5 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 transition font-medium text-xs disabled:opacity-50"
           title="Abrir correo completo"
         >
           <ExternalLink className="w-3.5 h-3.5" />
           <span className="hidden lg:inline">
-            {openingRoundcube ? 'Abriendo...' : 'Correo completo'}
+            {openingRoundcube ? 'Abriendo...' : 'Correo MOVI'}
           </span>
         </button>
 
