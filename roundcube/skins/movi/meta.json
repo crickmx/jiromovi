@@ -1,0 +1,6 @@
+{
+  "name": "movi",
+  "extends": "elastic",
+  "version": "0.1.0",
+  "description": "Skin de MOVI Digital sobre elastic — para vivir embebido dentro del layout de MOVI (Fase 3), no como app independiente."
+}

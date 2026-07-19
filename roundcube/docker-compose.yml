@@ -1,0 +1,73 @@
+version: '3.8'
+
+# Fase 1 de la integración Roundcube: levanta un Roundcube funcional contra
+# IONOS, aislado en su propia base de datos (NO Supabase — Roundcube guarda
+# ahí solo su propio estado: preferencias, caché, sesiones).
+#
+# Esto todavía NO tiene el SSO con MOVI (Fase 2) ni los plugins propios con
+# lógica real (Fase 2/4) — hoy mismo el login sigue siendo el formulario
+# normal de Roundcube, pidiendo la contraseña de IONOS directamente.
+#
+# No se expone a internet directamente: solo escucha en 127.0.0.1:8080; un
+# reverse proxy con HTTPS (Plesk, nginx, Caddy) es quien lo publica.
+
+services:
+  roundcube-db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${ROUNDCUBE_DB_ROOT_PASSWORD:?falta ROUNDCUBE_DB_ROOT_PASSWORD en .env}
+      MYSQL_DATABASE: ${ROUNDCUBE_DB_NAME:-roundcubemail}
+      MYSQL_USER: ${ROUNDCUBE_DB_USER:-roundcube}
+      MYSQL_PASSWORD: ${ROUNDCUBE_DB_PASSWORD:?falta ROUNDCUBE_DB_PASSWORD en .env}
+    volumes:
+      - roundcube_db_data:/var/lib/mysql
+    networks:
+      - movi_mail
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  roundcube:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      roundcube-db:
+        condition: service_healthy
+    environment:
+      ROUNDCUBEMAIL_DB_TYPE: mysql
+      ROUNDCUBEMAIL_DB_HOST: roundcube-db
+      ROUNDCUBEMAIL_DB_USER: ${ROUNDCUBE_DB_USER:-roundcube}
+      ROUNDCUBEMAIL_DB_PASSWORD: ${ROUNDCUBE_DB_PASSWORD}
+      ROUNDCUBEMAIL_DB_NAME: ${ROUNDCUBE_DB_NAME:-roundcubemail}
+
+      # IONOS por defecto (ver alternativa 587/STARTTLS en el README)
+      ROUNDCUBEMAIL_DEFAULT_HOST: ${ROUNDCUBE_IMAP_HOST:-ssl://imap.ionos.mx}
+      ROUNDCUBEMAIL_DEFAULT_PORT: ${ROUNDCUBE_IMAP_PORT:-993}
+      ROUNDCUBEMAIL_SMTP_SERVER: ${ROUNDCUBE_SMTP_HOST:-ssl://smtp.ionos.mx}
+      ROUNDCUBEMAIL_SMTP_PORT: ${ROUNDCUBE_SMTP_PORT:-465}
+
+      ROUNDCUBEMAIL_PLUGINS: archive,zipdownload,newmail_notifier,markasjunk,movi_auth,movi_signatures,movi_contacts
+      ROUNDCUBEMAIL_SKIN: movi
+
+      # Usados por los plugins propios (Fase 2/4) — no tienen efecto todavía
+      MOVI_SUPABASE_URL: ${MOVI_SUPABASE_URL}
+      MOVI_SUPABASE_SERVICE_ROLE_KEY: ${MOVI_SUPABASE_SERVICE_ROLE_KEY}
+      MOVI_SSO_SHARED_SECRET: ${MOVI_SSO_SHARED_SECRET}
+    volumes:
+      - roundcube_data:/var/www/html
+    ports:
+      - "127.0.0.1:8080:80"
+    networks:
+      - movi_mail
+
+volumes:
+  roundcube_db_data:
+  roundcube_data:
+
+networks:
+  movi_mail:

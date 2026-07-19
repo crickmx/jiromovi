@@ -1,0 +1,22 @@
+/*
+ * Fase 3 (embed dentro de MOVI): oculta la identidad visual de Roundcube que
+ * no debe verse cuando vive dentro del <iframe> del módulo de correo de
+ * MOVI — el usuario no debe percibir que entró a una app distinta.
+ *
+ * Placeholder: los selectores reales de "elastic" hay que confirmarlos con
+ * el DOM real ya levantado (esto es un punto de partida, no el ajuste final;
+ * requiere QA visual en Fase 3). Pendiente también confirmar el mecanismo
+ * de inclusión de este archivo (config `skin_include_css` de elastic o
+ * override de `includes/*.html`) contra la versión de imagen usada.
+ */
+
+#layout-menu .logo,
+.header-title,
+#taskmenu .home,
+#toolbar-menu .settings-list {
+  display: none !important;
+}
+
+body {
+  --rc-embed: 1; /* marcador para saber que el skin propio cargó */
+}
