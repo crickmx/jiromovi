@@ -1,12 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { setIaMailboxPassword } from "../_shared/emailCredentials.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
-};
+import { emailCorsHeaders, forbiddenOriginResponse } from "../_shared/emailCors.ts";
 
 // Crea o actualiza una cuenta de correo del módulo de Automatización IA.
 // La contraseña viaja solo en este request (HTTPS) y se cifra server-side
@@ -14,6 +9,8 @@ const corsHeaders = {
 // Sustituye los inserts/updates directos que hacía AutomatizacionIA.tsx
 // (CuentaForm.handleSave) contra `ia_cuentas_correo.password_encrypted`.
 Deno.serve(async (req: Request) => {
+  const corsHeaders = emailCorsHeaders(req);
+  if (!corsHeaders) return forbiddenOriginResponse();
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
