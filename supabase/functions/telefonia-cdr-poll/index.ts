@@ -174,6 +174,39 @@ async function getCdr(websession: string, startStr: string, endStr: string): Pro
 
 function norm(p: string): string { return (p || "").replace(/\D/g, ""); }
 
+function renderVars(template: string, vars: Record<string, string>): string {
+  let out = template;
+  for (const [k, v] of Object.entries(vars)) {
+    out = out.replace(new RegExp(`\\{\\{${k}\\}\\}`, "g"), v || "");
+  }
+  return out;
+}
+
+interface NotifTemplate { activa: boolean; titulo: string; cuerpo: string }
+
+// Lee el tipo/plantilla editable desde Admin > Notificaciones Transaccionales
+// (codigo "llamada_perdida") para poder editar/activar-desactivar la campanita
+// sin tocar código. Si no existe (no debería pasar), cae a los textos de siempre.
+async function loadNotifTemplate(db: ReturnType<typeof createClient>): Promise<NotifTemplate> {
+  const { data: tipo } = await db.from("correo_tipos_notificacion")
+    .select("id, activo, enviar_notificacion")
+    .eq("codigo", "llamada_perdida").maybeSingle();
+
+  if (!tipo) {
+    return { activa: true, titulo: "Llamada perdida", cuerpo: "Llamada perdida en tu extensión {{extension}} de {{caller_display}}" };
+  }
+
+  const { data: plantilla } = await db.from("correo_plantillas")
+    .select("notificacion_titulo, notificacion_cuerpo")
+    .eq("tipo_notificacion_id", tipo.id).eq("es_plantilla_default", true).maybeSingle();
+
+  return {
+    activa: Boolean(tipo.activo) && Boolean(tipo.enviar_notificacion),
+    titulo: plantilla?.notificacion_titulo || "Llamada perdida",
+    cuerpo: plantilla?.notificacion_cuerpo || "Llamada perdida en tu extensión {{extension}} de {{caller_display}}",
+  };
+}
+
 function variants(raw: string): string[] {
   const d = norm(raw);
   const s = new Set([d]);
@@ -225,6 +258,8 @@ Deno.serve(async (req: Request) => {
     if (recs.length > 0) {
       console.log("CDR keys:", Object.keys(recs[0]).join(","));
     }
+
+    const notifTemplate = await loadNotifTemplate(db);
 
     for (const rec of recs) {
       const callType = String(rec.call_type ?? "").trim();
@@ -288,7 +323,14 @@ Deno.serve(async (req: Request) => {
       }
 
       const disp = callerName ? `${callerName} (${caller})` : caller;
-      const msgBody = `Llamada perdida en tu extensión ${ext} de ${disp}`;
+      const templateVars = {
+        extension: ext,
+        caller_number: caller,
+        caller_name: callerName || caller,
+        caller_display: disp,
+      };
+      const titulo = renderVars(notifTemplate.titulo, templateVars);
+      const msgBody = renderVars(notifTemplate.cuerpo, templateVars);
 
       if (!dryRun) {
         await db.from("llamadas_perdidas").insert({
@@ -297,9 +339,9 @@ Deno.serve(async (req: Request) => {
           notificado: false, leido: false,
         });
 
-        if (uid) {
+        if (uid && notifTemplate.activa) {
           await db.from("notificaciones").insert({
-            tipo: "llamada_perdida", titulo: "Llamada perdida",
+            tipo: "llamada_perdida", titulo,
             mensaje: msgBody,
             accion_url: "/admin/telefonia", leida: false, usuario_id: uid,
             metadata: { caller_number: caller, caller_name: callerName, extension: ext },
@@ -309,12 +351,14 @@ Deno.serve(async (req: Request) => {
               method: "POST",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${sbKey}` },
               body: JSON.stringify({
-                usuario_id: uid, title: "Llamada perdida",
+                usuario_id: uid, title: titulo,
                 body: msgBody,
                 url: "/admin/telefonia", tag: "missed-call", caller_number: caller,
               }),
             });
           } catch (pe) { console.error("Push:", (pe as Error).message); }
+        } else if (uid && !notifTemplate.activa) {
+          console.log(`Notificacion desactivada en Admin > Notificaciones Transaccionales: ${caller}→${ext}`);
         }
         console.log(`Inserted: ${caller}→${ext} uid=${uid}`);
       } else {
