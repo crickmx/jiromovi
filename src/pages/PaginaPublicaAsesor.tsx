@@ -1169,7 +1169,7 @@ export default function PaginaPublicaAsesor() {
                     <h3 className="text-lg font-bold text-gray-900">{block.name}</h3>
                     <p className="mt-2 text-sm text-gray-500">{block.description}</p>
                     <p className="mt-3 text-sm font-medium text-gray-700">{block.duration_minutes} minutos</p>
-                    <a href={`/agenda/${block.id}`} className={`${btnPrimary} mt-5`} style={{ backgroundColor: primaryColor }}>Ver horarios</a>
+                    <a href={`/${slug}/agenda`} className={`${btnPrimary} mt-5`} style={{ backgroundColor: primaryColor }}>Ver horarios</a>
                   </div>
                 ))}
               </div>

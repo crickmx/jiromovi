@@ -221,7 +221,9 @@ export default function Agenda({ embedded = false }: AgendaProps) {
             </div>
             <div className="space-y-5">
               {selectedEvents.map(item => {
-                const publicUrl = `${window.location.origin}/agenda/${item.id}`;
+                const publicUrl = usuario?.web_slug
+                  ? `https://agentedeseguros.website/${usuario.web_slug}/agenda`
+                  : `${window.location.origin}/agenda/${item.id}`;
                 return <div key={item.id} className="rounded-xl border border-slate-200 p-4">
                   <div className="grid gap-3 md:grid-cols-2">
                     <div><Label>Nombre</Label><Input value={item.name} onChange={e => patchEvent(item.id, { name: e.target.value })} /></div>

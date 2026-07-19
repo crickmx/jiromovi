@@ -1,4 +1,4 @@
-import { Phone, Mail, MessageCircle, ChevronLeft, ChevronRight, ArrowUp, Car } from 'lucide-react';
+import { Phone, Mail, MessageCircle, ChevronLeft, ChevronRight, ArrowUp, Car, CalendarDays, Clock } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import type { WebPageInsurer, UserWebPageConfig, SharedFormLink } from '../../lib/webPagesTypes';
 import { DEFAULT_TEXT } from '../../lib/webPagesTypes';
@@ -75,6 +75,11 @@ interface PublicWebPagePreviewProps {
   config: UserWebPageConfig;
   insurers: WebPageInsurer[];
   formLinks?: SharedFormLink[];
+  calendarBlocks?: Array<{
+    id: string;
+    name: string;
+    calendar_name: string;
+  }>;
   userData: {
     name: string;
     email: string;
@@ -91,6 +96,7 @@ export default function PublicWebPagePreview({
   config,
   insurers,
   formLinks = [],
+  calendarBlocks = [],
   userData
 }: PublicWebPagePreviewProps) {
   const primaryColor = config.primary_color;
@@ -440,6 +446,33 @@ export default function PublicWebPagePreview({
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {calendarBlocks.length > 0 && (
+        <section className="relative py-16 px-4 bg-gray-50 z-10">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-9">
+              <CalendarDays className="w-9 h-9 mx-auto mb-3" style={{ color: primaryColor }} />
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">Agenda una cita</h2>
+              <p className="mt-2 text-gray-500">Elige la opción que mejor se adapte a ti.</p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {calendarBlocks.map(block => (
+                <div key={block.id} className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                  <h3 className="text-lg font-bold text-gray-900">{block.name}</h3>
+                  <p className="mt-2 text-sm text-gray-500">{block.calendar_name}</p>
+                  <a
+                    href={userData.web_slug ? `https://agentedeseguros.website/${userData.web_slug}/agenda` : '#'}
+                    className="mt-5 inline-flex items-center gap-2 rounded-lg px-5 py-2.5 font-semibold text-white"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    <Clock className="w-4 h-4" /> Ver horarios
+                  </a>
+                </div>
+              ))}
             </div>
           </div>
         </section>

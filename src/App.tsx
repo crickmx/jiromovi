@@ -30,6 +30,7 @@ const ChavaAgenteLanding = lazy(() => import('./chava-agente/pages/ChavaAgenteLa
 
 // ── Public advisor page (lazy, no auth) ───────────────────────────────────
 const PaginaPublicaAsesor = lazy(() => import('./pages/PaginaPublicaAsesor'));
+const AgendaPublica = lazy(() => import('./pages/AgendaPublica'));
 
 // ── Seguros Education (lazy) ──────────────────────────────────────────────
 const SegurosEducationLanding = lazy(() => import('./seguros-education/SegurosEducationLanding').then(m => ({ default: m.default || m.SegurosEducationLanding })));
@@ -75,6 +76,7 @@ function AgenteWebsiteApp() {
           {/* Root with no slug → redirect to grupojiro.com */}
           <Route path="/" element={<RootToGrupoJiro />} />
           {/* Any slug → public advisor page */}
+          <Route path="/:slug/agenda" element={<AgendaPublica />} />
           <Route path="/:slug" element={<PaginaPublicaAsesor />} />
           <Route path="*" element={<RootToGrupoJiro />} />
         </Routes>

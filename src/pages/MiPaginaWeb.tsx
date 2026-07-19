@@ -592,6 +592,7 @@ export default function MiPaginaWeb() {
                   config={config}
                   insurers={insurers.filter(i => config.selected_insurer_ids.includes(i.id))}
                   formLinks={previewFormLinks}
+                  calendarBlocks={calendarOptions.filter(item => visibleCalendarIds.includes(item.id))}
                   userData={{
                     name: getDisplayName(usuario),
                     email: usuario?.email_laboral || '',
