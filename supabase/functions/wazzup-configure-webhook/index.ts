@@ -1,6 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
-import { getWhatsappApiKey } from "../_shared/emailCredentials.ts";
+import {
+  getWhatsappApiKey,
+  setWhatsappApiKey,
+} from "../_shared/emailCredentials.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,6 +39,10 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Backfill idempotente: si la lectura cayó a la columna legada, o si la
+    // credencial cifrada ya existía, deja siempre sincronizada la copia segura.
+    await setWhatsappApiKey(supabase, config.id, apiKey);
 
     const webhookUrl = new URL(`${supabaseUrl}/functions/v1/wazzup-webhook`);
     webhookUrl.searchParams.set("secret", webhookSecret);
