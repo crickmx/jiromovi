@@ -153,3 +153,18 @@ SQL de Roundcube:
 Roundcube incluye ambos grupos en el autocompletado nativo de Para, CC y CCO.
 Cada inicio SSO reemplaza exclusivamente los contactos dentro de esos grupos;
 los contactos y grupos personales creados por el usuario no se alteran.
+
+## Productividad y gestión personal
+
+- El compositor abre en HTML y permite formato, listas y vínculos.
+- Los borradores se guardan cada 30 segundos y también se recuperan desde el
+  almacenamiento local ante cierres inesperados.
+- Imágenes y PDF se abren en la vista previa segura del navegador.
+- `j`, `k` y `r` navegan al mensaje siguiente, anterior y responden cuando el
+  foco no está dentro de un campo de edición.
+- ManageSieve en IONOS habilita filtros, reenvío y respuesta de ausencia sin
+  guardar una segunda contraseña.
+- La Papelera conserva 30 días; al cerrar sesión se eliminan únicamente
+  mensajes anteriores a ese plazo y se expurgan los eliminados.
+- La acción nativa **Imprimir** de Roundcube permite guardar un correo como PDF
+  desde el diálogo del navegador para adjuntarlo como evidencia a un trámite.

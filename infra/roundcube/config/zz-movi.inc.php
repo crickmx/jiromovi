@@ -28,12 +28,25 @@ $config['content_security_policy'] = true;
 
 $config['prefer_html'] = true;
 $config['show_images'] = 0;
-$config['draft_autosave'] = 60;
+$config['htmleditor'] = 1;
+$config['compose_save_localstorage'] = true;
+$config['draft_autosave'] = 30;
+$config['inline_images'] = true;
+$config['image_thumbnail_size'] = 320;
+$config['client_mimetypes'] = [
+    'text/plain', 'text/html',
+    'image/jpeg', 'image/gif', 'image/png', 'image/bmp', 'image/tiff', 'image/webp',
+    'application/pdf',
+];
+$config['layout'] = 'widescreen';
+$config['preview_pane_mark_read'] = 5;
 $config['message_sort_col'] = 'date';
 $config['message_sort_order'] = 'DESC';
 $config['archive_type'] = 'year';
 $config['zipdownload_selection'] = true;
 $config['zipdownload_attachments'] = true;
+$config['logout_purge'] = 30;
+$config['logout_expunge'] = true;
 
 $config['log_logins'] = true;
 $config['log_session'] = false;

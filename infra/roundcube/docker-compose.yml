@@ -41,7 +41,7 @@ services:
       ROUNDCUBEMAIL_SMTP_PORT: ${IONOS_SMTP_PORT}
       ROUNDCUBEMAIL_REQUEST_PATH: ${ROUNDCUBE_REQUEST_PATH}
       ROUNDCUBEMAIL_SKIN: elastic
-      ROUNDCUBEMAIL_PLUGINS: archive,zipdownload,newmail_notifier,markasjunk,movi_sso
+      ROUNDCUBEMAIL_PLUGINS: archive,zipdownload,newmail_notifier,markasjunk,attachment_reminder,managesieve,movi_sso,movi_productivity
       ROUNDCUBEMAIL_UPLOAD_MAX_FILESIZE: ${ROUNDCUBE_UPLOAD_MAX_FILESIZE}
       ROUNDCUBEMAIL_ASPELL_DICTS: es
       ROUNDCUBE_DES_KEY: ${ROUNDCUBE_DES_KEY}
@@ -53,6 +53,7 @@ services:
       - ./config:/var/roundcube/config:ro
       - ./php/zzz-movi.ini:/usr/local/etc/php/conf.d/zzz-movi.ini:ro
       - ./plugins/movi_sso:/var/www/html/plugins/movi_sso:ro
+      - ./plugins/movi_productivity:/var/www/html/plugins/movi_productivity:ro
       - roundcube_temp:/tmp/roundcube-temp
     networks:
       - roundcube_internal
