@@ -46,7 +46,13 @@ const emptyForm = {
   compartir_grupo_id: '',
 };
 
-export function ContactosMovi({ onClose }: { onClose: () => void }) {
+export function ContactosMovi({
+  onClose,
+  onCompose,
+}: {
+  onClose: () => void;
+  onCompose: (email: string) => void;
+}) {
   const { usuario } = useAuth();
   const [corporate, setCorporate] = useState<CorporateContact[]>([]);
   const [saved, setSaved] = useState<SavedContact[]>([]);
@@ -210,7 +216,13 @@ export function ContactosMovi({ onClose }: { onClose: () => void }) {
               </div>
               <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-2">
                 {filteredCorporate.map(contact => (
-                  <ContactCard key={contact.id} name={contact.nombre_completo || `${contact.nombre || ''} ${contact.apellidos || ''}`.trim()} email={contact.email_laboral || ''} detail={[contact.puesto, contact.oficina?.nombre].filter(Boolean).join(' · ')} />
+                  <ContactCard
+                    key={contact.id}
+                    name={contact.nombre_completo || `${contact.nombre || ''} ${contact.apellidos || ''}`.trim()}
+                    email={contact.email_laboral || ''}
+                    detail={[contact.puesto, contact.oficina?.nombre].filter(Boolean).join(' · ')}
+                    onCompose={onCompose}
+                  />
                 ))}
               </div>
             </section>
@@ -222,17 +234,30 @@ export function ContactosMovi({ onClose }: { onClose: () => void }) {
               </div>
               <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-2">
                 {filteredSaved.map(contact => (
-                  <div key={contact.id} className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-3 flex gap-3">
+                  <div
+                    key={contact.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onCompose(contact.email)}
+                    onKeyDown={event => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        onCompose(contact.email);
+                      }
+                    }}
+                    className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-3 flex gap-3 cursor-pointer hover:border-accent/40 hover:shadow-sm transition"
+                    title={`Redactar correo para ${contact.email}`}
+                  >
                     <div className="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center text-accent"><UserRound className="w-4 h-4" /></div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold truncate">{contact.nombre} {contact.apellido}</p>
-                      <a href={`mailto:${contact.email}`} className="block text-xs text-accent truncate">{contact.email}</a>
+                      <p className="block text-xs text-accent truncate">{contact.email}</p>
                       <p className="text-[10px] text-neutral-500 flex items-center gap-1 mt-1"><Share2 className="w-3 h-3" /> {scopeLabel(contact.visibilidad)}</p>
                     </div>
                     {contact.usuario_id === usuario?.id && (
                       <div className="flex flex-col gap-1">
-                        <button onClick={() => beginEdit(contact)} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded"><Pencil className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => remove(contact)} className="p-1.5 hover:bg-red-50 text-red-500 rounded"><Trash2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={event => { event.stopPropagation(); beginEdit(contact); }} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded"><Pencil className="w-3.5 h-3.5" /></button>
+                        <button onClick={event => { event.stopPropagation(); remove(contact); }} className="p-1.5 hover:bg-red-50 text-red-500 rounded"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
                     )}
                   </div>
@@ -288,16 +313,31 @@ export function ContactosMovi({ onClose }: { onClose: () => void }) {
   );
 }
 
-function ContactCard({ name, email, detail }: { name: string; email: string; detail: string }) {
+function ContactCard({
+  name,
+  email,
+  detail,
+  onCompose,
+}: {
+  name: string;
+  email: string;
+  detail: string;
+  onCompose: (email: string) => void;
+}) {
   return (
-    <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-3 flex gap-3">
+    <button
+      type="button"
+      onClick={() => onCompose(email)}
+      className="w-full text-left bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-3 flex gap-3 hover:border-accent/40 hover:shadow-sm transition"
+      title={`Redactar correo para ${email}`}
+    >
       <div className="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center text-accent"><UserRound className="w-4 h-4" /></div>
       <div className="min-w-0">
         <p className="text-sm font-semibold truncate">{name}</p>
-        <a href={`mailto:${email}`} className="block text-xs text-accent truncate">{email}</a>
+        <p className="block text-xs text-accent truncate">{email}</p>
         <p className="text-[10px] text-neutral-500 truncate mt-1">{detail}</p>
       </div>
-    </div>
+    </button>
   );
 }
 

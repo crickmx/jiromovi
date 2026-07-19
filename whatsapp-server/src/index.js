@@ -1,4 +1,5 @@
 const express = require('express');
+const { rateLimit } = require('express-rate-limit');
 const { SessionManager } = require('./sessionManager');
 const { SupabaseSync } = require('./supabaseSync');
 
@@ -6,16 +7,56 @@ const app = express();
 app.use(express.json({ limit: '50mb' }));
 
 const PORT = process.env.PORT || 3100;
-const API_KEY = process.env.API_KEY || 'dev-key';
+const API_KEY = process.env.API_KEY;
+const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
+
+if (!API_KEY) {
+  console.error('FATAL: API_KEY is required. Refusing to start without an API key.');
+  process.exit(1);
+}
+
+if (!ADMIN_API_KEY) {
+  console.error('FATAL: ADMIN_API_KEY is required. Refusing to start without a separate admin API key.');
+  process.exit(1);
+}
+
+if (API_KEY === ADMIN_API_KEY) {
+  console.error('FATAL: ADMIN_API_KEY must be different from API_KEY.');
+  process.exit(1);
+}
 
 const sessionManager = new SessionManager();
 const supabaseSync = new SupabaseSync();
+
+const limiterOptions = {
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+};
+app.use(rateLimit({
+  ...limiterOptions,
+  windowMs: 60 * 1000,
+  limit: 120,
+}));
+
+const sensitiveRouteLimiter = rateLimit({
+  ...limiterOptions,
+  windowMs: 60 * 1000,
+  limit: 20,
+});
 
 // Auth middleware
 function auth(req, res, next) {
   const key = req.headers['x-api-key'] || req.headers['apikey'];
   if (key !== API_KEY) {
     return res.status(401).json({ error: 'Invalid API key' });
+  }
+  next();
+}
+
+function adminAuth(req, res, next) {
+  const key = req.headers['x-api-key'] || req.headers['apikey'];
+  if (key !== ADMIN_API_KEY) {
+    return res.status(401).json({ error: 'Invalid admin API key' });
   }
   next();
 }
@@ -46,7 +87,7 @@ app.get('/session/:userId/status', auth, (req, res) => {
 });
 
 // Connect (generate QR)
-app.post('/session/:userId/connect', auth, async (req, res) => {
+app.post('/session/:userId/connect', sensitiveRouteLimiter, auth, async (req, res) => {
   const { userId } = req.params;
   try {
     const result = await sessionManager.connect(userId, supabaseSync);
@@ -84,7 +125,7 @@ app.post('/session/:userId/disconnect', auth, async (req, res) => {
 });
 
 // Send text message
-app.post('/session/:userId/send-message', auth, async (req, res) => {
+app.post('/session/:userId/send-message', sensitiveRouteLimiter, auth, async (req, res) => {
   const { userId } = req.params;
   const { to, message, quotedMessageId } = req.body;
 
@@ -102,7 +143,7 @@ app.post('/session/:userId/send-message', auth, async (req, res) => {
 });
 
 // Send media (file/image/audio)
-app.post('/session/:userId/send-media', auth, async (req, res) => {
+app.post('/session/:userId/send-media', sensitiveRouteLimiter, auth, async (req, res) => {
   const { userId } = req.params;
   const { to, mediaBase64, mimeType, filename, caption } = req.body;
 
@@ -184,7 +225,7 @@ app.get('/session/:userId/store-stats', auth, (req, res) => {
 });
 
 // List all active sessions (admin)
-app.get('/admin/sessions', auth, (req, res) => {
+app.get('/admin/sessions', adminAuth, (req, res) => {
   const sessions = sessionManager.getAllSessions();
   res.json({ sessions });
 });

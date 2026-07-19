@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { getWhatsappApiKey } from "../_shared/emailCredentials.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -32,7 +33,7 @@ Deno.serve(async (req) => {
 
     const { data: config, error: configError } = await supabaseClient
       .from('whatsapp_configuracion')
-      .select('*')
+      .select('id, channel_id_uuid, numero_remitente')
       .eq('activo', true)
       .single();
 
@@ -40,10 +41,11 @@ Deno.serve(async (req) => {
       console.error('Error configuración:', configError);
       throw new Error('No hay configuración de WhatsApp activa');
     }
+    const apiKey = await getWhatsappApiKey(supabaseClient, config.id);
 
     console.log('Configuración encontrada:', JSON.stringify({
       tiene_channel_id: !!config.channel_id_uuid,
-      tiene_api_key: !!config.api_key,
+      tiene_api_key: !!apiKey,
       numero_remitente: config.numero_remitente
     }));
 
@@ -51,7 +53,7 @@ Deno.serve(async (req) => {
       throw new Error('El Channel ID (UUID) no está configurado. Obtén el UUID del canal desde tu dashboard de Wazzup24 en la sección "Channels".');
     }
 
-    if (!config.api_key) {
+    if (!apiKey) {
       throw new Error('El API key no está configurado');
     }
 
@@ -86,7 +88,7 @@ Deno.serve(async (req) => {
     const wazzupResponse = await fetch('https://api.wazzup24.com/v3/message', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${config.api_key}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(wazzupPayload)

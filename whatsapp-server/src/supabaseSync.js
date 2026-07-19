@@ -707,14 +707,12 @@ class SupabaseSync {
         return;
       }
 
-      const { data: signedData } = await this.supabase.storage
-        .from('whatsapp-media')
-        .createSignedUrl(storagePath, 60 * 60 * 24 * 365);
-
       await this.supabase
         .from('whatsapp_messages')
         .update({
-          media_url: signedData?.signedUrl || null,
+          // Las URLs firmadas se generan al leer los mensajes, bajo la
+          // identidad del dueño, y expiran en una hora.
+          media_url: null,
           media_storage_path: storagePath,
           media_file_size: buffer.length,
           media_download_status: 'downloaded',

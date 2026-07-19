@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
+import { getWhatsappApiKey } from "../_shared/emailCredentials.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -463,12 +464,13 @@ Deno.serve(async (req: Request) => {
       } else {
         const { data: legacyWa } = await supabase
           .from('whatsapp_configuracion')
-          .select('api_key, channel_id_uuid, activo')
+          .select('id, channel_id_uuid, activo')
           .eq('activo', true)
           .maybeSingle();
+        const legacyApiKey = legacyWa ? await getWhatsappApiKey(supabase, legacyWa.id) : null;
 
-        if (legacyWa?.api_key) {
-          waApiKey = legacyWa.api_key;
+        if (legacyApiKey) {
+          waApiKey = legacyApiKey;
           waConfigChannelId = legacyWa.channel_id_uuid;
         }
       }

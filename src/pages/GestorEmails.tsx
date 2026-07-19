@@ -153,6 +153,7 @@ export function GestorEmails() {
 
   const [showCompose, setShowCompose] = useState(false);
   const [composeMode, setComposeMode] = useState<'new' | 'reply' | 'replyAll' | 'forward'>('new');
+  const [composeRecipient, setComposeRecipient] = useState('');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<EmailHeader[] | null>(null);
@@ -169,6 +170,14 @@ export function GestorEmails() {
 
   // Tramite from email
   const [showTramiteModal, setShowTramiteModal] = useState(false);
+
+  const composeToContact = (email: string) => {
+    setComposeRecipient(email);
+    setComposeMode('new');
+    setSelectedMessage(null);
+    setShowContacts(false);
+    setShowCompose(true);
+  };
 
   useEffect(() => { checkConfig(); }, [usuario]);
 
@@ -332,7 +341,7 @@ export function GestorEmails() {
   }
 
   if (showContacts) {
-    return <ContactosMovi onClose={() => setShowContacts(false)} />;
+    return <ContactosMovi onClose={() => setShowContacts(false)} onCompose={composeToContact} />;
   }
 
   if (mailView === 'roundcube') {
@@ -413,6 +422,18 @@ export function GestorEmails() {
             />
           )}
         </div>
+
+        {showCompose && (
+          <ComposeModal
+            mode={composeMode}
+            replyTo={selectedMessage}
+            initialTo={composeRecipient}
+            onClose={() => { setShowCompose(false); setComposeRecipient(''); }}
+            onSent={() => { setShowCompose(false); setComposeRecipient(''); }}
+            usuarioId={usuario?.id}
+            configEmail={configEmail}
+          />
+        )}
       </div>
     );
   }
@@ -524,7 +545,7 @@ export function GestorEmails() {
         </button>
 
         <button
-          onClick={() => { setShowCompose(true); setComposeMode('new'); }}
+          onClick={() => { setComposeRecipient(''); setShowCompose(true); setComposeMode('new'); }}
           className="flex items-center gap-1.5 bg-accent text-white px-3 py-1.5 rounded-lg hover:bg-accent/90 transition font-medium text-xs"
         >
           <Plus className="w-3.5 h-3.5" />
@@ -743,8 +764,9 @@ export function GestorEmails() {
         <ComposeModal
           mode={composeMode}
           replyTo={selectedMessage}
-          onClose={() => setShowCompose(false)}
-          onSent={() => { setShowCompose(false); handleRefresh(); }}
+          initialTo={composeRecipient}
+          onClose={() => { setShowCompose(false); setComposeRecipient(''); }}
+          onSent={() => { setShowCompose(false); setComposeRecipient(''); handleRefresh(); }}
           usuarioId={usuario?.id}
           configEmail={configEmail}
         />
@@ -1119,15 +1141,16 @@ interface AttachmentFile {
   base64: string;
 }
 
-function ComposeModal({ mode, replyTo, onClose, onSent, usuarioId, configEmail: senderEmail }: {
+function ComposeModal({ mode, replyTo, initialTo, onClose, onSent, usuarioId, configEmail: senderEmail }: {
   mode: 'new' | 'reply' | 'replyAll' | 'forward';
   replyTo: EmailFull | null;
+  initialTo?: string;
   onClose: () => void;
   onSent: () => void;
   usuarioId?: string;
   configEmail?: string;
 }) {
-  const [to, setTo] = useState('');
+  const [to, setTo] = useState(initialTo || '');
   const [cc, setCc] = useState('');
   const [bcc, setBcc] = useState('');
   const [subject, setSubject] = useState('');
