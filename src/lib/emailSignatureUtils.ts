@@ -95,6 +95,12 @@ function sanitizeUrl(value: string | null | undefined): string {
   return '';
 }
 
+function absoluteAssetUrl(value: string | null | undefined): string {
+  const url = String(value ?? '').trim();
+  if (!url) return '';
+  return url.startsWith('/') ? `https://app.movi.digital${url}` : url;
+}
+
 function stripPhoneFormat(phone: string | null | undefined): string {
   if (!phone) return '';
   return phone.replace(/[^0-9]/g, '');
@@ -167,11 +173,11 @@ export async function getUserContext(usuarioId: string): Promise<SignatureContex
     celular_laboral: celularRaw,
     celular_laboral_sin_formato: celularSinFormato,
     whatsapp_link: whatsappLink,
-    imagen_perfil: user.imagen_perfil_url || '',
+    imagen_perfil: absoluteAssetUrl(user.imagen_perfil_url),
     extension_telefonica: user.extension_telefonica || '',
     rol: user.rol || '',
     // Oficina
-    oficina_logo: oficina.logo_url || '',
+    oficina_logo: absoluteAssetUrl(oficina.logo_url),
     oficina_nombre: oficina.nombre || '',
     oficina_color_primario: oficina.accent_color || '#0E23E2',
     oficina_color_secundario: oficina.color_secundario || '',

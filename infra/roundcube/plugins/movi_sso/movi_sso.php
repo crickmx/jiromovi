@@ -20,7 +20,32 @@ class movi_sso extends rcube_plugin
 
     public function startup($args)
     {
-        if (empty($_SESSION['user_id']) && $this->token()) {
+        $token = $this->token();
+        if (!$token) {
+            return $args;
+        }
+
+        if (empty($_SESSION['user_id'])) {
+            $args['action'] = 'login';
+            return $args;
+        }
+
+        // Una sesión de Roundcube puede seguir abierta durante días. Cada
+        // handoff desde MOVI debe volver a aplicar la identidad, la firma y los
+        // contactos actuales, incluso cuando no ocurre un login IMAP nuevo.
+        $credentials = $this->redeem($token);
+        $rcmail = rcmail::get_instance();
+        $currentUsername = strtolower((string) $rcmail->user->get_username());
+        $requestedUsername = strtolower((string) ($credentials['username'] ?? ''));
+
+        if ($credentials && $currentUsername && hash_equals($currentUsername, $requestedUsername)) {
+            $this->syncIdentityAndContacts($rcmail);
+        } elseif ($credentials) {
+            // Si MOVI cambió de usuario, no se debe conservar la sesión IMAP
+            // anterior. Las credenciales ya canjeadas permanecen en memoria y
+            // el hook authenticate completa el login de la cuenta correcta.
+            $rcmail->logout_actions();
+            $rcmail->kill_session();
             $args['action'] = 'login';
         }
 
@@ -33,11 +58,22 @@ class movi_sso extends rcube_plugin
             return $args;
         }
 
-        $identityData = $this->credentials['identity'];
         $rcmail = rcmail::get_instance();
+        $this->syncIdentityAndContacts($rcmail);
+
+        return $args;
+    }
+
+    private function syncIdentityAndContacts(rcmail $rcmail): void
+    {
+        if (!$this->credentials || empty($this->credentials['identity'])) {
+            return;
+        }
+
+        $identityData = $this->credentials['identity'];
         $identity = $rcmail->user->get_identity();
         if (!$identity || empty($identity['identity_id'])) {
-            return $args;
+            return;
         }
 
         $rcmail->user->update_identity((int) $identity['identity_id'], [
@@ -49,8 +85,6 @@ class movi_sso extends rcube_plugin
         ]);
 
         $this->syncContacts($rcmail, $this->credentials['contacts'] ?? []);
-
-        return $args;
     }
 
     public function authenticate($args)
