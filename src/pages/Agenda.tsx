@@ -13,7 +13,11 @@ import { Label } from '../components/ui/label';
 const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const DEFAULT_RULES = [1, 2, 3, 4, 5].map(weekday => ({ weekday, start_time: '09:00', end_time: '18:00' }));
 
-export default function Agenda() {
+interface AgendaProps {
+  embedded?: boolean;
+}
+
+export default function Agenda({ embedded = false }: AgendaProps) {
   const { usuario } = useAuth();
   const [calendars, setCalendars] = useState<AgendaCalendar[]>([]);
   const [eventTypes, setEventTypes] = useState<AgendaEventType[]>([]);
@@ -157,11 +161,13 @@ export default function Agenda() {
     patchEvent(item.id, { allowed_locations: next.length ? next : ['jitsi'] });
   }
 
-  if (loading) return <Container><div className="py-16 text-center">Cargando agenda…</div></Container>;
+  if (loading) return embedded
+    ? <div className="py-16 text-center">Cargando agenda…</div>
+    : <Container><div className="py-16 text-center">Cargando agenda…</div></Container>;
 
-  return (
-    <Container className="max-w-6xl">
-      <PageHeader title="Agenda" description="Configura tus calendarios y comparte tu página de reservas" />
+  const content = (
+    <>
+      {!embedded && <PageHeader title="Agenda" description="Configura tus calendarios y comparte tu página de reservas" />}
       {message && <div className="mb-4 rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-800">{message}</div>}
       <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
         <Card className="p-4 self-start">
@@ -242,6 +248,8 @@ export default function Agenda() {
           </Card>
         </div>}
       </div>
-    </Container>
+    </>
   );
+
+  return embedded ? <div className="max-w-6xl">{content}</div> : <Container className="max-w-6xl">{content}</Container>;
 }

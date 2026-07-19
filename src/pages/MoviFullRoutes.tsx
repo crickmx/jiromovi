@@ -134,7 +134,6 @@ const Perfil = lazy(() => import('./Perfil'));
 const Oficinas = lazy(() => import('./Oficinas'));
 const RegistroPersonal = lazy(() => import('./RegistroPersonal'));
 const PaginaPublicaAsesor = lazy(() => import('./PaginaPublicaAsesor'));
-const Agenda = lazy(() => import('./Agenda'));
 const AgendaPublica = lazy(() => import('./AgendaPublica'));
 
 function PageLoader() {
@@ -171,7 +170,7 @@ export default function MoviFullRoutes() {
         <Route element={<LayoutShell />}>
           <Route path="/dashboard" element={<ProtectedRoute><MoviDashboard /></ProtectedRoute>} />
           <Route path="/chava" element={<ProtectedRoute><Chava /></ProtectedRoute>} />
-          <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
+          <Route path="/agenda" element={<ProtectedRoute><Navigate to="/mercadotecnia/agenda" replace /></ProtectedRoute>} />
           <Route path="/store" element={<ProtectedRoute><Store /></ProtectedRoute>} />
           <Route path="/store/carrito" element={<ProtectedRoute><StoreCarrito /></ProtectedRoute>} />
           <Route path="/store/admin" element={<ProtectedRoute><StoreAdmin /></ProtectedRoute>} />
@@ -250,6 +249,7 @@ export default function MoviFullRoutes() {
           <Route path="/mercadotecnia/publicidad" element={<ProtectedRoute><Mercadotecnia section="publicidad" /></ProtectedRoute>} />
           <Route path="/mercadotecnia/mis-disenos" element={<ProtectedRoute><Mercadotecnia section="mis-disenos" /></ProtectedRoute>} />
           <Route path="/mercadotecnia/mi-pagina-web" element={<ProtectedRoute><Mercadotecnia section="mi-pagina-web" /></ProtectedRoute>} />
+          <Route path="/mercadotecnia/agenda" element={<ProtectedRoute><Mercadotecnia section="agenda" /></ProtectedRoute>} />
           <Route path="/mercadotecnia/mi-marca" element={<ProtectedRoute><Mercadotecnia section="mi-marca" /></ProtectedRoute>} />
           <Route path="/mercadotecnia/fotos-estudio" element={<ProtectedRoute><Mercadotecnia section="fotos-estudio" /></ProtectedRoute>} />
           <Route path="/mercadotecnia/recursos-marca" element={<ProtectedRoute><Mercadotecnia section="recursos-marca" /></ProtectedRoute>} />
