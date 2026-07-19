@@ -259,6 +259,8 @@ export default function MoviFullRoutes() {
           <Route path="/seguros-education/on-demand" element={<ProtectedRoute><SegurosEducationOnDemand /></ProtectedRoute>} />
           <Route path="/seguros-education/aula-virtual" element={<ProtectedRoute><SegurosEducationAulaVirtual /></ProtectedRoute>} />
           <Route path="/seguros-education/aula-virtual/:id" element={<ProtectedRoute><AulaVirtualSala /></ProtectedRoute>} />
+          {/* Alias used by enlaces de sala enviados por correo/invitación. */}
+          <Route path="/aula-virtual/sala/:id" element={<ProtectedRoute><AulaVirtualSala /></ProtectedRoute>} />
           <Route path="/seguros-education/cedula-a" element={<ProtectedRoute><SegurosEducationCedulaA /></ProtectedRoute>} />
           <Route path="/seguros-education/cedula-a/modulo/:moduloId" element={<ProtectedRoute><ModuloViewer /></ProtectedRoute>} />
           <Route path="/seguros-education/cedula-a/examenes" element={<ProtectedRoute><CedulaAExamenes /></ProtectedRoute>} />

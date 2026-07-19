@@ -6,6 +6,9 @@ import { Mic, MicOff, Video as VideoIcon, VideoOff, MessageSquare, Users, PhoneO
 import { VideoGrid } from '../components/meeting/VideoGrid';
 import { MeetingChat } from '../components/meeting/MeetingChat';
 import { ParticipantsList } from '../components/meeting/ParticipantsList';
+import { HMSPrebuilt } from '@100mslive/roomkit-react';
+import { solicitarToken100ms } from '../lib/aulaVirtual100ms';
+import type { Aula100msRole } from '../lib/aulaVirtual100ms';
 
 interface AulaSession {
   id: string;
@@ -27,7 +30,7 @@ interface Participant {
   isScreenSharing?: boolean;
 }
 
-export function AulaVirtualSala() {
+function LegacyAulaVirtualSala() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   const { usuario } = useAuth();
@@ -572,4 +575,50 @@ export function AulaVirtualSala() {
     </div>
   );
 }
+/** Sala productiva basada en 100ms RoomKit. El flujo legado se conserva aislado
+ * para facilitar una retirada segura después de validar la cuenta 100ms. */
+export function AulaVirtualSala() {
+  const { id, roomId } = useParams<{ id?: string; roomId?: string }>();
+  const { usuario } = useAuth();
+  const [token, setToken] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function join() {
+      if (!usuario || !(id || roomId)) return;
+      try {
+        const identifier = id || roomId!;
+        const { data: session, error: sessionError } = await supabase
+          .from('aula_virtual_sesiones')
+          .select('room_id, hms_room_id, instructor_id, estado, titulo')
+          .or(`id.eq.${identifier},room_id.eq.${identifier},hms_room_id.eq.${identifier}`)
+          .maybeSingle();
+        if (sessionError) throw sessionError;
+        if (!session) throw new Error('Sesión no encontrada');
+        if (session.estado === 'finalizada' || session.estado === 'cancelada') throw new Error('Esta sesión ya finalizó');
+        const role: Aula100msRole = usuario.id === session.instructor_id ? 'instructor' : 'estudiante';
+        const result = await solicitarToken100ms({
+          roomId: session.hms_room_id || session.room_id,
+          role,
+          name: usuario.nombre_completo || `${usuario.nombre} ${usuario.apellidos}`,
+        });
+        if (!cancelled) setToken(result.token);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'No fue posible entrar a la sala');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    void join();
+    return () => { cancelled = true; };
+  }, [id, roomId, usuario]);
+
+  if (loading) return <div className="flex min-h-screen items-center justify-center">Cargando sala…</div>;
+  if (error) return <div className="flex min-h-screen items-center justify-center text-red-600">{error}</div>;
+  if (!token) return null;
+  return <div className="min-h-screen"><HMSPrebuilt authToken={token} /></div>;
+}
+
 export default AulaVirtualSala;
