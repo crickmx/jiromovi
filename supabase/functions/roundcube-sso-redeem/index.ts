@@ -42,6 +42,12 @@ function safeUrl(value: unknown): string {
   return /^(https?:|mailto:|tel:)/i.test(url) ? url : "";
 }
 
+function absoluteAssetUrl(value: unknown): string {
+  const url = String(value ?? "").trim();
+  if (!url) return "";
+  return url.startsWith("/") ? `https://app.movi.digital${url}` : url;
+}
+
 function renderSignature(template: string, context: Record<string, unknown>): string {
   let html = template;
   let previous = "";
@@ -165,7 +171,7 @@ Deno.serve(async (req: Request) => {
         imagen_perfil_url,
         rol,
         oficina_id,
-        oficina:oficinas!oficina_id(
+        oficina:oficinas!usuarios_oficina_id_fkey(
           nombre,
           domicilio,
           telefono,
@@ -201,10 +207,10 @@ Deno.serve(async (req: Request) => {
       celular_laboral: mobile,
       celular_laboral_sin_formato: mobileDigits,
       whatsapp_link: whatsappDigits ? `https://wa.me/${whatsappDigits}` : "",
-      imagen_perfil: profile?.imagen_perfil_url,
+      imagen_perfil: absoluteAssetUrl(profile?.imagen_perfil_url),
       extension_telefonica: profile?.extension_telefonica,
       rol: profile?.rol,
-      oficina_logo: office?.logo_url,
+      oficina_logo: absoluteAssetUrl(office?.logo_url),
       oficina_nombre: office?.nombre,
       oficina_color_primario: office?.accent_color || "#0E23E2",
       oficina_color_secundario: office?.color_secundario,

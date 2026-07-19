@@ -178,17 +178,20 @@ async function getFirmaUsuario(supabase: any, userId: string): Promise<string> {
       .from('usuarios')
       .select(`
         *,
-        oficinas (
+        oficina:oficinas!usuarios_oficina_id_fkey (
           id,
           nombre,
-          direccion,
+          domicilio,
           telefono,
           email,
           sitio_web,
           facebook,
           instagram,
-          linkedin,
-          twitter
+          logo_url,
+          accent_color,
+          color_secundario,
+          extension,
+          whatsapp
         )
       `)
       .eq('id', userId)
@@ -216,17 +219,23 @@ async function getFirmaUsuario(supabase: any, userId: string): Promise<string> {
       imagen_perfil: usuario.imagen_perfil_url || '',
     };
 
-    if (usuario.oficinas) {
-      const oficina = usuario.oficinas;
+    if (usuario.oficina) {
+      const oficina = Array.isArray(usuario.oficina) ? usuario.oficina[0] : usuario.oficina;
       templateData.oficina_nombre = oficina.nombre || '';
-      templateData.oficina_direccion = oficina.direccion || '';
+      templateData.oficina_direccion = oficina.domicilio || '';
+      templateData.oficina_domicilio = oficina.domicilio || '';
       templateData.oficina_telefono = oficina.telefono || '';
       templateData.oficina_email = oficina.email || '';
       templateData.oficina_sitio_web = oficina.sitio_web || '';
       templateData.oficina_facebook = oficina.facebook || '';
       templateData.oficina_instagram = oficina.instagram || '';
-      templateData.oficina_linkedin = oficina.linkedin || '';
-      templateData.oficina_twitter = oficina.twitter || '';
+      templateData.oficina_logo = oficina.logo_url?.startsWith('/')
+        ? `https://app.movi.digital${oficina.logo_url}`
+        : oficina.logo_url || '';
+      templateData.oficina_color_primario = oficina.accent_color || '#0E23E2';
+      templateData.oficina_color_secundario = oficina.color_secundario || '';
+      templateData.oficina_extension = oficina.extension || '';
+      templateData.oficina_whatsapp = oficina.whatsapp || '';
     }
 
     firmaHtml = firmaHtml.replace(/\{\{([^#\/][^}]+)\}\}/g, (match, key) => {
