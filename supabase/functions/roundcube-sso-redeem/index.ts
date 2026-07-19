@@ -27,6 +27,46 @@ async function secretsMatch(provided: string, expected: string): Promise<boolean
   return difference === 0;
 }
 
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function safeUrl(value: unknown): string {
+  const url = String(value ?? "").trim();
+  return /^(https?:|mailto:|tel:)/i.test(url) ? url : "";
+}
+
+function renderSignature(template: string, context: Record<string, unknown>): string {
+  let html = template;
+  let previous = "";
+
+  while (previous !== html) {
+    previous = html;
+    html = html.replace(
+      /\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g,
+      (_match, key: string, content: string) => String(context[key] ?? "").trim() ? content : "",
+    );
+  }
+
+  html = html.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
+    const value = context[key];
+    if (/link|logo|imagen|sitio_web/i.test(key)) return safeUrl(value);
+    if (/color/i.test(key)) {
+      const color = String(value ?? "").trim();
+      return /^#[0-9a-f]{3,8}$/i.test(color) ? color : "";
+    }
+    return escapeHtml(value);
+  });
+
+  return `<div data-movi-email-signature="true">${html}</div>`;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return response(405, { error: "METHOD_NOT_ALLOWED" });
 
@@ -74,10 +114,85 @@ Deno.serve(async (req: Request) => {
     const password = await getMailboxPassword(admin, claimed.usuario_id);
     if (!password) return response(409, { error: "MAILBOX_CREDENTIAL_MISSING" });
 
+    const { data: profile } = await admin
+      .from("usuarios")
+      .select(`
+        nombre,
+        apellidos,
+        nombre_completo,
+        puesto,
+        email_laboral,
+        celular_laboral,
+        extension_telefonica,
+        imagen_perfil_url,
+        rol,
+        oficina:oficinas!oficina_id(
+          nombre,
+          domicilio,
+          telefono,
+          logo_url,
+          accent_color,
+          color_secundario,
+          extension,
+          whatsapp,
+          sitio_web
+        )
+      `)
+      .eq("id", claimed.usuario_id)
+      .maybeSingle();
+
+    const office = Array.isArray(profile?.oficina) ? profile?.oficina[0] : profile?.oficina;
+    const fullName = profile?.nombre_completo?.trim()
+      || `${profile?.nombre ?? ""} ${profile?.apellidos ?? ""}`.trim()
+      || mailbox.email;
+    const mobile = String(profile?.celular_laboral ?? "");
+    const mobileDigits = mobile.replace(/\D/g, "");
+    const whatsappDigits = mobileDigits.length === 10
+      ? `521${mobileDigits}`
+      : mobileDigits.startsWith("52") && mobileDigits.length === 12
+      ? `521${mobileDigits.slice(2)}`
+      : mobileDigits;
+
+    const signatureContext: Record<string, unknown> = {
+      nombre: profile?.nombre,
+      apellidos: profile?.apellidos,
+      nombre_completo: fullName,
+      puesto: profile?.puesto,
+      email_laboral: profile?.email_laboral || mailbox.email,
+      celular_laboral: mobile,
+      celular_laboral_sin_formato: mobileDigits,
+      whatsapp_link: whatsappDigits ? `https://wa.me/${whatsappDigits}` : "",
+      imagen_perfil: profile?.imagen_perfil_url,
+      extension_telefonica: profile?.extension_telefonica,
+      rol: profile?.rol,
+      oficina_logo: office?.logo_url,
+      oficina_nombre: office?.nombre,
+      oficina_color_primario: office?.accent_color || "#0E23E2",
+      oficina_color_secundario: office?.color_secundario,
+      oficina_telefono: office?.telefono,
+      oficina_domicilio: office?.domicilio,
+      oficina_extension: office?.extension,
+      oficina_whatsapp: office?.whatsapp,
+      oficina_sitio_web: office?.sitio_web,
+    };
+
+    const { data: assignedSignatures } = await admin.rpc("get_firma_asignada", {
+      p_usuario_id: claimed.usuario_id,
+    });
+    const template = assignedSignatures?.[0]?.template_html;
+    const signature = typeof template === "string" && template.trim()
+      ? renderSignature(template, signatureContext)
+      : "";
+
     return response(200, {
       username: mailbox.email,
       password,
       host: Deno.env.get("IONOS_IMAP_HOST") ?? "ssl://imap.ionos.mx",
+      identity: {
+        name: fullName,
+        organization: office?.nombre ?? "",
+        signature,
+      },
     });
   } catch (error) {
     console.error("roundcube-sso-redeem:", error instanceof Error ? error.message : "unknown");

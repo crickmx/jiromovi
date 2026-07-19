@@ -15,6 +15,7 @@ class movi_sso extends rcube_plugin
     {
         $this->add_hook('startup', [$this, 'startup']);
         $this->add_hook('authenticate', [$this, 'authenticate']);
+        $this->add_hook('login_after', [$this, 'loginAfter']);
     }
 
     public function startup($args)
@@ -22,6 +23,30 @@ class movi_sso extends rcube_plugin
         if (empty($_SESSION['user_id']) && $this->token()) {
             $args['action'] = 'login';
         }
+
+        return $args;
+    }
+
+    public function loginAfter($args)
+    {
+        if (!$this->credentials || empty($this->credentials['identity'])) {
+            return $args;
+        }
+
+        $identityData = $this->credentials['identity'];
+        $rcmail = rcmail::get_instance();
+        $identity = $rcmail->user->get_identity();
+        if (!$identity || empty($identity['identity_id'])) {
+            return $args;
+        }
+
+        $rcmail->user->update_identity((int) $identity['identity_id'], [
+            'name' => $identityData['name'],
+            'organization' => $identityData['organization'],
+            'signature' => $identityData['signature'],
+            'html_signature' => 1,
+            'standard' => 1,
+        ]);
 
         return $args;
     }
@@ -100,6 +125,11 @@ class movi_sso extends rcube_plugin
             || !filter_var($data['username'] ?? '', FILTER_VALIDATE_EMAIL)
             || !is_string($data['password'] ?? null)
             || !is_string($data['host'] ?? null)
+            || !is_array($data['identity'] ?? null)
+            || !is_string($data['identity']['name'] ?? null)
+            || !is_string($data['identity']['organization'] ?? null)
+            || !is_string($data['identity']['signature'] ?? null)
+            || strlen($data['identity']['signature']) > 100000
         ) {
             return null;
         }

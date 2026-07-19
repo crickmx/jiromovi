@@ -12,7 +12,7 @@ $config['smtp_user'] = '%u';
 $config['smtp_pass'] = '%p';
 $config['login_lc'] = 2;
 $config['login_autocomplete'] = 0;
-$config['session_lifetime'] = 30;
+$config['session_lifetime'] = 120;
 $config['session_domain'] = '';
 $config['session_path'] = '/correo/';
 $config['session_samesite'] = 'Strict';
@@ -20,6 +20,7 @@ $config['session_secure'] = true;
 $config['ip_check'] = true;
 $config['force_https'] = true;
 $config['use_https'] = true;
+$config['identities_level'] = 3;
 
 // Roundcube solo se mostrará bajo el mismo origen, detrás del proxy de MOVI.
 $config['x_frame_options'] = 'sameorigin';
