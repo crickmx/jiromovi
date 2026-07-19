@@ -67,6 +67,44 @@ function renderSignature(template: string, context: Record<string, unknown>): st
   return `<div data-movi-email-signature="true">${html}</div>`;
 }
 
+type RoundcubeContact = {
+  source: "directory" | "shared";
+  id: string;
+  name: string;
+  firstname: string;
+  surname: string;
+  email: string;
+  phone: string;
+  organization: string;
+  jobtitle: string;
+};
+
+function asRoundcubeContact(
+  source: RoundcubeContact["source"],
+  row: Record<string, unknown>,
+): RoundcubeContact | null {
+  const email = String(row.email_laboral ?? row.email ?? "").trim().toLowerCase();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
+
+  const firstname = String(row.nombre ?? "").trim();
+  const surname = String(row.apellidos ?? row.apellido ?? "").trim();
+  const name = String(row.nombre_completo ?? "").trim()
+    || `${firstname} ${surname}`.trim()
+    || email;
+
+  return {
+    source,
+    id: String(row.id ?? ""),
+    name,
+    firstname,
+    surname,
+    email,
+    phone: String(row.celular_laboral ?? row.telefono ?? "").trim(),
+    organization: String(row.empresa ?? row.oficina_nombre ?? "").trim(),
+    jobtitle: String(row.puesto ?? "").trim(),
+  };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return response(405, { error: "METHOD_NOT_ALLOWED" });
 
@@ -126,6 +164,7 @@ Deno.serve(async (req: Request) => {
         extension_telefonica,
         imagen_perfil_url,
         rol,
+        oficina_id,
         oficina:oficinas!oficina_id(
           nombre,
           domicilio,
@@ -184,6 +223,76 @@ Deno.serve(async (req: Request) => {
       ? renderSignature(template, signatureContext)
       : "";
 
+    // El endpoint usa service_role para el canal servidor-a-servidor, por eso
+    // reproduce explícitamente el mismo alcance jerárquico de las políticas RLS.
+    let directoryQuery = admin
+      .from("usuarios")
+      .select("id,nombre,apellidos,nombre_completo,email_laboral,celular_laboral,puesto,oficina:oficinas!oficina_id(nombre)")
+      .eq("activo", true)
+      .eq("is_deleted", false)
+      .not("email_laboral", "is", null)
+      .limit(2500);
+    if (profile?.rol !== "Administrador") {
+      directoryQuery = profile?.oficina_id
+        ? directoryQuery.eq("oficina_id", profile.oficina_id)
+        : directoryQuery.eq("id", claimed.usuario_id);
+    }
+
+    const { data: memberships } = await admin
+      .from("tramites_grupos_miembros")
+      .select("grupo_id")
+      .eq("usuario_id", claimed.usuario_id);
+    const groupIds = (memberships ?? []).map((row) => row.grupo_id).filter(Boolean);
+
+    const visibleClauses = [
+      `usuario_id.eq.${claimed.usuario_id}`,
+      `asignado_a.eq.${claimed.usuario_id}`,
+      "visibilidad.eq.empresa",
+    ];
+    if (profile?.oficina_id) {
+      visibleClauses.push(
+        `and(visibilidad.eq.oficina,compartir_oficina_id.eq.${profile.oficina_id})`,
+      );
+    }
+    if (groupIds.length) {
+      visibleClauses.push(
+        `and(visibilidad.eq.grupo,compartir_grupo_id.in.(${groupIds.join(",")}))`,
+      );
+    }
+
+    const [directoryResult, sharedResult] = await Promise.all([
+      directoryQuery,
+      admin
+        .from("contactos")
+        .select("id,nombre,apellido,email,telefono,empresa")
+        .eq("eliminado", false)
+        .or(visibleClauses.join(","))
+        .limit(2500),
+    ]);
+    if (directoryResult.error) throw directoryResult.error;
+    if (sharedResult.error) throw sharedResult.error;
+
+    const seenEmails = new Set<string>();
+    const contacts: RoundcubeContact[] = [];
+    for (const row of directoryResult.data ?? []) {
+      const relatedOffice = Array.isArray(row.oficina) ? row.oficina[0] : row.oficina;
+      const contact = asRoundcubeContact("directory", {
+        ...row,
+        oficina_nombre: relatedOffice?.nombre,
+      });
+      if (contact && !seenEmails.has(contact.email)) {
+        seenEmails.add(contact.email);
+        contacts.push(contact);
+      }
+    }
+    for (const row of sharedResult.data ?? []) {
+      const contact = asRoundcubeContact("shared", row);
+      if (contact && !seenEmails.has(contact.email)) {
+        seenEmails.add(contact.email);
+        contacts.push(contact);
+      }
+    }
+
     return response(200, {
       username: mailbox.email,
       password,
@@ -193,6 +302,7 @@ Deno.serve(async (req: Request) => {
         organization: office?.nombre ?? "",
         signature,
       },
+      contacts,
     });
   } catch (error) {
     console.error("roundcube-sso-redeem:", error instanceof Error ? error.message : "unknown");

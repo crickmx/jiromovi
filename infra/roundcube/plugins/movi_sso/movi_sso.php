@@ -48,6 +48,8 @@ class movi_sso extends rcube_plugin
             'standard' => 1,
         ]);
 
+        $this->syncContacts($rcmail, $this->credentials['contacts'] ?? []);
+
         return $args;
     }
 
@@ -130,11 +132,103 @@ class movi_sso extends rcube_plugin
             || !is_string($data['identity']['organization'] ?? null)
             || !is_string($data['identity']['signature'] ?? null)
             || strlen($data['identity']['signature']) > 100000
+            || !is_array($data['contacts'] ?? null)
+            || count($data['contacts']) > 5000
         ) {
             return null;
         }
 
+        foreach ($data['contacts'] as $contact) {
+            if (
+                !is_array($contact)
+                || !in_array($contact['source'] ?? '', ['directory', 'shared'], true)
+                || !is_string($contact['id'] ?? null)
+                || !is_string($contact['name'] ?? null)
+                || !filter_var($contact['email'] ?? '', FILTER_VALIDATE_EMAIL)
+            ) {
+                return null;
+            }
+        }
+
         $this->credentials = $data;
         return $this->credentials;
+    }
+
+    private function syncContacts(rcmail $rcmail, array $contacts): void
+    {
+        try {
+            $book = $rcmail->get_address_book('sql', true);
+            if (!$book) {
+                return;
+            }
+
+            $managedGroups = [
+                'directory' => 'MOVI — Directorio',
+                'shared' => 'MOVI — Compartidos',
+            ];
+
+            // Eliminar únicamente contactos de grupos administrados. La libreta
+            // personal y sus grupos nunca son modificados por la sincronización.
+            foreach ($book->list_groups() as $group) {
+                $source = array_search($group['name'] ?? '', $managedGroups, true);
+                if ($source === false) {
+                    continue;
+                }
+
+                $book->set_group($group['ID']);
+                $book->set_pagesize(5000);
+                $members = $book->list_records(['ID'], 5000, true);
+                $ids = [];
+                foreach ($members->records ?? [] as $member) {
+                    if (!empty($member['ID'])) {
+                        $ids[] = $member['ID'];
+                    }
+                }
+                $book->set_group(null);
+                if ($ids) {
+                    $book->delete($ids, true);
+                }
+                $book->delete_group($group['ID']);
+            }
+
+            $groups = [];
+            foreach ($managedGroups as $source => $name) {
+                $created = $book->create_group($name);
+                if (!empty($created['id'])) {
+                    $groups[$source] = $created['id'];
+                }
+            }
+
+            foreach ($contacts as $contact) {
+                $source = $contact['source'];
+                if (empty($groups[$source])) {
+                    continue;
+                }
+
+                $record = [
+                    'name' => mb_substr(trim($contact['name']), 0, 128),
+                    'firstname' => mb_substr(trim($contact['firstname'] ?? ''), 0, 64),
+                    'surname' => mb_substr(trim($contact['surname'] ?? ''), 0, 64),
+                    'email:work' => [strtolower(trim($contact['email']))],
+                    'phone:work' => [mb_substr(trim($contact['phone'] ?? ''), 0, 40)],
+                    'organization' => mb_substr(trim($contact['organization'] ?? ''), 0, 128),
+                    'jobtitle' => mb_substr(trim($contact['jobtitle'] ?? ''), 0, 128),
+                    'notes' => 'Administrado por MOVI',
+                ];
+                $record = array_filter($record, static fn($value) => $value !== '' && $value !== ['']);
+                $contactId = $book->insert($record);
+                if ($contactId) {
+                    $book->add_to_group($groups[$source], $contactId);
+                }
+            }
+        } catch (Throwable $error) {
+            rcube::raise_error([
+                'code' => 600,
+                'type' => 'php',
+                'file' => __FILE__,
+                'line' => __LINE__,
+                'message' => 'MOVI contact sync failed: ' . $error->getMessage(),
+            ], true, false);
+        }
     }
 }

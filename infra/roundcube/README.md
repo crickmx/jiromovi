@@ -139,3 +139,17 @@ Antes de habilitar usuarios:
 - Confirmar que el endpoint de canje responde `401` sin el secreto.
 - Confirmar que Nginx no registra query strings.
 - Confirmar que cerrar MOVI elimina también la sesión Roundcube.
+
+## Contactos MOVI
+
+El canje SSO entrega también el directorio permitido para el usuario y los
+contactos personales/compartidos visibles por oficina, grupo o empresa.
+`movi_sso` sincroniza esos registros en dos grupos administrados de la libreta
+SQL de Roundcube:
+
+- `MOVI — Directorio`
+- `MOVI — Compartidos`
+
+Roundcube incluye ambos grupos en el autocompletado nativo de Para, CC y CCO.
+Cada inicio SSO reemplaza exclusivamente los contactos dentro de esos grupos;
+los contactos y grupos personales creados por el usuario no se alteran.
