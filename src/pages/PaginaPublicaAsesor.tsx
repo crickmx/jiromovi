@@ -703,6 +703,17 @@ export default function PaginaPublicaAsesor() {
                       <Phone className="w-4 h-4" />
                       Llamar
                     </a>
+                    {agendaBlocks.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setAgendaModalEventId(agendaBlocks[0].id)}
+                        className={btnPrimary}
+                        style={{ backgroundColor: secondaryColor }}
+                      >
+                        <CalendarDays className="w-4 h-4" />
+                        Agendar cita
+                      </button>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
                     <a
@@ -1523,15 +1534,27 @@ export default function PaginaPublicaAsesor() {
             >
               <Car className="w-4.5 h-4.5" /> Cotizar
             </button>
-            <button
-              onClick={handleSaveContact}
-              disabled={vcardLoading}
-              className="flex-1 flex items-center justify-center gap-2 py-3.5 font-bold text-sm bg-white active:bg-gray-50 transition-all"
-              style={{ color: primaryColor }}
-            >
-              {vcardLoading ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : <UserPlus className="w-4.5 h-4.5" />}
-              Guardar
-            </button>
+            {agendaBlocks.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setAgendaModalEventId(agendaBlocks[0].id)}
+                className="flex-1 flex items-center justify-center gap-2 py-3.5 font-bold text-sm bg-white active:bg-gray-50 transition-all"
+                style={{ color: primaryColor }}
+              >
+                <CalendarDays className="w-4.5 h-4.5" />
+                Agenda
+              </button>
+            ) : (
+              <button
+                onClick={handleSaveContact}
+                disabled={vcardLoading}
+                className="flex-1 flex items-center justify-center gap-2 py-3.5 font-bold text-sm bg-white active:bg-gray-50 transition-all"
+                style={{ color: primaryColor }}
+              >
+                {vcardLoading ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : <UserPlus className="w-4.5 h-4.5" />}
+                Guardar
+              </button>
+            )}
           </div>
         </div>
         {/* ═══════════════════════════════════════
