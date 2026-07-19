@@ -2,10 +2,11 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { getRenderedSignature, stripExistingSignature } from '../lib/emailSignatureUtils';
-import { Mail, Send, FileText, Trash2, CircleAlert as AlertCircle, Inbox, Search, RefreshCw, Paperclip, ChevronLeft, ChevronRight, Settings, Plus, Archive, MailOpen, Eye, EyeOff, FolderOpen, X, ArrowLeft, Reply, ReplyAll, Forward, Download, ChevronDown, ChevronUp, ClipboardList, LayoutList } from 'lucide-react';
+import { Mail, Send, FileText, Trash2, CircleAlert as AlertCircle, Inbox, Search, RefreshCw, Paperclip, ChevronLeft, ChevronRight, Settings, Plus, Archive, MailOpen, Eye, EyeOff, FolderOpen, X, ArrowLeft, Reply, ReplyAll, Forward, Download, ChevronDown, ChevronUp, ClipboardList, LayoutList, ContactRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { IniciarTramiteEmailModal } from '@/components/email/IniciarTramiteEmailModal';
 import { getRoundcubeHandoffUrl } from '../lib/roundcubeSso';
+import { ContactosMovi } from '../components/email/ContactosMovi';
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -161,6 +162,7 @@ export function GestorEmails() {
   const [connectionFailed, setConnectionFailed] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [openingRoundcube, setOpeningRoundcube] = useState(false);
+  const [showContacts, setShowContacts] = useState(false);
 
   // Mobile: show reading pane full screen
   const [mobileShowReading, setMobileShowReading] = useState(false);
@@ -329,6 +331,10 @@ export function GestorEmails() {
     );
   }
 
+  if (showContacts) {
+    return <ContactosMovi onClose={() => setShowContacts(false)} />;
+  }
+
   if (mailView === 'roundcube') {
     return (
       <div className="h-full flex flex-col bg-neutral-50 dark:bg-neutral-900 overflow-hidden">
@@ -345,6 +351,15 @@ export function GestorEmails() {
             </div>
             <p className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate">{configEmail}</p>
           </div>
+
+          <button
+            onClick={() => setShowContacts(true)}
+            className="flex items-center gap-1.5 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 px-3 py-1.5 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 transition font-medium text-xs"
+            title="Contactos MOVI"
+          >
+            <ContactRound className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Contactos</span>
+          </button>
 
           <button
             onClick={openRoundcubeEmbedded}
@@ -469,6 +484,15 @@ export function GestorEmails() {
             </button>
           )}
         </div>
+
+        <button
+          onClick={() => setShowContacts(true)}
+          className="flex items-center gap-1.5 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 px-3 py-1.5 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 transition font-medium text-xs"
+          title="Contactos MOVI"
+        >
+          <ContactRound className="w-3.5 h-3.5" />
+          <span className="hidden lg:inline">Contactos</span>
+        </button>
 
         <button
           onClick={handleRefresh}
