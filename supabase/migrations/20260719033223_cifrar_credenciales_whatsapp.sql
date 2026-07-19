@@ -61,6 +61,8 @@ $$;
 
 REVOKE ALL ON FUNCTION whatsapp_cred_set(uuid, text, text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION whatsapp_cred_get(uuid, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION whatsapp_cred_set(uuid, text, text) FROM anon, authenticated;
+REVOKE ALL ON FUNCTION whatsapp_cred_get(uuid, text) FROM anon, authenticated;
 GRANT EXECUTE ON FUNCTION whatsapp_cred_set(uuid, text, text) TO service_role;
 GRANT EXECUTE ON FUNCTION whatsapp_cred_get(uuid, text) TO service_role;
 
