@@ -342,6 +342,27 @@ Deno.serve(async (req: Request) => {
 
         logs.push(`inserted_${msg.messageId}_dir=${direction}_agent=${agentUserId || "none"}_phone=${contactPhone || "none"}`);
 
+        // Notify only the conversation owner. The event configuration and templates
+        // are managed from /admin/transaccionales.
+        if (isInbound && agentUserId && insertedMsg?.id) {
+          const preview = messageBody.trim() || `[${mediaLabel}]`;
+          const { error: notificationError } = await supabase.rpc("notify", {
+            p_event_code: "whatsapp_movi_mensaje_recibido",
+            p_user_ids: [agentUserId],
+            p_payload: {
+              nombre_contacto: contactNameFromMsg || contactPhone || "Contacto",
+              telefono_contacto: contactPhone || "",
+              mensaje: preview,
+              canal: "WA MOVI",
+              url: `/centro-contacto?channel=whatsapp&source=movi&phone=${encodeURIComponent(contactPhone || "")}`,
+            },
+            p_entity_id: insertedMsg.id,
+          });
+          if (notificationError) {
+            logs.push(`notification_error=${notificationError.message}`);
+          }
+        }
+
         // Insert attachment record
         if (hasMedia && insertedMsg?.id) {
           const fileTypeMap: Record<string, string> = {

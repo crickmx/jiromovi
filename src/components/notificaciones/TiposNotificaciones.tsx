@@ -55,12 +55,13 @@ const MODULO_CONFIG: Record<string, {
   STORE:        { label: 'Store',           icon: ShoppingBag,  color: 'text-pink-700',    bg: 'bg-pink-50 border-pink-200' },
   TRAMITES:     { label: 'Tramites',        icon: FileText,     color: 'text-neutral-700', bg: 'bg-neutral-100 border-neutral-300' },
   SEGUWALLET:   { label: 'SeguWallet',      icon: Wallet,       color: 'text-blue-700',    bg: 'bg-blue-50 border-blue-200' },
+  WHATSAPP:     { label: 'WhatsApp',        icon: MessageCircle,color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
   SISTEMA:      { label: 'Motor Interno',   icon: Layers,       color: 'text-neutral-500', bg: 'bg-neutral-50 border-neutral-200' },
 };
 
 const MODULO_ORDER = [
   'AUTH', 'TRAMITES', 'COMISIONES', 'CRM', 'EDUCATION',
-  'COMUNICADOS', 'ESPACIO_JIRO', 'RRHH', 'STORE', 'REGISTRO', 'SICAS', 'SEGUWALLET', 'SISTEMA',
+  'COMUNICADOS', 'WHATSAPP', 'ESPACIO_JIRO', 'RRHH', 'STORE', 'REGISTRO', 'SICAS', 'SEGUWALLET', 'SISTEMA',
 ];
 
 const CODIGOS_MOTOR_INTERNO = [
@@ -169,7 +170,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
         .update({ [campo]: !valorActual })
         .eq('id', id);
       if (error) throw error;
-      const nombres = { enviar_correo: 'Correo', enviar_whatsapp: 'WhatsApp', enviar_notificacion: 'Campanita' };
+      const nombres = { enviar_correo: 'Correo', enviar_whatsapp: 'WhatsApp', enviar_notificacion: 'Push / campanita' };
       setMessage({ type: 'success', text: `Canal ${nombres[campo]} ${!valorActual ? 'activado' : 'desactivado'}` });
       await fetchTipos();
       onUpdate();
@@ -448,7 +449,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                           </div>
 
                           <div className="flex items-center gap-2 flex-shrink-0">
-                            {tipo.enviar_notificacion && <Bell className="w-3.5 h-3.5 text-amber-500" title="Campanita" />}
+                            {tipo.enviar_notificacion && <Bell className="w-3.5 h-3.5 text-amber-500" title="Push / campanita" />}
                             {tipo.enviar_whatsapp && <MessageCircle className="w-3.5 h-3.5 text-emerald-500" title="WhatsApp" />}
                             {tipo.enviar_correo && <Mail className="w-3.5 h-3.5 text-blue-500" title="Correo" />}
                           </div>
@@ -479,7 +480,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                               <p className="text-xs font-semibold text-neutral-600 mb-2">Canales de envio</p>
                               <div className="flex flex-wrap gap-2">
                                 {([
-                                  { campo: 'enviar_notificacion' as const, label: 'Campanita', icon: Bell, activeClass: 'bg-amber-100 text-amber-700 border-amber-300' },
+                                  { campo: 'enviar_notificacion' as const, label: 'Push / campanita', icon: Bell, activeClass: 'bg-amber-100 text-amber-700 border-amber-300' },
                                   { campo: 'enviar_whatsapp' as const, label: 'WhatsApp', icon: MessageCircle, activeClass: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
                                   { campo: 'enviar_correo' as const, label: 'Correo', icon: Mail, activeClass: 'bg-blue-100 text-blue-700 border-blue-300' },
                                 ] as const).map(({ campo, label, icon: Icon, activeClass }) => (
@@ -570,7 +571,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                               className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                             >
                               <Edit className="w-4 h-4" />
-                              Editar Plantillas (Correo · WhatsApp · Campanita)
+                              Editar plantillas (Correo · WhatsApp · Push)
                             </button>
                           </div>
                         )}
