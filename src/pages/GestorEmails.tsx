@@ -2,9 +2,10 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { getRenderedSignature, stripExistingSignature } from '../lib/emailSignatureUtils';
-import { Mail, Send, FileText, Trash2, CircleAlert as AlertCircle, Inbox, Search, RefreshCw, Paperclip, ChevronLeft, ChevronRight, Settings, Plus, Archive, MailOpen, Eye, EyeOff, FolderOpen, X, ArrowLeft, Reply, ReplyAll, Forward, Download, ChevronDown, ChevronUp, ClipboardList } from 'lucide-react';
+import { Mail, Send, FileText, Trash2, CircleAlert as AlertCircle, Inbox, Search, RefreshCw, Paperclip, ChevronLeft, ChevronRight, Settings, Plus, Archive, MailOpen, Eye, EyeOff, FolderOpen, X, ArrowLeft, Reply, ReplyAll, Forward, Download, ChevronDown, ChevronUp, ClipboardList, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { IniciarTramiteEmailModal } from '@/components/email/IniciarTramiteEmailModal';
+import { getRoundcubeHandoffUrl } from '../lib/roundcubeSso';
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -156,6 +157,7 @@ export function GestorEmails() {
   const [error, setError] = useState('');
   const [connectionFailed, setConnectionFailed] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [openingRoundcube, setOpeningRoundcube] = useState(false);
 
   // Mobile: show reading pane full screen
   const [mobileShowReading, setMobileShowReading] = useState(false);
@@ -275,6 +277,17 @@ export function GestorEmails() {
     loadMessages(currentFolder, page);
   };
 
+  const handleOpenRoundcube = async () => {
+    setOpeningRoundcube(true);
+    setError('');
+    try {
+      window.location.assign(await getRoundcubeHandoffUrl());
+    } catch (err: any) {
+      setError(err.message || 'No se pudo abrir el correo completo');
+      setOpeningRoundcube(false);
+    }
+  };
+
   const totalPages = Math.ceil(totalMessages / perPage);
   const displayMessages = searchResults ?? messages;
 
@@ -379,6 +392,18 @@ export function GestorEmails() {
           title="Configuracion"
         >
           <Settings className="w-4 h-4" />
+        </button>
+
+        <button
+          onClick={handleOpenRoundcube}
+          disabled={openingRoundcube}
+          className="flex items-center gap-1.5 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 px-3 py-1.5 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 transition font-medium text-xs disabled:opacity-50"
+          title="Abrir correo completo"
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+          <span className="hidden lg:inline">
+            {openingRoundcube ? 'Abriendo...' : 'Correo completo'}
+          </span>
         </button>
 
         <button
