@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { getWhatsappApiKey } from "../_shared/emailCredentials.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -101,12 +102,13 @@ async function resolveWhatsAppChannel(
   // 2. Fallback to legacy whatsapp_configuracion
   const { data: legacy } = await supabase
     .from("whatsapp_configuracion")
-    .select("api_key, channel_id_uuid, activo")
+    .select("id, channel_id_uuid, activo")
     .eq("activo", true)
     .maybeSingle();
-  if (legacy?.api_key) {
+  const legacyApiKey = legacy ? await getWhatsappApiKey(supabase, legacy.id) : null;
+  if (legacyApiKey) {
     return {
-      api_key: legacy.api_key,
+      api_key: legacyApiKey,
       channel_id_uuid: legacy.channel_id_uuid || "",
       channel_id: null,
       channel_name: null,

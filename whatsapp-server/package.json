@@ -13,6 +13,7 @@
     "pino": "^9.5.0",
     "qrcode": "^1.5.4",
     "@supabase/supabase-js": "^2.57.4",
+    "express-rate-limit": "^7.5.1",
     "mime-types": "^2.1.35"
   },
   "engines": {

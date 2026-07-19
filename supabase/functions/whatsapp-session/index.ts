@@ -638,6 +638,19 @@ Deno.serve(async (req: Request) => {
             .eq("user_id", user.id);
         }
 
+        // Nunca persistimos URLs firmadas de larga duración. Como la consulta
+        // anterior ya está restringida al dueño de la sesión, podemos generar
+        // enlaces frescos de una hora únicamente para sus propios archivos.
+        messages = await Promise.all(messages.map(async (message: any) => {
+          if (!message.media_storage_path) {
+            return { ...message, media_url: null };
+          }
+          const { data: signed } = await supabase.storage
+            .from("whatsapp-media")
+            .createSignedUrl(message.media_storage_path, 60 * 60);
+          return { ...message, media_url: signed?.signedUrl || null };
+        }));
+
         // Determine if there are older messages available
         const hasMore = messages.length === limit;
         const oldestTimestamp = messages.length > 0

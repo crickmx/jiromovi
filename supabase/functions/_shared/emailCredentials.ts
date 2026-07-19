@@ -81,3 +81,39 @@ export async function setIaMailboxPassword(admin: AdminClient, cuentaId: string,
   });
   if (error) throw new Error(`No se pudo guardar la credencial cifrada: ${error.message}`);
 }
+
+/**
+ * Devuelve la API key de Wazzup24 descifrada server-side. Durante la
+ * transición cae a `whatsapp_configuracion.api_key` para filas que todavía no
+ * hayan sido migradas; quitar el fallback al eliminar la columna legada.
+ */
+export async function getWhatsappApiKey(admin: AdminClient, configuracionId: string): Promise<string | null> {
+  const masterKey = getMasterKey();
+  const { data, error } = await admin.rpc('whatsapp_cred_get', {
+    p_configuracion_id: configuracionId,
+    p_key: masterKey,
+  });
+  if (!error && data) return data as string;
+
+  try {
+    const { data: legacy } = await admin
+      .from('whatsapp_configuracion')
+      .select('api_key')
+      .eq('id', configuracionId)
+      .maybeSingle();
+    return (legacy as { api_key?: string } | null)?.api_key ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Cifra y guarda la API key de Wazzup24. Nunca se persiste en texto plano. */
+export async function setWhatsappApiKey(admin: AdminClient, configuracionId: string, plainApiKey: string): Promise<void> {
+  const masterKey = getMasterKey();
+  const { error } = await admin.rpc('whatsapp_cred_set', {
+    p_configuracion_id: configuracionId,
+    p_api_key: plainApiKey,
+    p_key: masterKey,
+  });
+  if (error) throw new Error(`No se pudo guardar la credencial cifrada de WhatsApp: ${error.message}`);
+}
