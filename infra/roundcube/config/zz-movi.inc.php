@@ -4,7 +4,7 @@
 // mediante el flujo SSO de la siguiente fase; nunca se escriben aquí.
 $config['product_name'] = 'Correo MOVI';
 $config['support_url'] = '';
-$config['skin'] = 'elastic';
+$config['skin'] = 'elastic2022';
 $config['language'] = 'es_MX';
 $config['des_key'] = getenv('ROUNDCUBE_DES_KEY');
 

@@ -74,6 +74,21 @@ docker compose down
 
 No ejecutar `docker compose down -v` en producción: elimina la base persistente.
 
+## Skin predeterminado
+
+Roundcube usa `elastic2022` como skin predeterminado. El código está versionado
+en `skins/elastic2022` y se monta en modo de solo lectura dentro del contenedor.
+El skin oficial `elastic` permanece incluido en la imagen y puede restaurarse
+cambiando `ROUNDCUBEMAIL_SKIN` y `$config['skin']` a `elastic`.
+
+Después de cambiar o actualizar el skin, recrea el contenedor y limpia únicamente
+la caché temporal de Roundcube:
+
+```bash
+docker compose up -d --force-recreate roundcube
+docker compose exec roundcube sh -lc 'find /tmp/roundcube-temp -mindepth 1 -maxdepth 1 -delete'
+```
+
 ## Checklist previo a Fase 2
 
 - DNS/HTTPS del dominio de MOVI funcionando.
