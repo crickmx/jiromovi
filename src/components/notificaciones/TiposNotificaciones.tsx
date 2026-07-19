@@ -15,6 +15,7 @@ interface TipoNotificacion {
   permite_destinatarios_custom: boolean;
   modulo: string;
   platform: 'movi' | 'seguwallet';
+  reminder_offsets_minutes?: number[];
   es_obsoleto?: boolean;
 }
 
@@ -177,6 +178,28 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
       onUpdate();
     } catch {
       setMessage({ type: 'error', text: 'Error al actualizar el canal' });
+    }
+  };
+
+  const toggleReminderOffset = async (tipo: TipoNotificacion, minutes: number) => {
+    const current = tipo.reminder_offsets_minutes || [];
+    const next = current.includes(minutes)
+      ? current.filter(value => value !== minutes)
+      : [...current, minutes].sort((a, b) => b - a);
+    if (next.length === 0) {
+      setMessage({ type: 'error', text: 'Debe permanecer al menos un recordatorio activo' });
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('correo_tipos_notificacion')
+        .update({ reminder_offsets_minutes: next })
+        .eq('id', tipo.id);
+      if (error) throw error;
+      setMessage({ type: 'success', text: 'Anticipación de recordatorios actualizada' });
+      await fetchTipos();
+    } catch {
+      setMessage({ type: 'error', text: 'No fue posible actualizar la anticipación' });
     }
   };
 
@@ -500,6 +523,37 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                                 ))}
                               </div>
                             </div>
+
+                            {tipo.codigo.startsWith('agenda_recordatorio_') && (
+                              <div>
+                                <p className="text-xs font-semibold text-neutral-600 mb-2">
+                                  Enviar recordatorio antes de la cita
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {[
+                                    { minutes: 1440, label: '24 horas' },
+                                    { minutes: 120, label: '2 horas' },
+                                    { minutes: 60, label: '1 hora' },
+                                    { minutes: 15, label: '15 minutos' },
+                                  ].map(option => {
+                                    const selected = (tipo.reminder_offsets_minutes || []).includes(option.minutes);
+                                    return (
+                                      <button
+                                        key={option.minutes}
+                                        onClick={() => toggleReminderOffset(tipo, option.minutes)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                                          selected
+                                            ? 'bg-violet-100 text-violet-700 border-violet-300 border-2'
+                                            : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-300'
+                                        }`}
+                                      >
+                                        {option.label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
 
                             {esDepartamental ? (
                               <div>
