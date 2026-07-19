@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Mail, Power, MessageCircle, CircleAlert as AlertCircle, Pencil as Edit, Bell, ChevronDown, ChevronUp, Users, Check, X, Search, ShieldCheck, Briefcase, BookOpen, FileText, ShoppingBag, Building2, UserCheck, RefreshCw, Info, Layers, Wallet, Smartphone, Monitor } from 'lucide-react';
+import { Mail, Power, MessageCircle, CircleAlert as AlertCircle, Pencil as Edit, Bell, ChevronDown, ChevronUp, Users, Check, X, Search, ShieldCheck, Briefcase, BookOpen, FileText, ShoppingBag, Building2, UserCheck, RefreshCw, Info, Layers, Wallet, Smartphone, Monitor, PhoneMissed } from 'lucide-react';
 import { EditarPlantillaModal } from './EditarPlantillaModal';
 
 interface TipoNotificacion {
@@ -53,6 +53,7 @@ const MODULO_CONFIG: Record<string, {
   RRHH:         { label: 'RRHH',            icon: Users,        color: 'text-rose-700',    bg: 'bg-rose-50 border-rose-200' },
   SICAS:        { label: 'SICAS',           icon: RefreshCw,    color: 'text-blue-700',    bg: 'bg-blue-50 border-blue-200' },
   STORE:        { label: 'Store',           icon: ShoppingBag,  color: 'text-pink-700',    bg: 'bg-pink-50 border-pink-200' },
+  TELEFONIA:    { label: 'Telefonia',       icon: PhoneMissed,  color: 'text-red-700',     bg: 'bg-red-50 border-red-200' },
   TRAMITES:     { label: 'Tramites',        icon: FileText,     color: 'text-neutral-700', bg: 'bg-neutral-100 border-neutral-300' },
   SEGUWALLET:   { label: 'SeguWallet',      icon: Wallet,       color: 'text-blue-700',    bg: 'bg-blue-50 border-blue-200' },
   WHATSAPP:     { label: 'WhatsApp',        icon: MessageCircle,color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
@@ -60,7 +61,7 @@ const MODULO_CONFIG: Record<string, {
 };
 
 const MODULO_ORDER = [
-  'AUTH', 'TRAMITES', 'COMISIONES', 'CRM', 'EDUCATION',
+  'AUTH', 'TRAMITES', 'COMISIONES', 'CRM', 'EDUCATION', 'TELEFONIA',
   'COMUNICADOS', 'WHATSAPP', 'ESPACIO_JIRO', 'RRHH', 'STORE', 'REGISTRO', 'SICAS', 'SEGUWALLET', 'SISTEMA',
 ];
 
