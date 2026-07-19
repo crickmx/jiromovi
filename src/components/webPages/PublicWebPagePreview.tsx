@@ -4,6 +4,7 @@ import type { WebPageInsurer, UserWebPageConfig, SharedFormLink } from '../../li
 import { DEFAULT_TEXT } from '../../lib/webPagesTypes';
 import { createColorVariant } from '../../lib/animationUtils';
 import { useState } from 'react';
+import AgendaPublica from '../../pages/AgendaPublica';
 
 interface FormLinkMeta {
   icon: string;
@@ -111,6 +112,7 @@ export default function PublicWebPagePreview({
     : '#';
 
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [agendaModalEventId, setAgendaModalEventId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     nombre: '',
     celular: '',
@@ -464,18 +466,40 @@ export default function PublicWebPagePreview({
                 <div key={block.id} className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                   <h3 className="text-lg font-bold text-gray-900">{block.name}</h3>
                   <p className="mt-2 text-sm text-gray-500">{block.calendar_name}</p>
-                  <a
-                    href={userData.web_slug ? `https://agentedeseguros.website/${userData.web_slug}/agenda` : '#'}
+                  <button
+                    type="button"
+                    onClick={() => setAgendaModalEventId(block.id)}
                     className="mt-5 inline-flex items-center gap-2 rounded-lg px-5 py-2.5 font-semibold text-white"
                     style={{ backgroundColor: primaryColor }}
                   >
                     <Clock className="w-4 h-4" /> Ver horarios
-                  </a>
+                  </button>
                 </div>
               ))}
             </div>
           </div>
         </section>
+      )}
+
+      {agendaModalEventId && userData.web_slug && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Vista previa de la agenda"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setAgendaModalEventId(null);
+          }}
+        >
+          <div className="relative max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-3xl bg-gray-50 shadow-2xl">
+            <AgendaPublica
+              embedded
+              slugOverride={userData.web_slug}
+              initialEventTypeId={agendaModalEventId}
+              onClose={() => setAgendaModalEventId(null)}
+            />
+          </div>
+        </div>
       )}
 
       <section className="relative py-16 px-4 bg-white z-10">

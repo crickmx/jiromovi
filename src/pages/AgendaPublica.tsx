@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { ArrowLeft, CalendarDays, CheckCircle2, Clock, MapPin, Video } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { ArrowLeft, CalendarDays, CheckCircle2, Clock, MapPin, Video, X } from 'lucide-react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { getPublicWebPageBySlug } from '../lib/webPagesUtils';
 import type { PublicWebPageData } from '../lib/webPagesTypes';
@@ -14,8 +14,23 @@ interface PublicCalendarBlock {
   duration_minutes: number;
 }
 
-export default function AgendaPublica() {
-  const { slug, eventTypeId } = useParams<{ slug?: string; eventTypeId?: string }>();
+interface AgendaPublicaProps {
+  embedded?: boolean;
+  slugOverride?: string;
+  initialEventTypeId?: string;
+  onClose?: () => void;
+}
+
+export default function AgendaPublica({
+  embedded = false,
+  slugOverride,
+  initialEventTypeId,
+  onClose,
+}: AgendaPublicaProps = {}) {
+  const params = useParams<{ slug?: string; eventTypeId?: string }>();
+  const [searchParams] = useSearchParams();
+  const slug = slugOverride || params.slug;
+  const eventTypeId = initialEventTypeId || params.eventTypeId || searchParams.get('event') || undefined;
   const [page, setPage] = useState<PublicWebPageData | null>(null);
   const [blocks, setBlocks] = useState<PublicCalendarBlock[]>([]);
   const [selectedEventId, setSelectedEventId] = useState(eventTypeId || '');
@@ -136,9 +151,9 @@ export default function AgendaPublica() {
     hour: '2-digit', minute: '2-digit', timeZone: eventType?.timezone
   }).format(new Date(value));
 
-  if (loading) return <div className="min-h-screen grid place-items-center bg-gray-50">Cargando agenda…</div>;
+  if (loading) return <div className={`${embedded ? 'min-h-[420px]' : 'min-h-screen'} grid place-items-center bg-gray-50`}>Cargando agenda…</div>;
   if (!eventType) return (
-    <div className="min-h-screen grid place-items-center bg-gray-50 p-6 text-center">
+    <div className={`${embedded ? 'min-h-[420px]' : 'min-h-screen'} grid place-items-center bg-gray-50 p-6 text-center`}>
       <div>
         {page?.user?.logo_url && <img src={page.user.logo_url} alt="" className="mx-auto mb-6 h-16 max-w-48 object-contain" />}
         <p className="text-gray-600">{error || (blocks.length ? 'Cargando horarios…' : 'El asesor aún no ha publicado calendarios.')}</p>
@@ -148,8 +163,8 @@ export default function AgendaPublica() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b bg-white">
+    <div className={`${embedded ? 'min-h-0' : 'min-h-screen'} bg-gray-50`}>
+      {!embedded && <header className="border-b bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4">
           <Link to={publicHome} className="flex min-w-0 items-center gap-3">
             {(page?.user.logo_url || page?.user.office?.logo_url) && (
@@ -163,9 +178,19 @@ export default function AgendaPublica() {
           {slug && <Link to={publicHome} className="inline-flex items-center gap-2 text-sm font-semibold" style={{ color: primaryColor }}><ArrowLeft className="h-4 w-4" />Mi página</Link>}
         </div>
         <div className="h-1" style={{ background: `linear-gradient(90deg, ${primaryColor}, ${secondaryColor})` }} />
-      </header>
+      </header>}
 
-      <main className="mx-auto max-w-6xl px-4 py-10">
+      <main className={`mx-auto max-w-6xl px-4 ${embedded ? 'py-5' : 'py-10'}`}>
+        {embedded && onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar agenda"
+            className="absolute right-4 top-4 z-10 rounded-full bg-white p-2 text-gray-500 shadow-md transition hover:text-gray-900"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
         <div className="mb-8 text-center">
           <CalendarDays className="mx-auto mb-3 h-10 w-10" style={{ color: primaryColor }} />
           <h1 className="text-3xl font-extrabold text-gray-900">Agenda una cita</h1>

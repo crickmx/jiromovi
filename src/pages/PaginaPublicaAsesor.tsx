@@ -14,6 +14,7 @@ import { DEFAULT_TEXT } from '../lib/webPagesTypes';
 import { createColorVariant } from '../lib/animationUtils';
 import { type AgentVCardData, downloadVCard } from '../lib/vcardUtils';
 import { supabase } from '../lib/supabase';
+import AgendaPublica from './AgendaPublica';
 
 /* ─────────────────────────────────────────────
    TIPOS / METADATOS (sin cambios en lógica)
@@ -217,6 +218,13 @@ export default function PaginaPublicaAsesor() {
   const [showContactModal, setShowContactModal] = useState(false);
   const [vcardLoading, setVcardLoading] = useState(false);
   const [agendaBlocks, setAgendaBlocks] = useState<Array<{ id: string; name: string; description: string | null; duration_minutes: number }>>([]);
+  const [agendaModalEventId, setAgendaModalEventId] = useState<string | null>(null);
+  const navItems = useMemo(
+    () => agendaBlocks.length > 0
+      ? [...NAV_ITEMS.slice(0, 3), { id: 'agenda', label: 'Agenda' }, ...NAV_ITEMS.slice(3)]
+      : NAV_ITEMS,
+    [agendaBlocks.length]
+  );
 
   useEffect(() => {
     if (!slug) { setNotFound(true); setLoading(false); return; }
@@ -232,7 +240,7 @@ export default function PaginaPublicaAsesor() {
       setShowScrollTop(y > 400);
       setNavScrolled(y > 60);
       if (mobileMenuOpen) setMobileMenuOpen(false);
-      const sections = NAV_ITEMS.map(n => document.getElementById(n.id));
+      const sections = navItems.map(n => document.getElementById(n.id));
       let current = 'inicio';
       for (const sec of sections) {
         if (sec && sec.getBoundingClientRect().top <= 100) current = sec.id;
@@ -241,7 +249,21 @@ export default function PaginaPublicaAsesor() {
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [mobileMenuOpen]);
+  }, [mobileMenuOpen, navItems]);
+
+  useEffect(() => {
+    if (!agendaModalEventId) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setAgendaModalEventId(null);
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [agendaModalEventId]);
 
   useEffect(() => {
     if (!data?.insurers || data.insurers.length <= 4 || !isAutoScrolling) return;
@@ -516,7 +538,7 @@ export default function PaginaPublicaAsesor() {
             {/* Menu centrado — desktop only */}
             <div className="flex-1 hidden md:flex items-center justify-center">
               <div className="flex items-center gap-1">
-                {NAV_ITEMS.map(item => (
+                {navItems.map(item => (
                   <button
                     key={item.id}
                     onClick={() => scrollToSection(item.id)}
@@ -563,7 +585,7 @@ export default function PaginaPublicaAsesor() {
             mobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
           }`}>
             <div className="bg-white border-t border-gray-100 shadow-xl px-4 py-3 space-y-1">
-              {NAV_ITEMS.map(item => (
+              {navItems.map(item => (
                 <button
                   key={item.id}
                   onClick={() => { scrollToSection(item.id); setMobileMenuOpen(false); }}
@@ -1169,12 +1191,40 @@ export default function PaginaPublicaAsesor() {
                     <h3 className="text-lg font-bold text-gray-900">{block.name}</h3>
                     <p className="mt-2 text-sm text-gray-500">{block.description}</p>
                     <p className="mt-3 text-sm font-medium text-gray-700">{block.duration_minutes} minutos</p>
-                    <a href={`/${slug}/agenda`} className={`${btnPrimary} mt-5`} style={{ backgroundColor: primaryColor }}>Ver horarios</a>
+                    <button
+                      type="button"
+                      onClick={() => setAgendaModalEventId(block.id)}
+                      className={`${btnPrimary} mt-5`}
+                      style={{ backgroundColor: primaryColor }}
+                    >
+                      Ver horarios
+                    </button>
                   </div>
                 ))}
               </div>
             </div>
           </section>
+        )}
+
+        {agendaModalEventId && slug && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Agenda una cita"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/65 p-3 backdrop-blur-sm sm:p-6"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setAgendaModalEventId(null);
+            }}
+          >
+            <div className="relative max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-3xl bg-gray-50 shadow-2xl">
+              <AgendaPublica
+                embedded
+                slugOverride={slug}
+                initialEventTypeId={agendaModalEventId}
+                onClose={() => setAgendaModalEventId(null)}
+              />
+            </div>
+          </div>
         )}
 
         {/* ═══════════════════════════════════════
