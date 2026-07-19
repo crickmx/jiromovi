@@ -93,7 +93,7 @@ Deno.serve(async (req: Request) => {
     return response(req, 200, {
       token,
       expires_at: expiresAt,
-      handoff_path: `?_task=login&_movi_token=${encodeURIComponent(token)}`,
+      handoff_path: `?_movi_token=${encodeURIComponent(token)}`,
     });
   } catch (error) {
     console.error("roundcube-sso-token:", error instanceof Error ? error.message : "unknown");
