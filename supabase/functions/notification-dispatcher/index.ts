@@ -34,6 +34,8 @@ interface ResolvedEmailChannel {
   from_email: string;
   channel_id: string | null;
   channel_name: string | null;
+  header_html: string | null;
+  footer_html: string | null;
 }
 
 interface ResolvedWhatsAppChannel {
@@ -44,9 +46,32 @@ interface ResolvedWhatsAppChannel {
 }
 
 async function resolveEmailChannel(
-  supabase: ReturnType<typeof createClient>
+  supabase: ReturnType<typeof createClient>,
+  preferredChannelId?: string | null
 ): Promise<ResolvedEmailChannel | null> {
-  // 1. Try default notification_channels entry
+  // 1. Try preferred channel (assigned to this event's template)
+  if (preferredChannelId) {
+    const { data } = await supabase
+      .from("notification_channels")
+      .select("id, name, config, branding, is_active")
+      .eq("id", preferredChannelId)
+      .eq("type", "email_resend")
+      .eq("is_active", true)
+      .maybeSingle();
+    if (data?.config?.api_key) {
+      return {
+        api_key: data.config.api_key,
+        from_name: data.config.from_name || data.branding?.sender_name || "MOVI Digital",
+        from_email: data.config.from_email || "notificaciones@movi.digital",
+        channel_id: data.id,
+        channel_name: data.name,
+        header_html: data.branding?.header_html || null,
+        footer_html: data.branding?.footer_html || null,
+      };
+    }
+  }
+
+  // 2. Try default notification_channels entry
   const { data: def } = await supabase
     .from("notification_channels")
     .select("id, name, config, branding, is_active")
@@ -61,10 +86,12 @@ async function resolveEmailChannel(
       from_email: def.config.from_email || "notificaciones@movi.digital",
       channel_id: def.id,
       channel_name: def.name,
+      header_html: def.branding?.header_html || null,
+      footer_html: def.branding?.footer_html || null,
     };
   }
 
-  // 2. Fallback to env var
+  // 3. Fallback to env var
   const envKey = Deno.env.get("RESEND_API_KEY");
   if (envKey) {
     return {
@@ -73,6 +100,8 @@ async function resolveEmailChannel(
       from_email: "notificaciones@movi.digital",
       channel_id: null,
       channel_name: null,
+      header_html: null,
+      footer_html: null,
     };
   }
 
@@ -80,9 +109,29 @@ async function resolveEmailChannel(
 }
 
 async function resolveWhatsAppChannel(
-  supabase: ReturnType<typeof createClient>
+  supabase: ReturnType<typeof createClient>,
+  preferredChannelId?: string | null
 ): Promise<ResolvedWhatsAppChannel | null> {
-  // 1. Try default notification_channels entry
+  // 1. Try preferred channel (assigned to this event's template)
+  if (preferredChannelId) {
+    const { data } = await supabase
+      .from("notification_channels")
+      .select("id, name, config, is_active")
+      .eq("id", preferredChannelId)
+      .eq("type", "whatsapp_wazzup24")
+      .eq("is_active", true)
+      .maybeSingle();
+    if (data?.config?.api_key && data?.config?.channel_id) {
+      return {
+        api_key: data.config.api_key,
+        channel_id_uuid: data.config.channel_id,
+        channel_id: data.id,
+        channel_name: data.name,
+      };
+    }
+  }
+
+  // 2. Try default notification_channels entry
   const { data: def } = await supabase
     .from("notification_channels")
     .select("id, name, config, is_active")
@@ -99,7 +148,7 @@ async function resolveWhatsAppChannel(
     };
   }
 
-  // 2. Fallback to legacy whatsapp_configuracion
+  // 3. Fallback to legacy whatsapp_configuracion
   const { data: legacy } = await supabase
     .from("whatsapp_configuracion")
     .select("id, channel_id_uuid, activo")
@@ -320,9 +369,25 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // Resolve channels once for all jobs
-      const emailChannel = await resolveEmailChannel(supabase);
-      const waChannel = await resolveWhatsAppChannel(supabase);
+      // Channels are resolved per-job below (each event's template can point to a
+      // different channel, e.g. Seguwallet vs MOVI) — cache by channel id so jobs
+      // sharing a template don't re-query notification_channels.
+      const emailChannelCache = new Map<string, ResolvedEmailChannel | null>();
+      const waChannelCache = new Map<string, ResolvedWhatsAppChannel | null>();
+      const getEmailChannel = async (preferredId: string | null) => {
+        const key = preferredId || "__default__";
+        if (!emailChannelCache.has(key)) {
+          emailChannelCache.set(key, await resolveEmailChannel(supabase, preferredId));
+        }
+        return emailChannelCache.get(key)!;
+      };
+      const getWaChannel = async (preferredId: string | null) => {
+        const key = preferredId || "__default__";
+        if (!waChannelCache.has(key)) {
+          waChannelCache.set(key, await resolveWhatsAppChannel(supabase, preferredId));
+        }
+        return waChannelCache.get(key)!;
+      };
 
       let processed = 0;
       let failed = 0;
@@ -388,6 +453,9 @@ Deno.serve(async (req: Request) => {
             .eq("active", true)
             .maybeSingle();
 
+          const emailChannel = await getEmailChannel(template?.resend_channel_id || null);
+          const waChannel = await getWaChannel(template?.wazzup24_channel_id || null);
+
           if (!template) {
             await supabase
               .from("notification_jobs")
@@ -404,6 +472,11 @@ Deno.serve(async (req: Request) => {
               const subject = enhancedSubject || renderTemplate(template.email_subject_template || "", vars);
               let htmlBody = renderTemplate(template.email_body_template || "", vars);
               htmlBody = htmlBody.replace("{{adjuntos_advertencia_html}}", "");
+
+              // Wrap body with the resolved channel's branding header/footer (MOVI o Seguwallet)
+              if (emailChannel.header_html || emailChannel.footer_html) {
+                htmlBody = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head><body style="margin:0;padding:16px;background-color:#f4f4f4;font-family:Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center"><table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">${emailChannel.header_html ? `<tr><td>${emailChannel.header_html}</td></tr>` : ""}<tr><td style="padding:32px;">${htmlBody}</td></tr>${emailChannel.footer_html ? `<tr><td>${emailChannel.footer_html}</td></tr>` : ""}</table></td></tr></table></body></html>`;
+              }
 
               let emailAttachments: Array<{ filename: string; content: string }> = [];
               if (isTicketEvent && ticketId) {
