@@ -262,6 +262,43 @@ Deno.serve(async (req: Request) => {
           status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
+    } else if (platform === 'seguwallet') {
+      const isPhone = /^\d+$/.test(identifier!.replace(/[\s\-+()]/g, '')) && identifier!.replace(/\D/g, '').length >= 10;
+      let swCustomer: any = null;
+
+      if (!isPhone) {
+        const { data } = await supabase
+          .from('seguwallet_customers')
+          .select('auth_user_id, email, full_name, phone, whatsapp, status')
+          .eq('email', identifier)
+          .maybeSingle();
+        swCustomer = data;
+      } else {
+        const digits = identifier!.replace(/\D/g, '');
+        let phone10 = digits;
+        if (digits.length === 12 && digits.startsWith('52')) phone10 = digits.slice(2);
+        else if (digits.length === 13 && digits.startsWith('521')) phone10 = digits.slice(3);
+        else if (digits.length > 10) phone10 = digits.slice(-10);
+
+        const { data } = await supabase
+          .from('seguwallet_customers')
+          .select('auth_user_id, email, full_name, phone, whatsapp, status')
+          .or(`phone.ilike.%${phone10}%,whatsapp.ilike.%${phone10}%`)
+          .limit(1)
+          .maybeSingle();
+        swCustomer = data;
+      }
+
+      if (!swCustomer || swCustomer.status !== 'active') {
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      userId = swCustomer.auth_user_id;
+      userEmail = swCustomer.email;
+      userPhone = swCustomer.whatsapp || swCustomer.phone;
+      userName = swCustomer.full_name;
     }
 
     if (!userId) {
