@@ -159,15 +159,32 @@ export function SeguwalletLogin() {
         return;
       }
       // Verify the token_hash returned from the edge function to create a session
+      let navigationDone = false;
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session && !navigationDone) {
+          navigationDone = true;
+          subscription.unsubscribe();
+          navigate(DASHBOARD_PATH, { replace: true });
+        }
+      });
+
       const { error: otpError } = await supabase.auth.verifyOtp({
         token_hash: data.token_hash,
         type: 'magiclink',
       });
       if (otpError) {
+        subscription.unsubscribe();
         setError('Error al crear la sesión. Intenta de nuevo.');
         return;
       }
-      navigate(DASHBOARD_PATH, { replace: true });
+
+      setTimeout(() => {
+        if (!navigationDone) {
+          navigationDone = true;
+          subscription.unsubscribe();
+          navigate(DASHBOARD_PATH, { replace: true });
+        }
+      }, 3000);
     } catch {
       setError('Error de conexión. Intenta de nuevo.');
     } finally {
