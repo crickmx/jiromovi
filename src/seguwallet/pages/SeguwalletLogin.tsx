@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, ArrowRight, ChevronLeft, RotateCcw, CircleCheck as CheckCircle } from 'lucide-react';
+import { Mail, Phone, ArrowRight, ChevronLeft, RotateCcw, CircleCheck as CheckCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 const SEGUWALLET_LOGO = '/seguwallet-logo.png';
 
@@ -10,6 +10,11 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
 const isSeguwalletDomain = HOST === 'seguwallet.mx' || HOST.endsWith('.seguwallet.mx');
 const DASHBOARD_PATH = isSeguwalletDomain ? '/dashboard' : '/seguwallet/dashboard';
+
+function isPhoneInput(value: string): boolean {
+  const digits = value.replace(/\D/g, '');
+  return digits.length >= 10 && /^\d+$/.test(value.replace(/[\s\-+()]/g, ''));
+}
 
 // ─── Animated background ──────────────────────────────────────────────────────
 function BackgroundLayer() {
@@ -61,7 +66,7 @@ export function SeguwalletLogin() {
 
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>('email');
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [code, setCode] = useState('');
   const [maskedEmail, setMaskedEmail] = useState('');
   const [error, setError] = useState('');
@@ -91,8 +96,8 @@ export function SeguwalletLogin() {
   async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    const trimmed = email.trim().toLowerCase();
-    if (!trimmed) { setError('Ingresa tu correo electrónico.'); return; }
+    const trimmed = identifier.trim().toLowerCase();
+    if (!trimmed) { setError('Ingresa tu correo electrónico o WhatsApp.'); return; }
     setLoading(true);
     try {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/send-login-code`, {
@@ -110,7 +115,7 @@ export function SeguwalletLogin() {
         return;
       }
       if (!data.email_sent && !data.whatsapp_sent) {
-        setError('No encontramos una cuenta con este correo. Verifica que sea el correo registrado en Seguwallet.');
+        setError('No encontramos una cuenta con ese dato. Verifica tu correo o WhatsApp registrado en Seguwallet.');
         return;
       }
       setMaskedEmail(data.masked_email || trimmed);
@@ -134,7 +139,7 @@ export function SeguwalletLogin() {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/verify-login-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), code: trimmedCode, platform: 'seguwallet' }),
+        body: JSON.stringify({ email: identifier.trim().toLowerCase(), code: trimmedCode, platform: 'seguwallet' }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -179,7 +184,7 @@ export function SeguwalletLogin() {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/send-login-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), platform: 'seguwallet' }),
+        body: JSON.stringify({ email: identifier.trim().toLowerCase(), platform: 'seguwallet' }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -251,8 +256,8 @@ export function SeguwalletLogin() {
               <div className="mt-10 space-y-4">
                 {[
                   { icon: '🔐', text: 'Acceso seguro sin contraseña' },
+                  { icon: '📱', text: 'Inicia sesión con tu correo o WhatsApp' },
                   { icon: '📋', text: 'Todas tus polizas en un lugar' },
-                  { icon: '📱', text: 'Codigo por correo y WhatsApp' },
                 ].map((item, i) => (
                   <div key={i} className="flex items-center gap-3">
                     <span className="text-lg">{item.icon}</span>
@@ -312,16 +317,18 @@ export function SeguwalletLogin() {
                     <div className="space-y-1.5">
                       <label className="block text-xs font-semibold tracking-wide uppercase"
                         style={{ color: 'rgba(148,185,255,0.6)' }}>
-                        Correo electrónico
+                        Correo electrónico o WhatsApp
                       </label>
                       <div className="relative">
-                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-                          style={{ color: 'rgba(148,185,255,0.4)' }} />
+                        {isPhoneInput(identifier)
+                          ? <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(148,185,255,0.4)' }} />
+                          : <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(148,185,255,0.4)' }} />
+                        }
                         <input
-                          type="email"
-                          value={email}
-                          onChange={e => setEmail(e.target.value)}
-                          placeholder="tu@correo.com"
+                          type="text"
+                          value={identifier}
+                          onChange={e => setIdentifier(e.target.value)}
+                          placeholder="tu@correo.com o 10 dígitos"
                           className={`${inputCls} pl-10 pr-4`}
                           style={inputBase}
                           onFocus={inputFocusOn}
@@ -370,7 +377,7 @@ export function SeguwalletLogin() {
                       onMouseLeave={e => (e.currentTarget.style.color = 'rgba(148,185,255,0.6)')}
                     >
                       <ChevronLeft className="w-4 h-4" />
-                      Cambiar correo
+                      Cambiar dato
                     </button>
                     <h2 className="text-2xl font-extrabold text-white tracking-tight">Verifica tu acceso</h2>
                     <p className="mt-1.5 text-sm" style={{ color: 'rgba(148,185,255,0.55)' }}>

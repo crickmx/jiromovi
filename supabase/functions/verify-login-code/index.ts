@@ -115,25 +115,36 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Resolve phone to email if needed (for MOVI platform)
+    // Resolve phone to email if needed (MOVI and Seguwallet allow phone/WhatsApp login)
     let resolvedEmail = email.trim().toLowerCase();
     const isPhone = /^\d+$/.test(resolvedEmail.replace(/[\s\-+()]/g, '')) && resolvedEmail.replace(/\D/g, '').length >= 10;
-    if (isPhone && platform === 'movi') {
+    if (isPhone && (platform === 'movi' || platform === 'seguwallet')) {
       const digits = resolvedEmail.replace(/\D/g, '');
       let phone10 = digits;
       if (digits.length === 12 && digits.startsWith('52')) phone10 = digits.slice(2);
       else if (digits.length === 13 && digits.startsWith('521')) phone10 = digits.slice(3);
       else if (digits.length > 10) phone10 = digits.slice(-10);
 
-      const { data: usr } = await supabase
-        .from('usuarios')
-        .select('email_laboral')
-        .or(`celular_laboral.ilike.%${phone10}%,celular_personal.ilike.%${phone10}%`)
-        .eq('estado', 'activo')
-        .is('deleted_at', null)
-        .limit(1)
-        .maybeSingle();
-      if (usr?.email_laboral) resolvedEmail = usr.email_laboral.toLowerCase();
+      if (platform === 'movi') {
+        const { data: usr } = await supabase
+          .from('usuarios')
+          .select('email_laboral')
+          .or(`celular_laboral.ilike.%${phone10}%,celular_personal.ilike.%${phone10}%`)
+          .eq('estado', 'activo')
+          .is('deleted_at', null)
+          .limit(1)
+          .maybeSingle();
+        if (usr?.email_laboral) resolvedEmail = usr.email_laboral.toLowerCase();
+      } else {
+        const { data: cust } = await supabase
+          .from('seguwallet_customers')
+          .select('email')
+          .or(`phone.ilike.%${phone10}%,whatsapp.ilike.%${phone10}%`)
+          .eq('status', 'active')
+          .limit(1)
+          .maybeSingle();
+        if (cust?.email) resolvedEmail = cust.email.toLowerCase();
+      }
     }
 
     const { data: tokens } = await supabase
