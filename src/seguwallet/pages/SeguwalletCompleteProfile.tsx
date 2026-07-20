@@ -6,6 +6,10 @@ import { useSeguwallet } from '../lib/SeguwalletContext';
 import { useAgentBrand, SEGUWALLET_LOGO } from '../lib/AgentBrandContext';
 import { cn } from '../../lib/utils';
 
+const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
+const isSeguwalletDomain = HOST === 'seguwallet.mx' || HOST.endsWith('.seguwallet.mx');
+const DASHBOARD_PATH = isSeguwalletDomain ? '/dashboard' : '/seguwallet/dashboard';
+
 const MEXICAN_STATES = [
   'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche',
   'Chiapas', 'Chihuahua', 'Ciudad de México', 'Coahuila', 'Colima',
@@ -55,7 +59,7 @@ export function SeguwalletCompleteProfile() {
   useEffect(() => {
     if (!loading && customer) {
       if (!needsProfileCompletion && !needsTermsAcceptance) {
-        navigate('/seguwallet/dashboard', { replace: true });
+        navigate(DASHBOARD_PATH, { replace: true });
         return;
       }
       // If profile already complete but terms need acceptance, skip to terms step
@@ -179,7 +183,7 @@ export function SeguwalletCompleteProfile() {
 
       setStep('done');
       await refresh();
-      setTimeout(() => navigate('/seguwallet/dashboard', { replace: true }), 1800);
+      setTimeout(() => navigate(DASHBOARD_PATH, { replace: true }), 1800);
     } catch (err: unknown) {
       setError((err as Error).message || 'Error al guardar. Intenta de nuevo.');
     } finally {

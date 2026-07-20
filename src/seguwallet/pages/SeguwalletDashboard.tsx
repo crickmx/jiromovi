@@ -7,6 +7,11 @@ import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { getContrastColor } from '../lib/contrastUtils';
 
+const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
+const isSeguwalletDomain = HOST === 'seguwallet.mx' || HOST.endsWith('.seguwallet.mx');
+const POLIZAS_PATH = isSeguwalletDomain ? '/polizas' : '/seguwallet/polizas';
+const COTIZAR_PATH = isSeguwalletDomain ? '/cotizar' : '/seguwallet/cotizar';
+
 function AgentCard({ primary, secondary }: { primary: string; secondary: string }) {
   const { brand } = useAgentBrand();
 
@@ -198,7 +203,7 @@ export function SeguwalletDashboard() {
           <p className="text-sm mt-1.5" style={{ color: contrastOnGradient, opacity: 0.70 }}>Gestiona tus polizas y solicita cotizaciones en segundos.</p>
 
           <button
-            onClick={() => navigate('/seguwallet/polizas')}
+            onClick={() => navigate(POLIZAS_PATH)}
             className="mt-5 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl backdrop-blur-sm text-sm font-semibold transition-all"
             style={{
               backgroundColor: `${contrastOnGradient}22`,
@@ -217,7 +222,7 @@ export function SeguwalletDashboard() {
       {/* Stats grid */}
       <div className="grid grid-cols-2 gap-3">
         <button
-          onClick={() => navigate('/seguwallet/polizas')}
+          onClick={() => navigate(POLIZAS_PATH)}
           className="bg-white rounded-2xl border border-neutral-200/50 p-5 shadow-sm hover:shadow-md transition-all group text-left"
           style={{ '--hover-border': primary + '40' } as any}
         >
@@ -232,7 +237,7 @@ export function SeguwalletDashboard() {
         </button>
 
         <button
-          onClick={() => navigate('/seguwallet/polizas')}
+          onClick={() => navigate(POLIZAS_PATH)}
           className={cn(
             "bg-white rounded-2xl border border-neutral-200/50 p-5 shadow-sm hover:shadow-md transition-all group text-left",
           )}
@@ -257,7 +262,7 @@ export function SeguwalletDashboard() {
       {/* Quick actions */}
       <div className="grid grid-cols-2 gap-3">
         <button
-          onClick={() => navigate('/seguwallet/polizas')}
+          onClick={() => navigate(POLIZAS_PATH)}
           className="rounded-2xl p-5 shadow-lg hover:shadow-xl hover:brightness-105 transition-all text-left"
           style={{
             background: `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`,
@@ -270,7 +275,7 @@ export function SeguwalletDashboard() {
         </button>
 
         <button
-          onClick={() => navigate('/seguwallet/cotizar')}
+          onClick={() => navigate(COTIZAR_PATH)}
           className="rounded-2xl p-5 text-white shadow-lg hover:shadow-xl hover:brightness-105 transition-all text-left bg-white"
           style={{ border: `2px solid ${primary}25`, color: primary }}
         >
