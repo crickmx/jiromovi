@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CircleCheck as CheckCircle, Circle as XCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader as Loader2, Wallet, Trash2, Settings } from 'lucide-react';
 import { BaseModal } from '../components/BaseModal';
 import { PageHeader } from '@/components/ui/page-header';
-import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus, obtenerPagosPedido, registrarPago, eliminarPago, tieneAccesoEquipoStore, obtenerMapeoCamposTrigger, resolverTemplatePedido, obtenerCamposTramiteTipo } from '../lib/storeUtils';
+import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus, obtenerPagosPedido, registrarPago, eliminarPago, tieneAccesoEquipoStore, obtenerMapeoCamposTrigger, resolverTemplatePedido, obtenerCamposTramiteTipo, parsearLogoTransform } from '../lib/storeUtils';
 import type { StorePedidoCompleto, StoreEstatusPedido, StoreMetodoPago, StoreParcialidad, StoreFrecuenciaPago, StoreMetodoPagoCombinacion, StorePedidoGasto, StorePedidoDetalleGasto, StorePedidoPago } from '../lib/storeTypes';
 import { TIPO_GASTO_OPTIONS, METODO_PAGO_OPCIONES } from '../lib/storeTypes';
 import { format } from 'date-fns';
@@ -834,6 +834,29 @@ export default function StorePedidoDetalle() {
                                   Personalización: {item.atributos_seleccionados._personalizacion}
                                 </p>
                               )}
+                              {(() => {
+                                const logoTransform = parsearLogoTransform(item.atributos_seleccionados);
+                                if (!logoTransform || !item.producto?.imagen_url) return null;
+                                return (
+                                  <div className="mt-2">
+                                    <p className="text-xs text-neutral-500 dark:text-white/50 mb-1">Logo del asesor (referencia de posición):</p>
+                                    <div className="relative inline-block border border-neutral-200 dark:border-white/10 rounded-lg overflow-hidden">
+                                      <img src={item.producto.imagen_url} alt="Producto" className="block max-h-40 max-w-[200px] object-contain" />
+                                      <img
+                                        src={logoTransform.logo_url}
+                                        alt="Logo"
+                                        className="absolute"
+                                        style={{
+                                          left: `${logoTransform.x}%`,
+                                          top: `${logoTransform.y}%`,
+                                          width: `${logoTransform.ancho}%`,
+                                          transform: `translate(-50%, -50%) rotate(${logoTransform.rotacion}deg)`,
+                                        }}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })()}
                             </div>
                           )}
                           {isAdmin && (

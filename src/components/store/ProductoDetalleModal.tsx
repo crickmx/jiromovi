@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { X, ShoppingCart, Minus, Plus, TriangleAlert as AlertTriangle, CheckCircle, ArrowRight, Sparkles, Loader2, Wrench, Clock } from 'lucide-react';
+import { X, ShoppingCart, Minus, Plus, TriangleAlert as AlertTriangle, CheckCircle, ArrowRight, Sparkles, Loader2, Wrench, Clock, Image as ImageIcon } from 'lucide-react';
 import type { StoreProducto } from '../../lib/storeTypes';
 import { supabase } from '../../lib/supabase';
-import { setupMarketingPremiumProductos, parsearPersonalizacion } from '../../lib/storeUtils';
+import { setupMarketingPremiumProductos, parsearPersonalizacion, LOGO_TRANSFORM_KEY, type StoreLogoTransform } from '../../lib/storeUtils';
+import { useAuth } from '../../contexts/AuthContext';
+import { PersonalizarLogoScreen } from './PersonalizarLogoScreen';
 
 // ── Contenido Marketing Premium ───────────────────────────────────────────────
 
@@ -57,9 +59,12 @@ interface Props {
 }
 
 export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
+  const { usuario } = useAuth();
   const [cantidad, setCantidad] = useState(1);
   const [atributosSeleccionados, setAtributosSeleccionados] = useState<Record<string, string>>({});
   const [personalizacion, setPersonalizacion] = useState('');
+  const [logoTransform, setLogoTransform] = useState<StoreLogoTransform | null>(null);
+  const [mostrarEditorLogo, setMostrarEditorLogo] = useState(false);
 
   const esPremium = esProductoPremium(producto);
   const planInicial = producto.tipo === 'marketing_premium_anual' ? 'anual' : 'mensual';
@@ -120,7 +125,6 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
   const todosAtributosSeleccionados = atributosConOpciones.length === 0 ||
     atributosConOpciones.every(a => atributosSeleccionados[a.nombre]);
   const { activo: permitePersonalizacion, label: labelPersonalizacion } = parsearPersonalizacion(producto.atributos);
-  const personalizacionOk = !permitePersonalizacion || personalizacion.trim().length > 0;
 
   // Precio efectivo: usa el precio de la opción seleccionada si tiene uno
   const precioVariante = (() => {
@@ -135,7 +139,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
   const precioMostrado = precioVariante ?? efectivo.precio;
 
   const handleAgregar = () => {
-    if (!esPremium && (!todosAtributosSeleccionados || !personalizacionOk)) return;
+    if (!esPremium && !todosAtributosSeleccionados) return;
     let attrs: Record<string, string> | undefined =
       (atributosConOpciones.length > 0 || permitePersonalizacion)
         ? { ...atributosSeleccionados }
@@ -145,11 +149,16 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
       attrs ??= {};
       attrs._personalizacion = personalizacion.trim();
     }
+    if (permitePersonalizacion && logoTransform) {
+      attrs ??= {};
+      attrs[LOGO_TRANSFORM_KEY] = JSON.stringify(logoTransform);
+    }
     onAgregar(efectivo, cantidad, attrs);
     onClose();
   };
 
   return (
+    <>
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
@@ -357,7 +366,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                 <div className="mb-6">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     {labelPersonalizacion}
-                    {' '}<span className="text-red-500">*</span>
+                    {' '}<span className="text-gray-400 font-normal">(opcional)</span>
                   </label>
                   <textarea
                     rows={3}
@@ -366,6 +375,16 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                     placeholder="Describe cómo deseas personalizar este producto…"
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   />
+                  {usuario && (
+                    <button
+                      type="button"
+                      onClick={() => setMostrarEditorLogo(true)}
+                      className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:text-accent-hover transition-colors"
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                      {logoTransform ? 'Editar posición de tu logo' : 'Personalizar con tu logo'}
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -406,9 +425,9 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
               <div className="flex flex-col gap-3">
                 <button
                   onClick={handleAgregar}
-                  disabled={!todosAtributosSeleccionados || !personalizacionOk}
+                  disabled={!todosAtributosSeleccionados}
                   className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-lg transition-colors ${
-                    !todosAtributosSeleccionados || !personalizacionOk
+                    !todosAtributosSeleccionados
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-accent text-white hover:bg-accent-hover'
                   }`}
@@ -416,9 +435,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                   <ShoppingCart className="w-5 h-5" />
                   {!todosAtributosSeleccionados
                     ? 'Selecciona las opciones'
-                    : !personalizacionOk
-                      ? 'Escribe la personalización'
-                      : esPremium
+                    : esPremium
                       ? `Solicitar Plan ${planSeleccionado === 'mensual' ? 'Mensual' : 'Anual'}`
                       : esServicio
                         ? 'Solicitar Servicio'
@@ -504,5 +521,19 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
         </div>
       </div>
     </div>
+
+    {mostrarEditorLogo && usuario && (
+      <PersonalizarLogoScreen
+        imagenProducto={getImageUrl(producto.imagen_url)}
+        usuarioId={usuario.id}
+        transformInicial={logoTransform}
+        onCancelar={() => setMostrarEditorLogo(false)}
+        onGuardar={(transform) => {
+          setLogoTransform(transform);
+          setMostrarEditorLogo(false);
+        }}
+      />
+    )}
+    </>
   );
 }

@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, Trash2, Plus, Minus, Package, TriangleAlert as AlertTriangle, Clock } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
+import { supabase } from '../lib/supabase';
 import {
   obtenerCarrito,
   actualizarCantidadCarrito,
@@ -18,12 +19,23 @@ export default function StoreCarrito() {
   const [notasUsuario, setNotasUsuario] = useState('');
   const [direccionEntrega, setDireccionEntrega] = useState('');
   const [areaEntrega, setAreaEntrega] = useState('');
+  const [oficinas, setOficinas] = useState<{ id: string; nombre: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [procesando, setProcesando] = useState(false);
 
   useEffect(() => {
     cargarCarrito();
+    cargarOficinas();
   }, []);
+
+  const cargarOficinas = async () => {
+    const { data, error } = await supabase.from('oficinas').select('id, nombre').eq('activa', true).order('nombre');
+    if (error) {
+      console.error('Error cargando oficinas:', error);
+      return;
+    }
+    setOficinas(data || []);
+  };
 
   const cargarCarrito = async () => {
     if (!usuario?.id) return;
@@ -250,13 +262,16 @@ export default function StoreCarrito() {
                     <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
                       Área / Zona <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={areaEntrega}
                       onChange={(e) => setAreaEntrega(e.target.value)}
-                      placeholder="Ej: Oficina Norte, CDMX, etc."
                       className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
-                    />
+                    >
+                      <option value="">Selecciona una oficina...</option>
+                      {oficinas.map((oficina) => (
+                        <option key={oficina.id} value={oficina.nombre}>{oficina.nombre}</option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>

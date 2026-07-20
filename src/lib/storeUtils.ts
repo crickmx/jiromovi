@@ -189,6 +189,26 @@ export function parsearPersonalizacion(atributos?: { nombre: string }[]): { acti
   return { activo: !!attr, label: attr?.nombre.slice(PERSONALIZACION_KEY.length) || 'Personalización' };
 }
 
+export const LOGO_TRANSFORM_KEY = '_logo_transform';
+
+export interface StoreLogoTransform {
+  logo_url: string;
+  x: number;
+  y: number;
+  ancho: number;
+  rotacion: number;
+}
+
+export function parsearLogoTransform(atributos?: Record<string, string>): StoreLogoTransform | null {
+  const raw = atributos?.[LOGO_TRANSFORM_KEY];
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as StoreLogoTransform;
+  } catch {
+    return null;
+  }
+}
+
 export async function crearProducto(producto: Omit<StoreProducto, 'id' | 'created_at' | 'categoria'>) {
   console.log('Creando producto con datos:', producto);
 
