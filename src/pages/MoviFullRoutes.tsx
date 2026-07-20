@@ -68,6 +68,10 @@ const EspacioJiro = lazy(() => import('./EspacioJiro'));
 const Vacaciones = lazy(() => import('./Vacaciones'));
 const AccesosNacional = lazy(() => import('./AccesosNacional'));
 
+// Agenda
+const Agenda = lazy(() => import('./Agenda'));
+const AgendaPublica = lazy(() => import('./AgendaPublica'));
+
 // Mercadotecnia
 const Mercadotecnia = lazy(() => import('./Mercadotecnia'));
 const MiMarca = lazy(() => import('./MiMarca'));
@@ -163,6 +167,7 @@ export default function MoviFullRoutes() {
         <Route path="/registro-personal" element={<RegistroPersonal />} />
         <Route path="/p/:slug" element={<PaginaPublicaAsesor />} />
         <Route path="/cotizar/formularios/:slug" element={<PublicQuoteForm />} />
+        <Route path="/agenda/:webSlug/:tipoSlug" element={<AgendaPublica />} />
 
         {/* All authenticated MOVI routes — wrapped in Layout + providers */}
         <Route element={<LayoutShell />}>
@@ -241,6 +246,7 @@ export default function MoviFullRoutes() {
           <Route path="/espacio-jiro" element={<ProtectedRoute><EspacioJiro /></ProtectedRoute>} />
           <Route path="/vacaciones" element={<ProtectedRoute><Vacaciones /></ProtectedRoute>} />
           <Route path="/accesos-nacional" element={<ProtectedRoute><AccesosNacional /></ProtectedRoute>} />
+          <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
 
           {/* Mercadotecnia */}
           <Route path="/mercadotecnia/publicidad" element={<ProtectedRoute><Mercadotecnia section="publicidad" /></ProtectedRoute>} />

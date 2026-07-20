@@ -5,7 +5,7 @@ import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { ExternalLink, Save, CircleCheck as CheckCircle2, CircleAlert as AlertCircle, Star, GripVertical, Globe } from 'lucide-react';
+import { ExternalLink, Save, CircleCheck as CheckCircle2, CircleAlert as AlertCircle, Star, GripVertical, Globe, CalendarClock } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -22,6 +22,8 @@ import {
 import PublicWebPagePreview from '../components/webPages/PublicWebPagePreview';
 import { getDisplayName } from '../lib/utils';
 import { supabase } from '../lib/supabase';
+import { listTodosTiposCitaDeUsuario, listWebsiteBloques, guardarWebsiteBloques } from '../lib/agendaUtils';
+import type { AgendaTipoCita } from '../lib/agendaTypes';
 
 interface FormTemplate {
   id: string;
@@ -60,6 +62,10 @@ export default function MiPaginaWeb() {
   const [featuredIds, setFeaturedIds] = useState<Set<string>>(new Set());
   const [featuredOrder, setFeaturedOrder] = useState<string[]>([]);
 
+  const [tiposCitaAgenda, setTiposCitaAgenda] = useState<AgendaTipoCita[]>([]);
+  const [bloquesAgendaVisibles, setBloquesAgendaVisibles] = useState<Set<string>>(new Set());
+  const [bloquesAgendaOrder, setBloquesAgendaOrder] = useState<string[]>([]);
+
   const [config, setConfig] = useState<UserWebPageConfig>({
     primary_color: DEFAULT_COLORS.primary,
     secondary_color: DEFAULT_COLORS.secondary,
@@ -77,7 +83,7 @@ export default function MiPaginaWeb() {
     if (!user?.id) return;
 
     try {
-      const [insurersData, existingConfig, templatesData, featuredData, officeData] = await Promise.all([
+      const [insurersData, existingConfig, templatesData, featuredData, officeData, tiposCitaData, bloquesAgendaData] = await Promise.all([
         getActiveInsurers(),
         getUserWebPageConfig(user.id),
         supabase
@@ -95,8 +101,20 @@ export default function MiPaginaWeb() {
           .from('usuarios')
           .select('oficina_id, oficinas(accent_color, secondary_color)')
           .eq('id', user.id)
-          .maybeSingle()
+          .maybeSingle(),
+        listTodosTiposCitaDeUsuario(user.id),
+        listWebsiteBloques(user.id)
       ]);
+
+      const tiposActivos = tiposCitaData.filter(t => t.activo);
+      setTiposCitaAgenda(tiposActivos);
+      if (bloquesAgendaData.length > 0) {
+        setBloquesAgendaVisibles(new Set(bloquesAgendaData.filter(b => b.visible).map(b => b.tipo_cita_id)));
+        setBloquesAgendaOrder(bloquesAgendaData.map(b => b.tipo_cita_id));
+      } else {
+        setBloquesAgendaVisibles(new Set());
+        setBloquesAgendaOrder([]);
+      }
 
       setInsurers(insurersData);
 
@@ -170,6 +188,15 @@ export default function MiPaginaWeb() {
           .insert(rows);
       }
 
+      await guardarWebsiteBloques(
+        user.id,
+        bloquesAgendaOrder.map((tipoCitaId, idx) => ({
+          tipo_cita_id: tipoCitaId,
+          visible: bloquesAgendaVisibles.has(tipoCitaId),
+          orden: idx,
+        }))
+      );
+
       setSaveStatus('success');
       setSaveMessage('Configuracion guardada exitosamente');
       setTimeout(() => setSaveStatus('idle'), 3000);
@@ -180,6 +207,16 @@ export default function MiPaginaWeb() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function toggleBloqueAgenda(tipoCitaId: string) {
+    setBloquesAgendaVisibles(prev => {
+      const next = new Set(prev);
+      if (next.has(tipoCitaId)) next.delete(tipoCitaId);
+      else next.add(tipoCitaId);
+      return next;
+    });
+    setBloquesAgendaOrder(prev => prev.includes(tipoCitaId) ? prev : [...prev, tipoCitaId]);
   }
 
   function toggleInsurer(insurerId: string) {
@@ -469,6 +506,41 @@ export default function MiPaginaWeb() {
                     );
                   })}
                 </div>
+              </div>
+            )}
+          </Card>
+
+          <Card className="p-4">
+            <h2 className="text-base font-semibold mb-1 flex items-center gap-2">
+              <CalendarClock className="w-4 h-4 text-blue-600" />
+              Mostrar mis calendarios
+            </h2>
+            <p className="text-xs text-gray-500 mb-3">
+              Activa los tipos de cita que quieras incrustar como bloques de reserva en tu pagina web.
+            </p>
+            {tiposCitaAgenda.length === 0 ? (
+              <p className="text-xs text-gray-400 py-2">
+                Aun no tienes tipos de cita configurados. Ve al modulo Agenda para crear uno.
+              </p>
+            ) : (
+              <div className="space-y-1.5">
+                {tiposCitaAgenda.map(tipo => (
+                  <label
+                    key={tipo.id}
+                    className={`flex items-center gap-2 p-2 rounded border cursor-pointer transition-colors ${
+                      bloquesAgendaVisibles.has(tipo.id) ? 'border-blue-300 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={bloquesAgendaVisibles.has(tipo.id)}
+                      onChange={() => toggleBloqueAgenda(tipo.id)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm font-medium flex-1 truncate">{tipo.nombre}</span>
+                    <span className="text-xs text-gray-400">{tipo.duracion_minutos} min</span>
+                  </label>
+                ))}
               </div>
             )}
           </Card>

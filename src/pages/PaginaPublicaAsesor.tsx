@@ -12,6 +12,10 @@ import type { PublicWebPageData, SharedFormLink } from '../lib/webPagesTypes';
 import { DEFAULT_TEXT } from '../lib/webPagesTypes';
 import { createColorVariant } from '../lib/animationUtils';
 import { type AgentVCardData, downloadVCard } from '../lib/vcardUtils';
+import { getPublicWebsiteBlocks } from '../lib/agendaUtils';
+import type { AgendaWebsiteBloquePublico } from '../lib/agendaTypes';
+
+const MOVI_APP_BASE_URL = 'https://app.movi.digital';
 
 /* ─────────────────────────────────────────────
    TIPOS / METADATOS (sin cambios en lógica)
@@ -214,6 +218,7 @@ export default function PaginaPublicaAsesor() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [vcardLoading, setVcardLoading] = useState(false);
+  const [agendaBloques, setAgendaBloques] = useState<AgendaWebsiteBloquePublico[]>([]);
 
   useEffect(() => {
     if (!slug) { setNotFound(true); setLoading(false); return; }
@@ -256,7 +261,10 @@ export default function PaginaPublicaAsesor() {
       const pageData = await getPublicWebPageBySlug(slug);
       if (!pageData || !pageData.user) { setNotFound(true); }
       else if (pageData.config?.is_published === false) { setNotFound(true); }
-      else { setData(pageData); }
+      else {
+        setData(pageData);
+        getPublicWebsiteBlocks(pageData.user.id).then(setAgendaBloques);
+      }
     } catch (error) {
       console.error('Error loading public page:', error);
       setNotFound(true);
@@ -1144,6 +1152,37 @@ export default function PaginaPublicaAsesor() {
               <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className={btnPrimary} style={{ backgroundColor: primaryColor }}>
                 <MessageCircle className="w-4 h-4" /> Contactame
               </a>
+            </div>
+          </section>
+        )}
+
+        {/* ═══════════════════════════════════════
+            AGENDA — bloques de reserva activados en Mi Página Web
+        ═══════════════════════════════════════ */}
+        {agendaBloques.length > 0 && (
+          <section id="agenda" className="py-16 px-4 bg-gray-50">
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center mb-10">
+                <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-2">Agenda una cita</h2>
+                <p className="text-gray-600 max-w-xl mx-auto">Elige el horario que mejor te acomode.</p>
+              </div>
+              <div className="grid gap-6" style={{ gridTemplateColumns: agendaBloques.length > 1 ? 'repeat(auto-fit, minmax(320px, 1fr))' : '1fr' }}>
+                {agendaBloques.map(bloque => (
+                  <div key={bloque.tipo_cita_id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="px-5 py-3 border-b border-gray-100">
+                      <p className="text-sm font-bold text-gray-900">{bloque.nombre}</p>
+                      <p className="text-xs text-gray-500">{bloque.duracion_minutos} minutos</p>
+                    </div>
+                    <iframe
+                      title={bloque.nombre}
+                      src={`${MOVI_APP_BASE_URL}/agenda/${slug}/${bloque.slug}`}
+                      className="w-full border-0"
+                      style={{ height: 620 }}
+                      loading="lazy"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           </section>
         )}

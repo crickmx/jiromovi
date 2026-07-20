@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, HardDrive, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow, Clock, Camera, Sparkles, Bookmark, PanelLeft, Bug } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, HardDrive, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow, Clock, Camera, Sparkles, Bookmark, PanelLeft, Bug, CalendarClock } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
@@ -54,6 +54,7 @@ export const TOP_LEVEL_ITEMS: TopLevelNavItem[] = [
   { path: '/centro-digital', label: 'Centro Digital', icon: Monitor, visibleTo: ALL_ROLES },
   { path: '/store', label: 'MOVI Store', icon: ShoppingBag, visibleTo: ALL_ROLES },
   { path: '/comunicados', label: 'Comunicados', icon: Newspaper, visibleTo: ALL_ROLES, matchPrefix: true },
+  { path: '/agenda', label: 'Agenda', icon: CalendarClock, visibleTo: ALL_ROLES },
 ];
 
 const WORKSPACE_COMERCIAL: WorkspaceDefinition = {
