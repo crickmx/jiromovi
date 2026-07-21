@@ -7,7 +7,9 @@
  */
 class movi_sso extends rcube_plugin
 {
-    public $task = 'login';
+    // 'login' para el canje SSO/startup; 'mail' además para que el hook
+    // message_compose (ver más abajo) se registre al redactar.
+    public $task = 'login|mail';
     private ?array $credentials = null;
 
     #[\Override]
@@ -16,6 +18,7 @@ class movi_sso extends rcube_plugin
         $this->add_hook('startup', [$this, 'startup']);
         $this->add_hook('authenticate', [$this, 'authenticate']);
         $this->add_hook('login_after', [$this, 'loginAfter']);
+        $this->add_hook('message_compose', [$this, 'messageCompose']);
     }
 
     public function startup($args)
@@ -85,6 +88,89 @@ class movi_sso extends rcube_plugin
         ]);
 
         $this->syncContacts($rcmail, $this->credentials['contacts'] ?? []);
+    }
+
+    /**
+     * `startup`/`login_after` solo resincronizan la firma cuando llega un
+     * token MOVI (login nuevo o handoff explícito). Una sesión de Roundcube
+     * puede seguir abierta por días, así que abrir "Redactar" puede insertar
+     * una firma vieja si mientras tanto se reasignó otra en MOVI. Este hook
+     * refresca la firma justo antes de que Roundcube arme el compose,
+     * consultando por username (no hay token disponible aquí).
+     */
+    public function messageCompose($args)
+    {
+        $rcmail = rcmail::get_instance();
+        $username = strtolower((string) $rcmail->user->get_username());
+        if (!$username) {
+            return $args;
+        }
+
+        $signature = $this->fetchCurrentSignature($username);
+        if ($signature === null) {
+            // Sin respuesta (red caída, Supabase no disponible, etc.): se
+            // conserva la firma ya guardada en la identidad en vez de dejar
+            // el compose sin firma.
+            return $args;
+        }
+
+        $identity = $rcmail->user->get_identity();
+        if (!$identity || empty($identity['identity_id'])) {
+            return $args;
+        }
+
+        if (($identity['signature'] ?? '') !== $signature) {
+            $rcmail->user->update_identity((int) $identity['identity_id'], [
+                'signature' => $signature,
+                'html_signature' => 1,
+            ]);
+        }
+
+        return $args;
+    }
+
+    private function fetchCurrentSignature(string $username): ?string
+    {
+        $url = getenv('ROUNDCUBE_FIRMA_SYNC_URL') ?: '';
+        $secret = getenv('ROUNDCUBE_SSO_SHARED_SECRET') ?: '';
+        if (!$url || !$secret || !str_starts_with($url, 'https://')) {
+            return null;
+        }
+
+        $curl = curl_init($url);
+        curl_setopt_array($curl, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode(['username' => $username], JSON_THROW_ON_ERROR),
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'X-Movi-Roundcube-Secret: ' . $secret,
+            ],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_TIMEOUT => 5,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+        ]);
+
+        $body = curl_exec($curl);
+        $status = curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+        curl_close($curl);
+
+        if ($status !== 200 || !is_string($body)) {
+            return null;
+        }
+
+        try {
+            $data = json_decode($body, true, 4, JSON_THROW_ON_ERROR);
+        } catch (Throwable $error) {
+            return null;
+        }
+
+        if (!is_array($data) || !is_string($data['signature'] ?? null) || strlen($data['signature']) > 100000) {
+            return null;
+        }
+
+        return $data['signature'];
     }
 
     public function authenticate($args)

@@ -136,12 +136,42 @@ Aplicar la migración y desplegar:
 supabase db push
 supabase functions deploy roundcube-sso-token
 supabase functions deploy roundcube-sso-redeem --no-verify-jwt
+supabase functions deploy roundcube-firma-sync --no-verify-jwt
 ```
 
-`roundcube-sso-redeem` desactiva la verificación JWT de plataforma porque
-Roundcube no usa un JWT de usuario. La función valida obligatoriamente el
-secreto compartido con comparación resistente a diferencias de tiempo. No debe
-exponerse sin ese secreto.
+`roundcube-sso-redeem` y `roundcube-firma-sync` desactivan la verificación JWT
+de plataforma porque Roundcube no usa un JWT de usuario. Ambas funciones
+validan obligatoriamente el secreto compartido con comparación resistente a
+diferencias de tiempo. No deben exponerse sin ese secreto.
+
+### Firma siempre vigente al redactar
+
+`startup`/`login_after` (arriba) solo resincronizan identidad/firma cuando
+llega un token MOVI de un solo uso — es decir, en un login nuevo o un handoff
+explícito desde MOVI. Una sesión de Roundcube puede quedar abierta varios
+días, y dentro de ella "Redactar" es una acción AJAX de la misma sesión que
+nunca vuelve a traer ese token: sin nada más, el compose seguía insertando la
+firma vigente en el momento del último handoff, aunque el admin hubiera
+reasignado otra firma en MOVI mientras tanto.
+
+`roundcube-firma-sync` cierra ese hueco: el hook `message_compose` del plugin
+`movi_sso` consulta este endpoint por `username` (no por token) justo antes de
+armar el compose, y solo si responde `200` actualiza la firma de la identidad.
+Si la llamada falla (red caída, Supabase no disponible) se conserva la última
+firma sincronizada — nunca se deja el compose sin firma. Requiere la variable
+`ROUNDCUBE_FIRMA_SYNC_URL` en el `.env` del contenedor, con el mismo
+`ROUNDCUBE_SSO_SHARED_SECRET` que ya usa el canje de SSO.
+
+Después de configurar la variable y desplegar la función:
+
+```bash
+docker compose up -d --force-recreate roundcube
+```
+
+Verificar reasignando la firma de un usuario de prueba en Admin > Firmas y
+redactando dos veces seguidas en esa misma sesión de Roundcube (sin cerrar
+sesión ni recargar `/correo/`): el segundo compose ya debe traer la firma
+nueva.
 
 En el frontend se puede definir `VITE_ROUNDCUBE_URL=/correo/`; ese es también
 el valor predeterminado. El cierre de sesión de MOVI intenta cerrar primero la
