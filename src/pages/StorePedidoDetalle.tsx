@@ -836,12 +836,13 @@ export default function StorePedidoDetalle() {
                               )}
                               {(() => {
                                 const logoTransform = parsearLogoTransform(item.atributos_seleccionados);
-                                if (!logoTransform || !item.producto?.imagen_url) return null;
+                                const imagenLienzo = item.producto?.imagen_personalizacion_url || item.producto?.imagen_url;
+                                if (!logoTransform || !imagenLienzo) return null;
                                 return (
                                   <div className="mt-2">
                                     <p className="text-xs text-neutral-500 dark:text-white/50 mb-1">Logo del asesor (referencia de posición):</p>
                                     <div className="relative inline-block border border-neutral-200 dark:border-white/10 rounded-lg overflow-hidden">
-                                      <img src={item.producto.imagen_url} alt="Producto" className="block max-h-40 max-w-[200px] object-contain" />
+                                      <img src={imagenLienzo} alt="Producto" className="block max-h-40 max-w-[200px] object-contain" />
                                       <img
                                         src={logoTransform.logo_url}
                                         alt="Logo"

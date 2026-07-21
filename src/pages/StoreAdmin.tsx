@@ -604,6 +604,8 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
   const [categoriaId, setCategoriaId] = useState(producto?.categoria_id || '');
   const [imagenUrl, setImagenUrl] = useState(producto?.imagen_url || '');
   const [imagenFile, setImagenFile] = useState<File | null>(null);
+  const [imagenPersonalizacionUrl, setImagenPersonalizacionUrl] = useState(producto?.imagen_personalizacion_url || '');
+  const [imagenPersonalizacionFile, setImagenPersonalizacionFile] = useState<File | null>(null);
   const [tipoItem, setTipoItem] = useState<TipoItem>(producto?.tipo_item || 'producto');
   const [disponibilidad, setDisponibilidad] = useState<Disponibilidad>(producto?.disponibilidad || 'por_existencia');
   const [stock, setStock] = useState(producto?.stock?.toString() || '0');
@@ -761,6 +763,18 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
     }
   };
 
+  const handleImagenPersonalizacionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImagenPersonalizacionFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagenPersonalizacionUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleGuardar = async () => {
     if (!titulo || !descripcion || !precio || !categoriaId) {
       alert('Por favor completa todos los campos obligatorios');
@@ -781,6 +795,12 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
         finalImagenUrl = await subirImagenProducto(imagenFile);
       }
 
+      let finalImagenPersonalizacionUrl = permitePersonalizacion ? imagenPersonalizacionUrl : '';
+
+      if (permitePersonalizacion && imagenPersonalizacionFile) {
+        finalImagenPersonalizacionUrl = await subirImagenProducto(imagenPersonalizacionFile);
+      }
+
       const datos = {
         titulo,
         descripcion,
@@ -788,6 +808,7 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
         costo_base: parseFloat(costoBase) || 0,
         categoria_id: categoriaId,
         imagen_url: finalImagenUrl,
+        imagen_personalizacion_url: finalImagenPersonalizacionUrl || null,
         tipo_item: tipoItem,
         disponibilidad,
         stock: disponibilidad === 'por_existencia' ? (parseInt(stock) || 0) : 0,
@@ -1229,17 +1250,50 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
             </label>
           </div>
           {permitePersonalizacion && (
-            <div>
-              <label className="block text-xs font-medium text-neutral-500 dark:text-white/50 mb-1">
-                Etiqueta del campo de personalización
-              </label>
-              <input
-                type="text"
-                value={personalizacionLabel}
-                onChange={e => setPersonalizacionLabel(e.target.value)}
-                placeholder="Personalización"
-                className="w-full px-3 py-2 text-sm border border-neutral-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
-              />
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 dark:text-white/50 mb-1">
+                  Etiqueta del campo de personalización
+                </label>
+                <input
+                  type="text"
+                  value={personalizacionLabel}
+                  onChange={e => setPersonalizacionLabel(e.target.value)}
+                  placeholder="Personalización"
+                  className="w-full px-3 py-2 text-sm border border-neutral-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 dark:text-white/50 mb-1">
+                  Imagen para el editor de logo (opcional)
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImagenPersonalizacionChange}
+                  className="w-full px-3 py-2 text-sm border border-neutral-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
+                />
+                <p className="text-xs text-neutral-400 dark:text-white/40 mt-1">
+                  Si no se sube, el editor de logo usa la imagen del catálogo. Úsala cuando el asesor necesite ver el producto desde otro ángulo o encuadre para acomodar su logo.
+                </p>
+                {imagenPersonalizacionUrl && (
+                  <div className="mt-2 flex items-start gap-2">
+                    <img
+                      src={imagenPersonalizacionUrl}
+                      alt="Preview lienzo personalización"
+                      className="w-24 h-24 object-cover rounded-lg"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { setImagenPersonalizacionUrl(''); setImagenPersonalizacionFile(null); }}
+                      className="text-xs text-red-500 hover:text-red-600"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

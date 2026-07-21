@@ -524,7 +524,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
 
     {mostrarEditorLogo && usuario && (
       <PersonalizarLogoScreen
-        imagenProducto={getImageUrl(producto.imagen_url)}
+        imagenProducto={getImageUrl(producto.imagen_personalizacion_url || producto.imagen_url)}
         usuarioId={usuario.id}
         transformInicial={logoTransform}
         onCancelar={() => setMostrarEditorLogo(false)}
