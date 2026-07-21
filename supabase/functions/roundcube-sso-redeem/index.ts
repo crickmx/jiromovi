@@ -65,7 +65,8 @@ function renderSignature(template: string, context: Record<string, unknown>): st
     if (/link|logo|imagen|sitio_web/i.test(key)) return safeUrl(value);
     if (/color/i.test(key)) {
       const color = String(value ?? "").trim();
-      return /^#[0-9a-f]{3,8}$/i.test(color) ? color : "";
+      // Acepta hex con o sin '#': con '#' para CSS ({{oficina_color_primario}}), sin '#' para las URLs de iconos ({{oficina_color_primario_hex}}).
+      return /^#?[0-9a-f]{3,8}$/i.test(color) ? color : "";
     }
     return escapeHtml(value);
   });
@@ -213,8 +214,10 @@ Deno.serve(async (req: Request) => {
       oficina_logo: absoluteAssetUrl(office?.logo_url),
       oficina_nombre: office?.nombre,
       oficina_color_primario: office?.accent_color || "#0E23E2",
+      oficina_color_primario_hex: String(office?.accent_color || "#0E23E2").replace(/^#/, ""),
       oficina_color_secundario: office?.color_secundario,
       oficina_telefono: office?.telefono,
+      oficina_telefono_sin_formato: String(office?.telefono ?? "").replace(/\D/g, ""),
       oficina_domicilio: office?.domicilio,
       oficina_extension: office?.extension,
       oficina_whatsapp: office?.whatsapp,

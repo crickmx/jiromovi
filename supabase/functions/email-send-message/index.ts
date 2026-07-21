@@ -206,17 +206,28 @@ async function getFirmaUsuario(supabase: any, userId: string): Promise<string> {
 
     let firmaHtml = firmaAsignada[0].template_html;
 
+    const celularRaw = usuario.celular_laboral || '';
+    const celularSinFormato = celularRaw.replace(/[^0-9]/g, '');
+    let waDigits = celularSinFormato;
+    if (waDigits.length === 10) waDigits = '521' + waDigits;
+    else if (waDigits.length === 12 && waDigits.startsWith('52')) waDigits = '521' + waDigits.slice(2);
+    const whatsappLink = waDigits ? `https://wa.me/${waDigits}` : '';
+    const absAsset = (u: string) => (u && u.startsWith('/')) ? `https://app.movi.digital${u}` : (u || '');
+
     const templateData: any = {
       nombre: usuario.nombre || '',
       apellidos: usuario.apellidos || '',
+      nombre_completo: usuario.nombre_completo || `${usuario.nombre || ''} ${usuario.apellidos || ''}`.trim(),
       rol: usuario.rol || '',
       puesto: usuario.puesto || '',
       email_laboral: usuario.email_laboral || '',
-      celular_laboral: usuario.celular_laboral || '',
+      celular_laboral: celularRaw,
+      celular_laboral_sin_formato: celularSinFormato,
+      whatsapp_link: whatsappLink,
       extension_telefonica: usuario.extension_telefonica || '',
       mi_pagina_web: getMiPaginaWeb(usuario.web_slug),
       web_slug: usuario.web_slug || '',
-      imagen_perfil: usuario.imagen_perfil_url || '',
+      imagen_perfil: absAsset(usuario.imagen_perfil_url || ''),
     };
 
     if (usuario.oficina) {
@@ -233,9 +244,12 @@ async function getFirmaUsuario(supabase: any, userId: string): Promise<string> {
         ? `https://app.movi.digital${oficina.logo_url}`
         : oficina.logo_url || '';
       templateData.oficina_color_primario = oficina.accent_color || '#0E23E2';
+      // Versión sin '#' — la usan las URLs de iconos (img.icons8.com/.../{{color}}/...) que requieren el hex sin almohadilla.
+      templateData.oficina_color_primario_hex = (oficina.accent_color || '#0E23E2').replace(/^#/, '');
       templateData.oficina_color_secundario = oficina.color_secundario || '';
       templateData.oficina_extension = oficina.extension || '';
       templateData.oficina_whatsapp = oficina.whatsapp || '';
+      templateData.oficina_telefono_sin_formato = (oficina.telefono || '').replace(/[^0-9]/g, '');
     }
 
     firmaHtml = firmaHtml.replace(/\{\{([^#\/][^}]+)\}\}/g, (match, key) => {

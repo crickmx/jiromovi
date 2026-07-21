@@ -24,8 +24,10 @@ export interface SignatureContext {
   oficina_logo?: string;
   oficina_nombre?: string;
   oficina_color_primario?: string;
+  oficina_color_primario_hex?: string;
   oficina_color_secundario?: string;
   oficina_telefono?: string;
+  oficina_telefono_sin_formato?: string;
   oficina_domicilio?: string;
   oficina_extension?: string;
   oficina_whatsapp?: string;
@@ -180,8 +182,11 @@ export async function getUserContext(usuarioId: string): Promise<SignatureContex
     oficina_logo: absoluteAssetUrl(oficina.logo_url),
     oficina_nombre: oficina.nombre || '',
     oficina_color_primario: oficina.accent_color || '#0E23E2',
+    // Versión sin '#' — la usan las URLs de iconos (img.icons8.com/.../{{color}}/...) que requieren el hex sin almohadilla.
+    oficina_color_primario_hex: (oficina.accent_color || '#0E23E2').replace(/^#/, ''),
     oficina_color_secundario: oficina.color_secundario || '',
     oficina_telefono: oficina.telefono || '',
+    oficina_telefono_sin_formato: stripPhoneFormat(oficina.telefono),
     oficina_domicilio: oficina.domicilio || '',
     oficina_extension: oficina.extension || '',
     oficina_whatsapp: oficina.whatsapp || '',
@@ -262,8 +267,10 @@ export const EXAMPLE_CONTEXT: SignatureContext = {
   oficina_logo: 'https://placehold.co/200x60/0E23E2/white?text=LOGO',
   oficina_nombre: 'MOVI Digital Central',
   oficina_color_primario: '#0E23E2',
+  oficina_color_primario_hex: '0E23E2',
   oficina_color_secundario: '#1E40AF',
   oficina_telefono: '(55) 5555-1234',
+  oficina_telefono_sin_formato: '5555551234',
   oficina_domicilio: 'Av. Insurgentes Sur 1234, Col. Del Valle, CDMX',
   oficina_extension: '200',
   oficina_whatsapp: '5555551234',

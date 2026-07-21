@@ -226,8 +226,11 @@ Deno.serve(async (req: Request) => {
       templateData.oficina_logo = absoluteAssetUrl(oficina.logo_url);
       templateData.oficina_nombre = oficina.nombre || '';
       templateData.oficina_color_primario = oficina.accent_color || '#0E23E2';
+      // Versión sin '#' — la usan las URLs de iconos (img.icons8.com/.../{{color}}/...) que requieren el hex sin almohadilla.
+      templateData.oficina_color_primario_hex = (oficina.accent_color || '#0E23E2').replace(/^#/, '');
       templateData.oficina_color_secundario = oficina.color_secundario || '';
       templateData.oficina_telefono = oficina.telefono || '';
+      templateData.oficina_telefono_sin_formato = stripPhoneFormat(oficina.telefono);
       templateData.oficina_domicilio = oficina.domicilio || '';
       templateData.oficina_direccion = oficina.domicilio || '';
       templateData.oficina_extension = oficina.extension || '';
