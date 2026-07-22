@@ -86,9 +86,11 @@ type FormTab = 'general' | 'miembros' | 'oficinas' | 'asignacion' | 'tramites';
 type Panel = 'list' | 'form' | 'members' | 'offices';
 
 const ROL_CONFIG = {
-  lider:     { label: 'LÃ­der',     bg: 'bg-amber-100',   text: 'text-amber-800',   icon: Crown },
-  ejecutivo: { label: 'Ejecutivo', bg: 'bg-blue-100',    text: 'text-blue-700',    icon: Zap   },
-  miembro:   { label: 'Miembro',   bg: 'bg-neutral-100', text: 'text-neutral-600', icon: Eye   },
+  director:   { label: 'Director',   bg: 'bg-purple-100',  text: 'text-purple-800',  icon: Star       },
+  supervisor: { label: 'Supervisor', bg: 'bg-rose-100',    text: 'text-rose-700',    icon: ShieldAlert },
+  lider:      { label: 'Líder',      bg: 'bg-amber-100',   text: 'text-amber-800',   icon: Crown      },
+  ejecutivo:  { label: 'Ejecutivo',  bg: 'bg-blue-100',    text: 'text-blue-700',    icon: Zap        },
+  miembro:    { label: 'Miembro',    bg: 'bg-neutral-100', text: 'text-neutral-600', icon: Eye        },
 } as const;
 
 const TEAM_COLOR_PALETTE = [
