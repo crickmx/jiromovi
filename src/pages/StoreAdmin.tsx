@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Store, Package, Plus, Pencil as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign, Tag, Download, Upload, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, Wrench, Users, Zap } from 'lucide-react';
+import { Store, Package, Plus, Pencil as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign, Tag, Download, Upload, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, Wrench, Users, Zap, Image as ImageIcon } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   obtenerTodosProductos,
@@ -26,6 +26,7 @@ import type { StoreProducto, StoreCategoria, StoreProductoCostoExtra, StoreProdu
 import { TIPO_GASTO_OPTIONS } from '../lib/storeTypes';
 import { BaseModal } from '../components/BaseModal';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
+import { obtenerTodosLogosAsesores, type LogoGuardadoConUsuario } from '../lib/logoUtils';
 
 export default function StoreAdmin() {
   const { usuario } = useAuth();
@@ -33,7 +34,7 @@ export default function StoreAdmin() {
   const [productos, setProductos] = useState<StoreProducto[]>([]);
   const [categorias, setCategorias] = useState<StoreCategoria[]>([]);
   const [loading, setLoading] = useState(true);
-  const [vistaActual, setVistaActual] = useState<'productos' | 'categorias' | 'equipos' | 'triggers'>('productos');
+  const [vistaActual, setVistaActual] = useState<'productos' | 'categorias' | 'equipos' | 'triggers' | 'logos'>('productos');
 
   const [showProductoModal, setShowProductoModal] = useState(false);
   const [productoEditando, setProductoEditando] = useState<StoreProducto | null>(null);
@@ -264,6 +265,18 @@ export default function StoreAdmin() {
           >
             <Zap className="w-5 h-5 inline mr-2" />
             Triggers
+          </button>
+
+          <button
+            onClick={() => setVistaActual('logos')}
+            className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+              vistaActual === 'logos'
+                ? 'bg-accent text-white'
+                : 'bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/15'
+            }`}
+          >
+            <ImageIcon className="w-5 h-5 inline mr-2" />
+            Logos de asesores
           </button>
         </div>
 
@@ -550,6 +563,8 @@ export default function StoreAdmin() {
           </div>
         ) : vistaActual === 'equipos' ? (
           <EquiposAccesoPanel />
+        ) : vistaActual === 'logos' ? (
+          <LogosAsesoresPanel />
         ) : (
           <TriggersPanel />
         )}
@@ -604,6 +619,8 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
   const [categoriaId, setCategoriaId] = useState(producto?.categoria_id || '');
   const [imagenUrl, setImagenUrl] = useState(producto?.imagen_url || '');
   const [imagenFile, setImagenFile] = useState<File | null>(null);
+  const [imagenPersonalizacionUrl, setImagenPersonalizacionUrl] = useState(producto?.imagen_personalizacion_url || '');
+  const [imagenPersonalizacionFile, setImagenPersonalizacionFile] = useState<File | null>(null);
   const [tipoItem, setTipoItem] = useState<TipoItem>(producto?.tipo_item || 'producto');
   const [disponibilidad, setDisponibilidad] = useState<Disponibilidad>(producto?.disponibilidad || 'por_existencia');
   const [stock, setStock] = useState(producto?.stock?.toString() || '0');
@@ -749,6 +766,18 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
   const gananciaUnidad = precioNum - costoReal;
   const margenPct = precioNum > 0 ? (gananciaUnidad / precioNum) * 100 : 0;
 
+  const handleImagenPersonalizacionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImagenPersonalizacionFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagenPersonalizacionUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleImagenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -772,13 +801,22 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
       return;
     }
 
+    if (permitePersonalizacion && !imagenPersonalizacionUrl) {
+      alert('Sube una imagen de personalización antes de habilitar esta opción');
+      return;
+    }
+
     try {
       setGuardando(true);
 
       let finalImagenUrl = imagenUrl;
-
       if (imagenFile) {
         finalImagenUrl = await subirImagenProducto(imagenFile);
+      }
+
+      let finalImagenPersonalizacionUrl = imagenPersonalizacionUrl;
+      if (imagenPersonalizacionFile) {
+        finalImagenPersonalizacionUrl = await subirImagenProducto(imagenPersonalizacionFile);
       }
 
       const datos = {
@@ -788,6 +826,7 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
         costo_base: parseFloat(costoBase) || 0,
         categoria_id: categoriaId,
         imagen_url: finalImagenUrl,
+        imagen_personalizacion_url: permitePersonalizacion ? finalImagenPersonalizacionUrl : null,
         tipo_item: tipoItem,
         disponibilidad,
         stock: disponibilidad === 'por_existencia' ? (parseInt(stock) || 0) : 0,
@@ -1240,6 +1279,18 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
                 placeholder="Personalización"
                 className="w-full px-3 py-2 text-sm border border-neutral-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
               />
+              <label className="block text-xs font-medium text-neutral-500 dark:text-white/50 mt-3 mb-1">
+                Imagen para el editor visual (logo/texto) — obligatoria para habilitar la opción
+              </label>
+              {imagenPersonalizacionUrl && (
+                <img src={imagenPersonalizacionUrl} alt="Vista previa" className="w-32 h-32 object-contain rounded-lg border border-neutral-200 dark:border-white/15 mb-2" />
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImagenPersonalizacionChange}
+                className="w-full text-sm text-neutral-600 dark:text-white/60"
+              />
             </div>
           )}
         </div>
@@ -1484,6 +1535,51 @@ const METODO_PAGO_OC_OPCIONES = ['Cargo a Oficina', 'Cargo a Bono de Agente', 'P
 const FORMA_PAGO_OC_OPCIONES = ['Contado', '2 Parcialidades', '12 Meses'];
 interface StoreEstatusRow { id: string; nombre: string; }
 interface TicketTipoRow { id: string; nombre: string; value: string; }
+
+function LogosAsesoresPanel() {
+  const [logos, setLogos] = useState<LogoGuardadoConUsuario[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    obtenerTodosLogosAsesores().then(data => {
+      setLogos(data);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) return <div className="text-center py-12 text-neutral-500">Cargando logos...</div>;
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Logos subidos por asesores</h2>
+        <p className="text-sm text-neutral-500 dark:text-white/50 mt-1">
+          Todos los logos que los asesores han subido al personalizar productos de la tienda.
+        </p>
+      </div>
+      {logos.length === 0 ? (
+        <div className="text-sm text-neutral-400">Aún no hay logos subidos.</div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {logos.map(logo => (
+            <div key={logo.id} className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-3">
+              <img src={logo.url} alt={logo.nombre} className="w-full h-24 object-contain rounded-lg bg-neutral-50 dark:bg-white/5 mb-2" />
+              <p className="text-sm font-medium text-neutral-900 dark:text-white truncate" title={logo.usuario_nombre}>{logo.usuario_nombre}</p>
+              <p className="text-xs text-neutral-500 dark:text-white/50 truncate">{new Date(logo.created_at).toLocaleDateString('es-MX')}</p>
+              <a
+                href={logo.url}
+                download={`${logo.usuario_nombre}-${logo.nombre}`}
+                className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-accent hover:text-accent-hover transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" /> Descargar
+              </a>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function TriggersPanel() {
   const [triggers, setTriggers] = useState<StoreTrigger[]>([]);
