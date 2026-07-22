@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { getWhatsappApiKey } from "../_shared/emailCredentials.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,7 +37,7 @@ Deno.serve(async (req) => {
 
     const { data: config, error: configError } = await supabaseClient
       .from('whatsapp_configuracion')
-      .select('*')
+      .select('id, channel_id_uuid')
       .eq('activo', true)
       .single();
 
@@ -44,6 +45,8 @@ Deno.serve(async (req) => {
       console.error('Config error:', configError);
       throw new Error('No active WhatsApp configuration found');
     }
+    const apiKey = await getWhatsappApiKey(supabaseClient, config.id);
+    if (!apiKey) throw new Error('WhatsApp API key is not configured');
 
     console.log('Config found. Channel ID:', config.channel_id_uuid);
 
@@ -75,7 +78,7 @@ Deno.serve(async (req) => {
     const wazzupResponse = await fetch('https://api.wazzup24.com/v3/message', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${config.api_key}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(wazzupPayload)

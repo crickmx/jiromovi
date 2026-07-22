@@ -58,7 +58,13 @@ export function UnifiedConversationList({
   const filtered = useMemo(() => {
     let list = conversations;
     if (filterChannel !== 'all') list = list.filter(c => c.channel === filterChannel);
-    if (filterStatus !== 'all') list = list.filter(c => c.status === filterStatus);
+    // In this list, status="all" is the dedicated "No leídos" tab.
+    // It must filter by unread count instead of disabling the status filter.
+    if (filterStatus === 'all') {
+      list = list.filter(c => c.status !== 'archived' && c.unreadCount > 0);
+    } else {
+      list = list.filter(c => c.status === filterStatus);
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(c => {
@@ -73,8 +79,9 @@ export function UnifiedConversationList({
     return list;
   }, [conversations, filterChannel, filterStatus, search, participantNames]);
 
-  const totalUnread = conversations.reduce((s, c) => s + c.unreadCount, 0);
-  const unreadConvCount = conversations.filter(c => c.unreadCount > 0).length;
+  const openConversations = conversations.filter(c => c.status === 'open');
+  const totalUnread = openConversations.reduce((s, c) => s + c.unreadCount, 0);
+  const unreadConvCount = openConversations.filter(c => c.unreadCount > 0).length;
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-neutral-900">
@@ -123,9 +130,9 @@ export function UnifiedConversationList({
           )}
         >
           Todos
-          {conversations.length > 0 && (
+          {openConversations.length > 0 && (
             <span className="text-[9px] font-bold px-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400">
-              {conversations.length}
+              {openConversations.length}
             </span>
           )}
         </button>
@@ -199,7 +206,12 @@ export function UnifiedConversationList({
                   key={conv.id}
                   onClick={() => onSelect(conv)}
                   className={cn(
-                    'w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-all border-b border-neutral-50 dark:border-neutral-800/50',
+                    'w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-all border-b border-l-[3px] border-b-neutral-50 dark:border-b-neutral-800/50',
+                    conv.channel === 'wa_movi'
+                      ? 'border-l-emerald-500'
+                      : conv.channel === 'wa_personal'
+                        ? 'border-l-violet-500'
+                        : 'border-l-blue-500',
                     isSelected
                       ? 'bg-emerald-50 dark:bg-emerald-900/20'
                       : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/40'
@@ -237,7 +249,7 @@ export function UnifiedConversationList({
                     </div>
 
                     <div className="flex items-center gap-1">
-                      <ChannelBadge channel={conv.channel} size="sm" showLabel={false} />
+                      <ChannelBadge channel={conv.channel} size="sm" showLabel />
                       <span className={cn(
                         'text-[11px] truncate',
                         hasUnread

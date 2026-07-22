@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { getWhatsappApiKey } from "../_shared/emailCredentials.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -640,15 +641,15 @@ async function sendWhatsAppWithDocuments(
 }> {
   const { data: wazzupConfig } = await supabase
     .from("whatsapp_configuracion")
-    .select("api_key, channel_id_uuid, activo")
+    .select("id, channel_id_uuid, activo")
     .eq("activo", true)
     .maybeSingle();
+  const apiKey = wazzupConfig ? await getWhatsappApiKey(supabase, wazzupConfig.id) : null;
 
-  if (!wazzupConfig || !wazzupConfig.api_key) {
+  if (!wazzupConfig || !apiKey) {
     return { messageSent: false, documentsSent: 0, error: "WhatsApp not configured", failedDocuments: [], attachmentDetails: [] };
   }
 
-  const apiKey = wazzupConfig.api_key;
   const channelId = wazzupConfig.channel_id_uuid;
   const failedDocuments: string[] = [];
   const attachmentDetails: AttachmentResult[] = [];

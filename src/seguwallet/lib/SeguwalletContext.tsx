@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { supabase } from '../../lib/supabase';
 import { getSeguwalletCustomer, getActiveSeguwalletTerms, type SeguwalletCustomer, type SeguwalletTerms } from './seguwalletAuth';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
@@ -40,12 +40,14 @@ export function SeguwalletProvider({ children }: { children: ReactNode }) {
   const [customer, setCustomer] = useState<SeguwalletCustomer | null>(null);
   const [activeTerms, setActiveTerms] = useState<SeguwalletTerms | null>(null);
   const [loading, setLoading] = useState(true);
+  const profileLoadedRef = useRef(false);
   const { isImpersonating, session, impersonatedCustomer } = useImpersonation();
 
   const loadCustomer = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
+        profileLoadedRef.current = false;
         setCustomer(null);
         return;
       }
@@ -53,6 +55,7 @@ export function SeguwalletProvider({ children }: { children: ReactNode }) {
         getSeguwalletCustomer(user.id),
         getActiveSeguwalletTerms(),
       ]);
+      profileLoadedRef.current = true;
       setCustomer(cust && cust.status === 'active' ? cust : null);
       setActiveTerms(terms);
     } catch {
@@ -83,8 +86,12 @@ export function SeguwalletProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') {
+        // Only show the loading spinner on a real first-login (profile not yet loaded).
+        // Tab-focus token refreshes can also fire SIGNED_IN — don't unmount the page.
+        if (!profileLoadedRef.current) setLoading(true);
         (async () => { await loadCustomer(); })();
       } else if (event === 'SIGNED_OUT') {
+        profileLoadedRef.current = false;
         setCustomer(null);
         setLoading(false);
       }

@@ -425,7 +425,7 @@ class SupabaseSync {
 
       const ts = msgTimestamp || Date.now();
 
-      await this.upsertMessage(userId, conv.id, {
+      const savedMessage = await this.upsertMessage(userId, conv.id, {
         direction: 'inbound',
         messageType: content.mediaType || 'text',
         content: content.text,
@@ -440,6 +440,25 @@ class SupabaseSync {
         senderJid: senderJid || undefined,
         senderName: pushName || undefined,
       });
+
+      if (savedMessage?.id) {
+        const preview = content.text || content.caption || `[${content.mediaType || 'mensaje'}]`;
+        const { error: notificationError } = await this.supabase.rpc('notify', {
+          p_event_code: 'whatsapp_personal_mensaje_recibido',
+          p_user_ids: [userId],
+          p_payload: {
+            nombre_contacto: pushName || jidOrPhone || 'Contacto',
+            telefono_contacto: jidOrPhone || '',
+            mensaje: preview,
+            canal: 'WA Personal',
+            url: `/centro-contacto?channel=whatsapp&source=personal&conversation=${conv.id}`,
+          },
+          p_entity_id: savedMessage.id,
+        });
+        if (notificationError) {
+          console.error(`[Sync] Error creating personal WhatsApp notification:`, notificationError.message);
+        }
+      }
 
       await this.updateConversationLastMessage(
         conv.id,
@@ -688,14 +707,12 @@ class SupabaseSync {
         return;
       }
 
-      const { data: signedData } = await this.supabase.storage
-        .from('whatsapp-media')
-        .createSignedUrl(storagePath, 60 * 60 * 24 * 365);
-
       await this.supabase
         .from('whatsapp_messages')
         .update({
-          media_url: signedData?.signedUrl || null,
+          // Las URLs firmadas se generan al leer los mensajes, bajo la
+          // identidad del dueño, y expiran en una hora.
+          media_url: null,
           media_storage_path: storagePath,
           media_file_size: buffer.length,
           media_download_status: 'downloaded',

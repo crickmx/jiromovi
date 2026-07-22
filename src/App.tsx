@@ -3,7 +3,6 @@ import { Suspense, lazy } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import './index.css';
 import { MoviAuthProvider } from './contexts/MoviAuthContext';
-import { PushNotificationInit } from './components/PushNotificationInit';
 import { ImpersonationProvider } from './contexts/ImpersonationContext';
 import { LoadingProvider } from './contexts/LoadingContext';
 import { LoadingOverlay } from './components/loading/LoadingOverlay';
@@ -31,6 +30,7 @@ const ChavaAgenteLanding = lazy(() => import('./chava-agente/pages/ChavaAgenteLa
 
 // ── Public advisor page (lazy, no auth) ───────────────────────────────────
 const PaginaPublicaAsesor = lazy(() => import('./pages/PaginaPublicaAsesor'));
+const AgendaPublica = lazy(() => import('./pages/AgendaPublica'));
 
 // ── Seguros Education (lazy) ──────────────────────────────────────────────
 const SegurosEducationLanding = lazy(() => import('./seguros-education/SegurosEducationLanding').then(m => ({ default: m.default || m.SegurosEducationLanding })));
@@ -76,6 +76,7 @@ function AgenteWebsiteApp() {
           {/* Root with no slug → redirect to grupojiro.com */}
           <Route path="/" element={<RootToGrupoJiro />} />
           {/* Any slug → public advisor page */}
+          <Route path="/:slug/agenda" element={<AgendaPublica />} />
           <Route path="/:slug" element={<PaginaPublicaAsesor />} />
           <Route path="*" element={<RootToGrupoJiro />} />
         </Routes>
@@ -152,7 +153,6 @@ function SegurosEducationApp() {
       <BrowserRouter>
         <ImpersonationProvider>
           <MoviAuthProvider>
-      <PushNotificationInit />
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/*" element={<SegurosEducationLanding />} />
@@ -170,7 +170,6 @@ function MoviApp() {
     <BrowserRouter>
       <ImpersonationProvider>
         <MoviAuthProvider>
-          <PushNotificationInit />
           <LoadingProvider>
             <LoadingOverlay />
             <Suspense fallback={<PageLoader />}>

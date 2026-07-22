@@ -37,6 +37,13 @@ function sanitizeUrl(value: string): string {
   return '';
 }
 
+function absoluteAssetUrl(value: string | null | undefined): string {
+  const url = String(value ?? '').trim();
+  if (!url) return '';
+  if (url.startsWith('/')) return `https://app.movi.digital${url}`;
+  return url;
+}
+
 function renderTemplate(template: string, data: Record<string, string>): string {
   let result = template;
 
@@ -96,7 +103,7 @@ Deno.serve(async (req: Request) => {
       .from('usuarios')
       .select(`
         *,
-        oficinas (
+        oficina:oficinas!usuarios_oficina_id_fkey (
           id,
           nombre,
           domicilio,
@@ -119,11 +126,11 @@ Deno.serve(async (req: Request) => {
       console.error('[render-firma] Error obteniendo usuario:', usuarioError);
       return new Response(
         JSON.stringify({
-          error: 'Usuario no encontrado',
+          error: 'No se pudieron cargar los datos del usuario',
           details: usuarioError.message,
           userId: targetUserId
         }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -208,15 +215,15 @@ Deno.serve(async (req: Request) => {
       celular_laboral_sin_formato: celularSinFormato,
       whatsapp_link: whatsappLink,
       extension_telefonica: usuario.extension_telefonica || '',
-      imagen_perfil: usuario.imagen_perfil_url || '',
+      imagen_perfil: absoluteAssetUrl(usuario.imagen_perfil_url),
       web_slug: usuario.web_slug || '',
       mi_pagina_web: usuario.web_slug ? `agentedeseguros.website/${usuario.web_slug}` : '',
     };
 
     // Oficina
-    if (usuario.oficinas) {
-      const oficina = usuario.oficinas;
-      templateData.oficina_logo = oficina.logo_url || '';
+    if (usuario.oficina) {
+      const oficina = Array.isArray(usuario.oficina) ? usuario.oficina[0] : usuario.oficina;
+      templateData.oficina_logo = absoluteAssetUrl(oficina.logo_url);
       templateData.oficina_nombre = oficina.nombre || '';
       templateData.oficina_color_primario = oficina.accent_color || '#0E23E2';
       templateData.oficina_color_secundario = oficina.color_secundario || '';

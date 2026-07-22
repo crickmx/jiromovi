@@ -1,13 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
-};
+import { getIaMailboxPassword } from "../_shared/emailCredentials.ts";
+import { emailCorsHeaders, forbiddenOriginResponse } from "../_shared/emailCors.ts";
 
 Deno.serve(async (req: Request) => {
+  const corsHeaders = emailCorsHeaders(req);
+  if (!corsHeaders) return forbiddenOriginResponse();
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -103,7 +101,8 @@ async function fetchNewEmails(
   const host = cuenta.imap_host || "imap.ionos.mx";
   const port = cuenta.imap_port || 993;
   const email = cuenta.email;
-  const password = cuenta.password_encrypted;
+  const password = await getIaMailboxPassword(supabase, cuenta.id);
+  if (!password) throw new Error("No hay credencial de correo almacenada para esta cuenta.");
 
   const conn = await Deno.connectTls({ hostname: host, port });
   const decoder = new TextDecoder();

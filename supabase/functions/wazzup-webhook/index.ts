@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { getWhatsappApiKey } from "../_shared/emailCredentials.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,6 +8,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers":
     "Content-Type, Authorization, X-Client-Info, Apikey",
 };
+
+function secretsMatch(received: string, expected: string): boolean {
+  const encoder = new TextEncoder();
+  const left = encoder.encode(received);
+  const right = encoder.encode(expected);
+  let diff = left.length ^ right.length;
+  const length = Math.max(left.length, right.length);
+  for (let i = 0; i < length; i++) {
+    diff |= (left[i % Math.max(left.length, 1)] || 0) ^
+      (right[i % Math.max(right.length, 1)] || 0);
+  }
+  return diff === 0;
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -16,6 +30,15 @@ Deno.serve(async (req: Request) => {
   if (req.method === "GET") {
     return new Response(JSON.stringify({ ok: true, status: "webhook active" }), {
       status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const expectedSecret = Deno.env.get("WAZZUP_WEBHOOK_SECRET");
+  const receivedSecret = new URL(req.url).searchParams.get("secret") || "";
+  if (!expectedSecret || !secretsMatch(receivedSecret, expectedSecret)) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
@@ -342,6 +365,27 @@ Deno.serve(async (req: Request) => {
 
         logs.push(`inserted_${msg.messageId}_dir=${direction}_agent=${agentUserId || "none"}_phone=${contactPhone || "none"}`);
 
+        // Notify only the conversation owner. The event configuration and templates
+        // are managed from /admin/transaccionales.
+        if (isInbound && agentUserId && insertedMsg?.id) {
+          const preview = messageBody.trim() || `[${mediaLabel}]`;
+          const { error: notificationError } = await supabase.rpc("notify", {
+            p_event_code: "whatsapp_movi_mensaje_recibido",
+            p_user_ids: [agentUserId],
+            p_payload: {
+              nombre_contacto: contactNameFromMsg || contactPhone || "Contacto",
+              telefono_contacto: contactPhone || "",
+              mensaje: preview,
+              canal: "WA MOVI",
+              url: `/centro-contacto?channel=whatsapp&source=movi&phone=${encodeURIComponent(contactPhone || "")}`,
+            },
+            p_entity_id: insertedMsg.id,
+          });
+          if (notificationError) {
+            logs.push(`notification_error=${notificationError.message}`);
+          }
+        }
+
         // Insert attachment record
         if (hasMedia && insertedMsg?.id) {
           const fileTypeMap: Record<string, string> = {
@@ -431,16 +475,17 @@ Deno.serve(async (req: Request) => {
                 // Get WhatsApp config to send the reply
                 const { data: waCfg } = await supabase
                   .from("whatsapp_configuracion")
-                  .select("api_key, channel_id_uuid, numero_remitente, activo")
+                  .select("id, channel_id_uuid, numero_remitente, activo")
                   .eq("activo", true)
                   .maybeSingle();
+                const apiKey = waCfg ? await getWhatsappApiKey(supabase, waCfg.id) : null;
 
-                if (waCfg?.api_key && waCfg?.channel_id_uuid) {
+                if (apiKey && waCfg?.channel_id_uuid) {
                   const chatId = (msg.chatId as string) || chatDigits;
                   const wazzupRes = await fetch("https://api.wazzup24.com/v3/message", {
                     method: "POST",
                     headers: {
-                      Authorization: `Bearer ${waCfg.api_key}`,
+                      Authorization: `Bearer ${apiKey}`,
                       "Content-Type": "application/json",
                     },
                     body: JSON.stringify({
@@ -545,16 +590,17 @@ Deno.serve(async (req: Request) => {
                 if (saData.action === "stop_assistant" && saData.stop_message) {
                   const { data: waCfg } = await supabase
                     .from("whatsapp_configuracion")
-                    .select("api_key, channel_id_uuid, activo")
+                    .select("id, channel_id_uuid, activo")
                     .eq("activo", true)
                     .maybeSingle();
+                  const apiKey = waCfg ? await getWhatsappApiKey(supabase, waCfg.id) : null;
 
-                  if (waCfg?.api_key && waCfg?.channel_id_uuid) {
+                  if (apiKey && waCfg?.channel_id_uuid) {
                     const chatId = (msg.chatId as string) || chatDigits;
                     const stopRes = await fetch("https://api.wazzup24.com/v3/message", {
                       method: "POST",
                       headers: {
-                        Authorization: `Bearer ${waCfg.api_key}`,
+                        Authorization: `Bearer ${apiKey}`,
                         "Content-Type": "application/json",
                       },
                       body: JSON.stringify({
@@ -597,11 +643,12 @@ Deno.serve(async (req: Request) => {
                 if (saData.action === "activate_automatic_agent" && saData.matched_assistant_id) {
                   const { data: waCfg } = await supabase
                     .from("whatsapp_configuracion")
-                    .select("api_key, channel_id_uuid, activo")
+                    .select("id, channel_id_uuid, activo")
                     .eq("activo", true)
                     .maybeSingle();
+                  const apiKey = waCfg ? await getWhatsappApiKey(supabase, waCfg.id) : null;
 
-                  if (waCfg?.api_key && waCfg?.channel_id_uuid) {
+                  if (apiKey && waCfg?.channel_id_uuid) {
                     // Load global settings for first message template
                     const { data: globalSettings } = await supabase
                       .from("smart_assistant_global_settings")
@@ -645,7 +692,7 @@ Deno.serve(async (req: Request) => {
                     const firstRes = await fetch("https://api.wazzup24.com/v3/message", {
                       method: "POST",
                       headers: {
-                        Authorization: `Bearer ${waCfg.api_key}`,
+                        Authorization: `Bearer ${apiKey}`,
                         "Content-Type": "application/json",
                       },
                       body: JSON.stringify({

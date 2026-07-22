@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { getWhatsappApiKey } from "../_shared/emailCredentials.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -101,12 +102,13 @@ async function resolveWhatsAppChannel(
   // 2. Fallback to legacy whatsapp_configuracion
   const { data: legacy } = await supabase
     .from("whatsapp_configuracion")
-    .select("api_key, channel_id_uuid, activo")
+    .select("id, channel_id_uuid, activo")
     .eq("activo", true)
     .maybeSingle();
-  if (legacy?.api_key) {
+  const legacyApiKey = legacy ? await getWhatsappApiKey(supabase, legacy.id) : null;
+  if (legacyApiKey) {
     return {
-      api_key: legacy.api_key,
+      api_key: legacyApiKey,
       channel_id_uuid: legacy.channel_id_uuid || "",
       channel_id: null,
       channel_name: null,
@@ -299,11 +301,15 @@ Deno.serve(async (req: Request) => {
     // Mode 2: Direct dispatch with event_code, user_id, payload
 
     if (body.process_pending_jobs) {
-      // Fetch pending jobs
+      // Fetch pending jobs. Only email/whatsapp: "in_app" jobs are owned by the
+      // process_in_app_notifications() Postgres function (also on a 1-minute
+      // pg_cron job) — having both claim the same rows was a silent race where
+      // whichever ran first "won" and the loser's channel silently did nothing.
       const { data: pendingJobs } = await supabase
         .from("notification_jobs")
         .select("*")
         .eq("status", "pending")
+        .in("channel", ["email", "whatsapp"])
         .order("created_at", { ascending: true })
         .limit(50);
 
@@ -589,7 +595,7 @@ Deno.serve(async (req: Request) => {
               failed++;
             }
           } else {
-            // In-app or disabled channel
+            // Disabled channel for this event
             await supabase
               .from("notification_jobs")
               .update({ status: "sent", sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })

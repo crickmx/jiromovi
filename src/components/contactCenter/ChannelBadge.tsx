@@ -1,10 +1,10 @@
 import { type CCChannel, CHANNEL_LABELS, CHANNEL_COLORS } from '@/lib/contactCenterTypes';
-import { MessageCircle, Smartphone, MessageSquare, CreditCard, Globe } from 'lucide-react';
+import { MessageCircle, Building2, UserRound, MessageSquare, CreditCard, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const CHANNEL_ICONS: Record<CCChannel, React.FC<{ className?: string }>> = {
-  wa_movi:    Smartphone,
-  wa_personal:Smartphone,
+  wa_movi:    Building2,
+  wa_personal:UserRound,
   chat:       MessageSquare,
   seguwallet: CreditCard,
   web_form:   Globe,

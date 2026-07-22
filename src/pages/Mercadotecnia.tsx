@@ -6,13 +6,14 @@ import MiPaginaWeb from './MiPaginaWeb';
 import Publicidad from './Publicidad';
 import FotosEstudio from './FotosEstudio';
 import RecursosMarca from './RecursosMarca';
+import Agenda from './Agenda';
 import { PageHeader } from '@/components/ui/page-header';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-type SubSection = 'mi-marca' | 'mi-pagina-web' | 'publicidad' | 'mis-disenos' | 'fotos-estudio' | 'recursos-marca';
+type SubSection = 'mi-marca' | 'mi-pagina-web' | 'publicidad' | 'mis-disenos' | 'fotos-estudio' | 'recursos-marca' | 'agenda';
 
 const TABS: { key: SubSection; label: string; icon: typeof Sparkles; description: string }[] = [
   {
@@ -26,6 +27,12 @@ const TABS: { key: SubSection; label: string; icon: typeof Sparkles; description
     label: 'Mi Página Web',
     icon: Globe2,
     description: 'Tu sitio público con tu información profesional',
+  },
+  {
+    key: 'agenda',
+    label: 'Agenda',
+    icon: CalendarDays,
+    description: 'Configura calendarios, disponibilidad y tipos de cita',
   },
   {
     key: 'mi-marca',
@@ -104,6 +111,7 @@ export default function Mercadotecnia({ section }: MercadotecniaProps) {
     switch (section) {
       case 'mi-marca':    return <MiMarca />;
       case 'mi-pagina-web': return <MiPaginaWeb />;
+      case 'agenda':       return <Agenda embedded />;
       case 'publicidad':  return <Publicidad initialTab="biblioteca" />;
       case 'mis-disenos': return <Publicidad initialTab="mis-disenos" />;
       case 'fotos-estudio': return <FotosEstudio />;

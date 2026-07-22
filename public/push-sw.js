@@ -16,6 +16,9 @@ self.addEventListener("push", (event) => {
     data = { title: "Nueva notificacion", body: event.data.text() };
   }
 
+  const isMissedCall = data.tag === "missed-call" && data.caller_number;
+  const callerDigits = isMissedCall ? String(data.caller_number).replace(/\D/g, "").slice(-10) : null;
+
   const options = {
     body: data.body || "",
     icon: "/movirecurso_7.png",
@@ -27,11 +30,17 @@ self.addEventListener("push", (event) => {
     data: {
       url: data.url || "/admin/telefonia",
       timestamp: data.timestamp || Date.now(),
+      callerNumber: callerDigits,
     },
-    actions: [
-      { action: "open", title: "Ver" },
-      { action: "dismiss", title: "Descartar" },
-    ],
+    actions: isMissedCall
+      ? [
+          { action: "call", title: "Llamar" },
+          { action: "whatsapp", title: "WhatsApp" },
+        ]
+      : [
+          { action: "open", title: "Ver" },
+          { action: "dismiss", title: "Descartar" },
+        ],
   };
 
   event.waitUntil(self.registration.showNotification(data.title, options));
@@ -42,7 +51,19 @@ self.addEventListener("notificationclick", (event) => {
 
   if (event.action === "dismiss") return;
 
-  const url = event.notification.data?.url || "/admin/telefonia";
+  const callerNumber = event.notification.data?.callerNumber;
+  let url = event.notification.data?.url || "/admin/telefonia";
+
+  if (event.action === "call" && callerNumber) {
+    url = `tel:${callerNumber}`;
+  } else if (event.action === "whatsapp" && callerNumber) {
+    url = `/centro-contacto/whatsapp?telefono=${callerNumber}`;
+  }
+
+  if (event.action === "call") {
+    event.waitUntil(self.clients.openWindow(url));
+    return;
+  }
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {

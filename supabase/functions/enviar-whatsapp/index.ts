@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { getWhatsappApiKey } from "../_shared/emailCredentials.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -88,11 +89,12 @@ Deno.serve(async (req: Request) => {
     // Get WhatsApp configuration
     const { data: config } = await supabase
       .from("whatsapp_configuracion")
-      .select("api_key, channel_id_uuid, activo")
+      .select("id, channel_id_uuid, activo")
       .eq("activo", true)
       .maybeSingle();
+    const apiKey = config ? await getWhatsappApiKey(supabase, config.id) : null;
 
-    if (!config?.api_key) {
+    if (!apiKey) {
       return new Response(
         JSON.stringify({ success: false, error: "WhatsApp not configured or inactive" }),
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -113,7 +115,7 @@ Deno.serve(async (req: Request) => {
     const msgRes = await fetch("https://api.wazzup24.com/v3/message", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${config.api_key}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -169,7 +171,7 @@ Deno.serve(async (req: Request) => {
         const docRes = await fetch("https://api.wazzup24.com/v3/message", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${config.api_key}`,
+            Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({

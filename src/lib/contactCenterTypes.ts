@@ -15,7 +15,7 @@ export const CHANNEL_LABELS: Record<CCChannel, string> = {
 
 export const CHANNEL_COLORS: Record<CCChannel, { bg: string; text: string; dot: string }> = {
   wa_movi:    { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300', dot: 'bg-emerald-500' },
-  wa_personal:{ bg: 'bg-teal-100 dark:bg-teal-900/30',    text: 'text-teal-700 dark:text-teal-300',    dot: 'bg-teal-500' },
+  wa_personal:{ bg: 'bg-violet-100 dark:bg-violet-900/30', text: 'text-violet-700 dark:text-violet-300', dot: 'bg-violet-500' },
   chat:       { bg: 'bg-blue-100 dark:bg-blue-900/30',    text: 'text-blue-700 dark:text-blue-300',    dot: 'bg-blue-500' },
   seguwallet: { bg: 'bg-sky-100 dark:bg-sky-900/30',      text: 'text-sky-700 dark:text-sky-300',      dot: 'bg-sky-500' },
   web_form:   { bg: 'bg-violet-100 dark:bg-violet-900/30',text: 'text-violet-700 dark:text-violet-300',dot: 'bg-violet-500' },

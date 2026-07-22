@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, ArrowRight, ChevronLeft, RotateCcw, CircleCheck as CheckCircle } from 'lucide-react';
+import { Mail, Phone, ArrowRight, ChevronLeft, RotateCcw, CircleCheck as CheckCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+
+function isPhoneInput(value: string): boolean {
+  const digits = value.replace(/\D/g, '');
+  return digits.length >= 10 && /^\d+$/.test(value.replace(/[\s\-+()]/g, ''));
+}
 const SEGUWALLET_LOGO = '/seguwallet-logo.png';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
@@ -92,7 +97,7 @@ export function SeguwalletLogin() {
     e.preventDefault();
     setError('');
     const trimmed = email.trim().toLowerCase();
-    if (!trimmed) { setError('Ingresa tu correo electrónico.'); return; }
+    if (!trimmed) { setError('Ingresa tu correo electrónico o WhatsApp.'); return; }
     setLoading(true);
     try {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/send-login-code`, {
@@ -110,7 +115,7 @@ export function SeguwalletLogin() {
         return;
       }
       if (!data.email_sent && !data.whatsapp_sent) {
-        setError('No encontramos una cuenta con este correo. Verifica que sea el correo registrado en Seguwallet.');
+        setError('No encontramos una cuenta con ese dato. Verifica tu correo o WhatsApp registrado en Seguwallet.');
         return;
       }
       setMaskedEmail(data.masked_email || trimmed);
@@ -154,15 +159,32 @@ export function SeguwalletLogin() {
         return;
       }
       // Verify the token_hash returned from the edge function to create a session
+      let navigationDone = false;
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session && !navigationDone) {
+          navigationDone = true;
+          subscription.unsubscribe();
+          navigate(DASHBOARD_PATH, { replace: true });
+        }
+      });
+
       const { error: otpError } = await supabase.auth.verifyOtp({
         token_hash: data.token_hash,
         type: 'magiclink',
       });
       if (otpError) {
+        subscription.unsubscribe();
         setError('Error al crear la sesión. Intenta de nuevo.');
         return;
       }
-      navigate(DASHBOARD_PATH, { replace: true });
+
+      setTimeout(() => {
+        if (!navigationDone) {
+          navigationDone = true;
+          subscription.unsubscribe();
+          navigate(DASHBOARD_PATH, { replace: true });
+        }
+      }, 3000);
     } catch {
       setError('Error de conexión. Intenta de nuevo.');
     } finally {
@@ -191,7 +213,7 @@ export function SeguwalletLogin() {
         return;
       }
       if (!data.email_sent && !data.whatsapp_sent) {
-        setError('No se pudo reenviar el código. Verifica tu correo.');
+        setError('No se pudo reenviar el código. Verifica tu correo o WhatsApp.');
         return;
       }
       startCooldown(120);
@@ -312,16 +334,18 @@ export function SeguwalletLogin() {
                     <div className="space-y-1.5">
                       <label className="block text-xs font-semibold tracking-wide uppercase"
                         style={{ color: 'rgba(148,185,255,0.6)' }}>
-                        Correo electrónico
+                        Correo electrónico o WhatsApp
                       </label>
                       <div className="relative">
-                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-                          style={{ color: 'rgba(148,185,255,0.4)' }} />
+                        {isPhoneInput(email)
+                          ? <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(148,185,255,0.4)' }} />
+                          : <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(148,185,255,0.4)' }} />
+                        }
                         <input
-                          type="email"
+                          type="text"
                           value={email}
                           onChange={e => setEmail(e.target.value)}
-                          placeholder="tu@correo.com"
+                          placeholder="tu@correo.com o 10 dígitos"
                           className={`${inputCls} pl-10 pr-4`}
                           style={inputBase}
                           onFocus={inputFocusOn}

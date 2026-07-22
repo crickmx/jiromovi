@@ -289,7 +289,7 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, platform, onClose, on
                   }`}
                 >
                   <Bell className="w-4 h-4" />
-                  Campanita
+                  Push / campanita
                 </button>
               </div>
             </div>

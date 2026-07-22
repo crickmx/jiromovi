@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { getMailboxPassword } from "../_shared/emailCredentials.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -235,19 +236,21 @@ Deno.serve(async (req) => {
       // Get email credentials to download attachments
       const { data: emailConfig } = await supabase
         .from("email_configuraciones")
-        .select("email, password, imap_host, imap_port")
+        .select("email, servidor_entrada, puerto_entrada")
         .eq("usuario_id", user.id)
-        .eq("activo", true)
+        .eq("activa", true)
         .maybeSingle();
 
       if (emailConfig) {
-        const host = emailConfig.imap_host || "imap.ionos.mx";
-        const port = emailConfig.imap_port || 993;
+        const host = emailConfig.servidor_entrada || "imap.ionos.mx";
+        const port = emailConfig.puerto_entrada || 993;
+        const mailboxPassword = await getMailboxPassword(supabase, user.id);
 
         let conn: Deno.TlsConn | null = null;
         try {
+          if (!mailboxPassword) throw new Error("No hay credencial de correo almacenada");
           conn = await imapConnect(host, port);
-          const loginOk = await imapLogin(conn, emailConfig.email, emailConfig.password);
+          const loginOk = await imapLogin(conn, emailConfig.email, mailboxPassword);
           if (!loginOk) throw new Error("No se pudo autenticar con el servidor de correo");
 
           await imapCommand(conn, `SELECT "${body.emailFolder}"`);
