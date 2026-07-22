@@ -121,7 +121,7 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
         )}
       </div>
 
-      {/* Nav items — text only, no icon repetition — agrupados según el Editor de Sidebar */}
+      {/* Nav items — icono + texto, agrupados según el Editor de Sidebar */}
       <nav className="flex-1 overflow-y-auto py-3 px-2.5 space-y-0.5">
         {gruposResueltos.map(({ grupo, items }) => {
           const colapsado = grupo ? isGrupoColapsado(grupo.id, grupo.colapsado_default) : false;
@@ -130,9 +130,10 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
               {grupo && (
                 <button
                   onClick={() => toggleGrupo(grupo.id, grupo.colapsado_default)}
-                  className="w-full flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-white/40 hover:text-neutral-600 dark:hover:text-white/60 transition-colors"
+                  className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-white/40 hover:text-neutral-600 dark:hover:text-white/60 transition-colors"
                 >
-                  {colapsado ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  {colapsado ? <ChevronRight className="w-3 h-3 flex-shrink-0" /> : <ChevronDown className="w-3 h-3 flex-shrink-0" />}
+                  <span className="w-2.5 h-px bg-current opacity-50 flex-shrink-0" />
                   <span className="truncate">{grupo.nombre}</span>
                 </button>
               )}
@@ -143,6 +144,7 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
                 const { item, badge: customBadge } = entry;
                 const active = isActive(item);
                 const badge = badgeCounts?.[item.path] ?? 0;
+                const Icon = item.icon;
 
                 return (
                   <button
@@ -158,11 +160,7 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
                     )}
                   >
                     <span className="w-full flex items-center gap-2.5">
-                      {/* Active indicator dot */}
-                      <span className={cn(
-                        "flex-shrink-0 w-1.5 h-1.5 rounded-full transition-all",
-                        active ? "bg-accent" : "bg-neutral-300 dark:bg-neutral-600"
-                      )} />
+                      <Icon className={cn("flex-shrink-0 w-4 h-4", active ? "text-accent" : "text-neutral-400 dark:text-neutral-500")} />
                       <span className="truncate flex-1 min-w-0">{item.label}</span>
 
                       {/* Attention badge */}
@@ -180,7 +178,7 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
                     </span>
 
                     {customBadge && (
-                      <span className={cn('ml-4 self-start shrink-0 px-1.5 py-[1px] rounded-full text-[9px] font-bold leading-none whitespace-nowrap', BADGE_COLORS[customBadge.color] ?? BADGE_COLORS.amber)}>
+                      <span className={cn('ml-[26px] self-start shrink-0 px-1.5 py-[1px] rounded-full text-[9px] font-bold leading-none whitespace-nowrap', BADGE_COLORS[customBadge.color] ?? BADGE_COLORS.amber)}>
                         {customBadge.texto}
                       </span>
                     )}

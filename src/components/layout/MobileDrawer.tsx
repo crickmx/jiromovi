@@ -186,6 +186,7 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
                 <div className="w-6 h-6 rounded-lg bg-accent/10 flex items-center justify-center">
                   <workspace.icon className="w-3.5 h-3.5 text-accent" />
                 </div>
+                <span className="w-2.5 h-px bg-neutral-400 dark:bg-white/40 opacity-50 flex-shrink-0" />
                 <p className="text-[11px] font-bold text-neutral-500 dark:text-white/60 uppercase tracking-widest">
                   {workspace.label}
                 </p>
@@ -196,6 +197,7 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
                     (isModuleVisible ? isModuleVisible(item.path, userRole, oficinaId) : true)
                   ).map((item) => {
                   const active = isActive(item);
+                  const Icon = item.icon;
                   return (
                     <button
                       key={item.path}
@@ -207,10 +209,7 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
                           : 'text-neutral-600 dark:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/[0.05] hover:text-neutral-900 dark:hover:text-white'
                       )}
                     >
-                      <span className={cn(
-                        'flex-shrink-0 w-1.5 h-1.5 rounded-full',
-                        active ? 'bg-accent' : 'bg-neutral-200 dark:bg-white/20'
-                      )} />
+                      <Icon className={cn('w-4 h-4 flex-shrink-0', active ? 'text-accent' : 'text-neutral-400 dark:text-white/40')} />
                       <span className="flex-1 truncate">{item.label}</span>
                       {active && <ChevronRight className="w-3.5 h-3.5 text-accent/60 flex-shrink-0" />}
                     </button>
@@ -227,7 +226,8 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
 
           {/* All workspaces / top-level links */}
           <div className="px-3 pt-2 pb-4">
-            <p className="text-[11px] font-bold text-neutral-500 dark:text-white/60 uppercase tracking-widest px-2 mb-2">
+            <p className="flex items-center gap-1.5 text-[11px] font-bold text-neutral-500 dark:text-white/60 uppercase tracking-widest px-2 mb-2">
+              <span className="w-2.5 h-px bg-neutral-400 dark:bg-white/40 opacity-50 flex-shrink-0" />
               Módulos
             </p>
             <div className="space-y-0.5">

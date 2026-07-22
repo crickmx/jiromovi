@@ -609,7 +609,7 @@ function BulkTargetEditor({
           </div>
 
           {draft.size > 0 && (
-            <div className="fixed bottom-0 left-0 right-0 md:left-[72px] z-10 flex items-center justify-between gap-3 px-5 py-3 bg-white/95 dark:bg-[#111113]/95 backdrop-blur border-t border-neutral-200 dark:border-white/10">
+            <div className="fixed bottom-0 left-0 right-0 md:left-[84px] z-10 flex items-center justify-between gap-3 px-5 py-3 bg-white/95 dark:bg-[#111113]/95 backdrop-blur border-t border-neutral-200 dark:border-white/10">
               <p className="text-sm text-neutral-600 dark:text-neutral-300">
                 <strong>{draft.size}</strong> cambio{draft.size > 1 ? 's' : ''} pendiente{draft.size > 1 ? 's' : ''} para{' '}
                 <strong>{selected.length}</strong> {selected.length === 1 ? nounSingular : nounPlural}

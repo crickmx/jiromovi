@@ -58,7 +58,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="sidebar-rail flex flex-col h-full w-[72px] items-center">
+      <div className="sidebar-rail flex flex-col h-full w-[84px] items-center">
 
         {/* Logo / Close button on mobile */}
         <div className="flex items-center justify-center h-16 w-full relative">
@@ -86,7 +86,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
         <div className="sidebar-rail-sep w-8 h-px mb-2" />
 
         {/* Navigation */}
-        <div className="flex-1 flex flex-col items-center gap-1.5 py-2 overflow-y-auto w-full px-2.5">
+        <div className="flex-1 flex flex-col items-center gap-1 py-2 overflow-y-auto w-full px-1.5">
           {resolved.map(({ entry, separadorAntes, badge }, idx) => {
             const separatorEl = separadorAntes ? (
               <div key={`sep-${idx}`} className="sidebar-rail-sep w-8 h-px my-1" />
@@ -147,11 +147,16 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                     <TooltipTrigger asChild>
                       <button
                         onClick={() => handleNav(item.path)}
-                        className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90 relative', isActive && 'active')}
+                        className={cn('sidebar-rail-btn w-full py-2 px-1 rounded-2xl flex flex-col items-center justify-center gap-1 active:scale-90', isActive && 'active')}
                       >
-                        <Icon className="w-[18px] h-[18px]" />
-                        {tlBadgeEl}
-                        {customBadgeEl}
+                        <span className="relative flex items-center justify-center w-[18px] h-[18px]">
+                          <Icon className="w-[18px] h-[18px]" />
+                          {tlBadgeEl}
+                          {customBadgeEl}
+                        </span>
+                        <span className="text-[8.5px] leading-[1.15] font-semibold uppercase tracking-wide text-center line-clamp-2 px-0.5">
+                          {item.label}
+                        </span>
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="right" sideOffset={10} className={TOOLTIP_CLS}>
@@ -180,29 +185,30 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
             const firstPath = firstVisibleItem?.path || '/dashboard';
             const wsBadge = workspaceBadges?.[ws.id] ?? 0;
 
-            const wsButton = (
-              <button
-                onClick={() => handleNav(firstPath)}
-                className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90 relative', isActive && 'active')}
-                title={mobileMode ? (badge ? `${ws.label} · ${badge.texto}` : ws.label) : undefined}
-              >
-                <Icon className="w-[18px] h-[18px]" />
-                {wsBadge > 0 && (
-                  <span className="absolute -top-1 -right-1 flex items-center justify-center">
-                    <span
-                      className="absolute inset-0 rounded-full bg-red-400 opacity-60 animate-ping"
-                      style={{ animationDuration: '2s' }}
-                    />
-                    <span className="relative min-w-[16px] h-4 px-[3px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
-                      {wsBadge > 99 ? '99+' : wsBadge}
-                    </span>
-                  </span>
-                )}
-                {customBadgeEl}
-              </button>
-            );
+            const wsBadgeEl = wsBadge > 0 ? (
+              <span className="absolute -top-1 -right-1 flex items-center justify-center">
+                <span
+                  className="absolute inset-0 rounded-full bg-red-400 opacity-60 animate-ping"
+                  style={{ animationDuration: '2s' }}
+                />
+                <span className="relative min-w-[16px] h-4 px-[3px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                  {wsBadge > 99 ? '99+' : wsBadge}
+                </span>
+              </span>
+            ) : null;
 
             if (mobileMode) {
+              const wsButton = (
+                <button
+                  onClick={() => handleNav(firstPath)}
+                  className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90 relative', isActive && 'active')}
+                  title={badge ? `${ws.label} · ${badge.texto}` : ws.label}
+                >
+                  <Icon className="w-[18px] h-[18px]" />
+                  {wsBadgeEl}
+                  {customBadgeEl}
+                </button>
+              );
               return <Fragment key={ws.id}>{separatorEl}<div>{wsButton}</div></Fragment>;
             }
 
@@ -211,7 +217,19 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                 {separatorEl}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    {wsButton}
+                    <button
+                      onClick={() => handleNav(firstPath)}
+                      className={cn('sidebar-rail-btn w-full py-2 px-1 rounded-2xl flex flex-col items-center justify-center gap-1 active:scale-90', isActive && 'active')}
+                    >
+                      <span className="relative flex items-center justify-center w-[18px] h-[18px]">
+                        <Icon className="w-[18px] h-[18px]" />
+                        {wsBadgeEl}
+                        {customBadgeEl}
+                      </span>
+                      <span className="text-[8.5px] leading-[1.15] font-semibold uppercase tracking-wide text-center line-clamp-2 px-0.5">
+                        {ws.label}
+                      </span>
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent side="right" sideOffset={10} className={TOOLTIP_CLS}>
                     {badge ? `${ws.label} · ${badge.texto}` : ws.label}
