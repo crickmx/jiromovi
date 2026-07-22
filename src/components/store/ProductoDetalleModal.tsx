@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, ShoppingCart, Minus, Plus, TriangleAlert as AlertTriangle, CheckCircle, ArrowRight, Sparkles, Loader2, Wrench, Clock, Image as ImageIcon } from 'lucide-react';
 import type { StoreProducto } from '../../lib/storeTypes';
 import { supabase } from '../../lib/supabase';
-import { setupMarketingPremiumProductos, parsearPersonalizacion, LOGO_TRANSFORM_KEY, type StoreLogoTransform } from '../../lib/storeUtils';
+import { setupMarketingPremiumProductos, parsearPersonalizacion, CAPAS_PERSONALIZACION_KEY, IMAGEN_FINAL_PERSONALIZACION_KEY, type StorePersonalizacionCapa } from '../../lib/storeUtils';
 import { useAuth } from '../../contexts/AuthContext';
 import { PersonalizarLogoScreen } from './PersonalizarLogoScreen';
 
@@ -63,7 +63,8 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
   const [cantidad, setCantidad] = useState(1);
   const [atributosSeleccionados, setAtributosSeleccionados] = useState<Record<string, string>>({});
   const [personalizacion, setPersonalizacion] = useState('');
-  const [logoTransform, setLogoTransform] = useState<StoreLogoTransform | null>(null);
+  const [capasPersonalizacion, setCapasPersonalizacion] = useState<StorePersonalizacionCapa[]>([]);
+  const [imagenFinalPersonalizacion, setImagenFinalPersonalizacion] = useState<string | null>(null);
   const [mostrarEditorLogo, setMostrarEditorLogo] = useState(false);
 
   const esPremium = esProductoPremium(producto);
@@ -149,9 +150,10 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
       attrs ??= {};
       attrs._personalizacion = personalizacion.trim();
     }
-    if (permitePersonalizacion && logoTransform) {
+    if (permitePersonalizacion && capasPersonalizacion.length > 0) {
       attrs ??= {};
-      attrs[LOGO_TRANSFORM_KEY] = JSON.stringify(logoTransform);
+      attrs[CAPAS_PERSONALIZACION_KEY] = JSON.stringify(capasPersonalizacion);
+      if (imagenFinalPersonalizacion) attrs[IMAGEN_FINAL_PERSONALIZACION_KEY] = imagenFinalPersonalizacion;
     }
     onAgregar(efectivo, cantidad, attrs);
     onClose();
@@ -375,14 +377,14 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                     placeholder="Describe cómo deseas personalizar este producto…"
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   />
-                  {usuario && (
+                  {usuario && producto.imagen_personalizacion_url && (
                     <button
                       type="button"
                       onClick={() => setMostrarEditorLogo(true)}
                       className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:text-accent-hover transition-colors"
                     >
                       <ImageIcon className="w-4 h-4" />
-                      {logoTransform ? 'Editar posición de tu logo' : 'Personalizar con tu logo'}
+                      {capasPersonalizacion.length > 0 ? 'Editar tu logo/texto' : 'Personalizar con tu logo o texto'}
                     </button>
                   )}
                 </div>
@@ -522,14 +524,15 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
       </div>
     </div>
 
-    {mostrarEditorLogo && usuario && (
+    {mostrarEditorLogo && usuario && producto.imagen_personalizacion_url && (
       <PersonalizarLogoScreen
-        imagenProducto={getImageUrl(producto.imagen_url)}
+        imagenProducto={getImageUrl(producto.imagen_personalizacion_url)}
         usuarioId={usuario.id}
-        transformInicial={logoTransform}
+        capasIniciales={capasPersonalizacion}
         onCancelar={() => setMostrarEditorLogo(false)}
-        onGuardar={(transform) => {
-          setLogoTransform(transform);
+        onGuardar={(capas, imagenFinalUrl) => {
+          setCapasPersonalizacion(capas);
+          setImagenFinalPersonalizacion(imagenFinalUrl);
           setMostrarEditorLogo(false);
         }}
       />

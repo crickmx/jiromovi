@@ -17,6 +17,7 @@ export interface StoreProducto {
   precio: number;
   costo_base: number;
   imagen_url: string;
+  imagen_personalizacion_url?: string | null;
   activo: boolean;
   stock: number;
   stock_umbral: number;

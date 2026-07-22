@@ -326,3 +326,72 @@ export async function countUsersAffectedByOfficeLogo(officeId: string): Promise<
     return 0;
   }
 }
+
+/**
+ * Logos guardados por el asesor para reusar al personalizar productos de la tienda
+ * (distintos de mi_logotipo_url, que es un solo logo de perfil).
+ */
+export interface LogoGuardado {
+  id: string;
+  usuario_id: string;
+  nombre: string;
+  url: string;
+  created_at: string;
+}
+
+export async function obtenerLogosGuardados(usuarioId: string): Promise<LogoGuardado[]> {
+  const { data, error } = await supabase
+    .from('usuarios_logos_personalizados')
+    .select('*')
+    .eq('usuario_id', usuarioId)
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('Error obteniendo logos guardados:', error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function guardarLogoPersonalizado(usuarioId: string, file: File, nombre?: string): Promise<LogoGuardado> {
+  const validacion = validateLogoFile(file);
+  if (!validacion.valid) throw new Error(validacion.error || 'Archivo inválido');
+
+  const ext = file.name.split('.').pop();
+  const path = `${usuarioId}/personalizados/${Date.now()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage.from('usuarios-logos').upload(path, file);
+  if (uploadError) throw uploadError;
+
+  const { data: { publicUrl } } = supabase.storage.from('usuarios-logos').getPublicUrl(path);
+
+  const { data, error } = await supabase
+    .from('usuarios_logos_personalizados')
+    .insert({ usuario_id: usuarioId, url: publicUrl, nombre: nombre || file.name })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function eliminarLogoPersonalizado(id: string): Promise<void> {
+  await supabase.from('usuarios_logos_personalizados').delete().eq('id', id);
+}
+
+export interface LogoGuardadoConUsuario extends LogoGuardado {
+  usuario_nombre: string;
+}
+
+export async function obtenerTodosLogosAsesores(): Promise<LogoGuardadoConUsuario[]> {
+  const { data, error } = await supabase
+    .from('usuarios_logos_personalizados')
+    .select('*, usuarios(nombre, nombre_completo)')
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('Error obteniendo logos de asesores:', error);
+    return [];
+  }
+  return (data || []).map((r: any) => ({
+    ...r,
+    usuario_nombre: r.usuarios?.nombre_completo || r.usuarios?.nombre || 'Desconocido',
+  }));
+}

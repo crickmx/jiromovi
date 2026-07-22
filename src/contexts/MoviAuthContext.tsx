@@ -77,7 +77,8 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
       // Usuarios Beta: en produccion (app.movi.digital) se les manda a beta.movi.digital
       // conservando su sesion, salvo que ya hayan usado el boton de "Regresar a MOVI"
       // en esta misma pestana (sessionStorage) - si no, es un ping-pong infinito.
-      if (!isBetaHost()) {
+      // En dev local (npm run dev) nunca redirige, para poder probar en localhost.
+      if (!isBetaHost() && !import.meta.env.DEV) {
         const { data: betaRow } = await supabase.from('usuarios_beta').select('id').eq('usuario_id', u.id).maybeSingle();
         if (betaRow) {
           if (!skipBetaRedirectActive()) {

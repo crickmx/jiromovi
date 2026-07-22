@@ -189,24 +189,72 @@ export function parsearPersonalizacion(atributos?: { nombre: string }[]): { acti
   return { activo: !!attr, label: attr?.nombre.slice(PERSONALIZACION_KEY.length) || 'Personalización' };
 }
 
-export const LOGO_TRANSFORM_KEY = '_logo_transform';
+export const CAPAS_PERSONALIZACION_KEY = '_capas_personalizacion';
+export const IMAGEN_FINAL_PERSONALIZACION_KEY = '_imagen_personalizada_url';
 
-export interface StoreLogoTransform {
-  logo_url: string;
-  x: number;
+export interface StorePersonalizacionEsquina {
+  x: number; // porcentaje del contenedor (0-100)
   y: number;
-  ancho: number;
-  rotacion: number;
 }
 
-export function parsearLogoTransform(atributos?: Record<string, string>): StoreLogoTransform | null {
-  const raw = atributos?.[LOGO_TRANSFORM_KEY];
-  if (!raw) return null;
+export interface StorePersonalizacionCapa {
+  id: string;
+  tipo: 'imagen' | 'texto';
+  contenido: string; // logo_url (imagen) o el texto en sí (texto)
+  fuente?: string;
+  color?: string;
+  // 4 esquinas en orden: superior-izq, superior-der, inferior-der, inferior-izq
+  esquinas: [StorePersonalizacionEsquina, StorePersonalizacionEsquina, StorePersonalizacionEsquina, StorePersonalizacionEsquina];
+}
+
+export function parsearCapasPersonalizacion(atributos?: Record<string, string>): StorePersonalizacionCapa[] {
+  const raw = atributos?.[CAPAS_PERSONALIZACION_KEY];
+  if (!raw) return [];
   try {
-    return JSON.parse(raw) as StoreLogoTransform;
+    return JSON.parse(raw) as StorePersonalizacionCapa[];
   } catch {
-    return null;
+    return [];
   }
+}
+
+/**
+ * Homografia que mapea el rectangulo local de una capa (0,0)-(anchoLocal,altoLocal)
+ * a sus 4 esquinas de destino (en px, dentro del contenedor), devuelta como CSS matrix3d().
+ * Formula de Heckbert para mapear un cuadrado unitario a un cuadrilatero arbitrario.
+ */
+export function calcularMatrizPerspectiva(
+  esquinasPx: [{ x: number; y: number }, { x: number; y: number }, { x: number; y: number }, { x: number; y: number }],
+  anchoLocal: number,
+  altoLocal: number
+): string {
+  const [p0, p1, p2, p3] = esquinasPx;
+  const dx1 = p1.x - p2.x, dx2 = p3.x - p2.x, dx3 = p0.x - p1.x + p2.x - p3.x;
+  const dy1 = p1.y - p2.y, dy2 = p3.y - p2.y, dy3 = p0.y - p1.y + p2.y - p3.y;
+
+  let a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number;
+  const EPS = 1e-9;
+
+  if (Math.abs(dx3) < EPS && Math.abs(dy3) < EPS) {
+    // Paralelogramo: sin componente de perspectiva
+    a = p1.x - p0.x; b = p3.x - p0.x; c = p0.x;
+    d = p1.y - p0.y; e = p3.y - p0.y; f = p0.y;
+    g = 0; h = 0;
+  } else {
+    const denom = dx1 * dy2 - dx2 * dy1;
+    g = (dx3 * dy2 - dx2 * dy3) / denom;
+    h = (dx1 * dy3 - dx3 * dy1) / denom;
+    a = p1.x - p0.x + g * p1.x; b = p3.x - p0.x + h * p3.x; c = p0.x;
+    d = p1.y - p0.y + g * p1.y; e = p3.y - p0.y + h * p3.y; f = p0.y;
+  }
+
+  // Reescalar para que el input sea [0,anchoLocal]x[0,altoLocal] en vez de [0,1]x[0,1]
+  const sx = 1 / anchoLocal;
+  const sy = 1 / altoLocal;
+  const a2 = a * sx, b2 = b * sy;
+  const d2 = d * sx, e2 = e * sy;
+  const g2 = g * sx, h2 = h * sy;
+
+  return `matrix3d(${a2},${d2},0,${g2}, ${b2},${e2},0,${h2}, 0,0,1,0, ${c},${f},0,1)`;
 }
 
 export async function crearProducto(producto: Omit<StoreProducto, 'id' | 'created_at' | 'categoria'>) {
