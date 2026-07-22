@@ -174,7 +174,7 @@ export function GestionGruposVisualizacion() {
 
   const isAdmin = usuario?.rol === 'Administrador';
 
-  // â”€â”€ TOAST â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── TOAST ────────────────────────────────────────────────────────────────────
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -182,7 +182,7 @@ export function GestionGruposVisualizacion() {
     toastTimer.current = setTimeout(() => setToast(null), 3500);
   };
 
-  // â”€â”€ OUTSIDE CLICK FOR COLOR PICKER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── OUTSIDE CLICK FOR COLOR PICKER ───────────────────────────────────────────
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -194,7 +194,7 @@ export function GestionGruposVisualizacion() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // â”€â”€ DATA LOADING â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── DATA LOADING ─────────────────────────────────────────────────────────────
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -292,7 +292,7 @@ export function GestionGruposVisualizacion() {
     setLoadingTipos(false);
   };
 
-  // â”€â”€ FORM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── FORM ──────────────────────────────────────────────────────────────────────
 
   const openCreate = () => {
     setSelectedGrupo(null);
@@ -447,7 +447,7 @@ export function GestionGruposVisualizacion() {
     setSavingTipoToggle(null);
   };
 
-  // â”€â”€ TOGGLE ACTIVE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── TOGGLE ACTIVE ─────────────────────────────────────────────────────────────
 
   const handleToggleActive = async (g: Grupo) => {
     await supabase
@@ -462,7 +462,7 @@ export function GestionGruposVisualizacion() {
     await loadGrupos();
   };
 
-  // â”€â”€ DELETE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── DELETE ────────────────────────────────────────────────────────────────────
 
   const handleDelete = async () => {
     if (!confirmDelete) return;
@@ -481,7 +481,7 @@ export function GestionGruposVisualizacion() {
     showToast('Equipo eliminado');
   };
 
-  // â”€â”€ MEMBERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── MEMBERS ───────────────────────────────────────────────────────────────────
 
   const openMembers = async (g: Grupo) => {
     setSelectedGrupo(g);
@@ -531,7 +531,7 @@ export function GestionGruposVisualizacion() {
     await loadGrupos();
   };
 
-  // â”€â”€ REGLAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── REGLAS ────────────────────────────────────────────────────────────────────
 
   const loadGrupoReglas = async (grupoId: string) => {
     const { data } = await supabase
@@ -601,7 +601,7 @@ export function GestionGruposVisualizacion() {
     setSavingEjecutivoReglaId(null);
   };
 
-  // â”€â”€ OFFICES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── OFFICES ───────────────────────────────────────────────────────────────────
 
   const openOffices = async (g: Grupo) => {
     setSelectedGrupo(g);
@@ -635,7 +635,7 @@ export function GestionGruposVisualizacion() {
     await loadGrupos();
   };
 
-  // â”€â”€ HELPERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── HELPERS ───────────────────────────────────────────────────────────────────
 
   const getAC = (area: string | null) =>
     area && (AREA_CONFIG as Record<string, { color: string; bg: string; border: string }>)[area]
@@ -655,7 +655,7 @@ export function GestionGruposVisualizacion() {
       o.nombre.toLowerCase().includes(searchOficina.toLowerCase())
   );
 
-  // â”€â”€ GUARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── GUARD ─────────────────────────────────────────────────────────────────────
 
   if (!isAdmin) {
     return (
@@ -689,7 +689,7 @@ export function GestionGruposVisualizacion() {
     );
   }
 
-  // â”€â”€ LIST PANEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── LIST PANEL ────────────────────────────────────────────────────────────────
 
   if (panel === 'list') {
     const active = grupos.filter(g => g.activo);
@@ -717,7 +717,7 @@ export function GestionGruposVisualizacion() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <h3 className="text-lg font-bold text-neutral-900">Equipos de Trabajo</h3>
-              <p className="text-sm text-neutral-500 mt-0.5">Equipos de atenciÃ³n a trÃ¡mites organizados por Ã¡rea.</p>
+              <p className="text-sm text-neutral-500 mt-0.5">Equipos de atención a trámites organizados por área.</p>
             </div>
             <button
               onClick={openCreate}
@@ -740,7 +740,7 @@ export function GestionGruposVisualizacion() {
                 return (
                   <div key={area ?? '__sin_area__'}>
                     <h4 className={`text-xs font-bold uppercase tracking-wide mb-2 ${ac.color}`}>
-                      {area ?? 'Sin Ã¡rea asignada'}
+                      {area ?? 'Sin área asignada'}
                     </h4>
                     <div className="grid grid-cols-1 gap-3">
                       {gruposArea.map(g => {
@@ -791,7 +791,7 @@ export function GestionGruposVisualizacion() {
                             {!g.all_offices && g.office_count === 0 && (
                               <div className="px-5 py-2 bg-amber-50 border-t border-amber-100 flex items-center gap-2 text-xs text-amber-700">
                                 <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-                                Sin oficinas asignadas â€” este equipo no verÃ¡ ningÃºn trÃ¡mite.
+                                Sin oficinas asignadas — este equipo no verá ningún trámite.
                               </div>
                             )}
                           </div>
@@ -820,11 +820,11 @@ export function GestionGruposVisualizacion() {
                     <span>
                       Este equipo tiene {confirmDelete.member_count} miembro{confirmDelete.member_count !== 1 ? 's' : ''} y{' '}
                       {confirmDelete.office_count} oficina{confirmDelete.office_count !== 1 ? 's' : ''} asignada{confirmDelete.office_count !== 1 ? 's' : ''}.
-                      Se eliminarÃ¡n junto con el equipo.
+                      Se eliminarán junto con el equipo.
                     </span>
                   </div>
                 )}
-                <p className="text-sm text-neutral-600 mb-4">Â¿Seguro que deseas eliminar este equipo? Esta acciÃ³n no se puede deshacer.</p>
+                <p className="text-sm text-neutral-600 mb-4">¿Seguro que deseas eliminar este equipo? Esta acción no se puede deshacer.</p>
                 <div className="flex gap-2 justify-end">
                   <button onClick={() => setConfirmDelete(null)} className="px-4 py-2 text-sm rounded-xl border border-neutral-200 hover:bg-neutral-50">Cancelar</button>
                   <button
@@ -844,7 +844,7 @@ export function GestionGruposVisualizacion() {
     );
   }
 
-  // â”€â”€ FORM PANEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── FORM PANEL ────────────────────────────────────────────────────────────────
 
   if (panel === 'form') {
     return (
@@ -874,19 +874,19 @@ export function GestionGruposVisualizacion() {
             </div>
             <div>
               <h3 className="text-lg font-bold text-neutral-900">{selectedGrupo ? 'Editar equipo' : 'Nuevo equipo'}</h3>
-              <p className="text-sm text-neutral-500">{formArea ? `Ãrea: ${formArea}` : 'Sin Ã¡rea asignada'}</p>
+              <p className="text-sm text-neutral-500">{formArea ? `Área: ${formArea}` : 'Sin área asignada'}</p>
             </div>
           </div>
 
-          {/* Tab bar â€” only when editing */}
+          {/* Tab bar — only when editing */}
           {selectedGrupo && (
             <div className="flex gap-1 border-b border-neutral-200 overflow-x-auto">
               {([
                 { key: 'general',    label: 'General',    icon: Wrench },
                 { key: 'miembros',   label: 'Miembros',   icon: Users },
                 { key: 'oficinas',   label: 'Oficinas',   icon: Building2 },
-                { key: 'asignacion', label: 'AsignaciÃ³n', icon: GitBranch },
-                { key: 'tramites',   label: 'TrÃ¡mites',   icon: FileText },
+                { key: 'asignacion', label: 'Asignación', icon: GitBranch },
+                { key: 'tramites',   label: 'Trámites',   icon: FileText },
               ] as const).map(({ key, label, icon: Icon }) => (
                 <button
                   key={key}
@@ -923,7 +923,7 @@ export function GestionGruposVisualizacion() {
             </div>
           )}
 
-          {/* â”€â”€ TAB: GENERAL â”€â”€ */}
+          {/* ── TAB: GENERAL ── */}
           {(!selectedGrupo || formTab === 'general') && (
             <div className="space-y-4 bg-white rounded-2xl border border-neutral-200 p-5">
               {/* Nombre + Color picker (REQ-05) */}
@@ -985,19 +985,19 @@ export function GestionGruposVisualizacion() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-neutral-700 mb-1.5">DescripciÃ³n</label>
+                <label className="block text-sm font-semibold text-neutral-700 mb-1.5">Descripción</label>
                 <textarea
                   value={formDescripcion}
                   onChange={e => setFormDescripcion(e.target.value)}
-                  placeholder="Describe quÃ© trÃ¡mites gestiona este equipo..."
+                  placeholder="Describe qué trámites gestiona este equipo..."
                   rows={2}
                   className="w-full px-3 py-2.5 border border-neutral-300 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 focus:border-neutral-900 outline-none resize-none"
                 />
               </div>
 
-              {/* Ãrea (REQ-01: inline creation) */}
+              {/* Área (REQ-01: inline creation) */}
               <div>
-                <label className="block text-sm font-semibold text-neutral-700 mb-1.5">Ãrea</label>
+                <label className="block text-sm font-semibold text-neutral-700 mb-1.5">Área</label>
                 <div className="flex flex-wrap gap-2">
                   {areasDisponibles.map(a => {
                     const cfg = getAC(a.nombre);
@@ -1034,7 +1034,7 @@ export function GestionGruposVisualizacion() {
                           if (e.key === 'Enter') handleConfirmNewArea();
                           if (e.key === 'Escape') { setFormCreatingArea(false); setFormNewAreaName(''); }
                         }}
-                        placeholder="Nombre del Ã¡rea"
+                        placeholder="Nombre del área"
                         className="text-sm font-medium outline-none w-32 placeholder:text-neutral-300"
                       />
                       <button type="button" onClick={handleConfirmNewArea} className="text-green-600 hover:text-green-700 flex-shrink-0">
@@ -1051,11 +1051,11 @@ export function GestionGruposVisualizacion() {
                       className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-dashed border-neutral-300 text-sm text-neutral-400 hover:border-neutral-400 hover:text-neutral-600 transition-all"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      Nueva Ã¡rea
+                      Nueva área
                     </button>
                   )}
                 </div>
-                <p className="text-xs text-neutral-400 mt-1.5">Sin Ã¡rea = comodÃ­n para cualquier tipo de trÃ¡mite.</p>
+                <p className="text-xs text-neutral-400 mt-1.5">Sin área = comodín para cualquier tipo de trámite.</p>
               </div>
 
               {/* All offices toggle */}
@@ -1069,7 +1069,7 @@ export function GestionGruposVisualizacion() {
                 </button>
                 <div>
                   <p className="text-sm font-semibold text-neutral-700">Todas las oficinas</p>
-                  <p className="text-xs text-neutral-500 mt-0.5">El equipo tendrÃ¡ acceso a trÃ¡mites de todas las oficinas actuales y futuras.</p>
+                  <p className="text-xs text-neutral-500 mt-0.5">El equipo tendrá acceso a trámites de todas las oficinas actuales y futuras.</p>
                 </div>
               </div>
 
@@ -1141,7 +1141,7 @@ export function GestionGruposVisualizacion() {
                   {formSelectedOficinas.length === 0 && (
                     <div className="px-4 pb-3 flex items-center gap-2 text-xs text-amber-600">
                       <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-                      Sin oficinas asignadas â€” el equipo no verÃ¡ ningÃºn trÃ¡mite.
+                      Sin oficinas asignadas — el equipo no verá ningún trámite.
                     </div>
                   )}
                 </div>
@@ -1150,7 +1150,7 @@ export function GestionGruposVisualizacion() {
               <div className="flex items-center justify-between p-3.5 rounded-xl bg-neutral-50 border border-neutral-200">
                 <div>
                   <p className="text-sm font-semibold text-neutral-700">Estado</p>
-                  <p className="text-xs text-neutral-500">{formActivo ? 'Activo â€” el equipo puede ver trÃ¡mites' : 'Inactivo â€” el equipo estÃ¡ pausado'}</p>
+                  <p className="text-xs text-neutral-500">{formActivo ? 'Activo — el equipo puede ver trámites' : 'Inactivo — el equipo está pausado'}</p>
                 </div>
                 <button
                   type="button"
@@ -1165,7 +1165,7 @@ export function GestionGruposVisualizacion() {
             </div>
           )}
 
-          {/* â”€â”€ TAB: MIEMBROS â”€â”€ */}
+          {/* ── TAB: MIEMBROS ── */}
           {selectedGrupo && formTab === 'miembros' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="border-2 border-amber-200 rounded-2xl overflow-hidden">
@@ -1239,7 +1239,7 @@ export function GestionGruposVisualizacion() {
                   </div>
                   <div className="max-h-64 overflow-y-auto space-y-1">
                     {miembrosDisponibles.length === 0 ? (
-                      <p className="text-sm text-neutral-400 text-center py-4">{searchMiembro ? 'Sin resultados' : 'Todos ya estÃ¡n asignados'}</p>
+                      <p className="text-sm text-neutral-400 text-center py-4">{searchMiembro ? 'Sin resultados' : 'Todos ya están asignados'}</p>
                     ) : (
                       miembrosDisponibles.map(u => (
                         <div key={u.id} className="border border-neutral-100 rounded-xl overflow-hidden">
@@ -1288,7 +1288,7 @@ export function GestionGruposVisualizacion() {
             </div>
           )}
 
-          {/* â”€â”€ TAB: OFICINAS â”€â”€ */}
+          {/* ── TAB: OFICINAS ── */}
           {selectedGrupo && formTab === 'oficinas' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="border-2 border-teal-200 rounded-2xl overflow-hidden">
@@ -1304,7 +1304,7 @@ export function GestionGruposVisualizacion() {
                     <div className="text-center py-6">
                       <AlertTriangle className="w-8 h-8 mx-auto text-amber-400 mb-2" />
                       <p className="text-sm text-neutral-400">Sin oficinas asignadas</p>
-                      <p className="text-xs text-amber-600 mt-1">Este equipo no verÃ¡ ningÃºn trÃ¡mite</p>
+                      <p className="text-xs text-amber-600 mt-1">Este equipo no verá ningún trámite</p>
                     </div>
                   ) : (
                     grupoOficinas.map(go => (
@@ -1334,7 +1334,7 @@ export function GestionGruposVisualizacion() {
                     </div>
                     <div className="max-h-64 overflow-y-auto space-y-1">
                       {oficinasDisponibles.length === 0 ? (
-                        <p className="text-sm text-neutral-400 text-center py-4">{searchOficina ? 'Sin resultados' : 'Todas las oficinas ya estÃ¡n asignadas'}</p>
+                        <p className="text-sm text-neutral-400 text-center py-4">{searchOficina ? 'Sin resultados' : 'Todas las oficinas ya están asignadas'}</p>
                       ) : (
                         oficinasDisponibles.map(o => (
                           <div key={o.id} className="flex items-center justify-between p-3 border border-neutral-100 rounded-xl hover:bg-neutral-50 transition-colors">
@@ -1355,7 +1355,7 @@ export function GestionGruposVisualizacion() {
             </div>
           )}
 
-          {/* â”€â”€ TAB: ASIGNACIÃ“N â”€â”€ */}
+          {/* ── TAB: ASIGNACIÓN ── */}
           {selectedGrupo && formTab === 'asignacion' && (() => {
             // REQ-02: Only show assigned offices in filter (unless all_offices)
             const oficinasParaFiltro = formAllOffices
@@ -1382,12 +1382,12 @@ export function GestionGruposVisualizacion() {
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-start gap-2 text-sm text-blue-800">
                   <GitBranch className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-500" />
                   <div>
-                    TrÃ¡mites sin regla asignada van al <strong>pool del equipo</strong>.
+                    Trámites sin regla asignada van al <strong>pool del equipo</strong>.
                     {grupoReglas.length === 0
-                      ? ' Actualmente todos los trÃ¡mites de este equipo llegan al pool general.'
+                      ? ' Actualmente todos los trámites de este equipo llegan al pool general.'
                       : <> {grupoReglas.length} vendedor{grupoReglas.length !== 1 ? 'es' : ''} con regla activa.</>}
                     {selectedGrupo?.area_categoria && (
-                      <> Aplica solo a trÃ¡mites del Ã¡rea <strong>{selectedGrupo.area_categoria}</strong>.</>
+                      <> Aplica solo a trámites del área <strong>{selectedGrupo.area_categoria}</strong>.</>
                     )}
                   </div>
                 </div>
@@ -1410,7 +1410,7 @@ export function GestionGruposVisualizacion() {
                   <div className="p-4 space-y-2 max-h-52 overflow-y-auto">
                     {reglasFiltradas.length === 0 ? (
                       <p className="text-sm text-neutral-400 text-center py-6">
-                        {filterAsignacionTipo !== 'todos' ? 'Sin resultados para ese filtro.' : 'Sin vendedores asignados. Los trÃ¡mites llegarÃ¡n al pool general.'}
+                        {filterAsignacionTipo !== 'todos' ? 'Sin resultados para ese filtro.' : 'Sin vendedores asignados. Los trámites llegarán al pool general.'}
                       </p>
                     ) : (
                       reglasFiltradas.map(r => {
@@ -1463,7 +1463,7 @@ export function GestionGruposVisualizacion() {
                         disabled={savingRegla}
                         className="px-3 py-1 text-xs font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors disabled:opacity-50"
                       >
-                        {savingRegla ? 'Guardandoâ€¦' : `Agregar ${selectedAgentIds.length} seleccionado${selectedAgentIds.length > 1 ? 's' : ''}`}
+                        {savingRegla ? 'Guardando…' : `Agregar ${selectedAgentIds.length} seleccionado${selectedAgentIds.length > 1 ? 's' : ''}`}
                       </button>
                     )}
                   </div>
@@ -1509,7 +1509,7 @@ export function GestionGruposVisualizacion() {
                     <div className="max-h-56 overflow-y-auto space-y-1">
                       {disponibles.length === 0 ? (
                         <p className="text-sm text-neutral-400 text-center py-4">
-                          {searchReglaOficina || filterReglaOficinaId ? 'Sin resultados' : 'Todos los usuarios ya estÃ¡n asignados'}
+                          {searchReglaOficina || filterReglaOficinaId ? 'Sin resultados' : 'Todos los usuarios ya están asignados'}
                         </p>
                       ) : (
                         disponibles.map(a => (
@@ -1536,23 +1536,23 @@ export function GestionGruposVisualizacion() {
             );
           })()}
 
-          {/* â”€â”€ TAB: TRÃMITES (REQ-06 + REQ-07) â”€â”€ */}
+          {/* ── TAB: TRÁMITES (REQ-06 + REQ-07) ── */}
           {selectedGrupo && formTab === 'tramites' && (
             <div className="space-y-4">
               {!formArea ? (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
-                  <strong>Sin Ã¡rea asignada</strong> â€” este equipo recibe trÃ¡mites de cualquier tipo.
-                  Asigna un Ã¡rea en la pestaÃ±a <strong>General</strong> para ver y configurar los tipos aplicables.
+                  <strong>Sin área asignada</strong> — este equipo recibe trámites de cualquier tipo.
+                  Asigna un área en la pestaña <strong>General</strong> para ver y configurar los tipos aplicables.
                 </div>
               ) : (
                 <>
                   <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-3 flex items-start gap-2 text-sm text-neutral-700">
                     <FileText className="w-4 h-4 mt-0.5 flex-shrink-0 text-neutral-400" />
                     <div>
-                      Tipos de trÃ¡mite del Ã¡rea <strong>{formArea}</strong>.
+                      Tipos de trámite del área <strong>{formArea}</strong>.
                       {isAdmin
-                        ? ' Activa o desactiva cada tipo para este equipo. Por defecto todos estÃ¡n habilitados.'
-                        : ' Solo los administradores pueden cambiar la configuraciÃ³n.'}
+                        ? ' Activa o desactiva cada tipo para este equipo. Por defecto todos están habilitados.'
+                        : ' Solo los administradores pueden cambiar la configuración.'}
                     </div>
                   </div>
                   {loadingTipos ? (
@@ -1562,7 +1562,7 @@ export function GestionGruposVisualizacion() {
                   ) : tiposPorArea.length === 0 ? (
                     <div className="text-center py-10 bg-neutral-50 rounded-2xl border border-neutral-200">
                       <FileText className="w-8 h-8 mx-auto text-neutral-300 mb-2" />
-                      <p className="text-sm text-neutral-400">No hay tipos de trÃ¡mite configurados para el Ã¡rea {formArea}.</p>
+                      <p className="text-sm text-neutral-400">No hay tipos de trámite configurados para el área {formArea}.</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -1608,7 +1608,7 @@ export function GestionGruposVisualizacion() {
             </div>
           )}
 
-          {/* Bottom actions â€” only on General tab */}
+          {/* Bottom actions — only on General tab */}
           {(!selectedGrupo || formTab === 'general') && (
             <div className="flex gap-3 justify-end">
               <button onClick={() => setPanel('list')} className="px-5 py-2.5 text-sm rounded-xl border border-neutral-200 hover:bg-neutral-50 font-medium">Cancelar</button>
@@ -1635,7 +1635,7 @@ export function GestionGruposVisualizacion() {
     );
   }
 
-  // â”€â”€ MEMBERS PANEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── MEMBERS PANEL ─────────────────────────────────────────────────────────────
 
   if (panel === 'members' && selectedGrupo) {
     const ac = getAC(selectedGrupo.area_categoria);
@@ -1650,7 +1650,7 @@ export function GestionGruposVisualizacion() {
           </div>
           <div>
             <h3 className="font-bold text-neutral-900">{selectedGrupo.nombre}</h3>
-            <p className="text-xs text-neutral-500">GestiÃ³n de miembros Â· {miembros.length} actuales</p>
+            <p className="text-xs text-neutral-500">Gestión de miembros Â· {miembros.length} actuales</p>
           </div>
         </div>
 
@@ -1662,8 +1662,8 @@ export function GestionGruposVisualizacion() {
               </h4>
               <p className="text-xs text-neutral-500 mt-0.5">
                 {selectedGrupo.area_categoria === 'Comercial'
-                  ? 'Ven trÃ¡mites comerciales de las oficinas asignadas al equipo'
-                  : 'Ven trÃ¡mites operativos de las oficinas asignadas al equipo'}
+                  ? 'Ven trámites comerciales de las oficinas asignadas al equipo'
+                  : 'Ven trámites operativos de las oficinas asignadas al equipo'}
               </p>
             </div>
             <div className="p-4 space-y-2 max-h-80 overflow-y-auto">
@@ -1738,7 +1738,7 @@ export function GestionGruposVisualizacion() {
               <div className="max-h-72 overflow-y-auto space-y-1">
                 {miembrosDisponibles.length === 0 ? (
                   <p className="text-sm text-neutral-400 text-center py-4">
-                    {searchMiembro ? 'Sin resultados' : 'Todos los usuarios ya estÃ¡n asignados'}
+                    {searchMiembro ? 'Sin resultados' : 'Todos los usuarios ya están asignados'}
                   </p>
                 ) : (
                   miembrosDisponibles.map(u => (
@@ -1793,7 +1793,7 @@ export function GestionGruposVisualizacion() {
     );
   }
 
-  // â”€â”€ OFFICES PANEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── OFFICES PANEL ─────────────────────────────────────────────────────────────
 
   if (panel === 'offices' && selectedGrupo) {
     const ac = getAC(selectedGrupo.area_categoria);
@@ -1835,7 +1835,7 @@ export function GestionGruposVisualizacion() {
                 <div className="text-center py-6">
                   <AlertTriangle className="w-8 h-8 mx-auto text-amber-400 mb-2" />
                   <p className="text-sm text-neutral-400">Sin oficinas asignadas</p>
-                  <p className="text-xs text-amber-600 mt-1">Este equipo no verÃ¡ ningÃºn trÃ¡mite</p>
+                  <p className="text-xs text-amber-600 mt-1">Este equipo no verá ningún trámite</p>
                 </div>
               ) : (
                 grupoOficinas.map(go => (
@@ -1866,7 +1866,7 @@ export function GestionGruposVisualizacion() {
                 </div>
                 <div className="max-h-72 overflow-y-auto space-y-1">
                   {oficinasDisponibles.length === 0 ? (
-                    <p className="text-sm text-neutral-400 text-center py-4">{searchOficina ? 'Sin resultados' : 'Todas las oficinas ya estÃ¡n asignadas'}</p>
+                    <p className="text-sm text-neutral-400 text-center py-4">{searchOficina ? 'Sin resultados' : 'Todas las oficinas ya están asignadas'}</p>
                   ) : (
                     oficinasDisponibles.map(o => (
                       <div key={o.id} className="flex items-center justify-between p-3 border border-neutral-100 rounded-xl hover:bg-neutral-50 transition-colors">
