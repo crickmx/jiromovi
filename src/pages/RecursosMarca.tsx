@@ -1,18 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { Upload, Download, AlertTriangle, Loader2, CheckCircle2, Type, Palette, Image as ImageIcon, Bookmark } from 'lucide-react';
+import { Upload, Download, AlertTriangle, Loader2, CheckCircle2, Type, Palette, Image as ImageIcon, Bookmark, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { tieneAccesoEquipoMkt } from '../lib/mktUtils';
 import { LoadingState } from '@/components/ui/loading-state';
 
 const BUCKET = 'recursos-marca';
 
-const LOGO_FAMILIES = [
-  { key: 'horizontal',     label: 'Horizontal',     description: 'Versión principal — montaña + texto' },
-  { key: 'vertical',       label: 'Vertical',       description: 'Montaña arriba, texto abajo' },
-  { key: 'isotype',        label: 'Isotipo',        description: 'Solo la montaña' },
-  { key: 'wordmark',       label: 'Wordmark',       description: 'Solo el texto "JIRO Seguros"' },
-  { key: 'aniversario-50', label: '50 Aniversario', description: 'Solo campañas de aniversario' },
-];
+interface LogoFamilia { key: string; label: string; description: string; orden: number }
 
 const LOGO_COLORS = [
   { key: 'navy',    label: 'Navy',      hex: '#121A2D', previewBg: '#E2E1CC' },
@@ -45,15 +40,23 @@ const UPLOAD_FOLDERS = [
 
 interface BrandFile { name: string; url: string; size: number }
 
-function parseLogoName(name: string): { family: string; color: string } | null {
+function parseLogoName(name: string, familias: LogoFamilia[]): { family: string; color: string } | null {
   const base = name.replace(/\.(png|jpg|jpeg|svg|webp)$/i, '');
-  for (const { key } of LOGO_FAMILIES) {
+  for (const { key } of familias) {
     if (base.startsWith(`${key}-`)) {
       const color = base.slice(key.length + 1);
       if (LOGO_COLORS.some(c => c.key === color)) return { family: key, color };
     }
   }
   return null;
+}
+
+function slugify(texto: string): string {
+  return texto
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 async function dl(url: string, filename: string) {
@@ -78,7 +81,14 @@ function fmtBytes(n: number) {
 
 export default function RecursosMarca() {
   const { usuario } = useAuth();
-  const isAdmin = usuario?.rol === 'Administrador';
+  const esAdmin = usuario?.rol === 'Administrador';
+  const [tieneAccesoEquipo, setTieneAccesoEquipo] = useState(false);
+  const isAdmin = esAdmin || tieneAccesoEquipo;
+
+  useEffect(() => {
+    if (esAdmin || !usuario) return;
+    tieneAccesoEquipoMkt(usuario.id).then(setTieneAccesoEquipo);
+  }, [usuario?.id, esAdmin]);
 
   // Core state
   const [loading, setLoading]             = useState(true);
@@ -92,11 +102,17 @@ export default function RecursosMarca() {
   const [iconFiles, setIconFiles] = useState<BrandFile[]>([]);
   const [fontFiles, setFontFiles] = useState<BrandFile[]>([]);
   const [paletaUrl, setPaletaUrl] = useState<string | null>(null);
+  const [logoFamilias, setLogoFamilias] = useState<LogoFamilia[]>([]);
+
+  // Nueva categoria de logo
+  const [mostrarNuevaFamilia, setMostrarNuevaFamilia] = useState(false);
+  const [nuevaFamiliaLabel, setNuevaFamiliaLabel] = useState('');
+  const [nuevaFamiliaDesc, setNuevaFamiliaDesc] = useState('');
+  const [guardandoFamilia, setGuardandoFamilia] = useState(false);
+  const [errorFamilia, setErrorFamilia] = useState<string | null>(null);
 
   // Per-family selected color
-  const [selectedColors, setSelectedColors] = useState<Record<string, string>>(
-    () => Object.fromEntries(LOGO_FAMILIES.map(f => [f.key, 'navy']))
-  );
+  const [selectedColors, setSelectedColors] = useState<Record<string, string>>({});
 
   // Admin upload
   const [subiendo, setSubiendo]         = useState(false);
@@ -106,7 +122,17 @@ export default function RecursosMarca() {
   const [configError, setConfigError]   = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { cargarLogos(); }, []);
+  // Subir/borrar directo por celda (familia + color) en la grilla de logos
+  const [slotOcupado, setSlotOcupado] = useState<string | null>(null);
+  const [slotError, setSlotError]     = useState<string | null>(null);
+  const slotInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  useEffect(() => {
+    (async () => {
+      const familias = await cargarFamilias();
+      await cargarLogos(familias);
+    })();
+  }, []);
 
   useEffect(() => {
     if (bucketError || loaded.has(section)) return;
@@ -115,7 +141,42 @@ export default function RecursosMarca() {
     if (section === 'paleta')  cargarPaleta();
   }, [section, bucketError]);
 
-  async function cargarLogos() {
+  async function cargarFamilias(): Promise<LogoFamilia[]> {
+    const { data } = await supabase.from('mkt_logo_familias').select('*').order('orden');
+    const familias = data ?? [];
+    setLogoFamilias(familias);
+    return familias;
+  }
+
+  async function crearFamilia() {
+    if (!nuevaFamiliaLabel.trim()) return;
+    setGuardandoFamilia(true);
+    setErrorFamilia(null);
+    try {
+      const key = slugify(nuevaFamiliaLabel);
+      if (!key) throw new Error('Nombre inválido');
+      const orden = logoFamilias.length;
+      const { error } = await supabase.from('mkt_logo_familias').insert({
+        key, label: nuevaFamiliaLabel.trim(), description: nuevaFamiliaDesc.trim(), orden,
+      });
+      if (error) throw error;
+      await cargarFamilias();
+      setNuevaFamiliaLabel('');
+      setNuevaFamiliaDesc('');
+      setMostrarNuevaFamilia(false);
+    } catch (e) {
+      console.error('Error creando categoría de logo:', e);
+      const mensaje = e instanceof Error
+        ? e.message
+        : (e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : null);
+      setErrorFamilia(mensaje || 'Error al crear la categoría');
+    } finally {
+      setGuardandoFamilia(false);
+    }
+  }
+
+  async function cargarLogos(familiasParam?: LogoFamilia[]) {
+    const familias = familiasParam ?? logoFamilias;
     setLoading(true);
     setBucketError(false);
 
@@ -141,7 +202,7 @@ export default function RecursosMarca() {
       for (const s of signed ?? []) {
         if (!s.signedUrl || s.error) continue;
         const fname = s.path.split('/').pop() ?? '';
-        const parsed = parseLogoName(fname);
+        const parsed = parseLogoName(fname, familias);
         if (parsed) {
           (map[parsed.family] ??= {})[parsed.color] = s.signedUrl;
         }
@@ -194,7 +255,12 @@ export default function RecursosMarca() {
     setSubiendo(true); setUploadError(null);
     const errores: string[] = [];
     for (const file of Array.from(files)) {
-      const path = `${carpetaUpload}${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+      // En logos/ el nombre exacto (familia-color.ext) es lo que reconoce la
+      // grilla — anteponer timestamp lo rompía siempre (nunca hacia match).
+      const nombreLimpio = file.name.replace(/\s+/g, '_');
+      const path = carpetaUpload === 'logos/'
+        ? `${carpetaUpload}${nombreLimpio}`
+        : `${carpetaUpload}${Date.now()}-${nombreLimpio}`;
       const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true });
       if (error) errores.push(`${file.name}: ${error.message}`);
     }
@@ -210,6 +276,53 @@ export default function RecursosMarca() {
       if (sec === 'fuentes') setFontFiles([]);
     }
     setSubiendo(false);
+  }
+
+  async function subirLogoDirecto(familyKey: string, colorKey: string, file: File) {
+    if (!isAdmin) return;
+    const slot = `${familyKey}-${colorKey}`;
+    setSlotOcupado(slot);
+    setSlotError(null);
+    try {
+      // Borrar cualquier archivo existente de esta celda (sin importar extensión)
+      // para no dejar huérfanos si el nuevo archivo cambia de formato.
+      const { data: existentes } = await supabase.storage.from(BUCKET).list('logos', { limit: 200 });
+      const viejos = (existentes ?? []).filter(f => f.name.replace(/\.[^.]+$/, '') === slot);
+      if (viejos.length > 0) {
+        await supabase.storage.from(BUCKET).remove(viejos.map(f => `logos/${f.name}`));
+      }
+
+      const ext = file.name.split('.').pop() || 'png';
+      const { error } = await supabase.storage.from(BUCKET).upload(`logos/${slot}.${ext}`, file, { upsert: true });
+      if (error) throw error;
+
+      setLoaded(prev => { const s = new Set(prev); s.delete('logos'); return s; });
+      await cargarLogos();
+    } catch (e) {
+      setSlotError(e instanceof Error ? e.message : 'Error al subir el logo');
+    } finally {
+      setSlotOcupado(null);
+    }
+  }
+
+  async function borrarLogoDirecto(familyKey: string, colorKey: string) {
+    if (!isAdmin) return;
+    const slot = `${familyKey}-${colorKey}`;
+    setSlotOcupado(slot);
+    setSlotError(null);
+    try {
+      const { data: existentes } = await supabase.storage.from(BUCKET).list('logos', { limit: 200 });
+      const archivos = (existentes ?? []).filter(f => f.name.replace(/\.[^.]+$/, '') === slot);
+      if (archivos.length > 0) {
+        await supabase.storage.from(BUCKET).remove(archivos.map(f => `logos/${f.name}`));
+      }
+      setLoaded(prev => { const s = new Set(prev); s.delete('logos'); return s; });
+      await cargarLogos();
+    } catch (e) {
+      setSlotError(e instanceof Error ? e.message : 'Error al borrar el logo');
+    } finally {
+      setSlotOcupado(null);
+    }
   }
 
   async function configurarBucket() {
@@ -304,8 +417,59 @@ export default function RecursosMarca() {
         loading
           ? <LoadingState text="Cargando logos…" compact />
           : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {LOGO_FAMILIES.map(family => {
+            <div className="space-y-4">
+              {isAdmin && (
+                <div>
+                  {!mostrarNuevaFamilia ? (
+                    <button
+                      onClick={() => setMostrarNuevaFamilia(true)}
+                      className="flex items-center gap-1.5 text-sm font-medium text-accent hover:text-accent-hover transition-colors"
+                    >
+                      + Nueva categoría
+                    </button>
+                  ) : (
+                    <div className="flex flex-wrap items-end gap-2 bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-xl p-3">
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-500 dark:text-white/50 mb-1">Nombre</label>
+                        <input
+                          type="text"
+                          value={nuevaFamiliaLabel}
+                          onChange={e => setNuevaFamiliaLabel(e.target.value)}
+                          placeholder="Ej. Jiro Fianzas"
+                          className="px-3 py-2 text-sm border border-neutral-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-500 dark:text-white/50 mb-1">Descripción (opcional)</label>
+                        <input
+                          type="text"
+                          value={nuevaFamiliaDesc}
+                          onChange={e => setNuevaFamiliaDesc(e.target.value)}
+                          placeholder="Ej. Logo de la línea de negocio Jiro Fianzas"
+                          className="px-3 py-2 text-sm border border-neutral-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent w-64"
+                        />
+                      </div>
+                      <button
+                        onClick={crearFamilia}
+                        disabled={guardandoFamilia || !nuevaFamiliaLabel.trim()}
+                        className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover transition disabled:opacity-50"
+                      >
+                        {guardandoFamilia ? 'Creando...' : 'Crear'}
+                      </button>
+                      <button
+                        onClick={() => { setMostrarNuevaFamilia(false); setNuevaFamiliaLabel(''); setNuevaFamiliaDesc(''); setErrorFamilia(null); }}
+                        className="px-3 py-2 rounded-lg text-sm font-medium text-neutral-500 dark:text-white/50 hover:text-neutral-700 dark:hover:text-white/70 transition"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  )}
+                  {errorFamilia && <p className="text-sm text-red-600 dark:text-red-400 mt-1.5">{errorFamilia}</p>}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {logoFamilias.map(family => {
                 const selColor = selectedColors[family.key] ?? 'navy';
                 const colorDef = LOGO_COLORS.find(c => c.key === selColor)!;
                 const logoUrl  = logoUrls[family.key]?.[selColor];
@@ -358,12 +522,52 @@ export default function RecursosMarca() {
                         <Download className="w-3.5 h-3.5" />
                         Descargar {colorDef.label.toLowerCase()}
                       </button>
+
+                      {/* Subir/borrar directo (solo Admin/equipo) */}
+                      {isAdmin && (() => {
+                        const slot = `${family.key}-${selColor}`;
+                        const ocupado = slotOcupado === slot;
+                        return (
+                          <div className="flex items-center gap-2">
+                            <input
+                              ref={el => { slotInputRefs.current[slot] = el; }}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              disabled={ocupado}
+                              onChange={e => e.target.files?.[0] && subirLogoDirecto(family.key, selColor, e.target.files[0])}
+                            />
+                            <button
+                              onClick={() => slotInputRefs.current[slot]?.click()}
+                              disabled={ocupado}
+                              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition disabled:opacity-40">
+                              {ocupado ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                              {logoUrl ? `Reemplazar ${colorDef.label.toLowerCase()}` : `Subir ${colorDef.label.toLowerCase()}`}
+                            </button>
+                            {logoUrl && (
+                              <button
+                                onClick={() => borrarLogoDirecto(family.key, selColor)}
+                                disabled={ocupado}
+                                title="Borrar"
+                                className="flex items-center justify-center px-2.5 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 transition disabled:opacity-40">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 );
               })}
+              </div>
             </div>
           )
+      )}
+      {isAdmin && slotError && (
+        <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-2.5">
+          {slotError}
+        </p>
       )}
 
       {/* ── ICONOS ────────────────────────────────────────────────────────── */}

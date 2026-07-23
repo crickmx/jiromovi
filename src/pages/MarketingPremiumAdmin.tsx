@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
 import { EmptyState } from '@/components/ui/empty-state';
 import { resolveImageUrl } from '../lib/storageUtils';
+import { tieneAccesoEquipoMkt } from '../lib/mktUtils';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -77,6 +78,17 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
   const [needsMigration, setNeedsMigration] = useState(false);
   const [sqlCopiado, setSqlCopiado] = useState(false);
   const [errorValidacion, setErrorValidacion] = useState('');
+  const [tieneAcceso, setTieneAcceso] = useState(false);
+  const [verificandoAcceso, setVerificandoAcceso] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      if (!usuario) { setVerificandoAcceso(false); return; }
+      const acceso = usuario.rol === 'Administrador' || await tieneAccesoEquipoMkt(usuario.id);
+      setTieneAcceso(acceso);
+      setVerificandoAcceso(false);
+    })();
+  }, [usuario?.id]);
 
   useEffect(() => { cargarAgentes(); }, []);
 
@@ -258,7 +270,8 @@ ALTER TABLE usuarios
     setTimeout(() => setSqlCopiado(false), 2500);
   }
 
-  if (usuario?.rol !== 'Administrador') return null;
+  if (verificandoAcceso) return null;
+  if (!tieneAcceso) return null;
 
   return (
     <div className="space-y-5">

@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
 import { EmptyState } from '@/components/ui/empty-state';
 import { resolveImageUrl } from '../lib/storageUtils';
+import { tieneAccesoEquipoMkt } from '../lib/mktUtils';
 
 interface Agente {
   id: string;
@@ -40,8 +41,19 @@ export default function FotosEstudioAdmin({ embedded }: { embedded?: boolean } =
   const [eliminando, setEliminando] = useState<string | null>(null);
   const [fotoAmpliada, setFotoAmpliada] = useState<Foto | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [tieneAcceso, setTieneAcceso] = useState(false);
+  const [verificandoAcceso, setVerificandoAcceso] = useState(true);
 
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    (async () => {
+      if (!usuario) { setVerificandoAcceso(false); return; }
+      const acceso = usuario.rol === 'Administrador' || await tieneAccesoEquipoMkt(usuario.id);
+      setTieneAcceso(acceso);
+      setVerificandoAcceso(false);
+    })();
+  }, [usuario?.id]);
 
   useEffect(() => {
     cargarAgentes();
@@ -139,7 +151,8 @@ export default function FotosEstudioAdmin({ embedded }: { embedded?: boolean } =
     return coincide && premium;
   });
 
-  if (usuario?.rol !== 'Administrador') return null;
+  if (verificandoAcceso) return null;
+  if (!tieneAcceso) return null;
 
   return (
     <div className="space-y-5">
