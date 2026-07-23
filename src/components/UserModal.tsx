@@ -6,8 +6,9 @@ import { PaymentFields } from './PaymentFields';
 import { BaseModal } from './BaseModal';
 import { ImageUploader } from './ImageUploader';
 import { ExpedienteSection } from './ExpedienteSection';
-import { User, Mail, Phone, Building2, Image, FileText, Calendar, Smartphone, Laptop, Palette, Shield, Send, CheckCircle } from 'lucide-react';
+import { User, Mail, Phone, Building2, Image, FileText, Calendar, Smartphone, Laptop, Palette, Shield, Send, CheckCircle, MapPin } from 'lucide-react';
 import type { Database } from '../lib/database.types';
+import UbicacionPicker, { type UbicacionValue } from './ubicacion/UbicacionPicker';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
@@ -67,7 +68,9 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
     equipo_computo: '',
     equipo_celular: '',
     plan_mkt_premium: false,
+    seguros_express_habilitado: false,
   });
+  const [ubic, setUbic] = useState<UbicacionValue>({ lat: null, lng: null, direccion_manual: null, metodo: null });
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
   const [modulosSistema, setModulosSistema] = useState<ModuloSistema[]>([]);
   const [permisosAdicionales, setPermisosAdicionales] = useState<string[]>([]);
@@ -107,6 +110,13 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         equipo_computo: user.equipo_computo || '',
         equipo_celular: user.equipo_celular || '',
         plan_mkt_premium: user.plan_mkt_premium || false,
+        seguros_express_habilitado: (user as any).seguros_express_habilitado || false,
+      });
+      setUbic({
+        lat: (user as any).ubicacion_lat ?? null,
+        lng: (user as any).ubicacion_lng ?? null,
+        direccion_manual: (user as any).ubicacion_direccion_manual ?? null,
+        metodo: (user as any).ubicacion_metodo ?? null,
       });
       loadPermisosAdicionales(user.id);
     }
@@ -299,6 +309,20 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
           updated_at: new Date().toISOString(),
         };
 
+        // seguros.express: habilitación (solo admin) + ubicación (editable por admin).
+        const ud = updateData as any;
+        ud.seguros_express_habilitado = formData.seguros_express_habilitado;
+        ud.ubicacion_lat = ubic.lat;
+        ud.ubicacion_lng = ubic.lng;
+        ud.ubicacion_direccion_manual = ubic.direccion_manual;
+        ud.ubicacion_metodo = ubic.metodo;
+        const ubicCambio =
+          ((user as any).ubicacion_lat ?? null) !== ubic.lat ||
+          ((user as any).ubicacion_lng ?? null) !== ubic.lng ||
+          ((user as any).ubicacion_direccion_manual ?? null) !== ubic.direccion_manual ||
+          ((user as any).ubicacion_metodo ?? null) !== ubic.metodo;
+        if (ubicCambio) ud.ubicacion_updated_at = new Date().toISOString();
+
         const { error: updateError } = await supabase
           .from('usuarios')
           .update(updateData)
@@ -347,6 +371,11 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
             equipo_computo: formData.equipo_computo || null,
             equipo_celular: formData.equipo_celular || null,
             plan_mkt_premium: formData.plan_mkt_premium,
+            seguros_express_habilitado: formData.seguros_express_habilitado,
+            ubicacion_lat: ubic.lat,
+            ubicacion_lng: ubic.lng,
+            ubicacion_direccion_manual: ubic.direccion_manual,
+            ubicacion_metodo: ubic.metodo,
           },
         };
 
@@ -891,6 +920,37 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                 </div>
               </div>
             )}
+
+            {/* seguros.express — habilitación + ubicación (admin) */}
+            <div className="bg-gradient-to-br from-sky-50 to-blue-50 border-2 border-sky-200 rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-sky-600" />
+                seguros.express
+              </h3>
+              <div className="flex items-start gap-3 mb-4">
+                <input
+                  type="checkbox"
+                  id="seguros_express_habilitado"
+                  checked={formData.seguros_express_habilitado}
+                  onChange={(e) => setFormData({ ...formData, seguros_express_habilitado: e.target.checked })}
+                  className="mt-1 h-4 w-4 text-accent border-slate-300 rounded focus:ring-2 focus:ring-accent"
+                />
+                <div className="flex-1">
+                  <label htmlFor="seguros_express_habilitado" className="text-sm font-medium text-slate-900 cursor-pointer">
+                    Habilitar recepción de leads de seguros.express
+                  </label>
+                  <p className="text-xs text-slate-600 mt-1">
+                    El agente entrará al matching por cercanía y recibirá avisos de leads dentro de su radio.
+                  </p>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-2">
+                  Ubicación del agente (para el matching por distancia)
+                </label>
+                <UbicacionPicker value={ubic} onChange={setUbic} />
+              </div>
+            </div>
 
             {/* Vacaciones */}
             <div>
