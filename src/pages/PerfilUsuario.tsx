@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Save, Upload, User as UserIcon, ArrowLeft, FileText, Briefcase, Link as LinkIcon, FolderOpen, Copy, Check } from 'lucide-react';
+import { Save, Upload, User as UserIcon, ArrowLeft, FileText, Briefcase, Link as LinkIcon, FolderOpen, Copy, Check, MapPin } from 'lucide-react';
+import UbicacionPicker from '../components/ubicacion/UbicacionPicker';
 import { CustomFields } from '../components/CustomFields';
 import { PaymentFields } from '../components/PaymentFields';
 import { ExpedienteSection } from '../components/ExpedienteSection';
@@ -120,6 +121,24 @@ export function PerfilUsuario() {
     if (isAdmin && formData.rol) {
       updateData.rol = formData.rol;
     }
+
+    // seguros.express: habilitación (solo admin) + ubicación (admin/gerente).
+    const ud = updateData as any;
+    const fd = formData as any;
+    const u = usuario as any;
+    if (isAdmin) {
+      ud.seguros_express_habilitado = !!fd.seguros_express_habilitado;
+    }
+    ud.ubicacion_lat = fd.ubicacion_lat ?? null;
+    ud.ubicacion_lng = fd.ubicacion_lng ?? null;
+    ud.ubicacion_direccion_manual = fd.ubicacion_direccion_manual ?? null;
+    ud.ubicacion_metodo = fd.ubicacion_metodo ?? null;
+    const ubicCambio =
+      (u.ubicacion_lat ?? null) !== (fd.ubicacion_lat ?? null) ||
+      (u.ubicacion_lng ?? null) !== (fd.ubicacion_lng ?? null) ||
+      (u.ubicacion_direccion_manual ?? null) !== (fd.ubicacion_direccion_manual ?? null) ||
+      (u.ubicacion_metodo ?? null) !== (fd.ubicacion_metodo ?? null);
+    if (ubicCambio) ud.ubicacion_updated_at = new Date().toISOString();
 
     const { error } = await supabase
       .from('usuarios')
@@ -596,6 +615,48 @@ export function PerfilUsuario() {
                       />
                       <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">Días disponibles: 0 - 50</p>
                     </div>
+                  </div>
+
+                  {/* seguros.express — habilitación + ubicación */}
+                  <div className="mt-4 rounded-xl border border-sky-200 dark:border-sky-500/20 bg-sky-50/60 dark:bg-sky-500/5 p-4">
+                    <h4 className="text-sm font-semibold text-neutral-900 dark:text-white mb-3 flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-sky-600" />
+                      seguros.express
+                    </h4>
+                    {isAdmin && (
+                      <label className="flex items-start gap-3 mb-4 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={!!(formData as any).seguros_express_habilitado}
+                          onChange={(e) => setFormData({ ...formData, seguros_express_habilitado: e.target.checked } as any)}
+                          className="mt-1 h-4 w-4 text-accent border-neutral-300 rounded focus:ring-2 focus:ring-accent"
+                        />
+                        <span className="flex-1">
+                          <span className="text-sm font-medium text-neutral-900 dark:text-white">Habilitar recepción de leads de seguros.express</span>
+                          <span className="block text-xs text-neutral-500 dark:text-white/40 mt-0.5">
+                            El agente entrará al matching por cercanía y recibirá avisos de leads dentro de su radio.
+                          </span>
+                        </span>
+                      </label>
+                    )}
+                    <label className="block text-xs font-medium text-neutral-600 dark:text-white/50 mb-2">
+                      Ubicación del agente (para el matching por distancia)
+                    </label>
+                    <UbicacionPicker
+                      value={{
+                        lat: (formData as any).ubicacion_lat ?? null,
+                        lng: (formData as any).ubicacion_lng ?? null,
+                        direccion_manual: (formData as any).ubicacion_direccion_manual ?? null,
+                        metodo: (formData as any).ubicacion_metodo ?? null,
+                      }}
+                      onChange={(v) => setFormData({
+                        ...formData,
+                        ubicacion_lat: v.lat,
+                        ubicacion_lng: v.lng,
+                        ubicacion_direccion_manual: v.direccion_manual,
+                        ubicacion_metodo: v.metodo,
+                      } as any)}
+                    />
                   </div>
 
                   <div className="mt-8">

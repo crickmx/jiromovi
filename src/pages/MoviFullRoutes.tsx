@@ -27,6 +27,8 @@ const CRMContactoPerfil = lazy(() => import('./CRMContactoPerfil'));
 const CRMTareas = lazy(() => import('./CRMTareas'));
 const CRMReportes = lazy(() => import('./CRMReportes'));
 const CRMConfiguracion = lazy(() => import('./CRMConfiguracion'));
+const CRMLeadsSegurosExpress = lazy(() => import('./CRMLeadsSegurosExpress'));
+const AdminSegurosExpress = lazy(() => import('./AdminSegurosExpress'));
 const Tramites = lazy(() => import('./Tramites'));
 const TramiteDetalle = lazy(() => import('./TramiteDetalle'));
 const TramitesReportes = lazy(() => import('./TramitesReportes'));
@@ -193,6 +195,8 @@ export default function MoviFullRoutes() {
           <Route path="/mi-crm/tareas" element={<ProtectedRoute><CRMTareas /></ProtectedRoute>} />
           <Route path="/mi-crm/reportes" element={<ProtectedRoute><CRMReportes /></ProtectedRoute>} />
           <Route path="/mi-crm/configuracion" element={<ProtectedRoute><CRMConfiguracion /></ProtectedRoute>} />
+          <Route path="/mi-crm/leads-seguros-express" element={<ProtectedRoute><CRMLeadsSegurosExpress /></ProtectedRoute>} />
+          <Route path="/admin/seguros-express" element={<ProtectedRoute><AdminSegurosExpress /></ProtectedRoute>} />
           <Route path="/tramites" element={<ProtectedRoute><Tramites /></ProtectedRoute>} />
           <Route path="/tramites/:id" element={<ProtectedRoute><TramiteDetalle /></ProtectedRoute>} />
           <Route path="/tramites/reportes" element={<ProtectedRoute><TramitesReportes /></ProtectedRoute>} />
