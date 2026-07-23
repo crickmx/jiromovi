@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/ui/loading-state';
 import { EmptyState } from '@/components/ui/empty-state';
+import UbicacionPicker from '../components/ubicacion/UbicacionPicker';
 
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
@@ -31,6 +32,8 @@ export function Oficinas() {
     telefono: '',
     email: '',
     domicilio: '',
+    ubicacion_lat: null as number | null,
+    ubicacion_lng: null as number | null,
     facebook: '',
     instagram: '',
     activa: true,
@@ -104,6 +107,8 @@ export function Oficinas() {
       telefono: oficina?.telefono || '',
       email: oficina?.email || '',
       domicilio: oficina?.domicilio || '',
+      ubicacion_lat: oficina?.ubicacion_lat ?? null,
+      ubicacion_lng: oficina?.ubicacion_lng ?? null,
       facebook: oficina?.facebook || '',
       instagram: oficina?.instagram || '',
       activa: oficina?.activa ?? true,
@@ -175,6 +180,9 @@ export function Oficinas() {
             telefono: formData.telefono,
             email: formData.email,
             domicilio: formData.domicilio,
+            ubicacion_lat: formData.ubicacion_lat,
+            ubicacion_lng: formData.ubicacion_lng,
+            ubicacion_updated_at: new Date().toISOString(),
             facebook: formData.facebook,
             instagram: formData.instagram,
             activa: formData.activa,
@@ -193,6 +201,9 @@ export function Oficinas() {
             telefono: formData.telefono,
             email: formData.email,
             domicilio: formData.domicilio,
+            ubicacion_lat: formData.ubicacion_lat,
+            ubicacion_lng: formData.ubicacion_lng,
+            ubicacion_updated_at: new Date().toISOString(),
             facebook: formData.facebook,
             instagram: formData.instagram,
             activa: formData.activa,
@@ -534,6 +545,35 @@ export function Oficinas() {
                     required
                     className="w-full px-4 py-2.5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent"
                     placeholder="Ej: Oficina Central"
+                  />
+                </div>
+
+                <div className="md:col-span-2 rounded-xl border border-sky-100 bg-sky-50/60 p-4 dark:border-sky-500/20 dark:bg-sky-500/5">
+                  <p className="mb-1 text-sm font-semibold text-neutral-800 dark:text-white">
+                    Ubicación para Seguros Express
+                  </p>
+                  <p className="mb-3 text-xs text-neutral-500 dark:text-white/50">
+                    Se usará como respaldo para los usuarios de esta oficina que no hayan definido una ubicación personal.
+                  </p>
+                  <UbicacionPicker
+                    value={{
+                      lat: formData.ubicacion_lat,
+                      lng: formData.ubicacion_lng,
+                      direccion_manual: formData.domicilio || null,
+                      metodo: formData.ubicacion_lat != null && formData.ubicacion_lng != null
+                        ? 'gps'
+                        : (formData.domicilio ? 'manual' : null),
+                    }}
+                    onChange={(value) => setFormData((current) => ({
+                      ...current,
+                      ubicacion_lat: value.lat,
+                      ubicacion_lng: value.lng,
+                      domicilio: value.metodo === 'manual'
+                        ? (value.direccion_manual || '')
+                        : current.domicilio,
+                    }))}
+                    gpsLabel="Usar ubicación actual de la oficina"
+                    manualPlaceholder="Domicilio completo de la oficina"
                   />
                 </div>
 

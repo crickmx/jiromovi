@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, CalendarDays, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, HardDrive, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow, Clock, Camera, Sparkles, Bookmark, PanelLeft, Bug } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, CalendarDays, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, HardDrive, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow, Clock, Camera, Sparkles, Bookmark, PanelLeft, Bug, Zap } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
@@ -184,6 +184,7 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/admin/sidebar-editor', label: 'Editor de Sidebar', icon: PanelLeft, visibleTo: ADMIN_ONLY },
     { path: '/admin/dashboard-editor', label: 'Editor de Dashboard', icon: LayoutDashboard, visibleTo: ADMIN_ONLY },
     { path: '/admin/reportes-bugs', label: 'Reportes de Bugs', icon: Bug, visibleTo: ADMIN_ONLY },
+    { path: '/admin/seguros-express', label: 'Seguros Express', icon: Zap, visibleTo: ADMIN_ONLY },
     // Inteligencia Artificial
     { path: '/admin/chava-inteligencia', label: 'Dashboard IA', icon: BrainCircuit, visibleTo: ADMIN_ONLY },
     { path: '/admin/base-conocimiento', label: 'Base Conocimiento', icon: LibraryBig, visibleTo: ADMIN_ONLY },
