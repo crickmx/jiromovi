@@ -45,7 +45,9 @@ const isAgenteSite    = HOST === 'agentedeseguros.website' || HOST.endsWith('.ag
 const isChavaSite     = HOST === 'agentedeseguros.ai'      || HOST.endsWith('.agentedeseguros.ai');
 const isSeguwalletSite = HOST === 'seguwallet.mx' || HOST.endsWith('.seguwallet.mx');
 const isEducationSite  = HOST === 'seguros.education' || HOST.endsWith('.seguros.education');
-const isExpressSite    = HOST === 'seguros.express' || HOST.endsWith('.seguros.express');
+const isExpressSite    = HOST === 'seguros.express'
+  || HOST.endsWith('.seguros.express')
+  || (import.meta.env.DEV && new URLSearchParams(window.location.search).get('site') === 'express');
 // Everything else (app.movi.digital, localhost, Bolt preview, etc.) is MOVI
 
 // ── Redirect to grupojiro.com for bare agentedeseguros.website root ────────
