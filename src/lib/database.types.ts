@@ -48,6 +48,9 @@ export interface Database {
           es_espacio_jiro: boolean
           updated_at: string
           logo_url: string | null
+          ubicacion_lat: number | null
+          ubicacion_lng: number | null
+          ubicacion_updated_at: string | null
         }
         Insert: {
           id?: string
@@ -64,6 +67,9 @@ export interface Database {
           es_espacio_jiro?: boolean
           updated_at?: string
           logo_url?: string | null
+          ubicacion_lat?: number | null
+          ubicacion_lng?: number | null
+          ubicacion_updated_at?: string | null
         }
         Update: {
           id?: string
@@ -80,6 +86,9 @@ export interface Database {
           es_espacio_jiro?: boolean
           updated_at?: string
           logo_url?: string | null
+          ubicacion_lat?: number | null
+          ubicacion_lng?: number | null
+          ubicacion_updated_at?: string | null
         }
       }
       usuarios: {

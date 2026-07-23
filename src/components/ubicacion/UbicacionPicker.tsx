@@ -6,7 +6,7 @@ export interface UbicacionValue {
   lat: number | null;
   lng: number | null;
   direccion_manual: string | null;
-  metodo: 'gps' | 'manual' | null;
+  metodo: 'gps' | 'manual' | 'oficina' | null;
 }
 
 export const UBICACION_VACIA: UbicacionValue = {
@@ -82,6 +82,7 @@ export default function UbicacionPicker({
   }
 
   const tieneGps = value.metodo === 'gps' && value.lat != null && value.lng != null;
+  const usaOficina = value.metodo === 'oficina';
 
   return (
     <div className={`space-y-3 ${className}`}>
@@ -117,6 +118,20 @@ export default function UbicacionPicker({
             <span className="ml-1 text-emerald-600/70 dark:text-emerald-400/70">
               ({value.lat}, {value.lng})
             </span>
+          </span>
+        </div>
+      )}
+
+      {usaOficina && (
+        <div className="flex items-start gap-2 rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">
+          <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            Ubicación heredada de la oficina
+            {value.direccion_manual && (
+              <span className="mt-0.5 block text-xs text-sky-600/75 dark:text-sky-400/75">
+                {value.direccion_manual}
+              </span>
+            )}
           </span>
         </div>
       )}
