@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { User, Phone, Mail, MapPin, Building2, Shield, Camera, Check, Loader as Loader2, Pencil, X, Globe, CreditCard, Calendar, BadgeCheck, Info, ExternalLink, Lock, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import UbicacionPicker, { type UbicacionValue } from '../components/ubicacion/UbicacionPicker';
 
 interface FiscalRegime {
   id: string;
@@ -447,8 +448,20 @@ export default function Perfil() {
 
   const [form, setForm] = useState<FormState>(buildForm);
 
+  const buildUbic = (): UbicacionValue => {
+    const u = usuario as any;
+    return {
+      lat: u?.ubicacion_lat ?? null,
+      lng: u?.ubicacion_lng ?? null,
+      direccion_manual: u?.ubicacion_direccion_manual ?? null,
+      metodo: u?.ubicacion_metodo ?? null,
+    };
+  };
+  const [ubic, setUbic] = useState<UbicacionValue>(buildUbic);
+
   useEffect(() => {
     setForm(buildForm());
+    setUbic(buildUbic());
   }, [usuario]);
 
   if (!usuario) return null;
@@ -463,6 +476,7 @@ export default function Perfil() {
 
   function handleCancel() {
     setForm(buildForm());
+    setUbic(buildUbic());
     setEditing(false);
     setError(null);
   }
@@ -471,12 +485,25 @@ export default function Perfil() {
     setSaving(true);
     setError(null);
     try {
-      const payload: Partial<Record<EditableField, string | null>> = {};
+      const payload: Record<string, string | number | null> = {};
       (Object.keys(editables) as EditableField[]).forEach(key => {
         if (editables[key]) {
           payload[key] = form[key].trim() || null;
         }
       });
+
+      // Ubicación: el propio usuario siempre puede editar la suya (Parte A.1).
+      const prev = buildUbic();
+      const ubicCambio =
+        prev.lat !== ubic.lat || prev.lng !== ubic.lng ||
+        prev.direccion_manual !== ubic.direccion_manual || prev.metodo !== ubic.metodo;
+      if (ubicCambio) {
+        payload.ubicacion_lat = ubic.lat;
+        payload.ubicacion_lng = ubic.lng;
+        payload.ubicacion_direccion_manual = ubic.direccion_manual;
+        payload.ubicacion_metodo = ubic.metodo;
+        payload.ubicacion_updated_at = new Date().toISOString();
+      }
 
       const { error: updateError } = await supabase
         .from('usuarios')
@@ -829,6 +856,54 @@ export default function Perfil() {
               </div>
             );
           })}
+
+          {/* ── Ubicación + seguros.express ── */}
+          <div className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200 dark:border-white/[0.06] p-5">
+            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-neutral-100 dark:border-white/[0.05]">
+              <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center">
+                <MapPin className="w-3.5 h-3.5 text-accent" />
+              </div>
+              <p className="text-sm font-semibold text-neutral-700 dark:text-white/80">Mi Ubicación</p>
+            </div>
+
+            {editing ? (
+              <UbicacionPicker value={ubic} onChange={setUbic} />
+            ) : (
+              <div className="text-sm">
+                {ubic.metodo === 'gps' && ubic.lat != null && ubic.lng != null ? (
+                  <p className="text-neutral-800 dark:text-white/85 flex items-center gap-2">
+                    <BadgeCheck className="w-4 h-4 text-emerald-500" />
+                    Ubicación GPS guardada
+                    <span className="text-neutral-400 dark:text-white/35">({ubic.lat}, {ubic.lng})</span>
+                  </p>
+                ) : ubic.metodo === 'manual' && ubic.direccion_manual ? (
+                  <p className="text-neutral-800 dark:text-white/85">{ubic.direccion_manual}</p>
+                ) : (
+                  <p className="text-neutral-400 dark:text-white/25 italic">Sin ubicación registrada</p>
+                )}
+              </div>
+            )}
+
+            {/* seguros.express — estado (solo lectura para el usuario) */}
+            <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-white/[0.05] flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Shield className="w-3.5 h-3.5 text-neutral-400" />
+                <span className="text-sm text-neutral-600 dark:text-white/60">seguros.express</span>
+              </div>
+              {(usuario as any).seguros_express_habilitado ? (
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+                  Habilitado
+                </span>
+              ) : (
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-neutral-100 text-neutral-500 dark:bg-white/10 dark:text-white/50">
+                  No habilitado
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-neutral-400 dark:text-white/35">
+              La habilitación para recibir leads de seguros.express la gestiona un administrador.
+            </p>
+          </div>
 
           {/* ── Password Management Section ── */}
           <PasswordSection />

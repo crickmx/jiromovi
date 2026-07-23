@@ -178,6 +178,18 @@ export default function MiCRM() {
           <span className="text-xs font-medium text-neutral-700 dark:text-white/70 text-center">Config</span>
         </Link>
 
+        {(usuario as any)?.seguros_express_habilitado && (
+          <Link
+            to="/mi-crm/leads-seguros-express"
+            className="group flex flex-col items-center p-3 bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800/30 rounded-xl hover:border-sky-400 hover:shadow-md transition-all"
+          >
+            <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-sky-100 text-sky-600 group-hover:bg-sky-200 transition mb-2">
+              <Zap className="h-5 w-5" />
+            </div>
+            <span className="text-xs font-medium text-sky-700 dark:text-sky-400 text-center">Leads Express</span>
+          </Link>
+        )}
+
         <Link
           to="/contactos"
           state={{ openNew: true }}
