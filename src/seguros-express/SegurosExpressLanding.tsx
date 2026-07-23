@@ -32,14 +32,14 @@ const carriers = [
 ] as const;
 
 const cities = [
-  { name: 'Tijuana', agents: 16, x: 8, y: 10 },
-  { name: 'Monterrey', agents: 37, x: 57, y: 31 },
-  { name: 'Guadalajara', agents: 41, x: 38, y: 58 },
-  { name: 'Querétaro', agents: 22, x: 51, y: 57 },
-  { name: 'CDMX', agents: 78, x: 55, y: 66 },
-  { name: 'Puebla', agents: 15, x: 60, y: 68 },
-  { name: 'Veracruz', agents: 14, x: 67, y: 64 },
-  { name: 'Mérida', agents: 18, x: 85, y: 57 },
+  { name: 'Tijuana', agents: 16, x: 4.6, y: 4.1 },
+  { name: 'Monterrey', agents: 37, x: 56.8, y: 39.9 },
+  { name: 'Guadalajara', agents: 41, x: 47.3, y: 66.1 },
+  { name: 'Querétaro', agents: 22, x: 56.6, y: 66.5 },
+  { name: 'CDMX', agents: 78, x: 60.5, y: 72.6 },
+  { name: 'Puebla', agents: 15, x: 63.4, y: 74.7 },
+  { name: 'Veracruz', agents: 14, x: 69.9, y: 74 },
+  { name: 'Mérida', agents: 18, x: 90.3, y: 64.6 },
 ];
 
 function scrollToForm() {
@@ -52,8 +52,10 @@ export default function SegurosExpressLanding() {
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const appRoot = document.getElementById('root');
+    appRoot?.classList.add('public-page');
     const root = rootRef.current;
-    if (!root) return;
+    if (!root) return () => appRoot?.classList.remove('public-page');
     const elements = root.querySelectorAll<HTMLElement>('[data-reveal]');
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
@@ -64,7 +66,10 @@ export default function SegurosExpressLanding() {
       });
     }, { threshold: 0.12, rootMargin: '0px 0px -40px' });
     elements.forEach((element) => observer.observe(element));
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      appRoot?.classList.remove('public-page');
+    };
   }, []);
 
   const closeAndScroll = () => {
@@ -128,7 +133,11 @@ export default function SegurosExpressLanding() {
             <div className="sx-map-card" data-reveal>
               <span className="sx-online"><i /> 320 asesores en línea</span>
               <div className="sx-map">
-                <img src="/seguros-express/mexico-map.svg" alt="Mapa interactivo de cobertura en México" />
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/commons/4/45/Mexico_geoloc_blank.svg"
+                  alt="Mapa geográfico de México con cobertura de asesores"
+                  referrerPolicy="no-referrer"
+                />
                 {cities.map((city, index) => (
                   <button
                     key={city.name}
