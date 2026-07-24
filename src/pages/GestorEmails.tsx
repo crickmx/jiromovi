@@ -127,6 +127,25 @@ function getInitials(name: string) {
   return name.split(' ').slice(0, 2).map(w => w.charAt(0)).join('').toUpperCase() || '?';
 }
 
+// Traduce los códigos de error del SSO de Roundcube a un mensaje claro en
+// español (el edge function responde con códigos crudos tipo "RATE_LIMITED").
+function friendlyRoundcubeError(code?: string): string {
+  switch (code) {
+    case 'RATE_LIMITED':
+      return 'Abriste el correo demasiadas veces seguidas. Reintentando en unos segundos...';
+    case 'MAILBOX_NOT_CONFIGURED':
+      return 'Tu correo aún no está configurado.';
+    case 'MAILBOX_CREDENTIAL_MISSING':
+      return 'No encontramos la contraseña de tu correo. Vuelve a configurarlo.';
+    case 'NO_SESSION':
+    case 'UNAUTHORIZED':
+    case 'INVALID_SESSION':
+      return 'Tu sesión expiró. Vuelve a iniciar sesión.';
+    default:
+      return code || 'No se pudo abrir el correo.';
+  }
+}
+
 // ── Main Component ──────────────────────────────────────────────────
 
 export function GestorEmails() {
@@ -179,7 +198,22 @@ export function GestorEmails() {
     setShowCompose(true);
   };
 
-  useEffect(() => { checkConfig(); }, [usuario]);
+  // Control de aperturas del iframe SSO: evita quemar tokens contra el límite
+  // de tasa del edge function (5+/min ⇒ RATE_LIMITED).
+  const openingRef = useRef(false);          // apertura en curso (dedup)
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoRetryCountRef = useRef(0);       // reintentos automáticos acotados
+
+  // Solo depende del id del usuario: un refresh de token de Supabase entrega un
+  // objeto `usuario` nuevo con el mismo id — antes eso recargaba el iframe (y
+  // pedía un token nuevo) sin que el usuario hiciera nada.
+  useEffect(() => {
+    checkConfig();
+    return () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuario?.id]);
 
   const checkConfig = async () => {
     if (!usuario) return;
@@ -293,16 +327,32 @@ export function GestorEmails() {
   };
 
   const openRoundcubeEmbedded = async () => {
+    // Dedup: si ya hay una apertura en curso, no dispares otra (evita tokens
+    // duplicados por dobles render o clics repetidos).
+    if (openingRef.current) return;
+    openingRef.current = true;
+    if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null; }
+
     setOpeningRoundcube(true);
     setRoundcubeLoading(true);
     setError('');
     try {
       setRoundcubeUrl(await getRoundcubeHandoffUrl());
+      autoRetryCountRef.current = 0; // apertura exitosa ⇒ reinicia el contador
     } catch (err: any) {
-      setError(err.message || 'No se pudo abrir el correo completo');
+      const code: string | undefined = err?.code;
+      setError(friendlyRoundcubeError(code));
       setRoundcubeLoading(false);
+      // RATE_LIMITED: la ventana es de ~60s. Reintenta solo automático, con
+      // enfriamiento creciente y un tope, para no entrar en un bucle.
+      if (code === 'RATE_LIMITED' && autoRetryCountRef.current < 2) {
+        const delayMs = autoRetryCountRef.current === 0 ? 15000 : 30000;
+        autoRetryCountRef.current += 1;
+        retryTimerRef.current = setTimeout(() => { openRoundcubeEmbedded(); }, delayMs);
+      }
     } finally {
       setOpeningRoundcube(false);
+      openingRef.current = false;
     }
   };
 
