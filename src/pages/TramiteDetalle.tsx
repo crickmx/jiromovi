@@ -1506,39 +1506,54 @@ export function TramiteDetalle() {
               </div>
             )}
 
-            {/* Sección 1 — Campos sistema (siempre readonly) */}
+            {/* Sección 1 — Campos sistema */}
             {camposDinamicos.some(c => c.is_sistema && c.sistema_key !== 'estatus') && (
-              <div className="mt-6 pt-6 border-t border-violet-100 space-y-3">
-                <p className="text-xs font-semibold text-violet-500 uppercase tracking-wide flex items-center gap-1.5">
-                  🔒 Información del Trámite
+              <div className="mt-6 pt-6 border-t border-violet-100">
+                <p className="text-xs font-semibold text-violet-500 uppercase tracking-wide flex items-center gap-1.5 mb-3">
+                  {isAdmin && !isCerrado ? '✏️' : '🔒'} Información del Trámite
                 </p>
-                {camposDinamicos
-                  .filter(c => c.is_sistema && c.sistema_key !== 'estatus')
-                  .sort((a, b) => a.display_order - b.display_order)
-                  .map(campo => {
-                    const val = respuestasDinamicas[campo.id];
-                    const violet = 'px-3 py-2 bg-violet-50 border border-violet-200 rounded-xl text-sm text-violet-700';
-                    const muted = 'px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm text-neutral-400 italic';
-                    const displayVal = campo.sistema_key === 'agente_vendedor' && val
-                      ? (() => {
-                          const ag = agentesVendedor.find(a => a.id === val);
-                          return ag?.usuario_nombre ?? ag?.nombre ?? val;
-                        })()
-                      : val;
-                    return (
-                      <div key={campo.id}>
-                        <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">
-                          {campo.label}
-                        </label>
-                        {displayVal
-                          ? <div className={violet}>{displayVal}</div>
-                          : <div className={muted}>
-                              {campo.sistema_key === 'fecha_finalizacion' ? 'Al cerrar' : 'Sin registrar'}
-                            </div>
-                        }
-                      </div>
-                    );
-                  })}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {camposDinamicos
+                    .filter(c => c.is_sistema && c.sistema_key !== 'estatus')
+                    .map(campo => {
+                      const val = respuestasDinamicas[campo.id];
+                      const set = (v: any) => setRespuestasDinamicas(prev => ({ ...prev, [campo.id]: v }));
+                      const adminEditable = isAdmin && !isCerrado && campo.sistema_key !== 'fecha_finalizacion' && campo.sistema_key !== 'creado_por';
+                      const violet = 'px-3 py-2 bg-violet-50 border border-violet-200 rounded-xl text-sm text-violet-700';
+                      const muted  = 'px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm text-neutral-400 italic';
+                      const inputCls = 'w-full px-3 py-2 border border-violet-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white';
+                      return (
+                        <div key={campo.id}>
+                          <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">
+                            {campo.label}
+                          </label>
+                          {adminEditable ? (
+                            campo.sistema_key === 'agente_vendedor' ? (
+                              <select value={val ?? ''} onChange={e => set(e.target.value || null)} className={inputCls}>
+                                <option value="">Sin registrar</option>
+                                {agentesVendedor.map(a => (
+                                  <option key={a.id} value={a.id}>{a.usuario_nombre ?? a.nombre}</option>
+                                ))}
+                              </select>
+                            ) : (campo.sistema_key === 'fecha_creacion') ? (
+                              <input type="date" value={val?.slice(0, 10) ?? ''} onChange={e => set(e.target.value || null)} className={inputCls} />
+                            ) : (
+                              <input type="text" value={val ?? ''} onChange={e => set(e.target.value || null)} placeholder="Sin registrar" className={inputCls} />
+                            )
+                          ) : (
+                            (() => {
+                              const displayVal = campo.sistema_key === 'agente_vendedor' && val
+                                ? (() => { const ag = agentesVendedor.find(a => a.id === val); return ag?.usuario_nombre ?? ag?.nombre ?? val; })()
+                                : val;
+                              return displayVal
+                                ? <div className={violet}>{displayVal}</div>
+                                : <div className={muted}>{campo.sistema_key === 'fecha_finalizacion' ? 'Al cerrar' : 'Sin registrar'}</div>;
+                            })()
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
               </div>
             )}
 
@@ -1590,7 +1605,7 @@ export function TramiteDetalle() {
                 const set = (v: any) => setRespuestasDinamicas(prev => ({ ...prev, [campo.id]: v }));
                 const editable = canEdit && !isCerrado;
                 return (
-                    <div key={campo.id}>
+                    <div key={campo.id} className={campo.tipo === 'texto_largo' ? 'md:col-span-2' : ''}>
                       <label className="block text-sm font-medium text-neutral-700 mb-1">
                         {campo.label}{campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
                       </label>
@@ -1822,7 +1837,7 @@ export function TramiteDetalle() {
                   <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Campos del trámite</p>
                   {grupos.map(grupo => {
                     if (!grupo.seccion) {
-                      return <div key="sin-seccion" className="space-y-4">{grupo.campos.map(renderCampo)}</div>;
+                      return <div key="sin-seccion" className="grid grid-cols-1 md:grid-cols-2 gap-4">{grupo.campos.map(renderCampo)}</div>;
                     }
                     const seccion = grupo.seccion;
                     const desbloqueada = seccionDesbloqueada(seccion, secciones, camposDinamicos, respuestasDinamicas);
@@ -1861,7 +1876,7 @@ export function TramiteDetalle() {
                           )}
                         </button>
                         {mostrarCampos && (
-                          <div className="px-4 pb-4 space-y-4 border-t border-neutral-100 pt-4">
+                          <div className="px-4 pb-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-neutral-100 pt-4">
                             {grupo.campos.map(renderCampo)}
                           </div>
                         )}
