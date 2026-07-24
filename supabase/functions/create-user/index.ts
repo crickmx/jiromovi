@@ -34,6 +34,11 @@ interface CreateUserRequest {
     dias_vacaciones_disponibles?: number;
     equipo_computo?: string | null;
     equipo_celular?: string | null;
+    seguros_express_habilitado?: boolean;
+    ubicacion_lat?: number | null;
+    ubicacion_lng?: number | null;
+    ubicacion_direccion_manual?: string | null;
+    ubicacion_metodo?: 'gps' | 'manual' | null;
   };
 }
 
@@ -191,6 +196,13 @@ Deno.serve(async (req: Request) => {
       dias_vacaciones_disponibles: userData.dias_vacaciones_disponibles || 0,
       equipo_computo: userData.equipo_computo || null,
       equipo_celular: userData.equipo_celular || null,
+      seguros_express_habilitado: userData.seguros_express_habilitado ?? false,
+      ubicacion_lat: userData.ubicacion_lat ?? null,
+      ubicacion_lng: userData.ubicacion_lng ?? null,
+      ubicacion_direccion_manual: userData.ubicacion_direccion_manual ?? null,
+      ubicacion_metodo: userData.ubicacion_metodo ?? null,
+      ubicacion_updated_at: (userData.ubicacion_lat != null || userData.ubicacion_direccion_manual)
+        ? new Date().toISOString() : null,
       estado: isGerente ? 'pendiente' : 'activo',
     };
 

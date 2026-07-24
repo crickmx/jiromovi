@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Megaphone, Sparkles, Globe as Globe2, Palette, Camera, CalendarDays, CheckCircle, Pencil, X, Save, Bookmark } from 'lucide-react';
+import { Megaphone, Sparkles, Globe as Globe2, Palette, Camera, CalendarDays, CheckCircle, Pencil, X, Save, Bookmark, Settings } from 'lucide-react';
 import MiMarca from './MiMarca';
 import MiPaginaWeb from './MiPaginaWeb';
 import Publicidad from './Publicidad';
@@ -8,8 +8,10 @@ import FotosEstudio from './FotosEstudio';
 import RecursosMarca from './RecursosMarca';
 import Agenda from './Agenda';
 import { PageHeader } from '@/components/ui/page-header';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { tieneAccesoEquipoMkt } from '../lib/mktUtils';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -70,6 +72,14 @@ export default function Mercadotecnia({ section }: MercadotecniaProps) {
 
   const isAdmin = usuario?.rol === 'Administrador';
   const tienePremium = usuario?.plan_mkt_premium ?? false;
+  const [tieneAccesoAdminMkt, setTieneAccesoAdminMkt] = useState(false);
+
+  useEffect(() => {
+    if (isAdmin || !usuario) return;
+    tieneAccesoEquipoMkt(usuario.id).then(setTieneAccesoAdminMkt);
+  }, [usuario?.id, isAdmin]);
+
+  const puedeVerMarketingAdmin = isAdmin || tieneAccesoAdminMkt;
 
   const [editando, setEditando] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -127,6 +137,12 @@ export default function Mercadotecnia({ section }: MercadotecniaProps) {
         title="Mercadotecnia"
         description={activeTab.description}
         icon={Megaphone}
+        actions={puedeVerMarketingAdmin && (
+          <Button variant="outline" size="sm" onClick={() => navigate('/mercadotecnia/admin')}>
+            <Settings className="w-4 h-4 mr-1.5" />
+            <span className="hidden sm:inline">Marketing Admin</span>
+          </Button>
+        )}
       >
         <nav className="flex flex-wrap gap-1 border-b border-neutral-200 dark:border-white/8 -mb-px">
           {TABS.map(tab => {
