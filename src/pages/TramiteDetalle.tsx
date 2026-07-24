@@ -841,7 +841,7 @@ export function TramiteDetalle() {
           const payload: any = {
             tramite_id: snap.id,
             campo_id: campo.id,
-            valor_texto:    ['texto_corto', 'texto_largo', 'aseguradora', 'ramo', 'email', 'telefono', 'rfc', 'curp'].includes(campo.tipo) ? String(val) : null,
+            valor_texto:    ['texto_corto', 'texto_largo', 'area', 'equipo', 'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion', 'creado_por', 'aseguradora', 'ramo', 'email', 'telefono', 'rfc', 'curp'].includes(campo.tipo) ? String(val) : null,
             valor_numerico: ['numerico', 'porcentaje'].includes(campo.tipo) ? Number(val) : null,
             valor_fecha:    campo.tipo === 'fecha' ? String(val) : null,
             valor_booleano: campo.tipo === 'booleano' ? Boolean(val) : null,
