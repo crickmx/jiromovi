@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { crossDomainUrl, PROD_ORIGIN } from '../lib/betaAccess';
+import { useImpersonation } from '../contexts/ImpersonationContext';
 
 /** Fijo arriba de todo en beta.movi.digital — Layout.tsx empuja el contenido hacia abajo. */
 export function BetaBanner() {
   const [saliendo, setSaliendo] = useState(false);
+  const { isImpersonating } = useImpersonation();
 
   const handleVolver = async () => {
     setSaliendo(true);
@@ -14,8 +16,8 @@ export function BetaBanner() {
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-[9999] text-white shadow-md"
-      style={{ height: '36px', background: 'linear-gradient(135deg, #8E1A52, #6B1140)' }}
+      className="fixed left-0 right-0 z-[9998] text-white shadow-md"
+      style={{ top: isImpersonating ? '36px' : '0px', height: '36px', background: 'linear-gradient(135deg, #8E1A52, #6B1140)' }}
       role="status"
       aria-live="polite"
     >

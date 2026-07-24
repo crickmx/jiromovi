@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { FlaskConical } from 'lucide-react';
 import { crossDomainUrl, BETA_ORIGIN } from '../lib/betaAccess';
+import { useImpersonation } from '../contexts/ImpersonationContext';
 
 /** Fijo arriba, solo para usuarios Beta que están viendo MOVI normal (salieron de la Beta). */
 export function BackToBetaBanner() {
   const [entrando, setEntrando] = useState(false);
+  const { isImpersonating } = useImpersonation();
 
   const handleVolver = async () => {
     setEntrando(true);
@@ -14,8 +16,8 @@ export function BackToBetaBanner() {
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-[9999] bg-amber-400 text-amber-950 shadow-md"
-      style={{ height: '36px' }}
+      className="fixed left-0 right-0 z-[9998] bg-amber-400 text-amber-950 shadow-md"
+      style={{ top: isImpersonating ? '36px' : '0px', height: '36px' }}
       role="status"
       aria-live="polite"
     >

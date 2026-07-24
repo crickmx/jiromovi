@@ -37,6 +37,8 @@ export function Layout({ children }: LayoutProps) {
   const { isImpersonating } = useImpersonation();
   const isBeta = isBetaHost();
   const hasTopBanner = isImpersonating || isBeta || esUsuarioBeta;
+  const bannerCount = (isImpersonating ? 1 : 0) + (isBeta || esUsuarioBeta ? 1 : 0);
+  const bannerPt = bannerCount === 2 ? 'pt-[72px]' : bannerCount === 1 ? 'pt-9' : '';
   const [secondaryCollapsed, setSecondaryCollapsed] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
@@ -88,7 +90,7 @@ export function Layout({ children }: LayoutProps) {
       {!isBeta && esUsuarioBeta && <BackToBetaBanner />}
 
       {/* Primary rail sidebar — hidden on mobile */}
-      <div className={`hidden md:flex ${hasTopBanner ? 'pt-9' : ''}`}>
+      <div className={`hidden md:flex ${bannerPt}`}>
         <PrimarySidebar
           activeWorkspaceId={workspace?.id ?? null}
           userRole={userRole}
@@ -103,7 +105,7 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Secondary sidebar — only when inside a workspace, hidden on mobile */}
       {workspace && workspace.id !== 'produccion' && (
-        <div className={`hidden md:flex ${hasTopBanner ? 'pt-9' : ''}`}>
+        <div className={`hidden md:flex ${bannerPt}`}>
           <SecondarySidebar
             workspace={workspace}
             activeItem={activeItem}
@@ -132,11 +134,11 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Main content — shift down when banner is visible */}
       {isFullHeight ? (
-        <main className={`flex-1 overflow-hidden min-w-0 flex flex-col mobile-page-content md:!pb-0 ${hasTopBanner ? 'pt-9' : ''}`}>
+        <main className={`flex-1 overflow-hidden min-w-0 flex flex-col mobile-page-content md:!pb-0 ${bannerPt}`}>
           {children}
         </main>
       ) : (
-        <main className={`flex-1 overflow-y-auto min-w-0 mobile-page-content md:!pb-0 ${hasTopBanner ? 'pt-9' : ''}`}>
+        <main className={`flex-1 overflow-y-auto min-w-0 mobile-page-content md:!pb-0 ${bannerPt}`}>
           <div className="px-4 md:px-6 py-4 md:py-6 max-w-screen-2xl mx-auto">
             {children}
           </div>
