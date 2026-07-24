@@ -40,22 +40,31 @@ Deno.serve(async (req) => {
       });
     }
 
-    const systemPrompt = `Eres un asistente experto en reconciliar nombres de personas entre dos sistemas de una aseguradora mexicana.
-Los agentes SICAS están en formato "APELLIDO_PATERNO APELLIDO_MATERNO NOMBRE(S)" (todo mayúsculas).
-Los usuarios MOVI tienen nombre y apellidos por separado (pueden tener tildes y mayúsculas mixtas).
-Tu tarea: para cada usuario MOVI sin mapeo, encuentra al agente SICAS más probable.
-Responde ÚNICAMENTE con un JSON con el campo "sugerencias" (array). Cada sugerencia:
-  - user_id: string
-  - agente_id: string
-  - confianza: número entre 0 y 1
-  - razon: cadena breve (máx 60 chars)
-Incluye SOLO sugerencias con confianza >= 0.65. Si no hay match claro, no incluyas al usuario.`;
+    const systemPrompt = `Eres un experto en reconciliación de nombres entre dos sistemas de RH de una aseguradora mexicana.
+
+REGLAS ESTRICTAS — léelas antes de hacer cualquier sugerencia:
+1. Los agentes SICAS están en formato "APELLIDO_PATERNO APELLIDO_MATERNO NOMBRE(S)" (todo mayúsculas, sin tildes).
+   Ejemplo: "GARCIA SAUCEDO KAREN JEANETH" → apellido paterno: GARCIA, materno: SAUCEDO, nombre: KAREN JEANETH.
+2. Los usuarios MOVI tienen campo "nombre" y campo "apellidos" separados (pueden tener tildes y mayúsculas mixtas).
+   Ejemplo: nombre="Karen Jeaneth", apellidos="García Saucedo".
+3. Para sugerir un match, AL MENOS DOS tokens del nombre completo del usuario MOVI deben aparecer en el nombre del agente SICAS (ignorando tildes y mayúsculas).
+   - "GARCIA SAUCEDO KAREN JEANETH" ↔ "Karen Jeaneth García Saucedo" → confianza 0.97 ✓ (4 tokens coinciden)
+   - "MENA GOMEZ AARON" ↔ "Aarón Mena Gómez" → confianza 0.95 ✓ (3 tokens coinciden)
+   - "BELMAN VAZQUEZ DAMIAN" ↔ "Aaron Alexis Rosas Geraldo" → NO incluir, cero tokens coinciden ✗
+4. Si no hay al menos 2 tokens en común, NO incluyas esa sugerencia aunque la confianza fuera alta.
+5. Umbral mínimo: confianza >= 0.80. Por debajo, omite la sugerencia.
+6. Un agente solo puede aparecer en UNA sugerencia (el mejor match). Si varios usuarios comparten tokens con el mismo agente, solo elige el más parecido.
+
+Responde ÚNICAMENTE con JSON: { "sugerencias": [ { "user_id", "agente_id", "confianza", "razon" } ] }
+razon: cadena breve describiendo qué tokens coincidieron (máx 60 chars).`;
 
     const userPrompt = `Usuarios MOVI sin mapeo (${usuarios.length}):
-${usuarios.map(u => `  [${u.id}] ${u.nombre} ${u.apellidos} <${u.email}>`).join('\n')}
+${usuarios.map(u => `  [${u.id}] nombre="${u.nombre}" apellidos="${u.apellidos}" email="${u.email}"`).join('\n')}
 
 Agentes SICAS disponibles (${agentes.length}):
-${agentes.map(a => `  [${a.id}] ${a.nombre}`).join('\n')}`;
+${agentes.map(a => `  [${a.id}] ${a.nombre}`).join('\n')}
+
+Analiza token por token. Solo incluye matches donde al menos 2 tokens coincidan (sin tildes, sin importar mayúsculas).`;
 
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -64,7 +73,7 @@ ${agentes.map(a => `  [${a.id}] ${a.nombre}`).join('\n')}`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },

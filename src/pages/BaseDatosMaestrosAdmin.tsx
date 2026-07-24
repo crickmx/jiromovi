@@ -214,7 +214,7 @@ export default function BaseDatosMaestrosAdmin() {
     setLoadingPendientes(true);
     const [{ data: m }, { data: u }, { data: a }, { data: p }] = await Promise.all([
       supabase.from('maestro_usuario_agente')
-        .select('*, usuarios(nombre, email_laboral), maestro_agentes(nombre, origen, maestro_despachos(nombre))')
+        .select('*, usuarios(nombre, apellidos, email_laboral), maestro_agentes(nombre, origen, maestro_despachos(nombre))')
         .order('created_at', { ascending: false }),
       supabase.from('usuarios').select('id, nombre, apellidos, email_laboral').order('nombre'),
       supabase.from('maestro_agentes').select('*').eq('activo', true).order('nombre'),
@@ -1589,7 +1589,11 @@ export default function BaseDatosMaestrosAdmin() {
                   {mapeosFiltrados.map(m => (
                     <tr key={m.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-700/30">
                       <td className="px-5 py-3">
-                        <p className="font-medium text-neutral-800 dark:text-neutral-100">{(m.usuarios as any)?.nombre ?? '—'}</p>
+                        <p className="font-medium text-neutral-800 dark:text-neutral-100">
+                          {(m.usuarios as any)?.nombre && (m.usuarios as any)?.apellidos
+                            ? `${(m.usuarios as any).nombre} ${(m.usuarios as any).apellidos}`
+                            : (m.usuarios as any)?.nombre ?? '—'}
+                        </p>
                         <p className="text-xs text-neutral-400">{(m.usuarios as any)?.email_laboral ?? ''}</p>
                       </td>
                       <td className="px-5 py-3 text-neutral-700 dark:text-neutral-200">{(m.maestro_agentes as any)?.nombre ?? '—'}</td>
