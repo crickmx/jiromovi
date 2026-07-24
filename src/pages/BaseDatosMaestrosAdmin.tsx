@@ -22,7 +22,8 @@ interface Despacho  { id: string; nombre: string; activo: boolean }
 interface Gerencia  { id: string; nombre: string; despacho_id: string; activo: boolean }
 interface Agente    { id: string; nombre: string; despacho_id: string; gerencia_id: string | null; activo: boolean; es_primario: boolean }
 
-interface UsuarioMOVI { id: string; nombre: string; email: string }
+interface UsuarioMOVI  { id: string; nombre: string; apellidos: string; email: string }
+interface SugerenciaIA { user_id: string; agente_id: string; confianza: number; razon: string }
 interface MapeoUsuario {
   id: string; user_id: string; agente_id: string; activo: boolean;
   usuarios?: { nombre: string; email_laboral: string | null }
@@ -134,6 +135,8 @@ export default function BaseDatosMaestrosAdmin() {
   const [savingMapeoMOVI, setSavingMapeoMOVI] = useState(false);
   const [pendientesMapeo, setPendientesMapeo] = useState<MapeoPendiente[]>([]);
   const [loadingPendientes, setLoadingPendientes] = useState(false);
+  const [sugerenciasIA, setSugerenciasIA] = useState<SugerenciaIA[]>([]);
+  const [loadingSugerencias, setLoadingSugerencias] = useState(false);
 
   // ── Import ──────────────────────────────────────────────────────────────────
   const [importMode, setImportMode]     = useState<ImportMode>('adicion');
@@ -213,14 +216,14 @@ export default function BaseDatosMaestrosAdmin() {
       supabase.from('maestro_usuario_agente')
         .select('*, usuarios(nombre, email_laboral), maestro_agentes(nombre, origen, maestro_despachos(nombre))')
         .order('created_at', { ascending: false }),
-      supabase.from('usuarios').select('id, nombre, email_laboral').order('nombre'),
+      supabase.from('usuarios').select('id, nombre, apellidos, email_laboral').order('nombre'),
       supabase.from('maestro_agentes').select('*').eq('activo', true).order('nombre'),
       supabase.from('maestro_mapeo_pendiente')
         .select('*, maestro_agentes(nombre), usuarios!maestro_mapeo_pendiente_user_id_propuesto_fkey(nombre, email_laboral), propuesto_por_usuario:usuarios!maestro_mapeo_pendiente_propuesto_por_fkey(nombre)')
         .order('created_at', { ascending: false }),
     ]);
     setMapeos(m ?? []);
-    setUsuariosMOVI((u ?? []).map((x: any) => ({ id: x.id, nombre: x.nombre, email: x.email_laboral ?? '' })));
+    setUsuariosMOVI((u ?? []).map((x: any) => ({ id: x.id, nombre: x.nombre, apellidos: x.apellidos ?? '', email: x.email_laboral ?? '' })));
     setAgentesList(a ?? []);
     setPendientesMapeo(p ?? []);
     setLoadingMapeo(false);
@@ -422,6 +425,38 @@ export default function BaseDatosMaestrosAdmin() {
     if (e2) { toast('Error al crear mapeo: ' + e2.message, 'err'); return; }
     toast('Usuario MOVI agregado al catálogo de asignables');
     setNewMapeoMOVIUserId('');
+    loadMapeo();
+  }
+
+  async function solicitarSugerenciasIA() {
+    const sinMapeo = usuariosMOVI.filter(u => !mapeos.some(m => m.user_id === u.id));
+    if (!sinMapeo.length) { toast('No hay usuarios sin mapeo', 'err'); return; }
+    setLoadingSugerencias(true);
+    setSugerenciasIA([]);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke('sugerir-mapeo-agente', {
+        body: {
+          usuarios: sinMapeo.map(u => ({ id: u.id, nombre: u.nombre, apellidos: u.apellidos, email: u.email })),
+          agentes:  agentesList.map(a => ({ id: a.id, nombre: a.nombre })),
+        },
+      });
+      if (res.error) throw new Error(res.error.message);
+      setSugerenciasIA(res.data?.sugerencias ?? []);
+      if (!(res.data?.sugerencias?.length)) toast('La IA no encontró coincidencias claras');
+    } catch (e: any) {
+      toast('Error IA: ' + e.message, 'err');
+    } finally {
+      setLoadingSugerencias(false);
+    }
+  }
+
+  async function aceptarSugerencia(s: SugerenciaIA) {
+    const { error } = await supabase.from('maestro_usuario_agente')
+      .upsert({ user_id: s.user_id, agente_id: s.agente_id, activo: true }, { onConflict: 'user_id' });
+    if (error) { toast('Error: ' + error.message, 'err'); return; }
+    toast('Mapeo guardado');
+    setSugerenciasIA(prev => prev.filter(x => x.user_id !== s.user_id));
     loadMapeo();
   }
 
@@ -1309,6 +1344,18 @@ export default function BaseDatosMaestrosAdmin() {
               <Link2 className="w-4 h-4 text-purple-500"/>
               Agregar mapeo
             </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={solicitarSugerenciasIA}
+                disabled={loadingSugerencias}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-violet-100 hover:bg-violet-200 text-violet-700 dark:bg-violet-900/30 dark:hover:bg-violet-800/40 dark:text-violet-300 rounded-lg transition disabled:opacity-50"
+              >
+                {loadingSugerencias ? (
+                  <><div className="w-3 h-3 border border-violet-500 border-t-transparent rounded-full animate-spin"/> Analizando...</>
+                ) : (
+                  <><Search className="w-3 h-3"/> Sugerir con IA</>
+                )}
+              </button>
             {/* Modo selector */}
             <div className="flex rounded-lg border border-neutral-200 dark:border-neutral-600 overflow-hidden text-xs font-medium">
               <button
@@ -1324,6 +1371,7 @@ export default function BaseDatosMaestrosAdmin() {
                 Solo MOVI (sin SICAS)
               </button>
             </div>
+            </div>
           </div>
 
           {mapeoMode === 'sicas' && (
@@ -1333,7 +1381,7 @@ export default function BaseDatosMaestrosAdmin() {
                 <select value={newMapeoUserId} onChange={e => setNewMapeoUserId(e.target.value)}
                   className="w-full border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm dark:bg-neutral-700 dark:text-white">
                   <option value="">Seleccionar usuario...</option>
-                  {usuariosMOVI.map(u => <option key={u.id} value={u.id}>{u.nombre} — {u.email}</option>)}
+                  {usuariosMOVI.map(u => <option key={u.id} value={u.id}>{u.nombre} {u.apellidos} — {u.email}</option>)}
                 </select>
               </div>
               <div>
@@ -1379,6 +1427,69 @@ export default function BaseDatosMaestrosAdmin() {
             </div>
           )}
         </div>
+
+        {/* Sugerencias IA */}
+        {sugerenciasIA.length > 0 && (
+          <div className="bg-violet-50 dark:bg-violet-900/20 rounded-xl border border-violet-200 dark:border-violet-700 overflow-hidden">
+            <div className="px-5 py-3 border-b border-violet-200 dark:border-violet-700 flex items-center gap-2">
+              <Search className="w-4 h-4 text-violet-600"/>
+              <span className="text-sm font-semibold text-violet-800 dark:text-violet-300">
+                Sugerencias de la IA
+              </span>
+              <span className="ml-auto text-xs font-bold bg-violet-200 text-violet-800 px-2 py-0.5 rounded-full">
+                {sugerenciasIA.length}
+              </span>
+            </div>
+            <div className="divide-y divide-violet-100 dark:divide-violet-800">
+              {sugerenciasIA.map(s => {
+                const usuario = usuariosMOVI.find(u => u.id === s.user_id);
+                const agente  = agentesList.find(a => a.id === s.agente_id);
+                if (!usuario || !agente) return null;
+                return (
+                  <div key={s.user_id} className="px-5 py-3 flex items-center gap-4">
+                    <div className="flex-1 min-w-0 grid grid-cols-2 gap-x-6">
+                      <div>
+                        <p className="text-xs text-violet-600 font-medium uppercase tracking-wide mb-0.5">Usuario MOVI</p>
+                        <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100 truncate">
+                          {usuario.nombre} {usuario.apellidos}
+                        </p>
+                        <p className="text-xs text-neutral-400 truncate">{usuario.email}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-violet-600 font-medium uppercase tracking-wide mb-0.5">Agente SICAS</p>
+                        <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100 truncate">{agente.nombre}</p>
+                        <p className="text-xs text-neutral-400 truncate">{s.razon}</p>
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <div className={`text-xs font-bold px-2 py-0.5 rounded-full inline-block ${
+                        s.confianza >= 0.9 ? 'bg-green-100 text-green-700' :
+                        s.confianza >= 0.75 ? 'bg-amber-100 text-amber-700' :
+                        'bg-neutral-100 text-neutral-500'
+                      }`}>
+                        {Math.round(s.confianza * 100)}%
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => aceptarSugerencia(s)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5"/> Aceptar
+                      </button>
+                      <button
+                        onClick={() => setSugerenciasIA(prev => prev.filter(x => x.user_id !== s.user_id))}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-medium rounded-lg transition"
+                      >
+                        <XCircle className="w-3.5 h-3.5"/> Ignorar
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Mapeos pendientes de validación */}
         {pendientesMapeo.length > 0 && (
