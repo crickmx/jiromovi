@@ -67,13 +67,16 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
     if (!mailbox?.email) return response(req, 409, { error: "MAILBOX_NOT_CONFIGURED" });
 
+    // Límite anti-abuso: cada token es de un solo uso y expira en 60s, así que
+    // este tope solo frena ráfagas anómalas. 5 era demasiado bajo para el uso
+    // real (abrir/refrescar el correo varias veces en un minuto lo alcanzaba).
     const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString();
     const { count } = await admin
       .from("roundcube_sso_tokens")
       .select("token_hash", { count: "exact", head: true })
       .eq("usuario_id", user.id)
       .gte("created_at", oneMinuteAgo);
-    if ((count ?? 0) >= 5) return response(req, 429, { error: "RATE_LIMITED" });
+    if ((count ?? 0) >= 15) return response(req, 429, { error: "RATE_LIMITED" });
 
     // Limpieza oportunista; nunca es condición para emitir un token nuevo.
     await admin.from("roundcube_sso_tokens").delete().lt("expires_at", new Date().toISOString());
