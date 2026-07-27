@@ -845,7 +845,7 @@ export function TramiteDetalle() {
             valor_numerico: ['numerico', 'porcentaje'].includes(campo.tipo) ? Number(val) : null,
             valor_fecha:    campo.tipo === 'fecha' ? String(val) : null,
             valor_booleano: campo.tipo === 'booleano' ? Boolean(val) : null,
-            valor_json:     ['estatus', 'dropdown', 'seleccion_multiple', 'codigo_postal', 'adjunto'].includes(campo.tipo) ? val : null,
+            valor_json:     ['estatus', 'dropdown', 'seleccion_multiple', 'codigo_postal', 'adjunto', 'reporte_protegido'].includes(campo.tipo) ? val : null,
           };
 
           if (existing?.id) {
@@ -1605,7 +1605,7 @@ export function TramiteDetalle() {
                 const set = (v: any) => setRespuestasDinamicas(prev => ({ ...prev, [campo.id]: v }));
                 const editable = canEdit && !isCerrado;
                 return (
-                    <div key={campo.id} className={campo.tipo === 'texto_largo' ? 'md:col-span-2' : ''}>
+                    <div key={campo.id} className={['texto_largo', 'reporte_protegido'].includes(campo.tipo) ? 'md:col-span-2' : ''}>
                       <label className="block text-sm font-medium text-neutral-700 mb-1">
                         {campo.label}{campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
                       </label>
@@ -1822,6 +1822,39 @@ export function TramiteDetalle() {
                                   }}
                                 />
                               </label>
+                            )}
+                          </div>
+                        );
+                      })()}
+                      {campo.tipo === 'reporte_protegido' && (() => {
+                        const enviado = val?.enviado === true;
+                        return (
+                          <div className="rounded-xl border border-neutral-200 p-4 bg-neutral-50 dark:bg-neutral-800/40 dark:border-neutral-700">
+                            {enviado ? (
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                                  <Lock className="w-4 h-4" />
+                                  <span className="text-sm font-medium">Reporte enviado y cifrado</span>
+                                </div>
+                                {val?.enviado_en && (
+                                  <p className="text-xs text-neutral-500 pl-6">
+                                    {new Date(val.enviado_en).toLocaleString('es-MX')} · {val?.palabras ?? '?'} palabras
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                {campo.config.instrucciones && (
+                                  <p className="text-xs text-neutral-500">{campo.config.instrucciones}</p>
+                                )}
+                                <button
+                                  onClick={() => navigate(`/tareas/reporte/${tramite?.id}/${campo.id}`)}
+                                  className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 transition-colors"
+                                >
+                                  <ClipboardList className="w-4 h-4" />
+                                  Escribir reporte
+                                </button>
+                              </div>
                             )}
                           </div>
                         );

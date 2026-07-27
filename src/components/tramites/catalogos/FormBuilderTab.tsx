@@ -1014,6 +1014,45 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                   </label>
                 )}
 
+                {editingCampo.tipo === 'reporte_protegido' && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Instrucciones para el usuario</label>
+                      <textarea
+                        value={editCampoConfig.instrucciones || ''}
+                        onChange={e => setEditCampoConfig({ ...editCampoConfig, instrucciones: e.target.value })}
+                        rows={3}
+                        placeholder="Describe qué debe escribir el usuario..."
+                        className="w-full px-2 py-1.5 text-xs border border-neutral-300 rounded-lg resize-none"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">Palabras mínimas</label>
+                        <input type="number" min={10} max={5000}
+                          value={editCampoConfig.min_palabras ?? 100}
+                          onChange={e => setEditCampoConfig({ ...editCampoConfig, min_palabras: Number(e.target.value) })}
+                          className="w-full px-2 py-1.5 text-xs border border-neutral-300 rounded-lg" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">Tiempo mínimo (seg)</label>
+                        <input type="number" min={30} max={7200}
+                          value={editCampoConfig.tiempo_minimo_segundos ?? 120}
+                          onChange={e => setEditCampoConfig({ ...editCampoConfig, tiempo_minimo_segundos: Number(e.target.value) })}
+                          className="w-full px-2 py-1.5 text-xs border border-neutral-300 rounded-lg" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Score mínimo (0–1)</label>
+                      <input type="number" min={0} max={1} step={0.05}
+                        value={editCampoConfig.score_minimo ?? 0.7}
+                        onChange={e => setEditCampoConfig({ ...editCampoConfig, score_minimo: Number(e.target.value) })}
+                        className="w-full px-2 py-1.5 text-xs border border-neutral-300 rounded-lg" />
+                      <p className="text-xs text-neutral-400 mt-0.5">Score de originalidad. 0.7 = 70% original requerido.</p>
+                    </div>
+                  </div>
+                )}
+
                 {(['aseguradora', 'codigo_postal', 'email', 'curp'] as const).some(t => t === editingCampo.tipo) && (
                   <div className="text-xs text-neutral-500 bg-neutral-100 rounded-lg px-3 py-2 leading-relaxed">
                     {editingCampo.tipo === 'aseguradora' && 'Lee el catálogo de aseguradoras activas automáticamente.'}

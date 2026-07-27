@@ -30,7 +30,9 @@ export type CampoTipo =
   | 'fecha_creacion' | 'fecha_finalizacion' | 'creado_por'
   // ── Campos Sistema configurables (reordenables, ocultables, obligatorios) ──
   | 'asignado_a' | 'prioridad' | 'descripcion'
-  | 'fecha_promesa_entrega' | 'archivos_adjuntos';
+  | 'fecha_promesa_entrega' | 'archivos_adjuntos'
+  // ── Campos especiales ───────────────────────────────────────────────────────
+  | 'reporte_protegido';
 
 export const SISTEMA_TIPO_META: Partial<Record<CampoTipo, { icon: string; desc: string; badge: string }>> = {
   // Fijos
@@ -160,6 +162,8 @@ export const CAMPO_TIPOS: { tipo: CampoTipo; label: string; icon: string; desc: 
   { tipo: 'ramo',               label: 'Ramo',                icon: 'Rm',  desc: 'Cascada desde campo aseguradora',      grupo: 'Catálogo' },
   // ── Archivo ───────────────────────────────────────────────────────────────
   { tipo: 'adjunto',            label: 'Adjunto',             icon: '@',   desc: 'Archivos con filtro de tipo y peso',   grupo: 'Archivo' },
+  // ── Especial ──────────────────────────────────────────────────────────────
+  { tipo: 'reporte_protegido',  label: 'Reporte protegido',   icon: '🔒',  desc: 'Texto anti-trampas, cifrado al enviar', grupo: 'Especial' },
 ];
 
 export const MIME_OPTIONS = [

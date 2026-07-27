@@ -1094,6 +1094,12 @@ export function NuevoTramiteModal({
           </div>
         )}
 
+        {campo.tipo === 'reporte_protegido' && (
+          <div className="rounded-xl border border-neutral-200 px-4 py-3 bg-neutral-50 text-sm text-neutral-400">
+            Se completará al trabajar la tarea
+          </div>
+        )}
+
         {campo.tipo === 'adjunto' && (() => {
           const files = adjuntosTemporales[campo.id] || [];
           const maxFiles = campo.config.max_archivos || 1;
@@ -1646,7 +1652,7 @@ export function NuevoTramiteModal({
               valor_numerico: ['numerico', 'porcentaje'].includes(c.tipo) ? Number(val) : null,
               valor_fecha:    c.tipo === 'fecha' ? String(val) : null,
               valor_booleano: c.tipo === 'booleano' ? Boolean(val) : null,
-              valor_json:     ['estatus', 'dropdown', 'seleccion_multiple', 'codigo_postal'].includes(c.tipo) ? val : null,
+              valor_json:     ['estatus', 'dropdown', 'seleccion_multiple', 'codigo_postal', 'reporte_protegido'].includes(c.tipo) ? val : null,
             };
           });
         if (respuestas.length > 0) {

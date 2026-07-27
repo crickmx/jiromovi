@@ -31,6 +31,7 @@ const CRMLeadsSegurosExpress = lazy(() => import('./CRMLeadsSegurosExpress'));
 const AdminSegurosExpress = lazy(() => import('./AdminSegurosExpress'));
 const Tramites = lazy(() => import('./Tramites'));
 const TramiteDetalle = lazy(() => import('./TramiteDetalle'));
+const TareaReportePage = lazy(() => import('./TareaReportePage'));
 const TramitesReportes = lazy(() => import('./TramitesReportes'));
 const EntregaPolizas = lazy(() => import('./EntregaPolizas'));
 const MisPolizas = lazy(() => import('./MisPolizas'));
@@ -199,6 +200,7 @@ export default function MoviFullRoutes() {
           <Route path="/admin/seguros-express" element={<ProtectedRoute requireAdmin><AdminSegurosExpress /></ProtectedRoute>} />
           <Route path="/tramites" element={<ProtectedRoute><Tramites /></ProtectedRoute>} />
           <Route path="/tramites/:id" element={<ProtectedRoute><TramiteDetalle /></ProtectedRoute>} />
+          <Route path="/tareas/reporte/:tramiteId/:campoId" element={<ProtectedRoute><TareaReportePage /></ProtectedRoute>} />
           <Route path="/tramites/reportes" element={<ProtectedRoute><TramitesReportes /></ProtectedRoute>} />
           <Route path="/entrega-polizas" element={<ProtectedRoute><EntregaPolizas /></ProtectedRoute>} />
           <Route path="/mis-polizas" element={<ProtectedRoute><MisPolizas /></ProtectedRoute>} />
