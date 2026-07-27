@@ -6,6 +6,11 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
+declare global {
+  interface Window { grecaptcha: any; }
+}
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
+
 // ── IndexedDB helpers ──────────────────────────────────────────────────────
 const IDB_NAME = 'jiromovi_reportes';
 const IDB_STORE = 'drafts';
@@ -178,6 +183,7 @@ export default function TareaReportePage() {
     if (!navigator.onLine) { setFase('escribiendo'); setOffline(true); return; }
 
     const dispositivo = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'móvil' : 'computadora';
+    const captchaToken = await getCaptchaToken();
     const { error } = await supabase.functions.invoke('procesar-reporte-protegido', {
       body: {
         tramite_id: tramiteId, campo_id: campoId, texto,
@@ -185,6 +191,7 @@ export default function TareaReportePage() {
         score_humano: Math.round(score * 100) / 100,
         chars_pegados: pastedChars,
         dispositivo,
+        captcha_token: captchaToken,
       },
     });
 
@@ -192,6 +199,27 @@ export default function TareaReportePage() {
     await idbDel(draftKey);
     setFase('enviado');
   }, [canSubmit, texto, tramiteId, campoId, draftKey]);
+
+  // Cargar reCAPTCHA v3 cuando pase a fase de escritura
+  useEffect(() => {
+    if (!RECAPTCHA_SITE_KEY || document.getElementById('recaptcha-script')) return;
+    const s = document.createElement('script');
+    s.id = 'recaptcha-script';
+    s.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`;
+    s.async = true;
+    document.head.appendChild(s);
+  }, [fase === 'instrucciones' || fase === 'escribiendo']);
+
+  async function getCaptchaToken(): Promise<string | null> {
+    if (!RECAPTCHA_SITE_KEY || !window.grecaptcha) return null;
+    return new Promise(resolve => {
+      window.grecaptcha.ready(() => {
+        window.grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'reporte_submit' })
+          .then((token: string) => resolve(token))
+          .catch(() => resolve(null));
+      });
+    });
+  }
 
   // Online/offline
   useEffect(() => {
@@ -357,6 +385,11 @@ export default function TareaReportePage() {
               : elapsed < minTime
               ? `Espera ${fmtTime(minTime - elapsed)} más`
               : `Originalidad insuficiente (${sPct}% de ${Math.round(minScore * 100)}% requerido)`}
+          </p>
+        )}
+        {RECAPTCHA_SITE_KEY && (
+          <p className="text-center text-[10px] text-neutral-300 dark:text-neutral-600">
+            Protegido por reCAPTCHA
           </p>
         )}
       </footer>

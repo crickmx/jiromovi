@@ -1868,13 +1868,41 @@ export function TramiteDetalle() {
                                   </p>
                                 )}
                                 {(isAdmin || myTeamRole === 'lider' || myTeamRole === 'supervisor' || myTeamRole === 'director') && (
-                                  <button
-                                    onClick={() => setDecryptingCampo({ campoId: campo.id, label: campo.label })}
-                                    className="ml-6 flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400 hover:underline"
-                                  >
-                                    <Lock className="w-3.5 h-3.5" />
-                                    Ver contenido
-                                  </button>
+                                  <>
+                                    {val?.meta && (
+                                      <div className="ml-6 mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
+                                        {val.meta.tiempo_segundos != null && (
+                                          <span className="text-neutral-500">
+                                            ⏱ {val.meta.tiempo_segundos < 60
+                                              ? `${val.meta.tiempo_segundos}s`
+                                              : `${Math.floor(val.meta.tiempo_segundos / 60)}m ${val.meta.tiempo_segundos % 60}s`}
+                                          </span>
+                                        )}
+                                        {val.meta.dispositivo && (
+                                          <span className="text-neutral-500 capitalize">
+                                            {val.meta.dispositivo === 'móvil' ? '📱' : '💻'} {val.meta.dispositivo}
+                                          </span>
+                                        )}
+                                        {val.meta.score_humano != null && (
+                                          <span className={val.meta.score_humano >= 0.7 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}>
+                                            {val.meta.score_humano >= 0.7 ? '✓' : '⚠'} {Math.round(val.meta.score_humano * 100)}% original
+                                          </span>
+                                        )}
+                                        {val.meta.chars_pegados != null && val.meta.chars_pegados > 0 && (
+                                          <span className="text-amber-600 dark:text-amber-400">
+                                            ⚠ {val.meta.chars_pegados} chars pegados
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                    <button
+                                      onClick={() => setDecryptingCampo({ campoId: campo.id, label: campo.label })}
+                                      className="ml-6 mt-1 flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400 hover:underline"
+                                    >
+                                      <Lock className="w-3.5 h-3.5" />
+                                      Ver contenido
+                                    </button>
+                                  </>
                                 )}
                               </div>
                             ) : (

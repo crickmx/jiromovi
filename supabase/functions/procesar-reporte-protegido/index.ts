@@ -32,11 +32,24 @@ Deno.serve(async (req) => {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) return json({ error: "No auth" }, 401);
 
-  let body: { tramite_id?: string; campo_id?: string; texto?: string; tiempo_segundos?: number; score_humano?: number; chars_pegados?: number; dispositivo?: string };
+  let body: { tramite_id?: string; campo_id?: string; texto?: string; tiempo_segundos?: number; score_humano?: number; chars_pegados?: number; dispositivo?: string; captcha_token?: string };
   try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
 
-  const { tramite_id, campo_id, texto, tiempo_segundos, score_humano, chars_pegados, dispositivo } = body;
+  const { tramite_id, campo_id, texto, tiempo_segundos, score_humano, chars_pegados, dispositivo, captcha_token } = body;
   if (!tramite_id || !campo_id || !texto?.trim()) return json({ error: "Missing fields" }, 400);
+
+  // reCAPTCHA v3 — opcional: si la clave está configurada, verifica; si no, omite
+  const recaptchaSecret = Deno.env.get("RECAPTCHA_SECRET_KEY");
+  if (recaptchaSecret && captcha_token) {
+    const verif = await fetch("https://www.google.com/recaptcha/api/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `secret=${recaptchaSecret}&response=${captcha_token}`,
+    }).then(r => r.json()).catch(() => ({ success: false, score: 0 }));
+    if (!verif.success || verif.score < 0.3) {
+      return json({ error: "Verificación de seguridad fallida. Intenta de nuevo." }, 403);
+    }
+  }
 
   // Verify user + access to tramite via RLS
   const userClient = createClient(
