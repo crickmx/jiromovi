@@ -107,7 +107,8 @@ export function NuevoTramiteModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const [tipoTramite, setTipoTramite] = useState<string>('correccion_poliza_registrada');
+  const [tipoTramite, setTipoTramite] = useState<string>('');
+  const [areaSeleccionada, setAreaSeleccionada] = useState<string>('');
   const [usuariosDisponibles, setUsuariosDisponibles] = useState<Usuario[]>([]);
   const [asignado, setAsignado] = useState<string>('');
   const [propuestoNombreMOVI, setPropuestoNombreMOVI] = useState('');
@@ -377,6 +378,14 @@ export function NuevoTramiteModal({
       });
   }, [tipoTramite, tiposDb]);
 
+  // Auto-selecciona el área cuando tiposDb carga y ya hay un tipo pre-seleccionado
+  useEffect(() => {
+    if (tipoTramite && tiposDb.length > 0 && !areaSeleccionada) {
+      const found = tiposDb.find(t => t.value === tipoTramite);
+      if (found?.area) setAreaSeleccionada(found.area);
+    }
+  }, [tipoTramite, tiposDb]);
+
   // Badge de "información adicional": se dispara una sola vez por trámite, la primera
   // vez que un campo NO requerido recibe respuesta (o se expande una sección opcional).
   const dispararBadgeExtra = () => {
@@ -482,7 +491,8 @@ export function NuevoTramiteModal({
     } else if (isAgent) {
       setTipoTramite('cotizacion_emision');
     } else {
-      setTipoTramite('correccion_poliza_registrada');
+      setTipoTramite('');
+      setAreaSeleccionada('');
     }
 
     if (isAgent && usuario) {
@@ -531,7 +541,7 @@ export function NuevoTramiteModal({
   };
 
   const restoreFromDraft = (draft: Record<string, unknown>) => {
-    setTipoTramite((draft.tipoTramite as string) || (isAgent ? 'cotizacion_emision' : 'correccion_poliza_registrada'));
+    setTipoTramite((draft.tipoTramite as string) || (isAgent ? 'cotizacion_emision' : ''));
     setAsignado((draft.asignado as string) || (isAgent ? (usuario?.id || '') : ''));
     setPrioridad(((draft.prioridad as string) || 'Baja') as 'Alta' | 'Media' | 'Baja');
     setDescripcion((draft.descripcion as string) || '');
@@ -780,6 +790,10 @@ export function NuevoTramiteModal({
   };
 
   const validateForm = (): boolean => {
+    if (!tipoTramite) {
+      setError('Selecciona un tipo de trámite');
+      return false;
+    }
     if (isCommercialTicketType(tipoTramite)) {
       if (!comAgenteUserId) {
         setError('Debe seleccionar un agente relacionado para trámites comerciales');
@@ -2142,52 +2156,63 @@ export function NuevoTramiteModal({
           </div>
         )}
 
-        <div>
-          <label className="block text-sm font-semibold text-neutral-900 mb-2">
-            Tipo de Trámite
-          </label>
-          <select
-            value={tipoTramite}
-            onChange={(e) => setTipoTramite(e.target.value)}
-            disabled={!!preloadedData?.tipoTramite}
-            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-100 disabled:cursor-not-allowed"
-          >
-            {(['Comercial', 'Operaciones', 'Mercadotecnia', 'Administración', 'Otro'] as const).map(area => {
-              const tiposForArea = tiposDb
-                .filter(t => t.area === area)
-                .filter(t => {
-                  if (t.value === 'formulario_cotizacion' || t.value === 'cambio_bancario') return false;
-                  if (t.value === 'cotizacion_emision') return !!canAccessRegistroAct;
-                  if (isAgent && isCommercialTicketType(t.value)) return false;
-                  if (tiposBlockedIds.has(t.id)) return false;
-                  return true;
-                });
-              if (tiposForArea.length === 0) return null;
-              return (
-                <optgroup key={area} label={area}>
-                  {tiposForArea.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </optgroup>
-              );
-            })}
-          </select>
-          {(() => {
-            const tipoInfo = tiposDb.find(t => t.value === tipoTramite);
-            const areaName = tipoInfo?.area || getTipoTramiteArea(tipoTramite);
-            const areaCfg = AREA_CONFIG[areaName as keyof typeof AREA_CONFIG] || AREA_CONFIG['Comercial'];
-            return (
-              <p className="text-xs text-neutral-500 mt-1">
-                <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 ${areaCfg.bg} ${areaCfg.color}`}>
-                  {areaName}
-                </span>
-                {tipoInfo?.label || getTipoLabel(tipoTramite)}
-              </p>
-            );
-          })()}
-          {/* Aviso: puede crear pero no editar */}
-          {tiposReadOnlyAfterCreate.has(tiposDb.find(t => t.value === tipoTramite)?.id ?? '') && (
-            <div className="mt-2 flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
-              <span className="mt-0.5 flex-shrink-0">ℹ️</span>
-              <span>Podrás crear este trámite, pero no podrás modificar sus campos una vez enviado.</span>
+        <div className="space-y-3">
+          {/* Área */}
+          <div>
+            <label className="block text-sm font-semibold text-neutral-900 mb-2">Área</label>
+            <select
+              value={areaSeleccionada}
+              onChange={e => { setAreaSeleccionada(e.target.value); setTipoTramite(''); }}
+              disabled={!!preloadedData?.tipoTramite}
+              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-100 disabled:cursor-not-allowed"
+            >
+              <option value="">Selecciona un área...</option>
+              {[...new Set(
+                tiposDb
+                  .filter(t => {
+                    if (t.value === 'formulario_cotizacion' || t.value === 'cambio_bancario') return false;
+                    if (t.value === 'cotizacion_emision') return !!canAccessRegistroAct;
+                    if (isAgent && isCommercialTicketType(t.value)) return false;
+                    if (tiposBlockedIds.has(t.id)) return false;
+                    return true;
+                  })
+                  .map(t => t.area)
+                  .filter(Boolean)
+              )].map(area => (
+                <option key={area} value={area}>{area}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Tipo de Trámite — solo visible al seleccionar área */}
+          {areaSeleccionada && (
+            <div>
+              <label className="block text-sm font-semibold text-neutral-900 mb-2">Tipo de Trámite</label>
+              <select
+                value={tipoTramite}
+                onChange={e => setTipoTramite(e.target.value)}
+                disabled={!!preloadedData?.tipoTramite}
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-100 disabled:cursor-not-allowed"
+              >
+                <option value="">Selecciona un tipo...</option>
+                {tiposDb
+                  .filter(t => t.area === areaSeleccionada)
+                  .filter(t => {
+                    if (t.value === 'formulario_cotizacion' || t.value === 'cambio_bancario') return false;
+                    if (t.value === 'cotizacion_emision') return !!canAccessRegistroAct;
+                    if (isAgent && isCommercialTicketType(t.value)) return false;
+                    if (tiposBlockedIds.has(t.id)) return false;
+                    return true;
+                  })
+                  .map(t => <option key={t.value} value={t.value}>{t.label}</option>)
+                }
+              </select>
+              {tiposReadOnlyAfterCreate.has(tiposDb.find(t => t.value === tipoTramite)?.id ?? '') && (
+                <div className="mt-2 flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
+                  <span className="mt-0.5 flex-shrink-0">ℹ️</span>
+                  <span>Podrás crear este trámite, pero no podrás modificar sus campos una vez enviado.</span>
+                </div>
+              )}
             </div>
           )}
         </div>
