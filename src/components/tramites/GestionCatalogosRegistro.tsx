@@ -9,6 +9,7 @@ import { PermisosPanel } from './catalogos/PermisosPanel';
 import { HistorialPanel } from './catalogos/HistorialPanel';
 import { TriggersTab } from './catalogos/TriggersTab';
 import { EquiposHabilitadosPanel } from './catalogos/EquiposHabilitadosPanel';
+import RecurrenciaTab from './catalogos/RecurrenciaTab';
 import { ColorPicker } from './catalogos/ColorPicker';
 import { type TicketTipo, slugify } from './catalogos/types';
 import { logHistorial } from './catalogos/logHistorial';
@@ -58,7 +59,7 @@ export function GestionCatalogosRegistro() {
   // ── Navigation ──────────────────────────────────────────────────────────
   const [view, setView] = useState<'list' | 'edit'>('list');
   const [activeTipo, setActiveTipo] = useState<TicketTipo | null>(null);
-  const [activeTab, setActiveTab] = useState<'config' | 'campos' | 'permisos' | 'equipos' | 'triggers' | 'historial'>('config');
+  const [activeTab, setActiveTab] = useState<'config' | 'campos' | 'permisos' | 'equipos' | 'triggers' | 'historial' | 'recurrencia'>('config');
 
   // ── Ticket tipos ────────────────────────────────────────────────────────
   const [tiposTramite, setTiposTramite] = useState<TicketTipo[]>([]);
@@ -456,6 +457,7 @@ export function GestionCatalogosRegistro() {
             { id: 'equipos',   label: 'Equipos habilitados' },
             { id: 'triggers',  label: 'Triggers de Estatus' },
             { id: 'historial', label: 'Historial' },
+            { id: 'recurrencia', label: 'Recurrencia' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -563,6 +565,11 @@ export function GestionCatalogosRegistro() {
         {/* Tab: Historial */}
         {activeTab === 'historial' && (
           <HistorialPanel tipoId={activeTipo.id} />
+        )}
+
+        {/* Tab: Recurrencia */}
+        {activeTab === 'recurrencia' && (
+          <RecurrenciaTab tipoId={activeTipo.id} showToast={showToast} />
         )}
       </div>
     );
