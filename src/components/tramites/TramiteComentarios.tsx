@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Send, Upload, X, FileText } from 'lucide-react';
+import { Send, Upload, X, FileText, AtSign } from 'lucide-react';
 
 interface Comentario {
   id: string;
@@ -14,11 +14,17 @@ interface Comentario {
   } | null;
 }
 
-interface TramiteComentariosProps {
-  tramiteId: string;
+interface Miembro {
+  id: string;
+  nombre_completo: string;
 }
 
-export function TramiteComentarios({ tramiteId }: TramiteComentariosProps) {
+interface TramiteComentariosProps {
+  tramiteId: string;
+  grupoId?: string | null;
+}
+
+export function TramiteComentarios({ tramiteId, grupoId }: TramiteComentariosProps) {
   const { usuario } = useAuth();
   const [comentarios, setComentarios] = useState<Comentario[]>([]);
   const [mensaje, setMensaje] = useState('');
@@ -26,6 +32,12 @@ export function TramiteComentarios({ tramiteId }: TramiteComentariosProps) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // @mentions
+  const [miembros, setMiembros] = useState<Miembro[]>([]);
+  const [mencionQuery, setMencionQuery] = useState<string | null>(null);
+  const [mencionIndex, setMencionIndex] = useState(0);
 
   useEffect(() => {
     loadComentarios();
@@ -73,6 +85,22 @@ export function TramiteComentarios({ tramiteId }: TramiteComentariosProps) {
     scrollToBottom();
   }, [comentarios]);
 
+  // Cargar miembros del equipo cuando haya grupoId
+  useEffect(() => {
+    if (!grupoId) return;
+    supabase
+      .from('tramites_grupos_miembros')
+      .select('usuario_id, usuario:usuario_id(id, nombre_completo)')
+      .eq('grupo_id', grupoId)
+      .then(({ data }) => {
+        const ms: Miembro[] = (data ?? [])
+          .map((r: any) => r.usuario)
+          .filter(Boolean)
+          .filter((m: Miembro) => m.id !== usuario?.id);
+        setMiembros(ms);
+      });
+  }, [grupoId]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -93,6 +121,48 @@ export function TramiteComentarios({ tramiteId }: TramiteComentariosProps) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) setArchivo(file);
+  };
+
+  // Detecta si el cursor está justo después de un @ y filtra la lista
+  const handleMensajeChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setMensaje(val);
+    if (!grupoId || miembros.length === 0) return;
+
+    const pos = e.target.selectionStart ?? val.length;
+    const before = val.slice(0, pos);
+    const match = before.match(/@(\w*)$/);
+    if (match) {
+      setMencionQuery(match[1].toLowerCase());
+      setMencionIndex(0);
+    } else {
+      setMencionQuery(null);
+    }
+  };
+
+  const filteredMiembros = mencionQuery !== null
+    ? miembros.filter(m => m.nombre_completo.toLowerCase().includes(mencionQuery))
+    : [];
+
+  const insertMention = (miembro: Miembro) => {
+    if (!textareaRef.current) return;
+    const pos = textareaRef.current.selectionStart ?? mensaje.length;
+    const before = mensaje.slice(0, pos);
+    const after = mensaje.slice(pos);
+    const lastAt = before.lastIndexOf('@');
+    const newMsg = before.slice(0, lastAt) + `@${miembro.nombre_completo} ` + after;
+    setMensaje(newMsg);
+    setMencionQuery(null);
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  };
+
+  // Extrae IDs de usuarios mencionados en el texto
+  const extractMentionedIds = (texto: string): string[] => {
+    const ids: string[] = [];
+    for (const m of miembros) {
+      if (texto.includes(`@${m.nombre_completo}`)) ids.push(m.id);
+    }
+    return ids;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -145,7 +215,7 @@ export function TramiteComentarios({ tramiteId }: TramiteComentariosProps) {
         fecha_hora: new Date().toISOString(),
         usuario: {
           id: usuario.id,
-          nombre_completo: usuario.nombre_completo,
+          nombre_completo: (usuario as any).nombre_completo,
           rol: usuario.rol
         }
       };
@@ -153,6 +223,7 @@ export function TramiteComentarios({ tramiteId }: TramiteComentariosProps) {
       setComentarios(prev => [...prev, optimisticComment]);
       setMensaje('');
       setArchivo(null);
+      setMencionQuery(null);
 
       const { data, error } = await supabase
         .from('ticket_comentarios')
@@ -169,6 +240,19 @@ export function TramiteComentarios({ tramiteId }: TramiteComentariosProps) {
       setComentarios(prev =>
         prev.map(c => c.id === tempId ? data as Comentario : c)
       );
+
+      // Registrar menciones (@X solo miembros del mismo equipo)
+      const mentionedIds = extractMentionedIds(mensajeTexto);
+      if (mentionedIds.length > 0) {
+        await supabase.from('ticket_usuarios_mencionados').upsert(
+          mentionedIds.map(uid => ({
+            ticket_id: tramiteId,
+            usuario_id: uid,
+            mencionado_por: usuario.id,
+          })),
+          { onConflict: 'ticket_id,usuario_id', ignoreDuplicates: true }
+        );
+      }
 
     } catch (err: any) {
       console.error('Error sending message:', err);
@@ -208,15 +292,15 @@ export function TramiteComentarios({ tramiteId }: TramiteComentariosProps) {
                   <div className="flex items-center space-x-2 mb-1">
                     {!isOwn && (
                       <>
-                        <span className="text-sm font-semibold text-neutral-900">
+                        <span className="text-sm font-semibold text-neutral-900 dark:text-white">
                           {comentario.usuario?.nombre_completo}
                         </span>
-                        <span className="text-xs px-2 py-0.5 bg-neutral-100 text-neutral-600 rounded">
+                        <span className="text-xs px-2 py-0.5 bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-white/60 rounded">
                           {comentario.usuario?.rol}
                         </span>
                       </>
                     )}
-                    <span className="text-xs text-neutral-500">
+                    <span className="text-xs text-neutral-500 dark:text-white/40">
                       {new Date(comentario.fecha_hora).toLocaleString('es-MX', {
                         day: 'numeric',
                         month: 'short',
@@ -226,10 +310,10 @@ export function TramiteComentarios({ tramiteId }: TramiteComentariosProps) {
                     </span>
                   </div>
                   <div
-                    className={`px-4 py-3 rounded-2xl whitespace-pre-wrap ${
+                    className={`px-4 py-3 rounded-2xl whitespace-pre-wrap text-sm ${
                       isOwn
                         ? 'bg-accent text-white'
-                        : 'bg-neutral-100 text-neutral-900'
+                        : 'bg-neutral-100 dark:bg-white/8 text-neutral-900 dark:text-white'
                     }`}
                   >
                     {comentario.mensaje}
@@ -242,12 +326,12 @@ export function TramiteComentarios({ tramiteId }: TramiteComentariosProps) {
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={handleSubmit} className="border-t border-neutral-200 pt-4">
+      <form onSubmit={handleSubmit} className="border-t border-neutral-200 dark:border-white/10 pt-4">
         {archivo && (
-          <div className="mb-3 flex items-center justify-between p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+          <div className="mb-3 flex items-center justify-between p-3 bg-neutral-50 dark:bg-white/5 rounded-lg border border-neutral-200 dark:border-white/10">
             <div className="flex items-center space-x-2">
               <FileText className="w-5 h-5 text-neutral-500" />
-              <span className="text-sm font-medium text-neutral-900">{archivo.name}</span>
+              <span className="text-sm font-medium text-neutral-900 dark:text-white">{archivo.name}</span>
               <span className="text-xs text-neutral-500">
                 ({(archivo.size / 1024 / 1024).toFixed(2)} MB)
               </span>
@@ -262,15 +346,38 @@ export function TramiteComentarios({ tramiteId }: TramiteComentariosProps) {
           </div>
         )}
 
-        <div className="flex items-end space-x-2">
-          <div className="flex-1">
+        <div className="flex items-end space-x-2 relative">
+          <div className="flex-1 relative">
+            {/* Dropdown de menciones */}
+            {mencionQuery !== null && filteredMiembros.length > 0 && (
+              <div className="absolute bottom-full mb-1 left-0 w-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-white/10 rounded-xl shadow-lg z-20 overflow-hidden">
+                {filteredMiembros.slice(0, 6).map((m, i) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); insertMention(m); }}
+                    className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors ${i === mencionIndex ? 'bg-neutral-50 dark:bg-white/5' : ''}`}
+                  >
+                    <AtSign className="w-3.5 h-3.5 text-accent shrink-0" />
+                    <span className="text-neutral-900 dark:text-white">{m.nombre_completo}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <textarea
+              ref={textareaRef}
               value={mensaje}
-              onChange={(e) => setMensaje(e.target.value)}
-              placeholder="Escribe un comentario..."
+              onChange={handleMensajeChange}
+              placeholder={grupoId ? 'Escribe un comentario... (usa @ para mencionar a alguien)' : 'Escribe un comentario...'}
               rows={3}
-              className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all resize-none"
+              className="w-full px-4 py-3 border border-neutral-300 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all resize-none bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
               onKeyDown={(e) => {
+                if (mencionQuery !== null && filteredMiembros.length > 0) {
+                  if (e.key === 'ArrowDown') { e.preventDefault(); setMencionIndex(i => Math.min(i + 1, filteredMiembros.length - 1)); return; }
+                  if (e.key === 'ArrowUp') { e.preventDefault(); setMencionIndex(i => Math.max(i - 1, 0)); return; }
+                  if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); insertMention(filteredMiembros[mencionIndex]); return; }
+                  if (e.key === 'Escape') { setMencionQuery(null); return; }
+                }
                 if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                   handleSubmit(e);
                 }
@@ -280,7 +387,7 @@ export function TramiteComentarios({ tramiteId }: TramiteComentariosProps) {
           <div className="flex flex-col space-y-2">
             <label
               htmlFor="file-upload-comment"
-              className="p-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl cursor-pointer transition-all"
+              className="p-3 bg-neutral-100 dark:bg-white/8 hover:bg-neutral-200 dark:hover:bg-white/15 text-neutral-700 dark:text-white/70 rounded-xl cursor-pointer transition-all"
               title="Adjuntar archivo"
             >
               <Upload className="w-5 h-5" />
@@ -301,8 +408,8 @@ export function TramiteComentarios({ tramiteId }: TramiteComentariosProps) {
             </button>
           </div>
         </div>
-        <p className="text-xs text-neutral-500 mt-2">
-          Presiona Ctrl+Enter para enviar
+        <p className="text-xs text-neutral-500 dark:text-white/40 mt-2">
+          Presiona Ctrl+Enter para enviar{grupoId ? ' · @ para mencionar' : ''}
         </p>
       </form>
     </div>
