@@ -39,7 +39,8 @@ Deno.serve(async (req) => {
   if (!tramite_id || !campo_id || !texto?.trim()) return json({ error: "Missing fields" }, 400);
 
   // reCAPTCHA v3 — opcional: si la clave está configurada, verifica; si no, omite
-  const recaptchaSecret = Deno.env.get("RECAPTCHA_SECRET_KEY");
+  // Clave propia de MOVI, separada de RECAPTCHA_SECRET_KEY (usada por otras funciones ajenas a este flujo).
+  const recaptchaSecret = Deno.env.get("RECAPTCHA_SECRET_KEY_MOVI");
   if (recaptchaSecret && captcha_token) {
     const verif = await fetch("https://www.google.com/recaptcha/api/siteverify", {
       method: "POST",

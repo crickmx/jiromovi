@@ -9,7 +9,10 @@ import { supabase } from '../lib/supabase';
 declare global {
   interface Window { grecaptcha: any; }
 }
-const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
+// Site key propio de MOVI, separado del que usan seguros.express / lead público —
+// debe pertenecer al MISMO registro de reCAPTCHA en Google que RECAPTCHA_SECRET_KEY_MOVI
+// (edge function procesar-reporte-protegido), o la verificación del token siempre falla.
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY_MOVI as string | undefined;
 
 // ── IndexedDB helpers ──────────────────────────────────────────────────────
 const IDB_NAME = 'jiromovi_reportes';
