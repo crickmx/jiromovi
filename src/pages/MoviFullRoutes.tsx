@@ -196,7 +196,7 @@ export default function MoviFullRoutes() {
           <Route path="/mi-crm/reportes" element={<ProtectedRoute><CRMReportes /></ProtectedRoute>} />
           <Route path="/mi-crm/configuracion" element={<ProtectedRoute><CRMConfiguracion /></ProtectedRoute>} />
           <Route path="/mi-crm/leads-seguros-express" element={<ProtectedRoute><CRMLeadsSegurosExpress /></ProtectedRoute>} />
-          <Route path="/admin/seguros-express" element={<ProtectedRoute><AdminSegurosExpress /></ProtectedRoute>} />
+          <Route path="/admin/seguros-express" element={<ProtectedRoute requireAdmin><AdminSegurosExpress /></ProtectedRoute>} />
           <Route path="/tramites" element={<ProtectedRoute><Tramites /></ProtectedRoute>} />
           <Route path="/tramites/:id" element={<ProtectedRoute><TramiteDetalle /></ProtectedRoute>} />
           <Route path="/tramites/reportes" element={<ProtectedRoute><TramitesReportes /></ProtectedRoute>} />
