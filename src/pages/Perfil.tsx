@@ -5,6 +5,7 @@ import { User, Phone, Mail, MapPin, Building2, Shield, Camera, Check, Loader as 
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import UbicacionPicker, { type UbicacionValue } from '../components/ubicacion/UbicacionPicker';
+import TOTPSetupPanel from '../components/configuracion/TOTPSetupPanel';
 
 interface FiscalRegime {
   id: string;
@@ -903,6 +904,17 @@ export default function Perfil() {
             <p className="mt-1 text-xs text-neutral-400 dark:text-white/35">
               La habilitación para recibir leads de seguros.express la gestiona un administrador.
             </p>
+          </div>
+
+          {/* ── TOTP Autenticador ── */}
+          <div className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200 dark:border-white/[0.06] p-5">
+            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-neutral-100 dark:border-white/[0.05]">
+              <div className="w-7 h-7 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                <Shield className="w-3.5 h-3.5 text-violet-500" />
+              </div>
+              <p className="text-sm font-semibold text-neutral-700 dark:text-white/80">Autenticador de dos pasos</p>
+            </div>
+            <TOTPSetupPanel />
           </div>
 
           {/* ── Password Management Section ── */}

@@ -16,6 +16,7 @@ import { TriggerConfirmModal, type PendingTrigger, type ExistingChild } from '..
 import { calcularDiasHabilesEntre } from '../lib/diasHabiles';
 import type { TramiteSeccion } from '../components/tramites/catalogos/types';
 import { seccionDesbloqueada, agruparCamposPorSeccion } from '../lib/tramiteSecciones';
+import TOTPDecryptModal from '../components/tramites/TOTPDecryptModal';
 
 interface TramiteEstatus {
   id: string;
@@ -137,6 +138,9 @@ export function TramiteDetalle() {
 
   // Escalation modal
   const [escalacionModal, setEscalacionModal] = useState<{ destinatario: string; silentTriggers: PendingTrigger[] } | null>(null);
+
+  // TOTP decrypt modal
+  const [decryptingCampo, setDecryptingCampo] = useState<{ campoId: string; label: string } | null>(null);
   const [escalacionComentario, setEscalacionComentario] = useState('');
 
   // Modal "¿Cambiar estatus?" antes de guardar
@@ -1831,7 +1835,7 @@ export function TramiteDetalle() {
                         return (
                           <div className="rounded-xl border border-neutral-200 p-4 bg-neutral-50 dark:bg-neutral-800/40 dark:border-neutral-700">
                             {enviado ? (
-                              <div className="space-y-1">
+                              <div className="space-y-2">
                                 <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
                                   <Lock className="w-4 h-4" />
                                   <span className="text-sm font-medium">Reporte enviado y cifrado</span>
@@ -1840,6 +1844,15 @@ export function TramiteDetalle() {
                                   <p className="text-xs text-neutral-500 pl-6">
                                     {new Date(val.enviado_en).toLocaleString('es-MX')} · {val?.palabras ?? '?'} palabras
                                   </p>
+                                )}
+                                {(isAdmin || myTeamRole === 'lider' || myTeamRole === 'supervisor' || myTeamRole === 'director') && (
+                                  <button
+                                    onClick={() => setDecryptingCampo({ campoId: campo.id, label: campo.label })}
+                                    className="ml-6 flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400 hover:underline"
+                                  >
+                                    <Lock className="w-3.5 h-3.5" />
+                                    Ver contenido
+                                  </button>
                                 )}
                               </div>
                             ) : (
@@ -2140,6 +2153,14 @@ export function TramiteDetalle() {
             {saving ? 'Guardando...' : 'Guardar cambios'}
           </button>
         </div>
+      )}
+      {decryptingCampo && tramite && (
+        <TOTPDecryptModal
+          tramiteId={tramite.id}
+          campoId={decryptingCampo.campoId}
+          campoLabel={decryptingCampo.label}
+          onClose={() => setDecryptingCampo(null)}
+        />
       )}
     </div>
   );
