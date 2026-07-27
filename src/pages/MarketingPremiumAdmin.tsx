@@ -218,28 +218,32 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
       ? 'id, nombre, apellidos, puesto, imagen_perfil_url, plan_mkt_premium, oficinas:oficina_id(nombre)'
       : 'id, nombre, apellidos, puesto, imagen_perfil_url, plan_mkt_premium, mkt_premium_fecha_inicio, mkt_premium_fecha_pago, mkt_premium_plan, mkt_premium_metodo_pago, oficinas:oficina_id(nombre)';
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('usuarios')
       .update(payload)
       .eq('id', seleccionado.id)
       .select(selectCols)
       .single();
 
-    if (data) {
-      const actualizado: Agente = {
-        ...data,
-        oficina: Array.isArray((data as any).oficinas) ? (data as any).oficinas[0] ?? null : (data as any).oficinas ?? null,
-      };
-      setSeleccionado(actualizado);
-      setAgentes(prev => prev.map(a => a.id === actualizado.id ? actualizado : a));
+    setGuardando(false);
 
-      // Crear trámite de cobranza solo al activar por primera vez
-      if (activandoPremium) {
-        await crearTramiteCobranzaPremium(actualizado);
-      }
+    if (error || !data) {
+      setErrorValidacion(error?.message || 'No se pudo guardar — no tienes permiso para modificar a este agente.');
+      return;
     }
 
-    setGuardando(false);
+    const actualizado: Agente = {
+      ...data,
+      oficina: Array.isArray((data as any).oficinas) ? (data as any).oficinas[0] ?? null : (data as any).oficinas ?? null,
+    };
+    setSeleccionado(actualizado);
+    setAgentes(prev => prev.map(a => a.id === actualizado.id ? actualizado : a));
+
+    // Crear trámite de cobranza solo al activar por primera vez
+    if (activandoPremium) {
+      await crearTramiteCobranzaPremium(actualizado);
+    }
+
     setGuardado(true);
     setTimeout(() => setGuardado(false), 3000);
   }
