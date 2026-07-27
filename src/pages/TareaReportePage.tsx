@@ -177,8 +177,15 @@ export default function TareaReportePage() {
 
     if (!navigator.onLine) { setFase('escribiendo'); setOffline(true); return; }
 
+    const dispositivo = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'móvil' : 'computadora';
     const { error } = await supabase.functions.invoke('procesar-reporte-protegido', {
-      body: { tramite_id: tramiteId, campo_id: campoId, texto },
+      body: {
+        tramite_id: tramiteId, campo_id: campoId, texto,
+        tiempo_segundos: elapsed,
+        score_humano: Math.round(score * 100) / 100,
+        chars_pegados: pastedChars,
+        dispositivo,
+      },
     });
 
     if (error) { setFase('escribiendo'); setErrMsg('Error al enviar. Intenta de nuevo.'); return; }

@@ -32,10 +32,10 @@ Deno.serve(async (req) => {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) return json({ error: "No auth" }, 401);
 
-  let body: { tramite_id?: string; campo_id?: string; texto?: string };
+  let body: { tramite_id?: string; campo_id?: string; texto?: string; tiempo_segundos?: number; score_humano?: number; chars_pegados?: number; dispositivo?: string };
   try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
 
-  const { tramite_id, campo_id, texto } = body;
+  const { tramite_id, campo_id, texto, tiempo_segundos, score_humano, chars_pegados, dispositivo } = body;
   if (!tramite_id || !campo_id || !texto?.trim()) return json({ error: "Missing fields" }, 400);
 
   // Verify user + access to tramite via RLS
@@ -84,6 +84,12 @@ Deno.serve(async (req) => {
         palabras,
         encrypted: toBase64(encrypted),
         iv: toBase64(iv),
+        meta: {
+          tiempo_segundos: tiempo_segundos ?? null,
+          score_humano: score_humano ?? null,
+          chars_pegados: chars_pegados ?? null,
+          dispositivo: dispositivo ?? null,
+        },
       }},
       { onConflict: "tramite_id,campo_id" }
     );

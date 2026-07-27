@@ -129,5 +129,10 @@ Deno.serve(async (req) => {
     fromBase64(resp.valor_json.encrypted)
   );
 
-  return json({ texto: new TextDecoder().decode(decrypted), palabras: resp.valor_json.palabras });
+  return json({
+    texto: new TextDecoder().decode(decrypted),
+    palabras: resp.valor_json.palabras,
+    enviado_en: resp.valor_json.enviado_en ?? null,
+    meta: resp.valor_json.meta ?? null,
+  });
 });
