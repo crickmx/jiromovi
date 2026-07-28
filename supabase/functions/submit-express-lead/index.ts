@@ -61,21 +61,38 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // reCAPTCHA v3 (mismo patrón que submit-web-lead).
+    // reCAPTCHA v3 — señal ANTISPAM, no un bloqueo duro. Nunca perdemos un lead
+    // legítimo por un problema de configuración del captcha (dominio no dado de
+    // alta en la consola de reCAPTCHA, site key ausente en el front, error de
+    // red): en esos casos Google devuelve success:false y aceptamos el lead
+    // igual, dejando el score en null para que el admin pueda revisarlo. Sólo
+    // rechazamos cuando Google SÍ evaluó el token (success:true) y su score
+    // quedó por debajo del umbral, es decir un bot con alta confianza.
+    const RECAPTCHA_MIN_SCORE = 0.5;
     let recaptchaScore: number | null = null;
-    if (recaptchaSecretKey) {
-      const recaptchaResponse = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `secret=${recaptchaSecretKey}&response=${body.recaptchaToken || ''}`,
-      });
-      const recaptchaResult = await recaptchaResponse.json();
-      recaptchaScore = typeof recaptchaResult.score === 'number' ? recaptchaResult.score : null;
-      if (!recaptchaResult.success || (recaptchaScore !== null && recaptchaScore < 0.5)) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'No pudimos verificar tu solicitud. Intenta de nuevo.' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+    if (recaptchaSecretKey && body.recaptchaToken) {
+      try {
+        const recaptchaResponse = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: `secret=${recaptchaSecretKey}&response=${body.recaptchaToken}`,
+        });
+        const recaptchaResult = await recaptchaResponse.json();
+        recaptchaScore = typeof recaptchaResult.score === 'number' ? recaptchaResult.score : null;
+        if (recaptchaResult.success === true && recaptchaScore !== null && recaptchaScore < RECAPTCHA_MIN_SCORE) {
+          console.warn('Express lead rechazado por score bajo de reCAPTCHA:', recaptchaScore, recaptchaResult['error-codes']);
+          return new Response(
+            JSON.stringify({ success: false, error: 'No pudimos verificar tu solicitud. Intenta de nuevo.' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        if (!recaptchaResult.success) {
+          // No se pudo verificar (dominio no dado de alta, token vencido, etc.):
+          // se acepta el lead igual para no perder al cliente.
+          console.warn('reCAPTCHA no verificado, se acepta el lead igual:', recaptchaResult['error-codes']);
+        }
+      } catch (recaptchaErr) {
+        console.error('Error llamando a reCAPTCHA siteverify, se acepta el lead igual:', recaptchaErr);
       }
     }
 
