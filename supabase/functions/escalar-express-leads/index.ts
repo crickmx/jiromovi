@@ -11,6 +11,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
+// Lee el claim `role` del JWT del header Authorization. Sólo sirve para
+// distinguir la llamada del cron (service_role) de la de un usuario. La FIRMA
+// del token ya la valida el gateway (verify_jwt=true) antes de entrar aquí, así
+// que aquí sólo decodificamos el payload; un token forjado nunca llega hasta acá.
+function jwtRole(authHeader: string): string | null {
+  try {
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+    const part = token.split('.')[1];
+    if (!part) return null;
+    let b64 = part.replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    const payload = JSON.parse(atob(b64));
+    return typeof payload.role === 'string' ? payload.role : null;
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -19,9 +37,13 @@ Deno.serve(async (req: Request) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-  // Sólo service role (cron) o un Administrador autenticado.
+  // Sólo service role (cron) o un Administrador autenticado. Detectamos al cron
+  // por el rol del JWT (robusto ante rotación/formato de la key) y dejamos el
+  // string-match como respaldo. Antes sólo se comparaba el header contra
+  // SUPABASE_SERVICE_ROLE_KEY carácter por carácter: cuando ese valor inyectado
+  // dejó de coincidir exacto con el JWT del cron, el cron respondía 401 cada minuto.
   const authHeader = req.headers.get('Authorization') || '';
-  const isServiceCall = authHeader.includes(supabaseServiceKey);
+  const isServiceCall = jwtRole(authHeader) === 'service_role' || authHeader.includes(supabaseServiceKey);
   if (!isServiceCall) {
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const userClient = createClient(supabaseUrl, anonKey, {
